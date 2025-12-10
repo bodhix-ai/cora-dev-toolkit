@@ -1,0 +1,138 @@
+# CORA Development Toolkit - Cline Rules
+
+## Project Overview
+
+This is the **CORA Development Toolkit** repository - the authoritative source for CORA (Composable Organizational Resource Architecture) standards, templates, and tooling. This toolkit is used to create and develop CORA-compliant applications.
+
+## Purpose
+
+This toolkit enables:
+
+1. **New CORA Project Creation** - Scaffolding for {project}-infra and {project}-stack repos
+2. **Module Development** - Templates and validation for CORA modules
+3. **Compliance Validation** - Automated checking of CORA standards
+4. **Documentation** - Comprehensive guides for developers and AI agents
+
+## Repository Structure
+
+```
+cora-dev-toolkit/
+├── .clinerules                 # This file - AI agent instructions
+├── .gitignore                  # Git ignore patterns
+├── README.md                   # Toolkit overview
+├── INTEGRATION-GUIDE.md        # How to use the toolkit
+├── config/                     # Linting and dependency configs
+├── docs/                       # CORA standards documentation
+├── scripts/                    # Automation scripts
+├── templates/                  # Project and module templates
+└── memory-bank/                # AI context for toolkit development
+```
+
+## Key Documents
+
+Before making changes, review these in order:
+
+1. `memory-bank/README.md` - Current toolkit context
+2. `docs/CORA-DEVELOPMENT-TOOLKIT-PLAN.md` - Master implementation plan
+3. `docs/CORA-PROJECT-BOILERPLATE.md` - Project creation standards (when created)
+4. `docs/CORA-CORE-MODULES.md` - Core module specifications (when created)
+
+## Module Naming Convention
+
+CORA uses a strict naming convention for modules:
+
+```
+module-{purpose}
+```
+
+Where `{purpose}` is a **single word** describing the module's main responsibility.
+
+### Core Modules (Required)
+
+- `module-access` - Identity & access control (Tier 1)
+- `module-ai` - AI provider management (Tier 2)
+- `module-mgmt` - Platform management & monitoring (Tier 3)
+
+### Functional Modules (Per-Feature)
+
+- `module-kb` - Knowledge base
+- `module-chat` - Chat & messaging
+- `module-project` - Project management
+- `module-dashboard` - Analytics dashboard
+- etc.
+
+## Two-Repo Pattern
+
+Every CORA project uses two repositories:
+
+- `{project}-infra` - Infrastructure as Code (Terraform, deploy scripts)
+- `{project}-stack` - Application Code (Next.js app, CORA modules)
+
+## Development Guidelines
+
+### When Creating Templates
+
+1. Use `{project}` placeholder for project-specific names
+2. Use `{module}` placeholder for module-specific names
+3. Never hardcode project prefixes like `pm-app-`
+4. All infrastructure must be configurable via variables
+
+### When Creating Documentation
+
+1. Documentation lives in `docs/`
+2. Use clear, actionable language
+3. Include examples and anti-patterns
+4. Reference the implementation plan phases
+
+### When Creating Scripts
+
+1. Scripts live in `scripts/`
+2. Make scripts executable (`chmod +x`)
+3. Include `--help` option
+4. Support `--dry-run` for destructive operations
+
+### When Updating Validation
+
+1. Validation scripts integrate with `pm-app-stack/scripts/validation/`
+2. Create wrapper orchestrator (`cora-validate.py`)
+3. Support module-level and project-level validation
+
+## CORA Projects Using This Toolkit
+
+| Project           | Status        | Repos                      |
+| ----------------- | ------------- | -------------------------- |
+| pm-app            | In Production | pm-app-infra, pm-app-stack |
+| (future projects) | Planned       | Created via toolkit        |
+
+## Implementation Plan Tracking
+
+The master plan is in `docs/CORA-DEVELOPMENT-TOOLKIT-PLAN.md`.
+
+Phase progress:
+
+- Phase 1: Documentation Foundation (in progress)
+- Phase 2: Project Templates (pending)
+- Phase 3: Validation Framework (pending)
+- Phase 4: Module Registry (pending)
+- Phase 5: Core Module Templates (pending)
+- Phase 6: Retrofit & Testing (pending)
+
+Always update the plan's checklists when completing items.
+
+## AI Agent Instructions
+
+When working on this toolkit:
+
+1. **Read memory-bank first** - Understand current context
+2. **Check the plan** - What phase are we in?
+3. **Make focused changes** - One deliverable at a time
+4. **Update progress** - Mark items complete in plan
+5. **Test changes** - Validate scripts work
+6. **Document patterns** - Update docs with new patterns
+
+## Do NOT
+
+- Do not hardcode project-specific values (pm-app, us-east-1, etc.)
+- Do not create one-off solutions - everything should be reusable
+- Do not skip documentation - all changes need docs
+- Do not break existing functionality in pm-app projects

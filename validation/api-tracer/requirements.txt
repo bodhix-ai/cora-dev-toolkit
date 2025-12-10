@@ -1,0 +1,17 @@
+# API Full Stack Tracer Dependencies
+# Python 3.11+
+
+# CLI framework
+click>=8.0.0
+
+# Terminal colors
+colorama>=0.4.0
+
+# Terraform HCL parser
+python-hcl2>=4.0.0
+
+# YAML parsing (for potential future use)
+pyyaml>=6.0.0
+
+# Environment configuration
+python-dotenv>=1.0.0

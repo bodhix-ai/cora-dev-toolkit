@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+"""
+Schema Validator CLI
+
+Command-line interface for validating Lambda database queries against Supabase schema.
+Designed to be AI-friendly with JSON output and clear error messages.
+
+Usage:
+    python cli.py --path /path/to/lambda/files
+    python cli.py --path lambda_function.py --output json
+    python cli.py --path packages/ --propose-fixes --output markdown
+"""
+
+import sys
+import logging
+import click
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Add current directory to Python path for imports
+sys.path.insert(0, str(Path(__file__).parent))
+
+from schema_inspector import SchemaInspector
+from query_parser import QueryParser
+from validator import Validator
+from fix_proposer import FixProposer
+from reporter import Reporter
+
+# Load environment variables from .env file in the same directory as this script
+load_dotenv(Path(__file__).parent / '.env')
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
+@click.command()
+@click.option(
+    '--path',
+    required=True,
+    type=click.Path(exists=True),
+    help='Path to Lambda file or directory to validate'
+)
+@click.option(
+    '--output',
+    type=click.Choice(['text', 'json', 'markdown'], case_sensitive=False),
+    default='text',
+    help='Output format (text, json, markdown). JSON is recommended for AI consumption.'
+)
+@click.option(
+    '--propose-fixes',
+    is_flag=True,
+    help='Generate proposed fixes for validation errors'
+)
+@click.option(
+    '--verbose',
+    is_flag=True,
+    help='Enable verbose debug logging'
+)
+@click.option(
+    '--clear-cache',
+    is_flag=True,
+    help='Clear schema cache and force re-introspection'
+)
+def validate(path: str, output: str, propose_fixes: bool, verbose: bool, clear_cache: bool):
+    """
+    Validate Lambda database queries against Supabase schema.
+    
+    This tool parses Lambda Python files, extracts Supabase queries,
+    and validates them against the actual database schema.
+    
+    Example usage:
+        
+        # Validate a single file
+        python cli.py --path lambda_function.py
+        
+        # Validate a directory with JSON output (AI-friendly)
+        python cli.py --path packages/ --output json
+        
+        # Validate and propose fixes
+        python cli.py --path packages/ --propose-fixes
+        
+    Environment variables required (from .env file):
+        SUPABASE_DB_HOST
+        SUPABASE_DB_PORT (optional, defaults to 5432)
+        SUPABASE_DB_NAME
+        SUPABASE_DB_USER
+        SUPABASE_DB_PASSWORD
+    """
+    # Set logging level
+    if verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+    
+    try:
+        # Initialize components
+        logger.info("Initializing schema validator...")
+        schema_inspector = SchemaInspector()
+        query_parser = QueryParser()
+        validator = Validator(schema_inspector, query_parser)
+        reporter = Reporter()
+        
+        # Clear cache if requested
+        if clear_cache:
+            logger.info("Clearing schema cache...")
+            schema_inspector.clear_cache()
+        
+        # Validate
+        logger.info(f"Validating: {path}")
+        report = validator.validate(path)
+        
+        # Propose fixes if requested
+        fixes = None
+        if propose_fixes and report.errors:
+            logger.info("Generating proposed fixes...")
+            fix_proposer = FixProposer()
+            fixes = fix_proposer.propose_fixes(report.errors)
+        
+        # Format and output report
+        formatted_report = reporter.format_report(report, fixes, output)
+        print(formatted_report)
+        
+        # Cleanup
+        schema_inspector.close()
+        
+        # Exit with appropriate code
+        if report.status == 'failed':
+            sys.exit(1)
+        else:
+            sys.exit(0)
+            
+    except Exception as e:
+        logger.error(f"Validation failed: {e}", exc_info=verbose)
+        if output == 'json':
+            import json
+            error_output = {
+                'status': 'error',
+                'error': str(e),
+                'error_type': type(e).__name__
+            }
+            print(json.dumps(error_output, indent=2))
+        else:
+            print(f"\n❌ ERROR: {e}\n", file=sys.stderr)
+        sys.exit(2)
+
+
+@click.group()
+def cli():
+    """Schema Validator - Validate Lambda queries against Supabase schema."""
+    pass
+
+
+@cli.command()
+def check_credentials():
+    """Check if database credentials are properly configured."""
+    import os
+    
+    required_vars = [
+        'SUPABASE_DB_HOST',
+        'SUPABASE_DB_NAME',
+        'SUPABASE_DB_USER',
+        'SUPABASE_DB_PASSWORD'
+    ]
+    
+    missing = []
+    for var in required_vars:
+        if not os.getenv(var):
+            missing.append(var)
+    
+    if missing:
+        print("❌ Missing environment variables:")
+        for var in missing:
+            print(f"   - {var}")
+        print("\nPlease create a .env file with these variables.")
+        sys.exit(1)
+    else:
+        print("✅ All required environment variables are configured.")
+        sys.exit(0)
+
+
+@cli.command()
+@click.option('--output', type=click.Choice(['text', 'json'], case_sensitive=False), default='text')
+def list_tables(output: str):
+    """List all tables in the database schema."""
+    try:
+        schema_inspector = SchemaInspector()
+        tables = schema_inspector.get_all_tables()
+        
+        if output == 'json':
+            import json
+            print(json.dumps({'tables': sorted(tables)}, indent=2))
+        else:
+            print(f"\n📊 Found {len(tables)} tables:")
+            for table in sorted(tables):
+                print(f"   - {table}")
+            print()
+        
+        schema_inspector.close()
+        sys.exit(0)
+        
+    except Exception as e:
+        logger.error(f"Failed to list tables: {e}")
+        sys.exit(1)
+
+
+# Make validate the default command
+cli.add_command(validate, name='validate')
+
+
+if __name__ == '__main__':
+    # If no command specified, run validate
+    if len(sys.argv) == 1 or (len(sys.argv) > 1 and not sys.argv[1] in ['check-credentials', 'list-tables', '--help', '--version']):
+        validate()
+    else:
+        cli()

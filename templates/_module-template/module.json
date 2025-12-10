@@ -1,0 +1,45 @@
+{
+  "name": "module-name",
+  "version": "1.0.0",
+  "description": "Brief module description",
+  "author": "Your Team",
+  "license": "MIT",
+
+  "dependencies": {
+    "modules": ["org-module"],
+    "packages": ["@supabase/supabase-js", "@okta/okta-react"]
+  },
+
+  "provides": {
+    "database": {
+      "schema": [
+        "db/schema/001-entity-table.sql",
+        "db/schema/002-apply-rls.sql"
+      ],
+      "tables": ["entity"],
+      "functions": []
+    },
+
+    "api": {
+      "endpoints": [
+        "GET /api/module/entities",
+        "POST /api/module/entities",
+        "GET /api/module/entities/:id",
+        "PUT /api/module/entities/:id",
+        "DELETE /api/module/entities/:id"
+      ]
+    },
+
+    "frontend": {
+      "components": ["EntityList", "EntityCard", "EntityForm", "EntityDetails"],
+      "hooks": ["useEntity", "useEntityForm"],
+      "contexts": ["EntityContext"]
+    }
+  },
+
+  "permissions": {
+    "database": ["rds:ExecuteStatement"],
+    "storage": [],
+    "external": []
+  }
+}

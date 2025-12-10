@@ -1,0 +1,17 @@
+# Schema Validator Dependencies
+# Python 3.11+
+
+# Database connectivity (Supabase REST API - like Lambda functions use)
+supabase>=2.0.0
+
+# Environment configuration
+python-dotenv>=1.0.0
+
+# CLI framework
+click>=8.0.0
+
+# Terminal colors
+colorama>=0.4.0
+
+# HTTP requests for PostgREST schema introspection
+requests>=2.31.0

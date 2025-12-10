@@ -1,0 +1,671 @@
+Loading org_common module signatures...
+Loaded 74 function signatures
+
+Validating directory: ../../../packages
+
+{
+  "files": [
+    {
+      "file": "../../../packages/ai-config-module/backend/lambdas/ai-config-handler/lambda_function.py",
+      "imports": {
+        "common": "org_common"
+      },
+      "calls": 117,
+      "errors": [
+        {
+          "severity": "error",
+          "file": "../../../packages/ai-config-module/backend/lambdas/ai-config-handler/lambda_function.py",
+          "line": 528,
+          "function": "org_common.find_one",
+          "issue": "Missing required parameter(s): filters",
+          "suggestion": "The function requires these parameters: table, filters",
+          "actual_signature": "find_one(table, filters, user_jwt=None, select='*')",
+          "your_call": "common.find_one(table='platform_rag', select='*')"
+        },
+        {
+          "severity": "error",
+          "file": "../../../packages/ai-config-module/backend/lambdas/ai-config-handler/lambda_function.py",
+          "line": 586,
+          "function": "org_common.find_one",
+          "issue": "Missing required parameter(s): filters",
+          "suggestion": "The function requires these parameters: table, filters",
+          "actual_signature": "find_one(table, filters, user_jwt=None, select='*')",
+          "your_call": "common.find_one(table='platform_rag', select='*')"
+        },
+        {
+          "severity": "error",
+          "file": "../../../packages/ai-config-module/backend/lambdas/ai-config-handler/lambda_function.py",
+          "line": 663,
+          "function": "org_common.find_many",
+          "issue": "Deprecated parameter 'order_by'",
+          "suggestion": "Use 'order' parameter instead of 'order_by'. Example: order='created_at.desc'",
+          "actual_signature": "find_many(table, filters=None, user_jwt=None, select='*', order=None, limit=None, offset=None)",
+          "your_call": "common.find_many(table='ai_providers', select='id, name, type, active, config', order_by='name')"
+        },
+        {
+          "severity": "error",
+          "file": "../../../packages/ai-config-module/backend/lambdas/ai-config-handler/lambda_function.py",
+          "line": 717,
+          "function": "org_common.find_one",
+          "issue": "Unknown parameter 'error_if_not_found'",
+          "suggestion": "Valid parameters are: table, filters, user_jwt, select",
+          "actual_signature": "find_one(table, filters, user_jwt=None, select='*')",
+          "your_call": "common.find_one(table='ai_providers', filters={'id': provider_id}, error_if_not_found=True)"
+        },
+        {
+          "severity": "error",
+          "file": "../../../packages/ai-config-module/backend/lambdas/ai-config-handler/lambda_function.py",
+          "line": 779,
+          "function": "org_common.find_many",
+          "issue": "Deprecated parameter 'order_by'",
+          "suggestion": "Use 'order' parameter instead of 'order_by'. Example: order='created_at.desc'",
+          "actual_signature": "find_many(table, filters=None, user_jwt=None, select='*', order=None, limit=None, offset=None)",
+          "your_call": "common.find_many(table='ai_models', filters=filters, select='id, provider_id, model_id, name, capabilities, status', order_by='name')"
+        },
+        {
+          "severity": "error",
+          "file": "../../../packages/ai-config-module/backend/lambdas/ai-config-handler/lambda_function.py",
+          "line": 829,
+          "function": "org_common.get_user_from_event",
+          "issue": "Unknown function 'get_user_from_event'",
+          "suggestion": "The function 'get_user_from_event' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.get_user_from_event(event)"
+        },
+        {
+          "severity": "error",
+          "file": "../../../packages/ai-config-module/backend/lambdas/ai-config-handler/lambda_function.py",
+          "line": 831,
+          "function": "org_common.get_supabase_user_id_from_external_uid",
+          "issue": "Unknown function 'get_supabase_user_id_from_external_uid'",
+          "suggestion": "The function 'get_supabase_user_id_from_external_uid' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.get_supabase_user_id_from_external_uid(okta_uid)"
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/ai-config-module/backend/layers/ai-config-common/python/ai_config/models.py",
+      "imports": {},
+      "calls": 0,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/ai-config-module/backend/layers/ai-config-common/python/ai_config/validators.py",
+      "imports": {},
+      "calls": 0,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/ai-config-module/backend/layers/ai-config-common/python/ai_config/__init__.py",
+      "imports": {},
+      "calls": 0,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/ai-config-module/backend/layers/ai-config-common/python/ai_config/types.py",
+      "imports": {},
+      "calls": 0,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/_module-template/backend/lambdas/entity/lambda_function.py",
+      "imports": {},
+      "calls": 0,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/org-module/backend/lambdas/orgs/lambda_function.py",
+      "imports": {
+        "common": "org_common"
+      },
+      "calls": 57,
+      "errors": [
+        {
+          "severity": "error",
+          "file": "../../../packages/org-module/backend/lambdas/orgs/lambda_function.py",
+          "line": 33,
+          "function": "org_common.get_user_from_event",
+          "issue": "Unknown function 'get_user_from_event'",
+          "suggestion": "The function 'get_user_from_event' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.get_user_from_event(event)"
+        },
+        {
+          "severity": "error",
+          "file": "../../../packages/org-module/backend/lambdas/orgs/lambda_function.py",
+          "line": 37,
+          "function": "org_common.get_supabase_user_id_from_okta_uid",
+          "issue": "Unknown function 'get_supabase_user_id_from_okta_uid'",
+          "suggestion": "The function 'get_supabase_user_id_from_okta_uid' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.get_supabase_user_id_from_okta_uid(okta_uid)"
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/org-module/backend/lambdas/members/lambda_function.py",
+      "imports": {
+        "common": "org_common"
+      },
+      "calls": 64,
+      "errors": [
+        {
+          "severity": "error",
+          "file": "../../../packages/org-module/backend/lambdas/members/lambda_function.py",
+          "line": 32,
+          "function": "org_common.get_user_from_event",
+          "issue": "Unknown function 'get_user_from_event'",
+          "suggestion": "The function 'get_user_from_event' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.get_user_from_event(event)"
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/org-module/backend/lambdas/identities-management/lambda_function.py",
+      "imports": {
+        "common": "org_common"
+      },
+      "calls": 24,
+      "errors": [
+        {
+          "severity": "error",
+          "file": "../../../packages/org-module/backend/lambdas/identities-management/lambda_function.py",
+          "line": 92,
+          "function": "org_common.get_supabase_client",
+          "issue": "Unknown function 'get_supabase_client'",
+          "suggestion": "The function 'get_supabase_client' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.get_supabase_client()"
+        },
+        {
+          "severity": "error",
+          "file": "../../../packages/org-module/backend/lambdas/identities-management/lambda_function.py",
+          "line": 85,
+          "function": "org_common.get_user_from_event",
+          "issue": "Unknown function 'get_user_from_event'",
+          "suggestion": "The function 'get_user_from_event' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.get_user_from_event(event)"
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/org-module/backend/lambdas/profiles/lambda_function.py",
+      "imports": {
+        "common": "org_common",
+        "get_supabase_client": "org_common.supabase_client.get_supabase_client"
+      },
+      "calls": 33,
+      "errors": [
+        {
+          "severity": "error",
+          "file": "../../../packages/org-module/backend/lambdas/profiles/lambda_function.py",
+          "line": 155,
+          "function": "org_common.get_supabase_client",
+          "issue": "Unknown function 'get_supabase_client'",
+          "suggestion": "The function 'get_supabase_client' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.get_supabase_client()"
+        },
+        {
+          "severity": "error",
+          "file": "../../../packages/org-module/backend/lambdas/profiles/lambda_function.py",
+          "line": 310,
+          "function": "org_common.get_supabase_user_id_from_external_uid",
+          "issue": "Unknown function 'get_supabase_user_id_from_external_uid'",
+          "suggestion": "The function 'get_supabase_user_id_from_external_uid' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.get_supabase_user_id_from_external_uid(user_id)"
+        },
+        {
+          "severity": "error",
+          "file": "../../../packages/org-module/backend/lambdas/profiles/lambda_function.py",
+          "line": 36,
+          "function": "org_common.get_user_from_event",
+          "issue": "Unknown function 'get_user_from_event'",
+          "suggestion": "The function 'get_user_from_event' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.get_user_from_event(event)"
+        },
+        {
+          "severity": "error",
+          "file": "../../../packages/org-module/backend/lambdas/profiles/lambda_function.py",
+          "line": 77,
+          "function": "org_common.get_supabase_client",
+          "issue": "Unknown function 'get_supabase_client'",
+          "suggestion": "The function 'get_supabase_client' is not found in org_common module. Check the function name or import path.",
+          "your_call": "get_supabase_client()"
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/org-module/backend/layers/org-common/python/org_common/db.py",
+      "imports": {},
+      "calls": 0,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/org-module/backend/layers/org-common/python/org_common/responses.py",
+      "imports": {},
+      "calls": 0,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/org-module/backend/layers/org-common/python/org_common/validators.py",
+      "imports": {},
+      "calls": 0,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/org-module/backend/layers/org-common/python/org_common/__init__.py",
+      "imports": {},
+      "calls": 0,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/org-module/backend/layers/org-common/python/org_common/supabase_client.py",
+      "imports": {},
+      "calls": 0,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/org-module/backend/layers/org-common/python/org_common/errors.py",
+      "imports": {},
+      "calls": 0,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/ai-enablement-module/backend/lambdas/provider/lambda_function.py",
+      "imports": {
+        "common": "org_common"
+      },
+      "calls": 103,
+      "errors": [
+        {
+          "severity": "error",
+          "file": "../../../packages/ai-enablement-module/backend/lambdas/provider/lambda_function.py",
+          "line": 119,
+          "function": "org_common.get_user_from_event",
+          "issue": "Unknown function 'get_user_from_event'",
+          "suggestion": "The function 'get_user_from_event' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.get_user_from_event(event)"
+        },
+        {
+          "severity": "error",
+          "file": "../../../packages/ai-enablement-module/backend/lambdas/provider/lambda_function.py",
+          "line": 121,
+          "function": "org_common.get_supabase_user_id_from_external_uid",
+          "issue": "Unknown function 'get_supabase_user_id_from_external_uid'",
+          "suggestion": "The function 'get_supabase_user_id_from_external_uid' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.get_supabase_user_id_from_external_uid(okta_uid)"
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/kb-module/backend/lambdas/kb-document/lambda_function.py",
+      "imports": {
+        "common": "org_common"
+      },
+      "calls": 61,
+      "errors": [
+        {
+          "severity": "error",
+          "file": "../../../packages/kb-module/backend/lambdas/kb-document/lambda_function.py",
+          "line": 47,
+          "function": "org_common.get_user_from_event",
+          "issue": "Unknown function 'get_user_from_event'",
+          "suggestion": "The function 'get_user_from_event' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.get_user_from_event(event)"
+        },
+        {
+          "severity": "error",
+          "file": "../../../packages/kb-module/backend/lambdas/kb-document/lambda_function.py",
+          "line": 49,
+          "function": "org_common.get_supabase_user_id_from_external_uid",
+          "issue": "Unknown function 'get_supabase_user_id_from_external_uid'",
+          "suggestion": "The function 'get_supabase_user_id_from_external_uid' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.get_supabase_user_id_from_external_uid(external_uid)"
+        },
+        {
+          "severity": "error",
+          "file": "../../../packages/kb-module/backend/lambdas/kb-document/lambda_function.py",
+          "line": 82,
+          "function": "org_common.is_org_member",
+          "issue": "Unknown function 'is_org_member'",
+          "suggestion": "The function 'is_org_member' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.is_org_member(supabase_user_id, org_id)"
+        },
+        {
+          "severity": "error",
+          "file": "../../../packages/kb-module/backend/lambdas/kb-document/lambda_function.py",
+          "line": 421,
+          "function": "org_common.delete_many",
+          "issue": "Unknown function 'delete_many'",
+          "suggestion": "The function 'delete_many' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.delete_many(table='kb_chunks', filters={'doc_id': doc_id})"
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/kb-module/backend/lambdas/kb-base/lambda_function.py",
+      "imports": {
+        "common": "org_common"
+      },
+      "calls": 50,
+      "errors": [
+        {
+          "severity": "error",
+          "file": "../../../packages/kb-module/backend/lambdas/kb-base/lambda_function.py",
+          "line": 28,
+          "function": "org_common.get_user_from_event",
+          "issue": "Unknown function 'get_user_from_event'",
+          "suggestion": "The function 'get_user_from_event' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.get_user_from_event(event)"
+        },
+        {
+          "severity": "error",
+          "file": "../../../packages/kb-module/backend/lambdas/kb-base/lambda_function.py",
+          "line": 30,
+          "function": "org_common.get_supabase_user_id_from_external_uid",
+          "issue": "Unknown function 'get_supabase_user_id_from_external_uid'",
+          "suggestion": "The function 'get_supabase_user_id_from_external_uid' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.get_supabase_user_id_from_external_uid(external_uid)"
+        },
+        {
+          "severity": "error",
+          "file": "../../../packages/kb-module/backend/lambdas/kb-base/lambda_function.py",
+          "line": 57,
+          "function": "org_common.is_org_member",
+          "issue": "Unknown function 'is_org_member'",
+          "suggestion": "The function 'is_org_member' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.is_org_member(supabase_user_id, org_id)"
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/kb-module/backend/layers/kb-common/python/kb_common/__init__.py",
+      "imports": {
+        "common": "org_common"
+      },
+      "calls": 2,
+      "errors": [],
+      "warnings": []
+    },
+    {
+      "file": "../../../packages/kb-module/backend/layers/kb-common/python/kb_common/kb_auth.py",
+      "imports": {
+        "common": "org_common"
+      },
+      "calls": 2,
+      "errors": [
+        {
+          "severity": "error",
+          "file": "../../../packages/kb-module/backend/layers/kb-common/python/kb_common/kb_auth.py",
+          "line": 12,
+          "function": "org_common.is_org_member",
+          "issue": "Unknown function 'is_org_member'",
+          "suggestion": "The function 'is_org_member' is not found in org_common module. Check the function name or import path.",
+          "your_call": "common.is_org_member(user_id, kb['org_id'])"
+        }
+      ],
+      "warnings": []
+    }
+  ],
+  "summary": {
+    "errors": [
+      {
+        "severity": "error",
+        "file": "../../../packages/ai-config-module/backend/lambdas/ai-config-handler/lambda_function.py",
+        "line": 528,
+        "function": "org_common.find_one",
+        "issue": "Missing required parameter(s): filters",
+        "suggestion": "The function requires these parameters: table, filters",
+        "actual_signature": "find_one(table, filters, user_jwt=None, select='*')",
+        "your_call": "common.find_one(table='platform_rag', select='*')"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/ai-config-module/backend/lambdas/ai-config-handler/lambda_function.py",
+        "line": 586,
+        "function": "org_common.find_one",
+        "issue": "Missing required parameter(s): filters",
+        "suggestion": "The function requires these parameters: table, filters",
+        "actual_signature": "find_one(table, filters, user_jwt=None, select='*')",
+        "your_call": "common.find_one(table='platform_rag', select='*')"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/ai-config-module/backend/lambdas/ai-config-handler/lambda_function.py",
+        "line": 663,
+        "function": "org_common.find_many",
+        "issue": "Deprecated parameter 'order_by'",
+        "suggestion": "Use 'order' parameter instead of 'order_by'. Example: order='created_at.desc'",
+        "actual_signature": "find_many(table, filters=None, user_jwt=None, select='*', order=None, limit=None, offset=None)",
+        "your_call": "common.find_many(table='ai_providers', select='id, name, type, active, config', order_by='name')"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/ai-config-module/backend/lambdas/ai-config-handler/lambda_function.py",
+        "line": 717,
+        "function": "org_common.find_one",
+        "issue": "Unknown parameter 'error_if_not_found'",
+        "suggestion": "Valid parameters are: table, filters, user_jwt, select",
+        "actual_signature": "find_one(table, filters, user_jwt=None, select='*')",
+        "your_call": "common.find_one(table='ai_providers', filters={'id': provider_id}, error_if_not_found=True)"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/ai-config-module/backend/lambdas/ai-config-handler/lambda_function.py",
+        "line": 779,
+        "function": "org_common.find_many",
+        "issue": "Deprecated parameter 'order_by'",
+        "suggestion": "Use 'order' parameter instead of 'order_by'. Example: order='created_at.desc'",
+        "actual_signature": "find_many(table, filters=None, user_jwt=None, select='*', order=None, limit=None, offset=None)",
+        "your_call": "common.find_many(table='ai_models', filters=filters, select='id, provider_id, model_id, name, capabilities, status', order_by='name')"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/ai-config-module/backend/lambdas/ai-config-handler/lambda_function.py",
+        "line": 829,
+        "function": "org_common.get_user_from_event",
+        "issue": "Unknown function 'get_user_from_event'",
+        "suggestion": "The function 'get_user_from_event' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.get_user_from_event(event)"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/ai-config-module/backend/lambdas/ai-config-handler/lambda_function.py",
+        "line": 831,
+        "function": "org_common.get_supabase_user_id_from_external_uid",
+        "issue": "Unknown function 'get_supabase_user_id_from_external_uid'",
+        "suggestion": "The function 'get_supabase_user_id_from_external_uid' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.get_supabase_user_id_from_external_uid(okta_uid)"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/org-module/backend/lambdas/orgs/lambda_function.py",
+        "line": 33,
+        "function": "org_common.get_user_from_event",
+        "issue": "Unknown function 'get_user_from_event'",
+        "suggestion": "The function 'get_user_from_event' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.get_user_from_event(event)"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/org-module/backend/lambdas/orgs/lambda_function.py",
+        "line": 37,
+        "function": "org_common.get_supabase_user_id_from_okta_uid",
+        "issue": "Unknown function 'get_supabase_user_id_from_okta_uid'",
+        "suggestion": "The function 'get_supabase_user_id_from_okta_uid' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.get_supabase_user_id_from_okta_uid(okta_uid)"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/org-module/backend/lambdas/members/lambda_function.py",
+        "line": 32,
+        "function": "org_common.get_user_from_event",
+        "issue": "Unknown function 'get_user_from_event'",
+        "suggestion": "The function 'get_user_from_event' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.get_user_from_event(event)"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/org-module/backend/lambdas/identities-management/lambda_function.py",
+        "line": 92,
+        "function": "org_common.get_supabase_client",
+        "issue": "Unknown function 'get_supabase_client'",
+        "suggestion": "The function 'get_supabase_client' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.get_supabase_client()"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/org-module/backend/lambdas/identities-management/lambda_function.py",
+        "line": 85,
+        "function": "org_common.get_user_from_event",
+        "issue": "Unknown function 'get_user_from_event'",
+        "suggestion": "The function 'get_user_from_event' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.get_user_from_event(event)"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/org-module/backend/lambdas/profiles/lambda_function.py",
+        "line": 155,
+        "function": "org_common.get_supabase_client",
+        "issue": "Unknown function 'get_supabase_client'",
+        "suggestion": "The function 'get_supabase_client' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.get_supabase_client()"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/org-module/backend/lambdas/profiles/lambda_function.py",
+        "line": 310,
+        "function": "org_common.get_supabase_user_id_from_external_uid",
+        "issue": "Unknown function 'get_supabase_user_id_from_external_uid'",
+        "suggestion": "The function 'get_supabase_user_id_from_external_uid' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.get_supabase_user_id_from_external_uid(user_id)"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/org-module/backend/lambdas/profiles/lambda_function.py",
+        "line": 36,
+        "function": "org_common.get_user_from_event",
+        "issue": "Unknown function 'get_user_from_event'",
+        "suggestion": "The function 'get_user_from_event' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.get_user_from_event(event)"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/org-module/backend/lambdas/profiles/lambda_function.py",
+        "line": 77,
+        "function": "org_common.get_supabase_client",
+        "issue": "Unknown function 'get_supabase_client'",
+        "suggestion": "The function 'get_supabase_client' is not found in org_common module. Check the function name or import path.",
+        "your_call": "get_supabase_client()"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/ai-enablement-module/backend/lambdas/provider/lambda_function.py",
+        "line": 119,
+        "function": "org_common.get_user_from_event",
+        "issue": "Unknown function 'get_user_from_event'",
+        "suggestion": "The function 'get_user_from_event' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.get_user_from_event(event)"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/ai-enablement-module/backend/lambdas/provider/lambda_function.py",
+        "line": 121,
+        "function": "org_common.get_supabase_user_id_from_external_uid",
+        "issue": "Unknown function 'get_supabase_user_id_from_external_uid'",
+        "suggestion": "The function 'get_supabase_user_id_from_external_uid' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.get_supabase_user_id_from_external_uid(okta_uid)"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/kb-module/backend/lambdas/kb-document/lambda_function.py",
+        "line": 47,
+        "function": "org_common.get_user_from_event",
+        "issue": "Unknown function 'get_user_from_event'",
+        "suggestion": "The function 'get_user_from_event' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.get_user_from_event(event)"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/kb-module/backend/lambdas/kb-document/lambda_function.py",
+        "line": 49,
+        "function": "org_common.get_supabase_user_id_from_external_uid",
+        "issue": "Unknown function 'get_supabase_user_id_from_external_uid'",
+        "suggestion": "The function 'get_supabase_user_id_from_external_uid' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.get_supabase_user_id_from_external_uid(external_uid)"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/kb-module/backend/lambdas/kb-document/lambda_function.py",
+        "line": 82,
+        "function": "org_common.is_org_member",
+        "issue": "Unknown function 'is_org_member'",
+        "suggestion": "The function 'is_org_member' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.is_org_member(supabase_user_id, org_id)"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/kb-module/backend/lambdas/kb-document/lambda_function.py",
+        "line": 421,
+        "function": "org_common.delete_many",
+        "issue": "Unknown function 'delete_many'",
+        "suggestion": "The function 'delete_many' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.delete_many(table='kb_chunks', filters={'doc_id': doc_id})"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/kb-module/backend/lambdas/kb-base/lambda_function.py",
+        "line": 28,
+        "function": "org_common.get_user_from_event",
+        "issue": "Unknown function 'get_user_from_event'",
+        "suggestion": "The function 'get_user_from_event' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.get_user_from_event(event)"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/kb-module/backend/lambdas/kb-base/lambda_function.py",
+        "line": 30,
+        "function": "org_common.get_supabase_user_id_from_external_uid",
+        "issue": "Unknown function 'get_supabase_user_id_from_external_uid'",
+        "suggestion": "The function 'get_supabase_user_id_from_external_uid' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.get_supabase_user_id_from_external_uid(external_uid)"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/kb-module/backend/lambdas/kb-base/lambda_function.py",
+        "line": 57,
+        "function": "org_common.is_org_member",
+        "issue": "Unknown function 'is_org_member'",
+        "suggestion": "The function 'is_org_member' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.is_org_member(supabase_user_id, org_id)"
+      },
+      {
+        "severity": "error",
+        "file": "../../../packages/kb-module/backend/layers/kb-common/python/kb_common/kb_auth.py",
+        "line": 12,
+        "function": "org_common.is_org_member",
+        "issue": "Unknown function 'is_org_member'",
+        "suggestion": "The function 'is_org_member' is not found in org_common module. Check the function name or import path.",
+        "your_call": "common.is_org_member(user_id, kb['org_id'])"
+      }
+    ],
+    "warnings": [],
+    "total_errors": 26,
+    "total_warnings": 0
+  }
+}

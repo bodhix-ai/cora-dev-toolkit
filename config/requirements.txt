@@ -1,0 +1,12 @@
+# Python dependencies for CORA Module Development Toolkit
+# Install with: pip install -r requirements.txt
+
+# AWS SDK for Python - Required for infrastructure checks
+boto3>=1.28.0
+
+# Supabase Python client - Required for database checks
+supabase>=2.0.0
+
+# Additional dependencies for compliance scripts
+pyyaml>=6.0
+requests>=2.31.0
