@@ -4,9 +4,15 @@
 # AWS SDK for Python - Required for infrastructure checks
 boto3>=1.28.0
 
-# Supabase Python client - Required for database checks
+# Supabase Python client - Required for REST API access
 supabase>=2.0.0
 
-# Additional dependencies for compliance scripts
+# Direct PostgreSQL connection for schema introspection
+# This enables accurate column detection for empty tables
+psycopg2-binary>=2.9.0
+
+# Additional dependencies for validation scripts
 pyyaml>=6.0
 requests>=2.31.0
+click>=8.0.0
+python-dotenv>=1.0.0

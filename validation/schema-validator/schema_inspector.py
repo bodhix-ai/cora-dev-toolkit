@@ -1,9 +1,15 @@
 """
 Schema Inspector
 
-Connects to Supabase via REST API and introspects schema.
+Connects to Supabase via REST API and/or direct PostgreSQL connection
+to introspect database schema.
 Uses service role key authentication (same as Lambda functions).
 Provides cached schema information for validation.
+
+Introspection Methods (in order of preference):
+1. Direct PostgreSQL connection - Most reliable, works with empty tables
+2. RPC function (get_schema_info) - Works via REST API if function exists
+3. Table sampling - Fallback, limited to non-empty tables
 """
 
 import os
@@ -13,6 +19,14 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from supabase import create_client, Client
 from dotenv import load_dotenv
+
+# Try to import psycopg2 for direct PostgreSQL connection
+try:
+    import psycopg2
+    import psycopg2.extras
+    PSYCOPG2_AVAILABLE = True
+except ImportError:
+    PSYCOPG2_AVAILABLE = False
 
 # Load environment variables
 load_dotenv()
@@ -62,9 +76,12 @@ class SchemaInspector:
     
     def introspect_schema(self) -> Dict[str, TableInfo]:
         """
-        Introspect database schema via Supabase REST API.
+        Introspect database schema using the most reliable available method.
         
-        Queries information_schema.columns table to get schema information.
+        Tries methods in order of preference:
+        1. Direct PostgreSQL connection (most reliable, works with empty tables)
+        2. RPC function (get_schema_info)
+        3. REST API table sampling (fallback)
         
         Returns:
             Dictionary mapping table names to TableInfo objects
@@ -73,10 +90,19 @@ class SchemaInspector:
             logger.debug("Returning cached schema")
             return self._schema_cache
         
+        # Method 1: Try direct PostgreSQL connection first (most reliable)
+        if PSYCOPG2_AVAILABLE and self._has_db_credentials():
+            try:
+                schema = self._introspect_via_direct_connection()
+                if schema:
+                    return schema
+            except Exception as e:
+                logger.warning(f"Direct PostgreSQL introspection failed: {e}")
+        
         logger.info("Introspecting database schema via REST API...")
         
         try:
-            # Query information_schema.columns table
+            # Method 2: Query information_schema.columns table via REST
             # Note: information_schema is exposed via PostgREST if properly configured
             response = self.supabase.table('information_schema.columns').select(
                 'table_name, column_name, data_type, is_nullable, column_default'
@@ -84,8 +110,8 @@ class SchemaInspector:
             
             # Check if we got an error (information_schema might not be exposed)
             if hasattr(response, 'error') and response.error:
-                logger.warning("information_schema not accessible via REST API, trying alternative method")
-                return self._introspect_via_table_sampling()
+                logger.warning("information_schema not accessible via REST API, trying RPC method")
+                return self._introspect_via_rpc()
             
             # Build schema structure from response
             schema: Dict[str, TableInfo] = {}
@@ -119,9 +145,96 @@ class SchemaInspector:
             return schema
             
         except Exception as e:
-            logger.warning(f"Primary schema introspection method failed: {e}")
+            logger.warning(f"REST API schema introspection failed: {e}")
             logger.info("Attempting alternative schema introspection via RPC...")
             return self._introspect_via_rpc()
+    
+    def _has_db_credentials(self) -> bool:
+        """Check if direct database credentials are available."""
+        required = ['SUPABASE_DB_HOST', 'SUPABASE_DB_NAME', 'SUPABASE_DB_USER', 'SUPABASE_DB_PASSWORD']
+        return all(os.getenv(var) for var in required)
+    
+    def _introspect_via_direct_connection(self) -> Dict[str, TableInfo]:
+        """
+        Introspect schema via direct PostgreSQL connection.
+        
+        This is the most reliable method as it:
+        - Works with empty tables
+        - Returns accurate column types
+        - Doesn't depend on PostgREST configuration
+        
+        Returns:
+            Dictionary mapping table names to TableInfo objects
+        """
+        if not PSYCOPG2_AVAILABLE:
+            logger.warning("psycopg2 not installed. Install with: pip install psycopg2-binary")
+            return {}
+        
+        host = os.getenv('SUPABASE_DB_HOST')
+        port = os.getenv('SUPABASE_DB_PORT', '5432')
+        dbname = os.getenv('SUPABASE_DB_NAME', 'postgres')
+        user = os.getenv('SUPABASE_DB_USER')
+        password = os.getenv('SUPABASE_DB_PASSWORD')
+        
+        logger.info(f"Connecting to PostgreSQL at {host}:{port}/{dbname}...")
+        
+        try:
+            conn = psycopg2.connect(
+                host=host,
+                port=port,
+                dbname=dbname,
+                user=user,
+                password=password,
+                sslmode='require'
+            )
+            
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                # Query information_schema for all public tables and columns
+                cur.execute("""
+                    SELECT 
+                        c.table_name,
+                        c.column_name,
+                        c.data_type,
+                        c.is_nullable,
+                        c.column_default
+                    FROM information_schema.columns c
+                    WHERE c.table_schema = 'public'
+                    ORDER BY c.table_name, c.ordinal_position
+                """)
+                
+                rows = cur.fetchall()
+            
+            conn.close()
+            
+            # Build schema structure
+            schema: Dict[str, TableInfo] = {}
+            
+            for row in rows:
+                table_name = row['table_name']
+                column_name = row['column_name']
+                
+                if table_name not in schema:
+                    schema[table_name] = TableInfo(name=table_name, columns={})
+                
+                schema[table_name].columns[column_name] = ColumnInfo(
+                    name=column_name,
+                    data_type=row['data_type'],
+                    is_nullable=(row['is_nullable'] == 'YES'),
+                    column_default=row['column_default']
+                )
+            
+            self._schema_cache = schema
+            logger.info(f"✅ Schema introspected via direct PostgreSQL: {len(schema)} tables found")
+            
+            # Log tables with their column counts
+            for table_name, table_info in sorted(schema.items()):
+                logger.debug(f"  - {table_name}: {len(table_info.columns)} columns")
+            
+            return schema
+            
+        except psycopg2.Error as e:
+            logger.error(f"PostgreSQL connection error: {e}")
+            raise
     
     def _introspect_via_rpc(self) -> Dict[str, TableInfo]:
         """
