@@ -1,0 +1,177 @@
+-- ============================================================================
+-- CORA Module Registry - Database Schema
+-- Schema: 003-platform-module-registry.sql
+-- Purpose: Create the platform_module_registry table for runtime module control
+-- ============================================================================
+
+-- Enable UUID extension if not already enabled
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ============================================================================
+-- Table: platform_module_registry
+-- Purpose: Track all registered modules and their configuration/status
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS platform_module_registry (
+    -- Primary Key
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    
+    -- Module Identification
+    module_name VARCHAR(100) NOT NULL UNIQUE,           -- e.g., 'module-access', 'module-kb'
+    display_name VARCHAR(200) NOT NULL,                  -- e.g., 'Access Control', 'Knowledge Base'
+    description TEXT,                                    -- Human-readable description
+    
+    -- Module Classification
+    module_type VARCHAR(20) NOT NULL DEFAULT 'functional' 
+        CHECK (module_type IN ('core', 'functional')),   -- Core vs functional module
+    tier INTEGER NOT NULL DEFAULT 1 
+        CHECK (tier BETWEEN 1 AND 3),                    -- Dependency tier (1=no deps, 2=T1 deps, 3=T1+T2 deps)
+    
+    -- Module Status
+    is_enabled BOOLEAN NOT NULL DEFAULT true,            -- Whether module is currently enabled
+    is_installed BOOLEAN NOT NULL DEFAULT true,          -- Whether module code is deployed
+    
+    -- Version Information
+    version VARCHAR(50),                                 -- Current installed version
+    min_compatible_version VARCHAR(50),                  -- Minimum compatible version
+    
+    -- Configuration
+    config JSONB DEFAULT '{}'::jsonb,                    -- Module-specific configuration
+    feature_flags JSONB DEFAULT '{}'::jsonb,             -- Feature toggles within module
+    
+    -- Dependencies
+    dependencies JSONB DEFAULT '[]'::jsonb,              -- Array of module names this depends on
+    
+    -- Navigation Integration
+    nav_config JSONB DEFAULT '{}'::jsonb,                -- Navigation configuration
+    -- Example: {"route": "/kb", "icon": "BookOpen", "label": "Knowledge Base", "order": 10}
+    
+    -- Access Control
+    required_permissions JSONB DEFAULT '[]'::jsonb,      -- Permissions needed to access module
+    -- Example: ["kb:read", "kb:write"]
+    
+    -- Metadata
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,                                     -- User who registered the module
+    updated_by UUID,                                     -- User who last updated the module
+    
+    -- Soft Delete
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    
+    -- Constraints
+    CONSTRAINT module_name_format CHECK (module_name ~ '^module-[a-z]+$')
+);
+
+-- ============================================================================
+-- Indexes
+-- ============================================================================
+
+-- Index for quick module lookups by name
+CREATE INDEX IF NOT EXISTS idx_module_registry_name 
+    ON platform_module_registry(module_name) 
+    WHERE deleted_at IS NULL;
+
+-- Index for filtering by module type
+CREATE INDEX IF NOT EXISTS idx_module_registry_type 
+    ON platform_module_registry(module_type) 
+    WHERE deleted_at IS NULL;
+
+-- Index for filtering enabled modules
+CREATE INDEX IF NOT EXISTS idx_module_registry_enabled 
+    ON platform_module_registry(is_enabled) 
+    WHERE deleted_at IS NULL AND is_enabled = true;
+
+-- Index for tier-based queries
+CREATE INDEX IF NOT EXISTS idx_module_registry_tier 
+    ON platform_module_registry(tier) 
+    WHERE deleted_at IS NULL;
+
+-- ============================================================================
+-- Updated At Trigger
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION update_platform_module_registry_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_module_registry_timestamp 
+    ON platform_module_registry;
+
+CREATE TRIGGER trigger_update_module_registry_timestamp
+    BEFORE UPDATE ON platform_module_registry
+    FOR EACH ROW
+    EXECUTE FUNCTION update_platform_module_registry_updated_at();
+
+-- ============================================================================
+-- Initial Core Module Data
+-- ============================================================================
+
+INSERT INTO platform_module_registry (
+    module_name, 
+    display_name, 
+    description, 
+    module_type, 
+    tier, 
+    is_enabled,
+    dependencies,
+    nav_config,
+    required_permissions
+) VALUES 
+    -- Tier 1: No dependencies
+    (
+        'module-access',
+        'Access Control',
+        'Identity and access management. Handles IDP integration, organization context, user context, and permissions.',
+        'core',
+        1,
+        true,
+        '[]'::jsonb,
+        '{"route": "/admin/access", "icon": "Shield", "label": "Access Control", "order": 100, "adminOnly": true}'::jsonb,
+        '["admin:access"]'::jsonb
+    ),
+    
+    -- Tier 2: Depends on Tier 1
+    (
+        'module-ai',
+        'AI Providers',
+        'AI provider management. Handles provider enablement, model configuration, and usage monitoring.',
+        'core',
+        2,
+        true,
+        '["module-access"]'::jsonb,
+        '{"route": "/admin/ai", "icon": "Bot", "label": "AI Providers", "order": 110, "adminOnly": true}'::jsonb,
+        '["admin:ai"]'::jsonb
+    ),
+    
+    -- Tier 3: Depends on Tier 1 and 2
+    (
+        'module-mgmt',
+        'Platform Management',
+        'Platform management and monitoring. Handles Lambda management, warming, and performance monitoring.',
+        'core',
+        3,
+        true,
+        '["module-access", "module-ai"]'::jsonb,
+        '{"route": "/admin/platform", "icon": "Settings", "label": "Platform", "order": 120, "adminOnly": true}'::jsonb,
+        '["admin:platform"]'::jsonb
+    )
+ON CONFLICT (module_name) DO NOTHING;
+
+-- ============================================================================
+-- Comments
+-- ============================================================================
+
+COMMENT ON TABLE platform_module_registry IS 'Registry of all CORA modules with their configuration and status';
+COMMENT ON COLUMN platform_module_registry.module_name IS 'Unique module identifier following module-{purpose} convention';
+COMMENT ON COLUMN platform_module_registry.module_type IS 'core = required for CORA, functional = feature-specific';
+COMMENT ON COLUMN platform_module_registry.tier IS 'Dependency tier: 1=no deps, 2=depends on T1, 3=depends on T1+T2';
+COMMENT ON COLUMN platform_module_registry.is_enabled IS 'Runtime toggle - can be changed without redeployment';
+COMMENT ON COLUMN platform_module_registry.is_installed IS 'Whether module code is deployed to the system';
+COMMENT ON COLUMN platform_module_registry.config IS 'Module-specific configuration as JSON';
+COMMENT ON COLUMN platform_module_registry.nav_config IS 'Navigation configuration: route, icon, label, order, visibility';
+COMMENT ON COLUMN platform_module_registry.dependencies IS 'Array of module_name values this module depends on';

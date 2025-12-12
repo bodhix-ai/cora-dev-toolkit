@@ -1,0 +1,2 @@
+# IDP Config Lambda dependencies
+# Note: Most dependencies come from the org-common layer

@@ -1,0 +1,17 @@
+{
+  "name": "lambda-mgmt-module",
+  "version": "1.0.0",
+  "description": "Lambda management, warming, monitoring, and analytics",
+  "author": "${project_display_name} Team",
+  "dependencies": {},
+  "provides": {
+    "database": ["platform_lambda_config"],
+    "lambdas": ["lambda-mgmt"],
+    "routes": [
+      "/platform/lambda-config",
+      "/platform/lambda-config/{configKey}",
+      "/platform/lambda-functions",
+      "/platform/lambda-config/sync"
+    ]
+  }
+}

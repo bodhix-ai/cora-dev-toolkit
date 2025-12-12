@@ -1,0 +1,54 @@
+{
+  "name": "module-access",
+  "displayName": "Access Control",
+  "description": "Identity and access control module providing IDP integration, organization context, user context, and permission management",
+  "version": "1.0.0",
+  "tier": 1,
+  "category": "core",
+  "status": "active",
+  "dependencies": [],
+  "capabilities": {
+    "backend": {
+      "lambdas": ["auth", "users", "organizations", "permissions"],
+      "common": ["access-common"]
+    },
+    "frontend": {
+      "components": [
+        "AuthProvider",
+        "OrgProvider",
+        "UserProvider",
+        "PermissionGuard"
+      ],
+      "hooks": ["useAuth", "useOrg", "useUser", "usePermissions"],
+      "contexts": ["AuthContext", "OrgContext", "UserContext"]
+    },
+    "database": {
+      "tables": [
+        "profiles",
+        "organizations",
+        "organization_members",
+        "external_identities",
+        "permissions"
+      ]
+    }
+  },
+  "apiRoutes": [
+    "GET /auth/me",
+    "GET /auth/session",
+    "POST /auth/logout",
+    "GET /organizations",
+    "GET /organizations/{id}",
+    "GET /users/profile",
+    "PUT /users/profile"
+  ],
+  "adminCard": {
+    "enabled": true,
+    "path": "/admin/access",
+    "icon": "Shield"
+  },
+  "documentation": {
+    "readme": "./README.md",
+    "api": "./docs/api.md",
+    "integration": "./docs/integration.md"
+  }
+}

@@ -1,0 +1,8 @@
+# Lambda Management Common Layer - Python Dependencies
+# Last updated: December 9, 2025
+
+# Timezone handling for schedule conversions
+pytz==2024.1
+
+# AWS SDK (provided by Lambda runtime, but included for local development)
+boto3==1.34.0

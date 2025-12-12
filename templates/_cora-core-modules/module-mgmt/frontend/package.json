@@ -1,0 +1,39 @@
+{
+  "name": "module-mgmt",
+  "version": "1.0.0",
+  "description": "Lambda Management Module for CORA projects - warming, monitoring, and configuration",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "lambda",
+    "aws",
+    "monitoring",
+    "cora",
+    "warming",
+    "eventbridge"
+  ],
+  "author": "${project_display_name} Team",
+  "license": "MIT",
+  "dependencies": {
+    "@${project}/api-client": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "@mui/material": "^5.0.0",
+    "@mui/icons-material": "^5.0.0",
+    "@emotion/react": "^11.0.0",
+    "@emotion/styled": "^11.0.0",
+    "next-auth": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "typescript": "^5.0.0"
+  }
+}
