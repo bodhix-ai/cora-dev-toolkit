@@ -1,0 +1,100 @@
+# {{PROJECT_NAME}}-infra - Cline Rules
+
+## Project Overview
+
+This is the **{{PROJECT_NAME}}-infra** repository - the Infrastructure as Code repository for the {{PROJECT_NAME}} CORA application.
+
+## Purpose
+
+This repository contains:
+
+1. **Terraform Configurations** - AWS infrastructure definitions
+2. **Lambda Authorizer** - JWT validation for API Gateway
+3. **Deployment Scripts** - Build and deploy CORA modules
+4. **CI/CD Workflows** - Automated deployment pipelines
+
+## Repository Structure
+
+```
+{{PROJECT_NAME}}-infra/
+├── bootstrap/                    # Initial setup scripts
+├── envs/                         # Environment-specific Terraform
+│   ├── dev/                      # Development
+│   ├── stg/                      # Staging
+│   └── prd/                      # Production
+├── lambdas/                      # Lambda function code
+│   └── api-gateway-authorizer/   # JWT authorizer
+├── modules/                      # Reusable Terraform modules
+├── scripts/                      # Deployment scripts
+└── .github/workflows/            # CI/CD pipelines
+```
+
+## Key Documents
+
+Before making changes, review:
+
+1. `project.json` - Project configuration and metadata
+2. `README.md` - Repository overview and quick start
+3. `envs/dev/main.tf` - Development environment configuration
+
+## Two-Repo Pattern
+
+This is the **infra** repo of a CORA two-repo project:
+
+- `{{PROJECT_NAME}}-infra` (this repo) - Infrastructure as Code
+- `{{PROJECT_NAME}}-stack` - Application code and CORA modules
+
+## Development Guidelines
+
+### When Modifying Terraform
+
+1. Make changes in the appropriate `envs/{env}/` directory
+2. Use variables for all configurable values
+3. Never hardcode project names, regions, or account IDs
+4. Test in dev before promoting to stg/prd
+
+### When Adding CORA Modules
+
+1. Modules are defined in `{{PROJECT_NAME}}-stack/packages/`
+2. Add infrastructure reference in `envs/{env}/main.tf`:
+   ```hcl
+   module "module_name" {
+     source = "../../../{{PROJECT_NAME}}-stack/packages/module-name/infrastructure"
+     # ...
+   }
+   ```
+3. Add routes to `modular_api_gateway.module_routes`
+
+### When Modifying Scripts
+
+1. Scripts must be idempotent
+2. Include `--help` option
+3. Support `--dry-run` for destructive operations
+4. Use environment variables for configuration
+
+## Placeholder Conventions
+
+Use these placeholders in templates:
+
+- `{{PROJECT_NAME}}` - Project name (e.g., "my-app")
+- `{{AWS_REGION}}` - AWS region (e.g., "us-east-1")
+- `{{AWS_ACCOUNT_ID}}` - AWS account ID
+- `{{ORGANIZATION_NAME}}` - Organization name
+
+## AI Agent Instructions
+
+When working on this repository:
+
+1. **Check environment** - Which env are you modifying?
+2. **Use variables** - Never hardcode values
+3. **Test changes** - Run `terraform plan` before apply
+4. **Update outputs** - Add outputs for new resources
+5. **Document changes** - Update README if needed
+
+## Do NOT
+
+- Do not hardcode AWS account IDs or regions
+- Do not commit secrets to version control
+- Do not modify production without approval
+- Do not skip Terraform plan review
+- Do not break CORA module integration patterns

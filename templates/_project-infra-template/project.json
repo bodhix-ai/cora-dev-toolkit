@@ -1,0 +1,37 @@
+{
+  "$schema": "../schemas/project.schema.json",
+  "name": "{{PROJECT_NAME}}",
+  "type": "infra",
+  "version": "1.0.0",
+  "description": "Infrastructure repository for {{PROJECT_NAME}} CORA application",
+  "cora": {
+    "version": "1.0",
+    "stackRepo": "{{PROJECT_NAME}}-stack"
+  },
+  "infrastructure": {
+    "provider": "aws",
+    "regions": ["{{AWS_REGION}}"],
+    "environments": ["dev", "stg", "prd"]
+  },
+  "terraform": {
+    "version": ">= 1.0.0",
+    "backend": "s3",
+    "statePrefix": "{{PROJECT_NAME}}"
+  },
+  "modules": {
+    "core": {
+      "modular-api-gateway": {
+        "version": "1.0.0",
+        "description": "CORA modular API gateway with dynamic route provisioning"
+      },
+      "secrets": {
+        "version": "1.0.0",
+        "description": "Centralized secrets management"
+      },
+      "github-oidc-role": {
+        "version": "1.0.0",
+        "description": "GitHub Actions OIDC authentication"
+      }
+    }
+  }
+}

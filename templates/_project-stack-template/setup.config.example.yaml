@@ -1,0 +1,136 @@
+# =============================================================================
+# CORA Project Setup Configuration
+# =============================================================================
+#
+# This file contains all environment-specific configuration for setting up
+# a new CORA project. Copy this file to setup.config.{project}.yaml and fill
+# in your values (e.g., setup.config.ai-sec.yaml, setup.config.pm-app.yaml).
+#
+# IMPORTANT: Never commit setup.config.*.yaml to version control!
+#            These files contain sensitive credentials.
+# =============================================================================
+
+# Project Identification
+project:
+  name: "{{PROJECT_NAME}}" # Project name (lowercase, alphanumeric, hyphens)
+  display_name: "My CORA App" # Human-readable project name
+  description: "CORA-compliant application"
+  organization: "{{ORGANIZATION_NAME}}" # GitHub organization
+
+# Environment Configuration
+# This file should be for ONE environment (dev, stg, or prd)
+environment: dev # dev | stg | prd
+
+# =============================================================================
+# Supabase Configuration
+# =============================================================================
+# Get these from: https://supabase.com/dashboard/project/<project>/settings/api
+supabase:
+  # Project URL (e.g., https://abcdefghijk.supabase.co)
+  url: ""
+
+  # Anon/Public Key - Safe to expose in frontend
+  anon_key: ""
+
+  # Service Role Key - KEEP SECRET! Only for backend/Lambda use and schema deployment
+  service_role_key: ""
+
+  # Direct PostgreSQL Database Connection
+  # Required for: schema deployment, schema validation
+  # Get from: Supabase Dashboard → Settings → Database → Connection string
+  #
+  # IMPORTANT: Use the DIRECT connection format, not the pooler:
+  #   - Host: db.{project-ref}.supabase.co (NOT aws-0-*.pooler.supabase.com)
+  #   - Port: 5432 (NOT 6543)
+  #   - User: postgres (NOT postgres.{project-ref})
+  db:
+    host: "" # e.g., db.abcdefghijk.supabase.co (DIRECT connection, not pooler)
+    port: 5432 # Direct connection port (not 6543 pooler port)
+    name: "postgres" # Usually "postgres"
+    user: "postgres" # Use 'postgres' for direct connection
+    password: "" # From Supabase Dashboard → Settings → Database
+
+# =============================================================================
+# AWS Configuration
+# =============================================================================
+aws:
+  region: "us-east-1"
+  profile: "" # AWS CLI profile name (optional)
+
+  # Terraform State Backend (created by bootstrap script)
+  terraform:
+    state_bucket: "" # e.g., {project}-terraform-state
+    dynamodb_table: "" # e.g., {project}-terraform-lock
+
+  # API Gateway (populated after infra deployment)
+  api_gateway:
+    id: ""
+    endpoint: "" # e.g., https://abc123.execute-api.us-east-1.amazonaws.com
+
+# =============================================================================
+# Authentication Provider
+# =============================================================================
+# Choose ONE authentication provider: either Okta OR Clerk
+# Comment out the one you're not using
+
+auth_provider: "okta" # "okta" or "clerk"
+
+# --- Okta Configuration ---
+# Get these from your Okta Developer Console: https://developer.okta.com
+okta:
+  domain: "" # e.g., dev-12345678.okta.com
+  client_id: ""
+  client_secret: "" # KEEP SECRET!
+  issuer: "" # e.g., https://dev-12345678.okta.com/oauth2/default
+  jwks_uri: "" # e.g., https://dev-12345678.okta.com/oauth2/default/v1/keys
+
+# --- Clerk Configuration ---
+# Get these from your Clerk Dashboard: https://dashboard.clerk.com
+clerk:
+  publishable_key: "" # e.g., pk_test_xxx or pk_live_xxx
+  secret_key: "" # KEEP SECRET! e.g., sk_test_xxx or sk_live_xxx
+  jwt_key: "" # KEEP SECRET! (for API route verification)
+  # Optional: Clerk Frontend API URL (usually auto-detected)
+  # frontend_api: ""
+
+# =============================================================================
+# NextAuth.js Configuration
+# =============================================================================
+# NextAuth.js is the authentication library used in CORA Next.js applications.
+# It handles:
+#   - Session management (JWT or database sessions)
+#   - OAuth provider integration (Okta, Clerk, etc.)
+#   - CSRF protection
+#   - Secure cookie handling
+#
+# These values are required regardless of which auth provider you choose.
+nextauth:
+  # NEXTAUTH_SECRET - Used to encrypt JWTs and session cookies
+  # Generate with: openssl rand -base64 32
+  secret: ""
+
+  # NEXTAUTH_URL - The canonical URL of your site
+  # For dev: http://localhost:3000
+  # For prod: https://your-domain.com
+  url: ""
+
+# =============================================================================
+# Feature Flags
+# =============================================================================
+features:
+  enable_ai_module: true
+  enable_kb_module: false
+  enable_chat_module: false
+
+# =============================================================================
+# Validation Settings
+# =============================================================================
+validation:
+  # Run schema validation after deployment
+  run_schema_validation: true
+
+  # Run API endpoint tests
+  run_api_tests: true
+
+  # Verify RLS policies
+  verify_rls: true

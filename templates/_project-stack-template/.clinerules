@@ -1,0 +1,174 @@
+# {{PROJECT_NAME}}-stack - Cline Rules
+
+## Project Overview
+
+This is **{{PROJECT_NAME}}-stack** - the application code repository for a CORA (Context-Oriented Resource Architecture) application. CORA is a modular framework for building AI-powered applications with multi-tenant data isolation, comprehensive security, and rapid development.
+
+## Repository Structure
+
+```
+{{PROJECT_NAME}}-stack/
+├── .clinerules              # This file - AI agent instructions
+├── apps/web/                # Next.js frontend application
+├── packages/
+│   ├── module-access/       # Core: Identity & access control (Tier 1)
+│   ├── module-ai/           # Core: AI provider management (Tier 2)
+│   ├── module-mgmt/         # Core: Platform management (Tier 3)
+│   ├── api-client/          # Shared API client
+│   └── shared-types/        # TypeScript types
+├── scripts/                 # Build and validation scripts
+├── tests/                   # E2E tests
+└── docs/                    # Documentation
+```
+
+## AI Agent Instructions
+
+### Before Making Changes
+
+1. **Check project.json** - Understand project configuration
+2. **Review module.json** - For any module you're modifying
+3. **Follow CORA patterns** - See cora-dev-toolkit/docs/
+
+### CORA Module Structure
+
+Each module in `packages/module-{name}/` follows this structure:
+
+```
+module-{name}/
+├── module.json               # Module metadata (REQUIRED)
+├── README.md                 # Documentation (REQUIRED)
+├── backend/
+│   ├── lambdas/              # Lambda handlers
+│   │   └── {function}/
+│   │       ├── handler.py    # Lambda entry point
+│   │       └── requirements.txt
+│   └── {name}-common/        # Shared backend utilities
+├── frontend/
+│   ├── components/           # React components
+│   ├── hooks/                # React hooks
+│   └── lib/                  # Frontend utilities
+├── infrastructure/           # Terraform definitions
+│   └── main.tf
+└── db/
+    └── schema/               # Database migrations
+```
+
+### Core Module Tiers
+
+| Module        | Tier | Responsibility              | Dependencies  |
+| ------------- | ---- | --------------------------- | ------------- |
+| module-access | 1    | Identity, auth, permissions | None          |
+| module-ai     | 2    | AI providers, model config  | module-access |
+| module-mgmt   | 3    | Platform ops, warming       | module-access |
+
+### When Creating a New Module
+
+1. Create directory: `packages/module-{name}/`
+2. Create `module.json` with metadata
+3. Create `README.md` with overview
+4. Follow the standard directory structure
+5. Add to `project.json` modules list
+
+### When Implementing Lambda Handlers
+
+```python
+# Standard Lambda handler pattern
+import json
+from typing import Any
+
+def handler(event: dict, context: Any) -> dict:
+    """
+    Lambda handler for {function_name}.
+
+    Args:
+        event: API Gateway proxy event with user context
+        context: Lambda context
+
+    Returns:
+        API Gateway proxy response
+    """
+    # Extract user context from authorizer
+    user_context = event.get('requestContext', {}).get('authorizer', {})
+    user_id = user_context.get('user_id')
+    org_id = user_context.get('org_id')
+
+    try:
+        # Your logic here
+        result = {"message": "Success"}
+
+        return {
+            "statusCode": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps(result)
+        }
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": str(e)})
+        }
+```
+
+### When Creating React Components
+
+Follow these patterns:
+
+- Use TypeScript with strict types
+- Export from component index.ts
+- Include props interface
+- Use hooks for data fetching
+
+### API Route Patterns
+
+Lambda routes are defined in module infrastructure and follow:
+
+- `GET /api/{module}/{resource}` - List/get resources
+- `POST /api/{module}/{resource}` - Create resource
+- `PUT /api/{module}/{resource}/{id}` - Update resource
+- `DELETE /api/{module}/{resource}/{id}` - Delete resource
+
+## Validation Commands
+
+```bash
+# Type check
+pnpm typecheck
+
+# Lint
+pnpm lint
+
+# Run tests
+pnpm test
+
+# Validate CORA compliance
+pnpm validate
+```
+
+## Related Resources
+
+- **Infrastructure repo:** {{PROJECT_NAME}}-infra
+- **CORA Toolkit:** cora-dev-toolkit/
+- **Module Definition of Done:** cora-dev-toolkit/docs/cora-module-definition-of-done.md
+- **Core Module Specs:** cora-dev-toolkit/docs/cora-core-modules.md
+
+## Do NOT
+
+- Do not hardcode project-specific values
+- Do not bypass the module structure
+- Do not mix frontend/backend code inappropriately
+- Do not skip module.json updates when adding features
+- Do not create lambdas outside of module directories
+
+## Project Setup Checklist (For AI)
+
+When setting up this project:
+
+- [ ] Verify all core modules exist in packages/
+- [ ] Check module.json files are valid
+- [ ] Ensure pnpm-workspace.yaml includes all packages
+- [ ] Verify tsconfig.json extends correctly
+- [ ] Run pnpm install to verify dependencies
+- [ ] Check .env.example has required variables
+
+## Contact & Support
+
+For CORA toolkit issues, see: https://github.com/bodhix-ai/cora-dev-toolkit

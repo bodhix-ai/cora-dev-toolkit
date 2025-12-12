@@ -1,0 +1,9 @@
+{
+  "name": "@${project}/api-client",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.ts",
+  "dependencies": {
+    "next-auth": "^4.24.7"
+  }
+}

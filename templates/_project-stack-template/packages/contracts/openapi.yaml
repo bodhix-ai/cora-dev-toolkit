@@ -1,0 +1,1008 @@
+openapi: 3.1.0
+info:
+  title: PolicyMind API
+  version: 1.0.0
+  description: API for PolicyMind application
+paths:
+  /organizations:
+    get:
+      summary: Get all organizations for the authenticated user
+      responses:
+        "200":
+          description: A list of organizations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Organization"
+    post:
+      summary: Create a new organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        "201":
+          description: Organization created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+  /organizations/{organizationId}:
+    put:
+      summary: Update an organization
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        "200":
+          description: Organization updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+    delete:
+      summary: Delete an organization
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Organization deleted successfully
+  /organizations/{organizationId}/invitations:
+    post:
+      summary: Invite a user to an organization
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Invitation"
+      responses:
+        "201":
+          description: Invitation sent successfully
+  /profile:
+    get:
+      summary: Get user profile
+      responses:
+        "200":
+          description: User profile data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+    patch:
+      summary: Update user profile
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                full_name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+                avatar:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+  /projects:
+    get:
+      summary: Get all projects for an organization
+      parameters:
+        - name: org_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: A list of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+    post:
+      summary: Create a new project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - org_id
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                org_id:
+                  type: string
+                  format: uuid
+      responses:
+        "201":
+          description: Project created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+  /health:
+    get:
+      summary: Health check endpoint
+      responses:
+        "200":
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+  /projects/{projectId}:
+    get:
+      summary: Get a project by ID
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: A single project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+    patch:
+      summary: Update a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+      responses:
+        "200":
+          description: Project updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+    delete:
+      summary: Delete a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Project deleted successfully
+  /projects/{projectId}/members:
+    get:
+      summary: List project members
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: A list of project members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectMember"
+    post:
+      summary: Add a member to a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user_id
+                - role
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+                role:
+                  type: string
+      responses:
+        "210":
+          description: Member added successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMember"
+  /projects/{projectId}/members/{memberId}:
+    delete:
+      summary: Remove a member from a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Member removed successfully
+  /projects/{projectId}/favorite:
+    post:
+      summary: Toggle favorite status for a project
+      description: Toggles the favorite status of a project for the authenticated user
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Favorite status toggled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  is_favorited:
+                    type: boolean
+                    description: New favorite status
+                  project_id:
+                    type: string
+                    format: uuid
+                    description: ID of the project
+  /projects/favorites:
+    get:
+      summary: Get user's favorite projects
+      description: Lists all projects favorited by the authenticated user
+      parameters:
+        - name: org_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Optional filter by organization
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+          description: Maximum number of projects to return
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: Number of projects to skip (for pagination)
+      responses:
+        "200":
+          description: List of favorite projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+                    description:
+                      type: string
+                    org_id:
+                      type: string
+                      format: uuid
+                    owner_id:
+                      type: string
+                      format: uuid
+                    created_at:
+                      type: string
+                      format: date-time
+                    updated_at:
+                      type: string
+                      format: date-time
+                    favorited_at:
+                      type: string
+                      format: date-time
+                    org_name:
+                      type: string
+  /chat:
+    post:
+      summary: Send a chat message to PolicyMind AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatRequest"
+      responses:
+        "200":
+          description: Chat response generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessage"
+        "400":
+          description: Bad request - message is required or too long
+        "500":
+          description: Internal server error
+  /chat/history:
+    get:
+      summary: Get chat history for current user
+      parameters:
+        - name: conversation_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Chat history retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatConversation"
+  /chat/conversations:
+    get:
+      summary: List all chat conversations for the authenticated user
+      responses:
+        "200":
+          description: List of conversations retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ChatConversation"
+                  total:
+                    type: integer
+  /chat/conversations/{conversationId}:
+    get:
+      summary: Get chat history for a specific conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Conversation history retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatConversation"
+  /chat/sessions:
+    get:
+      summary: Get user's accessible chat sessions
+      description: Returns chats created by the user and shared chats from projects
+      parameters:
+        - name: include_shared
+          in: query
+          schema:
+            type: boolean
+            default: true
+          description: Include shared chats from projects
+        - name: include_favorites
+          in: query
+          schema:
+            type: boolean
+            default: true
+          description: Include favorite status
+        - name: project_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter to specific project's chats
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        "200":
+          description: Chat sessions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ChatSession"
+                  pagination:
+                    $ref: "#/components/schemas/PaginationInfo"
+  /chat/sessions/{sessionId}/project:
+    put:
+      summary: Associate chat with project
+      description: Associate a chat session with a project (only chat creator can do this)
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatProjectAssociationRequest"
+      responses:
+        "200":
+          description: Chat successfully associated with project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSession"
+        "400":
+          description: Invalid project_id or user not a project member
+        "403":
+          description: User is not the chat creator
+        "404":
+          description: Chat session or project not found
+    delete:
+      summary: Remove chat project association
+      description: Remove project association from a chat session (only chat creator can do this)
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Project association removed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSession"
+        "403":
+          description: User is not the chat creator
+        "404":
+          description: Chat session not found
+  /chat/sessions/{sessionId}/sharing:
+    patch:
+      summary: Toggle project member sharing
+      description: Toggle whether project members can access this chat (only chat creator can do this)
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatSharingRequest"
+      responses:
+        "200":
+          description: Sharing settings updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSession"
+        "400":
+          description: Chat is not associated with a project
+        "403":
+          description: User is not the chat creator
+        "404":
+          description: Chat session not found
+  /chat/sessions/{sessionId}/favorite:
+    post:
+      summary: Add chat to favorites
+      description: Add a chat session to user's favorites
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Chat added to favorites successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        "404":
+          description: Chat session not found or access denied
+        "409":
+          description: Chat is already favorited
+    delete:
+      summary: Remove chat from favorites
+      description: Remove a chat session from user's favorites
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Chat removed from favorites successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        "404":
+          description: Chat session not found or not favorited
+  /chat/favorites:
+    get:
+      summary: Get user's favorite chats
+      description: List all chat sessions favorited by the current user
+      parameters:
+        - name: org_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Optional filter by organization
+        - name: project_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Optional filter by project
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        "200":
+          description: Favorite chats retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ChatSession"
+                  pagination:
+                    $ref: "#/components/schemas/PaginationInfo"
+  /projects/{projectId}/chats:
+    get:
+      summary: Get project-associated chats
+      description: List chats associated with a specific project (only project members can access)
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: include_favorites
+          in: query
+          schema:
+            type: boolean
+            default: true
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        "200":
+          description: Project chats retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ChatSession"
+                  pagination:
+                    $ref: "#/components/schemas/PaginationInfo"
+        "403":
+          description: Access denied. User is not a project member
+        "404":
+          description: Project not found
+
+components:
+  schemas:
+    Profile:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        user_id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+        avatar_url:
+          type: string
+          format: uri
+        avatar:
+          type: string
+          format: byte
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ProjectMember:
+      type: object
+      required:
+        - project_id
+        - user_id
+        - role
+      properties:
+        project_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+        profile:
+          $ref: "#/components/schemas/Profile"
+    Organization:
+      type: object
+      required:
+        - id
+        - name
+        - owner_id
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        owner_id:
+          type: string
+          format: uuid
+    Invitation:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, member]
+    Project:
+      type: object
+      required:
+        - id
+        - name
+        - org_id
+        - owner_id
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        org_id:
+          type: string
+          format: uuid
+        owner_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        user_role:
+          type: string
+          description: The current user's role in this project
+        is_favorited:
+          type: boolean
+          description: Whether the current user has favorited this project
+        favorited_at:
+          type: string
+          format: date-time
+          description: When the project was favorited by the current user (null if not favorited)
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: The user's message to send to PolicyMind AI
+        conversation_id:
+          type: string
+          format: uuid
+          description: Optional conversation ID for context continuity
+        context:
+          type: object
+          description: Optional context about the user and organization
+          properties:
+            org_name:
+              type: string
+            role:
+              type: string
+    ChatMessage:
+      type: object
+      required:
+        - id
+        - message
+        - conversation_id
+        - timestamp
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique message ID
+        message:
+          type: string
+          description: The AI's response message
+        conversation_id:
+          type: string
+          format: uuid
+          description: ID of the conversation this message belongs to
+        timestamp:
+          type: string
+          format: date-time
+          description: When the message was created
+        usage:
+          type: object
+          description: Token usage statistics
+          properties:
+            prompt_tokens:
+              type: integer
+            completion_tokens:
+              type: integer
+            total_tokens:
+              type: integer
+    ChatConversation:
+      type: object
+      required:
+        - conversation_id
+        - messages
+        - created_at
+        - updated_at
+      properties:
+        conversation_id:
+          type: string
+          format: uuid
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ChatSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          nullable: true
+        created_by:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        org_id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+          nullable: true
+        shared_with_project_members:
+          type: boolean
+          default: false
+        is_favorited:
+          type: boolean
+          description: "Computed field - whether current user has favorited this chat"
+        is_creator:
+          type: boolean
+          description: "Computed field - whether current user created this chat"
+        access_type:
+          type: string
+          enum: [owner, shared]
+          description: "Current user's access level to this chat"
+        project:
+          $ref: "#/components/schemas/ProjectSummary"
+          nullable: true
+        creator:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              format: uuid
+            full_name:
+              type: string
+            avatar_url:
+              type: string
+              nullable: true
+    ProjectSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+    ChatProjectAssociationRequest:
+      type: object
+      required:
+        - project_id
+      properties:
+        project_id:
+          type: string
+          format: uuid
+    ChatSharingRequest:
+      type: object
+      required:
+        - shared_with_project_members
+      properties:
+        shared_with_project_members:
+          type: boolean
+    PaginationInfo:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        has_more:
+          type: boolean
