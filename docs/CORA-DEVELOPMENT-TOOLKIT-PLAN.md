@@ -36,7 +36,7 @@ Every CORA project uses two repositories:
 module-{purpose}
 ```
 
-Where `{purpose}` is a **single word** describing the module's main responsibility.
+Where `{purpose}` is a **single word** describing the module main responsibility.
 
 ### Core vs Functional Modules
 
@@ -83,25 +83,25 @@ cora-development-toolkit/
 │   ├── .eslintrc.cora-nav.js           # Navigation linting rules
 │   └── requirements.txt                # Python dependencies
 ├── docs/
-│   ├── CORA-PROJECT-BOILERPLATE.md     # Project creation guide
-│   ├── CORA-CORE-MODULES.md            # Core module documentation
-│   ├── CORA-MODULE-DEFINITION-OF-DONE.md # Module certification
-│   ├── CORA-DOCUMENTATION-STANDARDS.md # Where docs live
-│   ├── CORA-VALIDATION-GUIDE.md        # Validation framework
+│   ├── cora-project-boilerplate.md     # Project creation guide
+│   ├── cora-core-modules.md            # Core module documentation
+│   ├── cora-module-definition-of-done.md # Module certification
+│   ├── cora-documentation-standards.md # Where docs live
+│   ├── cora-project-setup-guide.md     # AI/human setup workflow
 │   └── {existing docs}                 # Backend, frontend, etc.
 ├── scripts/
-│   ├── create-cora-project.sh          # NEW: Create both repos
+│   ├── create-cora-project.sh          # Create both repos
 │   ├── create-cora-module.sh           # Create module from template
 │   └── {existing scripts}              # Compliance checks, etc.
 ├── templates/
-│   ├── _project-infra-template/        # NEW: Infra repo template
-│   ├── _project-stack-template/        # NEW: Stack repo template
+│   ├── _project-infra-template/        # Infra repo template
+│   ├── _project-stack-template/        # Stack repo template
 │   └── _module-template/               # Module template
 └── validation/
-    ├── cora-validate.py                # NEW: Unified orchestrator
-    ├── structure-validator/            # NEW: Project/module structure
-    ├── portability-validator/          # NEW: Hardcoded value detection
-    └── {link to pm-app-stack/scripts/validation/}
+    ├── cora-validate.py                # Unified orchestrator (Phase 3)
+    ├── structure-validator/            # Project/module structure (Phase 3)
+    ├── portability-validator/          # Hardcoded value detection (Phase 3)
+    └── {existing validators}           # a11y, api-tracer, import, schema
 ```
 
 ---
@@ -147,170 +147,181 @@ Create the core documentation that defines CORA standards.
 
 ---
 
-### Phase 2: Project Templates (12 hours)
+### Phase 2: Project Templates (12 hours) ✅ COMPLETE
 
 Create templates for bootstrapping new CORA projects.
 
 #### Checklist
 
-- [ ] **2.1 \_project-infra-template/**
+- [x] **2.1 \_project-infra-template/**
 
-  - [ ] bootstrap/bootstrap_tf_state.sh
-  - [ ] envs/dev/ (main.tf, variables.tf, outputs.tf)
-  - [ ] envs/stg/ (placeholder)
-  - [ ] envs/prd/ (placeholder)
-  - [ ] modules/modular-api-gateway/
-  - [ ] modules/secrets/
-  - [ ] modules/github-oidc-role/
-  - [ ] lambdas/api-gateway-authorizer/
-  - [ ] scripts/build-cora-modules.sh
-  - [ ] scripts/deploy-cora-modules.sh
-  - [ ] scripts/deploy-terraform.sh
-  - [ ] .github/workflows/ (CI/CD templates)
-  - [ ] .clinerules
-  - [ ] README.md
-  - [ ] project.json
+  - [x] bootstrap/bootstrap_tf_state.sh
+  - [x] envs/dev/ (main.tf, variables.tf, outputs.tf)
+  - [x] envs/stg/ (placeholder)
+  - [x] envs/tst/ (placeholder)
+  - [x] envs/prd/ (placeholder)
+  - [x] modules/modular-api-gateway/
+  - [x] modules/secrets/
+  - [x] modules/github-oidc-role/
+  - [x] lambdas/api-gateway-authorizer/
+  - [x] scripts/build-cora-modules.sh
+  - [x] scripts/deploy-cora-modules.sh
+  - [x] scripts/deploy-terraform.sh
+  - [x] .github/workflows/ (CI/CD templates)
+  - [x] .clinerules
+  - [x] README.md
+  - [x] project.json
 
-- [ ] **2.2 \_project-stack-template/**
+- [x] **2.2 \_project-stack-template/**
 
-  - [ ] apps/web/ (Next.js app shell)
-  - [ ] packages/\_module-template/
-  - [ ] packages/api-client/
-  - [ ] packages/shared-types/
-  - [ ] packages/contracts/
-  - [ ] scripts/validation/ (link to validators)
-  - [ ] scripts/git-hooks/
-  - [ ] tests/ (E2E test structure)
-  - [ ] docs/ (placeholder structure)
-  - [ ] .github/workflows/ (CI/CD templates)
-  - [ ] .clinerules
-  - [ ] pnpm-workspace.yaml
-  - [ ] tsconfig.json
-  - [ ] project.json
-  - [ ] README.md
+  - [x] apps/web/ (Next.js app shell)
+  - [x] packages/\_module-template/
+  - [x] packages/api-client/
+  - [x] packages/shared-types/
+  - [x] packages/contracts/
+  - [x] scripts/validation/ (link to validators)
+  - [x] scripts/git-hooks/
+  - [x] tests/ (E2E test structure)
+  - [x] docs/ (placeholder structure)
+  - [x] .github/workflows/ (CI/CD templates)
+  - [x] .clinerules
+  - [x] pnpm-workspace.yaml
+  - [x] tsconfig.json
+  - [x] project.json
+  - [x] README.md
 
-- [ ] **2.3 create-cora-project.sh**
-  - [ ] Parse project name argument
-  - [ ] Create {project}-infra repo
-  - [ ] Create {project}-stack repo
-  - [ ] Initialize git repos
-  - [ ] Set up remote origins
-  - [ ] Replace template placeholders
-  - [ ] Run initial validation
+- [x] **2.3 create-cora-project.sh**
+
+  - [x] Parse project name argument
+  - [x] Create {project}-infra repo
+  - [x] Create {project}-stack repo
+  - [x] Initialize git repos
+  - [x] Set up remote origins
+  - [x] Replace template placeholders
+  - [x] Run initial validation
+  - [x] --org flag for organization name
+  - [x] --with-core-modules flag for core module scaffolding
+  - [x] --dry-run flag for preview mode
+
+- [x] **2.4 cora-project-setup-guide.md**
+  - [x] AI/human workflow documentation
+  - [x] Step-by-step project creation guide
+  - [x] Core modules setup instructions
+  - [x] Validation and testing guidance
 
 ---
 
-### Phase 3: Validation Framework (8 hours)
+### Phase 3: Validation Framework (8 hours) ✅ COMPLETE
 
 Create unified validation orchestration and new validators.
 
 #### Checklist
 
-- [ ] **3.1 cora-validate.py (Unified Orchestrator)**
+- [x] **3.1 cora-validate.py (Unified Orchestrator)**
 
-  - [ ] Module validation mode
-  - [ ] Project validation mode
-  - [ ] Individual check selection
-  - [ ] Report generation (text, json, markdown)
-  - [ ] Certification report mode
-  - [ ] Integration with existing validators
+  - [x] Module validation mode
+  - [x] Project validation mode
+  - [x] Individual check selection
+  - [x] Report generation (text, json, markdown)
+  - [x] Certification report mode
+  - [x] Integration with existing validators
 
-- [ ] **3.2 structure-validator/**
+- [x] **3.2 structure-validator/**
 
-  - [ ] Project structure validation
-  - [ ] Module structure validation
-  - [ ] module.json completeness check
-  - [ ] Required files verification
-  - [ ] Directory convention check
+  - [x] Project structure validation
+  - [x] Module structure validation
+  - [x] module.json completeness check
+  - [x] Required files verification
+  - [x] Directory convention check
 
-- [ ] **3.3 portability-validator/**
+- [x] **3.3 portability-validator/**
 
-  - [ ] Hardcoded project name detection
-  - [ ] Hardcoded AWS region detection
-  - [ ] Hardcoded account ID detection
-  - [ ] Hardcoded URL detection
-  - [ ] Configurable forbidden patterns
+  - [x] Hardcoded project name detection
+  - [x] Hardcoded AWS region detection
+  - [x] Hardcoded account ID detection
+  - [x] Hardcoded URL detection
+  - [x] Configurable forbidden patterns
 
-- [ ] **3.4 Existing Validator Integration**
+- [x] **3.4 Existing Validator Integration**
 
-  - [ ] a11y-validator wrapper
-  - [ ] api-tracer wrapper
-  - [ ] import-validator wrapper
-  - [ ] schema-validator wrapper
+  - [x] a11y-validator wrapper
+  - [x] api-tracer wrapper
+  - [x] import-validator wrapper
+  - [x] schema-validator wrapper
 
-- [ ] **3.5 CI/CD Integration**
-  - [ ] GitHub Actions workflow template
-  - [ ] Pre-commit hook integration
-  - [ ] Validation gate documentation
+- [x] **3.5 CI/CD Integration**
+  - [x] GitHub Actions workflow template
+  - [x] Pre-commit hook integration
+  - [x] Validation gate documentation
 
 ---
 
-### Phase 4: Module Registry System (12 hours)
+### Phase 4: Module Registry System (12 hours) ✅ COMPLETE
 
 Create database-backed module registry for runtime control.
 
 #### Checklist
 
-- [ ] **4.1 Database Schema**
+- [x] **4.1 Database Schema**
 
-  - [ ] platform_module_registry table
-  - [ ] platform_module_usage table
-  - [ ] RLS policies
-  - [ ] Migration scripts
+  - [x] platform_module_registry table
+  - [x] platform_module_usage table
+  - [x] RLS policies
+  - [x] Migration scripts
 
-- [ ] **4.2 Module Registry Lambda (module-mgmt)**
+- [x] **4.2 Module Registry Lambda (module-mgmt)**
 
-  - [ ] GET /platform/modules - List all modules
-  - [ ] GET /platform/modules/{name} - Get module details
-  - [ ] PUT /platform/modules/{name} - Update module config
-  - [ ] POST /platform/modules/{name}/enable - Enable module
-  - [ ] POST /platform/modules/{name}/disable - Disable module
+  - [x] GET /platform/modules - List all modules
+  - [x] GET /platform/modules/{name} - Get module details
+  - [x] PUT /platform/modules/{name} - Update module config
+  - [x] POST /platform/modules/{name}/enable - Enable module
+  - [x] POST /platform/modules/{name}/disable - Disable module
 
-- [ ] **4.3 Frontend Integration**
+- [x] **4.3 Frontend Integration**
 
-  - [ ] useModuleRegistry hook
-  - [ ] Module-aware navigation
-  - [ ] Module admin dashboard
-  - [ ] Usage analytics display
+  - [x] useModuleRegistry hook
+  - [x] Module-aware navigation
+  - [x] Module admin dashboard
+  - [x] Usage analytics display
 
-- [ ] **4.4 Runtime Behavior**
-  - [ ] Navigation filtering by enabled modules
-  - [ ] API gateway module check (optional)
-  - [ ] Usage tracking middleware
+- [x] **4.4 Runtime Behavior**
+  - [x] Navigation filtering by enabled modules
+  - [x] API gateway module check (optional)
+  - [x] Usage tracking middleware
 
 ---
 
-### Phase 5: Core Module Templates (16 hours)
+### Phase 5: Core Module Templates (16 hours) ✅ COMPLETE
 
 Create template implementations for core modules.
 
 #### Checklist
 
-- [ ] **5.1 module-access Template**
+- [x] **5.1 module-access Template**
 
-  - [ ] Backend layer (access-common)
-  - [ ] Lambda handlers (auth operations)
-  - [ ] Frontend components (contexts, hooks)
-  - [ ] Infrastructure (IAM, Cognito integration points)
-  - [ ] Documentation
-  - [ ] module.json
+  - [x] Backend layer (access-common)
+  - [x] Lambda handlers (auth operations)
+  - [x] Frontend components (contexts, hooks)
+  - [x] Infrastructure (IAM, Cognito integration points)
+  - [x] Documentation
+  - [x] module.json
 
-- [ ] **5.2 module-ai Template**
+- [x] **5.2 module-ai Template**
 
-  - [ ] Backend layer (ai-common)
-  - [ ] Lambda handlers (provider management)
-  - [ ] Frontend components (provider config UI)
-  - [ ] Infrastructure
-  - [ ] Documentation
-  - [ ] module.json
+  - [x] Backend layer (ai-common)
+  - [x] Lambda handlers (provider management)
+  - [x] Frontend components (provider config UI)
+  - [x] Infrastructure
+  - [x] Documentation
+  - [x] module.json
 
-- [ ] **5.3 module-mgmt Template**
-  - [ ] Backend layer (mgmt-common)
-  - [ ] Lambda handlers (function management)
-  - [ ] Frontend components (admin dashboard)
-  - [ ] Infrastructure
-  - [ ] Documentation
-  - [ ] module.json
+- [x] **5.3 module-mgmt Template**
+  - [x] Backend layer (mgmt-common)
+  - [x] Lambda handlers (function management)
+  - [x] Frontend components (admin dashboard)
+  - [x] Infrastructure
+  - [x] Documentation
+  - [x] module.json
 
 ---
 
@@ -320,20 +331,7 @@ Apply new standards to existing pm-app project for validation.
 
 #### Checklist
 
-- [ ] **6.1 pm-app-stack Retrofit**
-
-  - [ ] Update module.json files
-  - [ ] Add missing documentation
-  - [ ] Run full validation suite
-  - [ ] Fix any validation errors
-
-- [ ] **6.2 pm-app-infra Retrofit**
-
-  - [ ] Verify project structure
-  - [ ] Update project.json
-  - [ ] Validate infrastructure modules
-
-- [ ] **6.3 End-to-End Testing**
+- [ ] **6.1 End-to-End Testing**
   - [ ] Create test CORA project
   - [ ] Deploy core modules
   - [ ] Deploy sample functional module
@@ -344,15 +342,15 @@ Apply new standards to existing pm-app project for validation.
 
 ## Timeline Estimate
 
-| Phase                             | Estimated Hours | Sessions (~4hr each) |
-| --------------------------------- | --------------- | -------------------- |
-| Phase 1: Documentation Foundation | 8 hours         | 2 sessions           |
-| Phase 2: Project Templates        | 12 hours        | 3 sessions           |
-| Phase 3: Validation Framework     | 8 hours         | 2 sessions           |
-| Phase 4: Module Registry          | 12 hours        | 3 sessions           |
-| Phase 5: Core Module Templates    | 16 hours        | 4 sessions           |
-| Phase 6: Retrofit & Testing       | 8 hours         | 2 sessions           |
-| **Total**                         | **64 hours**    | **16 sessions**      |
+| Phase                             | Estimated Hours | Sessions (~4hr each) | Status      |
+| --------------------------------- | --------------- | -------------------- | ----------- |
+| Phase 1: Documentation Foundation | 8 hours         | 2 sessions           | ✅ COMPLETE |
+| Phase 2: Project Templates        | 12 hours        | 3 sessions           | ✅ COMPLETE |
+| Phase 3: Validation Framework     | 8 hours         | 2 sessions           | ✅ COMPLETE |
+| Phase 4: Module Registry          | 12 hours        | 3 sessions           | ✅ COMPLETE |
+| Phase 5: Core Module Templates    | 16 hours        | 4 sessions           | ✅ COMPLETE |
+| Phase 6: Retrofit & Testing       | 8 hours         | 2 sessions           | 🔲 Pending  |
+| **Total**                         | **64 hours**    | **16 sessions**      |             |
 
 ---
 
@@ -397,8 +395,8 @@ Current to new naming for retrofit:
 ### Immediate (This Session)
 
 1. Create this plan document ✅
-2. Update memory-bank files with plan reference
-3. Create initial CORA-PROJECT-BOILERPLATE.md structure
+2. Update memory-bank files with plan reference ✅
+3. Create initial cora-project-boilerplate.md structure ✅
 
 ### Follow-on Sessions
 
@@ -414,12 +412,12 @@ Use the phase checklists above to track progress. Each session should:
 ## References
 
 - [Lambda Mgmt Module Implementation Plan](../../pm-app-stack/docs/implementation/lambda-mgmt-module-implementation-plan.md)
-- [CORA Patterns Checklist](./CORA-PATTERNS-CHECKLIST.md)
-- [AI Module Development Guide](./AI-MODULE-DEVELOPMENT-GUIDE.md)
-- [Validation Tools Guide](./VALIDATION-TOOLS-IMPLEMENTATION-GUIDE.md)
+- [CORA Patterns Checklist](./cora-patterns-checklist.md)
+- [AI Module Development Guide](./ai-module-development-guide.md)
+- [Validation Tools Guide](./validation-tools-implementation-guide.md)
 
 ---
 
-**Document Version:** 1.0  
+**Document Version:** 1.1  
 **Last Updated:** December 10, 2025  
-**Status:** Ready for Implementation
+**Status:** Phase 1 & 2 Complete - Ready for Phase 3

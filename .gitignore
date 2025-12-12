@@ -35,6 +35,11 @@ pnpm-debug.log*
 .env.local
 .env.*.local
 
+# CORA setup configuration files (contain credentials)
+setup.config.yaml
+setup.config.*.yaml
+!setup.config.example.yaml
+
 # Logs
 logs/
 *.log
