@@ -317,7 +317,7 @@ def load_org_common_signatures(base_path: str = None) -> Dict[str, Any]:
     Convenience function to load org_common signatures
     
     Args:
-        base_path: Base path to pm-app-stack directory. If None, auto-detect.
+        base_path: Base path to project directory. If None, auto-detect.
         
     Returns:
         Dictionary of function signatures
@@ -325,12 +325,23 @@ def load_org_common_signatures(base_path: str = None) -> Dict[str, Any]:
     if base_path is None:
         # Auto-detect path relative to this script
         script_dir = Path(__file__).parent
-        base_path = script_dir.parent.parent.parent  # Go up to pm-app-stack
+        base_path = script_dir.parent.parent.parent  # Go up to project root
     
-    org_common_path = Path(base_path) / 'packages' / 'org-module' / 'backend' / 'layers' / 'org-common' / 'python' / 'org_common'
+    base_path = Path(base_path)
+    
+    # Try CORA naming convention first (module-access)
+    org_common_path = base_path / 'packages' / 'module-access' / 'backend' / 'layers' / 'org-common' / 'python' / 'org_common'
+    
+    # Fall back to legacy naming (org-module) for backwards compatibility
+    if not org_common_path.exists():
+        org_common_path = base_path / 'packages' / 'org-module' / 'backend' / 'layers' / 'org-common' / 'python' / 'org_common'
     
     if not org_common_path.exists():
-        raise FileNotFoundError(f"org_common module not found at: {org_common_path}")
+        raise FileNotFoundError(
+            f"org_common module not found. Searched:\n"
+            f"  - {base_path / 'packages' / 'module-access' / 'backend' / 'layers' / 'org-common' / 'python' / 'org_common'}\n"
+            f"  - {base_path / 'packages' / 'org-module' / 'backend' / 'layers' / 'org-common' / 'python' / 'org_common'}"
+        )
     
     loader = SignatureLoader(str(org_common_path))
     return loader.load_all_signatures()

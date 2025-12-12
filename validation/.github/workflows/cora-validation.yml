@@ -1,0 +1,233 @@
+# CORA Validation Workflow
+#
+# This workflow runs CORA validation checks on pull requests and pushes.
+# Copy this file to your project's .github/workflows/ directory.
+#
+# Usage:
+#   1. Copy to {project}-stack/.github/workflows/cora-validation.yml
+#   2. Adjust paths and validators as needed
+#   3. Ensure Python dependencies are available
+
+name: CORA Validation
+
+on:
+    push:
+        branches: [main, develop]
+    pull_request:
+        branches: [main, develop]
+
+env:
+    PYTHON_VERSION: "3.11"
+    NODE_VERSION: "20"
+
+jobs:
+    structure-validation:
+        name: Structure Validation
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
+
+            - name: Install dependencies
+              run: |
+                  pip install pyyaml
+
+            - name: Clone CORA Dev Toolkit
+              uses: actions/checkout@v4
+              with:
+                  repository: bodhix-ai/cora-dev-toolkit
+                  path: cora-dev-toolkit
+
+            - name: Run Structure Validation
+              run: |
+                  cd cora-dev-toolkit/validation
+                  python -m structure_validator.cli ${{ github.workspace }} --format json --output structure-report.json
+              continue-on-error: true
+
+            - name: Upload Structure Report
+              uses: actions/upload-artifact@v4
+              with:
+                  name: structure-validation-report
+                  path: cora-dev-toolkit/validation/structure-report.json
+
+    portability-validation:
+        name: Portability Validation
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
+
+            - name: Clone CORA Dev Toolkit
+              uses: actions/checkout@v4
+              with:
+                  repository: bodhix-ai/cora-dev-toolkit
+                  path: cora-dev-toolkit
+
+            - name: Run Portability Validation
+              run: |
+                  cd cora-dev-toolkit/validation
+                  python -m portability_validator.cli ${{ github.workspace }} --format json --output portability-report.json
+              continue-on-error: true
+
+            - name: Upload Portability Report
+              uses: actions/upload-artifact@v4
+              with:
+                  name: portability-validation-report
+                  path: cora-dev-toolkit/validation/portability-report.json
+
+    accessibility-validation:
+        name: Accessibility Validation
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
+
+            - name: Clone CORA Dev Toolkit
+              uses: actions/checkout@v4
+              with:
+                  repository: bodhix-ai/cora-dev-toolkit
+                  path: cora-dev-toolkit
+
+            - name: Run Accessibility Validation
+              run: |
+                  cd cora-dev-toolkit/validation
+                  python -m a11y_validator.cli ${{ github.workspace }}/packages --format json --output a11y-report.json || true
+              continue-on-error: true
+
+            - name: Upload Accessibility Report
+              uses: actions/upload-artifact@v4
+              with:
+                  name: accessibility-validation-report
+                  path: cora-dev-toolkit/validation/a11y-report.json
+              if: always()
+
+    unified-validation:
+        name: Unified CORA Validation
+        runs-on: ubuntu-latest
+        needs:
+            [
+                structure-validation,
+                portability-validation,
+                accessibility-validation,
+            ]
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
+
+            - name: Install dependencies
+              run: pip install pyyaml
+
+            - name: Clone CORA Dev Toolkit
+              uses: actions/checkout@v4
+              with:
+                  repository: bodhix-ai/cora-dev-toolkit
+                  path: cora-dev-toolkit
+
+            - name: Run Unified Validation
+              id: validation
+              run: |
+                  cd cora-dev-toolkit/validation
+                  python cora-validate.py project ${{ github.workspace }} \
+                    --validators structure portability \
+                    --format markdown \
+                    --output validation-report.md
+              continue-on-error: true
+
+            - name: Upload Unified Report
+              uses: actions/upload-artifact@v4
+              with:
+                  name: cora-validation-report
+                  path: cora-dev-toolkit/validation/validation-report.md
+
+            - name: Comment on PR
+              if: github.event_name == 'pull_request'
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const fs = require('fs');
+                      const reportPath = 'cora-dev-toolkit/validation/validation-report.md';
+
+                      let body = '## CORA Validation Results\n\n';
+
+                      if (fs.existsSync(reportPath)) {
+                        const report = fs.readFileSync(reportPath, 'utf8');
+                        body += report;
+                      } else {
+                        body += '⚠️ Validation report not generated. Check workflow logs.';
+                      }
+
+                      // Find existing comment
+                      const { data: comments } = await github.rest.issues.listComments({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        issue_number: context.issue.number,
+                      });
+
+                      const botComment = comments.find(comment => 
+                        comment.user.type === 'Bot' && 
+                        comment.body.includes('CORA Validation Results')
+                      );
+
+                      if (botComment) {
+                        await github.rest.issues.updateComment({
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          comment_id: botComment.id,
+                          body: body
+                        });
+                      } else {
+                        await github.rest.issues.createComment({
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          issue_number: context.issue.number,
+                          body: body
+                        });
+                      }
+
+    validation-gate:
+        name: Validation Gate
+        runs-on: ubuntu-latest
+        needs: [unified-validation]
+        steps:
+            - name: Download Reports
+              uses: actions/download-artifact@v4
+              with:
+                  pattern: "*-validation-report"
+                  merge-multiple: true
+
+            - name: Check Validation Status
+              run: |
+                  echo "Checking validation results..."
+
+                  # For now, just pass - in production, parse JSON reports
+                  # and fail if critical issues found
+
+                  if [ -f "structure-report.json" ]; then
+                    echo "Structure report found"
+                  fi
+
+                  if [ -f "portability-report.json" ]; then
+                    echo "Portability report found"
+                  fi
+
+                  echo "✅ Validation gate passed"

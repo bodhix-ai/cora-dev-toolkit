@@ -9,10 +9,10 @@ from pathlib import Path
 import click
 from typing import Optional
 
-from signature_loader import load_org_common_signatures, SignatureLoader
-from backend_validator import BackendValidator, validate_lambda_directory
-from frontend_validator import FrontendValidator, validate_frontend_directory
-from reporter import print_results
+from .signature_loader import load_org_common_signatures, SignatureLoader
+from .backend_validator import BackendValidator, validate_lambda_directory
+from .frontend_validator import FrontendValidator, validate_frontend_directory
+from .reporter import print_results
 
 
 @click.command()
@@ -89,9 +89,24 @@ def main(path: str, backend: bool, frontend: bool, validate_all: bool, output: s
     """
     try:
         if base_path is None:
-            # Auto-detect base path relative to this script
-            script_dir = Path(__file__).parent
-            base_path = script_dir.parent.parent.parent  # Go up to pm-app-stack
+            # Use the target path as the base path for finding org_common
+            # This allows the validator to find org_common in the target project
+            target_path = Path(path)
+            if target_path.is_file():
+                base_path = target_path.parent
+            else:
+                base_path = target_path
+            
+            # If path is inside a subdirectory like packages/, go up to project root
+            # Look for common project root indicators
+            current = Path(base_path).resolve()
+            while current != current.parent:
+                if (current / 'pnpm-workspace.yaml').exists() or \
+                   (current / 'package.json').exists() or \
+                   (current / 'packages').exists():
+                    base_path = current
+                    break
+                current = current.parent
         
         # Determine validation mode
         # Default to backend if no flags specified
@@ -104,18 +119,23 @@ def main(path: str, backend: bool, frontend: bool, validate_all: bool, output: s
         
         # Backend validation
         if backend or validate_all:
-            click.echo("=" * 70)
-            click.echo("BACKEND VALIDATION (Lambda Function Imports)")
-            click.echo("=" * 70)
-            click.echo("Loading org_common module signatures...")
+            # Only show text headers if not JSON output
+            if output != 'json':
+                click.echo("=" * 70)
+                click.echo("BACKEND VALIDATION (Lambda Function Imports)")
+                click.echo("=" * 70)
+                click.echo("Loading org_common module signatures...")
             
             signatures = load_org_common_signatures(str(base_path))
-            click.echo(f"Loaded {len(signatures)} function signatures\n")
+            
+            if output != 'json':
+                click.echo(f"Loaded {len(signatures)} function signatures\n")
             
             target_path = Path(path)
             
             if target_path.is_file() and str(target_path).endswith('.py'):
-                click.echo(f"Validating file: {target_path}")
+                if output != 'json':
+                    click.echo(f"Validating file: {target_path}")
                 validator = BackendValidator(signatures)
                 file_result = validator.validate_file(str(target_path))
                 backend_results = {
@@ -123,7 +143,8 @@ def main(path: str, backend: bool, frontend: bool, validate_all: bool, output: s
                     'summary': validator.get_results()
                 }
             else:
-                click.echo(f"Validating directory: {target_path}\n")
+                if output != 'json':
+                    click.echo(f"Validating directory: {target_path}\n")
                 backend_results = validate_lambda_directory(str(target_path), signatures)
             
             # Display backend results
@@ -132,7 +153,8 @@ def main(path: str, backend: bool, frontend: bool, validate_all: bool, output: s
             
             total_errors += len(backend_results['summary']['errors'])
             all_results.append(('backend', backend_results))
-            click.echo("")
+            if output != 'json':
+                click.echo("")
         
         # Frontend validation
         if frontend or validate_all:
