@@ -1,18 +1,12 @@
-#!/bin/bash
-
-# Deploy CORA Modules for {{PROJECT_NAME}}
-# Deploys CORA module infrastructure using Terraform
+#!/usr/bin/env bash
+# Deploy CORA Modules (Zip-Based Deployment)
+# Uploads Lambda zip packages to S3 for Terraform consumption
 #
-# Usage: ./deploy-cora-modules.sh <environment> [OPTIONS]
+# Usage: ./deploy-cora-modules.sh [--bucket <name>]
 
 set -e
 
-# --- Configuration ---
-ENVIRONMENT="${1:-dev}"
-AWS_PROFILE="${AWS_PROFILE:-default}"
-AWS_REGION="${AWS_REGION:-{{AWS_REGION}}}"
-
-# --- Colors ---
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -22,149 +16,110 @@ log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-show_help() {
-  cat << EOF
-Deploy CORA Modules for {{PROJECT_NAME}}
+# Configuration
+PROJECT_NAME="{{PROJECT_NAME}}"
+BUILD_DIR="$(pwd)/build"
+S3_BUCKET="${S3_BUCKET:-${PROJECT_NAME}-lambda-artifacts}"
+AWS_PROFILE="${AWS_PROFILE:-default}"
+AWS_REGION="${AWS_REGION:-us-east-1}"
 
-Usage: $0 <environment> [OPTIONS]
-
-Deploys CORA module infrastructure using Terraform.
-Requires ./build-cora-modules.sh to be run first.
-
-Arguments:
-  environment         Target environment (dev, stg, prd) - default: dev
-
-Options:
-  --auto-approve      Skip interactive approval
-  --help              Show this help message
-
-Environment Variables:
-  AWS_PROFILE         AWS profile to use
-  AWS_REGION          AWS region
-
-Prerequisites:
-  1. Run ./build-cora-modules.sh first to build Docker images
-  2. Ensure .cora-module-images.env exists with image URIs
-
-Examples:
-  $0 dev
-  $0 stg --auto-approve
-
-EOF
-}
-
-# --- Parse Arguments ---
-AUTO_APPROVE=""
-
-shift || true  # Skip first arg (environment)
-
+# Parse arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --auto-approve)
-      AUTO_APPROVE="-auto-approve"
-      shift
+    --bucket)
+      S3_BUCKET="$2"
+      shift 2
+      ;;
+    --profile)
+      AWS_PROFILE="$2"
+      shift 2
+      ;;
+    --region)
+      AWS_REGION="$2"
+      shift 2
       ;;
     --help)
-      show_help
+      echo "Usage: $0 [--bucket <name>] [--profile <profile>] [--region <region>]"
+      echo ""
+      echo "Deploy Lambda zip packages to S3"
+      echo ""
+      echo "Options:"
+      echo "  --bucket <name>    S3 bucket name (default: ${PROJECT_NAME}-lambda-artifacts)"
+      echo "  --profile <name>   AWS profile (default: \$AWS_PROFILE or 'default')"
+      echo "  --region <name>    AWS region (default: us-east-1)"
+      echo "  --help             Show this help"
       exit 0
       ;;
     *)
       log_error "Unknown option: $1"
-      show_help
       exit 1
       ;;
   esac
 done
 
-# --- Validate Environment ---
-case $ENVIRONMENT in
-  dev|stg|prd)
-    ;;
-  *)
-    log_error "Invalid environment: $ENVIRONMENT"
-    echo "Valid environments: dev, stg, prd"
-    exit 1
-    ;;
-esac
-
-# --- Main Script ---
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-INFRA_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-
-# Check for image URIs file
-IMAGE_ENV_FILE="${INFRA_ROOT}/.cora-module-images.env"
-if [ ! -f "${IMAGE_ENV_FILE}" ]; then
-  log_error "Image URIs file not found: ${IMAGE_ENV_FILE}"
-  echo ""
-  echo "You must run the build script first:"
-  echo "  ./scripts/build-cora-modules.sh"
-  exit 1
-fi
-
 echo "========================================"
-echo "  CORA Module Deployment"
+echo "  CORA Module Deploy (Zip-Based)"
 echo "========================================"
 echo ""
-log_info "Environment: ${ENVIRONMENT}"
+log_info "Project:    ${PROJECT_NAME}"
+log_info "S3 Bucket:  ${S3_BUCKET}"
+log_info "AWS Region: ${AWS_REGION}"
 log_info "AWS Profile: ${AWS_PROFILE}"
-log_info "AWS Region:  ${AWS_REGION}"
 echo ""
 
-# Load image URIs
-log_info "Loading image URIs from ${IMAGE_ENV_FILE}..."
-set -a
-source "${IMAGE_ENV_FILE}"
-set +a
-
-export AWS_PROFILE
-export AWS_REGION
-
-# Run Terraform deployment
-ENV_DIR="${INFRA_ROOT}/envs/${ENVIRONMENT}"
-
-if [ ! -d "${ENV_DIR}" ]; then
-  log_error "Environment directory not found: ${ENV_DIR}"
+# Check if build directory exists
+if [ ! -d "${BUILD_DIR}" ]; then
+  log_error "Build directory not found: ${BUILD_DIR}"
+  log_error "Run ./build-cora-modules.sh first"
   exit 1
 fi
 
-cd "${ENV_DIR}"
-
-# Initialize Terraform
-log_info "Initializing Terraform..."
-terraform init -reconfigure -backend-config=backend.hcl
-
-# Check for secrets file
-SECRETS_FILE="local-secrets.tfvars"
-VAR_FILES_ARG=""
-if [ -f "$SECRETS_FILE" ]; then
-  log_info "Using ${SECRETS_FILE} for variables"
-  VAR_FILES_ARG="-var-file=${SECRETS_FILE}"
+# Check if bucket exists, create if not
+if ! aws s3 ls "s3://${S3_BUCKET}" --profile "${AWS_PROFILE}" --region "${AWS_REGION}" >/dev/null 2>&1; then
+  log_info "Creating S3 bucket: ${S3_BUCKET}"
+  aws s3 mb "s3://${S3_BUCKET}" --profile "${AWS_PROFILE}" --region "${AWS_REGION}"
 fi
 
-# Build variable arguments for image URIs
-IMAGE_VARS=""
-while IFS='=' read -r key value; do
-  if [[ -n "$key" && -n "$value" ]]; then
-    # Convert IMAGE_URI_MODULE_ACCESS to module_access_lambda_image_uri
-    var_name=$(echo "$key" | sed 's/IMAGE_URI_//' | tr '[:upper:]' '[:lower:]')_lambda_image_uri
-    IMAGE_VARS="${IMAGE_VARS} -var=\"${var_name}=${value}\""
+# Upload each module's artifacts
+for module_dir in "${BUILD_DIR}"/module-*; do
+  if [ ! -d "${module_dir}" ]; then
+    continue
   fi
-done < "${IMAGE_ENV_FILE}"
+  
+  module_name=$(basename "${module_dir}")
+  log_info "Uploading ${module_name} artifacts..."
+  
+  # Upload layer zips to s3://bucket/layers/
+  for layer_zip in "${module_dir}"/*-layer.zip; do
+    if [ -f "${layer_zip}" ]; then
+      layer_name=$(basename "${layer_zip}")
+      log_info "  → layers/${layer_name}"
+      aws s3 cp "${layer_zip}" "s3://${S3_BUCKET}/layers/${layer_name}" \
+        --profile "${AWS_PROFILE}" --region "${AWS_REGION}"
+    fi
+  done
+  
+  # Upload Lambda function zips to s3://bucket/lambdas/
+  for lambda_zip in "${module_dir}"/*.zip; do
+    if [ -f "${lambda_zip}" ] && [[ ! "${lambda_zip}" =~ -layer\.zip$ ]]; then
+      lambda_name=$(basename "${lambda_zip}")
+      log_info "  → lambdas/${lambda_name}"
+      aws s3 cp "${lambda_zip}" "s3://${S3_BUCKET}/lambdas/${lambda_name}" \
+        --profile "${AWS_PROFILE}" --region "${AWS_REGION}"
+    fi
+  done
+done
 
-# Run Terraform apply
-log_info "Applying Terraform changes..."
-eval terraform apply ${AUTO_APPROVE} ${VAR_FILES_ARG} ${IMAGE_VARS}
-
-# Get outputs
 echo ""
 echo "========================================"
-echo "  Deployment Complete"
+echo "  Deploy Complete"
 echo "========================================"
 echo ""
-
-API_GATEWAY_URL=$(terraform output -raw modular_api_gateway_url 2>/dev/null || echo "N/A")
-
-log_info "Environment: ${ENVIRONMENT}"
-log_info "API Gateway URL: ${API_GATEWAY_URL}"
-echo ""
-log_info "Test with: curl ${API_GATEWAY_URL}/health"
+log_info "Artifacts uploaded to: s3://${S3_BUCKET}"
+log_info "Run terraform to provision infrastructure"
+log_info ""
+log_info "Next steps:"
+log_info "  cd envs/dev"
+log_info "  terraform init"
+log_info "  terraform plan -var-file=local-secrets.tfvars"
+log_info "  terraform apply -var-file=local-secrets.tfvars"

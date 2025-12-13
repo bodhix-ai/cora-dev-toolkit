@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build script for module-access Lambda functions and layer (Zip-Based)
+# Build script for module-mgmt Lambda functions and layer (Zip-Based)
 set -euo pipefail
 
 # Colors for output
@@ -8,7 +8,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Building module-access backend (zip-based)...${NC}"
+echo -e "${GREEN}Building module-mgmt backend (zip-based)...${NC}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LAYERS_DIR="${SCRIPT_DIR}/layers"
@@ -21,11 +21,11 @@ rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 
 # ========================================
-# Build Lambda Layer (org-common)
+# Build Lambda Layer (lambda-mgmt-common)
 # ========================================
-echo -e "${GREEN}Building org-common Lambda layer...${NC}"
+echo -e "${GREEN}Building lambda-mgmt-common Lambda layer...${NC}"
 
-LAYER_DIR="${LAYERS_DIR}/org-common"
+LAYER_DIR="${LAYERS_DIR}/lambda-mgmt-common"
 LAYER_BUILD_DIR="${BUILD_DIR}/layer-build"
 
 if [ ! -d "${LAYER_DIR}" ]; then
@@ -49,10 +49,10 @@ fi
 # Create layer ZIP
 (
     cd "${LAYER_BUILD_DIR}"
-    zip -r "${BUILD_DIR}/org-common-layer.zip" python -q
+    zip -r "${BUILD_DIR}/lambda-mgmt-common-layer.zip" python -q
 )
 
-echo -e "${GREEN}✓ Layer built: ${BUILD_DIR}/org-common-layer.zip${NC}"
+echo -e "${GREEN}✓ Layer built: ${BUILD_DIR}/lambda-mgmt-common-layer.zip${NC}"
 
 # ========================================
 # Build Lambda Functions
