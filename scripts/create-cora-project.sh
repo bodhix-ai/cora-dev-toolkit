@@ -566,13 +566,98 @@ ENVEOF
   log_info "Created ${stack_dir}/validation/.env.example"
 }
 
+# --- Generate Terraform Variables ---
+generate_terraform_vars() {
+  local config_file="$1"
+  local infra_dir="$2"
+  
+  if [[ ! -f "$config_file" ]]; then
+    log_warn "Config file not found: $config_file"
+    log_info "Skipping local-secrets.tfvars generation."
+    return
+  fi
+  
+  log_step "Generating local-secrets.tfvars from ${config_file}..."
+  
+  # Check if yq is available
+  if ! command -v yq &> /dev/null; then
+    log_warn "yq not found. Install with: brew install yq"
+    log_info "Falling back to grep-based extraction..."
+    
+    # Fallback: grep-based extraction
+    GITHUB_OWNER=$(grep -A2 "^github:" "$config_file" | grep "owner:" | sed 's/.*owner: *"\([^"]*\)".*/\1/' || echo "")
+    GITHUB_REPO=$(grep -A2 "^github:" "$config_file" | grep "repo_infra:" | sed 's/.*repo_infra: *"\([^"]*\)".*/\1/' || echo "")
+    SUPABASE_URL=$(grep -A10 "^supabase:" "$config_file" | grep "url:" | sed 's/.*url: *"\([^"]*\)".*/\1/' || echo "")
+    SUPABASE_ANON_KEY=$(grep "anon_key:" "$config_file" | sed 's/.*anon_key: *"\([^"]*\)".*/\1/' || echo "")
+    SUPABASE_SERVICE_KEY=$(grep "service_role_key:" "$config_file" | sed 's/.*service_role_key: *"\([^"]*\)".*/\1/' || echo "")
+    SUPABASE_JWT_SECRET=$(grep -A10 "^supabase:" "$config_file" | grep "jwt_secret:" | sed 's/.*jwt_secret: *"\([^"]*\)".*/\1/' || echo "")
+    AUTH_PROVIDER=$(grep "^auth_provider:" "$config_file" | sed 's/.*auth_provider: *"\([^"]*\)".*/\1/' || echo "okta")
+    OKTA_DOMAIN=$(grep -A5 "^okta:" "$config_file" | grep "domain:" | sed 's/.*domain: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_CLIENT_ID=$(grep -A5 "^okta:" "$config_file" | grep "client_id:" | sed 's/.*client_id: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_CLIENT_SECRET=$(grep -A5 "^okta:" "$config_file" | grep "client_secret:" | sed 's/.*client_secret: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_ISSUER=$(grep -A5 "^okta:" "$config_file" | grep "issuer:" | sed 's/.*issuer: *"\([^"]*\)".*/\1/' || echo "")
+    CLERK_PUBLISHABLE_KEY=$(grep -A5 "^clerk:" "$config_file" | grep "publishable_key:" | sed 's/.*publishable_key: *"\([^"]*\)".*/\1/' || echo "")
+    CLERK_SECRET_KEY=$(grep -A5 "^clerk:" "$config_file" | grep "secret_key:" | sed 's/.*secret_key: *"\([^"]*\)".*/\1/' || echo "")
+  else
+    # Use yq for proper YAML parsing
+    GITHUB_OWNER=$(yq '.github.owner' "$config_file")
+    GITHUB_REPO=$(yq '.github.repo_infra' "$config_file")
+    SUPABASE_URL=$(yq '.supabase.url' "$config_file")
+    SUPABASE_ANON_KEY=$(yq '.supabase.anon_key' "$config_file")
+    SUPABASE_SERVICE_KEY=$(yq '.supabase.service_role_key' "$config_file")
+    SUPABASE_JWT_SECRET=$(yq '.supabase.jwt_secret' "$config_file")
+    AUTH_PROVIDER=$(yq '.auth_provider // "okta"' "$config_file")
+    OKTA_DOMAIN=$(yq '.okta.domain' "$config_file")
+    OKTA_CLIENT_ID=$(yq '.okta.client_id' "$config_file")
+    OKTA_CLIENT_SECRET=$(yq '.okta.client_secret' "$config_file")
+    OKTA_ISSUER=$(yq '.okta.issuer' "$config_file")
+    CLERK_PUBLISHABLE_KEY=$(yq '.clerk.publishable_key' "$config_file")
+    CLERK_SECRET_KEY=$(yq '.clerk.secret_key' "$config_file")
+  fi
+  
+  # Generate local-secrets.tfvars in HCL format
+  cat > "${infra_dir}/envs/dev/local-secrets.tfvars" << TFVARSEOF
+# =============================================================================
+# Terraform Variables for ${PROJECT_NAME}
+# =============================================================================
+# Generated from setup.config.${PROJECT_NAME}.yaml
+# DO NOT COMMIT THIS FILE
+
+# GitHub Configuration
+github_owner = "${GITHUB_OWNER}"
+github_repo  = "${GITHUB_REPO}"
+
+# Supabase Credentials
+supabase_url                    = "${SUPABASE_URL}"
+supabase_anon_key_value         = "${SUPABASE_ANON_KEY}"
+supabase_service_role_key_value = "${SUPABASE_SERVICE_KEY}"
+supabase_jwt_secret_value       = "${SUPABASE_JWT_SECRET}"
+
+# Authentication Provider
+auth_provider = "${AUTH_PROVIDER}"
+
+# Okta Configuration (when auth_provider = "okta")
+okta_issuer = "${OKTA_ISSUER}"
+okta_audience = "${OKTA_CLIENT_ID}"
+
+# Clerk Configuration (when auth_provider = "clerk")
+clerk_secret_key_value = "${CLERK_SECRET_KEY}"
+clerk_jwt_issuer = "${CLERK_PUBLISHABLE_KEY}"
+clerk_jwt_audience = ""
+clerk_jwks_url = ""
+TFVARSEOF
+  
+  log_info "Created ${infra_dir}/envs/dev/local-secrets.tfvars"
+}
+
 # Look for setup.config.{project}.yaml in stack dir and generate .env files
 if ! $DRY_RUN; then
   CONFIG_FILE="${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml"
   if [[ -f "$CONFIG_FILE" ]]; then
     generate_env_files "$CONFIG_FILE" "$STACK_DIR"
+    generate_terraform_vars "$CONFIG_FILE" "$INFRA_DIR"
   else
-    log_info "No setup.config.${PROJECT_NAME}.yaml found. Copy setup.config.example.yaml to setup.config.${PROJECT_NAME}.yaml and re-run to generate .env files."
+    log_info "No setup.config.${PROJECT_NAME}.yaml found. Copy setup.config.example.yaml to setup.config.${PROJECT_NAME}.yaml and re-run to generate .env and tfvars files."
   fi
 fi
 
