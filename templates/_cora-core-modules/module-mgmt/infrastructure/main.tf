@@ -148,7 +148,7 @@ resource "aws_iam_role_policy_attachment" "secrets_manager" {
 # =============================================================================
 
 resource "aws_cloudwatch_log_group" "lambda_mgmt" {
-  name              = "/aws/lambda/${local.prefix}"
+  name              = "/aws/lambda/${local.prefix}-registry"
   retention_in_days = 14
 
   tags = local.tags
@@ -159,7 +159,7 @@ resource "aws_cloudwatch_log_group" "lambda_mgmt" {
 # =============================================================================
 
 resource "aws_lambda_function" "lambda_mgmt" {
-  function_name = local.prefix
+  function_name = "${local.prefix}-registry"
   description   = "Module management - registry and usage tracking"
   role          = aws_iam_role.lambda_mgmt.arn
   handler       = "lambda_function.lambda_handler"
@@ -213,7 +213,7 @@ resource "aws_lambda_alias" "lambda_mgmt" {
 resource "aws_cloudwatch_metric_alarm" "lambda_mgmt_errors" {
   count = var.sns_topic_arn != "" ? 1 : 0
 
-  alarm_name          = "${local.prefix}-errors"
+  alarm_name          = "${local.prefix}-registry-errors"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   metric_name         = "Errors"

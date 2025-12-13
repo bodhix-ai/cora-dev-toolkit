@@ -172,7 +172,7 @@ resource "aws_lambda_layer_version" "common_ai" {
 # =============================================================================
 
 resource "aws_lambda_function" "ai_config_handler" {
-  function_name = "${local.prefix}-ai-config-handler"
+  function_name = "${local.prefix}-config"
   description   = "AI Configuration management (platform and org-level settings)"
   role          = aws_iam_role.lambda.arn
   handler       = "lambda_function.lambda_handler"
@@ -277,7 +277,7 @@ resource "aws_cloudwatch_log_group" "provider" {
 resource "aws_cloudwatch_metric_alarm" "ai_config_handler_errors" {
   count = var.sns_topic_arn != "" ? 1 : 0
 
-  alarm_name          = "${local.prefix}-ai-config-handler-errors"
+  alarm_name          = "${local.prefix}-config-errors"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   metric_name         = "Errors"
