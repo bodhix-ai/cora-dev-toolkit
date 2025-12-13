@@ -18,12 +18,35 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # Configuration
 PROJECT_NAME="{{PROJECT_NAME}}"
-BUILD_DIR="$(pwd)/build"
-S3_BUCKET="${S3_BUCKET:-${PROJECT_NAME}-lambda-artifacts}"
-AWS_PROFILE="${AWS_PROFILE:-default}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+INFRA_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+BUILD_DIR="${INFRA_ROOT}/build"
+ENVIRONMENT="${1:-dev}"  # First positional arg: dev, tst, stg, prd
+
+# Environment-specific S3 bucket naming
+# Pattern: {project}-{env}-lambda-artifacts
+S3_BUCKET="${S3_BUCKET:-${PROJECT_NAME}-${ENVIRONMENT}-lambda-artifacts}"
+
+# Load AWS profile from .env if available
+if [ -f "${INFRA_ROOT}/.env" ]; then
+  source "${INFRA_ROOT}/.env"
+fi
+
+# Environment-specific AWS profile
+# dev/stg -> nonprod profile, prd -> prod profile
+if [ "${ENVIRONMENT}" = "prd" ]; then
+  AWS_PROFILE="${AWS_PROFILE:-${PROJECT_NAME}-prod}"
+else
+  AWS_PROFILE="${AWS_PROFILE:-${PROJECT_NAME}-nonprod}"
+fi
 AWS_REGION="${AWS_REGION:-us-east-1}"
 
-# Parse arguments
+# Shift off the environment arg if it was provided
+if [[ "${1:-}" =~ ^(dev|tst|stg|prd)$ ]]; then
+  shift
+fi
+
+# Parse remaining arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
     --bucket)
@@ -39,15 +62,24 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --help)
-      echo "Usage: $0 [--bucket <name>] [--profile <profile>] [--region <region>]"
+      echo "Usage: $0 [dev|tst|stg|prd] [--bucket <name>] [--profile <profile>] [--region <region>]"
       echo ""
-      echo "Deploy Lambda zip packages to S3"
+      echo "Deploy Lambda zip packages to S3 for a specific environment"
+      echo ""
+      echo "Arguments:"
+      echo "  dev|tst|stg|prd    Target environment (default: dev)"
       echo ""
       echo "Options:"
-      echo "  --bucket <name>    S3 bucket name (default: ${PROJECT_NAME}-lambda-artifacts)"
-      echo "  --profile <name>   AWS profile (default: \$AWS_PROFILE or 'default')"
+      echo "  --bucket <name>    S3 bucket name (default: ${PROJECT_NAME}-{env}-lambda-artifacts)"
+      echo "  --profile <name>   AWS profile (default: auto-detected from env)"
       echo "  --region <name>    AWS region (default: us-east-1)"
       echo "  --help             Show this help"
+      echo ""
+      echo "Examples:"
+      echo "  $0 dev             Deploy to dev environment"
+      echo "  $0 tst             Deploy to test environment"
+      echo "  $0 stg             Deploy to staging environment"
+      echo "  $0 prd             Deploy to production environment"
       exit 0
       ;;
     *)
@@ -61,9 +93,10 @@ echo "========================================"
 echo "  CORA Module Deploy (Zip-Based)"
 echo "========================================"
 echo ""
-log_info "Project:    ${PROJECT_NAME}"
-log_info "S3 Bucket:  ${S3_BUCKET}"
-log_info "AWS Region: ${AWS_REGION}"
+log_info "Project:     ${PROJECT_NAME}"
+log_info "Environment: ${ENVIRONMENT}"
+log_info "S3 Bucket:   ${S3_BUCKET}"
+log_info "AWS Region:  ${AWS_REGION}"
 log_info "AWS Profile: ${AWS_PROFILE}"
 echo ""
 

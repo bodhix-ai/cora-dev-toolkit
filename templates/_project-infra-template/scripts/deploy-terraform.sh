@@ -7,6 +7,19 @@
 
 set -e
 
+# --- Load .env file if exists ---
+SCRIPT_DIR_TEMP="$(cd "$(dirname "$0")" && pwd)"
+INFRA_ROOT_TEMP="$(cd "${SCRIPT_DIR_TEMP}/.." && pwd)"
+ENV_FILE="${INFRA_ROOT_TEMP}/.env"
+
+if [ -f "${ENV_FILE}" ]; then
+  echo "Loading configuration from ${ENV_FILE}"
+  # Export all variables from .env file
+  set -a
+  source "${ENV_FILE}"
+  set +a
+fi
+
 # --- Configuration ---
 ENVIRONMENT="${1:-dev}"
 AWS_PROFILE="${AWS_PROFILE:-default}"
@@ -32,7 +45,7 @@ Arguments:
   environment         Target environment (dev, stg, prd) - default: dev
 
 Options:
-  --auto-approve      Skip interactive approval
+  --no-auto-approve   Require interactive approval (default: auto-approve)
   --plan-only         Run terraform plan only (no apply)
   --help              Show this help message
 
@@ -41,23 +54,26 @@ Environment Variables:
   AWS_REGION          AWS region
 
 Examples:
-  $0 dev
-  $0 stg --auto-approve
-  $0 prd --plan-only
+  $0 dev                      # Auto-approve by default
+  $0 stg --no-auto-approve    # Require confirmation
+  $0 prd --plan-only          # Plan only, no apply
+
+Note: Auto-approve is enabled by default to increase efficiency.
+      Use --no-auto-approve to require interactive confirmation.
 
 EOF
 }
 
 # --- Parse Arguments ---
-AUTO_APPROVE=""
+AUTO_APPROVE="-auto-approve"  # Default to auto-approve (like pm-app-infra)
 PLAN_ONLY=false
 
 shift || true  # Skip first arg (environment)
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --auto-approve)
-      AUTO_APPROVE="-auto-approve"
+    --no-auto-approve)
+      AUTO_APPROVE=""
       shift
       ;;
     --plan-only)
@@ -163,3 +179,15 @@ echo "  Deployment Complete"
 echo "========================================"
 echo ""
 log_info "Environment ${ENVIRONMENT} deployed successfully"
+
+# --- Update Environment Files with Terraform Outputs ---
+UPDATE_ENV_SCRIPT="${SCRIPT_DIR}/update-env-from-terraform.sh"
+if [ -f "$UPDATE_ENV_SCRIPT" ]; then
+  echo ""
+  log_info "Updating environment files with Terraform outputs..."
+  chmod +x "$UPDATE_ENV_SCRIPT"
+  "$UPDATE_ENV_SCRIPT" "${ENVIRONMENT}"
+else
+  log_warn "update-env-from-terraform.sh not found. Skipping env file updates."
+  log_info "You can manually run: ./scripts/update-env-from-terraform.sh ${ENVIRONMENT}"
+fi
