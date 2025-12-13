@@ -4,12 +4,9 @@ IDP Configuration Lambda
 Manages Identity Provider (IDP) configurations for the platform.
 Only accessible to platform admins (super_admin, platform_owner, platform_admin, global_owner, global_admin).
 
-Endpoints:
-- GET /admin/idp-config - List all IDP configurations
-- GET /admin/idp-config/{provider_type} - Get specific IDP config
-- PUT /admin/idp-config/{provider_type} - Update IDP config
-- POST /admin/idp-config/{provider_type}/activate - Activate an IDP
-- GET /admin/idp-config/active - Get the currently active IDP
+Routes:
+- GET    /idp-config             - List all IDP configurations (or get active)
+- PUT    /idp-config             - Update IDP configuration
 
 Note: Client secrets are stored in AWS Secrets Manager, not in the database.
 """
@@ -157,7 +154,7 @@ def get_active_idp() -> Dict[str, Any]:
             .execute()
         
         if not result.data:
-            return success_response(None, message="No active IDP configured")
+            return success_response({"message": "No active IDP configured", "idp": None})
         
         return success_response(result.data)
         
