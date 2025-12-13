@@ -45,10 +45,31 @@ class LambdaParser:
     
     # Regex to parse route definitions from docstrings
     # Matches: - GET    /organizations/{orgId}/kb  - description
+    # Also matches: - GET    /orgs/:id  - description (Express-style params)
     DOCSTRING_ROUTE_PATTERN = re.compile(
         r'^\s*-\s+(GET|POST|PUT|PATCH|DELETE)\s+(/\S+)\s*(?:-.*)?$',
         re.IGNORECASE | re.MULTILINE
     )
+    
+    def _has_route_definitions(self, docstring: str) -> bool:
+        """
+        Check if a docstring contains route definitions.
+        
+        Looks for common indicators:
+        - 'Routes' or 'Endpoints' header
+        - Route format like '- GET /path'
+        """
+        if not docstring:
+            return False
+        return (
+            'Routes' in docstring or 
+            'Endpoints' in docstring or
+            '- GET' in docstring or 
+            '- POST' in docstring or
+            '- PUT' in docstring or
+            '- DELETE' in docstring or
+            '- PATCH' in docstring
+        )
     
     def __init__(self):
         """Initialize Lambda parser."""
@@ -127,18 +148,24 @@ class LambdaParser:
     
     def _parse_docstring_routes(self, tree: ast.AST, source: str) -> List[LambdaRoute]:
         """
-        Parse route definitions from module docstring.
+        Parse route definitions from module or lambda_handler function docstring.
         
         This handles the "dispatcher pattern" where Lambdas document their routes
-        in the module docstring rather than having explicit route matching code.
+        in docstrings rather than having explicit route matching code.
+        
+        Looks for routes in (priority order):
+        1. Module docstring (top of file)
+        2. lambda_handler function docstring
         
         Expected format in docstring:
-            Routes - Organization Scoped:
+            Routes:
             - GET    /organizations/{orgId}/kb           - List all KBs
             - POST   /organizations/{orgId}/kb           - Create new KB
             
-            Routes - Chat Scoped:
-            - GET    /chats/{chatId}/kb                  - Get chat KB
+            Or (with Endpoints header):
+            Endpoints:
+            - GET    /orgs           - List user's organizations
+            - GET    /orgs/:id       - Get organization details
         
         Args:
             tree: AST tree of the module
@@ -147,14 +174,24 @@ class LambdaParser:
         Returns:
             List of LambdaRoute objects extracted from docstring, or empty list
         """
-        # Get module docstring
+        # Try module docstring first
         docstring = ast.get_docstring(tree)
+        
+        # If no module docstring or no routes in it, try lambda_handler function docstring
+        if not docstring or not self._has_route_definitions(docstring):
+            # Find lambda_handler function
+            for node in ast.walk(tree):
+                if isinstance(node, ast.FunctionDef) and node.name in ['lambda_handler', 'handler']:
+                    func_docstring = ast.get_docstring(node)
+                    if func_docstring and self._has_route_definitions(func_docstring):
+                        docstring = func_docstring
+                        break
         
         if not docstring:
             return []
         
         # Check if docstring contains route definitions
-        if 'Routes' not in docstring and '- GET' not in docstring and '- POST' not in docstring:
+        if not self._has_route_definitions(docstring):
             return []
         
         routes = []
@@ -480,6 +517,8 @@ class LambdaParser:
         Example:
             if method == 'GET':
                 return handle_list()
+            if '/discover' in path and method == 'POST':
+                return handle_discover()
         
         Args:
             if_node: AST if statement node
@@ -487,6 +526,22 @@ class LambdaParser:
             source: Full source code
             explicit_path: Path from parent path equality check (if any)
         """
+        # Check for compound conditions: '/substring' in path and method == 'POST'
+        if isinstance(if_node.test, ast.BoolOp) and isinstance(if_node.test.op, ast.And):
+            compound_route = self._check_compound_routing(if_node.test, func_name, source)
+            if compound_route:
+                line = if_node.lineno
+                self.routes.append(LambdaRoute(
+                    file=self.current_file,
+                    line=line,
+                    handler_function=func_name,
+                    method=compound_route['method'],
+                    path=compound_route['path'],
+                    path_params=compound_route.get('path_params', []),
+                    source_code=ast.get_source_segment(source, if_node) if hasattr(ast, 'get_source_segment') else ""
+                ))
+                return
+        
         # Check if condition compares method variable
         if isinstance(if_node.test, ast.Compare):
             compare = if_node.test
@@ -524,6 +579,100 @@ class LambdaParser:
                     path=path,
                     source_code=ast.get_source_segment(source, if_node) if hasattr(ast, 'get_source_segment') else ""
                 ))
+    
+    def _check_compound_routing(self, bool_op: ast.BoolOp, func_name: str, source: str) -> Optional[Dict[str, Any]]:
+        """
+        Check for compound routing conditions like:
+            if '/discover' in path and http_method == 'POST':
+            if '/validate-models' in path and method == 'POST':
+        
+        Args:
+            bool_op: AST BoolOp node with And operator
+            func_name: Name of the handler function
+            source: Full source code
+            
+        Returns:
+            Dict with method and path if found, None otherwise
+        """
+        # Extract the two parts of the AND condition
+        if len(bool_op.values) != 2:
+            return None
+        
+        path_substring = None
+        method = None
+        
+        # Check each value in the AND condition
+        for value in bool_op.values:
+            # Check for substring match: '/discover' in path
+            if isinstance(value, ast.Compare):
+                if len(value.ops) == 1 and isinstance(value.ops[0], ast.In):
+                    # Check if comparing a string constant to a path variable
+                    if isinstance(value.left, ast.Constant):
+                        if isinstance(value.comparators[0], ast.Name):
+                            if value.comparators[0].id in ['path', 'route', 'request_path']:
+                                path_substring = value.left.value
+                
+                # Check for method equality: http_method == 'POST'
+                elif len(value.ops) == 1 and isinstance(value.ops[0], ast.Eq):
+                    if isinstance(value.left, ast.Name):
+                        if value.left.id in ['method', 'http_method']:
+                            if isinstance(value.comparators[0], ast.Constant):
+                                method = value.comparators[0].value
+        
+        # If we found both parts, construct the route
+        if path_substring and method:
+            # Infer the full path from the substring
+            # For example: '/discover' -> '/providers/{id}/discover'
+            full_path = self._infer_full_path_from_substring(path_substring, func_name)
+            
+            # Extract path parameters
+            path_params = self._extract_path_params(full_path)
+            
+            return {
+                'method': method.upper(),
+                'path': full_path,
+                'path_params': path_params
+            }
+        
+        return None
+    
+    def _infer_full_path_from_substring(self, substring: str, func_name: str) -> str:
+        """
+        Infer the full path from a substring match.
+        
+        Examples:
+            '/discover' -> '/providers/{id}/discover'
+            '/validate-models' -> '/providers/{id}/validate-models'
+            '/validation-status' -> '/providers/{id}/validation-status'
+            '/test' -> '/models/{id}/test'
+        
+        Args:
+            substring: Path substring being checked (e.g., '/discover')
+            func_name: Name of the handler function (for context)
+            
+        Returns:
+            Full inferred path with parameters
+        """
+        # Map common substrings to their full paths
+        # These are based on the provider Lambda pattern
+        substring_to_path = {
+            '/discover': '/providers/{id}/discover',
+            '/validate-models': '/providers/{id}/validate-models',
+            '/validation-status': '/providers/{id}/validation-status',
+            '/test': '/models/{id}/test',
+            '/activate': '/admin/idp-config/{providerType}/activate',
+        }
+        
+        # Check if we have a known mapping
+        if substring in substring_to_path:
+            return substring_to_path[substring]
+        
+        # If substring already looks like a full path, use it
+        if substring.count('/') >= 2:
+            return substring
+        
+        # Default: treat substring as the full path
+        return substring
     
     def _check_path_routing(self, if_node: ast.If, func_name: str, source: str):
         """
@@ -625,11 +774,17 @@ class LambdaParser:
         Normalize path for comparison.
         
         Ensures consistent path parameter format.
-        Converts regex patterns to normalized paths.
+        Converts:
+        - Express-style :param to {param}
+        - Regex patterns to normalized paths
         """
         # Ensure path starts with /
         if not path.startswith('/'):
             path = f"/{path}"
+        
+        # Convert Express-style :param to {param}
+        # e.g., /orgs/:id -> /orgs/{id}
+        path = re.sub(r':(\w+)', r'{\1}', path)
         
         # Convert regex patterns to normalized paths
         # e.g., /orgs/[^/]+/ai/config -> /orgs/{orgId}/ai/config
