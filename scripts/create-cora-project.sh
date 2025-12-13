@@ -464,7 +464,7 @@ generate_env_files() {
     log_info "Falling back to grep-based extraction..."
     
     # Fallback: grep-based extraction (less reliable)
-    SUPABASE_URL=$(grep -A1 "^supabase:" "$config_file" | grep "url:" | sed 's/.*url: *"\([^"]*\)".*/\1/' || echo "")
+    SUPABASE_URL=$(grep -A5 "^supabase:" "$config_file" | grep "url:" | sed 's/.*url: *"\([^"]*\)".*/\1/' || echo "")
     SUPABASE_ANON_KEY=$(grep "anon_key:" "$config_file" | sed 's/.*anon_key: *"\([^"]*\)".*/\1/' || echo "")
     SUPABASE_SERVICE_KEY=$(grep "service_role_key:" "$config_file" | sed 's/.*service_role_key: *"\([^"]*\)".*/\1/' || echo "")
     OKTA_DOMAIN=$(grep -A5 "^auth:" "$config_file" | grep "domain:" | sed 's/.*domain: *"\([^"]*\)".*/\1/' || echo "")
@@ -477,6 +477,10 @@ generate_env_files() {
     SUPABASE_DB_NAME=$(grep -A10 "db:" "$config_file" | grep "name:" | head -1 | sed 's/.*name: *"\([^"]*\)".*/\1/' || echo "postgres")
     SUPABASE_DB_USER=$(grep -A10 "db:" "$config_file" | grep "user:" | head -1 | sed 's/.*user: *"\([^"]*\)".*/\1/' || echo "")
     SUPABASE_DB_PASSWORD=$(grep -A10 "db:" "$config_file" | grep "password:" | head -1 | sed 's/.*password: *"\([^"]*\)".*/\1/' || echo "")
+    # AWS Configuration for API Gateway validation
+    AWS_CONFIG_PROFILE=$(grep -A5 "^aws:" "$config_file" | grep "profile:" | sed 's/.*profile: *"\([^"]*\)".*/\1/' || echo "")
+    AWS_API_GATEWAY_ID=$(grep -A10 "api_gateway:" "$config_file" | grep "id:" | sed 's/.*id: *"\([^"]*\)".*/\1/' || echo "")
+    AWS_API_GATEWAY_ENDPOINT=$(grep -A10 "api_gateway:" "$config_file" | grep "endpoint:" | sed 's/.*endpoint: *"\([^"]*\)".*/\1/' || echo "")
   else
     # Use yq for proper YAML parsing
     SUPABASE_URL=$(yq '.supabase.url' "$config_file")
@@ -492,6 +496,10 @@ generate_env_files() {
     SUPABASE_DB_NAME=$(yq '.supabase.db.name // "postgres"' "$config_file")
     SUPABASE_DB_USER=$(yq '.supabase.db.user' "$config_file")
     SUPABASE_DB_PASSWORD=$(yq '.supabase.db.password' "$config_file")
+    # AWS Configuration for API Gateway validation
+    AWS_CONFIG_PROFILE=$(yq '.aws.profile // ""' "$config_file")
+    AWS_API_GATEWAY_ID=$(yq '.aws.api_gateway.id // ""' "$config_file")
+    AWS_API_GATEWAY_ENDPOINT=$(yq '.aws.api_gateway.endpoint // ""' "$config_file")
   fi
   
   # Generate apps/web/.env
@@ -523,8 +531,8 @@ ENVEOF
   
   # Generate schema-validator .env (for validation tooling)
   # This includes direct PostgreSQL credentials for accurate schema introspection
-  mkdir -p "${stack_dir}/validation"
-  cat > "${stack_dir}/validation/.env" << ENVEOF
+  mkdir -p "${stack_dir}/scripts/validation"
+  cat > "${stack_dir}/scripts/validation/.env" << ENVEOF
 # =============================================================================
 # Schema Validator Credentials for ${PROJECT_NAME}
 # =============================================================================
@@ -542,11 +550,17 @@ SUPABASE_DB_PORT=${SUPABASE_DB_PORT}
 SUPABASE_DB_NAME=${SUPABASE_DB_NAME}
 SUPABASE_DB_USER=${SUPABASE_DB_USER}
 SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+
+# AWS Configuration (for API Gateway validation)
+AWS_REGION=${AWS_REGION}
+AWS_PROFILE=${AWS_CONFIG_PROFILE}
+API_GATEWAY_ID=${AWS_API_GATEWAY_ID}
+API_GATEWAY_ENDPOINT=${AWS_API_GATEWAY_ENDPOINT}
 ENVEOF
-  log_info "Created ${stack_dir}/validation/.env"
+  log_info "Created ${stack_dir}/scripts/validation/.env"
   
   # Also create a .env.example for reference (without actual credentials)
-  cat > "${stack_dir}/validation/.env.example" << ENVEOF
+  cat > "${stack_dir}/scripts/validation/.env.example" << ENVEOF
 # =============================================================================
 # Schema Validator Credentials Template
 # =============================================================================
@@ -562,8 +576,67 @@ SUPABASE_DB_PORT=6543
 SUPABASE_DB_NAME=postgres
 SUPABASE_DB_USER=postgres.your-project-ref
 SUPABASE_DB_PASSWORD=your-db-password
+
+# AWS Configuration (for API Gateway validation)
+AWS_REGION=us-east-1
+AWS_PROFILE=your-aws-profile-name
+API_GATEWAY_ID=your-api-gateway-id
+API_GATEWAY_ENDPOINT=https://your-api-id.execute-api.us-east-1.amazonaws.com
 ENVEOF
-  log_info "Created ${stack_dir}/validation/.env.example"
+  log_info "Created ${stack_dir}/scripts/validation/.env.example"
+}
+
+# --- Generate Infra .env ---
+generate_infra_env() {
+  local config_file="$1"
+  local infra_dir="$2"
+  
+  log_step "Generating .env file for infrastructure..."
+  
+  # Read AWS profile from config file if available
+  local aws_profile_value=""
+  if [[ -f "$config_file" ]]; then
+    if command -v yq &> /dev/null; then
+      aws_profile_value=$(yq '.aws.profile // ""' "$config_file")
+    else
+      aws_profile_value=$(grep -A5 "^aws:" "$config_file" | grep "profile:" | sed 's/.*profile: *"\([^"]*\)".*/\1/' || echo "")
+    fi
+  fi
+  
+  # Default to project-name-nonprod if not specified in config
+  # Don't use GITHUB_ORG as that's the org name, not the AWS profile
+  if [[ -z "$aws_profile_value" || "$aws_profile_value" == "null" ]]; then
+    aws_profile_value="${PROJECT_NAME}-nonprod"
+    log_warn "AWS profile not specified in config. Using default: ${aws_profile_value}"
+    log_info "Update aws.profile in setup.config.${PROJECT_NAME}.yaml to set the correct AWS profile."
+  fi
+  
+  # Create .env file in infra root
+  cat > "${infra_dir}/.env" << ENVEOF
+# =============================================================================
+# Infrastructure Environment Configuration for ${PROJECT_NAME}
+# =============================================================================
+# Generated by create-cora-project.sh
+# DO NOT COMMIT THIS FILE
+
+# AWS Configuration
+AWS_PROFILE=${aws_profile_value}
+AWS_REGION=${AWS_REGION}
+ENVEOF
+  log_info "Created ${infra_dir}/.env"
+  
+  # Also create .env.example
+  cat > "${infra_dir}/.env.example" << ENVEOF
+# =============================================================================
+# Infrastructure Environment Configuration Template
+# =============================================================================
+# Copy this file to .env and update with your values
+
+# AWS Configuration
+AWS_PROFILE=your-aws-profile-name
+AWS_REGION=us-east-1
+ENVEOF
+  log_info "Created ${infra_dir}/.env.example"
 }
 
 # --- Generate Terraform Variables ---
@@ -650,14 +723,33 @@ TFVARSEOF
   log_info "Created ${infra_dir}/envs/dev/local-secrets.tfvars"
 }
 
+# --- Copy Validation Scripts ---
+if ! $DRY_RUN; then
+  log_step "Copying validation scripts to stack repo..."
+  
+  # Create validation directory in stack repo
+  mkdir -p "${STACK_DIR}/scripts/validation"
+  
+  # Copy all validation tools from toolkit
+  if [[ -d "${TOOLKIT_ROOT}/validation" ]]; then
+    cp -r "${TOOLKIT_ROOT}/validation/"* "${STACK_DIR}/scripts/validation/"
+    log_info "Validation scripts copied to ${STACK_DIR}/scripts/validation/"
+  else
+    log_warn "Validation directory not found in toolkit: ${TOOLKIT_ROOT}/validation"
+  fi
+fi
+
 # Look for setup.config.{project}.yaml in stack dir and generate .env files
 if ! $DRY_RUN; then
   CONFIG_FILE="${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml"
   if [[ -f "$CONFIG_FILE" ]]; then
     generate_env_files "$CONFIG_FILE" "$STACK_DIR"
     generate_terraform_vars "$CONFIG_FILE" "$INFRA_DIR"
+    generate_infra_env "$CONFIG_FILE" "$INFRA_DIR"
   else
     log_info "No setup.config.${PROJECT_NAME}.yaml found. Copy setup.config.example.yaml to setup.config.${PROJECT_NAME}.yaml and re-run to generate .env and tfvars files."
+    # Generate minimal .env file for infra even without config
+    generate_infra_env "" "$INFRA_DIR"
   fi
 fi
 
