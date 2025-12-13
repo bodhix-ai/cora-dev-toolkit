@@ -132,8 +132,8 @@ export function createAIEnablementClient(
         const providers = Array.isArray(response)
           ? response
           : Array.isArray(response?.data)
-            ? response.data
-            : [];
+          ? response.data
+          : [];
 
         return {
           success: true,
@@ -198,10 +198,11 @@ export function createAIEnablementClient(
     },
 
     // Model discovery
-    discoverModels: async (providerId: string) => {
+    // Note: Parameter named 'id' to match API Gateway path parameter {id}
+    discoverModels: async (id: string) => {
       try {
         const responseData = await authenticatedClient.post(
-          `/providers/${providerId}/discover`
+          `/providers/${id}/discover`
         );
         // Transform the models in the response
         if (responseData.models) {
@@ -228,10 +229,11 @@ export function createAIEnablementClient(
     },
 
     // Model validation
-    validateModels: async (providerId: string) => {
+    // Note: Parameter named 'id' to match API Gateway path parameter {id}
+    validateModels: async (id: string) => {
       try {
         const responseData = await authenticatedClient.post(
-          `/providers/${providerId}/validate-models`
+          `/providers/${id}/validate-models`
         );
         return {
           success: true,
@@ -256,10 +258,11 @@ export function createAIEnablementClient(
     },
 
     // Get validation status
-    getValidationStatus: async (providerId: string) => {
+    // Note: Parameter named 'id' to match API Gateway path parameter {id}
+    getValidationStatus: async (id: string) => {
       try {
         const responseData = await authenticatedClient.get(
-          `/providers/${providerId}/validation-status`
+          `/providers/${id}/validation-status`
         );
         return {
           success: true,
@@ -300,8 +303,8 @@ export function createAIEnablementClient(
         const models = Array.isArray(response)
           ? response
           : Array.isArray(response?.data)
-            ? response.data
-            : [];
+          ? response.data
+          : [];
 
         return {
           success: true,

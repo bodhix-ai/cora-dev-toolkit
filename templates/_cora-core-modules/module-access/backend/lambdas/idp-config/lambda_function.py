@@ -5,8 +5,9 @@ Manages Identity Provider (IDP) configurations for the platform.
 Only accessible to platform admins (super_admin, platform_owner, platform_admin, global_owner, global_admin).
 
 Routes:
-- GET    /idp-config             - List all IDP configurations (or get active)
-- PUT    /idp-config             - Update IDP configuration
+- GET    /admin/idp-config                         - List all IDP configurations
+- PUT    /admin/idp-config/{providerType}          - Update IDP configuration
+- POST   /admin/idp-config/{providerType}/activate - Activate an IDP provider
 
 Note: Client secrets are stored in AWS Secrets Manager, not in the database.
 """

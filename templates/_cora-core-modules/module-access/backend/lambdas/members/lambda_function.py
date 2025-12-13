@@ -12,10 +12,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Handle organization membership operations
     
     Endpoints:
-    - GET    /orgs/:id/members           - List organization members
-    - POST   /orgs/:id/members           - Add member (invite)
-    - PUT    /orgs/:id/members/:memberId - Update member role
-    - DELETE /orgs/:id/members/:memberId - Remove member
+    - GET    /orgs/{orgId}/members              - List organization members
+    - POST   /orgs/{orgId}/members              - Add member (invite)
+    - PUT    /orgs/{orgId}/members/{memberId}   - Update member role
+    - DELETE /orgs/{orgId}/members/{memberId}   - Remove member
     
     Args:
         event: API Gateway event
