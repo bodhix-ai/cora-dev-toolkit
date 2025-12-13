@@ -1,5 +1,5 @@
 {
-  "name": "@${project}/shared-types",
+  "name": "@{{PROJECT_NAME}}/shared-types",
   "version": "1.0.0",
   "description": "Shared TypeScript type definitions for CORA modules",
   "main": "./src/index.ts",

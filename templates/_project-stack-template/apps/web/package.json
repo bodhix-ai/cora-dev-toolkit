@@ -1,5 +1,5 @@
 {
-  "name": "${project}-web",
+  "name": "{{PROJECT_NAME}}-web",
   "private": true,
   "scripts": {
     "dev": "next dev",
