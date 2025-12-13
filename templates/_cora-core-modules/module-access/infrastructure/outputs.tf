@@ -148,16 +148,22 @@ output "api_routes" {
       integration = aws_lambda_function.members.invoke_arn
       public      = false
     },
-    # idp-config endpoints
+    # idp-config endpoints (admin routes)
     {
       method      = "GET"
-      path        = "/idp-config"
+      path        = "/admin/idp-config"
       integration = aws_lambda_function.idp_config.invoke_arn
       public      = false
     },
     {
       method      = "PUT"
-      path        = "/idp-config"
+      path        = "/admin/idp-config/{providerType}"
+      integration = aws_lambda_function.idp_config.invoke_arn
+      public      = false
+    },
+    {
+      method      = "POST"
+      path        = "/admin/idp-config/{providerType}/activate"
       integration = aws_lambda_function.idp_config.invoke_arn
       public      = false
     }
