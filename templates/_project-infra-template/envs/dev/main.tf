@@ -129,23 +129,24 @@ resource "aws_cloudwatch_log_group" "authorizer" {
 # Each module exports api_routes that are provisioned in modular_api_gateway.
 #
 # Example:
-# module "module_access" {
-#   source = "../../../{{PROJECT_NAME}}-stack/packages/module-access/infrastructure"
-#
-#   project_name        = "{{PROJECT_NAME}}"
-#   environment         = "dev"
-#   module_name         = "access"
-#   supabase_secret_arn = module.secrets.supabase_secret_arn
-#   log_level           = var.log_level
-#
-#   common_tags = {
-#     Environment = "dev"
-#     Project     = "{{PROJECT_NAME}}"
-#     ManagedBy   = "terraform"
-#     Module      = "module-access"
-#     ModuleType  = "CORA"
-#   }
-# }
+module "module_access" {
+  source = "../../../{{PROJECT_NAME}}-stack/packages/module-access/infrastructure"
+
+  project_name        = "{{PROJECT_NAME}}"
+  environment         = "dev"
+  module_name         = "access"
+  lambda_bucket       = var.lambda_bucket
+  supabase_secret_arn = module.secrets.supabase_secret_arn
+  log_level           = var.log_level
+
+  common_tags = {
+    Environment = "dev"
+    Project     = "{{PROJECT_NAME}}"
+    ManagedBy   = "terraform"
+    Module      = "module-access"
+    ModuleType  = "CORA"
+  }
+}
 
 # ========================================================================
 # CORA Modular API Gateway

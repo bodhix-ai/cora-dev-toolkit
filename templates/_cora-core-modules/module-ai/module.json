@@ -1,45 +1,120 @@
 {
-  "name": "module-name",
+  "name": "module-ai",
   "version": "1.0.0",
-  "description": "Brief module description",
-  "author": "Your Team",
+  "description": "AI Configuration and Provider Management Module - Consolidated from ai-config-module and ai-enablement-module",
+  "author": "CORA Team",
   "license": "MIT",
 
   "dependencies": {
-    "modules": ["org-module"],
-    "packages": ["@supabase/supabase-js", "@okta/okta-react"]
+    "modules": ["module-access"],
+    "packages": ["@supabase/supabase-js", "boto3", "pydantic"],
+    "layers": ["org-common"]
+  },
+
+  "backend": {
+    "layers": [
+      {
+        "name": "common-ai",
+        "path": "backend/layers/common-ai",
+        "description": "Common AI utilities: models, types, validators",
+        "python_module": "ai_common"
+      }
+    ],
+    "lambdas": [
+      {
+        "name": "ai-config-handler",
+        "path": "backend/lambdas/ai-config-handler",
+        "description": "Platform and organization AI configuration management",
+        "handler": "lambda_function.lambda_handler",
+        "layers": ["common-ai", "org-common"]
+      },
+      {
+        "name": "provider",
+        "path": "backend/lambdas/provider",
+        "description": "AI Provider and Model management (CRUD, discovery, testing)",
+        "handler": "lambda_function.lambda_handler",
+        "layers": ["common-ai", "org-common"]
+      }
+    ]
   },
 
   "provides": {
     "database": {
       "schema": [
-        "db/schema/001-entity-table.sql",
-        "db/schema/002-apply-rls.sql"
+        "db/schema/001-ai-providers.sql",
+        "db/schema/002-ai-models.sql",
+        "db/schema/003-ai-validation-history.sql",
+        "db/schema/004-ai-validation-progress.sql",
+        "db/schema/005-ai-provider-model-summary-view.sql",
+        "db/schema/006-platform-rag.sql",
+        "db/schema/007-org-prompt-engineering.sql"
       ],
-      "tables": ["entity"],
+      "tables": [
+        "ai_providers",
+        "ai_models",
+        "ai_model_validation_history",
+        "ai_model_validation_progress",
+        "platform_rag",
+        "org_prompt_engineering"
+      ],
       "functions": []
     },
 
     "api": {
       "endpoints": [
-        "GET /api/module/entities",
-        "POST /api/module/entities",
-        "GET /api/module/entities/:id",
-        "PUT /api/module/entities/:id",
-        "DELETE /api/module/entities/:id"
+        "GET /admin/ai/config",
+        "PUT /admin/ai/config",
+        "GET /admin/ai/models",
+        "GET /orgs/{orgId}/ai/config",
+        "PUT /orgs/{orgId}/ai/config",
+        "GET /admin/rag/config",
+        "PUT /admin/rag/config",
+        "GET /admin/rag/providers",
+        "POST /admin/rag/providers/test",
+        "GET /admin/rag/providers/models",
+        "GET /providers",
+        "POST /providers",
+        "GET /providers/{id}",
+        "PUT /providers/{id}",
+        "DELETE /providers/{id}",
+        "POST /providers/{id}/discover",
+        "POST /providers/{id}/validate-models",
+        "GET /providers/{id}/validation-status",
+        "GET /models",
+        "GET /models/{id}",
+        "POST /models/{id}/test"
       ]
     },
 
     "frontend": {
-      "components": ["EntityList", "EntityCard", "EntityForm", "EntityDetails"],
-      "hooks": ["useEntity", "useEntityForm"],
-      "contexts": ["EntityContext"]
+      "components": [
+        "PlatformAIConfigPanel",
+        "OrgAIConfigPanel",
+        "ProviderList",
+        "ProviderCard",
+        "ProviderForm",
+        "ModelList",
+        "ModelCard",
+        "TestModelDialog",
+        "ViewModelsModal",
+        "ModelSelectionModal"
+      ],
+      "hooks": ["useAIConfig", "useProviders", "useModels", "useModuleData"],
+      "contexts": []
     }
   },
 
   "permissions": {
     "database": ["rds:ExecuteStatement"],
     "storage": [],
-    "external": []
+    "external": [
+      "bedrock:ListFoundationModels",
+      "bedrock:ListInferenceProfiles",
+      "bedrock:GetFoundationModel",
+      "bedrock:InvokeModel",
+      "bedrock:Converse",
+      "secretsmanager:GetSecretValue",
+      "ssm:GetParameter"
+    ]
   }
 }

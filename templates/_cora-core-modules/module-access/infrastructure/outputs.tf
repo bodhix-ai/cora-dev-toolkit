@@ -8,6 +8,7 @@ output "lambda_function_arns" {
   description = "ARNs of all Lambda functions in org-module"
   value = {
     identities_management = aws_lambda_function.identities_management.arn
+    idp_config            = aws_lambda_function.idp_config.arn
     profiles              = aws_lambda_function.profiles.arn
     orgs                  = aws_lambda_function.orgs.arn
     members               = aws_lambda_function.members.arn
@@ -18,6 +19,7 @@ output "lambda_function_names" {
   description = "Names of all Lambda functions in org-module"
   value = {
     identities_management = aws_lambda_function.identities_management.function_name
+    idp_config            = aws_lambda_function.idp_config.function_name
     profiles              = aws_lambda_function.profiles.function_name
     orgs                  = aws_lambda_function.orgs.function_name
     members               = aws_lambda_function.members.function_name
@@ -28,6 +30,7 @@ output "lambda_invoke_arns" {
   description = "Invoke ARNs for API Gateway integration"
   value = {
     identities_management = aws_lambda_function.identities_management.invoke_arn
+    idp_config            = aws_lambda_function.idp_config.invoke_arn
     profiles              = aws_lambda_function.profiles.invoke_arn
     orgs                  = aws_lambda_function.orgs.invoke_arn
     members               = aws_lambda_function.members.invoke_arn
@@ -143,6 +146,19 @@ output "api_routes" {
       method      = "DELETE"
       path        = "/orgs/{orgId}/members/{memberId}"
       integration = aws_lambda_function.members.invoke_arn
+      public      = false
+    },
+    # idp-config endpoints
+    {
+      method      = "GET"
+      path        = "/idp-config"
+      integration = aws_lambda_function.idp_config.invoke_arn
+      public      = false
+    },
+    {
+      method      = "PUT"
+      path        = "/idp-config"
+      integration = aws_lambda_function.idp_config.invoke_arn
       public      = false
     }
   ]

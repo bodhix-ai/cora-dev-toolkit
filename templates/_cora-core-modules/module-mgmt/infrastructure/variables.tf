@@ -1,3 +1,6 @@
+# Module Management Infrastructure - Input Variables
+# S3 Zip-Based Deployment Configuration
+
 variable "project_name" {
   description = "Project name prefix (e.g., '${project}')"
   type        = string
@@ -19,14 +22,34 @@ variable "module_name" {
   default     = "lambda-mgmt"
 }
 
-variable "lambda_image_uri" {
-  description = "Docker image URI for Lambda function from ECR"
+variable "aws_region" {
+  description = "AWS region for Lambda functions"
+  type        = string
+  default     = "us-east-1"
+}
+
+# =============================================================================
+# S3 Zip-Based Deployment Variables
+# =============================================================================
+
+variable "lambda_bucket" {
+  description = "S3 bucket name containing Lambda zip files and layers"
   type        = string
 }
+
+# =============================================================================
+# Secrets and Configuration
+# =============================================================================
 
 variable "supabase_secret_arn" {
   description = "ARN of Secrets Manager secret containing Supabase credentials"
   type        = string
+}
+
+variable "sns_topic_arn" {
+  description = "SNS topic ARN for CloudWatch alarms (optional)"
+  type        = string
+  default     = ""
 }
 
 variable "log_level" {

@@ -114,7 +114,7 @@ cd "${ENV_DIR}"
 
 # Initialize Terraform
 log_info "Initializing Terraform..."
-terraform init -reconfigure -backend-config=backend.hcl
+terraform init -reconfigure
 
 # Check for secrets file
 SECRETS_FILE="local-secrets.tfvars"
@@ -124,18 +124,35 @@ if [ -f "$SECRETS_FILE" ]; then
   VAR_FILES_ARG="-var-file=${SECRETS_FILE}"
 fi
 
-# Run Terraform plan
-log_info "Running Terraform plan..."
-terraform plan ${VAR_FILES_ARG} -out=tfplan
+# --- 2-Stage Deployment ---
+# Skip full plan as it will fail with "count depends on computed values" error
+# Instead, use targeted applies to deploy in stages
 
 if $PLAN_ONLY; then
-  log_info "Plan complete (--plan-only specified)"
+  log_info "Running Terraform plan (--plan-only specified)..."
+  log_info "Note: Full plan may fail with 'count depends on computed values' error"
+  log_info "Use without --plan-only for staged deployment"
+  terraform plan ${VAR_FILES_ARG}
   exit 0
 fi
+log_info "Deploying infrastructure in 2 stages to avoid dependency issues..."
+echo ""
 
-# Apply changes
-log_info "Applying Terraform changes..."
-terraform apply ${AUTO_APPROVE} tfplan
+# Stage 1: Deploy Lambda modules + Authorizer first
+log_info "Stage 1/2: Deploying Lambda functions and Authorizer..."
+terraform apply ${AUTO_APPROVE} ${VAR_FILES_ARG} \
+  -target=module.module_access \
+  -target=module.module_ai \
+  -target=module.module_mgmt \
+  -target=module.secrets \
+  -target=aws_lambda_function.authorizer \
+  -target=aws_cloudwatch_log_group.authorizer \
+  -target=aws_iam_role.authorizer \
+  -target=aws_iam_role_policy_attachment.authorizer_basic
+
+echo ""
+log_info "Stage 2/2: Deploying remaining resources (API Gateway, routes)..."
+terraform apply ${AUTO_APPROVE} ${VAR_FILES_ARG}
 
 # Cleanup plan file
 rm -f tfplan
