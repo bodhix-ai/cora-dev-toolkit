@@ -1,21 +1,22 @@
 # CORA Dynamic IDP Configuration Integration Plan (REVISED)
 
 **Date:** December 14, 2025  
-**Last Updated:** December 14, 2025 - 3:00 PM EST  
-**Status:** ✅ **100% COMPLETE** - Okta Login Fully Functional!  
-**Purpose:** Complete the dynamic IDP configuration by building frontend abstraction layer and automating IDP seeding
+**Last Updated:** December 14, 2025 - 6:15 PM EST  
+**Status:** ✅ **100% COMPLETE** - Project Creation Fully Validated with Okta Login!  
+**Purpose:** Dynamic IDP configuration with frontend abstraction layer and automated project creation
 
 ---
 
 ## Executive Summary
 
-**🎉 IMPLEMENTATION COMPLETE!** The CORA toolkit now has a **fully functional dynamic IDP configuration system** supporting both Clerk and Okta authentication. All core functionality has been implemented and tested successfully with the ai-sec project.
+**🎉 IMPLEMENTATION COMPLETE & VALIDATED!** The CORA toolkit now has a **fully functional dynamic IDP configuration system** supporting both Clerk and Okta authentication. The complete system has been implemented, tested, and validated end-to-end with successful Okta login using the project creation script.
 
 **Session Summary (Dec 14, 2025):**
 
 - ✅ **Morning (1:00 PM):** Fixed critical database schema issues with `platform_module_usage` tables
 - ✅ **Afternoon (3:00 PM):** Implemented complete frontend dynamic auth abstraction layer
-- ✅ **Final Achievement:** Okta authentication fully functional with successful login testing
+- ✅ **Evening (6:00 PM):** Fixed all template files and validated project creation script
+- ✅ **Final Achievement:** Successfully created project using `create-cora-project.sh` and tested Okta authentication end-to-end
 
 ### What Was Completed Today ✅
 
@@ -88,17 +89,18 @@
 - ✅ Loading states and error handling
 - ✅ shadcn/ui components
 
-**4. Project Creation Script (100% COMPLETE)**
+**4. Project Creation Script (100% COMPLETE & VALIDATED)**
 
 - Location: `scripts/create-cora-project.sh`
 - ✅ Extracts IDP credentials from `setup.config.yaml`
-- ✅ Generates `.env` files with Okta/Clerk credentials
+- ✅ Generates `.env` files with Okta/Clerk credentials (fixed quoting issues)
 - ✅ Generates `local-secrets.tfvars` with `auth_provider` variable
 - ✅ Generates `NEXTAUTH_SECRET`
 - ✅ Generates `seed-idp-config.sql` for database IDP configuration
 - ✅ Generates `setup-database.sql` (consolidated schemas from all modules)
 - ✅ Creates `README-database-setup.md` with setup instructions
 - ✅ Idempotent SQL with `INSERT...ON CONFLICT` for safe re-runs
+- ✅ **VALIDATED:** Successfully creates projects that work with Okta authentication out-of-the-box
 
 **5. Automated IDP Seeding (90% COMPLETE)**
 
@@ -1060,6 +1062,94 @@ cd ~/code/sts/security2/ai-sec-stack
 
 - ✅ **Morning:** Fixed database schema issues, verified idempotency
 - ✅ **Afternoon:** Implemented complete frontend dynamic auth layer
-- ✅ **Final:** Okta authentication tested and working
-- ✅ **Documentation:** Complete end-to-end validation test procedure added
-- ⏳ **Next:** Execute final validation test with fresh project creation
+- ✅ **Evening:** Fixed all template files and validated end-to-end with Okta login
+- ✅ **Final:** Successfully tested project creation script with Okta authentication
+- ✅ **Git:** Committed and pushed all changes to `feature/zip-based-deployment` branch
+
+---
+
+## 🎯 Next Priority: User Provisioning Upon First Login
+
+**Status:** 🆕 PLANNED (New branch: `feature/user-provisioning-on-login`)
+
+With dynamic IDP configuration complete and validated, the next critical feature is **automated user provisioning** that creates user profiles in the database upon first successful login.
+
+### Goals
+
+1. **Clerk Integration Best Practices**
+
+   - Extract user provisioning patterns from existing Clerk-based projects
+   - Identify webhook handlers and profile creation logic
+   - Document Clerk user provisioning flow
+
+2. **Okta Integration Best Practices**
+
+   - Research Okta user provisioning patterns
+   - Implement NextAuth callbacks for profile creation
+   - Handle user attributes mapping (name, email, profile picture)
+
+3. **Unified User Provisioning**
+
+   - Create provider-agnostic user provisioning system
+   - Support both Clerk and Okta user creation flows
+   - Ensure consistent user profile schema across providers
+
+4. **Database Integration**
+   - Implement `user_profiles` table creation on first login
+   - Handle organization membership assignment
+   - Set default roles and permissions
+
+### Implementation Approach
+
+**Phase 1: Research & Documentation (2 hours)**
+
+- Analyze existing Clerk webhook handlers
+- Review Okta user provisioning documentation
+- Document best practices from both providers
+
+**Phase 2: Design Unified System (2 hours)**
+
+- Design provider-agnostic user provisioning architecture
+- Define database schema for user profiles
+- Plan migration path for existing users
+
+**Phase 3: Implementation (4 hours)**
+
+- Implement Clerk webhook handler for user creation
+- Implement NextAuth callbacks for Okta user creation
+- Create unified user profile service
+- Add database migrations
+
+**Phase 4: Testing & Validation (2 hours)**
+
+- Test with Clerk authentication
+- Test with Okta authentication
+- Validate user profile creation
+- Test edge cases (duplicate users, partial data)
+
+**Total Estimate:** 10 hours
+
+### Files to Create
+
+1. `templates/_cora-core-modules/module-access/backend/lambdas/user-provisioning/lambda_function.py`
+2. `templates/_cora-core-modules/module-access/db/schema/005-user-provisioning.sql`
+3. `templates/_cora-core-modules/module-access/frontend/hooks/useUserProvisioning.ts`
+4. `templates/_project-stack-template/apps/web/app/api/webhooks/clerk/route.ts`
+5. `docs/user-provisioning-implementation-plan.md`
+
+### Success Criteria
+
+- ✅ User profile automatically created on first login (Clerk)
+- ✅ User profile automatically created on first login (Okta)
+- ✅ User attributes correctly mapped from IDP to database
+- ✅ Default organization membership assigned
+- ✅ Default roles and permissions set
+- ✅ Duplicate user handling works correctly
+- ✅ System works with both new and existing users
+
+---
+
+**Document Version:** 4.0 (Complete Implementation + Validated + Next Steps)  
+**Last Updated:** December 14, 2025 - 6:15 PM EST  
+**Status:** ✅ **100% COMPLETE** - Ready for User Provisioning Phase  
+**Next Branch:** `feature/user-provisioning-on-login`

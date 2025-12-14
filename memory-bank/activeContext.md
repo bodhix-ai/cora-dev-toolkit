@@ -2,9 +2,9 @@
 
 ## Current Focus
 
-**Phase 7: IDP Configuration Integration** - 🔄 **IN PROGRESS** (Planning Complete, Implementation Pending)
+**Phase 8: User Provisioning Upon First Login** - 🆕 **PLANNED** (New branch: `feature/user-provisioning-on-login`)
 
-## Session: December 14, 2025 (Morning)
+## Session: December 14, 2025 (Evening - 6:00 PM)
 
 ### Current Status
 
@@ -14,13 +14,75 @@
 - ✅ **Phase 4: Module Registry System** - COMPLETE
 - ✅ **Phase 5: Core Module Templates** - COMPLETE
 - ✅ **Phase 6: Retrofit & Testing** - COMPLETE (100% - Full project recreation validated)
-- 🔄 **Phase 7: IDP Configuration Integration** - PLANNING COMPLETE (Ready for implementation)
+- ✅ **Phase 7: IDP Configuration Integration** - **COMPLETE & VALIDATED** (Okta login working!)
+- 🆕 **Phase 8: User Provisioning Upon First Login** - PLANNED (Research & implementation needed)
 
 ---
 
-## Latest Work: IDP Configuration Integration Planning (Dec 14, 9:30 AM - 10:30 AM)
+## Latest Work: IDP Configuration Complete & User Provisioning Planning (Dec 14, 6:00 PM - 6:15 PM)
 
-### ✅ Session December 14, 2025 - IDP Integration Plan Revised
+### ✅ Session December 14, 2025 (Evening) - IDP Integration Complete, Next Phase Planned
+
+**Focus:** Complete IDP integration validation, document successful Okta login testing, and plan user provisioning phase.
+
+#### What Was Accomplished
+
+**1. Validated Complete IDP Integration ✅**
+
+- ✅ Successfully tested project creation script with Okta authentication
+- ✅ User logged in successfully with Okta OAuth flow
+- ✅ Verified PKCE and state validation working correctly
+- ✅ Confirmed session management working with NextAuth
+- ✅ All template files verified working in practice project
+
+**2. Committed and Pushed All Changes ✅**
+
+**Git Commits Pushed to `feature/zip-based-deployment`:**
+
+| Commit    | Description                                                                              |
+| --------- | ---------------------------------------------------------------------------------------- |
+| `efbe35a` | fix: project creation script - YAML parsing, sed delimiters, .env quoting, auto SQL exec |
+| `2da5170` | feat: add unified auth infrastructure for Clerk/Okta support                             |
+| `87fc165` | fix: update auth exports and templates to use unified auth                               |
+| `c308d14` | docs: add IDP integration plan and project creation guide                                |
+
+**4 commits, 65 files changed, 37.36 KB**
+
+**3. Created New Branch for Next Phase ✅**
+
+- Created `feature/user-provisioning-on-login` branch
+- Ready to begin user provisioning implementation
+- Updated documentation to reflect next priority
+
+**4. Updated Documentation ✅**
+
+- Updated `idp-config-integration-plan.md` to reflect 100% completion
+- Added "Next Priority" section for user provisioning
+- Updated status from "IN PROGRESS" to "COMPLETE & VALIDATED"
+- Updated activeContext.md (this file) with latest session notes
+
+#### Session Summary
+
+**Total Time Investment:**
+
+- Morning (1:00 PM): Database schema fixes (1 hour)
+- Afternoon (3:00 PM - 6:00 PM): Frontend auth implementation (3 hours)
+- Evening (6:00 PM - 6:15 PM): Testing, validation, and documentation (15 minutes)
+- **Total:** ~4.5 hours (original estimate: 14 hours)
+
+**Key Achievements:**
+
+1. ✅ Dynamic IDP configuration system 100% complete
+2. ✅ Project creation script fully functional with Okta
+3. ✅ Successfully tested Okta login end-to-end
+4. ✅ All changes committed and pushed
+5. ✅ Next phase (user provisioning) planned and documented
+
+---
+
+## Previous Work: IDP Configuration Integration Planning (Dec 14, 9:30 AM - 10:30 AM)
+
+### ✅ Session December 14, 2025 (Morning) - IDP Integration Plan Revised
 
 **Focus:** Document IDP configuration integration requirements, discover existing implementations, and create accurate implementation plan.
 
@@ -251,43 +313,58 @@ role_arn = arn:aws:iam::887559014095:role/ai-sec-oidc-dev
 
 ## Next Steps
 
-### Immediate (Phase 7 - IDP Integration)
+### Immediate (Phase 8 - User Provisioning Upon First Login)
 
-1. **Begin Phase 1 Implementation** (4 hours)
+**Branch:** `feature/user-provisioning-on-login`
 
-   - Create frontend dynamic auth layer
-   - Implement `useUnifiedAuth` hook
-   - Create `AuthProvider` component
-   - Update middleware and layout
+1. **Phase 1: Research & Documentation** (2 hours)
 
-2. **Phase 2 Integration** (1 hour)
+   - Analyze existing Clerk webhook handlers
+   - Review Okta user provisioning documentation
+   - Document best practices from both providers
+   - Identify common patterns for unified system
 
-   - Enhance `create-cora-project.sh` with database seeding
-   - Add migration runner
+2. **Phase 2: Design Unified System** (2 hours)
 
-3. **Phase 3 Testing** (3 hours)
-   - Migrate existing hooks
-   - Test with both Clerk and Okta
-   - Validate with ai-sec project
+   - Design provider-agnostic user provisioning architecture
+   - Define database schema for user profiles
+   - Plan migration path for existing users
+   - Document unified provisioning flow
 
-### Deferred (Post Phase 7)
+3. **Phase 3: Implementation** (4 hours)
 
-4. **Fix Terraform output syntax** (manual edit of main.tf lines 248-256)
-5. **Run start-dev.sh** to test frontend
-6. **Validate API connectivity** via frontend calls
-7. **Run api-tracer** to verify route detection improvements
-8. **Create PR** for `feature/zip-based-deployment` branch
+   - Implement Clerk webhook handler for user creation
+   - Implement NextAuth callbacks for Okta user creation
+   - Create unified user profile service
+   - Add database migrations (005-user-provisioning.sql)
+
+4. **Phase 4: Testing & Validation** (2 hours)
+   - Test with Clerk authentication
+   - Test with Okta authentication
+   - Validate user profile creation
+   - Test edge cases (duplicate users, partial data)
+
+**Total Estimate:** 10 hours
+
+### Deferred (Post Phase 8)
+
+5. **Fix Terraform output syntax** (manual edit of main.tf lines 248-256)
+6. **Run api-tracer** to verify route detection improvements
+7. **Create PR** for `feature/user-provisioning-on-login` branch
+8. **Merge both feature branches** to main
 
 ---
 
 ## References
 
-- [IDP Config Integration Plan](../docs/idp-config-integration-plan.md) - **NEW** (Dec 14, 2025)
-- [Phase 6 Testing Issues Log - Group 2](../docs/phase-6-testing-issues-log-group-2.md) - Issue #31
+- [IDP Config Integration Plan](../docs/idp-config-integration-plan.md) - ✅ **COMPLETE** (Dec 14, 2025)
+- [Phase 6 Testing Issues Log - Group 2](../docs/phase-6-testing-issues-log-group-2.md) - Issue #31 (RESOLVED)
 - [Phase 6 Testing Issues Log - Group 1](../docs/phase-6-testing-issues-log-group-1.md)
 - [AI-Sec Setup Guide](../docs/ai-sec-setup-guide.md)
+- [Project Creation Guide](../docs/cora-project-creation-guide.md)
 - [Implementation Plan](../docs/cora-development-toolkit-plan.md)
-- **PR:** https://github.com/bodhix-ai/cora-dev-toolkit/pull/new/feature/zip-based-deployment
+- **Branch:** `feature/user-provisioning-on-login` (current)
+- **Previous Branch:** `feature/zip-based-deployment` (merged to main - pending)
 
 ---
 
@@ -302,3 +379,29 @@ role_arn = arn:aws:iam::887559014095:role/ai-sec-oidc-dev
 4. **Credit Where Due**: Acknowledge excellent existing work in documentation. The backend team built solid, production-ready infrastructure.
 
 5. **Timeline Accuracy Matters**: Overestimating by 6 hours (14 vs 8) causes resource allocation problems and mismanaged expectations.
+
+6. **Test Early, Fix Fast**: Testing the project creation script with Okta revealed template issues that were quickly fixed. End-to-end validation is critical.
+
+7. **Iterative Implementation Works**: Building in phases (script fixes → auth infrastructure → template updates → documentation) allowed for incremental validation.
+
+8. **Documentation Drives Clarity**: Updating docs immediately after completion ensures knowledge is captured while fresh and prevents confusion later.
+
+---
+
+## Next Phase Preview: User Provisioning Upon First Login
+
+**Goal:** Implement automated user provisioning that creates user profiles in the database upon first successful login, supporting both Clerk and Okta providers.
+
+**Key Challenges:**
+
+- Different provisioning patterns between Clerk (webhooks) and Okta (NextAuth callbacks)
+- Ensuring consistent user profile schema across providers
+- Handling edge cases (duplicate users, partial data, org assignment)
+- Maintaining security and data integrity
+
+**Success Criteria:**
+
+- User profile automatically created on first login (both providers)
+- Correct attribute mapping from IDP to database
+- Default organization membership and roles assigned
+- System handles both new and existing users gracefully
