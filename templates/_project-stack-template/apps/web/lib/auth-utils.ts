@@ -1,19 +1,20 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useUnifiedAuth } from "module-access";
 import { useUserStore } from "@/store/userStore";
 
 /**
  * Token manager for handling authentication tokens
+ * Works with both Clerk and Okta authentication providers
  */
 export function useTokenManager() {
-  const { getToken } = useAuth();
+  const { getToken } = useUnifiedAuth();
 
   return {
     getValidToken: async () => {
       try {
-        const token = await getToken({ template: "policy-supabase" });
+        const token = await getToken();
         return token;
       } catch (error) {
         console.error("Failed to get token:", error);
@@ -25,11 +26,12 @@ export function useTokenManager() {
 
 /**
  * Hook to manage authentication state changes
+ * Works with both Clerk and Okta authentication providers
  */
 export function useAuthStateManager(
   onAuthChange: (isAuthenticated: boolean) => void
 ) {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn } = useUnifiedAuth();
   const previousAuthState = useRef(isSignedIn);
 
   useEffect(() => {
@@ -75,6 +77,7 @@ export async function performLogout(
 /**
  * React hook that provides a logout function
  * Usage: const logout = useLogout();
+ * Works with both Clerk and Okta authentication providers
  *
  * @returns An async function that performs logout
  *
@@ -92,7 +95,7 @@ export async function performLogout(
  * ```
  */
 export function useLogout() {
-  const { signOut } = useAuth();
+  const { signOut } = useUnifiedAuth();
   const { clearProfile } = useUserStore();
 
   return async () => {

@@ -106,6 +106,24 @@ fi
 # Change to repo root so the script can be run from anywhere
 cd "${REPO_ROOT}"
 
+# Check and install dependencies if needed
+check_and_install_dependencies() {
+  if [ ! -d "${REPO_ROOT}/node_modules" ]; then
+    echo "[start-dev] node_modules not found. Installing dependencies..."
+    pnpm install
+    if [ $? -ne 0 ]; then
+      echo "[start-dev] ERROR: Failed to install dependencies"
+      exit 1
+    fi
+    echo "[start-dev] ✅ Dependencies installed successfully"
+  else
+    echo "[start-dev] dependencies already installed"
+  fi
+}
+
+# Install dependencies if needed
+check_and_install_dependencies
+
 if [[ "${DO_BUILD}" == "true" ]]; then
   echo "[start-dev] running pnpm build..."
   pnpm build

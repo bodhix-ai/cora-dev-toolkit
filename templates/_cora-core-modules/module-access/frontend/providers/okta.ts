@@ -216,5 +216,13 @@ async function refreshOktaToken(token: OktaJWT): Promise<OktaJWT> {
 /**
  * Default NextAuth options for Okta
  * Use this in your [...nextauth]/route.ts
+ *
+ * Note: This should only be called server-side (in the NextAuth route).
+ * Do not export as a module-level constant as it will execute on client-side imports.
+ *
+ * Example usage:
+ * ```typescript
+ * import { createOktaAuthOptions } from 'module-access';
+ * const authOptions = createOktaAuthOptions();
+ * ```
  */
-export const oktaAuthOptions = createOktaAuthOptions();
