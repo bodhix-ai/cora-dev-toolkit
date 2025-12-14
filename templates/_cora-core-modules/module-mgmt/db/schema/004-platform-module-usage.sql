@@ -47,8 +47,25 @@ CREATE TABLE IF NOT EXISTS platform_module_usage (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
     -- Partitioning Support (for future time-based partitioning)
-    event_date DATE GENERATED ALWAYS AS (DATE(created_at)) STORED
+    event_date DATE
 );
+
+-- ============================================================================
+-- Trigger to auto-populate event_date
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION set_event_date()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.event_date := NEW.created_at::DATE;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE TRIGGER set_platform_module_usage_event_date
+    BEFORE INSERT ON platform_module_usage
+    FOR EACH ROW
+    EXECUTE FUNCTION set_event_date();
 
 -- ============================================================================
 -- Indexes for platform_module_usage
@@ -101,9 +118,7 @@ CREATE TABLE IF NOT EXISTS platform_module_usage_daily (
     failed_events INTEGER NOT NULL DEFAULT 0,
     unique_users INTEGER NOT NULL DEFAULT 0,
     total_duration_ms BIGINT DEFAULT 0,
-    avg_duration_ms INTEGER GENERATED ALWAYS AS (
-        CASE WHEN total_events > 0 THEN total_duration_ms / total_events ELSE 0 END
-    ) STORED,
+    avg_duration_ms INTEGER,
     
     -- Timestamps
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -147,7 +162,8 @@ BEGIN
         successful_events,
         failed_events,
         unique_users,
-        total_duration_ms
+        total_duration_ms,
+        avg_duration_ms
     )
     SELECT 
         module_id,
@@ -159,7 +175,8 @@ BEGIN
         COUNT(*) FILTER (WHERE status = 'success') as successful_events,
         COUNT(*) FILTER (WHERE status = 'failure') as failed_events,
         COUNT(DISTINCT user_id) as unique_users,
-        COALESCE(SUM(duration_ms), 0) as total_duration_ms
+        COALESCE(SUM(duration_ms), 0) as total_duration_ms,
+        CASE WHEN COUNT(*) > 0 THEN (COALESCE(SUM(duration_ms), 0) / COUNT(*))::INTEGER ELSE 0 END as avg_duration_ms
     FROM platform_module_usage
     WHERE event_date = p_date
     GROUP BY module_id, module_name, org_id, event_date, event_type
@@ -170,6 +187,7 @@ BEGIN
         failed_events = EXCLUDED.failed_events,
         unique_users = EXCLUDED.unique_users,
         total_duration_ms = EXCLUDED.total_duration_ms,
+        avg_duration_ms = EXCLUDED.avg_duration_ms,
         updated_at = CURRENT_TIMESTAMP;
     
     GET DIAGNOSTICS v_rows_affected = ROW_COUNT;
