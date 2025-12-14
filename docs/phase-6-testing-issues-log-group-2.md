@@ -902,4 +902,82 @@ Lambda handlers exist but no frontend calls found. These might be:
 
 ---
 
-**Last Updated:** December 13, 2025 - 12:05 PM EST
+## Issue #31: Dynamic IDP Configuration Support
+
+**Status:** 🆕 PLANNED  
+**Severity:** 🔴 **CRITICAL BLOCKER** (Users cannot log into projects created with cora-dev-toolkit)  
+**Location:** `templates/_cora-core-modules/module-access/` and project templates  
+**Priority:** **HIGHEST** - Blocking all authentication functionality
+
+### Problem Summary
+
+**CRITICAL IMPACT:** Projects created with `create-cora-project.sh` cannot authenticate users because the project template is hardcoded to Clerk, but production deployments typically use Okta or other enterprise identity providers. **Users cannot log in to newly created projects.**
+
+**Root Cause:** The project template baseline has hardcoded Clerk authentication:
+
+- `middleware.ts` uses `clerkMiddleware` only
+- `layout.tsx` wraps app in `ClerkProvider` only
+- All hooks import from `@clerk/nextjs` directly
+- No runtime provider selection mechanism exists
+- No flexibility for alternative identity providers (Okta, Auth0, etc.)
+
+**Impact:**
+
+- ❌ Projects created for organizations using Okta **cannot authenticate users**
+- ❌ `setup.config.yaml` specifies auth provider, but it's ignored during project creation
+- ❌ Manual migration required to switch from Clerk to Okta (error-prone, time-consuming)
+- ❌ Blocks automated project creation workflow entirely
+
+### Goal
+
+**Primary Goal:** Enable users to log into projects created with cora-dev-toolkit by implementing dynamic authentication provider selection.
+
+**Secondary Goals:**
+
+- Environment-based auth provider selection (Clerk or Okta via configuration)
+- Automatic IDP provisioning during project creation from `setup.config.yaml`
+- Zero manual migration effort to switch providers
+
+### Existing Infrastructure (80% Complete!)
+
+**Good News:** Most of the backend infrastructure already exists:
+
+- ✅ **Backend Lambda** - Full IDP config CRUD (`module-access/backend/lambdas/idp-config/`)
+- ✅ **Database Schema** - `platform_idp_config` table with RLS policies (`db/schema/004-idp-config.sql`)
+- ✅ **Admin UI** - React component to manage IDPs (`components/admin/IdpConfigCard.tsx`)
+- ✅ **Project Creation** - Extracts credentials from `setup.config.yaml` (80% done)
+
+**What's Missing (20%):**
+
+- ❌ Frontend dynamic auth abstraction layer (`useUnifiedAuth`, `AuthProvider`)
+- ❌ Database seeding during project creation
+- ❌ Hook migration to unified auth interface
+
+### Implementation Plan
+
+**Timeline:** 8 hours (reduced from original 14 hours estimate thanks to existing infrastructure)
+
+See: **[docs/idp-config-integration-plan.md](idp-config-integration-plan.md)** for complete implementation phases, checklists, and code examples.
+
+**Quick Summary:**
+
+1. **Phase 1:** Frontend Dynamic Auth Layer (4 hours) - Create `useUnifiedAuth`, `AuthProvider`, update middleware
+2. **Phase 2:** Project Creation Integration (1 hour) - Database seeding from `setup.config.yaml`
+3. **Phase 3:** Hook Migration & Testing (3 hours) - Migrate 7+ hooks, test both Clerk and Okta modes
+
+### Success Criteria (User Can Log In!)
+
+- ✅ **User can log into newly created project** (primary success metric)
+- ✅ App builds with no errors (TypeScript, ESLint)
+- ✅ IDP config automatically provisioned from `setup.config.XXX.yaml`
+- ✅ Both Clerk and Okta authentication work end-to-end
+- ✅ Switching providers requires only env var change (no code changes)
+- ✅ Project creation script automatically configures correct auth provider
+
+### Test Project
+
+Validate implementation with **ai-sec** project using `setup.config.ai-sec.yaml` (Okta authentication)
+
+---
+
+**Last Updated:** December 14, 2025 - 9:50 AM EST
