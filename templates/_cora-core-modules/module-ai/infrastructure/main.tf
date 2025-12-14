@@ -1,5 +1,6 @@
-# AI Enablement Module Infrastructure - Core Resources
-# Defines Lambda function, IAM role, and CloudWatch resources for ai-enablement-module
+# Module AI Infrastructure - Zip-Based Deployment
+# Defines Lambda functions, shared layer, IAM roles, and CloudWatch resources
+# Supports both ai-config-handler and provider Lambda functions with common-ai layer
 
 locals {
   # Resource naming prefix
@@ -8,6 +9,7 @@ locals {
   # Common Lambda configuration
   lambda_timeout     = 300  # 5 minutes (required for validating ~105 models)
   lambda_memory_size = 512
+  lambda_runtime     = "python3.11"
 
   # Merge common tags with module-specific tags
   tags = merge(var.common_tags, {
@@ -16,7 +18,7 @@ locals {
 }
 
 # =============================================================================
-# IAM Role for Lambda Function
+# IAM Role for Lambda Functions (shared by both lambdas)
 # =============================================================================
 
 resource "aws_iam_role" "lambda" {
@@ -64,7 +66,7 @@ resource "aws_iam_role_policy" "secrets" {
           "secretsmanager:GetSecretValue"
         ]
         Resource = [
-          "arn:aws:secretsmanager:${var.aws_region}:*:secret:/${project}/${var.environment}/ai-providers/*"
+          "arn:aws:secretsmanager:${var.aws_region}:*:secret:/${var.project_name}/${var.environment}/ai-providers/*"
         ]
       },
       {
@@ -73,7 +75,7 @@ resource "aws_iam_role_policy" "secrets" {
           "ssm:GetParameter"
         ]
         Resource = [
-          "arn:aws:ssm:${var.aws_region}:*:parameter/${project}/${var.environment}/ai-providers/*"
+          "arn:aws:ssm:${var.aws_region}:*:parameter/${var.project_name}/${var.environment}/ai-providers/*"
         ]
       }
     ]
@@ -92,6 +94,7 @@ resource "aws_iam_role_policy" "bedrock" {
         Effect = "Allow"
         Action = [
           "bedrock:ListFoundationModels",
+          "bedrock:ListInferenceProfiles",
           "bedrock:GetFoundationModel"
         ]
         Resource = "*"
@@ -99,9 +102,13 @@ resource "aws_iam_role_policy" "bedrock" {
       {
         Effect = "Allow"
         Action = [
-          "bedrock:InvokeModel"
+          "bedrock:InvokeModel",
+          "bedrock:Converse"
         ]
-        Resource = "arn:aws:bedrock:*::foundation-model/*"
+        Resource = [
+          "arn:aws:bedrock:*::foundation-model/*",
+          "arn:aws:bedrock:*:*:inference-profile/*"
+        ]
       }
     ]
   })
@@ -132,7 +139,7 @@ resource "aws_iam_role_policy" "lambda_invoke" {
 
 # AWS Bedrock provider credentials (uses IAM role authentication)
 resource "aws_ssm_parameter" "bedrock_credentials" {
-  name        = "/${project}/${var.environment}/ai-providers/aws-bedrock"
+  name        = "/${var.project_name}/${var.environment}/ai-providers/aws-bedrock"
   description = "AWS Bedrock provider credentials for AI Enablement"
   type        = "SecureString"
   value       = jsonencode({
@@ -144,18 +151,97 @@ resource "aws_ssm_parameter" "bedrock_credentials" {
 }
 
 # =============================================================================
+# Lambda Layer - common-ai (shared by both Lambda functions)
+# =============================================================================
+
+resource "aws_lambda_layer_version" "common_ai" {
+  layer_name          = "${local.prefix}-common-ai"
+  description         = "Common AI utilities: models, types, validators for module-ai"
+  s3_bucket           = var.lambda_bucket
+  s3_key              = "layers/common-ai-layer.zip"
+  compatible_runtimes = [local.lambda_runtime]
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# =============================================================================
+# Lambda Function - ai-config-handler
+# Handles platform and organization AI configuration management
+# =============================================================================
+
+resource "aws_lambda_function" "ai_config_handler" {
+  function_name = "${local.prefix}-config"
+  description   = "AI Configuration management (platform and org-level settings)"
+  role          = aws_iam_role.lambda.arn
+  handler       = "lambda_function.lambda_handler"
+  runtime       = local.lambda_runtime
+  timeout       = local.lambda_timeout
+  memory_size   = local.lambda_memory_size
+  publish       = true
+
+  # Zip-based deployment from S3
+  s3_bucket = var.lambda_bucket
+  s3_key    = "lambdas/ai-config-handler.zip"
+
+  # Attach shared layer
+  layers = [
+    aws_lambda_layer_version.common_ai.arn,
+    var.org_common_layer_arn  # From module-access
+  ]
+
+  environment {
+    variables = {
+      REGION              = var.aws_region
+      SUPABASE_SECRET_ARN = var.supabase_secret_arn
+      LOG_LEVEL           = var.log_level
+    }
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = local.tags
+}
+
+resource "aws_lambda_alias" "ai_config_handler" {
+  name             = "live"
+  function_name    = aws_lambda_function.ai_config_handler.function_name
+  function_version = aws_lambda_function.ai_config_handler.version
+}
+
+resource "aws_cloudwatch_log_group" "ai_config_handler" {
+  name              = "/aws/lambda/${aws_lambda_function.ai_config_handler.function_name}"
+  retention_in_days = 14
+  tags              = local.tags
+}
+
+# =============================================================================
 # Lambda Function - provider
+# Handles AI provider and model management (CRUD, discovery, testing)
 # =============================================================================
 
 resource "aws_lambda_function" "provider" {
   function_name = "${local.prefix}-provider"
   description   = "AI Provider and Model management (CRUD, discovery, testing)"
-  package_type  = "Image"
-  image_uri     = var.lambda_image_uri
   role          = aws_iam_role.lambda.arn
+  handler       = "lambda_function.lambda_handler"
+  runtime       = local.lambda_runtime
   timeout       = local.lambda_timeout
   memory_size   = local.lambda_memory_size
   publish       = true
+
+  # Zip-based deployment from S3
+  s3_bucket = var.lambda_bucket
+  s3_key    = "lambdas/provider.zip"
+
+  # Attach shared layer
+  layers = [
+    aws_lambda_layer_version.common_ai.arn,
+    var.org_common_layer_arn  # From module-access
+  ]
 
   environment {
     variables = {
@@ -187,6 +273,28 @@ resource "aws_cloudwatch_log_group" "provider" {
 # =============================================================================
 # CloudWatch Alarms (Optional - only if SNS topic provided)
 # =============================================================================
+
+resource "aws_cloudwatch_metric_alarm" "ai_config_handler_errors" {
+  count = var.sns_topic_arn != "" ? 1 : 0
+
+  alarm_name          = "${local.prefix}-config-errors"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "Errors"
+  namespace           = "AWS/Lambda"
+  period              = 300
+  statistic           = "Sum"
+  threshold           = 5
+  alarm_description   = "Alert when ai-config-handler Lambda has >5 errors in 5 minutes"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    FunctionName = aws_lambda_function.ai_config_handler.function_name
+  }
+
+  alarm_actions = [var.sns_topic_arn]
+  tags          = local.tags
+}
 
 resource "aws_cloudwatch_metric_alarm" "provider_errors" {
   count = var.sns_topic_arn != "" ? 1 : 0

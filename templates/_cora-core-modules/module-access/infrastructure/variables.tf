@@ -1,4 +1,5 @@
-# Org-Module Infrastructure - Input Variables
+# Module Access Infrastructure - Input Variables
+# S3 Zip-Based Deployment Configuration
 
 variable "project_name" {
   description = "Project name (used in resource naming prefix)"
@@ -27,6 +28,19 @@ variable "aws_region" {
   type        = string
   default     = "us-east-1"
 }
+
+# =============================================================================
+# S3 Zip-Based Deployment Variables
+# =============================================================================
+
+variable "lambda_bucket" {
+  description = "S3 bucket name containing Lambda zip files and layers"
+  type        = string
+}
+
+# =============================================================================
+# Secrets and Configuration
+# =============================================================================
 
 variable "supabase_secret_arn" {
   description = "ARN of Supabase credentials in AWS Secrets Manager"

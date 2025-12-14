@@ -15,7 +15,7 @@ import re
 from typing import Any, Dict, Optional
 
 import org_common as common
-from ai_config import (
+from ai_common import (
     PlatformAIConfig,
     OrgAIConfig,
     DeploymentCapability,

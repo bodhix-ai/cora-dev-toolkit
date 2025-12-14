@@ -17,6 +17,12 @@ project:
   description: "CORA-compliant application"
   organization: "{{ORGANIZATION_NAME}}" # GitHub organization
 
+# GitHub Repository Configuration
+github:
+  owner: "{{ORGANIZATION_NAME}}" # GitHub organization or username
+  repo_stack: "{{PROJECT_NAME}}-stack" # Stack repository name
+  repo_infra: "{{PROJECT_NAME}}-infra" # Infrastructure repository name
+
 # Environment Configuration
 # This file should be for ONE environment (dev, stg, or prd)
 environment: dev # dev | stg | prd
@@ -34,6 +40,10 @@ supabase:
 
   # Service Role Key - KEEP SECRET! Only for backend/Lambda use and schema deployment
   service_role_key: ""
+
+  # JWT Secret - KEEP SECRET! Used for JWT token generation
+  # Get from: Supabase Dashboard → Settings → API → JWT Secret
+  jwt_secret: ""
 
   # Direct PostgreSQL Database Connection
   # Required for: schema deployment, schema validation

@@ -32,8 +32,8 @@ CREATE TABLE IF NOT EXISTS platform_idp_config (
     -- Metadata
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by UUID REFERENCES profiles(id),
-    updated_by UUID REFERENCES profiles(id),
+    created_by UUID REFERENCES auth.users(id),
+    updated_by UUID REFERENCES auth.users(id),
     
     -- Constraints
     CONSTRAINT valid_provider_type CHECK (provider_type IN ('clerk', 'okta')),
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS platform_idp_audit_log (
     new_config JSONB,  -- New configuration (sensitive fields redacted)
     
     -- Who and when
-    performed_by UUID REFERENCES profiles(id),
+    performed_by UUID REFERENCES auth.users(id),
     performed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     
     -- Request context
@@ -150,7 +150,7 @@ CREATE POLICY idp_config_select_policy ON platform_idp_config
     USING (
         EXISTS (
             SELECT 1 FROM profiles p 
-            WHERE p.id = auth.uid() 
+            WHERE p.user_id = auth.uid() 
             AND p.global_role IN ('super_admin', 'platform_owner', 'platform_admin', 'global_owner', 'global_admin')
         )
     );
@@ -162,7 +162,7 @@ CREATE POLICY idp_config_insert_policy ON platform_idp_config
     WITH CHECK (
         EXISTS (
             SELECT 1 FROM profiles p 
-            WHERE p.id = auth.uid() 
+            WHERE p.user_id = auth.uid() 
             AND p.global_role IN ('super_admin', 'platform_owner', 'platform_admin', 'global_owner', 'global_admin')
         )
     );
@@ -174,14 +174,14 @@ CREATE POLICY idp_config_update_policy ON platform_idp_config
     USING (
         EXISTS (
             SELECT 1 FROM profiles p 
-            WHERE p.id = auth.uid() 
+            WHERE p.user_id = auth.uid() 
             AND p.global_role IN ('super_admin', 'platform_owner', 'platform_admin', 'global_owner', 'global_admin')
         )
     )
     WITH CHECK (
         EXISTS (
             SELECT 1 FROM profiles p 
-            WHERE p.id = auth.uid() 
+            WHERE p.user_id = auth.uid() 
             AND p.global_role IN ('super_admin', 'platform_owner', 'platform_admin', 'global_owner', 'global_admin')
         )
     );
@@ -193,7 +193,7 @@ CREATE POLICY idp_audit_select_policy ON platform_idp_audit_log
     USING (
         EXISTS (
             SELECT 1 FROM profiles p 
-            WHERE p.id = auth.uid() 
+            WHERE p.user_id = auth.uid() 
             AND p.global_role IN ('super_admin', 'platform_owner', 'platform_admin', 'global_owner', 'global_admin')
         )
     );

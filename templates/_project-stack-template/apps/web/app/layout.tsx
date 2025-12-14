@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
+import { AuthProvider } from "module-access";
 import ThemeRegistry from "../components/ThemeRegistry";
 import AppShell from "../components/AppShell";
 import ClientProviders from "../components/ClientProviders";
@@ -23,19 +23,14 @@ export default function RootLayout({
   return (
     <html lang="en" style={{ height: "100%" }}>
       <body style={{ margin: 0, height: "100%" }}>
-        <ClerkProvider
-          signInUrl="/sign-in"
-          signUpUrl="/sign-up"
-          signInFallbackRedirectUrl="/"
-          signUpFallbackRedirectUrl="/"
-        >
+        <AuthProvider>
           <ThemeRegistry>
             {/* Phase 1: Client-side providers (SessionProvider, OrgProvider, OrgStateSyncProvider) */}
             <ClientProviders>
               <AppShell>{children}</AppShell>
             </ClientProviders>
           </ThemeRegistry>
-        </ClerkProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -56,6 +56,27 @@ logger = logging.getLogger(__name__)
     help='Enable verbose debug logging'
 )
 @click.option(
+    '--aws-profile',
+    envvar='AWS_PROFILE',
+    help='AWS CLI profile name (or set AWS_PROFILE in .env)'
+)
+@click.option(
+    '--api-id',
+    envvar='API_GATEWAY_ID',
+    help='API Gateway ID (or set API_GATEWAY_ID in .env)'
+)
+@click.option(
+    '--aws-region',
+    envvar='AWS_REGION',
+    default='us-east-1',
+    help='AWS region (default: us-east-1)'
+)
+@click.option(
+    '--prefer-terraform',
+    is_flag=True,
+    help='Force Terraform parsing even if AWS available'
+)
+@click.option(
     '--frontend-only',
     is_flag=True,
     help='Parse frontend API calls only (testing)'
@@ -74,6 +95,10 @@ def validate(
     path: str, 
     output: str, 
     verbose: bool,
+    aws_profile: str,
+    api_id: str,
+    aws_region: str,
+    prefer_terraform: bool,
     frontend_only: bool,
     gateway_only: bool,
     lambda_only: bool
@@ -157,7 +182,15 @@ def validate(
         
         # Full validation (Session 7 implementation)
         logger.info(f"Validating API contracts for: {path}")
-        validator = FullStackValidator(frontend_parser, gateway_parser, lambda_parser)
+        validator = FullStackValidator(
+            frontend_parser, 
+            gateway_parser, 
+            lambda_parser,
+            aws_profile=aws_profile,
+            api_id=api_id,
+            aws_region=aws_region,
+            prefer_terraform=prefer_terraform
+        )
         report = validator.validate(path)
         
         # Format and output report

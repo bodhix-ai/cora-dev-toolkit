@@ -464,7 +464,8 @@ generate_env_files() {
     log_info "Falling back to grep-based extraction..."
     
     # Fallback: grep-based extraction (less reliable)
-    SUPABASE_URL=$(grep -A1 "^supabase:" "$config_file" | grep "url:" | sed 's/.*url: *"\([^"]*\)".*/\1/' || echo "")
+    AUTH_PROVIDER=$(grep "^auth_provider:" "$config_file" | sed 's/.*auth_provider: *"\([^"]*\)".*/\1/' || echo "okta")
+    SUPABASE_URL=$(grep -A5 "^supabase:" "$config_file" | grep "url:" | sed 's/.*url: *"\([^"]*\)".*/\1/' || echo "")
     SUPABASE_ANON_KEY=$(grep "anon_key:" "$config_file" | sed 's/.*anon_key: *"\([^"]*\)".*/\1/' || echo "")
     SUPABASE_SERVICE_KEY=$(grep "service_role_key:" "$config_file" | sed 's/.*service_role_key: *"\([^"]*\)".*/\1/' || echo "")
     OKTA_DOMAIN=$(grep -A5 "^auth:" "$config_file" | grep "domain:" | sed 's/.*domain: *"\([^"]*\)".*/\1/' || echo "")
@@ -477,8 +478,13 @@ generate_env_files() {
     SUPABASE_DB_NAME=$(grep -A10 "db:" "$config_file" | grep "name:" | head -1 | sed 's/.*name: *"\([^"]*\)".*/\1/' || echo "postgres")
     SUPABASE_DB_USER=$(grep -A10 "db:" "$config_file" | grep "user:" | head -1 | sed 's/.*user: *"\([^"]*\)".*/\1/' || echo "")
     SUPABASE_DB_PASSWORD=$(grep -A10 "db:" "$config_file" | grep "password:" | head -1 | sed 's/.*password: *"\([^"]*\)".*/\1/' || echo "")
+    # AWS Configuration for API Gateway validation
+    AWS_CONFIG_PROFILE=$(grep -A5 "^aws:" "$config_file" | grep "profile:" | sed 's/.*profile: *"\([^"]*\)".*/\1/' || echo "")
+    AWS_API_GATEWAY_ID=$(grep -A10 "api_gateway:" "$config_file" | grep "id:" | sed 's/.*id: *"\([^"]*\)".*/\1/' || echo "")
+    AWS_API_GATEWAY_ENDPOINT=$(grep -A10 "api_gateway:" "$config_file" | grep "endpoint:" | sed 's/.*endpoint: *"\([^"]*\)".*/\1/' || echo "")
   else
     # Use yq for proper YAML parsing
+    AUTH_PROVIDER=$(yq '.auth_provider // "okta"' "$config_file")
     SUPABASE_URL=$(yq '.supabase.url' "$config_file")
     SUPABASE_ANON_KEY=$(yq '.supabase.anon_key' "$config_file")
     SUPABASE_SERVICE_KEY=$(yq '.supabase.service_role_key' "$config_file")
@@ -492,6 +498,10 @@ generate_env_files() {
     SUPABASE_DB_NAME=$(yq '.supabase.db.name // "postgres"' "$config_file")
     SUPABASE_DB_USER=$(yq '.supabase.db.user' "$config_file")
     SUPABASE_DB_PASSWORD=$(yq '.supabase.db.password' "$config_file")
+    # AWS Configuration for API Gateway validation
+    AWS_CONFIG_PROFILE=$(yq '.aws.profile // ""' "$config_file")
+    AWS_API_GATEWAY_ID=$(yq '.aws.api_gateway.id // ""' "$config_file")
+    AWS_API_GATEWAY_ENDPOINT=$(yq '.aws.api_gateway.endpoint // ""' "$config_file")
   fi
   
   # Generate apps/web/.env
@@ -500,31 +510,34 @@ generate_env_files() {
 # Generated from setup.config.${PROJECT_NAME}.yaml
 # DO NOT COMMIT THIS FILE
 
+# Auth Provider Configuration
+NEXT_PUBLIC_AUTH_PROVIDER="${AUTH_PROVIDER}"
+
 # Supabase
-NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
-NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_KEY}
+NEXT_PUBLIC_SUPABASE_URL="${SUPABASE_URL}"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY}"
+SUPABASE_SERVICE_ROLE_KEY="${SUPABASE_SERVICE_KEY}"
 
 # Okta
-OKTA_DOMAIN=${OKTA_DOMAIN}
-OKTA_CLIENT_ID=${OKTA_CLIENT_ID}
-OKTA_CLIENT_SECRET=${OKTA_CLIENT_SECRET}
-OKTA_ISSUER=${OKTA_ISSUER}
+OKTA_DOMAIN="${OKTA_DOMAIN}"
+OKTA_CLIENT_ID="${OKTA_CLIENT_ID}"
+OKTA_CLIENT_SECRET="${OKTA_CLIENT_SECRET}"
+OKTA_ISSUER="${OKTA_ISSUER}"
 
 # NextAuth
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="${NEXTAUTH_SECRET}"
 
 # AWS
-AWS_REGION=${AWS_REGION}
+AWS_REGION="${AWS_REGION}"
 ENVEOF
     log_info "Created ${stack_dir}/apps/web/.env"
   fi
   
   # Generate schema-validator .env (for validation tooling)
   # This includes direct PostgreSQL credentials for accurate schema introspection
-  mkdir -p "${stack_dir}/validation"
-  cat > "${stack_dir}/validation/.env" << ENVEOF
+  mkdir -p "${stack_dir}/scripts/validation"
+  cat > "${stack_dir}/scripts/validation/.env" << ENVEOF
 # =============================================================================
 # Schema Validator Credentials for ${PROJECT_NAME}
 # =============================================================================
@@ -532,21 +545,27 @@ ENVEOF
 # DO NOT COMMIT THIS FILE
 
 # Supabase REST API Credentials
-SUPABASE_URL=${SUPABASE_URL}
-SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_KEY}
+SUPABASE_URL="${SUPABASE_URL}"
+SUPABASE_SERVICE_ROLE_KEY="${SUPABASE_SERVICE_KEY}"
 
 # Direct PostgreSQL Connection (for reliable schema introspection)
 # This is required for accurate column detection in empty tables
-SUPABASE_DB_HOST=${SUPABASE_DB_HOST}
-SUPABASE_DB_PORT=${SUPABASE_DB_PORT}
-SUPABASE_DB_NAME=${SUPABASE_DB_NAME}
-SUPABASE_DB_USER=${SUPABASE_DB_USER}
-SUPABASE_DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+SUPABASE_DB_HOST="${SUPABASE_DB_HOST}"
+SUPABASE_DB_PORT="${SUPABASE_DB_PORT}"
+SUPABASE_DB_NAME="${SUPABASE_DB_NAME}"
+SUPABASE_DB_USER="${SUPABASE_DB_USER}"
+SUPABASE_DB_PASSWORD="${SUPABASE_DB_PASSWORD}"
+
+# AWS Configuration (for API Gateway validation)
+AWS_REGION="${AWS_REGION}"
+AWS_PROFILE="${AWS_CONFIG_PROFILE}"
+API_GATEWAY_ID="${AWS_API_GATEWAY_ID}"
+API_GATEWAY_ENDPOINT="${AWS_API_GATEWAY_ENDPOINT}"
 ENVEOF
-  log_info "Created ${stack_dir}/validation/.env"
+  log_info "Created ${stack_dir}/scripts/validation/.env"
   
   # Also create a .env.example for reference (without actual credentials)
-  cat > "${stack_dir}/validation/.env.example" << ENVEOF
+  cat > "${stack_dir}/scripts/validation/.env.example" << ENVEOF
 # =============================================================================
 # Schema Validator Credentials Template
 # =============================================================================
@@ -562,17 +581,531 @@ SUPABASE_DB_PORT=6543
 SUPABASE_DB_NAME=postgres
 SUPABASE_DB_USER=postgres.your-project-ref
 SUPABASE_DB_PASSWORD=your-db-password
+
+# AWS Configuration (for API Gateway validation)
+AWS_REGION=us-east-1
+AWS_PROFILE=your-aws-profile-name
+API_GATEWAY_ID=your-api-gateway-id
+API_GATEWAY_ENDPOINT=https://your-api-id.execute-api.us-east-1.amazonaws.com
 ENVEOF
-  log_info "Created ${stack_dir}/validation/.env.example"
+  log_info "Created ${stack_dir}/scripts/validation/.env.example"
 }
+
+# --- Generate Infra .env ---
+generate_infra_env() {
+  local config_file="$1"
+  local infra_dir="$2"
+  
+  log_step "Generating .env file for infrastructure..."
+  
+  # Read AWS profile from config file if available
+  local aws_profile_value=""
+  if [[ -f "$config_file" ]]; then
+    if command -v yq &> /dev/null; then
+      aws_profile_value=$(yq '.aws.profile // ""' "$config_file")
+    else
+      aws_profile_value=$(grep -A5 "^aws:" "$config_file" | grep "profile:" | sed 's/.*profile: *"\([^"]*\)".*/\1/' || echo "")
+    fi
+  fi
+  
+  # Default to project-name-nonprod if not specified in config
+  # Don't use GITHUB_ORG as that's the org name, not the AWS profile
+  if [[ -z "$aws_profile_value" || "$aws_profile_value" == "null" ]]; then
+    aws_profile_value="${PROJECT_NAME}-nonprod"
+    log_warn "AWS profile not specified in config. Using default: ${aws_profile_value}"
+    log_info "Update aws.profile in setup.config.${PROJECT_NAME}.yaml to set the correct AWS profile."
+  fi
+  
+  # Create .env file in infra root
+  cat > "${infra_dir}/.env" << ENVEOF
+# =============================================================================
+# Infrastructure Environment Configuration for ${PROJECT_NAME}
+# =============================================================================
+# Generated by create-cora-project.sh
+# DO NOT COMMIT THIS FILE
+
+# AWS Configuration
+AWS_PROFILE=${aws_profile_value}
+AWS_REGION=${AWS_REGION}
+ENVEOF
+  log_info "Created ${infra_dir}/.env"
+  
+  # Also create .env.example
+  cat > "${infra_dir}/.env.example" << ENVEOF
+# =============================================================================
+# Infrastructure Environment Configuration Template
+# =============================================================================
+# Copy this file to .env and update with your values
+
+# AWS Configuration
+AWS_PROFILE=your-aws-profile-name
+AWS_REGION=us-east-1
+ENVEOF
+  log_info "Created ${infra_dir}/.env.example"
+}
+
+# --- Generate Terraform Variables ---
+generate_terraform_vars() {
+  local config_file="$1"
+  local infra_dir="$2"
+  
+  if [[ ! -f "$config_file" ]]; then
+    log_warn "Config file not found: $config_file"
+    log_info "Skipping local-secrets.tfvars generation."
+    return
+  fi
+  
+  log_step "Generating local-secrets.tfvars from ${config_file}..."
+  
+  # Check if yq is available
+  if ! command -v yq &> /dev/null; then
+    log_warn "yq not found. Install with: brew install yq"
+    log_info "Falling back to grep-based extraction..."
+    
+    # Fallback: grep-based extraction
+    GITHUB_OWNER=$(grep -A2 "^github:" "$config_file" | grep "owner:" | sed 's/.*owner: *"\([^"]*\)".*/\1/' || echo "")
+    GITHUB_REPO=$(grep -A2 "^github:" "$config_file" | grep "repo_infra:" | sed 's/.*repo_infra: *"\([^"]*\)".*/\1/' || echo "")
+    SUPABASE_URL=$(grep -A10 "^supabase:" "$config_file" | grep "url:" | sed 's/.*url: *"\([^"]*\)".*/\1/' || echo "")
+    SUPABASE_ANON_KEY=$(grep "anon_key:" "$config_file" | sed 's/.*anon_key: *"\([^"]*\)".*/\1/' || echo "")
+    SUPABASE_SERVICE_KEY=$(grep "service_role_key:" "$config_file" | sed 's/.*service_role_key: *"\([^"]*\)".*/\1/' || echo "")
+    SUPABASE_JWT_SECRET=$(grep -A10 "^supabase:" "$config_file" | grep "jwt_secret:" | sed 's/.*jwt_secret: *"\([^"]*\)".*/\1/' || echo "")
+    AUTH_PROVIDER=$(grep "^auth_provider:" "$config_file" | sed 's/.*auth_provider: *"\([^"]*\)".*/\1/' || echo "okta")
+    OKTA_DOMAIN=$(grep -A5 "^okta:" "$config_file" | grep "domain:" | sed 's/.*domain: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_CLIENT_ID=$(grep -A5 "^okta:" "$config_file" | grep "client_id:" | sed 's/.*client_id: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_CLIENT_SECRET=$(grep -A5 "^okta:" "$config_file" | grep "client_secret:" | sed 's/.*client_secret: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_ISSUER=$(grep -A5 "^okta:" "$config_file" | grep "issuer:" | sed 's/.*issuer: *"\([^"]*\)".*/\1/' || echo "")
+    CLERK_PUBLISHABLE_KEY=$(grep -A5 "^clerk:" "$config_file" | grep "publishable_key:" | sed 's/.*publishable_key: *"\([^"]*\)".*/\1/' || echo "")
+    CLERK_SECRET_KEY=$(grep -A5 "^clerk:" "$config_file" | grep "secret_key:" | sed 's/.*secret_key: *"\([^"]*\)".*/\1/' || echo "")
+  else
+    # Use yq for proper YAML parsing
+    GITHUB_OWNER=$(yq '.github.owner' "$config_file")
+    GITHUB_REPO=$(yq '.github.repo_infra' "$config_file")
+    SUPABASE_URL=$(yq '.supabase.url' "$config_file")
+    SUPABASE_ANON_KEY=$(yq '.supabase.anon_key' "$config_file")
+    SUPABASE_SERVICE_KEY=$(yq '.supabase.service_role_key' "$config_file")
+    SUPABASE_JWT_SECRET=$(yq '.supabase.jwt_secret' "$config_file")
+    AUTH_PROVIDER=$(yq '.auth_provider // "okta"' "$config_file")
+    OKTA_DOMAIN=$(yq '.okta.domain' "$config_file")
+    OKTA_CLIENT_ID=$(yq '.okta.client_id' "$config_file")
+    OKTA_CLIENT_SECRET=$(yq '.okta.client_secret' "$config_file")
+    OKTA_ISSUER=$(yq '.okta.issuer' "$config_file")
+    CLERK_PUBLISHABLE_KEY=$(yq '.clerk.publishable_key' "$config_file")
+    CLERK_SECRET_KEY=$(yq '.clerk.secret_key' "$config_file")
+  fi
+  
+  # Generate local-secrets.tfvars in HCL format
+  cat > "${infra_dir}/envs/dev/local-secrets.tfvars" << TFVARSEOF
+# =============================================================================
+# Terraform Variables for ${PROJECT_NAME}
+# =============================================================================
+# Generated from setup.config.${PROJECT_NAME}.yaml
+# DO NOT COMMIT THIS FILE
+
+# GitHub Configuration
+github_owner = "${GITHUB_OWNER}"
+github_repo  = "${GITHUB_REPO}"
+
+# Supabase Credentials
+supabase_url                    = "${SUPABASE_URL}"
+supabase_anon_key_value         = "${SUPABASE_ANON_KEY}"
+supabase_service_role_key_value = "${SUPABASE_SERVICE_KEY}"
+supabase_jwt_secret_value       = "${SUPABASE_JWT_SECRET}"
+
+# Authentication Provider
+auth_provider = "${AUTH_PROVIDER}"
+
+# Okta Configuration (when auth_provider = "okta")
+okta_issuer = "${OKTA_ISSUER}"
+okta_audience = "${OKTA_CLIENT_ID}"
+
+# Clerk Configuration (when auth_provider = "clerk")
+clerk_secret_key_value = "${CLERK_SECRET_KEY}"
+clerk_jwt_issuer = "${CLERK_PUBLISHABLE_KEY}"
+clerk_jwt_audience = ""
+clerk_jwks_url = ""
+TFVARSEOF
+  
+  log_info "Created ${infra_dir}/envs/dev/local-secrets.tfvars"
+}
+
+# --- Consolidate Database Schemas ---
+consolidate_database_schemas() {
+  local stack_dir="$1"
+  
+  log_step "Consolidating database schemas from all modules..."
+  
+  # Create scripts directory
+  mkdir -p "${stack_dir}/scripts"
+  
+  # Check if packages directory exists
+  if [[ ! -d "${stack_dir}/packages" ]]; then
+    log_warn "Packages directory not found: ${stack_dir}/packages"
+    return
+  fi
+  
+  # Find all schema files from modules (simpler approach)
+  local schema_files=()
+  while IFS= read -r schema_file; do
+    [[ -n "$schema_file" ]] && schema_files+=("$schema_file")
+  done < <(find "${stack_dir}/packages" -path "*/db/schema/*.sql" -type f 2>/dev/null | sort)
+  
+  if [[ ${#schema_files[@]} -eq 0 ]]; then
+    log_warn "No database schema files found in modules"
+    log_info "Checked: ${stack_dir}/packages/*/db/schema/*.sql"
+    return
+  fi
+  
+  log_info "Found ${#schema_files[@]} schema files"
+  
+  # Create consolidated setup-database.sql
+  cat > "${stack_dir}/scripts/setup-database.sql" << 'SQLHEADER'
+-- =============================================================================
+-- CORA Database Setup Script
+-- =============================================================================
+-- This file consolidates all database schemas from CORA modules.
+-- It is idempotent and safe to run multiple times.
+--
+-- Generated by: create-cora-project.sh
+-- =============================================================================
+
+-- Enable required extensions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+SQLHEADER
+  
+  # Append each schema file
+  for schema_file in "${schema_files[@]}"; do
+    local module_name=$(basename "$(dirname "$(dirname "$(dirname "$schema_file")")")")
+    local schema_name=$(basename "$schema_file")
+    
+    echo "" >> "${stack_dir}/scripts/setup-database.sql"
+    echo "-- =============================================================================" >> "${stack_dir}/scripts/setup-database.sql"
+    echo "-- Module: ${module_name}" >> "${stack_dir}/scripts/setup-database.sql"
+    echo "-- Schema: ${schema_name}" >> "${stack_dir}/scripts/setup-database.sql"
+    echo "-- =============================================================================" >> "${stack_dir}/scripts/setup-database.sql"
+    echo "" >> "${stack_dir}/scripts/setup-database.sql"
+    
+    cat "$schema_file" >> "${stack_dir}/scripts/setup-database.sql"
+    
+    log_info "  Added ${module_name}/${schema_name}"
+  done
+  
+  log_info "Created consolidated ${stack_dir}/scripts/setup-database.sql"
+}
+
+# --- Seed IDP Configuration ---
+seed_idp_config() {
+  local config_file="$1"
+  local stack_dir="$2"
+  
+  if [[ ! -f "$config_file" ]]; then
+    log_warn "Config file not found: $config_file"
+    log_info "Skipping IDP configuration seeding."
+    return
+  fi
+  
+  log_step "Generating IDP configuration seed file from ${config_file}..."
+  
+  # Extract auth provider and credentials
+  local auth_provider=""
+  local okta_client_id=""
+  local okta_issuer=""
+  local clerk_publishable_key=""
+  local clerk_issuer=""
+  
+  if command -v yq &> /dev/null; then
+    auth_provider=$(yq '.auth_provider // "okta"' "$config_file")
+    okta_client_id=$(yq '.auth.okta.client_id // ""' "$config_file")
+    okta_issuer=$(yq '.auth.okta.issuer // ""' "$config_file")
+    clerk_publishable_key=$(yq '.clerk.publishable_key // ""' "$config_file")
+    clerk_issuer=$(yq '.clerk.issuer // ""' "$config_file")
+  else
+    # Fallback to grep (look for okta under auth section)
+    auth_provider=$(grep "^auth_provider:" "$config_file" | sed 's/.*auth_provider: *"\([^"]*\)".*/\1/' || echo "okta")
+    okta_client_id=$(grep -A10 "okta:" "$config_file" | grep "client_id:" | head -1 | sed 's/.*client_id: *"\([^"]*\)".*/\1/' || echo "")
+    okta_issuer=$(grep -A10 "okta:" "$config_file" | grep "issuer:" | head -1 | sed 's/.*issuer: *"\([^"]*\)".*/\1/' || echo "")
+    clerk_publishable_key=$(grep -A5 "^clerk:" "$config_file" | grep "publishable_key:" | sed 's/.*publishable_key: *"\([^"]*\)".*/\1/' || echo "")
+    clerk_issuer=$(grep -A5 "^clerk:" "$config_file" | grep "issuer:" | sed 's/.*issuer: *"\([^"]*\)".*/\1/' || echo "")
+  fi
+  
+  # Create scripts directory if it doesn't exist
+  mkdir -p "${stack_dir}/scripts"
+  
+  # Generate SQL seed file based on auth provider (using INSERT...ON CONFLICT for idempotency)
+  if [[ "$auth_provider" == "okta" ]]; then
+    cat > "${stack_dir}/scripts/seed-idp-config.sql" << 'SQLEOF'
+-- Seed Okta IDP Configuration
+-- Generated by create-cora-project.sh
+-- This configures Okta as the active identity provider
+-- Idempotent: Safe to run multiple times
+
+-- Configure Okta provider
+INSERT INTO platform_idp_config (provider_type, display_name, config, is_configured, is_active)
+VALUES (
+  'okta',
+  'Okta',
+  jsonb_build_object(
+    'client_id', '${OKTA_CLIENT_ID}',
+    'issuer', '${OKTA_ISSUER}'
+  ),
+  true,
+  true
+)
+ON CONFLICT (provider_type) 
+DO UPDATE SET
+  config = EXCLUDED.config,
+  is_configured = true,
+  is_active = true,
+  updated_at = NOW();
+
+-- Deactivate other providers
+UPDATE platform_idp_config
+SET is_active = false, updated_at = NOW()
+WHERE provider_type != 'okta';
+SQLEOF
+    
+    # Replace placeholders in SQL file (using | as delimiter to avoid conflicts with URLs)
+    sed -i '' "s|\${OKTA_CLIENT_ID}|${okta_client_id}|g" "${stack_dir}/scripts/seed-idp-config.sql" 2>/dev/null || \
+    sed -i "s|\${OKTA_CLIENT_ID}|${okta_client_id}|g" "${stack_dir}/scripts/seed-idp-config.sql"
+    
+    sed -i '' "s|\${OKTA_ISSUER}|${okta_issuer}|g" "${stack_dir}/scripts/seed-idp-config.sql" 2>/dev/null || \
+    sed -i "s|\${OKTA_ISSUER}|${okta_issuer}|g" "${stack_dir}/scripts/seed-idp-config.sql"
+    
+    log_info "Created seed-idp-config.sql for Okta"
+    
+  elif [[ "$auth_provider" == "clerk" ]]; then
+    cat > "${stack_dir}/scripts/seed-idp-config.sql" << 'SQLEOF'
+-- Seed Clerk IDP Configuration
+-- Generated by create-cora-project.sh
+-- This configures Clerk as the active identity provider
+-- Idempotent: Safe to run multiple times
+
+-- Configure Clerk provider
+INSERT INTO platform_idp_config (provider_type, display_name, config, is_configured, is_active)
+VALUES (
+  'clerk',
+  'Clerk',
+  jsonb_build_object(
+    'publishable_key', '${CLERK_PUBLISHABLE_KEY}',
+    'issuer', '${CLERK_ISSUER}'
+  ),
+  true,
+  true
+)
+ON CONFLICT (provider_type) 
+DO UPDATE SET
+  config = EXCLUDED.config,
+  is_configured = true,
+  is_active = true,
+  updated_at = NOW();
+
+-- Deactivate other providers
+UPDATE platform_idp_config
+SET is_active = false, updated_at = NOW()
+WHERE provider_type != 'clerk';
+SQLEOF
+    
+    # Replace placeholders in SQL file (using | as delimiter to avoid conflicts with URLs)
+    sed -i '' "s|\${CLERK_PUBLISHABLE_KEY}|${clerk_publishable_key}|g" "${stack_dir}/scripts/seed-idp-config.sql" 2>/dev/null || \
+    sed -i "s|\${CLERK_PUBLISHABLE_KEY}|${clerk_publishable_key}|g" "${stack_dir}/scripts/seed-idp-config.sql"
+    
+    sed -i '' "s|\${CLERK_ISSUER}|${clerk_issuer}|g" "${stack_dir}/scripts/seed-idp-config.sql" 2>/dev/null || \
+    sed -i "s|\${CLERK_ISSUER}|${clerk_issuer}|g" "${stack_dir}/scripts/seed-idp-config.sql"
+    
+    log_info "Created seed-idp-config.sql for Clerk"
+  else
+    log_warn "Unknown auth provider: ${auth_provider}. Skipping IDP seed file generation."
+    return
+  fi
+  
+  # Create README with instructions
+  cat > "${stack_dir}/scripts/README-database-setup.md" << 'READMEEOF'
+# Database Setup Instructions
+
+This directory contains database setup and seed scripts for your CORA project.
+
+## Initial Setup (First Time)
+
+### Step 1: Run Schema Setup
+
+Creates all tables, RLS policies, functions, and triggers.
+
+**Using Supabase CLI (Recommended):**
+```bash
+cd PROJECT_NAME-stack
+supabase db push scripts/setup-database.sql
+```
+
+**Using psql:**
+```bash
+psql "postgresql://postgres.ref:${SUPABASE_DB_PASSWORD}@${SUPABASE_DB_HOST}:6543/postgres" \
+  -f scripts/setup-database.sql
+```
+
+**Using Supabase Dashboard:**
+1. Go to https://supabase.com/dashboard/project/YOUR_PROJECT_ID/sql
+2. Copy contents of `setup-database.sql`
+3. Paste and run in SQL Editor
+
+### Step 2: Seed IDP Configuration
+
+Configures your authentication provider (Okta or Clerk).
+
+**Using Supabase CLI:**
+```bash
+supabase db push scripts/seed-idp-config.sql
+```
+
+**Using psql:**
+```bash
+psql "postgresql://postgres.ref:${SUPABASE_DB_PASSWORD}@${SUPABASE_DB_HOST}:6543/postgres" \
+  -f scripts/seed-idp-config.sql
+```
+
+## Verification
+
+After setup, verify your database:
+
+```sql
+-- Check tables exist
+SELECT table_name 
+FROM information_schema.tables 
+WHERE table_schema = 'public' 
+ORDER BY table_name;
+
+-- Check IDP configuration
+SELECT provider_type, is_active, is_configured, display_name
+FROM platform_idp_config
+WHERE is_active = true;
+```
+
+## Updating Schemas
+
+The `setup-database.sql` file is idempotent and safe to rerun:
+- Uses `CREATE TABLE IF NOT EXISTS`
+- Uses `CREATE OR REPLACE FUNCTION`
+- Will not drop existing data
+
+To add new modules or update schemas, regenerate with:
+```bash
+# From cora-dev-toolkit
+./scripts/create-cora-project.sh PROJECT_NAME --with-core-modules
+```
+
+## Troubleshooting
+
+**Tables already exist:** Scripts are idempotent, safe to rerun.
+
+**Permission errors:** Ensure you're using service_role key or admin credentials.
+
+**Missing extensions:** The script enables required PostgreSQL extensions automatically.
+READMEEOF
+  
+  log_info "Created ${stack_dir}/scripts/README-database-setup.md with setup instructions"
+}
+
+# --- Run Database Migrations ---
+run_migrations() {
+  local stack_dir="$1"
+  
+  log_step "Running database migrations..."
+  
+  # Check if database credentials are available
+  if [[ ! -f "${stack_dir}/scripts/validation/.env" ]]; then
+    log_warn "Database credentials not found at ${stack_dir}/scripts/validation/.env"
+    log_info "Skipping automatic migrations. Run migrations manually after setup."
+    return
+  fi
+  
+  # Load database credentials
+  source "${stack_dir}/scripts/validation/.env"
+  
+  # Verify required credentials are set
+  if [[ -z "$SUPABASE_DB_HOST" ]] || [[ -z "$SUPABASE_DB_USER" ]] || [[ -z "$SUPABASE_DB_PASSWORD" ]]; then
+    log_warn "Database credentials incomplete. Required: SUPABASE_DB_HOST, SUPABASE_DB_USER, SUPABASE_DB_PASSWORD"
+    log_info "Skipping automatic migrations. Run migrations manually."
+    return
+  fi
+  
+  # Check if psql is available
+  if ! command -v psql &> /dev/null; then
+    log_warn "psql not found. Install PostgreSQL client to enable automatic migrations."
+    log_info "On macOS: brew install postgresql"
+    log_info "Skipping automatic migrations. Run migrations manually using Supabase Dashboard."
+    return
+  fi
+  
+  # Build connection string
+  local conn_string="postgresql://${SUPABASE_DB_USER}:${SUPABASE_DB_PASSWORD}@${SUPABASE_DB_HOST}:${SUPABASE_DB_PORT:-6543}/${SUPABASE_DB_NAME:-postgres}"
+  
+  # Execute setup-database.sql
+  if [[ -f "${stack_dir}/scripts/setup-database.sql" ]]; then
+    log_info "Executing setup-database.sql..."
+    if psql "$conn_string" -f "${stack_dir}/scripts/setup-database.sql" > /dev/null 2>&1; then
+      log_info "✅ Database schema created successfully"
+    else
+      log_error "❌ Failed to execute setup-database.sql"
+      log_warn "You may need to run migrations manually:"
+      echo "  psql \"${conn_string}\" -f ${stack_dir}/scripts/setup-database.sql"
+      return 1
+    fi
+  else
+    log_warn "setup-database.sql not found, skipping schema creation"
+  fi
+  
+  # Execute seed-idp-config.sql
+  if [[ -f "${stack_dir}/scripts/seed-idp-config.sql" ]]; then
+    log_info "Executing seed-idp-config.sql..."
+    if psql "$conn_string" -f "${stack_dir}/scripts/seed-idp-config.sql" > /dev/null 2>&1; then
+      log_info "✅ IDP configuration seeded successfully"
+    else
+      log_error "❌ Failed to execute seed-idp-config.sql"
+      log_warn "You may need to run seeding manually:"
+      echo "  psql \"${conn_string}\" -f ${stack_dir}/scripts/seed-idp-config.sql"
+      return 1
+    fi
+  else
+    log_warn "seed-idp-config.sql not found, skipping IDP seeding"
+  fi
+  
+  log_info "🎉 Database migrations completed successfully!"
+}
+
+# --- Consolidate Database Schemas ---
+if ! $DRY_RUN && $WITH_CORE_MODULES; then
+  consolidate_database_schemas "${STACK_DIR}"
+fi
+
+# --- Copy Validation Scripts ---
+if ! $DRY_RUN; then
+  log_step "Copying validation scripts to stack repo..."
+  
+  # Create validation directory in stack repo
+  mkdir -p "${STACK_DIR}/scripts/validation"
+  
+  # Copy all validation tools from toolkit
+  if [[ -d "${TOOLKIT_ROOT}/validation" ]]; then
+    cp -r "${TOOLKIT_ROOT}/validation/"* "${STACK_DIR}/scripts/validation/"
+    log_info "Validation scripts copied to ${STACK_DIR}/scripts/validation/"
+  else
+    log_warn "Validation directory not found in toolkit: ${TOOLKIT_ROOT}/validation"
+  fi
+fi
 
 # Look for setup.config.{project}.yaml in stack dir and generate .env files
 if ! $DRY_RUN; then
   CONFIG_FILE="${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml"
   if [[ -f "$CONFIG_FILE" ]]; then
     generate_env_files "$CONFIG_FILE" "$STACK_DIR"
+    generate_terraform_vars "$CONFIG_FILE" "$INFRA_DIR"
+    generate_infra_env "$CONFIG_FILE" "$INFRA_DIR"
+    seed_idp_config "$CONFIG_FILE" "$STACK_DIR"
+    run_migrations "$STACK_DIR"
   else
-    log_info "No setup.config.${PROJECT_NAME}.yaml found. Copy setup.config.example.yaml to setup.config.${PROJECT_NAME}.yaml and re-run to generate .env files."
+    log_info "No setup.config.${PROJECT_NAME}.yaml found. Copy setup.config.example.yaml to setup.config.${PROJECT_NAME}.yaml and re-run to generate .env and tfvars files."
+    # Generate minimal .env file for infra even without config
+    generate_infra_env "" "$INFRA_DIR"
   fi
 fi
 

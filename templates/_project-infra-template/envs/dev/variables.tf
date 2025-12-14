@@ -108,24 +108,12 @@ variable "supabase_jwt_secret_value" {
 }
 
 # ========================================================================
-# CORA Module Image URIs
+# Lambda Artifacts (S3 Zip-Based Deployment)
 # ========================================================================
-# These variables are populated by the build/deploy scripts
+# S3 bucket where Lambda zip packages are stored by deploy-cora-modules.sh
 
-variable "module_access_lambda_image_uri" {
-  description = "ECR image URI for module-access Lambda"
+variable "lambda_bucket" {
+  description = "S3 bucket containing Lambda zip artifacts"
   type        = string
-  default     = ""
-}
-
-variable "module_ai_lambda_image_uri" {
-  description = "ECR image URI for module-ai Lambda"
-  type        = string
-  default     = ""
-}
-
-variable "module_mgmt_lambda_image_uri" {
-  description = "ECR image URI for module-mgmt Lambda"
-  type        = string
-  default     = ""
+  default     = "{{PROJECT_NAME}}-lambda-artifacts"
 }

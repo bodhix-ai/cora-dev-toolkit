@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build script for org-module Lambda functions and layer
+# Build script for module-access Lambda functions and layer (Zip-Based)
 set -euo pipefail
 
 # Colors for output
@@ -8,9 +8,10 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Building org-module backend...${NC}"
+echo -e "${GREEN}Building module-access backend (zip-based)...${NC}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LAYERS_DIR="${SCRIPT_DIR}/layers"
 LAMBDAS_DIR="${SCRIPT_DIR}/lambdas"
 BUILD_DIR="${SCRIPT_DIR}/.build"
 
@@ -20,24 +21,38 @@ rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 
 # ========================================
-# Build Lambda Layer (org-common) with Docker
+# Build Lambda Layer (org-common)
 # ========================================
-echo -e "${GREEN}Building org-common Lambda layer with Docker...${NC}"
+echo -e "${GREEN}Building org-common Lambda layer...${NC}"
 
-DOCKER_BUILD_SCRIPT="${SCRIPT_DIR}/build-docker.sh"
-if [ ! -f "${DOCKER_BUILD_SCRIPT}" ]; then
-    echo -e "${RED}ERROR: Docker build script not found: ${DOCKER_BUILD_SCRIPT}${NC}"
+LAYER_DIR="${LAYERS_DIR}/org-common"
+LAYER_BUILD_DIR="${BUILD_DIR}/layer-build"
+
+if [ ! -d "${LAYER_DIR}" ]; then
+    echo -e "${RED}ERROR: Layer directory not found: ${LAYER_DIR}${NC}"
     exit 1
 fi
 
-"${DOCKER_BUILD_SCRIPT}"
+mkdir -p "${LAYER_BUILD_DIR}/python"
 
-if [ ! -f "${BUILD_DIR}/org-common-layer.zip" ]; then
-    echo -e "${RED}ERROR: Layer build failed - ZIP not found${NC}"
-    exit 1
+# Install layer dependencies
+if [ -f "${LAYER_DIR}/requirements.txt" ]; then
+    echo "Installing layer dependencies..."
+    pip install -r "${LAYER_DIR}/requirements.txt" -t "${LAYER_BUILD_DIR}/python" --upgrade --quiet
 fi
 
-echo -e "${GREEN}✓ Layer built with Docker: ${BUILD_DIR}/org-common-layer.zip${NC}"
+# Copy layer code
+if [ -d "${LAYER_DIR}/python" ]; then
+    cp -r "${LAYER_DIR}"/python/* "${LAYER_BUILD_DIR}/python/"
+fi
+
+# Create layer ZIP
+(
+    cd "${LAYER_BUILD_DIR}"
+    zip -r "${BUILD_DIR}/org-common-layer.zip" python -q
+)
+
+echo -e "${GREEN}✓ Layer built: ${BUILD_DIR}/org-common-layer.zip${NC}"
 
 # ========================================
 # Build Lambda Functions
@@ -76,8 +91,6 @@ echo -e "${GREEN}Build Complete!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 echo "Build artifacts created in: ${BUILD_DIR}"
-du -h "${BUILD_DIR}"/*.zip
-echo ""
-echo -e "${YELLOW}Next step:${NC} Deploy using the Terraform script in the sts-career-infra repository."
+du -h "${BUILD_DIR}"/*.zip 2>/dev/null || true
 echo ""
 echo -e "${GREEN}Build completed successfully!${NC}"

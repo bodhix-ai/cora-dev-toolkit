@@ -1,5 +1,5 @@
 {
-  "name": "${project}-web",
+  "name": "{{PROJECT_NAME}}-web",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -25,6 +25,7 @@
     "d3": "^7.9.0",
     "date-fns": "^4.1.0",
     "next": "14.2.33",
+    "next-auth": "^4.24.5",
     "openapi-fetch": "^0.14.0",
     "prism-react-renderer": "^2.0.0",
     "react": "18.2.0",

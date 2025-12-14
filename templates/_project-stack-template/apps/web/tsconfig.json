@@ -17,7 +17,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
-      "@${project}/ai-config-module-frontend": [
+      "@{{PROJECT_NAME}}/ai-config-module-frontend": [
         "../../packages/ai-config-module/frontend"
       ]
     },

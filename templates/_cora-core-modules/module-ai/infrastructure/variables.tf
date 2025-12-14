@@ -1,9 +1,9 @@
-# AI Enablement Module Infrastructure - Input Variables
+# Module AI Infrastructure - Input Variables
+# Zip-based deployment configuration
 
 variable "project_name" {
   description = "Project name (used in resource naming prefix)"
   type        = string
-  default     = "${project}"
 }
 
 variable "environment" {
@@ -19,7 +19,7 @@ variable "environment" {
 variable "module_name" {
   description = "Name of the module (used in resource naming)"
   type        = string
-  default     = "ai-enablement"
+  default     = "module-ai"
 }
 
 variable "aws_region" {
@@ -28,10 +28,23 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
-variable "lambda_image_uri" {
-  description = "Docker image URI for the provider Lambda function"
+# =============================================================================
+# Zip-Based Deployment Variables
+# =============================================================================
+
+variable "lambda_bucket" {
+  description = "S3 bucket name containing Lambda zip files and layers"
   type        = string
 }
+
+variable "org_common_layer_arn" {
+  description = "ARN of the org-common Lambda layer from module-access"
+  type        = string
+}
+
+# =============================================================================
+# Secrets and Configuration
+# =============================================================================
 
 variable "supabase_secret_arn" {
   description = "ARN of Supabase credentials in AWS Secrets Manager"

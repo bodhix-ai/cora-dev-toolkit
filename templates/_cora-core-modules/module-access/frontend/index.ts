@@ -6,17 +6,18 @@ export {
   createOktaAuthAdapter,
   createOktaServerAdapter,
 } from "./adapters";
-export type { AuthAdapter, AuthProvider, AuthConfig } from "./adapters";
+export type { AuthAdapter, AuthConfig } from "./adapters";
+export type { AuthProvider as AuthProviderType } from "./adapters";
 
 // Auth Providers
 export {
-  oktaAuthOptions,
   createOktaAuthOptions,
   getOktaConfig,
   getClerkConfig,
   isClerkConfigured,
   clerkRoutes,
   clerkPublicRoutes,
+  getActiveAuthProvider,
 } from "./providers";
 export type {
   OktaConfig,
@@ -24,6 +25,11 @@ export type {
   OktaJWT,
   ClerkConfig,
 } from "./providers";
+
+// Unified Auth (Dynamic Clerk/Okta Support)
+export { useUnifiedAuth } from "./hooks/useUnifiedAuth";
+export type { UnifiedAuthState } from "./hooks/useUnifiedAuth";
+export { AuthProvider } from "./components/AuthProvider";
 
 // Contexts
 export { UserProvider, useUser } from "./contexts/UserContext";
@@ -98,4 +104,5 @@ export { InviteMemberDialog } from "./components/org/InviteMemberDialog";
 export { orgNavigation, orgUtilityNavigation } from "./navigation";
 
 // Admin Components (Platform Admins only)
+// Note: IdpConfigCard uses MUI components (@mui/material)
 export { IdpConfigCard } from "./components/admin/IdpConfigCard";

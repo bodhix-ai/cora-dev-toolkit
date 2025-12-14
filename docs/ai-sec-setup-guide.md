@@ -13,6 +13,127 @@ This guide covers setting up the ai-sec CORA project from scratch.
 
 ---
 
+## AWS Profile Configuration (Security Best Practices)
+
+### Recommended Approach: Dedicated Terraform Profile
+
+**⚠️ IMPORTANT:** Do NOT use admin or SSO profiles for Terraform deployments in production or automated workflows.
+
+#### 1. Create a Dedicated IAM Role for Terraform
+
+Create a dedicated IAM role with minimal required permissions:
+
+**Required Permissions:**
+
+- S3: Read/write for artifacts and state buckets
+- Lambda: Create/update functions and layers
+- API Gateway: Create/update HTTP APIs and routes
+- IAM: Limited role creation for Lambda execution
+- CloudWatch Logs: Create/update log groups
+- Secrets Manager: Read secrets for deployment
+
+**Example IAM Policy (Least Privilege):**
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
+      "Resource": [
+        "arn:aws:s3:::ai-sec-lambda-artifacts/*",
+        "arn:aws:s3:::ai-sec-terraform-state/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "lambda:CreateFunction",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:PublishLayerVersion",
+        "lambda:GetFunction",
+        "lambda:GetLayerVersion"
+      ],
+      "Resource": "arn:aws:lambda:*:*:function:ai-sec-*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["apigateway:*"],
+      "Resource": "arn:aws:apigateway:*::/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole",
+        "iam:CreateRole",
+        "iam:AttachRolePolicy",
+        "iam:PassRole"
+      ],
+      "Resource": "arn:aws:iam::*:role/ai-sec-*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["logs:CreateLogGroup", "logs:PutRetentionPolicy"],
+      "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/ai-sec-*"
+    }
+  ]
+}
+```
+
+#### 2. Configure AWS Profile
+
+Add to `~/.aws/config`:
+
+```ini
+[profile ai-sec-terraform]
+role_arn = arn:aws:iam::YOUR_ACCOUNT_ID:role/terraform-deployer
+source_profile = default
+region = us-east-1
+```
+
+#### 3. Use Profile in Scripts
+
+```bash
+# Set before running any infrastructure scripts
+export AWS_PROFILE=ai-sec-terraform
+
+# Run bootstrap
+./bootstrap/ensure-buckets.sh
+
+# Build and deploy
+./scripts/build-cora-modules.sh
+./scripts/deploy-cora-modules.sh
+./scripts/deploy-terraform.sh dev
+```
+
+### Development vs Production Profiles
+
+| Environment    | Profile Type               | Use Case                       |
+| -------------- | -------------------------- | ------------------------------ |
+| **Local Dev**  | Named profile with MFA     | Manual testing and development |
+| **CI/CD**      | OIDC role (GitHub Actions) | Automated deployments          |
+| **Production** | Dedicated IAM role         | Terraform state management     |
+
+### Why NOT to Use Admin Profiles
+
+❌ **Security Risks:**
+
+- Over-privileged access violates least-privilege principle
+- If credentials leak, entire AWS account is compromised
+- No audit trail for specific Terraform actions
+- Cannot enforce MFA for automated deployments
+
+✅ **Best Practice:**
+
+- Create role-specific profiles for each tool (Terraform, CDK, etc.)
+- Use temporary credentials with STS AssumeRole
+- Enable CloudTrail logging for all deployments
+- Rotate credentials regularly
+
+---
+
 ## 1. Environment Variables Configuration
 
 ### 1.1 Create .env.local in apps/web

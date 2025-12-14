@@ -398,7 +398,7 @@ def handle_list_modules(event: Dict[str, Any]) -> Dict[str, Any]:
         modules = common.find_many(
             table='platform_module_registry',
             filters=filters,
-            order_by='tier,module_name'
+            order='tier,module_name'
         )
         
         result = {

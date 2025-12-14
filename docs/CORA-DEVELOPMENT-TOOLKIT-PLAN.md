@@ -332,8 +332,8 @@ Apply new standards to existing pm-app project for validation.
 #### Checklist
 
 - [ ] **6.1 End-to-End Testing**
-  - [ ] Create test CORA project
-  - [ ] Deploy core modules
+  - [x] Create test CORA project
+  - [ ] Deploy core modules (IN PROGRESS - troubleshooting issues)
   - [ ] Deploy sample functional module
   - [ ] Validate module registry
   - [ ] Document lessons learned

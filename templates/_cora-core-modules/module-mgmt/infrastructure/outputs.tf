@@ -50,6 +50,43 @@ output "api_routes" {
       path        = "/platform/lambda-config/sync"
       integration = aws_lambda_alias.lambda_mgmt.invoke_arn
       public      = false
+    },
+    # Module registry routes
+    {
+      method      = "GET"
+      path        = "/platform/modules"
+      integration = aws_lambda_alias.lambda_mgmt.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/platform/modules/{name}"
+      integration = aws_lambda_alias.lambda_mgmt.invoke_arn
+      public      = false
+    },
+    {
+      method      = "PUT"
+      path        = "/platform/modules/{name}"
+      integration = aws_lambda_alias.lambda_mgmt.invoke_arn
+      public      = false
+    },
+    {
+      method      = "POST"
+      path        = "/platform/modules/{name}/enable"
+      integration = aws_lambda_alias.lambda_mgmt.invoke_arn
+      public      = false
+    },
+    {
+      method      = "POST"
+      path        = "/platform/modules/{name}/disable"
+      integration = aws_lambda_alias.lambda_mgmt.invoke_arn
+      public      = false
+    },
+    {
+      method      = "POST"
+      path        = "/platform/modules"
+      integration = aws_lambda_alias.lambda_mgmt.invoke_arn
+      public      = false
     }
   ]
 }

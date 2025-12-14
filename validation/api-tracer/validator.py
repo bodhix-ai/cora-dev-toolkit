@@ -25,13 +25,23 @@ class FullStackValidator:
         self,
         frontend_parser: FrontendParser,
         gateway_parser: GatewayParser,
-        lambda_parser: LambdaParser
+        lambda_parser: LambdaParser,
+        aws_profile: Optional[str] = None,
+        api_id: Optional[str] = None,
+        aws_region: str = 'us-east-1',
+        prefer_terraform: bool = False
     ):
-        """Initialize validator with parsers."""
+        """Initialize validator with parsers and optional AWS configuration."""
         self.frontend_parser = frontend_parser
         self.gateway_parser = gateway_parser
         self.lambda_parser = lambda_parser
         self.mismatches: List[APIMismatch] = []
+        
+        # AWS configuration for direct API Gateway querying
+        self.aws_profile = aws_profile
+        self.api_id = api_id
+        self.aws_region = aws_region
+        self.prefer_terraform = prefer_terraform
     
     def validate(self, project_path: str) -> ValidationReport:
         """
@@ -77,22 +87,55 @@ class FullStackValidator:
         ]
         logger.info(f"Found {len(self.frontend_parser.api_calls)} frontend API calls (excluding templates)")
         
-        # Parse API Gateway routes from CORA module infrastructure outputs
-        logger.info("Parsing API Gateway routes from CORA module outputs...")
-        # Routes are defined in each CORA module's infrastructure/outputs.tf
-        all_gateway_routes = []
-        for module_path in (project / 'packages').glob('*-module/infrastructure/outputs.tf'):
-            # Skip _module-template
-            if '_module-template' in str(module_path):
-                logger.info(f"Skipping template module: {module_path}")
-                continue
-            if module_path.is_file():
-                logger.info(f"Parsing routes from {module_path}")
-                routes = self.gateway_parser.parse_file(str(module_path))
-                all_gateway_routes.extend(routes)
-        # Update gateway_parser.routes with accumulated routes
-        self.gateway_parser.routes = all_gateway_routes
-        logger.info(f"Found {len(self.gateway_parser.routes)} API Gateway routes (excluding templates)")
+        # Parse API Gateway routes - try AWS first, fallback to Terraform
+        logger.info("Parsing API Gateway routes...")
+        
+        # Try AWS API Gateway querying first (if configured and not prefer_terraform)
+        aws_routes_loaded = False
+        if self.api_id and not self.prefer_terraform:
+            try:
+                from aws_gateway_querier import AWSGatewayQuerier
+                logger.info(f"Attempting AWS API Gateway query (API ID: {self.api_id}, Profile: {self.aws_profile or 'default'})")
+                
+                querier = AWSGatewayQuerier(self.aws_profile, self.aws_region)
+                aws_routes = querier.get_routes(self.api_id)
+                
+                if aws_routes:
+                    self.gateway_parser.routes = aws_routes
+                    aws_routes_loaded = True
+                    logger.info(f"✅ Successfully loaded {len(aws_routes)} routes from AWS API Gateway")
+                else:
+                    logger.warning("⚠️ AWS query returned 0 routes, falling back to Terraform parsing")
+                    
+            except ImportError as e:
+                logger.warning(f"⚠️ AWS querying not available (boto3 not installed): {e}")
+                logger.info("Falling back to Terraform parsing...")
+            except Exception as e:
+                logger.warning(f"⚠️ AWS query failed: {e}")
+                logger.info("Falling back to Terraform parsing...")
+        
+        # Fallback to Terraform parsing (if AWS query wasn't successful or prefer_terraform)
+        if not aws_routes_loaded:
+            if self.prefer_terraform:
+                logger.info("Using Terraform parsing (--prefer-terraform flag set)")
+            else:
+                logger.info("Using Terraform parsing (AWS credentials not configured)")
+            
+            # Parse from CORA module infrastructure outputs
+            all_gateway_routes = []
+            for module_path in (project / 'packages').glob('*-module/infrastructure/outputs.tf'):
+                # Skip _module-template
+                if '_module-template' in str(module_path):
+                    logger.info(f"Skipping template module: {module_path}")
+                    continue
+                if module_path.is_file():
+                    logger.info(f"Parsing routes from {module_path}")
+                    routes = self.gateway_parser.parse_file(str(module_path))
+                    all_gateway_routes.extend(routes)
+            
+            # Update gateway_parser.routes with accumulated routes
+            self.gateway_parser.routes = all_gateway_routes
+            logger.info(f"Found {len(self.gateway_parser.routes)} API Gateway routes from Terraform (excluding templates)")
         
         # Parse Lambda handlers
         logger.info("Parsing Lambda handlers...")

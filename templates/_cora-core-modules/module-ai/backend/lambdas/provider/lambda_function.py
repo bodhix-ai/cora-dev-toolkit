@@ -100,14 +100,17 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Handle ai_provider operations (platform-level, admin only)
     Endpoints:
-    - GET    /providers                     - List all providers
-    - GET    /providers/:id                 - Get a single provider by ID
-    - POST   /providers                     - Create a new provider
-    - PUT    /providers/:id                 - Update a provider
-    - DELETE /providers/:id                 - Delete a provider
-    - POST   /providers/:id/discover        - Discover models for a provider
-    - POST   /models/:id/test               - Test a specific model
-    - GET    /models?providerId=xxx         - List models for a provider
+    - GET    /providers                        - List all providers
+    - GET    /providers/{id}                   - Get a single provider by ID
+    - POST   /providers                        - Create a new provider
+    - PUT    /providers/{id}                   - Update a provider
+    - DELETE /providers/{id}                   - Delete a provider
+    - POST   /providers/{id}/discover          - Discover models for a provider
+    - POST   /providers/{id}/validate-models   - Start async model validation
+    - GET    /providers/{id}/validation-status - Get validation progress
+    - GET    /models                           - List all models (with providerId query param)
+    - GET    /models/{id}                      - Get a single model by ID
+    - POST   /models/{id}/test                 - Test a specific model
     """
     print(json.dumps(event, default=str))
     

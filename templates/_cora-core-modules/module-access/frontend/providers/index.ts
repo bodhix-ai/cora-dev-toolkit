@@ -11,12 +11,34 @@
  *
  * // For Clerk
  * import { getClerkConfig, clerkRoutes } from '@module-access/providers';
+ *
+ * // Get active provider
+ * import { getActiveAuthProvider } from '@module-access/providers';
  * ```
  */
 
+// Auth Provider Types
+export type AuthProvider = "clerk" | "okta";
+
+/**
+ * Get active auth provider from environment
+ * Defaults to 'clerk' if not configured
+ */
+export function getActiveAuthProvider(): AuthProvider {
+  const provider = process.env.NEXT_PUBLIC_AUTH_PROVIDER as AuthProvider;
+
+  if (!provider || !["clerk", "okta"].includes(provider)) {
+    console.warn(
+      `[getActiveAuthProvider] Invalid AUTH_PROVIDER "${provider}", defaulting to clerk`
+    );
+    return "clerk";
+  }
+
+  return provider;
+}
+
 // Okta Provider
 export {
-  oktaAuthOptions,
   createOktaAuthOptions,
   getOktaConfig,
   type OktaConfig,

@@ -16,33 +16,30 @@ import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
+  Typography,
+  Button,
+  TextField,
+  Box,
+  Chip,
+  Alert,
+  AlertTitle,
   Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  CircularProgress,
+  Paper,
+} from "@mui/material";
 import {
   Shield,
-  Key,
+  VpnKey,
   CheckCircle,
-  XCircle,
-  AlertTriangle,
-  Loader2,
+  Cancel,
+  Warning,
   Settings,
-} from "lucide-react";
+} from "@mui/icons-material";
 
 /**
  * IDP Configuration type
@@ -168,14 +165,9 @@ export function IdpConfigCard({ apiClient, onIdpChanged }: IdpConfigCardProps) {
   if (loading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Identity Providers
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin" />
+        <CardHeader avatar={<Shield />} title="Identity Providers" />
+        <CardContent sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+          <CircularProgress />
         </CardContent>
       </Card>
     );
@@ -183,43 +175,40 @@ export function IdpConfigCard({ apiClient, onIdpChanged }: IdpConfigCardProps) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Shield className="h-5 w-5" />
-          Identity Providers
-        </CardTitle>
-        <CardDescription>
-          Configure authentication providers for your platform. Only one
-          provider can be active at a time.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {error && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+      <CardHeader
+        avatar={<Shield />}
+        title="Identity Providers"
+        subheader="Configure authentication providers for your platform. Only one provider can be active at a time."
+      />
+      <CardContent>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {error && (
+            <Alert severity="error">
+              <AlertTitle>Error</AlertTitle>
+              {error}
+            </Alert>
+          )}
 
-        {configs.map((config) => (
-          <IdpProviderRow
-            key={config.id}
-            config={config}
-            onEdit={() => setEditingConfig(config)}
-            onActivate={() => handleActivate(config.provider_type)}
-            saving={saving}
-          />
-        ))}
+          {configs.map((config) => (
+            <IdpProviderRow
+              key={config.id}
+              config={config}
+              onEdit={() => setEditingConfig(config)}
+              onActivate={() => handleActivate(config.provider_type)}
+              saving={saving}
+            />
+          ))}
 
-        {/* Edit Dialog */}
-        {editingConfig && (
-          <IdpEditDialog
-            config={editingConfig}
-            onClose={() => setEditingConfig(null)}
-            onSave={handleSaveConfig}
-            saving={saving}
-          />
-        )}
+          {/* Edit Dialog */}
+          {editingConfig && (
+            <IdpEditDialog
+              config={editingConfig}
+              onClose={() => setEditingConfig(null)}
+              onSave={handleSaveConfig}
+              saving={saving}
+            />
+          )}
+        </Box>
       </CardContent>
     </Card>
   );
@@ -240,72 +229,94 @@ function IdpProviderRow({
   saving: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between p-4 border rounded-lg">
-      <div className="flex items-center gap-4">
-        <div className="flex-shrink-0">
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 2,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <Box
+          sx={{
+            width: 40,
+            height: 40,
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            bgcolor:
+              config.provider_type === "okta"
+                ? "primary.light"
+                : "secondary.light",
+          }}
+        >
           {config.provider_type === "okta" ? (
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <Key className="h-5 w-5 text-blue-600" />
-            </div>
+            <VpnKey color="primary" />
           ) : (
-            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-              <Shield className="h-5 w-5 text-purple-600" />
-            </div>
+            <Shield color="secondary" />
           )}
-        </div>
+        </Box>
 
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{config.display_name}</span>
+        <Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+            <Typography variant="subtitle1" fontWeight="medium">
+              {config.display_name}
+            </Typography>
             {config.is_active && (
-              <Badge variant="default" className="bg-green-500">
-                Active
-              </Badge>
+              <Chip label="Active" color="success" size="small" />
             )}
             {config.is_configured ? (
-              <Badge
-                variant="outline"
-                className="text-green-600 border-green-600"
-              >
-                <CheckCircle className="h-3 w-3 mr-1" />
-                Configured
-              </Badge>
+              <Chip
+                icon={<CheckCircle />}
+                label="Configured"
+                color="success"
+                variant="outlined"
+                size="small"
+              />
             ) : (
-              <Badge
-                variant="outline"
-                className="text-orange-600 border-orange-600"
-              >
-                <XCircle className="h-3 w-3 mr-1" />
-                Not Configured
-              </Badge>
+              <Chip
+                icon={<Cancel />}
+                label="Not Configured"
+                color="warning"
+                variant="outlined"
+                size="small"
+              />
             )}
-          </div>
-          <p className="text-sm text-muted-foreground">
+          </Box>
+          <Typography variant="body2" color="text.secondary">
             {config.provider_type === "okta"
               ? "Okta OIDC Authentication"
               : "Clerk Authentication"}
-          </p>
-        </div>
-      </div>
+          </Typography>
+        </Box>
+      </Box>
 
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={onEdit} disabled={saving}>
-          <Settings className="h-4 w-4 mr-1" />
+      <Box sx={{ display: "flex", gap: 1 }}>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<Settings />}
+          onClick={onEdit}
+          disabled={saving}
+        >
           Configure
         </Button>
         {config.is_configured && !config.is_active && (
           <Button
-            variant="default"
-            size="sm"
+            variant="contained"
+            size="small"
             onClick={onActivate}
             disabled={saving}
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+            {saving && <CircularProgress size={16} sx={{ mr: 1 }} />}
             Activate
           </Button>
         )}
-      </div>
-    </div>
+      </Box>
+    </Paper>
   );
 }
 
@@ -333,35 +344,34 @@ function IdpEditDialog({
   };
 
   return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Configure {config.display_name}</DialogTitle>
-          <DialogDescription>
-            {config.provider_type === "okta"
-              ? "Enter your Okta OIDC credentials. Client secrets are stored securely in AWS Secrets Manager."
-              : "Enter your Clerk credentials. Secret keys are stored securely in AWS Secrets Manager."}
-          </DialogDescription>
-        </DialogHeader>
+    <Dialog open={true} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>Configure {config.display_name}</DialogTitle>
+      <DialogContent>
+        <DialogContentText sx={{ mb: 2 }}>
+          {config.provider_type === "okta"
+            ? "Enter your Okta OIDC credentials. Client secrets are stored securely in AWS Secrets Manager."
+            : "Enter your Clerk credentials. Secret keys are stored securely in AWS Secrets Manager."}
+        </DialogContentText>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <Box
+          component="form"
+          onSubmit={handleSubmit}
+          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+        >
           {config.provider_type === "okta" ? (
             <OktaConfigFields formData={formData} setFormData={setFormData} />
           ) : (
             <ClerkConfigFields formData={formData} setFormData={setFormData} />
           )}
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={saving}>
-              {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-              Save Configuration
-            </Button>
-          </DialogFooter>
-        </form>
+        </Box>
       </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={handleSubmit} variant="contained" disabled={saving}>
+          {saving && <CircularProgress size={16} sx={{ mr: 1 }} />}
+          Save Configuration
+        </Button>
+      </DialogActions>
     </Dialog>
   );
 }
@@ -378,54 +388,38 @@ function OktaConfigFields({
 }) {
   return (
     <>
-      <div className="space-y-2">
-        <Label htmlFor="client_id">Client ID</Label>
-        <Input
-          id="client_id"
-          value={formData.client_id || ""}
-          onChange={(e) =>
-            setFormData({ ...formData, client_id: e.target.value })
-          }
-          placeholder="0oax0eaf3bgW5NP73697"
-          required
-        />
-      </div>
+      <TextField
+        fullWidth
+        label="Client ID"
+        value={formData.client_id || ""}
+        onChange={(e) =>
+          setFormData({ ...formData, client_id: e.target.value })
+        }
+        placeholder="0oax0eaf3bgW5NP73697"
+        required
+      />
 
-      <div className="space-y-2">
-        <Label htmlFor="issuer">Issuer URL</Label>
-        <Input
-          id="issuer"
-          value={formData.issuer || ""}
-          onChange={(e) => setFormData({ ...formData, issuer: e.target.value })}
-          placeholder="https://your-domain.okta.com/oauth2/default"
-          required
-        />
-        <p className="text-xs text-muted-foreground">
-          Usually: https://your-domain.okta.com/oauth2/default
-        </p>
-      </div>
+      <TextField
+        fullWidth
+        label="Issuer URL"
+        value={formData.issuer || ""}
+        onChange={(e) => setFormData({ ...formData, issuer: e.target.value })}
+        placeholder="https://your-domain.okta.com/oauth2/default"
+        helperText="Usually: https://your-domain.okta.com/oauth2/default"
+        required
+      />
 
-      <div className="space-y-2">
-        <Label htmlFor="jwks_uri">JWKS URI (optional)</Label>
-        <Input
-          id="jwks_uri"
-          value={formData.jwks_uri || ""}
-          onChange={(e) =>
-            setFormData({ ...formData, jwks_uri: e.target.value })
-          }
-          placeholder="https://your-domain.okta.com/oauth2/default/v1/keys"
-        />
-        <p className="text-xs text-muted-foreground">
-          Auto-derived from issuer if not provided
-        </p>
-      </div>
+      <TextField
+        fullWidth
+        label="JWKS URI (optional)"
+        value={formData.jwks_uri || ""}
+        onChange={(e) => setFormData({ ...formData, jwks_uri: e.target.value })}
+        placeholder="https://your-domain.okta.com/oauth2/default/v1/keys"
+        helperText="Auto-derived from issuer if not provided"
+      />
 
-      <Alert>
-        <Key className="h-4 w-4" />
-        <AlertDescription>
-          Client Secret is managed separately in AWS Secrets Manager for
-          security.
-        </AlertDescription>
+      <Alert severity="info" icon={<VpnKey />}>
+        Client Secret is managed separately in AWS Secrets Manager for security.
       </Alert>
     </>
   );
@@ -443,35 +437,28 @@ function ClerkConfigFields({
 }) {
   return (
     <>
-      <div className="space-y-2">
-        <Label htmlFor="publishable_key">Publishable Key</Label>
-        <Input
-          id="publishable_key"
-          value={formData.publishable_key || ""}
-          onChange={(e) =>
-            setFormData({ ...formData, publishable_key: e.target.value })
-          }
-          placeholder="pk_test_..."
-          required
-        />
-      </div>
+      <TextField
+        fullWidth
+        label="Publishable Key"
+        value={formData.publishable_key || ""}
+        onChange={(e) =>
+          setFormData({ ...formData, publishable_key: e.target.value })
+        }
+        placeholder="pk_test_..."
+        required
+      />
 
-      <div className="space-y-2">
-        <Label htmlFor="issuer">Issuer URL</Label>
-        <Input
-          id="issuer"
-          value={formData.issuer || ""}
-          onChange={(e) => setFormData({ ...formData, issuer: e.target.value })}
-          placeholder="https://clerk.your-domain.com"
-          required
-        />
-      </div>
+      <TextField
+        fullWidth
+        label="Issuer URL"
+        value={formData.issuer || ""}
+        onChange={(e) => setFormData({ ...formData, issuer: e.target.value })}
+        placeholder="https://clerk.your-domain.com"
+        required
+      />
 
-      <Alert>
-        <Key className="h-4 w-4" />
-        <AlertDescription>
-          Secret Key is managed separately in AWS Secrets Manager for security.
-        </AlertDescription>
+      <Alert severity="info" icon={<VpnKey />}>
+        Secret Key is managed separately in AWS Secrets Manager for security.
       </Alert>
     </>
   );
