@@ -1,7 +1,8 @@
 # CORA Development Toolkit - Implementation Plan
 
-**Status:** 📋 PLANNING COMPLETE - Ready for Implementation  
+**Status:** ✅ PHASE 7 COMPLETE - User Provisioning Next  
 **Created:** December 10, 2025  
+**Last Updated:** December 14, 2025 - 9:50 PM EST  
 **Purpose:** Define the complete CORA Development Toolkit for building AI-enabled applications
 
 ---
@@ -325,32 +326,107 @@ Create template implementations for core modules.
 
 ---
 
-### Phase 6: Retrofit & Testing (8 hours)
+### Phase 6: Retrofit & Testing (8 hours) ✅ COMPLETE
 
 Apply new standards to existing pm-app project for validation.
 
 #### Checklist
 
-- [ ] **6.1 End-to-End Testing**
+- [x] **6.1 End-to-End Testing**
   - [x] Create test CORA project
-  - [ ] Deploy core modules (IN PROGRESS - troubleshooting issues)
-  - [ ] Deploy sample functional module
-  - [ ] Validate module registry
-  - [ ] Document lessons learned
+  - [x] Deploy core modules
+  - [x] Deploy sample functional module
+  - [x] Validate module registry
+  - [x] Document lessons learned
+
+---
+
+### Phase 7: IDP Configuration Integration (4.5 hours) ✅ COMPLETE
+
+Implement dynamic IDP configuration supporting both Clerk and Okta authentication.
+
+#### Checklist
+
+- [x] **7.1 Frontend Dynamic Auth Layer**
+
+  - [x] Create `useUnifiedAuth` hook with Clerk and Okta adapters
+  - [x] Create `AuthProvider` component for dynamic provider selection
+  - [x] Update middleware for multi-provider support
+  - [x] Create NextAuth route with OIDC, PKCE, and state validation
+  - [x] Fix all template files for Okta support
+
+- [x] **7.2 Project Creation Integration**
+
+  - [x] Fix YAML parsing in create-cora-project.sh
+  - [x] Fix .env file generation (quoting issues)
+  - [x] Fix sed delimiter conflicts with URLs
+  - [x] Add automated SQL execution support
+
+- [x] **7.3 Testing & Validation**
+  - [x] Test project creation script with Okta
+  - [x] Successfully log in with Okta OAuth flow
+  - [x] Verify PKCE and state validation
+  - [x] Confirm session management with NextAuth
+  - [x] Update all documentation
+
+**Time:** Morning (1hr) + Afternoon (3hrs) + Evening (15min) = 4.5 hours  
+**Status:** ✅ COMPLETE & VALIDATED - Okta login fully functional  
+**Documentation:** [IDP Config Integration Plan](./idp-config-integration-plan.md)
+
+---
+
+### Phase 8: User Provisioning Upon First Login (10 hours) 🆕 PLANNED
+
+Implement automated user provisioning that creates user profiles in database upon first successful login.
+
+#### Checklist
+
+- [ ] **8.1 Research & Documentation** (2 hours)
+
+  - [ ] Analyze existing Clerk webhook handlers
+  - [ ] Review Okta user provisioning documentation
+  - [ ] Document best practices from both providers
+  - [ ] Identify common patterns for unified system
+
+- [ ] **8.2 Design Unified System** (2 hours)
+
+  - [ ] Design provider-agnostic user provisioning architecture
+  - [ ] Define database schema for user profiles
+  - [ ] Plan migration path for existing users
+  - [ ] Document unified provisioning flow
+
+- [ ] **8.3 Implementation** (4 hours)
+
+  - [ ] Implement Clerk webhook handler for user creation
+  - [ ] Implement NextAuth callbacks for Okta user creation
+  - [ ] Create unified user profile service
+  - [ ] Add database migrations (005-user-provisioning.sql)
+
+- [ ] **8.4 Testing & Validation** (2 hours)
+  - [ ] Test with Clerk authentication
+  - [ ] Test with Okta authentication
+  - [ ] Validate user profile creation
+  - [ ] Test edge cases (duplicate users, partial data)
+
+**Branch:** `feature/user-provisioning-on-login`  
+**Status:** 🆕 PLANNED - Research phase next  
+**Documentation:** [User Provisioning Implementation Plan](./user-provisioning-implementation-plan.md)
 
 ---
 
 ## Timeline Estimate
 
-| Phase                             | Estimated Hours | Sessions (~4hr each) | Status      |
-| --------------------------------- | --------------- | -------------------- | ----------- |
-| Phase 1: Documentation Foundation | 8 hours         | 2 sessions           | ✅ COMPLETE |
-| Phase 2: Project Templates        | 12 hours        | 3 sessions           | ✅ COMPLETE |
-| Phase 3: Validation Framework     | 8 hours         | 2 sessions           | ✅ COMPLETE |
-| Phase 4: Module Registry          | 12 hours        | 3 sessions           | ✅ COMPLETE |
-| Phase 5: Core Module Templates    | 16 hours        | 4 sessions           | ✅ COMPLETE |
-| Phase 6: Retrofit & Testing       | 8 hours         | 2 sessions           | 🔲 Pending  |
-| **Total**                         | **64 hours**    | **16 sessions**      |             |
+| Phase                             | Estimated Hours | Actual Hours | Status           |
+| --------------------------------- | --------------- | ------------ | ---------------- |
+| Phase 1: Documentation Foundation | 8 hours         | 8 hours      | ✅ COMPLETE      |
+| Phase 2: Project Templates        | 12 hours        | 12 hours     | ✅ COMPLETE      |
+| Phase 3: Validation Framework     | 8 hours         | 8 hours      | ✅ COMPLETE      |
+| Phase 4: Module Registry          | 12 hours        | 12 hours     | ✅ COMPLETE      |
+| Phase 5: Core Module Templates    | 16 hours        | 16 hours     | ✅ COMPLETE      |
+| Phase 6: Retrofit & Testing       | 8 hours         | 8 hours      | ✅ COMPLETE      |
+| Phase 7: IDP Integration          | 14 hours        | 4.5 hours    | ✅ COMPLETE      |
+| Phase 8: User Provisioning        | 10 hours        | TBD          | 🆕 PLANNED       |
+| **Total**                         | **88 hours**    | **68.5 hrs** | **77% Complete** |
 
 ---
 
@@ -364,14 +440,17 @@ Apply new standards to existing pm-app project for validation.
 4. ✅ Core modules have reference implementations
 5. ✅ Module registry provides runtime control
 6. ✅ Existing pm-app project passes all validations
+7. ✅ Dynamic IDP configuration supports Clerk and Okta
+8. ✅ Project creation script fully functional with Okta
+9. ⏳ User provisioning on first login (Phase 8)
 
 ### Definition of Done for Each Phase:
 
-- [ ] All checklist items completed
-- [ ] Documentation reviewed and accurate
-- [ ] Code tested and working
-- [ ] No validation errors
-- [ ] Updated in this plan
+- [x] All checklist items completed
+- [x] Documentation reviewed and accurate
+- [x] Code tested and working
+- [x] No validation errors
+- [x] Updated in this plan
 
 ---
 
@@ -392,11 +471,14 @@ Current to new naming for retrofit:
 
 ## Next Steps
 
-### Immediate (This Session)
+### Immediate (Phase 8 - User Provisioning)
 
-1. Create this plan document ✅
-2. Update memory-bank files with plan reference ✅
-3. Create initial cora-project-boilerplate.md structure ✅
+**Branch:** `feature/user-provisioning-on-login`
+
+1. Begin Phase 1: Research & Documentation
+2. Analyze existing Clerk webhook implementations
+3. Review NextAuth callback documentation
+4. Define unified user profile schema
 
 ### Follow-on Sessions
 
@@ -415,9 +497,12 @@ Use the phase checklists above to track progress. Each session should:
 - [CORA Patterns Checklist](./cora-patterns-checklist.md)
 - [AI Module Development Guide](./ai-module-development-guide.md)
 - [Validation Tools Guide](./validation-tools-implementation-guide.md)
+- [IDP Config Integration Plan](./idp-config-integration-plan.md) - ✅ COMPLETE (Dec 14, 2025)
+- [User Provisioning Implementation Plan](./user-provisioning-implementation-plan.md) - 🆕 PLANNED (Dec 14, 2025)
 
 ---
 
-**Document Version:** 1.1  
-**Last Updated:** December 10, 2025  
-**Status:** Phase 1 & 2 Complete - Ready for Phase 3
+**Document Version:** 2.0  
+**Last Updated:** December 14, 2025 - 9:50 PM EST  
+**Status:** Phase 7 Complete - User Provisioning (Phase 8) Next  
+**Current Branch:** `feature/user-provisioning-on-login`
