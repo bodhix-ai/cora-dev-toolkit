@@ -143,31 +143,214 @@ def handle_get_profile(user_id: str, user_info: Dict[str, Any]) -> Dict[str, Any
         raise
 
 
-def auto_provision_user(user_info: Dict[str, Any]) -> Dict[str, Any]:
+def evaluate_new_user_provisioning(user_info: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Auto-provision a new user from external authentication (Clerk/Okta)
-    
-    This creates:
-    1. User in auth.users (via Supabase Admin API)
-    2. Mapping in external_identities  
-    3. Profile in profiles
+    Evaluate how to provision a new user based on:
+    1. Pending invite (fast path)
+    2. Email domain match (common path)
+    3. Platform initialization (fallback - first user ever)
+    4. Graceful error (no valid provisioning path)
     
     Args:
         user_info: User info from JWT (user_id, email, name, etc.)
         
     Returns:
+        Provisioned profile record
+        
+    Raises:
+        common.ForbiddenError: If user cannot be provisioned
+    """
+    email = user_info.get('email')
+    if not email:
+        raise ValueError("Email is required for user provisioning")
+    
+    domain = email.split('@')[1] if '@' in email else None
+    if not domain:
+        raise ValueError("Invalid email format")
+    
+    # Partial redaction for logging
+    redacted_email = f"{email[:3]}***@{domain}"
+    logger.info(f"EVALUATE_PROVISIONING: {redacted_email}")
+    
+    # 1. Fast path: Check for pending invite (indexed query)
+    invite = common.find_one(
+        table='user_invites',
+        filters={'email': email, 'status': 'pending'}
+    )
+    if invite:
+        logger.info(f"Found pending invite for {redacted_email}")
+        return provision_with_invite(user_info, invite)
+    
+    # 2. Common path: Check email domain match (indexed query)
+    domain_match = common.find_one(
+        table='org_email_domains',
+        filters={'domain': domain, 'auto_provision': True}
+    )
+    if domain_match:
+        logger.info(f"Found domain match for {domain}")
+        return provision_with_domain(user_info, domain_match)
+    
+    # 3. Rare fallback: First user ever (only runs once)
+    profile_count = common.count('profiles')
+    if profile_count == 0:
+        logger.info(f"First user on platform: {redacted_email}")
+        return create_platform_owner_with_org(user_info)
+    
+    # 4. No valid path - graceful error
+    logger.warning(f"Provisioning denied for {redacted_email}: no invite, no domain match, platform already initialized")
+    raise common.ForbiddenError(
+        "Access denied. Please contact your administrator for an invitation."
+    )
+
+
+def provision_with_invite(user_info: Dict[str, Any], invite: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Provision user based on pending invite
+    
+    Args:
+        user_info: User info from JWT
+        invite: Invite record from user_invites table
+        
+    Returns:
+        Created profile record
+    """
+    logger.info(f"Provisioning user with invite: {invite['id']}")
+    
+    # Create user profile
+    profile = create_user_profile(user_info, global_role='global_user')
+    
+    # Add user to invited org with specified role
+    common.insert_one(
+        table='org_members',
+        data={
+            'org_id': invite['org_id'],
+            'user_id': profile['user_id'],
+            'role': invite['role'],
+            'added_by': invite['invited_by']
+        }
+    )
+    
+    # Update profile's current_org_id to invited org
+    common.update_one(
+        table='profiles',
+        filters={'id': profile['id']},
+        data={'current_org_id': invite['org_id']}
+    )
+    
+    # Mark invite as accepted
+    common.update_one(
+        table='user_invites',
+        filters={'id': invite['id']},
+        data={'status': 'accepted'}
+    )
+    
+    logger.info(f"User provisioned with invite, added to org {invite['org_id']}")
+    return profile
+
+
+def provision_with_domain(user_info: Dict[str, Any], domain_match: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Provision user based on email domain match
+    
+    Args:
+        user_info: User info from JWT
+        domain_match: Domain record from org_email_domains table
+        
+    Returns:
+        Created profile record
+    """
+    logger.info(f"Provisioning user with domain match: {domain_match['domain']}")
+    
+    # Create user profile
+    profile = create_user_profile(user_info, global_role='global_user')
+    
+    # Add user to matched org with default role
+    common.insert_one(
+        table='org_members',
+        data={
+            'org_id': domain_match['org_id'],
+            'user_id': profile['user_id'],
+            'role': 'org_user',
+            'added_by': None  # Auto-provisioned, no human added them
+        }
+    )
+    
+    # Update profile's current_org_id to matched org
+    common.update_one(
+        table='profiles',
+        filters={'id': profile['id']},
+        data={'current_org_id': domain_match['org_id']}
+    )
+    
+    logger.info(f"User provisioned with domain match, added to org {domain_match['org_id']}")
+    return profile
+
+
+def create_platform_owner_with_org(user_info: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Create platform owner (first user ever) with default organization
+    
+    This function only runs ONCE when the platform is first initialized.
+    
+    Args:
+        user_info: User info from JWT
+        
+    Returns:
+        Created profile record
+    """
+    logger.info("Creating platform owner (first user)")
+    
+    # Create user profile with platform_owner role
+    profile = create_user_profile(user_info, global_role='platform_owner')
+    
+    # Create default organization
+    org_name = user_info.get('name', user_info.get('email', 'Default')).split('@')[0]
+    org = common.insert_one(
+        table='orgs',
+        data={
+            'name': f"{org_name}'s Organization",
+            'slug': f"{org_name.lower().replace(' ', '-')}-org",
+            'owner_id': profile['user_id'],
+            'created_by': profile['user_id']
+        }
+    )
+    
+    # Add user as org_owner
+    common.insert_one(
+        table='org_members',
+        data={
+            'org_id': org['id'],
+            'user_id': profile['user_id'],
+            'role': 'org_owner',
+            'added_by': profile['user_id']
+        }
+    )
+    
+    # Update profile's current_org_id to new org
+    common.update_one(
+        table='profiles',
+        filters={'id': profile['id']},
+        data={'current_org_id': org['id']}
+    )
+    
+    logger.info(f"Platform owner created with org {org['id']}")
+    return profile
+
+
+def create_user_profile(user_info: Dict[str, Any], global_role: str = 'global_user') -> Dict[str, Any]:
+    """
+    Create user in auth.users, external_identities, and profiles
+    
+    This is the core user creation logic extracted from auto_provision_user.
+    
+    Args:
+        user_info: User info from JWT (user_id, email, name, etc.)
+        global_role: Global role to assign (default: 'global_user')
+        
+    Returns:
         Created profile record
     """
     import uuid
-    
-    # Partial redaction: log structure but redact sensitive values
-    safe_user_info = {
-        'email': f"{user_info.get('email', '')[:3]}***@{user_info.get('email', '').split('@')[-1]}" if user_info.get('email') else None,
-        'user_id': f"{user_info.get('user_id', '')[:4]}...{user_info.get('user_id', '')[-4:]}" if user_info.get('user_id') and len(user_info.get('user_id', '')) > 8 else "***",
-        'name': f"{user_info.get('name', '')[:3]}***" if user_info.get('name') else None,
-        'has_phone': bool(user_info.get('phone_number'))
-    }
-    logger.info(f"AUTO_PROVISION_USER: Received user_info: {json.dumps(safe_user_info)}")
     
     # Get Supabase client with service role (admin access)
     supabase = common.get_supabase_client()
@@ -281,7 +464,7 @@ def auto_provision_user(user_info: Dict[str, Any]) -> Dict[str, Any]:
             'user_id': auth_user_id,
             'email': email,
             'full_name': full_name or email.split('@')[0],  # Use full name from JWT or email prefix
-            'global_role': 'global_user',
+            'global_role': global_role,  # Use provided global_role parameter
             # Explicitly set audit fields since service role bypasses auth.uid()
             'created_by': auth_user_id,
             'updated_by': auth_user_id
@@ -298,7 +481,7 @@ def auto_provision_user(user_info: Dict[str, Any]) -> Dict[str, Any]:
         # Partial redaction for debugging
         redacted_email = f"{email[:3]}***@{email.split('@')[-1]}" if email else "***"
         redacted_name = f"{full_name[:3]}***" if full_name else "***"
-        logger.info(f"Created profile for {redacted_email} with name: {redacted_name}")
+        logger.info(f"Created profile for {redacted_email} with name: {redacted_name}, role: {global_role}")
         return profile
     except Exception as e:
         logger.error(f"Error creating profile: {str(e)}")
@@ -312,6 +495,38 @@ def auto_provision_user(user_info: Dict[str, Any]) -> Dict[str, Any]:
         except:
             pass
         raise
+
+
+def auto_provision_user(user_info: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Auto-provision a new user from external authentication (Clerk/Okta)
+    
+    This is the main entry point for user provisioning. It evaluates
+    how to provision the user based on invites, domain matches, or
+    platform initialization status.
+    
+    Args:
+        user_info: User info from JWT (user_id, email, name, etc.)
+        
+    Returns:
+        Created profile record
+        
+    Raises:
+        common.ForbiddenError: If user cannot be provisioned
+    """
+    import uuid
+    
+    # Partial redaction: log structure but redact sensitive values
+    safe_user_info = {
+        'email': f"{user_info.get('email', '')[:3]}***@{user_info.get('email', '').split('@')[-1]}" if user_info.get('email') else None,
+        'user_id': f"{user_info.get('user_id', '')[:4]}...{user_info.get('user_id', '')[-4:]}" if user_info.get('user_id') and len(user_info.get('user_id', '')) > 8 else "***",
+        'name': f"{user_info.get('name', '')[:3]}***" if user_info.get('name') else None,
+        'has_phone': bool(user_info.get('phone_number'))
+    }
+    logger.info(f"AUTO_PROVISION_USER: Received user_info: {json.dumps(safe_user_info)}")
+    
+    # Evaluate how to provision this user
+    return evaluate_new_user_provisioning(user_info)
 
 
 def handle_update_profile(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:

@@ -1,10 +1,13 @@
-# Module Access Infrastructure - S3 Zip-Based Deployment
+# Module Access Infrastructure - Local Zip-Based Deployment
 # Defines Lambda layer, functions, IAM roles, and CloudWatch alarms
-# Standardized deployment pattern using S3 bucket for Lambda artifacts
+# Uses local .build/ directory for Lambda artifacts
 
 locals {
   # Resource naming prefix
   prefix = "${var.project_name}-${var.environment}-${var.module_name}"
+
+  # Local build directory (relative to this infrastructure/ directory)
+  build_dir = "${path.module}/../backend/.build"
 
   # Common Lambda configuration
   lambda_runtime     = "python3.13"
@@ -18,14 +21,14 @@ locals {
 }
 
 # =============================================================================
-# Lambda Layer - org-common (S3 zip-based)
+# Lambda Layer - org-common (Local zip-based)
 # =============================================================================
 
 resource "aws_lambda_layer_version" "org_common" {
   layer_name          = "${local.prefix}-common"
   description         = "Common utilities for org-module (Supabase client, DB helpers, validators)"
-  s3_bucket           = var.lambda_bucket
-  s3_key              = "layers/org-common-layer.zip"
+  filename            = "${local.build_dir}/org-common-layer.zip"
+  source_code_hash    = filebase64sha256("${local.build_dir}/org-common-layer.zip")
   compatible_runtimes = [local.lambda_runtime]
 
   lifecycle {
@@ -92,9 +95,9 @@ resource "aws_lambda_function" "identities_management" {
   memory_size   = local.lambda_memory_size
   publish       = true
 
-  # S3 zip-based deployment
-  s3_bucket = var.lambda_bucket
-  s3_key    = "lambdas/identities-management.zip"
+  # Local zip-based deployment
+  filename         = "${local.build_dir}/identities-management.zip"
+  source_code_hash = filebase64sha256("${local.build_dir}/identities-management.zip")
 
   layers = [aws_lambda_layer_version.org_common.arn]
 
@@ -139,9 +142,9 @@ resource "aws_lambda_function" "idp_config" {
   memory_size   = local.lambda_memory_size
   publish       = true
 
-  # S3 zip-based deployment
-  s3_bucket = var.lambda_bucket
-  s3_key    = "lambdas/idp-config.zip"
+  # Local zip-based deployment
+  filename         = "${local.build_dir}/idp-config.zip"
+  source_code_hash = filebase64sha256("${local.build_dir}/idp-config.zip")
 
   layers = [aws_lambda_layer_version.org_common.arn]
 
@@ -186,9 +189,9 @@ resource "aws_lambda_function" "profiles" {
   memory_size   = local.lambda_memory_size
   publish       = true
 
-  # S3 zip-based deployment
-  s3_bucket = var.lambda_bucket
-  s3_key    = "lambdas/profiles.zip"
+  # Local zip-based deployment
+  filename         = "${local.build_dir}/profiles.zip"
+  source_code_hash = filebase64sha256("${local.build_dir}/profiles.zip")
 
   layers = [aws_lambda_layer_version.org_common.arn]
 
@@ -233,9 +236,9 @@ resource "aws_lambda_function" "orgs" {
   memory_size   = local.lambda_memory_size
   publish       = true
 
-  # S3 zip-based deployment
-  s3_bucket = var.lambda_bucket
-  s3_key    = "lambdas/orgs.zip"
+  # Local zip-based deployment
+  filename         = "${local.build_dir}/orgs.zip"
+  source_code_hash = filebase64sha256("${local.build_dir}/orgs.zip")
 
   layers = [aws_lambda_layer_version.org_common.arn]
 
@@ -280,9 +283,9 @@ resource "aws_lambda_function" "members" {
   memory_size   = local.lambda_memory_size
   publish       = true
 
-  # S3 zip-based deployment
-  s3_bucket = var.lambda_bucket
-  s3_key    = "lambdas/members.zip"
+  # Local zip-based deployment
+  filename         = "${local.build_dir}/members.zip"
+  source_code_hash = filebase64sha256("${local.build_dir}/members.zip")
 
   layers = [aws_lambda_layer_version.org_common.arn]
 

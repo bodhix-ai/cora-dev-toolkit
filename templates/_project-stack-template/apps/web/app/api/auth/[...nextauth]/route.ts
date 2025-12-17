@@ -63,6 +63,10 @@ const authOptions: NextAuthOptions = {
      *
      * Runs whenever a JWT is created or updated.
      * Stores access_token and id_token from Okta for API calls.
+     *
+     * Note: User provisioning is handled automatically by the profiles Lambda
+     * when the app calls GET /profiles/me. The Lambda will auto-provision
+     * users if they don't exist in the database.
      */
     async jwt({ token, account, profile }) {
       // Initial sign in

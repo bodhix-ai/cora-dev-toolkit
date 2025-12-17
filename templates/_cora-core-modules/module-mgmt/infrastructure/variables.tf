@@ -1,10 +1,9 @@
 # Module Management Infrastructure - Input Variables
-# S3 Zip-Based Deployment Configuration
+# Local Zip-Based Deployment Configuration
 
 variable "project_name" {
-  description = "Project name prefix (e.g., '${project}')"
+  description = "Project name prefix (e.g., 'my-project', 'pm-app')"
   type        = string
-  default     = "${project}"
 }
 
 variable "environment" {
@@ -26,15 +25,6 @@ variable "aws_region" {
   description = "AWS region for Lambda functions"
   type        = string
   default     = "us-east-1"
-}
-
-# =============================================================================
-# S3 Zip-Based Deployment Variables
-# =============================================================================
-
-variable "lambda_bucket" {
-  description = "S3 bucket name containing Lambda zip files and layers"
-  type        = string
 }
 
 # =============================================================================

@@ -49,14 +49,14 @@ if [[ ! -d ".terraform" ]]; then
   exit 1
 fi
 
-# Extract outputs
-API_GATEWAY_ID=$(terraform output -raw api_gateway_id 2>/dev/null || echo "")
-API_GATEWAY_ENDPOINT=$(terraform output -raw api_gateway_endpoint 2>/dev/null || echo "")
+# Extract outputs (try both naming conventions)
+API_GATEWAY_ID=$(terraform output -raw modular_api_gateway_id 2>/dev/null || terraform output -raw api_gateway_id 2>/dev/null || echo "")
+API_GATEWAY_ENDPOINT=$(terraform output -raw modular_api_gateway_url 2>/dev/null || terraform output -raw api_gateway_endpoint 2>/dev/null || echo "")
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "us-east-1")
 
 if [[ -z "$API_GATEWAY_ID" ]]; then
   log_warn "API Gateway ID not found in Terraform outputs."
-  log_info "Make sure your Terraform configuration has an 'api_gateway_id' output."
+  log_info "Make sure your Terraform configuration has 'modular_api_gateway_id' or 'api_gateway_id' output."
   exit 1
 fi
 
@@ -127,6 +127,29 @@ SUPABASE_DB_PASSWORD=
 ENVEOF
   
   log_info "Created ${VALIDATION_ENV}"
+fi
+
+# --- Update web app .env file ---
+WEB_ENV="${STACK_DIR}/apps/web/.env"
+
+if [[ -f "$WEB_ENV" ]]; then
+  log_step "Updating ${WEB_ENV}..."
+  
+  # Remove trailing slash from endpoint if present
+  CLEAN_ENDPOINT="${API_GATEWAY_ENDPOINT%/}"
+  
+  # Update NEXT_PUBLIC_API_GATEWAY_URL
+  if grep -q "^NEXT_PUBLIC_API_GATEWAY_URL=" "$WEB_ENV"; then
+    sed -i '' "s|^NEXT_PUBLIC_API_GATEWAY_URL=.*|NEXT_PUBLIC_API_GATEWAY_URL=\"${CLEAN_ENDPOINT}\"|" "$WEB_ENV" 2>/dev/null || \
+    sed -i "s|^NEXT_PUBLIC_API_GATEWAY_URL=.*|NEXT_PUBLIC_API_GATEWAY_URL=\"${CLEAN_ENDPOINT}\"|" "$WEB_ENV"
+    log_info "✅ Updated NEXT_PUBLIC_API_GATEWAY_URL in ${WEB_ENV}"
+  else
+    echo "NEXT_PUBLIC_API_GATEWAY_URL=\"${CLEAN_ENDPOINT}\"" >> "$WEB_ENV"
+    log_info "✅ Added NEXT_PUBLIC_API_GATEWAY_URL to ${WEB_ENV}"
+  fi
+else
+  log_warn "Web app .env file not found: ${WEB_ENV}"
+  log_info "Run the project creation script to generate .env files first."
 fi
 
 # --- Update setup.config.yaml (if exists) ---

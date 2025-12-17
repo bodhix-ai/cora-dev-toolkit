@@ -1,10 +1,13 @@
-# Module AI Infrastructure - Zip-Based Deployment
+# Module AI Infrastructure - Local Zip-Based Deployment
 # Defines Lambda functions, shared layer, IAM roles, and CloudWatch resources
-# Supports both ai-config-handler and provider Lambda functions with common-ai layer
+# Uses local .build/ directory for Lambda artifacts
 
 locals {
   # Resource naming prefix
   prefix = "${var.project_name}-${var.environment}-${var.module_name}"
+
+  # Local build directory (relative to this infrastructure/ directory)
+  build_dir = "${path.module}/../backend/.build"
 
   # Common Lambda configuration
   lambda_timeout     = 300  # 5 minutes (required for validating ~105 models)
@@ -157,8 +160,8 @@ resource "aws_ssm_parameter" "bedrock_credentials" {
 resource "aws_lambda_layer_version" "common_ai" {
   layer_name          = "${local.prefix}-common-ai"
   description         = "Common AI utilities: models, types, validators for module-ai"
-  s3_bucket           = var.lambda_bucket
-  s3_key              = "layers/common-ai-layer.zip"
+  filename            = "${local.build_dir}/common-ai-layer.zip"
+  source_code_hash    = filebase64sha256("${local.build_dir}/common-ai-layer.zip")
   compatible_runtimes = [local.lambda_runtime]
 
   lifecycle {
@@ -181,9 +184,9 @@ resource "aws_lambda_function" "ai_config_handler" {
   memory_size   = local.lambda_memory_size
   publish       = true
 
-  # Zip-based deployment from S3
-  s3_bucket = var.lambda_bucket
-  s3_key    = "lambdas/ai-config-handler.zip"
+  # Local zip-based deployment
+  filename         = "${local.build_dir}/ai-config-handler.zip"
+  source_code_hash = filebase64sha256("${local.build_dir}/ai-config-handler.zip")
 
   # Attach shared layer
   layers = [
@@ -233,9 +236,9 @@ resource "aws_lambda_function" "provider" {
   memory_size   = local.lambda_memory_size
   publish       = true
 
-  # Zip-based deployment from S3
-  s3_bucket = var.lambda_bucket
-  s3_key    = "lambdas/provider.zip"
+  # Local zip-based deployment
+  filename         = "${local.build_dir}/provider.zip"
+  source_code_hash = filebase64sha256("${local.build_dir}/provider.zip")
 
   # Attach shared layer
   layers = [

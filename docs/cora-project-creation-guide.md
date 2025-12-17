@@ -91,7 +91,28 @@ brew install awscli
 aws --version
 ```
 
-#### 5. GitHub CLI (Optional - for repo creation)
+#### 5. Python 3 pip (Required for building Lambda functions)
+
+```bash
+# Python 3 is typically pre-installed on macOS
+# Verify Python 3 and pip3 are available
+python3 --version
+pip3 --version
+
+# Install Python dependencies for validation tools
+pip3 install click colorama python-dotenv
+```
+
+**Why needed:** Build Lambda function packages and run validation tools.
+
+**Verify installation:**
+
+```bash
+python3 --version  # Should be Python 3.9 or higher
+pip3 --version     # Should output version number
+```
+
+#### 6. GitHub CLI (Optional - for repo creation)
 
 ```bash
 brew install gh
@@ -536,6 +557,114 @@ rm -rf apps/web/.next
 rm pnpm-lock.yaml
 pnpm install
 ```
+
+### Issue: "pip: command not found" during module build
+
+**Error Message:**
+```
+[INFO] Building module-mgmt...
+Building lambda-mgmt-common Lambda layer...
+Installing layer dependencies...
+./build.sh: line 41: pip: command not found
+```
+
+**Cause:** The build scripts use `pip` but macOS typically only has `pip3` in the PATH.
+
+**Solution:**
+
+Fix the build scripts to use `pip3` instead of `pip`:
+
+```bash
+# Replace 'pip install' with 'pip3 install' in all module build scripts
+cd YOUR-PROJECT-stack
+find packages -name "build.sh" -type f -exec sed -i '' 's/pip install/pip3 install/g' {} \;
+```
+
+Then re-run the build:
+
+```bash
+cd ../YOUR-PROJECT-infra/scripts
+bash build-cora-modules.sh
+```
+
+### Issue: "Database hostname does not resolve" (Supabase IPv4 Add-on Required)
+
+**Error Message:**
+```
+[ERROR] ❌ Failed to execute setup-database.sql
+psql: error: could not translate host name "db.xxx.supabase.co" to address: nodename nor servname provided, or not known
+```
+
+**Cause:** 
+
+Newer Supabase projects no longer provide free direct PostgreSQL connections from external machines. The database hostname shown in the Supabase Dashboard may not be accessible via `psql`.
+
+**Root Cause:**
+- Supabase requires the **IPv4 add-on** ($4/month) for direct database connections
+- Without this add-on, the database is only accessible via the Supabase Dashboard SQL Editor
+- The DNS entry for the direct connection endpoint does not resolve
+
+**Solutions:**
+
+#### Option A: Run Migrations via Supabase Dashboard (Free)
+
+1. **Copy the migration SQL:**
+   ```bash
+   cd YOUR-PROJECT-stack
+   cat scripts/setup-database.sql | pbcopy
+   ```
+
+2. **Run in Supabase Dashboard:**
+   - Go to: https://supabase.com/dashboard/project/YOUR_PROJECT_ID/sql
+   - Click "New Query"
+   - Paste the SQL (Cmd+V)
+   - Click "Run" or press Cmd+Enter
+   - Wait for completion (may take 30-60 seconds for large schemas)
+
+3. **Seed IDP Configuration:**
+   ```bash
+   cat scripts/seed-idp-config.sql | pbcopy
+   ```
+   - Paste and run in Supabase Dashboard SQL Editor
+
+4. **Verify Success:**
+   ```sql
+   -- Check tables created
+   SELECT table_name FROM information_schema.tables 
+   WHERE table_schema = 'public' ORDER BY table_name;
+   
+   -- Check IDP configuration
+   SELECT provider_type, is_active, is_configured 
+   FROM platform_idp_config WHERE is_active = true;
+   ```
+
+#### Option B: Enable IPv4 Add-on for psql Access (Paid)
+
+1. Go to: Supabase Dashboard → Project Settings → Add-ons
+2. Enable "IPv4" add-on ($4/month)
+3. This enables direct external database connections via `psql`
+4. Re-run the project creation script or migrations
+
+#### Option C: Use Supabase CLI (Free)
+
+```bash
+# Install Supabase CLI
+brew install supabase/tap/supabase
+
+# Link to your project
+supabase link --project-ref YOUR_PROJECT_REF
+
+# Run migrations
+supabase db push scripts/setup-database.sql
+supabase db push scripts/seed-idp-config.sql
+```
+
+**Prevention:**
+
+When setting up a new Supabase project for CORA:
+1. Either enable the IPv4 add-on from the start
+2. Or plan to run all migrations via the Dashboard SQL Editor
+3. Update your documentation to reflect your chosen approach
 
 ---
 

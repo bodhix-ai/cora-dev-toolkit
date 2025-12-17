@@ -47,11 +47,11 @@ module "secrets" {
 # ========================================================================
 # Multi-provider JWT validation (Okta or Clerk)
 
-data "archive_file" "authorizer" {
-  type        = "zip"
-  source_file = "../../lambdas/api-gateway-authorizer/lambda_function.py"
-  output_path = "../../build/authorizer.zip"
-}
+# ========================================================================
+# API Gateway Lambda Authorizer
+# ========================================================================
+# Multi-provider JWT validation (Okta or Clerk)
+# Built with dependencies using: ../../lambdas/api-gateway-authorizer/build.sh
 
 resource "aws_iam_role" "authorizer" {
   name = "{{PROJECT_NAME}}-${var.environment}-authorizer-role"
@@ -81,11 +81,11 @@ resource "aws_iam_role_policy_attachment" "authorizer_basic" {
 }
 
 resource "aws_lambda_function" "authorizer" {
-  filename         = data.archive_file.authorizer.output_path
+  filename         = "../../build/authorizer.zip"
   function_name    = "{{PROJECT_NAME}}-${var.environment}-api-gateway-authorizer"
   role             = aws_iam_role.authorizer.arn
   handler          = "lambda_function.lambda_handler"
-  source_code_hash = data.archive_file.authorizer.output_base64sha256
+  source_code_hash = filebase64sha256("../../build/authorizer.zip")
   runtime          = "python3.11"
   timeout          = 30
   memory_size      = 256
@@ -135,8 +135,8 @@ module "module_access" {
   project_name        = "{{PROJECT_NAME}}"
   environment         = "dev"
   module_name         = "access"
-  lambda_bucket       = var.lambda_bucket
   supabase_secret_arn = module.secrets.supabase_secret_arn
+  aws_region          = var.aws_region
   log_level           = var.log_level
 
   common_tags = {
@@ -154,9 +154,9 @@ module "module_ai" {
   project_name         = "{{PROJECT_NAME}}"
   environment          = "dev"
   module_name          = "ai"
-  lambda_bucket        = var.lambda_bucket
   org_common_layer_arn = module.module_access.layer_arn
   supabase_secret_arn  = module.secrets.supabase_secret_arn
+  aws_region           = var.aws_region
   log_level            = var.log_level
 
   common_tags = {
@@ -174,8 +174,8 @@ module "module_mgmt" {
   project_name        = "{{PROJECT_NAME}}"
   environment         = "dev"
   module_name         = "mgmt"
-  lambda_bucket       = var.lambda_bucket
   supabase_secret_arn = module.secrets.supabase_secret_arn
+  aws_region          = var.aws_region
   log_level           = var.log_level
 
   common_tags = {

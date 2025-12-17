@@ -488,10 +488,10 @@ generate_env_files() {
     SUPABASE_URL=$(yq '.supabase.url' "$config_file")
     SUPABASE_ANON_KEY=$(yq '.supabase.anon_key' "$config_file")
     SUPABASE_SERVICE_KEY=$(yq '.supabase.service_role_key' "$config_file")
-    OKTA_DOMAIN=$(yq '.auth.okta.domain' "$config_file")
-    OKTA_CLIENT_ID=$(yq '.auth.okta.client_id' "$config_file")
-    OKTA_CLIENT_SECRET=$(yq '.auth.okta.client_secret' "$config_file")
-    OKTA_ISSUER=$(yq '.auth.okta.issuer' "$config_file")
+    OKTA_DOMAIN=$(yq '.auth.okta.domain // ""' "$config_file")
+    OKTA_CLIENT_ID=$(yq '.auth.okta.client_id // ""' "$config_file")
+    OKTA_CLIENT_SECRET=$(yq '.auth.okta.client_secret // ""' "$config_file")
+    OKTA_ISSUER=$(yq '.auth.okta.issuer // ""' "$config_file")
     # Database credentials for direct PostgreSQL connection
     SUPABASE_DB_HOST=$(yq '.supabase.db.host' "$config_file")
     SUPABASE_DB_PORT=$(yq '.supabase.db.port // 6543' "$config_file")
@@ -685,11 +685,11 @@ generate_terraform_vars() {
     SUPABASE_SERVICE_KEY=$(yq '.supabase.service_role_key' "$config_file")
     SUPABASE_JWT_SECRET=$(yq '.supabase.jwt_secret' "$config_file")
     AUTH_PROVIDER=$(yq '.auth_provider // "okta"' "$config_file")
-    OKTA_DOMAIN=$(yq '.okta.domain' "$config_file")
-    OKTA_CLIENT_ID=$(yq '.okta.client_id' "$config_file")
-    OKTA_CLIENT_SECRET=$(yq '.okta.client_secret' "$config_file")
-    OKTA_ISSUER=$(yq '.okta.issuer' "$config_file")
-    CLERK_PUBLISHABLE_KEY=$(yq '.clerk.publishable_key' "$config_file")
+    OKTA_DOMAIN=$(yq '.okta.domain // ""' "$config_file")
+    OKTA_CLIENT_ID=$(yq '.okta.client_id // ""' "$config_file")
+    OKTA_CLIENT_SECRET=$(yq '.okta.client_secret // ""' "$config_file")
+    OKTA_ISSUER=$(yq '.okta.issuer // ""' "$config_file")
+    CLERK_PUBLISHABLE_KEY=$(yq '.clerk.publishable_key // ""' "$config_file")
     CLERK_SECRET_KEY=$(yq '.clerk.secret_key' "$config_file")
   fi
   
@@ -816,6 +816,7 @@ seed_idp_config() {
   
   if command -v yq &> /dev/null; then
     auth_provider=$(yq '.auth_provider // "okta"' "$config_file")
+    okta_client_id=$(yq '.auth.okta.client_id // ""' "$config_file")
     okta_client_id=$(yq '.auth.okta.client_id // ""' "$config_file")
     okta_issuer=$(yq '.auth.okta.issuer // ""' "$config_file")
     clerk_publishable_key=$(yq '.clerk.publishable_key // ""' "$config_file")

@@ -1,9 +1,57 @@
 # User Provisioning Upon First Login - Implementation Plan
 
 **Date:** December 14, 2025  
-**Status:** 🆕 **PLANNED** - Research Phase Next  
-**Branch:** `feature/user-provisioning-on-login`  
+**Updated:** December 17, 2025  
+**Status:** ✅ **IMPLEMENTED & VALIDATED** - Auto-provisioning working in production  
+**Branch:** `feature/user-provisioning-on-login` (merged)  
 **Purpose:** Implement automated user provisioning that creates user profiles in the database upon first successful login
+
+---
+
+## 🎉 UPDATE (December 17, 2025)
+
+**User provisioning is COMPLETE and WORKING!**
+
+### What Was Discovered
+
+Upon investigation, the profiles Lambda already had complete auto-provisioning logic implemented:
+
+1. ✅ **Auto-provision user on first login** - `auto_provision_user()` function
+2. ✅ **Multiple provisioning strategies**:
+   - Pending invite (fast path)
+   - Email domain match (common path)
+   - Platform initialization (first user)
+   - Graceful error handling
+3. ✅ **Complete user creation flow**:
+   - Creates `auth.users` record via Supabase Admin API
+   - Creates `external_identities` mapping
+   - Creates `profiles` record with audit fields
+   - Assigns default organization
+   - Sets appropriate roles
+4. ✅ **Schema updated with audit columns**:
+   - `created_by` column added to profiles
+   - `updated_by` column added to profiles
+   - Migration file created for existing projects
+
+### What Was Fixed (December 17, 2025)
+
+**Issue:** Schema was missing `created_by` and `updated_by` columns that the Lambda code expected.
+
+**Solution:**
+1. ✅ Updated schema file (`003-profiles.sql`) to include both columns
+2. ✅ Created migration file (`20251217111300_add_created_by_to_profiles.sql`)
+3. ✅ Applied migration to ai-sec project
+4. ✅ Verified user provisioning working end-to-end
+
+### Current Status
+
+- ✅ **Template Lambda**: Production-ready with clean logging
+- ✅ **Schema**: Complete with audit columns
+- ✅ **Migration**: Idempotent and tested
+- ✅ **ai-sec Project**: User provisioning working
+- ✅ **New Projects**: Template ready to use as-is
+
+**User provisioning now works out of the box for new CORA projects!** 🎉
 
 ---
 
@@ -22,7 +70,7 @@ With dynamic IDP configuration complete and validated (Phase 7), the next critic
 
 ---
 
-## Current State
+## Current State (Updated December 17, 2025)
 
 **What Works:**
 
@@ -30,13 +78,18 @@ With dynamic IDP configuration complete and validated (Phase 7), the next critic
 - ✅ OAuth flows complete successfully (OIDC, PKCE, state validation)
 - ✅ Sessions managed correctly with NextAuth
 - ✅ Unified auth interface abstracts provider differences
+- ✅ **Automatic user profile creation in database** ✨
+- ✅ **Organization membership assignment** ✨
+- ✅ **Default role/permission setup** ✨
+- ✅ **Invite-based provisioning** ✨
+- ✅ **Domain-based provisioning** ✨
+- ✅ **Platform owner provisioning (first user)** ✨
 
-**What's Missing:**
+**What Was Missing (Now Fixed):**
 
-- ❌ No automatic user profile creation in database
-- ❌ No organization membership assignment
-- ❌ No default role/permission setup
-- ❌ Manual user provisioning required
+- ✅ Schema columns (`created_by`, `updated_by`) - Added Dec 17
+- ✅ Migration for existing projects - Created Dec 17
+- ✅ Schema cache refresh documentation - Added Dec 17
 
 ---
 

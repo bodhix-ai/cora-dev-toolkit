@@ -1,0 +1,2 @@
+# Org Email Domains Lambda Dependencies
+# Inherits from org-common layer

@@ -245,11 +245,21 @@ build_layer() {
   # Copy python directory structure
   cp -r "$python_dir" "$temp_build_dir/python"
   
-  # Install dependencies into python directory
+  # Install dependencies into python directory (for Lambda Python 3.13)
   if [ "$VERBOSE" = true ]; then
-    pip install -r "$requirements_file" -t "$temp_build_dir/python" --upgrade
+    pip install -r "$requirements_file" -t "$temp_build_dir/python" \
+      --platform manylinux2014_x86_64 \
+      --python-version 3.13 \
+      --implementation cp \
+      --only-binary=:all: \
+      --upgrade
   else
-    pip install -r "$requirements_file" -t "$temp_build_dir/python" --upgrade --quiet
+    pip install -r "$requirements_file" -t "$temp_build_dir/python" \
+      --platform manylinux2014_x86_64 \
+      --python-version 3.13 \
+      --implementation cp \
+      --only-binary=:all: \
+      --upgrade --quiet
   fi
   
   if [ $? -ne 0 ]; then

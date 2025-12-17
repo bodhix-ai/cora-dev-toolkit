@@ -1,5 +1,5 @@
 # Module AI Infrastructure - Input Variables
-# Zip-based deployment configuration
+# Local Zip-based deployment configuration
 
 variable "project_name" {
   description = "Project name (used in resource naming prefix)"
@@ -29,13 +29,8 @@ variable "aws_region" {
 }
 
 # =============================================================================
-# Zip-Based Deployment Variables
+# Dependencies from Other Modules
 # =============================================================================
-
-variable "lambda_bucket" {
-  description = "S3 bucket name containing Lambda zip files and layers"
-  type        = string
-}
 
 variable "org_common_layer_arn" {
   description = "ARN of the org-common Lambda layer from module-access"

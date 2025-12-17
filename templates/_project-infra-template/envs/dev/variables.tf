@@ -108,12 +108,11 @@ variable "supabase_jwt_secret_value" {
 }
 
 # ========================================================================
-# Lambda Artifacts (S3 Zip-Based Deployment)
+# AWS Configuration
 # ========================================================================
-# S3 bucket where Lambda zip packages are stored by deploy-cora-modules.sh
 
-variable "lambda_bucket" {
-  description = "S3 bucket containing Lambda zip artifacts"
+variable "aws_region" {
+  description = "AWS region for resources"
   type        = string
-  default     = "{{PROJECT_NAME}}-lambda-artifacts"
+  default     = "us-east-1"
 }

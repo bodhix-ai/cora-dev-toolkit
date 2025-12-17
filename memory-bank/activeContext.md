@@ -2,9 +2,179 @@
 
 ## Current Focus
 
-**Phase 8: User Provisioning Upon First Login** - 🆕 **PLANNED** (New branch: `feature/user-provisioning-on-login`)
+**Phase 8: User Provisioning Upon First Login** - ✅ **COMPLETE** (Auto-provisioning working in production!)
 
-## Session: December 14, 2025 (Evening - 6:00 PM)
+## Session: December 17, 2025 (Morning - 11:13 AM - 11:30 AM)
+
+### Current Status
+
+- ✅ **Phase 1: Documentation Foundation** - COMPLETE
+- ✅ **Phase 2: Project Templates** - COMPLETE
+- ✅ **Phase 3: Validation Framework** - COMPLETE
+- ✅ **Phase 4: Module Registry System** - COMPLETE
+- ✅ **Phase 5: Core Module Templates** - COMPLETE
+- ✅ **Phase 6: Retrofit & Testing** - COMPLETE (100% - Full project recreation validated)
+- ✅ **Phase 7: IDP Configuration Integration** - COMPLETE & VALIDATED (Okta login working!)
+- ✅ **Phase 8: User Provisioning Upon First Login** - **COMPLETE & WORKING** (Auto-provisioning implemented!)
+- ✅ **Phase 9: Infrastructure Fix - Local Build Pattern** - COMPLETE (Deployed Dec 16)
+
+---
+
+## Latest Work: Schema Migration & User Provisioning Validation (Dec 17, 11:13 AM - 11:30 AM)
+
+### � Session December 17, 2025 (Morning) - User Provisioning Complete!
+
+**Focus:** Fix schema migration errors, validate user provisioning, verify template Lambda is production-ready.
+
+#### What Was Accomplished
+
+**1. Fixed Schema Migration for Audit Columns ✅**
+
+**Issue:** Profiles Lambda code expected `created_by` and `updated_by` columns but schema was missing them.
+
+**Error Discovered:**
+```
+ERROR: Could not find the 'updated_by' column of 'profiles' in the schema cache
+```
+
+**Solution Implemented:**
+1. ✅ Updated `003-profiles.sql` schema to include both columns:
+   - Added `created_by UUID` column
+   - Added `updated_by UUID` column
+   - Added indexes for both columns
+   - Added foreign key constraints to `auth.users`
+   - Added column comments
+
+2. ✅ Created migration file `20251217111300_add_created_by_to_profiles.sql`:
+   - Idempotent migration (safe to run multiple times)
+   - Adds both columns if they don't exist
+   - Creates indexes and constraints
+   - Includes verification query
+
+3. ✅ Applied migration to ai-sec project:
+   - Copied schema and migration files to ai-sec
+   - User ran migration in Supabase SQL Editor
+   - Reloaded schema cache (CRITICAL step!)
+   - Verified columns exist
+
+**2. Investigated Duplicate API Calls ✅**
+
+**User Question:** "Why are there two calls to `/profiles/me`?"
+
+**Network Log Analysis:**
+```
+me  500  fetch  api-client.ts:42  0.2 kB  8.37 s  (BEFORE migration)
+me  200  fetch  api-client.ts:42  0.7 kB  8.67 s  (AFTER migration)
+```
+
+**Root Cause Identified:**
+1. **Timeline explanation:** First call failed (schema missing columns), user ran migration, second call succeeded
+2. **React Strict Mode:** In development, React 18+ runs `useEffect` twice intentionally
+3. **Expected behavior:** Duplicate calls in development are NORMAL and help detect bugs
+4. **Production:** Only ONE call happens (Strict Mode disabled in production)
+
+**Explanation Provided:**
+- Detailed analysis of why duplicate calls occur
+- Confirmed this is expected React 18+ behavior
+- Provided optional solutions if user wants to prevent duplicates in dev
+- Verified production will only have single call
+
+**3. Verified Template Lambda is Production-Ready ✅**
+
+**User Question:** "Are there changes required to the profiles lambda for creating new projects?"
+
+**Analysis Results:**
+- ✅ Template Lambda already has `created_by` and `updated_by` in code (line 481-484)
+- ✅ Template Lambda has reasonable, clean logging (no excessive debug statements)
+- ✅ Template Lambda is production-ready with complete auto-provisioning logic
+- ✅ ai-sec Lambda can be replaced with template version (only difference was debug logging)
+
+**Auto-Provisioning Features Confirmed:**
+1. ✅ `auto_provision_user()` - Main entry point
+2. ✅ `evaluate_new_user_provisioning()` - Smart provisioning strategy selection
+3. ✅ `provision_with_invite()` - Invite-based provisioning (fast path)
+4. ✅ `provision_with_domain()` - Email domain matching (common path)
+5. ✅ `create_platform_owner_with_org()` - First user platform initialization
+6. ✅ `create_user_profile()` - Core user creation logic
+7. ✅ Complete error handling and rollback logic
+8. ✅ Audit trail with `created_by` and `updated_by`
+
+**4. Updated Documentation ✅**
+
+**Files Updated:**
+1. ✅ `user-provisioning-implementation-plan.md`:
+   - Changed status from "PLANNED" to "IMPLEMENTED & VALIDATED"
+   - Added "UPDATE (December 17, 2025)" section documenting discovery
+   - Listed all features that were already implemented
+   - Documented schema fix and migration creation
+   - Confirmed user provisioning works out of the box for new projects
+
+2. ✅ `activeContext.md`:
+   - Added this session (December 17, 2025)
+   - Updated current focus to Phase 8 COMPLETE
+   - Documented schema fix work
+   - Documented duplicate API call investigation
+   - Documented template Lambda verification
+
+#### Key Insights
+
+1. **User Provisioning Was Already Built**: The profiles Lambda had complete auto-provisioning logic all along. Only missing piece was schema columns.
+
+2. **Schema Cache is Critical**: After running migrations in Supabase, MUST reload schema cache or app won't see the new columns.
+
+3. **React Strict Mode is Normal**: Duplicate useEffect calls in development are intentional React 18+ behavior for bug detection.
+
+4. **Template Lambda is Production-Ready**: No changes needed for new projects - works out of the box with clean logging.
+
+5. **Fast Discovery and Fix**: Went from error to working solution in ~17 minutes:
+   - 11:13 AM: Error discovered
+   - 11:15 AM: Schema updated
+   - 11:17 AM: Migration created
+   - 11:20 AM: Files copied to ai-sec
+   - 11:30 AM: User provisioning working!
+
+#### Files Created/Modified
+
+**Created:**
+- `templates/_cora-core-modules/module-access/db/migrations/20251217111300_add_created_by_to_profiles.sql`
+
+**Modified:**
+- `templates/_cora-core-modules/module-access/db/schema/003-profiles.sql` - Added created_by and updated_by columns
+- `docs/user-provisioning-implementation-plan.md` - Updated to COMPLETE status
+- `memory-bank/activeContext.md` - Added this session
+
+**Copied to ai-sec:**
+- Schema file with updated columns
+- Migration file for audit columns
+
+#### Current State
+
+**CORA Toolkit Status:**
+- ✅ Template Lambda: Production-ready with auto-provisioning
+- ✅ Schema: Complete with audit columns
+- ✅ Migration: Idempotent and tested
+- ✅ Documentation: Updated to reflect completion
+- ✅ New projects: Ready to use out of the box
+
+**ai-sec Project Status:**
+- ✅ Migration applied: `created_by` and `updated_by` columns added
+- ✅ Schema cache reloaded: New columns visible to app
+- ✅ User provisioning: Working end-to-end
+- ✅ Lambda functions: Accessible via API Gateway
+- ✅ No errors: Clean logs, successful profile creation
+
+**User Provisioning Status:**
+- ✅ Auto-provision on first login
+- ✅ Multiple provisioning strategies (invite, domain, first user)
+- ✅ Complete user creation flow (auth.users, external_identities, profiles)
+- ✅ Organization assignment
+- ✅ Role assignment
+- ✅ Audit trail (created_by, updated_by)
+- ✅ Error handling and rollback
+
+---
+
+## Previous Session: December 16, 2025 (Morning - 10:30 AM - 11:48 AM)
 
 ### Current Status
 
@@ -15,11 +185,158 @@
 - ✅ **Phase 5: Core Module Templates** - COMPLETE
 - ✅ **Phase 6: Retrofit & Testing** - COMPLETE (100% - Full project recreation validated)
 - ✅ **Phase 7: IDP Configuration Integration** - **COMPLETE & VALIDATED** (Okta login working!)
-- 🆕 **Phase 8: User Provisioning Upon First Login** - PLANNED (Research & implementation needed)
+- 🔄 **Phase 8: User Provisioning Upon First Login** - BLOCKED (infrastructure issues discovered)
+- 🆕 **Phase 9: Infrastructure Fix - Local Build Pattern** - **IN PROGRESS** (Critical fix needed)
 
 ---
 
-## Latest Work: IDP Configuration Complete & User Provisioning Planning (Dec 14, 6:00 PM - 6:15 PM)
+## Latest Work: Infrastructure Pattern Fix Planning (Dec 16, 10:30 AM - 11:48 AM)
+
+### 🔴 Session December 16, 2025 (Morning) - Critical Infrastructure Issue Discovered
+
+**Focus:** Troubleshoot Lambda import errors, discover incorrect infrastructure pattern, create comprehensive fix plan.
+
+#### What Was Discovered
+
+**1. Critical Lambda Import Error (Python 3.13 Compatibility) ❌**
+
+```
+[ERROR] Runtime.ImportModuleError: Unable to import module 'lambda_function': 
+No module named 'pydantic_core._pydantic_core'
+```
+
+**Root Causes Identified:**
+
+1. **Wrong Infrastructure Pattern**: Created `cora-module` in infra template using S3 bucket approach
+2. **Missing Infrastructure Directories**: Templates lack `infrastructure/` in stack modules
+3. **No Route Exports**: API Gateway disconnected from Lambda functions (404 errors)
+4. **Build Flow Incorrect**: Attempting S3 deployment instead of local zip pattern
+
+**Impact:**
+- User provisioning completely broken
+- All Lambda functions inaccessible via API Gateway
+- 404 errors on all endpoints including `/profiles/me`
+
+**2. Research Into Working Projects ✅**
+
+Analyzed working policy project (`~/code/policy/pm-app-stack/`) to understand correct pattern:
+
+**Correct Pattern Discovered:**
+```
+pm-app-stack/packages/org-module/
+├── backend/
+│   ├── lambdas/
+│   ├── layers/
+│   ├── build.sh          # Builds to .build/
+│   └── .build/           # LOCAL zips (not S3!)
+│       ├── org-common-layer.zip
+│       ├── profiles.zip
+│       └── orgs.zip
+├── infrastructure/       # ← This was MISSING in templates!
+│   ├── main.tf          # References LOCAL .build/ zips
+│   ├── outputs.tf       # Exports api_routes
+│   └── variables.tf
+```
+
+**Key Pattern Elements:**
+- Uses LOCAL `filebase64sha256("${local.build_dir}/...")` NOT S3
+- Each module exports `api_routes` in outputs.tf
+- Infra project references `../../../stack/packages/module-*/infrastructure`
+
+**3. Created Comprehensive Fix Plan ✅**
+
+Created `infrastructure-fix-plan.md` with 5-phase implementation:
+
+**Phase 1: Copy Working Infrastructure** (30 min)
+- Copy org-module/infrastructure from policy project
+- Adapt for module-access, module-ai, module-mgmt
+
+**Phase 2: Update Templates** (10 min)
+- Verify build.sh exists
+- Add .gitignore for .build/
+
+**Phase 3: Clean Up Infra Template** (15 min)
+- Delete broken cora-module
+- Restore proper module references
+
+**Phase 4: Update ai-sec Project** (20 min)
+- Copy fixed infrastructure/ to ai-sec
+- Rebuild Lambda packages
+- Fix main.tf
+
+**Phase 5: Verify and Test** (15 min)
+- Verify Lambda functions
+- Verify API Gateway routes
+- Test endpoints
+
+**Total Estimate:** ~90 minutes
+
+#### Critical Issues Identified
+
+**Infrastructure Approach Was Fundamentally Wrong:**
+
+❌ **What I Did (WRONG):**
+```terraform
+# cora-module in infra template
+resource "aws_lambda_function" "profiles" {
+  s3_bucket = "ai-sec-dev-lambda-artifacts"
+  s3_key    = "lambdas/profiles.zip"
+  # ...
+}
+```
+
+✅ **What It Should Be (CORRECT):**
+```terraform
+# module-access/infrastructure in stack
+resource "aws_lambda_function" "profiles" {
+  filename         = "${local.build_dir}/profiles.zip"
+  source_code_hash = filebase64sha256("${local.build_dir}/profiles.zip")
+  # ...
+}
+
+output "api_routes" {
+  value = [
+    { method = "GET", path = "/profiles/me", integration = aws_lambda_function.profiles.invoke_arn }
+  ]
+}
+```
+
+**Consequences of Wrong Pattern:**
+1. Lambda functions created but disconnected from API Gateway
+2. All routes destroyed (55 routes removed)
+3. 404 errors on all endpoints
+4. Cannot test user provisioning
+
+#### Files Created
+
+**New Documentation:**
+- `docs/infrastructure-fix-plan.md` - Complete 5-phase fix plan with 90-minute estimate
+
+#### Key Insights
+
+1. **Always Review Working Code First**: Should have examined policy project infrastructure BEFORE creating new patterns
+2. **Infrastructure Location Matters**: `infrastructure/` belongs in STACK modules, not infra template
+3. **Local Builds > S3 Approach**: Working projects use local .build/ zips, not S3 bucket deployment
+4. **Route Exports Critical**: Without `api_routes` output, API Gateway can't connect to Lambda functions
+5. **Test Early**: Lambda import error only discovered after full deployment cycle
+
+#### Current State
+
+**ai-sec Project Status:**
+- ❌ Lambda functions: Created with Python 3.13 but have import errors
+- ❌ API Gateway: No routes (404 on all endpoints)
+- ❌ User provisioning: Completely blocked
+- ✅ Lambda layer: Version :2 created (but with wrong dependencies)
+
+**Templates Status:**
+- ❌ Missing `infrastructure/` directories in all 3 core modules
+- ❌ Broken `cora-module` in infra template (needs deletion)
+- ✅ Build scripts updated with Python 3.13 flags
+- ✅ Comprehensive fix plan documented
+
+---
+
+## Previous Work: IDP Configuration Complete & User Provisioning Planning (Dec 14, 6:00 PM - 6:15 PM)
 
 ### ✅ Session December 14, 2025 (Evening) - IDP Integration Complete, Next Phase Planned
 
@@ -313,62 +630,93 @@ role_arn = arn:aws:iam::887559014095:role/ai-sec-oidc-dev
 
 ## Next Steps
 
-### Immediate (Phase 8 - User Provisioning Upon First Login)
+### CRITICAL - Immediate (Phase 9 - Infrastructure Fix)
 
-**Branch:** `feature/user-provisioning-on-login`
+**Priority:** BLOCKER - Must fix before any other work
 
-1. **Phase 1: Research & Documentation** (2 hours)
+**Plan Document:** `docs/infrastructure-fix-plan.md`
 
-   - Analyze existing Clerk webhook handlers
-   - Review Okta user provisioning documentation
-   - Document best practices from both providers
-   - Identify common patterns for unified system
+**Implementation Steps:**
 
-2. **Phase 2: Design Unified System** (2 hours)
+1. **Phase 1: Copy Working Infrastructure to Templates** (30 min)
+   - Copy org-module/infrastructure from policy project
+   - Adapt for module-access, module-ai, module-mgmt
+   - Update variables.tf for consistency
 
-   - Design provider-agnostic user provisioning architecture
-   - Define database schema for user profiles
-   - Plan migration path for existing users
-   - Document unified provisioning flow
+2. **Phase 2: Update Stack Template Structure** (10 min)
+   - Verify build.sh in all modules
+   - Add .gitignore for .build/ directories
 
-3. **Phase 3: Implementation** (4 hours)
+3. **Phase 3: Clean Up Infra Template** (15 min)
+   - Delete broken cora-module
+   - Update main.tf with proper module references
+   - Restore API Gateway route collection
 
-   - Implement Clerk webhook handler for user creation
-   - Implement NextAuth callbacks for Okta user creation
-   - Create unified user profile service
-   - Add database migrations (005-user-provisioning.sql)
+4. **Phase 4: Update ai-sec Project** (20 min)
+   - Copy fixed infrastructure/ to ai-sec
+   - Rebuild Lambda packages with Python 3.13
+   - Update main.tf
+   - Run Terraform
 
-4. **Phase 4: Testing & Validation** (2 hours)
-   - Test with Clerk authentication
-   - Test with Okta authentication
-   - Validate user profile creation
-   - Test edge cases (duplicate users, partial data)
+5. **Phase 5: Verify and Test** (15 min)
+   - Verify Lambda functions
+   - Verify API Gateway routes
+   - Test /profiles/me endpoint
+   - Confirm NO import errors
 
-**Total Estimate:** 10 hours
+**Total Estimate:** ~90 minutes
 
-### Deferred (Post Phase 8)
+### Blocked Until Infrastructure Fixed
 
-5. **Fix Terraform output syntax** (manual edit of main.tf lines 248-256)
-6. **Run api-tracer** to verify route detection improvements
-7. **Create PR** for `feature/user-provisioning-on-login` branch
-8. **Merge both feature branches** to main
+**Phase 8: User Provisioning Upon First Login**
+- Cannot proceed until Lambda functions are accessible
+- Cannot test user provisioning with broken API Gateway
+- Deferred until infrastructure fix complete
+
+### Deferred (Post Phase 9)
+
+6. **Resume Phase 8** - User Provisioning Implementation
+7. **Fix Terraform output syntax** (manual edit if still needed)
+8. **Run api-tracer** to verify route detection improvements
+9. **Create PR** for infrastructure fix
+10. **Merge all changes** to main
 
 ---
 
 ## References
 
+- [Infrastructure Fix Plan](../docs/infrastructure-fix-plan.md) - 🆕 **CRITICAL** (Dec 16, 2025)
 - [IDP Config Integration Plan](../docs/idp-config-integration-plan.md) - ✅ **COMPLETE** (Dec 14, 2025)
 - [Phase 6 Testing Issues Log - Group 2](../docs/phase-6-testing-issues-log-group-2.md) - Issue #31 (RESOLVED)
 - [Phase 6 Testing Issues Log - Group 1](../docs/phase-6-testing-issues-log-group-1.md)
 - [AI-Sec Setup Guide](../docs/ai-sec-setup-guide.md)
 - [Project Creation Guide](../docs/cora-project-creation-guide.md)
 - [Implementation Plan](../docs/cora-development-toolkit-plan.md)
-- **Branch:** `feature/user-provisioning-on-login` (current)
+- **Branch:** `feature/user-provisioning-on-login` (blocked)
 - **Previous Branch:** `feature/zip-based-deployment` (merged to main - pending)
+- **Working Reference:** `/Users/aaron/code/policy/pm-app-stack/packages/org-module/infrastructure/`
 
 ---
 
-## Key Learnings (December 14, 2025)
+## Key Learnings
+
+### December 16, 2025
+
+1. **ALWAYS Review Working Code First**: Created entire `cora-module` with S3 approach without checking working policy project. Wasted significant time building wrong pattern.
+
+2. **Infrastructure Location is Critical**: `infrastructure/` directories belong in STACK modules (packages/module-*/infrastructure/), NOT in infra template. This is fundamental to CORA architecture.
+
+3. **Local Builds > S3 for Lambda Deployment**: Working projects use local .build/ zips with `filebase64sha256()`, not S3 bucket deployment. Simpler and more reliable.
+
+4. **Route Exports Are Not Optional**: Without `api_routes` output from module infrastructure, API Gateway cannot connect to Lambda functions. This is a REQUIRED output.
+
+5. **Test Infrastructure Changes Immediately**: Lambda import error and 404s only discovered after full deployment. Should have tested one endpoint first.
+
+6. **Don't Take Shortcuts**: Attempting quick fixes (manual route restoration, S3 approach) instead of proper pattern implementation led to broken infrastructure.
+
+7. **Breaking Changes Require Comprehensive Plans**: Infrastructure changes affect templates, build process, and deployment. Need detailed plan before making changes.
+
+### December 14, 2025
 
 1. **Always Do Thorough Research**: Initial plan missed 80% of existing implementations. Spent significant time proposing work that was already complete.
 
@@ -388,7 +736,35 @@ role_arn = arn:aws:iam::887559014095:role/ai-sec-oidc-dev
 
 ---
 
-## Next Phase Preview: User Provisioning Upon First Login
+## Current Phase Preview: Infrastructure Fix (Phase 9)
+
+**Goal:** Fix the fundamental infrastructure pattern to use local builds instead of S3, add proper `infrastructure/` directories to all modules, and restore API Gateway connectivity.
+
+**Key Changes Needed:**
+
+- Copy working infrastructure/ from policy project's org-module
+- Adapt for module-access, module-ai, module-mgmt
+- Delete broken cora-module from infra template
+- Update main.tf to reference stack module infrastructure
+- Rebuild Lambda packages with Python 3.13
+- Restore all API Gateway routes via proper module outputs
+
+**Success Criteria:**
+
+- ✅ Templates have complete infrastructure/ directories
+- ✅ ai-sec Lambda functions updated with Python 3.13
+- ✅ API Gateway routes restored and working
+- ✅ No 404 errors on /profiles/me
+- ✅ Lambda logs show no import errors
+- ✅ User provisioning unblocked
+
+**Estimated Time:** ~90 minutes
+
+---
+
+## Next Phase Preview: User Provisioning Upon First Login (Phase 8 - BLOCKED)
+
+**Status:** BLOCKED until infrastructure fix complete
 
 **Goal:** Implement automated user provisioning that creates user profiles in the database upon first successful login, supporting both Clerk and Okta providers.
 

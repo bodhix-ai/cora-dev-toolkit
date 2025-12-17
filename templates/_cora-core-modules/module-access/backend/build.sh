@@ -35,10 +35,15 @@ fi
 
 mkdir -p "${LAYER_BUILD_DIR}/python"
 
-# Install layer dependencies
+# Install layer dependencies for Lambda Python 3.13
 if [ -f "${LAYER_DIR}/requirements.txt" ]; then
-    echo "Installing layer dependencies..."
-    pip install -r "${LAYER_DIR}/requirements.txt" -t "${LAYER_BUILD_DIR}/python" --upgrade --quiet
+    echo "Installing layer dependencies for Python 3.13..."
+    pip3 install -r "${LAYER_DIR}/requirements.txt" -t "${LAYER_BUILD_DIR}/python" \
+        --platform manylinux2014_x86_64 \
+        --python-version 3.13 \
+        --implementation cp \
+        --only-binary=:all: \
+        --upgrade --quiet
 fi
 
 # Copy layer code
@@ -70,7 +75,7 @@ for lambda_dir in "${LAMBDAS_DIR}"/*/; do
   # Install dependencies if requirements.txt exists and is not empty
   if [ -f "${lambda_dir}requirements.txt" ] && grep -q -v '^#' "${lambda_dir}requirements.txt" | grep -q '[a-zA-Z]'; then
     echo "Installing dependencies..."
-    pip install -r "${lambda_dir}requirements.txt" -t "${LAMBDA_BUILD_DIR}" --upgrade --quiet
+    pip3 install -r "${lambda_dir}requirements.txt" -t "${LAMBDA_BUILD_DIR}" --upgrade --quiet
   fi
 
   # Create Lambda ZIP
