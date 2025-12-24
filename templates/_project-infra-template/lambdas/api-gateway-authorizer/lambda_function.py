@@ -155,8 +155,14 @@ def extract_user_context(claims: dict) -> dict:
     
     # Okta-specific claims
     elif PROVIDER == "okta":
+        # For Okta, email might be in 'email' claim or 'sub' claim (if sub is an email)
+        # Name might be in 'name', or we can construct from given_name + family_name
+        email = claims.get("email") or claims.get("sub", "")
+        name = claims.get("name") or f"{claims.get('given_name', '')} {claims.get('family_name', '')}".strip()
+        
         context.update({
-            "email": claims.get("email", ""),
+            "email": email,
+            "name": name,
             "groups": ",".join(claims.get("groups", [])),
         })
     

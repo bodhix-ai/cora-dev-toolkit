@@ -180,7 +180,8 @@ def get_user_from_event(event: Dict[str, Any]) -> Dict[str, str]:
             'name': name,
             'given_name': given_name,
             'family_name': family_name,
-            'phone_number': phone_number
+            'phone_number': phone_number,
+            'provider': lambda_context.get('provider', '') if 'lambda' in authorizer else authorizer.get('provider', '')
         }
         
     except KeyError as e:

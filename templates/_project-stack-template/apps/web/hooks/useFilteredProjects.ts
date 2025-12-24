@@ -6,7 +6,7 @@ import {
   EnhancedProjectsResponse,
   Project,
 } from "../lib/api";
-import { useOrganizationStore } from "../store/organizationStore";
+import { useOrganizationContext } from "module-access";
 
 export interface FilterState {
   searchQuery: string;
@@ -58,7 +58,7 @@ export function useFilteredProjects(
   initialFilters: Partial<FilterState> = {}
 ): FilteredProjectsReturn {
   const { getToken } = useAuth();
-  const { selectedOrganization } = useOrganizationStore();
+  const { currentOrganization } = useOrganizationContext();
 
   // State management
   const [filters, setFiltersState] = useState<FilterState>({
@@ -197,7 +197,7 @@ export function useFilteredProjects(
 
   // Fetch projects function
   const fetchProjects = useCallback(async () => {
-    if (!selectedOrganization) {
+    if (!currentOrganization) {
       setData(null);
       return;
     }
@@ -213,7 +213,7 @@ export function useFilteredProjects(
 
       const result = await getProjectsWithFavoritesEnhancement(
         token,
-        selectedOrganization.id,
+        currentOrganization.orgId,
         apiOptions
       );
 
@@ -278,7 +278,7 @@ export function useFilteredProjects(
       setIsLoading(false);
     }
   }, [
-    selectedOrganization,
+    currentOrganization,
     apiOptions,
     filters.groupByFavorites,
     getToken,

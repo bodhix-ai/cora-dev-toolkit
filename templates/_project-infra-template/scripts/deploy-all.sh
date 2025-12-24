@@ -110,8 +110,23 @@ echo ""
 # Step 1: Build Lambda packages
 if ! $SKIP_BUILD; then
   log_step "Step 1/3: Building Lambda packages..."
+  
+  # Build CORA modules (module-mgmt, module-ai, module-access)
   "${SCRIPT_DIR}/build-cora-modules.sh"
   echo ""
+  
+  # Build infrastructure Lambdas (authorizer)
+  log_info "Building API Gateway Authorizer..."
+  INFRA_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+  if [ -f "${INFRA_ROOT}/lambdas/api-gateway-authorizer/build.sh" ]; then
+    cd "${INFRA_ROOT}/lambdas/api-gateway-authorizer"
+    bash build.sh
+    cd "${SCRIPT_DIR}"
+    echo ""
+  else
+    log_warn "Authorizer build script not found - skipping"
+    echo ""
+  fi
 else
   log_warn "Skipping build (--skip-build specified)"
   echo ""
@@ -123,9 +138,19 @@ log_step "Step 2/3: Uploading artifacts to S3..."
 echo ""
 
 # Step 3: Apply Terraform
-log_step "Step 3/3: Applying Terraform infrastructure..."
+log_step "Step 3/4: Applying Terraform infrastructure..."
 "${SCRIPT_DIR}/deploy-terraform.sh" "${ENVIRONMENT}" ${AUTO_APPROVE}
 echo ""
+
+# Step 4: Update environment variables
+log_step "Step 4/4: Updating frontend environment variables..."
+if [ -f "${SCRIPT_DIR}/update-env-from-terraform.sh" ]; then
+  "${SCRIPT_DIR}/update-env-from-terraform.sh" "${ENVIRONMENT}"
+  echo ""
+else
+  log_warn "update-env-from-terraform.sh not found - skipping"
+  echo ""
+fi
 
 # --- Summary ---
 echo "========================================"

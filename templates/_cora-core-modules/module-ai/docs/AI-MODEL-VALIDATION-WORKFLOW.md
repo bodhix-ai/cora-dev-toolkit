@@ -101,7 +101,7 @@ Run the migration to create the view and history table:
 psql -h <host> -U <user> -d <database>
 
 # Run the migration
-\i ${project}-stack/packages/ai-enablement-module/db/migrations/003-add-model-summary-view-and-validation-history.sql
+\i {{PROJECT_NAME}}-stack/packages/ai-enablement-module/db/migrations/003-add-model-summary-view-and-validation-history.sql
 ```
 
 **Verification:**
@@ -119,7 +119,7 @@ SELECT * FROM ai_model_validation_history LIMIT 1;
 Deploy the updated Lambda function:
 
 ```bash
-cd ${project}-infra
+cd {{PROJECT_NAME}}-infra
 ./scripts/build-lambdas.sh ai-enablement-module
 terraform apply
 ```
@@ -136,10 +136,10 @@ The frontend components are ready but need to be integrated into your providers 
 
 ```tsx
 import { useState } from "react";
-import { useModels } from "@${project}/ai-enablement-module/hooks/useModels";
-import { ProviderCard } from "@${project}/ai-enablement-module/components/providers/ProviderCard";
-import { ViewModelsModal } from "@${project}/ai-enablement-module/components/models/ViewModelsModal";
-import { ValidationProgress } from "@${project}/ai-enablement-module/types";
+import { useModels } from "@{{PROJECT_NAME}}/ai-enablement-module/hooks/useModels";
+import { ProviderCard } from "@{{PROJECT_NAME}}/ai-enablement-module/components/providers/ProviderCard";
+import { ViewModelsModal } from "@{{PROJECT_NAME}}/ai-enablement-module/components/models/ViewModelsModal";
+import { ValidationProgress } from "@{{PROJECT_NAME}}/ai-enablement-module/types";
 
 function ProvidersPage() {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);

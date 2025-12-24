@@ -7,7 +7,7 @@ import { useRole } from "../../hooks/useRole";
 import { NavLink } from "./NavLink";
 import { ResizeHandle } from "./ResizeHandle";
 import { SidebarUserMenu } from "./SidebarUserMenu";
-import type { NavigationConfig } from "@${project}/shared-types";
+import type { NavigationConfig } from "@{{PROJECT_NAME}}/shared-types";
 
 // MUI Icons
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";

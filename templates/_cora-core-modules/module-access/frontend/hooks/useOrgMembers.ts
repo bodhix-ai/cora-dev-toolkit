@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { createAuthenticatedClient } from "@${project}/api-client";
+import { createAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import { useUser } from "../contexts/UserContext";
 import { createOrgModuleClient, OrgModuleApiClient } from "../lib/api";
 import { OrgMember, InviteMemberInput } from "../types";

@@ -1,8 +1,8 @@
 /**
  * Unified Authentication Hook
  *
- * Provides consistent interface regardless of auth provider (Clerk or Okta).
- * Adapts provider-specific auth hooks to a common interface.
+ * Provides consistent interface for NextAuth authentication.
+ * Adapts NextAuth's useSession hook to a unified interface.
  *
  * @example
  * ```tsx
@@ -22,17 +22,11 @@
 
 "use client";
 
-import { useAuth as useClerkAuth } from "@clerk/nextjs";
+import { useCallback } from "react";
 import { useSession, signOut as nextAuthSignOut } from "next-auth/react";
 
 /**
- * Auth provider type
- */
-export type AuthProvider = "clerk" | "okta";
-
-/**
  * Unified auth state interface
- * Consistent across all auth providers
  */
 export interface UnifiedAuthState {
   /** Whether user is authenticated */
@@ -52,101 +46,47 @@ export interface UnifiedAuthState {
 }
 
 /**
- * Get active auth provider from environment
- * Defaults to 'clerk' if not configured
- */
-function getActiveAuthProvider(): AuthProvider {
-  const provider = process.env.NEXT_PUBLIC_AUTH_PROVIDER as AuthProvider;
-
-  if (!provider || !["clerk", "okta"].includes(provider)) {
-    console.warn(
-      `[useUnifiedAuth] Invalid AUTH_PROVIDER "${provider}", defaulting to clerk`
-    );
-    return "clerk";
-  }
-
-  return provider;
-}
-
-/**
  * Unified Authentication Hook
  *
- * Automatically uses the correct auth provider based on NEXT_PUBLIC_AUTH_PROVIDER env var.
- * Provides consistent interface regardless of provider.
+ * Uses NextAuth's useSession hook and adapts it to a consistent interface.
  *
  * @returns Unified auth state
  */
 export function useUnifiedAuth(): UnifiedAuthState {
-  const provider = getActiveAuthProvider();
-
-  if (provider === "clerk") {
-    return useClerkAuthAdapter();
-  } else if (provider === "okta") {
-    return useOktaAuthAdapter();
-  }
-
-  throw new Error(`[useUnifiedAuth] Unsupported auth provider: ${provider}`);
-}
-
-/**
- * Clerk Auth Adapter
- * Adapts Clerk's useAuth hook to unified interface
- */
-function useClerkAuthAdapter(): UnifiedAuthState {
-  const clerk = useClerkAuth();
-
-  return {
-    isSignedIn: clerk.isSignedIn ?? false,
-    userId: clerk.userId,
-    isLoading: !clerk.isLoaded,
-    getToken: async () => {
-      try {
-        return await clerk.getToken();
-      } catch (error) {
-        console.error("[useUnifiedAuth:Clerk] Error getting token:", error);
-        return null;
-      }
-    },
-    signOut: async () => {
-      try {
-        await clerk.signOut();
-      } catch (error) {
-        console.error("[useUnifiedAuth:Clerk] Error signing out:", error);
-        throw error;
-      }
-    },
-  };
-}
-
-/**
- * Okta Auth Adapter (via NextAuth)
- * Adapts NextAuth's useSession hook to unified interface
- */
-function useOktaAuthAdapter(): UnifiedAuthState {
   const { data: session, status } = useSession();
 
+  // Extract stable primitive to prevent infinite re-render loops
+  const accessToken = session?.accessToken ?? null;
+  const userId = session?.user?.id ?? null;
+  
+  // Use status from NextAuth for reliable authentication state
+  const isSignedIn = status === "authenticated";
+
+  console.log('[useUnifiedAuth] status:', status, 'isSignedIn:', isSignedIn, 'session:', !!session);
+
+  const getToken = useCallback(async () => {
+    try {
+      return accessToken;
+    } catch (error) {
+      console.error("[useUnifiedAuth] Error getting token:", error);
+      return null;
+    }
+  }, [accessToken]);
+
+  const signOut = useCallback(async () => {
+    try {
+      await nextAuthSignOut();
+    } catch (error) {
+      console.error("[useUnifiedAuth] Error signing out:", error);
+      throw error;
+    }
+  }, []);
+
   return {
-    isSignedIn: !!session,
-    userId: session?.user?.id ?? null,
+    isSignedIn,
+    userId,
     isLoading: status === "loading",
-    getToken: async () => {
-      try {
-        if (!session?.accessToken) {
-          return null;
-        }
-        return session.accessToken;
-      } catch (error) {
-        console.error("[useUnifiedAuth:Okta] Error getting token:", error);
-        return null;
-      }
-    },
-    signOut: async () => {
-      try {
-        await nextAuthSignOut();
-      } catch (error) {
-        console.error("[useUnifiedAuth:Okta] Error signing out:", error);
-        throw error;
-      }
-    },
+    getToken,
+    signOut,
   };
 }

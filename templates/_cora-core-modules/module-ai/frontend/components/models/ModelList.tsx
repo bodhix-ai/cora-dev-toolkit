@@ -15,7 +15,7 @@ import { useModels } from "../../hooks/useModels";
 import { ModelCard } from "./ModelCard";
 import { TestModelDialog } from "./TestModelDialog";
 import { AIModel, TestModelInput } from "../../types";
-import { CoraAuthAdapter } from "@${project}/api-client";
+import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
 
 interface ModelListProps {
   providerId: string;

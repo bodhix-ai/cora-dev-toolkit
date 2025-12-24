@@ -14,26 +14,108 @@ import {
   IconButton,
   useTheme,
   useMediaQuery,
+  CircularProgress,
 } from "@mui/material";
 import {
   Send as SendIcon,
   Attachment as AttachIcon,
 } from "@mui/icons-material";
-import { useUserStore } from "@/store/userStore";
 import ChatContainer from "../components/ChatContainer";
 import { useChatStore } from "@/store/chatStore";
 import { useTokenManager } from "@/lib/auth-utils";
-import { useOrganizationStore } from "@/store/organizationStore";
 import { useSidebarStore } from "@/store/sidebarStore";
+import { useUser, useOrganizationContext } from "module-access";
 import GlobalLayoutToggle from "../components/GlobalLayoutToggle";
 
 export default function HomePage() {
+  const { profile, isAuthenticated, loading: userLoading } = useUser();
+
+  // Show loading state while auth state is being determined
+  if (userLoading) {
+    return (
+      <Container maxWidth="md" sx={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
+        <Box sx={{ textAlign: "center" }}>
+          <CircularProgress sx={{ mb: 2 }} />
+          <Typography variant="body2" color="text.secondary">
+            Loading your session...
+          </Typography>
+        </Box>
+      </Container>
+    );
+  }
+
+  // Show sign-in prompt if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <Container maxWidth="md" sx={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
+        <Box sx={{ textAlign: "center", maxWidth: "600px" }}>
+          <Avatar
+            sx={{
+              width: 80,
+              height: 80,
+              bgcolor: "#D97706",
+              fontSize: "2.5rem",
+              mx: "auto",
+              mb: 3,
+            }}
+          >
+            ✦
+          </Avatar>
+          <Typography
+            variant="h3"
+            sx={{
+              fontWeight: 500,
+              color: "text.primary",
+              mb: 2,
+              fontFamily: '"Inter", "Segoe UI", "Roboto", sans-serif',
+            }}
+          >
+            Welcome to {{PROJECT_DISPLAY_NAME}}
+          </Typography>
+          <Typography
+            variant="h6"
+            sx={{
+              color: "text.secondary",
+              mb: 4,
+              fontWeight: 400,
+              fontFamily: '"Inter", "Segoe UI", "Roboto", sans-serif',
+            }}
+          >
+            AI-driven workspace for your organization
+          </Typography>
+          <Button
+            variant="contained"
+            size="large"
+            href="/api/auth/signin"
+            sx={{
+              px: 4,
+              py: 1.5,
+              fontSize: "1rem",
+              textTransform: "none",
+              borderRadius: "8px",
+            }}
+          >
+            Sign In with Okta
+          </Button>
+        </Box>
+      </Container>
+    );
+  }
+
+  // User is authenticated - render the full page with all hooks
+  return <AuthenticatedHomePage profile={profile} />;
+}
+
+/**
+ * AuthenticatedHomePage - Only rendered when user is authenticated
+ * This allows us to safely call useOrganizationContext() which requires OrgProvider
+ */
+function AuthenticatedHomePage({ profile }: { profile: any }) {
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const router = useRouter();
-  const { profile } = useUserStore();
   const {
     currentSessionId,
     messages,
@@ -42,7 +124,7 @@ export default function HomePage() {
     setError,
     streaming,
   } = useChatStore();
-  const { selectedOrganization } = useOrganizationStore();
+  const { currentOrganization, isLoading: orgLoading } = useOrganizationContext();
   const {
     leftSidebarCollapsed,
     rightSidebarCollapsed,
@@ -50,7 +132,7 @@ export default function HomePage() {
     setRightSidebarCollapsed,
   } = useSidebarStore();
   const tokenManager = useTokenManager();
-  const [prevStreaming, setPrevStreaming] = useState(false);
+  const prevStreamingRef = React.useRef(false);
 
   // Auto-hide sidebars on mobile
   useEffect(() => {
@@ -60,31 +142,28 @@ export default function HomePage() {
     }
   }, [isMobile, setLeftSidebarCollapsed, setRightSidebarCollapsed]);
 
-  // Update URL when streaming completes (response just finished)
-  // Only navigate if we JUST finished streaming a response, not when loading with old messages
+  // Update URL when streaming completes
   useEffect(() => {
-    // Track streaming state changes
-    if (prevStreaming !== streaming) {
-      setPrevStreaming(streaming);
+    const prevStreaming = prevStreamingRef.current;
+    
+    if (
+      prevStreaming === true &&
+      streaming === false &&
+      currentSessionId &&
+      messages.length > 0
+    ) {
+      const currentPath = window.location.pathname;
+      const targetPath = `/chat/${currentSessionId}`;
 
-      // Only redirect when streaming JUST COMPLETED (was true, now false)
-      // This means we just received a response and should navigate to the chat page
-      if (
-        prevStreaming === true &&
-        streaming === false &&
-        currentSessionId &&
-        messages.length > 0
-      ) {
-        const currentPath = window.location.pathname;
-        const targetPath = `/chat/${currentSessionId}`;
-
-        if (currentPath === "/") {
-          console.log(`Streaming completed, navigating to: ${targetPath}`);
-          router.push(targetPath as any);
-        }
+      if (currentPath === "/") {
+        console.log(`Streaming completed, navigating to: ${targetPath}`);
+        router.push(targetPath as any);
       }
     }
-  }, [streaming, prevStreaming, currentSessionId, messages.length, router]);
+    
+    // Update ref after processing
+    prevStreamingRef.current = streaming;
+  }, [streaming, currentSessionId, messages.length, router]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -94,12 +173,9 @@ export default function HomePage() {
   };
 
   const getUserName = () => {
-    // Prefer full_name over email extraction
-    if (profile?.full_name) {
-      // Extract first name from full name (e.g., "Naman Kumar" -> "Naman")
-      return profile.full_name.split(" ")[0];
+    if (profile?.name) {
+      return profile.name.split(" ")[0];
     }
-    // Fallback to email extraction if full_name not available
     if (profile?.email) {
       return profile.email.split("@")[0];
     }
@@ -120,7 +196,7 @@ export default function HomePage() {
         }
 
         // Ensure we have organization context
-        const organizationId = selectedOrganization?.id;
+        const organizationId = currentOrganization?.orgId;
         if (!organizationId) {
           setError(
             "Organization context required. Please select an organization."
@@ -136,8 +212,8 @@ export default function HomePage() {
 
         // Prepare context
         const context = {
-          org_name: selectedOrganization?.name || "{{PROJECT_DISPLAY_NAME}}",
-          role: profile?.global_role || "member",
+          org_name: currentOrganization?.orgName || "{{PROJECT_DISPLAY_NAME}}",
+          role: profile?.globalRole || "member",
         };
 
         const messageToSend = message;
@@ -170,8 +246,7 @@ export default function HomePage() {
     }
   };
 
-  // Home page always shows welcome screen - ChatContainer is only shown on /chat/[id] pages
-  // This prevents the issue where clicking "New Chat" would show old chat content
+  // Authenticated home page content
   return (
     <Container
       maxWidth="md"

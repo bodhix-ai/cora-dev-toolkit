@@ -19,7 +19,7 @@ import {
   Snackbar,
   Typography,
 } from "@mui/material";
-import { CoraAuthAdapter } from "@${project}/api-client";
+import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
 import {
   usePlatformAIConfig,
   useDeployments,

@@ -73,7 +73,8 @@ def get_user_from_event(event):
             'name': context.get('name', ''),
             'given_name': context.get('given_name', ''),
             'family_name': context.get('family_name', ''),
-            'phone_number': context.get('phone_number', '')
+            'phone_number': context.get('phone_number', ''),
+            'provider': context.get('provider', '')
         }
         
         return user_info

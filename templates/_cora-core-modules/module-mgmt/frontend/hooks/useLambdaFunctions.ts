@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import type { CoraAuthAdapter } from "@${project}/api-client";
+import type { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
 import { createLambdaMgmtClient } from "../lib/api";
 import type { LambdaFunctionInfo } from "../types";
 

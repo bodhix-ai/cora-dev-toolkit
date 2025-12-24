@@ -55,21 +55,21 @@ CREATE TABLE IF NOT EXISTS public.user_invites (
 -- =============================================
 
 -- Fast lookup during user provisioning (domain matching)
-CREATE INDEX idx_org_email_domains_domain 
+CREATE INDEX IF NOT EXISTS idx_org_email_domains_domain 
     ON public.org_email_domains(domain) 
     WHERE auto_provision = true;
 
 -- Fast lookup for org's configured domains
-CREATE INDEX idx_org_email_domains_org_id 
+CREATE INDEX IF NOT EXISTS idx_org_email_domains_org_id 
     ON public.org_email_domains(org_id);
 
 -- Fast lookup during user provisioning (invite checking)
-CREATE INDEX idx_user_invites_email_status 
+CREATE INDEX IF NOT EXISTS idx_user_invites_email_status 
     ON public.user_invites(email, status) 
     WHERE status = 'pending';
 
 -- Fast lookup for org's pending invites
-CREATE INDEX idx_user_invites_org_id 
+CREATE INDEX IF NOT EXISTS idx_user_invites_org_id 
     ON public.user_invites(org_id, status);
 
 -- =============================================
@@ -82,6 +82,12 @@ ALTER TABLE public.user_invites ENABLE ROW LEVEL SECURITY;
 -- =============================================
 -- RLS: org_email_domains
 -- =============================================
+
+-- Drop existing policies if they exist (makes this script idempotent)
+DROP POLICY IF EXISTS "org_email_domains_select" ON public.org_email_domains;
+DROP POLICY IF EXISTS "org_email_domains_insert" ON public.org_email_domains;
+DROP POLICY IF EXISTS "org_email_domains_update" ON public.org_email_domains;
+DROP POLICY IF EXISTS "org_email_domains_delete" ON public.org_email_domains;
 
 -- Org members can view their org's email domains
 -- Platform admins can view all email domains
@@ -99,9 +105,9 @@ CREATE POLICY "org_email_domains_select"
         OR
         -- Platform admins can see all domains
         EXISTS (
-            SELECT 1 
-            FROM public.profiles 
-            WHERE user_id = auth.uid() 
+            SELECT 1
+            FROM public.user_profiles
+            WHERE user_id = auth.uid()
             AND global_role IN ('platform_owner', 'platform_admin')
         )
     );
@@ -124,7 +130,7 @@ CREATE POLICY "org_email_domains_insert"
         -- Platform admins can add domains to any org
         EXISTS (
             SELECT 1 
-            FROM public.profiles 
+            FROM public.user_profiles 
             WHERE user_id = auth.uid() 
             AND global_role IN ('platform_owner', 'platform_admin')
         )
@@ -148,7 +154,7 @@ CREATE POLICY "org_email_domains_update"
         -- Platform admins can update any org's domains
         EXISTS (
             SELECT 1 
-            FROM public.profiles 
+            FROM public.user_profiles 
             WHERE user_id = auth.uid() 
             AND global_role IN ('platform_owner', 'platform_admin')
         )
@@ -164,7 +170,7 @@ CREATE POLICY "org_email_domains_update"
         OR
         EXISTS (
             SELECT 1 
-            FROM public.profiles 
+            FROM public.user_profiles 
             WHERE user_id = auth.uid() 
             AND global_role IN ('platform_owner', 'platform_admin')
         )
@@ -188,21 +194,23 @@ CREATE POLICY "org_email_domains_delete"
         -- Platform admins can delete any org's domains
         EXISTS (
             SELECT 1 
-            FROM public.profiles 
+            FROM public.user_profiles 
             WHERE user_id = auth.uid() 
             AND global_role IN ('platform_owner', 'platform_admin')
         )
     );
 
--- Service role has full access (for Lambda functions)
-CREATE POLICY "org_email_domains_service_role" 
-    ON public.org_email_domains
-    FOR ALL
-    USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
+-- Note: Service role bypasses RLS automatically, no policy needed
 
 -- =============================================
 -- RLS: user_invites
 -- =============================================
+
+-- Drop existing policies if they exist (makes this script idempotent)
+DROP POLICY IF EXISTS "user_invites_select" ON public.user_invites;
+DROP POLICY IF EXISTS "user_invites_insert" ON public.user_invites;
+DROP POLICY IF EXISTS "user_invites_update" ON public.user_invites;
+DROP POLICY IF EXISTS "user_invites_delete" ON public.user_invites;
 
 -- Org members can view invites for their orgs
 -- Platform admins can view all invites
@@ -222,15 +230,15 @@ CREATE POLICY "user_invites_select"
         -- Platform admins can see all invites
         EXISTS (
             SELECT 1 
-            FROM public.profiles 
+            FROM public.user_profiles 
             WHERE user_id = auth.uid() 
             AND global_role IN ('platform_owner', 'platform_admin')
         )
         OR
         -- Users can see invites addressed to them
         email = (
-            SELECT email 
-            FROM public.profiles 
+            SELECT email
+            FROM public.user_profiles
             WHERE user_id = auth.uid()
         )
     );
@@ -253,7 +261,7 @@ CREATE POLICY "user_invites_insert"
         -- Platform admins can invite to any org
         EXISTS (
             SELECT 1 
-            FROM public.profiles 
+            FROM public.user_profiles 
             WHERE user_id = auth.uid() 
             AND global_role IN ('platform_owner', 'platform_admin')
         )
@@ -277,7 +285,7 @@ CREATE POLICY "user_invites_update"
         -- Platform admins can update any invite
         EXISTS (
             SELECT 1 
-            FROM public.profiles 
+            FROM public.user_profiles 
             WHERE user_id = auth.uid() 
             AND global_role IN ('platform_owner', 'platform_admin')
         )
@@ -293,7 +301,7 @@ CREATE POLICY "user_invites_update"
         OR
         EXISTS (
             SELECT 1 
-            FROM public.profiles 
+            FROM public.user_profiles 
             WHERE user_id = auth.uid() 
             AND global_role IN ('platform_owner', 'platform_admin')
         )
@@ -317,17 +325,13 @@ CREATE POLICY "user_invites_delete"
         -- Platform admins can delete any invite
         EXISTS (
             SELECT 1 
-            FROM public.profiles 
+            FROM public.user_profiles 
             WHERE user_id = auth.uid() 
             AND global_role IN ('platform_owner', 'platform_admin')
         )
     );
 
--- Service role has full access (for Lambda functions)
-CREATE POLICY "user_invites_service_role" 
-    ON public.user_invites
-    FOR ALL
-    USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
+-- Note: Service role bypasses RLS automatically, no policy needed
 
 -- =============================================
 -- TRIGGERS: Auto-update updated_at
@@ -341,6 +345,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS org_email_domains_updated_at ON public.org_email_domains;
 CREATE TRIGGER org_email_domains_updated_at
     BEFORE UPDATE ON public.org_email_domains
     FOR EACH ROW
@@ -354,6 +359,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS user_invites_updated_at ON public.user_invites;
 CREATE TRIGGER user_invites_updated_at
     BEFORE UPDATE ON public.user_invites
     FOR EACH ROW
@@ -377,7 +383,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Run auto-expire check on any invite query
+DROP TRIGGER IF EXISTS check_expired_invites ON public.user_invites;
 CREATE TRIGGER check_expired_invites
     AFTER INSERT OR UPDATE ON public.user_invites
     FOR EACH STATEMENT

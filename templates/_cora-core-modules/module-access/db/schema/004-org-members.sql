@@ -3,6 +3,7 @@
 -- =============================================
 -- Purpose: Track organization membership and roles
 -- Source: Extracted from pm-app-stack production database Dec 2025
+-- Updated: December 20, 2025 - Updated FK reference profiles → user_profiles
 
 -- =============================================
 -- ORG_MEMBERS TABLE
@@ -11,7 +12,7 @@
 CREATE TABLE public.org_members (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id UUID NOT NULL REFERENCES public.orgs(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES public.profiles(user_id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.user_profiles(user_id) ON DELETE CASCADE,
     role TEXT NOT NULL,
     added_by UUID,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -36,7 +37,7 @@ CREATE INDEX idx_org_members_org_role ON public.org_members(org_id, role);
 
 COMMENT ON TABLE public.org_members IS 'Organization membership with roles';
 COMMENT ON COLUMN public.org_members.org_id IS 'Foreign key to orgs table';
-COMMENT ON COLUMN public.org_members.user_id IS 'Foreign key to profiles.user_id';
+COMMENT ON COLUMN public.org_members.user_id IS 'Foreign key to user_profiles.user_id';
 COMMENT ON COLUMN public.org_members.role IS 'Organization-specific role: org_owner, org_admin, org_user';
 COMMENT ON COLUMN public.org_members.added_by IS 'User who added this member';
 

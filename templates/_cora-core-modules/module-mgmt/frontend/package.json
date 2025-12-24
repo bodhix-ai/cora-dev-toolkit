@@ -19,10 +19,10 @@
     "warming",
     "eventbridge"
   ],
-  "author": "${project_display_name} Team",
+  "author": "{{PROJECT_DISPLAY_NAME}} Team",
   "license": "MIT",
   "dependencies": {
-    "@${project}/api-client": "workspace:*"
+    "@{{PROJECT_NAME}}/api-client": "workspace:*"
   },
   "peerDependencies": {
     "react": "^18.0.0",

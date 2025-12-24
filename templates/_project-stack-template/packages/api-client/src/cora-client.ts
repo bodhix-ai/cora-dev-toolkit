@@ -74,20 +74,20 @@ async function coraRequest<T>(
           "[CORA Client] Session expired (401). Redirecting to login..."
         );
 
-        // Use NextAuth signOut if available
+        // Use NextAuth signOut if available - NO ERROR PARAM to avoid redirect loops
         if (typeof window !== "undefined" && "next-auth" in window) {
           // Dynamic import to avoid server-side issues
           import("next-auth/react")
             .then(({ signOut }) => {
-              signOut({ callbackUrl: "/auth/signin?error=session_expired" });
+              signOut({ callbackUrl: "/auth/signin" });
             })
             .catch(() => {
               // Fallback: redirect manually if NextAuth import fails
-              window.location.href = "/auth/signin?error=session_expired";
+              window.location.href = "/auth/signin";
             });
         } else {
           // Fallback: redirect manually
-          window.location.href = "/auth/signin?error=session_expired";
+          window.location.href = "/auth/signin";
         }
       }
 

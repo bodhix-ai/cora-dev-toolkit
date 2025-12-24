@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createAuthenticatedClient } from "@${project}/api-client";
+import { createAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import { createOrgModuleClient } from "../../lib/api";
 import { useUser } from "../../contexts/UserContext";
 import { generateSlug } from "../../lib/validation";

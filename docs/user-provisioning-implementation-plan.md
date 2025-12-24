@@ -1,14 +1,34 @@
 # User Provisioning Upon First Login - Implementation Plan
 
-**Date:** December 14, 2025  
-**Updated:** December 17, 2025  
-**Status:** ✅ **IMPLEMENTED & VALIDATED** - Auto-provisioning working in production  
-**Branch:** `feature/user-provisioning-on-login` (merged)  
-**Purpose:** Implement automated user provisioning that creates user profiles in the database upon first successful login
+**⚠️ ARCHIVED - SUPERSEDED BY AUTHORITATIVE DOCUMENTATION**
+
+**See:** [User Authentication & Provisioning (Standard)](./user-authentication-and-provisioning.md) - **Official CORA Standard**
 
 ---
 
-## 🎉 UPDATE (December 17, 2025)
+**Original Date:** December 14, 2025  
+**Completed:** December 17, 2025  
+**Status:** ✅ **ARCHIVED** - This was a feature implementation plan that is now complete  
+**Branch:** `feature/user-provisioning-on-login` (merged)  
+**Purpose:** Historical record of the user provisioning implementation effort
+
+---
+
+## 📋 About This Document
+
+This document was the **implementation plan** for developing user provisioning functionality. The work described here is **complete and working in production**.
+
+**For current CORA projects, refer to:**
+- [User Authentication & Provisioning](./user-authentication-and-provisioning.md) - Official standard documenting the 5 login scenarios
+
+**This document is preserved for:**
+- Historical context of the implementation effort
+- Code examples and patterns used during development
+- Timeline and progress tracking from December 2025
+
+---
+
+## 🎉 IMPLEMENTATION COMPLETE (December 17, 2025)
 
 **User provisioning is COMPLETE and WORKING!**
 
@@ -53,9 +73,19 @@ Upon investigation, the profiles Lambda already had complete auto-provisioning l
 
 **User provisioning now works out of the box for new CORA projects!** 🎉
 
+### What Was Implemented
+
+The complete implementation covers all 5 user login scenarios now documented in the official [User Authentication & Provisioning](./user-authentication-and-provisioning.md) standard:
+
+1. ✅ **Standard Authorization** - Returning users (optimized < 120ms)
+2. ✅ **First-Time Invited User** - Auto-assigned to invited org
+3. ✅ **First-Time Domain User** - Email domain-based auto-provisioning
+4. ✅ **Bootstrap** - First user creates "Platform Admin" org automatically
+5. ✅ **Denied Access** - Graceful handling with helpful messaging
+
 ---
 
-## Executive Summary
+## Executive Summary (Historical)
 
 With dynamic IDP configuration complete and validated (Phase 7), the next critical feature is **automated user provisioning** that creates user profiles in the database upon first successful login, supporting both Clerk and Okta authentication providers.
 
@@ -762,14 +792,29 @@ export function useUserProfile() {
 
 ## References
 
+**Current Documentation:**
+- [User Authentication & Provisioning](./user-authentication-and-provisioning.md) - ✅ **Official CORA Standard**
 - [IDP Config Integration Plan](./idp-config-integration-plan.md) - ✅ COMPLETE
+
+**External References:**
 - [Clerk Webhooks Documentation](https://clerk.com/docs/integrations/webhooks)
 - [NextAuth.js Callbacks](https://next-auth.js.org/configuration/callbacks)
 - [Supabase RLS Policies](https://supabase.com/docs/guides/auth/row-level-security)
 
 ---
 
-**Document Version:** 1.0  
+## Related Documentation
+
+For understanding how this implementation fits into the broader CORA authentication architecture, see:
+- [User Authentication & Provisioning](./user-authentication-and-provisioning.md) - The 5 login scenarios explained
+- [ORG-CREATION-GATING-AND-DOMAIN-ASSIGNMENT-PLAN.md](./auth/ORG-CREATION-GATING-AND-DOMAIN-ASSIGNMENT-PLAN.md) - Org gating implementation details
+- [USER-INVITATION-FLOW.md](./auth/USER-INVITATION-FLOW.md) - Invitation system details
+
+---
+
+**Document Version:** 1.1 (Archived)  
 **Created:** December 14, 2025 - 9:50 PM EST  
-**Status:** 🆕 PLANNED - Ready for Phase 1  
-**Branch:** `feature/user-provisioning-on-login`
+**Completed:** December 17, 2025  
+**Archived:** December 20, 2025  
+**Status:** 📦 **ARCHIVED** - See [user-authentication-and-provisioning.md](./user-authentication-and-provisioning.md) for current standard  
+**Branch:** `feature/user-provisioning-on-login` (merged)

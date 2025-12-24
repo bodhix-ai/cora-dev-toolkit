@@ -12,9 +12,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@${project}/api-client": "workspace:*",
+    "@{{PROJECT_NAME}}/api-client": "workspace:*",
     "module-access": "workspace:*",
-    "@${project}/shared-types": "workspace:*",
+    "@{{PROJECT_NAME}}/shared-types": "workspace:*",
     "@types/react": "^18.3.3",
     "next-auth": "^4.24.7"
   },

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { useOrganizationStore } from "@/store/organizationStore";
+import { useOrganizationContext } from "module-access";
 import {
   getFavoriteProjects,
   getFavoriteChats,
@@ -134,12 +134,12 @@ function getRelativeTime(timestamp: string): string {
 
 export function useDashboardData() {
   const { getToken } = useAuth();
-  const { selectedOrganization } = useOrganizationStore();
+  const { currentOrganization } = useOrganizationContext();
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshDashboard = useCallback(async () => {
-    if (!selectedOrganization) return;
+    if (!currentOrganization) return;
 
     setIsLoading(true);
     try {
@@ -153,7 +153,7 @@ export function useDashboardData() {
       try {
         projectFavoritesData = await getFavoriteProjects(
           token,
-          selectedOrganization.id,
+          currentOrganization.orgId,
           10
         );
       } catch (error: any) {
@@ -167,7 +167,7 @@ export function useDashboardData() {
       try {
         const chatResponse = await getFavoriteChats(
           token,
-          selectedOrganization.id,
+          currentOrganization.orgId,
           10
         );
         // Handle structured response with data property
@@ -179,7 +179,7 @@ export function useDashboardData() {
 
       // Fetch sessions data for recent activity
       const sessionsData = await listChatSessions(token, {
-        org_id: selectedOrganization.id,
+        org_id: currentOrganization.orgId,
         limit: 20,
       });
 
@@ -189,7 +189,7 @@ export function useDashboardData() {
           id: fav.id,
           type: "project" as const,
           name: fav.name,
-          organization: selectedOrganization.name,
+          organization: currentOrganization.orgName,
           lastActivity: fav.updated_at,
           activityType: "project_modified" as const,
           favoriteOrder: index,
@@ -207,7 +207,7 @@ export function useDashboardData() {
           type: "chat" as const,
           name: chat.title || "Untitled Chat",
           title: chat.title,
-          organization: selectedOrganization.name,
+          organization: currentOrganization.orgName,
           lastActivity: chat.updated_at || chat.created_at,
           activityType: "chat_message" as const,
           favoriteOrder: index + projectFavoritesData.length,
@@ -251,7 +251,7 @@ export function useDashboardData() {
           project: {
             id: session.project_id || "",
             name: session.project_id ? "Project Chat" : "General Chat",
-            organization: selectedOrganization.name,
+            organization: currentOrganization.orgName,
           },
           activityType: "chat_created" as const,
           timestamp: session.created_at,
@@ -334,7 +334,7 @@ export function useDashboardData() {
     } finally {
       setIsLoading(false);
     }
-  }, [getToken, selectedOrganization]);
+  }, [getToken, currentOrganization]);
 
   useEffect(() => {
     refreshDashboard();

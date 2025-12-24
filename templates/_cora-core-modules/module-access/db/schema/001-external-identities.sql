@@ -1,15 +1,16 @@
 -- =============================================
--- MODULE-ACCESS: External Identities
+-- MODULE-ACCESS: External Auth Identities
 -- =============================================
 -- Purpose: Map external authentication provider user IDs to Supabase auth.users
 -- Note: Supports multiple auth providers (Okta, Clerk, Auth0, etc.)
 -- Source: Copied from pm-app-stack production schema
+-- Updated: December 20, 2025 - Renamed external_identities → user_auth_ext_ids
 
 -- =============================================
--- EXTERNAL_IDENTITIES TABLE
+-- USER_AUTH_EXT_IDS TABLE
 -- =============================================
 
-CREATE TABLE public.external_identities (
+CREATE TABLE IF NOT EXISTS public.user_auth_ext_ids (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     auth_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     external_id TEXT NOT NULL,
@@ -27,44 +28,50 @@ CREATE TABLE public.external_identities (
 -- =============================================
 
 -- Optimize lookups by auth_user_id
-CREATE INDEX idx_external_identities_auth_user_id ON public.external_identities(auth_user_id);
+CREATE INDEX IF NOT EXISTS idx_user_auth_ext_ids_auth_user_id ON public.user_auth_ext_ids(auth_user_id);
 
 -- Optimize lookups by provider
-CREATE INDEX idx_external_identities_provider ON public.external_identities(provider_name);
+CREATE INDEX IF NOT EXISTS idx_user_auth_ext_ids_provider ON public.user_auth_ext_ids(provider_name);
 
 -- =============================================
 -- COMMENTS
 -- =============================================
 
-COMMENT ON TABLE public.external_identities IS 'Maps external auth provider user IDs (e.g., Okta sub claim) to Supabase auth.users.id';
-COMMENT ON COLUMN public.external_identities.auth_user_id IS 'Supabase auth.users.id (UUID)';
-COMMENT ON COLUMN public.external_identities.external_id IS 'User ID from external provider (e.g., Okta user ID from JWT sub claim)';
-COMMENT ON COLUMN public.external_identities.provider_name IS 'Auth provider name (e.g., "okta", "clerk", "auth0")';
-COMMENT ON COLUMN public.external_identities.metadata IS 'Additional provider-specific data (e.g., original JWT claims)';
+COMMENT ON TABLE public.user_auth_ext_ids IS 'Maps external auth provider user IDs (e.g., Okta sub claim) to Supabase auth.users.id';
+COMMENT ON COLUMN public.user_auth_ext_ids.auth_user_id IS 'Supabase auth.users.id (UUID)';
+COMMENT ON COLUMN public.user_auth_ext_ids.external_id IS 'User ID from external provider (e.g., Okta user ID from JWT sub claim)';
+COMMENT ON COLUMN public.user_auth_ext_ids.provider_name IS 'Auth provider name (e.g., "okta", "clerk", "auth0")';
+COMMENT ON COLUMN public.user_auth_ext_ids.metadata IS 'Additional provider-specific data (e.g., original JWT claims)';
 
 -- =============================================
 -- ROW LEVEL SECURITY (RLS)
 -- =============================================
 
-ALTER TABLE public.external_identities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_auth_ext_ids ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist (makes this script idempotent)
+DROP POLICY IF EXISTS "Users can view their own external identities" ON public.user_auth_ext_ids;
+DROP POLICY IF EXISTS "Users can link their own external identities" ON public.user_auth_ext_ids;
+DROP POLICY IF EXISTS "Users can update their own external identities" ON public.user_auth_ext_ids;
+DROP POLICY IF EXISTS "Users can delete their own external identities" ON public.user_auth_ext_ids;
 
 -- Users can view their own external identities
 CREATE POLICY "Users can view their own external identities" 
-    ON public.external_identities
+    ON public.user_auth_ext_ids
     FOR SELECT 
     TO authenticated
     USING (auth_user_id = auth.uid());
 
 -- Users can link their own external identities
 CREATE POLICY "Users can link their own external identities" 
-    ON public.external_identities
+    ON public.user_auth_ext_ids
     FOR INSERT 
     TO authenticated
     WITH CHECK (auth_user_id = auth.uid());
 
 -- Users can update their own external identities
 CREATE POLICY "Users can update their own external identities" 
-    ON public.external_identities
+    ON public.user_auth_ext_ids
     FOR UPDATE 
     TO authenticated
     USING (auth_user_id = auth.uid())
@@ -72,22 +79,18 @@ CREATE POLICY "Users can update their own external identities"
 
 -- Users can delete their own external identities
 CREATE POLICY "Users can delete their own external identities" 
-    ON public.external_identities
+    ON public.user_auth_ext_ids
     FOR DELETE 
     TO authenticated
     USING (auth_user_id = auth.uid());
 
--- Service role has full access (for Lambda functions)
-CREATE POLICY "Service role full access to external_identities" 
-    ON public.external_identities
-    FOR ALL
-    USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
+-- Note: Service role bypasses RLS automatically, no policy needed
 
 -- =============================================
 -- TRIGGER: Auto-update updated_at
 -- =============================================
 
-CREATE OR REPLACE FUNCTION update_external_identities_updated_at()
+CREATE OR REPLACE FUNCTION update_user_auth_ext_ids_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = NOW();
@@ -95,7 +98,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER external_identities_updated_at
-    BEFORE UPDATE ON public.external_identities
+DROP TRIGGER IF EXISTS user_auth_ext_ids_updated_at ON public.user_auth_ext_ids;
+CREATE TRIGGER user_auth_ext_ids_updated_at
+    BEFORE UPDATE ON public.user_auth_ext_ids
     FOR EACH ROW
-    EXECUTE FUNCTION update_external_identities_updated_at();
+    EXECUTE FUNCTION update_user_auth_ext_ids_updated_at();

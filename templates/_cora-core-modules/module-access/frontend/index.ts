@@ -30,9 +30,11 @@ export type {
 export { useUnifiedAuth } from "./hooks/useUnifiedAuth";
 export type { UnifiedAuthState } from "./hooks/useUnifiedAuth";
 export { AuthProvider } from "./components/AuthProvider";
+export { SessionTracking } from "./components/SessionTracking";
 
 // Contexts
 export { UserProvider, useUser } from "./contexts/UserContext";
+export { UserProviderWrapper } from "./components/UserProviderWrapper";
 export { OrgProvider } from "./contexts/OrgContext";
 
 // Hooks

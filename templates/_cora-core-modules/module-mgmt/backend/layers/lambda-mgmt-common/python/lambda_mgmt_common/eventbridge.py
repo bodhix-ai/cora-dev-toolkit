@@ -36,10 +36,10 @@ class EventBridgeManager:
         
         Args:
             environment: Environment name (dev, stg, prd)
-            name_prefix: Optional custom name prefix (defaults to "${project}-{environment}")
+            name_prefix: Optional custom name prefix (defaults to "{{PROJECT_NAME}}-{environment}")
         """
         self.environment = environment
-        self.name_prefix = name_prefix or f"${project}-{environment}"
+        self.name_prefix = name_prefix or f"{{PROJECT_NAME}}-{environment}"
         self.events = boto3.client('events')
         self.lambda_client = boto3.client('lambda')
         

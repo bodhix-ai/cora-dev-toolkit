@@ -1,4 +1,4 @@
-import { NavSectionConfig } from "@${project}/shared-types";
+import { NavSectionConfig } from "@{{PROJECT_NAME}}/shared-types";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import SettingsIcon from "@mui/icons-material/Settings";
 import HelpIcon from "@mui/icons-material/Help";

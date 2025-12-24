@@ -14,7 +14,7 @@ import {
   ValidationProgress,
   ValidationCategory,
 } from "../../types";
-import { CoraAuthAdapter } from "@${project}/api-client";
+import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
 
 interface ProviderListProps {
   authAdapter: CoraAuthAdapter;

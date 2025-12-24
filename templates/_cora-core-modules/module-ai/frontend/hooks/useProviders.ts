@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import {
   createCoraAuthenticatedClient,
   type CoraAuthAdapter,
-} from "@${project}/api-client";
+} from "@{{PROJECT_NAME}}/api-client";
 import { createAIEnablementClient } from "../lib/api";
 import { AIProvider } from "../types";
 
@@ -16,8 +16,8 @@ import { AIProvider } from "../types";
  * @example
  * ```tsx
  * import { useAuth } from '@clerk/nextjs';
- * import { createClerkAuthAdapter } from '@${project}/api-client';
- * import { useProviders } from '@${project}/ai-enablement-module';
+ * import { createClerkAuthAdapter } from '@{{PROJECT_NAME}}/api-client';
+ * import { useProviders } from '@{{PROJECT_NAME}}/ai-enablement-module';
  *
  * const clerkAuth = useAuth();
  * const authAdapter = createClerkAuthAdapter(clerkAuth);

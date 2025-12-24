@@ -92,6 +92,18 @@ output "api_routes" {
       integration = aws_lambda_function.profiles.invoke_arn
       public      = false
     },
+    {
+      method      = "POST"
+      path        = "/profiles/me/login"
+      integration = aws_lambda_function.profiles.invoke_arn
+      public      = false
+    },
+    {
+      method      = "POST"
+      path        = "/profiles/me/logout"
+      integration = aws_lambda_function.profiles.invoke_arn
+      public      = false
+    },
     # orgs endpoints
     {
       method      = "GET"
