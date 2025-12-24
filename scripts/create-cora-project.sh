@@ -207,13 +207,20 @@ replace_placeholders() {
   # Find and replace in all files
   find "$dir" -type f \( -name "*.tf" -o -name "*.json" -o -name "*.md" -o -name "*.sh" -o -name "*.py" -o -name "*.ts" -o -name "*.tsx" -o -name "*.yaml" -o -name "*.yml" -o -name ".clinerules" \) | while read -r file; do
     if [[ -f "$file" ]]; then
-      # Replace placeholders
+      # Replace machine-readable project name
       sed -i '' "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file" 2>/dev/null || \
       sed -i "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file"
       
+      # Replace display name (fallback to PROJECT_NAME if not set)
+      PROJECT_DISPLAY_NAME="${PROJECT_DISPLAY_NAME:-${PROJECT_NAME}}"
+      sed -i '' "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_DISPLAY_NAME}/g" "$file" 2>/dev/null || \
+      sed -i "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_DISPLAY_NAME}/g" "$file"
+      
+      # Replace AWS region
       sed -i '' "s/{{AWS_REGION}}/${AWS_REGION}/g" "$file" 2>/dev/null || \
       sed -i "s/{{AWS_REGION}}/${AWS_REGION}/g" "$file"
       
+      # Replace GitHub organization if provided
       if [[ -n "$GITHUB_ORG" ]]; then
         sed -i '' "s/{{GITHUB_ORG}}/${GITHUB_ORG}/g" "$file" 2>/dev/null || \
         sed -i "s/{{GITHUB_ORG}}/${GITHUB_ORG}/g" "$file"
@@ -363,12 +370,16 @@ if $WITH_CORE_MODULES && ! $DRY_RUN; then
       log_info "Creating ${module} from core module template..."
       cp -r "$CORE_MODULE_TEMPLATE" "$MODULE_DIR"
       
-      # Replace parameterized placeholders
+      # Replace standardized placeholders ({{...}} format only)
       find "$MODULE_DIR" -type f \( -name "*.py" -o -name "*.ts" -o -name "*.tsx" -o -name "*.json" -o -name "*.tf" -o -name "*.md" -o -name "*.sql" \) | while read -r file; do
-        sed -i '' "s/\\\${project}/${PROJECT_NAME}/g" "$file" 2>/dev/null || \
-        sed -i "s/\\\${project}/${PROJECT_NAME}/g" "$file"
-        sed -i '' "s/\\\${project_display_name}/${PROJECT_NAME}/g" "$file" 2>/dev/null || \
-        sed -i "s/\\\${project_display_name}/${PROJECT_NAME}/g" "$file"
+        # Replace machine-readable project name
+        sed -i '' "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file" 2>/dev/null || \
+        sed -i "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file"
+        
+        # Replace display name (fallback to PROJECT_NAME if not set)
+        PROJECT_DISPLAY_NAME="${PROJECT_DISPLAY_NAME:-${PROJECT_NAME}}"
+        sed -i '' "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_DISPLAY_NAME}/g" "$file" 2>/dev/null || \
+        sed -i "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_DISPLAY_NAME}/g" "$file"
       done
     elif [[ -d "$MODULE_TEMPLATE" ]]; then
       log_info "Creating ${module} from generic template..."
@@ -504,9 +515,9 @@ generate_env_files() {
     AWS_API_GATEWAY_ENDPOINT=$(yq '.aws.api_gateway.endpoint // ""' "$config_file")
   fi
   
-  # Generate apps/web/.env
+  # Generate apps/web/.env.local for local development
   if [[ -d "${stack_dir}/apps/web" ]]; then
-    cat > "${stack_dir}/apps/web/.env" << ENVEOF
+    cat > "${stack_dir}/apps/web/.env.local" << ENVEOF
 # Generated from setup.config.${PROJECT_NAME}.yaml
 # DO NOT COMMIT THIS FILE
 
@@ -528,10 +539,15 @@ OKTA_ISSUER="${OKTA_ISSUER}"
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="${NEXTAUTH_SECRET}"
 
+# CORA API Gateway URL
+# This is set after infrastructure deployment. If not yet deployed, leave empty.
+# Run: cd ../PROJECT_NAME-infra && ./scripts/update-env-from-terraform.sh dev
+NEXT_PUBLIC_CORA_API_URL="${AWS_API_GATEWAY_ENDPOINT}"
+
 # AWS
 AWS_REGION="${AWS_REGION}"
 ENVEOF
-    log_info "Created ${stack_dir}/apps/web/.env"
+    log_info "Created ${stack_dir}/apps/web/.env.local"
   fi
   
   # Generate schema-validator .env (for validation tooling)
@@ -670,10 +686,11 @@ generate_terraform_vars() {
     SUPABASE_SERVICE_KEY=$(grep "service_role_key:" "$config_file" | sed 's/.*service_role_key: *"\([^"]*\)".*/\1/' || echo "")
     SUPABASE_JWT_SECRET=$(grep -A10 "^supabase:" "$config_file" | grep "jwt_secret:" | sed 's/.*jwt_secret: *"\([^"]*\)".*/\1/' || echo "")
     AUTH_PROVIDER=$(grep "^auth_provider:" "$config_file" | sed 's/.*auth_provider: *"\([^"]*\)".*/\1/' || echo "okta")
-    OKTA_DOMAIN=$(grep -A5 "^okta:" "$config_file" | grep "domain:" | sed 's/.*domain: *"\([^"]*\)".*/\1/' || echo "")
-    OKTA_CLIENT_ID=$(grep -A5 "^okta:" "$config_file" | grep "client_id:" | sed 's/.*client_id: *"\([^"]*\)".*/\1/' || echo "")
-    OKTA_CLIENT_SECRET=$(grep -A5 "^okta:" "$config_file" | grep "client_secret:" | sed 's/.*client_secret: *"\([^"]*\)".*/\1/' || echo "")
-    OKTA_ISSUER=$(grep -A5 "^okta:" "$config_file" | grep "issuer:" | sed 's/.*issuer: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_DOMAIN=$(grep -A10 "okta:" "$config_file" | grep "domain:" | sed 's/.*domain: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_CLIENT_ID=$(grep -A10 "okta:" "$config_file" | grep "client_id:" | sed 's/.*client_id: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_CLIENT_SECRET=$(grep -A10 "okta:" "$config_file" | grep "client_secret:" | sed 's/.*client_secret: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_ISSUER=$(grep -A10 "okta:" "$config_file" | grep "issuer:" | sed 's/.*issuer: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_AUDIENCE=$(grep -A10 "okta:" "$config_file" | grep "audience:" | sed 's/.*audience: *\([^ ]*\).*/\1/' || echo "api://default")
     CLERK_PUBLISHABLE_KEY=$(grep -A5 "^clerk:" "$config_file" | grep "publishable_key:" | sed 's/.*publishable_key: *"\([^"]*\)".*/\1/' || echo "")
     CLERK_SECRET_KEY=$(grep -A5 "^clerk:" "$config_file" | grep "secret_key:" | sed 's/.*secret_key: *"\([^"]*\)".*/\1/' || echo "")
   else
@@ -685,10 +702,11 @@ generate_terraform_vars() {
     SUPABASE_SERVICE_KEY=$(yq '.supabase.service_role_key' "$config_file")
     SUPABASE_JWT_SECRET=$(yq '.supabase.jwt_secret' "$config_file")
     AUTH_PROVIDER=$(yq '.auth_provider // "okta"' "$config_file")
-    OKTA_DOMAIN=$(yq '.okta.domain // ""' "$config_file")
-    OKTA_CLIENT_ID=$(yq '.okta.client_id // ""' "$config_file")
-    OKTA_CLIENT_SECRET=$(yq '.okta.client_secret // ""' "$config_file")
-    OKTA_ISSUER=$(yq '.okta.issuer // ""' "$config_file")
+    OKTA_DOMAIN=$(yq '.auth.okta.domain // ""' "$config_file")
+    OKTA_CLIENT_ID=$(yq '.auth.okta.client_id // ""' "$config_file")
+    OKTA_CLIENT_SECRET=$(yq '.auth.okta.client_secret // ""' "$config_file")
+    OKTA_ISSUER=$(yq '.auth.okta.issuer // ""' "$config_file")
+    OKTA_AUDIENCE=$(yq '.auth.okta.audience // "api://default"' "$config_file")
     CLERK_PUBLISHABLE_KEY=$(yq '.clerk.publishable_key // ""' "$config_file")
     CLERK_SECRET_KEY=$(yq '.clerk.secret_key' "$config_file")
   fi
@@ -716,7 +734,7 @@ auth_provider = "${AUTH_PROVIDER}"
 
 # Okta Configuration (when auth_provider = "okta")
 okta_issuer = "${OKTA_ISSUER}"
-okta_audience = "${OKTA_CLIENT_ID}"
+okta_audience = "${OKTA_AUDIENCE}"
 
 # Clerk Configuration (when auth_provider = "clerk")
 clerk_secret_key_value = "${CLERK_SECRET_KEY}"
@@ -1037,8 +1055,15 @@ run_migrations() {
     return
   fi
   
-  # Build connection string
-  local conn_string="postgresql://${SUPABASE_DB_USER}:${SUPABASE_DB_PASSWORD}@${SUPABASE_DB_HOST}:${SUPABASE_DB_PORT:-6543}/${SUPABASE_DB_NAME:-postgres}"
+  # URL-encode password for PostgreSQL connection string
+  # Special characters like &, =, @, etc. need to be encoded
+  url_encode_password() {
+    python3 -c "import urllib.parse; print(urllib.parse.quote('$1', safe=''))"
+  }
+  
+  # Build connection string with URL-encoded password
+  local encoded_password=$(url_encode_password "$SUPABASE_DB_PASSWORD")
+  local conn_string="postgresql://${SUPABASE_DB_USER}:${encoded_password}@${SUPABASE_DB_HOST}:${SUPABASE_DB_PORT:-6543}/${SUPABASE_DB_NAME:-postgres}"
   
   # Execute setup-database.sql
   if [[ -f "${stack_dir}/scripts/setup-database.sql" ]]; then

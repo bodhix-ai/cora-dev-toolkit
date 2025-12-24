@@ -1,13 +1,13 @@
 import * as React from "react";
 import type { Metadata } from "next";
-import { AuthProvider } from "module-access";
+import { AuthProvider, UserProviderWrapper, OrgProvider } from "module-access";
 import ThemeRegistry from "../components/ThemeRegistry";
 import AppShell from "../components/AppShell";
-import ClientProviders from "../components/ClientProviders";
+import { auth } from "@/auth";
 
 export const metadata: Metadata = {
-  title: "${project_display_name}",
-  description: "AI-driven policy workspace",
+  title: "{{PROJECT_DISPLAY_NAME}}",
+  description: "AI-driven workspace",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
@@ -15,20 +15,38 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+/**
+ * Root Layout - Following ADR-007 CORA Auth Shell Standard
+ * 
+ * Provider hierarchy: AuthProvider → ThemeRegistry → UserProviderWrapper → OrgProvider → AppShell
+ * 
+ * Key principles (per industry standards):
+ * - Single root layout for ALL pages (no route groups for auth separation)
+ * - AuthProvider wraps SessionProvider (Okta) or ClerkProvider (Clerk)
+ * - UserProviderWrapper loads user profile from API
+ * - OrgProvider loads organization context for the current user
+ * - AppShell handles conditional UI rendering (loading states, access denied)
+ * - NO AuthRouter component - middleware handles all auth redirects
+ * 
+ * @see cora-dev-toolkit/docs/ADR-007-CORA-AUTH-SHELL-STANDARD.md
+ */
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+
   return (
     <html lang="en" style={{ height: "100%" }}>
       <body style={{ margin: 0, height: "100%" }}>
-        <AuthProvider>
+        <AuthProvider session={session}>
           <ThemeRegistry>
-            {/* Phase 1: Client-side providers (SessionProvider, OrgProvider, OrgStateSyncProvider) */}
-            <ClientProviders>
-              <AppShell>{children}</AppShell>
-            </ClientProviders>
+            <UserProviderWrapper>
+              <OrgProvider>
+                <AppShell>{children}</AppShell>
+              </OrgProvider>
+            </UserProviderWrapper>
           </ThemeRegistry>
         </AuthProvider>
       </body>
