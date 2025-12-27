@@ -91,26 +91,30 @@ brew install awscli
 aws --version
 ```
 
-#### 5. Python 3 pip (Required for building Lambda functions)
+#### 5. Python 3 with venv (Required for validation tools and Lambda builds)
 
 ```bash
 # Python 3 is typically pre-installed on macOS
-# Verify Python 3 and pip3 are available
+# Verify Python 3 is available
 python3 --version
-pip3 --version
 
-# Install Python dependencies for validation tools
-pip3 install click colorama python-dotenv
+# Verify venv module is available (usually included with Python 3)
+python3 -m venv --help
 ```
 
-**Why needed:** Build Lambda function packages and run validation tools.
+**Why needed:** 
+- Build Lambda function packages
+- Run validation tools in isolated environment
+- Avoid conflicts with global Python packages
 
 **Verify installation:**
 
 ```bash
 python3 --version  # Should be Python 3.9 or higher
-pip3 --version     # Should output version number
+python3 -m venv --help  # Should display venv help
 ```
+
+**Note:** The project creation script will automatically create a virtual environment and install all required validation dependencies (boto3, supabase, click, colorama, etc.) in `scripts/validation/.venv`.
 
 #### 6. GitHub CLI (Optional - for repo creation)
 
@@ -292,11 +296,14 @@ The script will automatically:
 5. ✅ Generate `.env` files for web app
 6. ✅ Generate `local-secrets.tfvars` for Terraform
 7. ✅ Generate validation `.env` files
-8. ✅ Consolidate database schemas from all modules
-9. ✅ Generate IDP configuration seed file
-10. ✅ **Execute database migrations automatically**
-11. ✅ **Seed IDP configuration automatically**
-12. ✅ Initialize git repositories
+8. ✅ **Create Python virtual environment** for validation tools
+9. ✅ **Install validation dependencies** (boto3, supabase, etc.) in isolated venv
+10. ✅ **Create wrapper scripts** for easy validator execution
+11. ✅ Consolidate database schemas from all modules
+12. ✅ Generate IDP configuration seed file
+13. ✅ **Execute database migrations automatically**
+14. ✅ **Seed IDP configuration automatically**
+15. ✅ Initialize git repositories
 
 ### 3.3 Expected Output
 
@@ -330,6 +337,18 @@ The script will automatically:
 
 [STEP] Generating IDP configuration seed file...
 [INFO] Created seed-idp-config.sql for Okta
+
+[STEP] Setting up validation environment...
+[INFO] Creating Python virtual environment at scripts/validation/.venv...
+[INFO] ✅ Virtual environment created
+[INFO] Installing validation dependencies in virtual environment...
+[INFO] ✅ Validation dependencies installed
+[INFO] Created activation script: scripts/validation/activate-venv.sh
+[INFO] Created wrapper script: scripts/validation/run-validators.sh
+[INFO] Created .gitignore for validation directory
+[INFO] 📦 Validation environment setup complete!
+[INFO]    To activate: source scripts/validation/activate-venv.sh
+[INFO]    To run validators: ./scripts/validation/run-validators.sh
 
 [STEP] Running database migrations...
 [INFO] Executing setup-database.sql...
@@ -759,6 +778,66 @@ open http://localhost:3000
 
 ---
 
+## Validation Tools
+
+### Running Validators
+
+The project creation script sets up a Python virtual environment with all required dependencies for validation tools.
+
+**Option 1: Use the wrapper script (recommended):**
+```bash
+cd YOUR-PROJECT-stack
+./scripts/validation/run-validators.sh
+```
+
+This automatically:
+- Activates the virtual environment
+- Runs all validators
+- Deactivates the virtual environment
+- Outputs results
+
+**Option 2: Manual activation:**
+```bash
+cd YOUR-PROJECT-stack/scripts/validation
+source activate-venv.sh
+
+# Now run validators manually
+python3 -m structure-validator.cli ../.. --format json
+python3 -m api-tracer.cli ../.. --format json
+python3 -m schema-validator.cli ../.. --format json
+
+# When done
+deactivate
+```
+
+**Option 3: Run orchestrator:**
+```bash
+cd YOUR-PROJECT-stack/scripts/validation
+source activate-venv.sh
+python3 cora-validate.py project ../..
+deactivate
+```
+
+### Installed Validation Dependencies
+
+The virtual environment includes:
+- **boto3** - AWS SDK for API Gateway querying
+- **supabase** - Supabase Python client for schema validation
+- **python-dotenv** - Environment variable management
+- **click** - CLI framework
+- **colorama** - Terminal color output
+- **requests** - HTTP library
+
+### Why Virtual Environment?
+
+The virtual environment approach provides:
+- **Isolation** - No conflicts with global Python packages
+- **Reproducibility** - Same dependencies across all team members
+- **Easy management** - Simple to upgrade or reset dependencies
+- **Best practice** - Standard Python development workflow
+
+---
+
 ## Support
 
 For issues or questions:
@@ -769,6 +848,7 @@ For issues or questions:
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** December 14, 2025  
-**Tested With:** ai-sec project (Okta authentication)
+**Document Version:** 1.1  
+**Last Updated:** December 27, 2025  
+**Tested With:** ai-sec project (Okta authentication)  
+**New in 1.1:** Virtual environment for validation tools, boto3 dependency

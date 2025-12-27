@@ -12,11 +12,12 @@
 3. [Database Integration](#database-integration)
 4. [Backend Integration](#backend-integration)
 5. [Frontend Integration](#frontend-integration)
-6. [Module Manifest](#module-manifest)
-7. [Testing Requirements](#testing-requirements)
-8. [Documentation Requirements](#documentation-requirements)
-9. [Migration & Deployment](#migration--deployment)
-10. [Infrastructure as Code](#infrastructure-as-code)
+6. [Admin Integration](#admin-integration)
+7. [Module Manifest](#module-manifest)
+8. [Testing Requirements](#testing-requirements)
+9. [Documentation Requirements](#documentation-requirements)
+10. [Migration & Deployment](#migration--deployment)
+11. [Infrastructure as Code](#infrastructure-as-code)
 
 ---
 
@@ -105,6 +106,7 @@ packages/<module-name>/
   - Python: `snake_case.py`
   - TypeScript: `PascalCase.tsx` for components, `camelCase.ts` for utilities
 - **Functions/Classes**: Language conventions (PascalCase for classes, camelCase for JS/TS, snake_case for Python)
+- **Admin Routes**: Single word or acronym only (e.g., `/admin/access`, `/admin/ai`, `/admin/mgmt`)
 
 ---
 
@@ -812,6 +814,168 @@ export interface EntityUpdate {
   description?: string;
 }
 ```
+
+---
+
+## Admin Integration
+
+### Overview
+
+Modules can optionally provide administration interfaces that integrate with the platform's admin dashboards. Admin features follow the **Modular Admin Architecture** pattern, where each module exports a single admin card per context (platform or organization).
+
+**Reference Standards:**
+- [standard_ADMIN-CARD-PATTERN.md](./standard_ADMIN-CARD-PATTERN.md)
+- [standard_MODULAR-ADMIN-ARCHITECTURE.md](./standard_MODULAR-ADMIN-ARCHITECTURE.md)
+- [standard_NAVIGATION-AND-ROLES.md](./standard_NAVIGATION-AND-ROLES.md)
+
+### Admin Card Pattern
+
+Each module that provides admin functionality MUST export exactly ONE admin card per context.
+
+#### Admin Card File Structure
+
+```
+frontend/
+├── adminCard.tsx                # Admin card export (REQUIRED)
+├── components/admin/
+│   ├── ModuleAdmin.tsx          # Main tabbed admin page
+│   ├── Tab1Component.tsx        # Tab components
+│   ├── Tab2Component.tsx
+│   └── Tab3Component.tsx
+└── index.ts                     # Export admin card
+```
+
+#### Admin Card Definition
+
+```typescript
+// frontend/adminCard.tsx
+import React from "react";
+import SecurityIcon from "@mui/icons-material/Security";
+import type { AdminCardConfig } from "@{{PROJECT_NAME}}/shared-types";
+
+/**
+ * Platform Admin Card - Access Control
+ * Single card with tabs: Orgs, Users, IDP Config
+ */
+export const accessControlAdminCard: AdminCardConfig = {
+  id: "access-control",
+  title: "Access Control",
+  description: "Manage organizations, users, identity providers, and access settings",
+  icon: <SecurityIcon sx={{ fontSize: 48 }} />,
+  href: "/admin/access",
+  color: "primary.main",
+  order: 10,
+  context: "platform",
+  requiredRoles: ["platform_owner", "platform_admin"],
+};
+```
+
+#### Export from Module Index
+
+```typescript
+// frontend/index.ts
+export { accessControlAdminCard } from "./adminCard";
+export { AccessControlAdmin } from "./components/admin/AccessControlAdmin";
+```
+
+### Tabbed Admin Page Structure
+
+Admin pages use MUI Tabs to consolidate multiple features:
+
+```typescript
+// apps/web/app/admin/access/page.tsx
+"use client";
+
+import React, { useState } from "react";
+import { Box, Typography, Tabs, Tab } from "@mui/material";
+import { OrgsTab, UsersTab, IdpTab } from "@{{PROJECT_NAME}}/module-access";
+
+export default function AccessControlPage() {
+  const [activeTab, setActiveTab] = useState(0);
+
+  return (
+    <Box sx={{ p: 4 }}>
+      <Typography variant="h4" gutterBottom>
+        Access Control
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+        Manage organizations, users, and identity providers
+      </Typography>
+
+      <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 3 }}>
+        <Tab label="Organizations" />
+        <Tab label="Users" />
+        <Tab label="IDP Config" />
+      </Tabs>
+
+      {activeTab === 0 && <OrgsTab />}
+      {activeTab === 1 && <UsersTab />}
+      {activeTab === 2 && <IdpTab />}
+    </Box>
+  );
+}
+```
+
+### Admin Route Naming
+
+**Rule:** Admin routes MUST use single word or acronym only.
+
+**Examples:**
+- ✅ Good: `/admin/access`, `/admin/ai`, `/admin/mgmt`, `/admin/chat`, `/admin/kb`
+- ❌ Bad: `/admin/access-control`, `/admin/ai-enablement`, `/admin/platform-mgmt`
+
+### Module Admin Cards Summary
+
+| Context | Module | Card Title | Route | Order Range |
+|---------|--------|-----------|-------|-------------|
+| Platform | module-access | Access Control | `/admin/access` | 10-19 (Core) |
+| Platform | module-ai | AI Enablement | `/admin/ai` | 20-29 (Intelligence) |
+| Platform | module-mgmt | Platform Management | `/admin/mgmt` | 30-39 (Infrastructure) |
+| Organization | module-access | Organization Settings | `/org/settings` | 10-19 (Core) |
+
+### Access Control
+
+Admin features must enforce role-based access control:
+
+**Platform Admin:**
+- Required roles: `platform_owner`, `platform_admin`
+- Access to: All platform-wide configuration
+
+**Organization Admin:**
+- Required roles: `platform_owner`, `platform_admin`, `org_owner`, `org_admin`
+- Access to: Organization-specific settings
+
+**Special Cases:**
+- Some features (e.g., email domains, org AI config) may be platform admin only
+- Use tab-specific access control for mixed-access pages
+
+### Integration Checklist
+
+When adding admin features to a module:
+
+**Platform Admin:**
+- [ ] Create `adminCard.tsx` with ONE platform admin card
+- [ ] Set `context: "platform"`
+- [ ] Set `requiredRoles: ["platform_owner", "platform_admin"]`
+- [ ] Use descriptive functional name (e.g., "Access Control", "AI Enablement")
+- [ ] Create tabbed admin component in `frontend/components/admin/`
+- [ ] Create tab components for each feature area
+- [ ] Export card and components from module `index.ts`
+- [ ] Create route page in `apps/web/app/admin/[feature]/page.tsx`
+- [ ] Use single-word or acronym route (e.g., `/admin/access`, `/admin/ai`)
+- [ ] Add backend authorization checks for platform roles
+- [ ] Document in module README
+
+**Organization Admin:**
+- [ ] Create `adminCard.tsx` with ONE org admin card
+- [ ] Set `context: "organization"`
+- [ ] Set appropriate `requiredRoles`
+- [ ] Create tabbed admin component
+- [ ] Create tab components for each feature area
+- [ ] Export card and components from module `index.ts`
+- [ ] Create route page in `apps/web/app/org/[feature]/page.tsx`
+- [ ] Add backend authorization checks (platform OR org admin)
+- [ ] Document in module README
 
 ---
 
