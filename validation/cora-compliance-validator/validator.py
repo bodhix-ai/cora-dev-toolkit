@@ -227,8 +227,12 @@ class CoraComplianceChecker:
             issues=issues
         )
     
-    def check_standard_3_multi_tenancy(self, content: str) -> StandardCheck:
+    def check_standard_3_multi_tenancy(self, content: str, lambda_name: str = "") -> StandardCheck:
         """Check Standard 3: Multi-tenancy"""
+        # Whitelist: Platform-level Lambdas that manage cross-org infrastructure
+        platform_lambdas = ['idp-config', 'provider', 'lambda-mgmt']
+        is_platform_lambda = any(pl in lambda_name for pl in platform_lambdas)
+        
         org_id_count = 0
         db_operation_lines = []
         
@@ -245,16 +249,22 @@ class CoraComplianceChecker:
         details = []
         issues = []
         
-        if org_id_count > 0:
+        if is_platform_lambda:
+            # Platform-level Lambda - org_id not required
+            details.append("ℹ Platform-level Lambda (cross-org infrastructure)")
+            details.append("✓ org_id filtering not required")
+            score = 1.0
+            is_compliant = True
+        elif org_id_count > 0:
             details.append(f"✓ org_id used {org_id_count} time(s)")
             if db_operation_lines:
                 details.append(f"✓ Found {len(db_operation_lines)} database operations")
+            score = min(1.0, org_id_count / max(1, len(db_operation_lines))) if db_operation_lines else 0.5
+            is_compliant = True
         else:
             issues.append("✗ No org_id usage found")
-        
-        # Estimate compliance based on org_id usage
-        score = min(1.0, org_id_count / max(1, len(db_operation_lines))) if db_operation_lines else 0.5
-        is_compliant = org_id_count > 0
+            score = 0.5
+            is_compliant = False
         
         return StandardCheck(
             standard_number=3,
@@ -451,26 +461,7 @@ class CoraComplianceChecker:
         with open(file_path, 'r') as f:
             content = f.read()
         
-        # Detect alias
-        alias_match = self.COMMON_ALIAS.search(content)
-        common_alias = alias_match.group(1) if alias_match else 'org_common'
-        
-        # Check all 7 standards
-        standards = [
-            self.check_standard_1_response_format(content, common_alias),
-            self.check_standard_2_authentication(content),
-            self.check_standard_3_multi_tenancy(content),
-            self.check_standard_4_validation(content),
-            self.check_standard_5_database_helpers(content),
-            self.check_standard_6_error_handling(content),
-            self.check_standard_7_batch_operations(content),
-        ]
-        
-        # Calculate overall score
-        overall_score = sum(s.score for s in standards) / len(standards)
-        is_fully_compliant = all(s.is_compliant for s in standards)
-        
-        # Extract module and lambda name
+        # Extract module and lambda name FIRST (needed for whitelisting)
         try:
             path_parts = file_path.relative_to(self.root_dir).parts
             if len(path_parts) >= 2 and path_parts[0] == "packages":
@@ -483,6 +474,25 @@ class CoraComplianceChecker:
             # Fallback if relative_to fails
             module_name = "unknown"
             lambda_name = file_path.parent.name
+        
+        # Detect alias
+        alias_match = self.COMMON_ALIAS.search(content)
+        common_alias = alias_match.group(1) if alias_match else 'org_common'
+        
+        # Check all 7 standards (pass lambda_name to multi-tenancy check for whitelisting)
+        standards = [
+            self.check_standard_1_response_format(content, common_alias),
+            self.check_standard_2_authentication(content),
+            self.check_standard_3_multi_tenancy(content, lambda_name),
+            self.check_standard_4_validation(content),
+            self.check_standard_5_database_helpers(content),
+            self.check_standard_6_error_handling(content),
+            self.check_standard_7_batch_operations(content),
+        ]
+        
+        # Calculate overall score
+        overall_score = sum(s.score for s in standards) / len(standards)
+        is_fully_compliant = all(s.is_compliant for s in standards)
         
         return LambdaCoraCompliance(
             path=str(file_path),
