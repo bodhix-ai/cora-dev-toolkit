@@ -35,50 +35,54 @@ This tool validates React/TypeScript components against:
 
 ## Installation
 
-```bash
-# Install dependencies
-cd pm-app-stack/scripts/validation/a11y-validator
-pip install -r requirements.txt
-```
+No additional dependencies required beyond the project's existing Python environment.
 
 ## Usage
 
-### Command Line
+### Command Line (Recommended)
+
+The easiest way to run the validator is using the wrapper script from your project root:
 
 ```bash
-# Validate a directory
-python -m scripts.validation.a11y_validator.cli packages/kb-module/src/components
+# Navigate to your project root
+cd /path/to/your/project
+
+# Validate the entire project
+python3 scripts/validation/run_a11y_validator.py --target-dir .
 
 # Validate with verbose output
-python -m scripts.validation.a11y_validator.cli packages/ --verbose
+python3 scripts/validation/run_a11y_validator.py --target-dir packages/ --verbose
+
+# Validate a specific directory
+python3 scripts/validation/run_a11y_validator.py --target-dir packages/module-ai --verbose
 
 # Generate JSON report
-python -m scripts.validation.a11y_validator.cli packages/ --format json --output report.json
+python3 scripts/validation/run_a11y_validator.py --target-dir packages/ --format json --output report.json
 
 # Generate markdown report
-python -m scripts.validation.a11y_validator.cli packages/ --format markdown --output report.md
-
-# Show baseline coverage
-python -m scripts.validation.a11y_validator.cli --show-coverage
-
-# Filter by severity
-python -m scripts.validation.a11y_validator.cli packages/ --severity error
-
-# Filter by baseline test
-python -m scripts.validation.a11y_validator.cli packages/ --baseline 6.A
+python3 scripts/validation/run_a11y_validator.py --target-dir packages/ --format markdown --output report.md
 
 # Strict mode (fail on warnings)
-python -m scripts.validation.a11y_validator.cli packages/ --strict
+python3 scripts/validation/run_a11y_validator.py --target-dir packages/ --strict
 ```
 
 ### Python API
 
+If you need to use the validator programmatically:
+
 ```python
-from scripts.validation.a11y_validator import validate_path, A11yValidator
+import sys
+from pathlib import Path
+
+# Add the a11y-validator directory to the path
+sys.path.insert(0, str(Path(__file__).parent / "scripts/validation/a11y-validator"))
+
+from validator import validate_path, A11yValidator
+from reporter import Reporter
 
 # Validate and print report
 results = validate_path(
-    path="packages/kb-module/src/components",
+    path="packages/module-ai",
     output_format="text",
     verbose=True
 )
@@ -92,6 +96,10 @@ print(f"Errors: {results['summary']['errors']}")
 print(f"Warnings: {results['summary']['warnings']}")
 print(f"Status: {results['status']}")
 ```
+
+### Note on Module Import
+
+Due to Python's restriction on hyphens in module names, the `a11y-validator` directory cannot be imported directly as a module. The recommended approach is to use the `run_a11y_validator.py` wrapper script, which handles the import path configuration automatically.
 
 ## Baseline Test Coverage
 
