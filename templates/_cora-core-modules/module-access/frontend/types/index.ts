@@ -6,8 +6,9 @@ export interface User {
   firstName: string | null;
   lastName: string | null;
   phone: string | null;
-  globalRole: "global_user" | "global_admin" | "global_owner";
+  globalRole: "global_user" | "global_admin" | "global_owner" | "platform_owner";
   currentOrgId: string | null;
+  requiresInvitation?: boolean; // Flag for denied access scenario
   createdAt: string;
   updatedAt: string;
 }

@@ -4,7 +4,7 @@
  * that other parts of the application can consume.
  *
  * By using a barrel file, we can simplify imports in other modules, like so:
- * import { ProviderList, useProviders } from "@${project}/ai-enablement-module";
+ * import { ProviderList, useProviders } from "@{{PROJECT_NAME}}/ai-enablement-module";
  */
 
 // Provider Components
@@ -16,6 +16,12 @@ export { ProviderForm } from "./components/providers/ProviderForm";
 export { ModelList } from "./components/models/ModelList";
 export { ModelCard } from "./components/models/ModelCard";
 export { TestModelDialog } from "./components/models/TestModelDialog";
+
+// Admin Components
+export { AIEnablementAdmin } from "./components/admin/AIEnablementAdmin";
+export { ProvidersTab } from "./components/admin/ProvidersTab";
+export { ModelsTab } from "./components/admin/ModelsTab";
+export { PlatformConfigTab } from "./components/admin/PlatformConfigTab";
 
 // Hooks
 export { useProviders } from "./hooks/useProviders";

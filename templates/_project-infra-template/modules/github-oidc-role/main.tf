@@ -24,39 +24,38 @@ locals {
   role_name         = "${var.name_prefix}-${var.environment}"
 }
 
-# Trust policy: restrict to repo + environment
-data "aws_iam_policy_document" "assume_role" {
-  statement {
-    effect  = "Allow"
-    actions = ["sts:AssumeRoleWithWebIdentity"]
-
-    principals {
-      type        = "Federated"
-      identifiers = [local.oidc_provider_arn]
-    }
-
-    condition {
-      test     = "StringEquals"
-      variable = "token.actions.githubusercontent.com:aud"
-      values   = [var.oidc_audience]
-    }
-
-    condition {
-      test     = "StringLike"
-      variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_owner}/${var.github_repo}:environment:${var.environment}"]
-    }
-  }
-}
-
+# IAM role with inline trust policy (avoids data source evaluation issues)
 resource "aws_iam_role" "this" {
-  name               = local.role_name
-  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+  name = local.role_name
+  
+  # Inline trust policy to avoid null reference during plan
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Principal = {
+        Federated = local.oidc_provider_arn
+      }
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = var.oidc_audience
+        }
+        StringLike = {
+          "token.actions.githubusercontent.com:sub" = "repo:${var.github_owner}/${var.github_repo}:environment:${var.environment}"
+        }
+      }
+    }]
+  })
+  
   tags = {
     app  = "policymind"
     env  = var.environment
     repo = "${var.github_owner}/${var.github_repo}"
   }
+  
+  # Explicit dependency to ensure OIDC provider exists first
+  depends_on = [aws_iam_openid_connect_provider.github]
 }
 
 # Inline least-privilege policy (scoped to pm-app-* by default)

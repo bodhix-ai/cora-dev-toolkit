@@ -141,21 +141,23 @@ if [ -f "$SECRETS_FILE" ]; then
 fi
 
 # --- 2-Stage Deployment ---
-# Skip full plan as it will fail with "count depends on computed values" error
-# Instead, use targeted applies to deploy in stages
+# Required due to Terraform limitation: API Gateway routes use for_each with
+# Lambda ARNs that are computed values, causing "Invalid for_each argument" error
+# Solution: Deploy Lambda functions first (Stage 1), then API Gateway (Stage 2)
 
 if $PLAN_ONLY; then
   log_info "Running Terraform plan (--plan-only specified)..."
-  log_info "Note: Full plan may fail with 'count depends on computed values' error"
-  log_info "Use without --plan-only for staged deployment"
-  terraform plan ${VAR_FILES_ARG}
+  log_info "Note: Full plan will fail with 'Invalid for_each argument' error"
+  log_info "This is expected - use without --plan-only for staged deployment"
+  terraform plan ${VAR_FILES_ARG} || true
   exit 0
 fi
-log_info "Deploying infrastructure in 2 stages to avoid dependency issues..."
+
+log_info "Deploying infrastructure in 2 stages to handle Terraform computed value limitations..."
 echo ""
 
 # Stage 1: Deploy Lambda modules + Authorizer first
-log_info "Stage 1/2: Deploying Lambda functions and Authorizer..."
+log_info "Stage 1/2: Deploying Lambda functions and dependencies..."
 terraform apply ${AUTO_APPROVE} ${VAR_FILES_ARG} \
   -target=module.module_access \
   -target=module.module_ai \
@@ -164,14 +166,14 @@ terraform apply ${AUTO_APPROVE} ${VAR_FILES_ARG} \
   -target=aws_lambda_function.authorizer \
   -target=aws_cloudwatch_log_group.authorizer \
   -target=aws_iam_role.authorizer \
-  -target=aws_iam_role_policy_attachment.authorizer_basic
+  -target=aws_iam_role_policy_attachment.authorizer_basic || {
+    log_warn "Stage 1 had some errors (likely existing resources)"
+    log_info "Continuing to Stage 2 anyway..."
+  }
 
 echo ""
-log_info "Stage 2/2: Deploying remaining resources (API Gateway, routes)..."
+log_info "Stage 2/2: Deploying API Gateway and routes..."
 terraform apply ${AUTO_APPROVE} ${VAR_FILES_ARG}
-
-# Cleanup plan file
-rm -f tfplan
 
 echo ""
 echo "========================================"

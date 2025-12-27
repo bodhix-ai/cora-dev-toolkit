@@ -1,10 +1,13 @@
-# Module Access Infrastructure - S3 Zip-Based Deployment
+# Module Access Infrastructure - Local Zip-Based Deployment
 # Defines Lambda layer, functions, IAM roles, and CloudWatch alarms
-# Standardized deployment pattern using S3 bucket for Lambda artifacts
+# Uses local .build/ directory for Lambda artifacts
 
 locals {
   # Resource naming prefix
   prefix = "${var.project_name}-${var.environment}-${var.module_name}"
+
+  # Local build directory (relative to this infrastructure/ directory)
+  build_dir = "${path.module}/../backend/.build"
 
   # Common Lambda configuration
   lambda_runtime     = "python3.13"
@@ -18,14 +21,14 @@ locals {
 }
 
 # =============================================================================
-# Lambda Layer - org-common (S3 zip-based)
+# Lambda Layer - org-common (Local zip-based)
 # =============================================================================
 
 resource "aws_lambda_layer_version" "org_common" {
   layer_name          = "${local.prefix}-common"
   description         = "Common utilities for org-module (Supabase client, DB helpers, validators)"
-  s3_bucket           = var.lambda_bucket
-  s3_key              = "layers/org-common-layer.zip"
+  filename            = "${local.build_dir}/org-common-layer.zip"
+  source_code_hash    = filebase64sha256("${local.build_dir}/org-common-layer.zip")
   compatible_runtimes = [local.lambda_runtime]
 
   lifecycle {
@@ -92,9 +95,9 @@ resource "aws_lambda_function" "identities_management" {
   memory_size   = local.lambda_memory_size
   publish       = true
 
-  # S3 zip-based deployment
-  s3_bucket = var.lambda_bucket
-  s3_key    = "lambdas/identities-management.zip"
+  # Local zip-based deployment
+  filename         = "${local.build_dir}/identities-management.zip"
+  source_code_hash = filebase64sha256("${local.build_dir}/identities-management.zip")
 
   layers = [aws_lambda_layer_version.org_common.arn]
 
@@ -139,9 +142,9 @@ resource "aws_lambda_function" "idp_config" {
   memory_size   = local.lambda_memory_size
   publish       = true
 
-  # S3 zip-based deployment
-  s3_bucket = var.lambda_bucket
-  s3_key    = "lambdas/idp-config.zip"
+  # Local zip-based deployment
+  filename         = "${local.build_dir}/idp-config.zip"
+  source_code_hash = filebase64sha256("${local.build_dir}/idp-config.zip")
 
   layers = [aws_lambda_layer_version.org_common.arn]
 
@@ -186,9 +189,9 @@ resource "aws_lambda_function" "profiles" {
   memory_size   = local.lambda_memory_size
   publish       = true
 
-  # S3 zip-based deployment
-  s3_bucket = var.lambda_bucket
-  s3_key    = "lambdas/profiles.zip"
+  # Local zip-based deployment
+  filename         = "${local.build_dir}/profiles.zip"
+  source_code_hash = filebase64sha256("${local.build_dir}/profiles.zip")
 
   layers = [aws_lambda_layer_version.org_common.arn]
 
@@ -233,9 +236,9 @@ resource "aws_lambda_function" "orgs" {
   memory_size   = local.lambda_memory_size
   publish       = true
 
-  # S3 zip-based deployment
-  s3_bucket = var.lambda_bucket
-  s3_key    = "lambdas/orgs.zip"
+  # Local zip-based deployment
+  filename         = "${local.build_dir}/orgs.zip"
+  source_code_hash = filebase64sha256("${local.build_dir}/orgs.zip")
 
   layers = [aws_lambda_layer_version.org_common.arn]
 
@@ -280,9 +283,9 @@ resource "aws_lambda_function" "members" {
   memory_size   = local.lambda_memory_size
   publish       = true
 
-  # S3 zip-based deployment
-  s3_bucket = var.lambda_bucket
-  s3_key    = "lambdas/members.zip"
+  # Local zip-based deployment
+  filename         = "${local.build_dir}/members.zip"
+  source_code_hash = filebase64sha256("${local.build_dir}/members.zip")
 
   layers = [aws_lambda_layer_version.org_common.arn]
 
@@ -314,6 +317,53 @@ resource "aws_cloudwatch_log_group" "members" {
 }
 
 # =============================================================================
+# Lambda Function - org-email-domains
+# =============================================================================
+
+resource "aws_lambda_function" "org_email_domains" {
+  function_name = "${local.prefix}-org-email-domains"
+  description   = "Email domain management for auto-provisioning (GET/POST/PUT/DELETE /orgs/:id/email-domains)"
+  handler       = "lambda_function.lambda_handler"
+  runtime       = local.lambda_runtime
+  role          = aws_iam_role.lambda.arn
+  timeout       = local.lambda_timeout
+  memory_size   = local.lambda_memory_size
+  publish       = true
+
+  # Local zip-based deployment
+  filename         = "${local.build_dir}/org-email-domains.zip"
+  source_code_hash = filebase64sha256("${local.build_dir}/org-email-domains.zip")
+
+  layers = [aws_lambda_layer_version.org_common.arn]
+
+  environment {
+    variables = {
+      REGION              = var.aws_region
+      SUPABASE_SECRET_ARN = var.supabase_secret_arn
+      LOG_LEVEL           = var.log_level
+    }
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = local.tags
+}
+
+resource "aws_lambda_alias" "org_email_domains" {
+  name             = "live"
+  function_name    = aws_lambda_function.org_email_domains.function_name
+  function_version = aws_lambda_function.org_email_domains.version
+}
+
+resource "aws_cloudwatch_log_group" "org_email_domains" {
+  name              = "/aws/lambda/${aws_lambda_function.org_email_domains.function_name}"
+  retention_in_days = 14
+  tags              = local.tags
+}
+
+# =============================================================================
 # CloudWatch Alarms (Optional - only if SNS topic provided)
 # =============================================================================
 
@@ -334,6 +384,29 @@ resource "aws_cloudwatch_metric_alarm" "identities_management_errors" {
 
   dimensions = {
     FunctionName = aws_lambda_function.identities_management.function_name
+  }
+
+  alarm_actions = [var.sns_topic_arn]
+  tags          = local.tags
+}
+
+# Alarm for org-email-domains errors
+resource "aws_cloudwatch_metric_alarm" "org_email_domains_errors" {
+  count = var.sns_topic_arn != "" ? 1 : 0
+
+  alarm_name          = "${local.prefix}-org-email-domains-errors"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "Errors"
+  namespace           = "AWS/Lambda"
+  period              = 300
+  statistic           = "Sum"
+  threshold           = 5
+  alarm_description   = "Alert when org-email-domains Lambda has >5 errors in 5 minutes"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    FunctionName = aws_lambda_function.org_email_domains.function_name
   }
 
   alarm_actions = [var.sns_topic_arn]

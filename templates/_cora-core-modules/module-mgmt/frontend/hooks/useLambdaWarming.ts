@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import type { CoraAuthAdapter } from "@${project}/api-client";
+import type { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
 import { createLambdaMgmtClient } from "../lib/api";
 import type { LambdaWarmingConfig, LambdaConfig } from "../types";
 import { DEFAULT_WARMING_CONFIG } from "../types";
@@ -32,7 +32,7 @@ interface UseLambdaWarmingReturn {
  *
  * @example
  * ```tsx
- * import { useUser } from '@${project}/org-module-frontend';
+ * import { useUser } from '@{{PROJECT_NAME}}/org-module-frontend';
  *
  * function MyComponent() {
  *   const { authAdapter } = useUser();
@@ -44,6 +44,7 @@ interface UseLambdaWarmingReturn {
  *     <Switch
  *       checked={config?.enabled || false}
  *       onChange={(e) => toggleEnabled(e.target.checked)}
+ *       aria-label="Enable Lambda warming"
  *     />
  *   );
  * }

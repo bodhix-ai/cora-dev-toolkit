@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createAuthenticatedClient } from "@${project}/api-client";
+import { createAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import { createOrgModuleClient } from "../../lib/api";
 import { useUser } from "../../contexts/UserContext";
 import { generateSlug } from "../../lib/validation";
@@ -131,6 +131,7 @@ export function CreateOrganization({
                 onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="e.g., Acme Corporation"
                 className="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm bg-white dark:bg-gray-800"
+                aria-label="Organization Name"
               />
             </div>
 
@@ -152,6 +153,7 @@ export function CreateOrganization({
                 }
                 placeholder="acme-corporation"
                 className="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm bg-white dark:bg-gray-800"
+                aria-label="URL Slug"
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 Used in URLs and must be unique
@@ -174,6 +176,7 @@ export function CreateOrganization({
                   setFormData({ ...formData, industry: e.target.value })
                 }
                 className="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm bg-white dark:bg-gray-800"
+                aria-label="Industry"
               >
                 <option value="">Select industry</option>
                 <option value="technology">Technology</option>
@@ -203,6 +206,7 @@ export function CreateOrganization({
                   setFormData({ ...formData, companySize: e.target.value })
                 }
                 className="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm bg-white dark:bg-gray-800"
+                aria-label="Company Size"
               >
                 <option value="">Select company size</option>
                 <option value="1-10">1-10 employees</option>

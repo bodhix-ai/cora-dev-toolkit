@@ -23,7 +23,7 @@ import {
   Info as InfoIcon,
 } from "@mui/icons-material";
 import { useOrgAIConfig } from "../hooks/useAIConfig";
-import { CoraAuthAdapter } from "@${project}/api-client";
+import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
 
 interface OrgAIConfigPanelProps {
   organizationId: string;
@@ -213,6 +213,7 @@ export default function OrgAIConfigPanel({
             placeholder="Add organization-specific instructions here..."
             data-testid="org-system-prompt-input"
             helperText={`${orgSystemPrompt.length} characters${orgSystemPrompt ? " - This will be appended to the platform prompt" : ""}`}
+            aria-label="System prompt override"
           />
 
           {orgSystemPrompt && (

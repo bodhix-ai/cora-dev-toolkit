@@ -1,5 +1,5 @@
 import useSWR from "swr";
-import type { AuthenticatedClient } from "@${project}/api-client";
+import type { AuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import { useOrganizationContext } from "../../../org-module/frontend/hooks/useOrganizationContext";
 import { createModuleClient } from "../lib/api";
 import type { ModuleUprovider } from "../types";

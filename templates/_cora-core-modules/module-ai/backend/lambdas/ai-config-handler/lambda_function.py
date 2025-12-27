@@ -40,7 +40,7 @@ def _check_super_admin(user_id: str) -> bool:
         True if user has platform admin role, False otherwise
     """
     try:
-        profile = common.find_one('profiles', {'user_id': user_id})
+        profile = common.find_one('user_profiles', {'user_id': user_id})
         if not profile:
             return False
         
@@ -895,12 +895,12 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         GET  /orgs/{organizationId}/ai/config -> get_org_ai_config_handler
         PUT  /orgs/{organizationId}/ai/config -> update_org_ai_config_handler
         
-        # RAG Configuration
-        GET  /admin/rag/config -> get_platform_rag_config_handler
-        PUT  /admin/rag/config -> update_platform_rag_config_handler
-        GET  /admin/rag/providers -> list_rag_providers_handler
-        POST /admin/rag/providers/test -> test_rag_provider_handler
-        GET  /admin/rag/providers/models -> get_rag_provider_models_handler
+        # AI Provider Configuration
+        GET  /admin/ai/rag-config -> get_platform_rag_config_handler
+        PUT  /admin/ai/rag-config -> update_platform_rag_config_handler
+        GET  /admin/ai/providers -> list_rag_providers_handler
+        POST /admin/ai/providers/test -> test_rag_provider_handler
+        GET  /admin/ai/providers/models -> get_rag_provider_models_handler
     """
     logger.info(json.dumps(event, default=str))
     
@@ -939,22 +939,22 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
             elif http_method == "PUT":
                 return update_org_ai_config_handler(event, supabase_user_id)
         
-        # RAG Configuration routes
-        elif path == "/admin/rag/config":
+        # AI Provider Configuration routes
+        elif path == "/admin/ai/rag-config":
             if http_method == "GET":
                 return get_platform_rag_config_handler(event, supabase_user_id)
             elif http_method == "PUT":
                 return update_platform_rag_config_handler(event, supabase_user_id)
         
-        elif path == "/admin/rag/providers":
+        elif path == "/admin/ai/providers":
             if http_method == "GET":
                 return list_rag_providers_handler(event, supabase_user_id)
         
-        elif path == "/admin/rag/providers/test":
+        elif path == "/admin/ai/providers/test":
             if http_method == "POST":
                 return test_rag_provider_handler(event, supabase_user_id)
         
-        elif path == "/admin/rag/providers/models":
+        elif path == "/admin/ai/providers/models":
             if http_method == "GET":
                 return get_rag_provider_models_handler(event, supabase_user_id)
         

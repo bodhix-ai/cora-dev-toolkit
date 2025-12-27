@@ -111,33 +111,14 @@ resource "aws_apigatewayv2_stage" "default" {
 # Lambda Integrations (one per unique Lambda invoke ARN)
 # =============================================================================
 
-# Extract unique integration URIs and create Lambda ARNs
-locals {
-  unique_integrations = distinct([for route in var.module_routes : route.integration])
-  
-  # Create a map with function name as key
-  # Integration URI format: arn:aws:apigateway:REGION:lambda:path/2015-03-31/functions/LAMBDA_ARN/invocations
-  # We need to extract the LAMBDA_ARN part
-  integration_map = {
-    for uri in local.unique_integrations :
-    # Extract function name from integration URI
-    # Example: ...function:pm-app-dev-ai-enablement-provider:live/invocations -> pm-app-dev-ai-enablement-provider
-    # Example: ...function:pm-app-dev-org-profiles/invocations -> pm-app-dev-org-profiles
-    # Use [^/:] to stop at either : or / to handle both formats
-    regex("function:([^/:]+)", uri)[0] => {
-      integration_uri = uri
-      # Extract Lambda ARN by removing the /invocations suffix and API Gateway prefix
-      function_arn = regex("(arn:aws:lambda:[^:]+:[^:]+:function:[^/]+)", uri)[0]
-    }
-  }
-}
-
+# Create integrations using route keys (static) instead of Lambda ARNs (computed)
+# This avoids Terraform's "for_each argument will be known only after apply" error
 resource "aws_apigatewayv2_integration" "lambda" {
-  for_each = local.integration_map
+  for_each = local.route_keys
 
   api_id             = aws_apigatewayv2_api.modular.id
   integration_type   = "AWS_PROXY"
-  integration_uri    = each.value.integration_uri
+  integration_uri    = each.value.integration
   payload_format_version = "2.0"
 }
 
@@ -150,8 +131,8 @@ resource "aws_apigatewayv2_route" "module_routes" {
 
   api_id    = aws_apigatewayv2_api.modular.id
   route_key = "${each.value.method} ${each.value.path}"
-  # Look up the integration by function name (stop at : or / to handle both Lambda formats)
-  target    = "integrations/${aws_apigatewayv2_integration.lambda[regex("function:([^/:]+)", each.value.integration)[0]].id}"
+  # Use the same key as the integration (method-path)
+  target    = "integrations/${aws_apigatewayv2_integration.lambda[each.key].id}"
   
   # Attach authorizer to non-public routes if authorizer is configured
   authorization_type = var.authorizer_lambda_arn != "" && !each.value.public ? "CUSTOM" : "NONE"
@@ -163,11 +144,15 @@ resource "aws_apigatewayv2_route" "module_routes" {
 # =============================================================================
 
 resource "aws_lambda_permission" "api_gateway" {
-  for_each = local.integration_map
+  for_each = local.route_keys
 
-  statement_id  = "AllowModularAPIGateway-${each.key}"
+  # Sanitize statement_id: replace invalid characters with underscores
+  statement_id  = "AllowModularAPIGateway-${replace(replace(each.key, "{", ""), "}", "")}"
   action        = "lambda:InvokeFunction"
-  function_name = each.value.function_arn
+  # Extract Lambda ARN from API Gateway invoke URI
+  # Format: arn:aws:apigateway:REGION:lambda:path/2015-03-31/functions/LAMBDA_ARN/invocations
+  # We need just the LAMBDA_ARN part
+  function_name = regex("functions/([^/]+)", each.value.integration)[0]
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.modular.execution_arn}/*/*"
 }

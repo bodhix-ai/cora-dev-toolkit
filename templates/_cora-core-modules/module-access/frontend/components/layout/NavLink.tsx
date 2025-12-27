@@ -24,6 +24,7 @@ export function NavLink({ href, icon, label, isExpanded }: NavLinkProps) {
   return (
     <Link
       href={href as any}
+      aria-label={label}
       className={`
         flex items-center gap-3 px-4 py-3 rounded-lg transition-all relative group
         ${

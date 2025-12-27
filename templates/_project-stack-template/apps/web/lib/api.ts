@@ -1708,7 +1708,7 @@ export type ChatRequest = {
 };
 
 /**
- * Send a chat message to ${project_display_name} AI.
+ * Send a chat message to {{PROJECT_DISPLAY_NAME}} AI.
  * @param message The user's message.
  * @param token The user's JWT for authentication.
  * @param conversationId Optional conversation ID for context.
@@ -1759,7 +1759,7 @@ export async function sendChatMessage(
 }
 
 /**
- * Send a streaming chat message to ${project_display_name} AI via WebSocket.
+ * Send a streaming chat message to {{PROJECT_DISPLAY_NAME}} AI via WebSocket.
  * @param message The user's message.
  * @param token The user's JWT for authentication.
  * @param conversationId Optional conversation ID for context.

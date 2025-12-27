@@ -1,5 +1,5 @@
 {
-  "name": "module-mgmt",
+  "name": "@{{PROJECT_NAME}}/module-mgmt",
   "version": "1.0.0",
   "description": "Lambda Management Module for CORA projects - warming, monitoring, and configuration",
   "main": "./index.ts",
@@ -19,10 +19,10 @@
     "warming",
     "eventbridge"
   ],
-  "author": "${project_display_name} Team",
+  "author": "{{PROJECT_DISPLAY_NAME}} Team",
   "license": "MIT",
   "dependencies": {
-    "@${project}/api-client": "workspace:*"
+    "@{{PROJECT_NAME}}/api-client": "workspace:*"
   },
   "peerDependencies": {
     "react": "^18.0.0",

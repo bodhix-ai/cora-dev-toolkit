@@ -73,7 +73,8 @@ def get_user_from_event(event):
             'name': context.get('name', ''),
             'given_name': context.get('given_name', ''),
             'family_name': context.get('family_name', ''),
-            'phone_number': context.get('phone_number', '')
+            'phone_number': context.get('phone_number', ''),
+            'provider': context.get('provider', '')
         }
         
         return user_info
@@ -86,7 +87,7 @@ def get_supabase_user_id_from_external_uid(external_uid: str) -> str:
     """
     Retrieves the Supabase Auth User ID (UUID) from an external User ID (Clerk/Okta).
 
-    This function queries the `external_identities` table to find the mapping
+    This function queries the `user_auth_ext_ids` table to find the mapping
     between a user's external UID and their internal Supabase Auth UUID.
 
     Args:
@@ -96,7 +97,7 @@ def get_supabase_user_id_from_external_uid(external_uid: str) -> str:
         The corresponding Supabase Auth User ID (UUID).
 
     Raises:
-        NotFoundError: If no matching user is found in the `external_identities` table.
+        NotFoundError: If no matching user is found in the `user_auth_ext_ids` table.
         ValueError: If the external_uid is empty or None.
     """
     if not external_uid:
@@ -105,12 +106,12 @@ def get_supabase_user_id_from_external_uid(external_uid: str) -> str:
     try:
         # Query without provider filter to support both Clerk and Okta
         identity = find_one(
-            'external_identities',
+            'user_auth_ext_ids',
             {'external_id': external_uid}
         )
 
         if not identity:
-            raise NotFoundError(f"User with external UID '{external_uid}' not found in external_identities")
+            raise NotFoundError(f"User with external UID '{external_uid}' not found in user_auth_ext_ids")
 
         return identity['auth_user_id']
     except NotFoundError:

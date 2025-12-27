@@ -63,7 +63,7 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         
         # Verify super admin role
         profile = common.find_one(
-            table='profiles',
+            table='user_profiles',
             filters={'user_id': supabase_user_id}
         )
         

@@ -239,7 +239,7 @@ These models work correctly but use AWS's inference profile infrastructure for r
 ### 2. Deploy Lambda Function
 
 ```bash
-cd ${project}-infra
+cd {{PROJECT_NAME}}-infra
 ./scripts/build-lambdas.sh ai-enablement-module
 terraform apply -target=module.app_service
 ```

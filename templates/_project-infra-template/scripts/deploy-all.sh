@@ -31,9 +31,11 @@ Deploy All - Full Build and Deploy Pipeline
 Usage: $0 <environment> [OPTIONS]
 
 Orchestrates the complete deployment process:
+  0. Sync config to Terraform variables (sync-config-to-terraform.sh)
   1. Build Lambda zip packages (build-cora-modules.sh)
   2. Upload packages to S3 (deploy-cora-modules.sh)
   3. Apply Terraform infrastructure (deploy-terraform.sh)
+  4. Update frontend environment variables (update-env-from-terraform.sh)
 
 Arguments:
   environment         Target environment (dev, stg, prd) - default: dev
@@ -107,25 +109,61 @@ log_info "Environment: ${ENVIRONMENT}"
 log_info "Skip Build:  ${SKIP_BUILD}"
 echo ""
 
+# Step 0: Sync configuration to Terraform variables
+log_step "Step 0/4: Syncing configuration to Terraform variables..."
+if [ -f "${SCRIPT_DIR}/sync-config-to-terraform.sh" ]; then
+  "${SCRIPT_DIR}/sync-config-to-terraform.sh" "${ENVIRONMENT}"
+  echo ""
+else
+  log_warn "sync-config-to-terraform.sh not found - skipping config sync"
+  log_info "Terraform will use existing local-secrets.tfvars"
+  echo ""
+fi
+
 # Step 1: Build Lambda packages
 if ! $SKIP_BUILD; then
-  log_step "Step 1/3: Building Lambda packages..."
+  log_step "Step 1/4: Building Lambda packages..."
+  
+  # Build CORA modules (module-mgmt, module-ai, module-access)
   "${SCRIPT_DIR}/build-cora-modules.sh"
   echo ""
+  
+  # Build infrastructure Lambdas (authorizer)
+  log_info "Building API Gateway Authorizer..."
+  INFRA_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+  if [ -f "${INFRA_ROOT}/lambdas/api-gateway-authorizer/build.sh" ]; then
+    cd "${INFRA_ROOT}/lambdas/api-gateway-authorizer"
+    bash build.sh
+    cd "${SCRIPT_DIR}"
+    echo ""
+  else
+    log_warn "Authorizer build script not found - skipping"
+    echo ""
+  fi
 else
   log_warn "Skipping build (--skip-build specified)"
   echo ""
 fi
 
 # Step 2: Upload to S3
-log_step "Step 2/3: Uploading artifacts to S3..."
+log_step "Step 2/4: Uploading artifacts to S3..."
 "${SCRIPT_DIR}/deploy-cora-modules.sh"
 echo ""
 
 # Step 3: Apply Terraform
-log_step "Step 3/3: Applying Terraform infrastructure..."
+log_step "Step 3/4: Applying Terraform infrastructure..."
 "${SCRIPT_DIR}/deploy-terraform.sh" "${ENVIRONMENT}" ${AUTO_APPROVE}
 echo ""
+
+# Step 4: Update environment variables
+log_step "Step 4/4: Updating frontend environment variables..."
+if [ -f "${SCRIPT_DIR}/update-env-from-terraform.sh" ]; then
+  "${SCRIPT_DIR}/update-env-from-terraform.sh" "${ENVIRONMENT}"
+  echo ""
+else
+  log_warn "update-env-from-terraform.sh not found - skipping"
+  echo ""
+fi
 
 # --- Summary ---
 echo "========================================"

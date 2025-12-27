@@ -10,7 +10,7 @@ import React, {
 import {
   CoraAuthAdapter,
   createCoraAuthenticatedClient,
-} from "@${project}/api-client";
+} from "@{{PROJECT_NAME}}/api-client";
 import { createOrgModuleClient, OrgModuleApiClient } from "../lib/api";
 import { UserOrganization } from "../types";
 import { useUser } from "./UserContext";

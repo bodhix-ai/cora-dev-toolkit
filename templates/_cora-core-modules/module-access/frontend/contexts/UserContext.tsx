@@ -1,11 +1,11 @@
 "use client";
 
-import React, { createContext, useContext, ReactNode } from "react";
+import React, { createContext, useContext, ReactNode, useMemo, useCallback } from "react";
 import useSWR from "swr";
 import {
   createCoraAuthenticatedClient,
   CoraAuthAdapter,
-} from "@${project}/api-client";
+} from "@{{PROJECT_NAME}}/api-client";
 import { createOrgModuleClient } from "../lib/api";
 import { Profile } from "../types";
 
@@ -68,22 +68,26 @@ export function UserProvider({
     }
   );
 
-  const refreshUserContext = async () => {
+  const refreshUserContext = useCallback(async () => {
     await mutate();
-  };
+  }, [mutate]);
+
+  // Memoize context value to prevent infinite re-render loops
+  const contextValue = useMemo(() => ({
+    profile: data || null,
+    // CRITICAL FIX: Only show loading if user IS authenticated but profile not loaded yet
+    // If user is NOT authenticated, loading should be false (not waiting for profile)
+    // This prevents infinite loading state when "/" is public and user is unauthenticated
+    loading: isAuthenticated && !error && !data,
+    isLoading: isAuthenticated && !error && !data,
+    error: error ? String(error) : null,
+    isAuthenticated,
+    authAdapter,
+    refreshUserContext,
+  }), [data, error, isAuthenticated, authAdapter, refreshUserContext]);
 
   return (
-    <UserContext.Provider
-      value={{
-        profile: data || null,
-        loading: !error && !data && isAuthenticated,
-        isLoading: !error && !data && isAuthenticated,
-        error: error ? String(error) : null,
-        isAuthenticated,
-        authAdapter,
-        refreshUserContext,
-      }}
-    >
+    <UserContext.Provider value={contextValue}>
       {children}
     </UserContext.Provider>
   );

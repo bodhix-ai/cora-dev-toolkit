@@ -1,8 +1,8 @@
 /**
- * Dynamic Authentication Provider
+ * Authentication Provider
  *
- * Wraps the application with the correct auth provider based on environment configuration.
- * Supports both Clerk and Okta (via NextAuth) authentication providers.
+ * Wraps the application with NextAuth SessionProvider.
+ * This component must be marked as a client component with 'use client' directive.
  *
  * @example
  * ```tsx
@@ -23,67 +23,23 @@
 
 "use client";
 
-import { ClerkProvider } from "@clerk/nextjs";
 import { SessionProvider } from "next-auth/react";
-
-/**
- * Auth provider type
- */
-export type AuthProvider = "clerk" | "okta";
+import { ReactNode } from "react";
 
 /**
  * AuthProvider component props
  */
 interface AuthProviderProps {
-  children: React.ReactNode;
+  children: ReactNode;
+  session?: any;
 }
 
 /**
- * Get active auth provider from environment
- * Defaults to 'clerk' if not configured
- */
-function getActiveAuthProvider(): AuthProvider {
-  const provider = process.env.NEXT_PUBLIC_AUTH_PROVIDER as AuthProvider;
-
-  if (!provider || !["clerk", "okta"].includes(provider)) {
-    console.warn(
-      `[AuthProvider] Invalid AUTH_PROVIDER "${provider}", defaulting to clerk`
-    );
-    return "clerk";
-  }
-
-  return provider;
-}
-
-/**
- * Dynamic Authentication Provider Component
+ * Authentication Provider Component
  *
- * Automatically wraps app with correct provider based on NEXT_PUBLIC_AUTH_PROVIDER env var.
- * - clerk: Uses ClerkProvider
- * - okta: Uses NextAuth SessionProvider
- *
- * This allows projects to switch authentication providers by changing environment variables
- * without modifying code.
+ * Wraps the application with NextAuth's SessionProvider.
+ * Provides session context to all child components.
  */
-export function AuthProvider({ children }: AuthProviderProps) {
-  const provider = getActiveAuthProvider();
-
-  if (provider === "clerk") {
-    return (
-      <ClerkProvider
-        signInUrl="/sign-in"
-        signUpUrl="/sign-up"
-        signInFallbackRedirectUrl="/"
-        signUpFallbackRedirectUrl="/"
-      >
-        {children}
-      </ClerkProvider>
-    );
-  }
-
-  if (provider === "okta") {
-    return <SessionProvider>{children}</SessionProvider>;
-  }
-
-  throw new Error(`[AuthProvider] Unsupported auth provider: ${provider}`);
+export function AuthProvider({ children, session }: AuthProviderProps) {
+  return <SessionProvider session={session}>{children}</SessionProvider>;
 }

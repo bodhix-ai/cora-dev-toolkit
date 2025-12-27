@@ -1,5 +1,5 @@
 {
-  "name": "module-access",
+  "name": "@{{PROJECT_NAME}}/module-access",
   "version": "1.0.0",
   "description": "Organization and user management frontend for CORA",
   "main": "./index.ts",
@@ -12,8 +12,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@${project}/api-client": "workspace:*",
-    "@${project}/shared-types": "workspace:*",
+    "@{{PROJECT_NAME}}/api-client": "workspace:*",
+    "@{{PROJECT_NAME}}/shared-types": "workspace:*",
     "@types/react": "^18.3.3",
     "swr": "^2.2.4"
   },

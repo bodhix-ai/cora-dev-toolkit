@@ -90,7 +90,7 @@ def is_platform_admin(user_id: str) -> bool:
     try:
         client = get_supabase_client()
         
-        result = client.table('profiles') \
+        result = client.table('user_profiles') \
             .select('global_role') \
             .eq('id', user_id) \
             .single() \

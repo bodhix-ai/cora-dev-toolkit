@@ -94,7 +94,7 @@ def handle_provision(event: Dict[str, Any]) -> Dict[str, Any]:
     try:
         # Check if external identity already exists
         existing_identity = common.find_one(
-            table='external_identities',
+            table='user_auth_ext_ids',
             filters={
                 'provider_name': provider,
                 'external_id': provider_user_id
@@ -104,7 +104,7 @@ def handle_provision(event: Dict[str, Any]) -> Dict[str, Any]:
         if existing_identity:
             # Identity already provisioned, return existing profile
             profile = common.find_one(
-                table='profiles',
+                table='user_profiles',
                 filters={'user_id': existing_identity['auth_user_id']}
             )
             
@@ -116,14 +116,14 @@ def handle_provision(event: Dict[str, Any]) -> Dict[str, Any]:
         # Check if user exists by email in Supabase auth.users
         # Note: We can't directly query auth.users, so we check profiles table
         existing_profile = common.find_one(
-            table='profiles',
+            table='user_profiles',
             filters={'email': email}
         )
         
         if existing_profile:
             # User exists, create external identity mapping
             identity = common.insert_one(
-                table='external_identities',
+                table='user_auth_ext_ids',
                 data={
                     'provider_name': provider,
                     'external_id': provider_user_id,
@@ -149,7 +149,7 @@ def handle_provision(event: Dict[str, Any]) -> Dict[str, Any]:
         
         # Create profile for the user
         profile = common.insert_one(
-            table='profiles',
+            table='user_profiles',
             data={
                 'user_id': user_id,
                 'email': email,
@@ -160,7 +160,7 @@ def handle_provision(event: Dict[str, Any]) -> Dict[str, Any]:
         
         # Create external identity mapping
         identity = common.insert_one(
-            table='external_identities',
+            table='user_auth_ext_ids',
             data={
                 'provider_name': provider,
                 'external_id': provider_user_id,

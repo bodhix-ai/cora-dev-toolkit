@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   createCoraAuthenticatedClient,
   type CoraAuthAdapter,
-} from "@${project}/api-client";
+} from "@{{PROJECT_NAME}}/api-client";
 
 // Types for AI Configuration
 export type DeploymentInfo = {
@@ -59,8 +59,8 @@ export type OrgAIConfig = {
  * @example
  * ```tsx
  * import { useAuth } from '@clerk/nextjs';
- * import { createClerkAuthAdapter } from '@${project}/api-client';
- * import { usePlatformAIConfig } from '@${project}/ai-config-module';
+ * import { createClerkAuthAdapter } from '@{{PROJECT_NAME}}/api-client';
+ * import { usePlatformAIConfig } from '@{{PROJECT_NAME}}/ai-config-module';
  *
  * const clerkAuth = useAuth();
  * const authAdapter = createClerkAuthAdapter(clerkAuth);

@@ -26,8 +26,7 @@ from validator import Validator
 from fix_proposer import FixProposer
 from reporter import Reporter
 
-# Load environment variables from .env file in the same directory as this script
-load_dotenv(Path(__file__).parent / '.env')
+# Note: .env loading moved into validate() function to support project-specific .env files
 
 # Configure logging
 logging.basicConfig(
@@ -93,6 +92,46 @@ def validate(path: str, output: str, propose_fixes: bool, verbose: bool, clear_c
     # Set logging level
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
+    
+    # Load environment variables from .env file
+    # Priority: 
+    # 1. Project's scripts/validation/.env (if validating a project)
+    # 2. Validator's directory .env (fallback)
+    path_obj = Path(path)
+    
+    # Try to find project root (look for scripts/validation/.env)
+    env_locations = []
+    
+    # If path is a directory, check if it has scripts/validation/.env
+    if path_obj.is_dir():
+        project_env = path_obj / 'scripts' / 'validation' / '.env'
+        if project_env.exists():
+            env_locations.append(project_env)
+    
+    # Check parent directories for project root
+    current = path_obj if path_obj.is_dir() else path_obj.parent
+    for _ in range(5):  # Check up to 5 levels up
+        project_env = current / 'scripts' / 'validation' / '.env'
+        if project_env.exists():
+            env_locations.append(project_env)
+            break
+        parent = current.parent
+        if parent == current:  # Reached filesystem root
+            break
+        current = parent
+    
+    # Fallback to validator's .env
+    validator_env = Path(__file__).parent / '.env'
+    if validator_env.exists():
+        env_locations.append(validator_env)
+    
+    # Load the first .env file found
+    if env_locations:
+        env_file = env_locations[0]
+        logger.info(f"Loading environment from: {env_file}")
+        load_dotenv(env_file)
+    else:
+        logger.warning("No .env file found. Database credentials must be set via environment variables.")
     
     try:
         # Initialize components

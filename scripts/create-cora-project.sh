@@ -207,13 +207,20 @@ replace_placeholders() {
   # Find and replace in all files
   find "$dir" -type f \( -name "*.tf" -o -name "*.json" -o -name "*.md" -o -name "*.sh" -o -name "*.py" -o -name "*.ts" -o -name "*.tsx" -o -name "*.yaml" -o -name "*.yml" -o -name ".clinerules" \) | while read -r file; do
     if [[ -f "$file" ]]; then
-      # Replace placeholders
+      # Replace machine-readable project name
       sed -i '' "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file" 2>/dev/null || \
       sed -i "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file"
       
+      # Replace display name (fallback to PROJECT_NAME if not set)
+      PROJECT_DISPLAY_NAME="${PROJECT_DISPLAY_NAME:-${PROJECT_NAME}}"
+      sed -i '' "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_DISPLAY_NAME}/g" "$file" 2>/dev/null || \
+      sed -i "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_DISPLAY_NAME}/g" "$file"
+      
+      # Replace AWS region
       sed -i '' "s/{{AWS_REGION}}/${AWS_REGION}/g" "$file" 2>/dev/null || \
       sed -i "s/{{AWS_REGION}}/${AWS_REGION}/g" "$file"
       
+      # Replace GitHub organization if provided
       if [[ -n "$GITHUB_ORG" ]]; then
         sed -i '' "s/{{GITHUB_ORG}}/${GITHUB_ORG}/g" "$file" 2>/dev/null || \
         sed -i "s/{{GITHUB_ORG}}/${GITHUB_ORG}/g" "$file"
@@ -363,12 +370,16 @@ if $WITH_CORE_MODULES && ! $DRY_RUN; then
       log_info "Creating ${module} from core module template..."
       cp -r "$CORE_MODULE_TEMPLATE" "$MODULE_DIR"
       
-      # Replace parameterized placeholders
+      # Replace standardized placeholders ({{...}} format only)
       find "$MODULE_DIR" -type f \( -name "*.py" -o -name "*.ts" -o -name "*.tsx" -o -name "*.json" -o -name "*.tf" -o -name "*.md" -o -name "*.sql" \) | while read -r file; do
-        sed -i '' "s/\\\${project}/${PROJECT_NAME}/g" "$file" 2>/dev/null || \
-        sed -i "s/\\\${project}/${PROJECT_NAME}/g" "$file"
-        sed -i '' "s/\\\${project_display_name}/${PROJECT_NAME}/g" "$file" 2>/dev/null || \
-        sed -i "s/\\\${project_display_name}/${PROJECT_NAME}/g" "$file"
+        # Replace machine-readable project name
+        sed -i '' "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file" 2>/dev/null || \
+        sed -i "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file"
+        
+        # Replace display name (fallback to PROJECT_NAME if not set)
+        PROJECT_DISPLAY_NAME="${PROJECT_DISPLAY_NAME:-${PROJECT_NAME}}"
+        sed -i '' "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_DISPLAY_NAME}/g" "$file" 2>/dev/null || \
+        sed -i "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_DISPLAY_NAME}/g" "$file"
       done
     elif [[ -d "$MODULE_TEMPLATE" ]]; then
       log_info "Creating ${module} from generic template..."
@@ -488,10 +499,10 @@ generate_env_files() {
     SUPABASE_URL=$(yq '.supabase.url' "$config_file")
     SUPABASE_ANON_KEY=$(yq '.supabase.anon_key' "$config_file")
     SUPABASE_SERVICE_KEY=$(yq '.supabase.service_role_key' "$config_file")
-    OKTA_DOMAIN=$(yq '.auth.okta.domain' "$config_file")
-    OKTA_CLIENT_ID=$(yq '.auth.okta.client_id' "$config_file")
-    OKTA_CLIENT_SECRET=$(yq '.auth.okta.client_secret' "$config_file")
-    OKTA_ISSUER=$(yq '.auth.okta.issuer' "$config_file")
+    OKTA_DOMAIN=$(yq '.auth.okta.domain // ""' "$config_file")
+    OKTA_CLIENT_ID=$(yq '.auth.okta.client_id // ""' "$config_file")
+    OKTA_CLIENT_SECRET=$(yq '.auth.okta.client_secret // ""' "$config_file")
+    OKTA_ISSUER=$(yq '.auth.okta.issuer // ""' "$config_file")
     # Database credentials for direct PostgreSQL connection
     SUPABASE_DB_HOST=$(yq '.supabase.db.host' "$config_file")
     SUPABASE_DB_PORT=$(yq '.supabase.db.port // 6543' "$config_file")
@@ -504,9 +515,9 @@ generate_env_files() {
     AWS_API_GATEWAY_ENDPOINT=$(yq '.aws.api_gateway.endpoint // ""' "$config_file")
   fi
   
-  # Generate apps/web/.env
+  # Generate apps/web/.env.local for local development
   if [[ -d "${stack_dir}/apps/web" ]]; then
-    cat > "${stack_dir}/apps/web/.env" << ENVEOF
+    cat > "${stack_dir}/apps/web/.env.local" << ENVEOF
 # Generated from setup.config.${PROJECT_NAME}.yaml
 # DO NOT COMMIT THIS FILE
 
@@ -528,10 +539,15 @@ OKTA_ISSUER="${OKTA_ISSUER}"
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="${NEXTAUTH_SECRET}"
 
+# CORA API Gateway URL
+# This is set after infrastructure deployment. If not yet deployed, leave empty.
+# Run: cd ../PROJECT_NAME-infra && ./scripts/update-env-from-terraform.sh dev
+NEXT_PUBLIC_CORA_API_URL="${AWS_API_GATEWAY_ENDPOINT}"
+
 # AWS
 AWS_REGION="${AWS_REGION}"
 ENVEOF
-    log_info "Created ${stack_dir}/apps/web/.env"
+    log_info "Created ${stack_dir}/apps/web/.env.local"
   fi
   
   # Generate schema-validator .env (for validation tooling)
@@ -670,10 +686,11 @@ generate_terraform_vars() {
     SUPABASE_SERVICE_KEY=$(grep "service_role_key:" "$config_file" | sed 's/.*service_role_key: *"\([^"]*\)".*/\1/' || echo "")
     SUPABASE_JWT_SECRET=$(grep -A10 "^supabase:" "$config_file" | grep "jwt_secret:" | sed 's/.*jwt_secret: *"\([^"]*\)".*/\1/' || echo "")
     AUTH_PROVIDER=$(grep "^auth_provider:" "$config_file" | sed 's/.*auth_provider: *"\([^"]*\)".*/\1/' || echo "okta")
-    OKTA_DOMAIN=$(grep -A5 "^okta:" "$config_file" | grep "domain:" | sed 's/.*domain: *"\([^"]*\)".*/\1/' || echo "")
-    OKTA_CLIENT_ID=$(grep -A5 "^okta:" "$config_file" | grep "client_id:" | sed 's/.*client_id: *"\([^"]*\)".*/\1/' || echo "")
-    OKTA_CLIENT_SECRET=$(grep -A5 "^okta:" "$config_file" | grep "client_secret:" | sed 's/.*client_secret: *"\([^"]*\)".*/\1/' || echo "")
-    OKTA_ISSUER=$(grep -A5 "^okta:" "$config_file" | grep "issuer:" | sed 's/.*issuer: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_DOMAIN=$(grep -A10 "okta:" "$config_file" | grep "domain:" | sed 's/.*domain: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_CLIENT_ID=$(grep -A10 "okta:" "$config_file" | grep "client_id:" | sed 's/.*client_id: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_CLIENT_SECRET=$(grep -A10 "okta:" "$config_file" | grep "client_secret:" | sed 's/.*client_secret: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_ISSUER=$(grep -A10 "okta:" "$config_file" | grep "issuer:" | sed 's/.*issuer: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_AUDIENCE=$(grep -A10 "okta:" "$config_file" | grep "audience:" | sed 's/.*audience: *\([^ ]*\).*/\1/' || echo "api://default")
     CLERK_PUBLISHABLE_KEY=$(grep -A5 "^clerk:" "$config_file" | grep "publishable_key:" | sed 's/.*publishable_key: *"\([^"]*\)".*/\1/' || echo "")
     CLERK_SECRET_KEY=$(grep -A5 "^clerk:" "$config_file" | grep "secret_key:" | sed 's/.*secret_key: *"\([^"]*\)".*/\1/' || echo "")
   else
@@ -685,11 +702,12 @@ generate_terraform_vars() {
     SUPABASE_SERVICE_KEY=$(yq '.supabase.service_role_key' "$config_file")
     SUPABASE_JWT_SECRET=$(yq '.supabase.jwt_secret' "$config_file")
     AUTH_PROVIDER=$(yq '.auth_provider // "okta"' "$config_file")
-    OKTA_DOMAIN=$(yq '.okta.domain' "$config_file")
-    OKTA_CLIENT_ID=$(yq '.okta.client_id' "$config_file")
-    OKTA_CLIENT_SECRET=$(yq '.okta.client_secret' "$config_file")
-    OKTA_ISSUER=$(yq '.okta.issuer' "$config_file")
-    CLERK_PUBLISHABLE_KEY=$(yq '.clerk.publishable_key' "$config_file")
+    OKTA_DOMAIN=$(yq '.auth.okta.domain // ""' "$config_file")
+    OKTA_CLIENT_ID=$(yq '.auth.okta.client_id // ""' "$config_file")
+    OKTA_CLIENT_SECRET=$(yq '.auth.okta.client_secret // ""' "$config_file")
+    OKTA_ISSUER=$(yq '.auth.okta.issuer // ""' "$config_file")
+    OKTA_AUDIENCE=$(yq '.auth.okta.audience // "api://default"' "$config_file")
+    CLERK_PUBLISHABLE_KEY=$(yq '.clerk.publishable_key // ""' "$config_file")
     CLERK_SECRET_KEY=$(yq '.clerk.secret_key' "$config_file")
   fi
   
@@ -716,7 +734,7 @@ auth_provider = "${AUTH_PROVIDER}"
 
 # Okta Configuration (when auth_provider = "okta")
 okta_issuer = "${OKTA_ISSUER}"
-okta_audience = "${OKTA_CLIENT_ID}"
+okta_audience = "${OKTA_AUDIENCE}"
 
 # Clerk Configuration (when auth_provider = "clerk")
 clerk_secret_key_value = "${CLERK_SECRET_KEY}"
@@ -816,6 +834,7 @@ seed_idp_config() {
   
   if command -v yq &> /dev/null; then
     auth_provider=$(yq '.auth_provider // "okta"' "$config_file")
+    okta_client_id=$(yq '.auth.okta.client_id // ""' "$config_file")
     okta_client_id=$(yq '.auth.okta.client_id // ""' "$config_file")
     okta_issuer=$(yq '.auth.okta.issuer // ""' "$config_file")
     clerk_publishable_key=$(yq '.clerk.publishable_key // ""' "$config_file")
@@ -1036,8 +1055,15 @@ run_migrations() {
     return
   fi
   
-  # Build connection string
-  local conn_string="postgresql://${SUPABASE_DB_USER}:${SUPABASE_DB_PASSWORD}@${SUPABASE_DB_HOST}:${SUPABASE_DB_PORT:-6543}/${SUPABASE_DB_NAME:-postgres}"
+  # URL-encode password for PostgreSQL connection string
+  # Special characters like &, =, @, etc. need to be encoded
+  url_encode_password() {
+    python3 -c "import urllib.parse; print(urllib.parse.quote('$1', safe=''))"
+  }
+  
+  # Build connection string with URL-encoded password
+  local encoded_password=$(url_encode_password "$SUPABASE_DB_PASSWORD")
+  local conn_string="postgresql://${SUPABASE_DB_USER}:${encoded_password}@${SUPABASE_DB_HOST}:${SUPABASE_DB_PORT:-6543}/${SUPABASE_DB_NAME:-postgres}"
   
   # Execute setup-database.sql
   if [[ -f "${stack_dir}/scripts/setup-database.sql" ]]; then
@@ -1077,6 +1103,140 @@ if ! $DRY_RUN && $WITH_CORE_MODULES; then
   consolidate_database_schemas "${STACK_DIR}"
 fi
 
+# --- Install Validation Dependencies ---
+install_validation_deps() {
+  local stack_dir="$1"
+  local venv_dir="${stack_dir}/scripts/validation/.venv"
+  
+  log_step "Setting up validation environment..."
+  
+  # Check if python3 is available
+  if ! command -v python3 &> /dev/null; then
+    log_warn "python3 not found. Skipping validation dependency installation."
+    log_info "Install Python 3 to enable automatic validation: brew install python3"
+    return
+  fi
+  
+  # Create virtual environment
+  log_info "Creating Python virtual environment at ${venv_dir}..."
+  if python3 -m venv "${venv_dir}" 2>/dev/null; then
+    log_info "✅ Virtual environment created"
+  else
+    log_warn "Failed to create virtual environment"
+    log_info "You may need to install venv: python3 -m pip install --user virtualenv"
+    return
+  fi
+  
+  # Install required packages in virtual environment
+  log_info "Installing validation dependencies in virtual environment..."
+  if "${venv_dir}/bin/pip" install --quiet boto3 supabase python-dotenv click colorama requests 2>/dev/null; then
+    log_info "✅ Validation dependencies installed"
+  else
+    log_warn "Failed to install some validation dependencies"
+    log_info "You may need to install manually:"
+    log_info "  source ${venv_dir}/bin/activate"
+    log_info "  pip install boto3 supabase python-dotenv click colorama requests"
+    return
+  fi
+  
+  # Create activation helper script
+  cat > "${stack_dir}/scripts/validation/activate-venv.sh" << 'ACTIVATESCRIPT'
+#!/bin/bash
+# Activate validation virtual environment
+# Usage: source ./activate-venv.sh
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/.venv/bin/activate"
+
+echo "✅ Validation environment activated"
+echo "Run validators with: python -m api-tracer.cli --help"
+echo "Deactivate with: deactivate"
+ACTIVATESCRIPT
+  
+  chmod +x "${stack_dir}/scripts/validation/activate-venv.sh"
+  log_info "Created activation script: scripts/validation/activate-venv.sh"
+  
+  # Create wrapper script for running validators
+  cat > "${stack_dir}/scripts/validation/run-validators.sh" << 'RUNSCRIPT'
+#!/bin/bash
+# Run CORA validators with automatic venv activation
+# Usage: ./run-validators.sh [validator-args]
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+VENV_DIR="${SCRIPT_DIR}/.venv"
+
+# Check if venv exists
+if [[ ! -d "$VENV_DIR" ]]; then
+  echo "❌ Virtual environment not found at ${VENV_DIR}"
+  echo "Run project creation script with --with-core-modules to set up validation environment"
+  exit 1
+fi
+
+# Activate venv
+source "${VENV_DIR}/bin/activate"
+
+# Get project root (2 levels up from scripts/validation)
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+
+# Run cora-validate.py with all arguments passed through
+python3 "${SCRIPT_DIR}/cora-validate.py" project "${PROJECT_ROOT}" "$@"
+
+# Deactivate venv
+deactivate
+RUNSCRIPT
+  
+  chmod +x "${stack_dir}/scripts/validation/run-validators.sh"
+  log_info "Created wrapper script: scripts/validation/run-validators.sh"
+  
+  # Add .venv to .gitignore if it doesn't already exist
+  if [[ ! -f "${stack_dir}/scripts/validation/.gitignore" ]]; then
+    echo ".venv/" > "${stack_dir}/scripts/validation/.gitignore"
+    echo ".env" >> "${stack_dir}/scripts/validation/.gitignore"
+    log_info "Created .gitignore for validation directory"
+  fi
+  
+  log_info "📦 Validation environment setup complete!"
+  log_info "   To activate: source scripts/validation/activate-venv.sh"
+  log_info "   To run validators: ./scripts/validation/run-validators.sh"
+}
+
+# --- Run Post-Creation Validation ---
+run_post_creation_validation() {
+  local stack_dir="$1"
+  
+  log_step "Running initial validation (structure & portability only)..."
+  
+  # Check if cora-validate.py exists
+  if [[ ! -f "${stack_dir}/scripts/validation/cora-validate.py" ]]; then
+    log_warn "Validation orchestrator not found: ${stack_dir}/scripts/validation/cora-validate.py"
+    log_info "Skipping post-creation validation."
+    return
+  fi
+  
+  # Check if python3 is available
+  if ! command -v python3 &> /dev/null; then
+    log_warn "python3 not found. Skipping validation."
+    return
+  fi
+  
+  # Run structure and portability validators only (no DB required)
+  cd "${stack_dir}/scripts/validation"
+  if python3 cora-validate.py project "${stack_dir}" \
+    --validators structure portability \
+    --format text 2>/dev/null; then
+    log_info "✅ Initial validation passed"
+  else
+    local exit_code=$?
+    log_warn "⚠️  Validation found issues (exit code: ${exit_code})"
+    log_info "Review validation output above for details"
+  fi
+  cd - > /dev/null
+  
+  log_info "Run full validation after deploying: cd scripts/validation && python3 cora-validate.py project ../.."
+}
+
 # --- Copy Validation Scripts ---
 if ! $DRY_RUN; then
   log_step "Copying validation scripts to stack repo..."
@@ -1093,6 +1253,11 @@ if ! $DRY_RUN; then
   fi
 fi
 
+# --- Install Validation Dependencies ---
+if ! $DRY_RUN && $WITH_CORE_MODULES; then
+  install_validation_deps "$STACK_DIR"
+fi
+
 # Look for setup.config.{project}.yaml in stack dir and generate .env files
 if ! $DRY_RUN; then
   CONFIG_FILE="${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml"
@@ -1107,6 +1272,11 @@ if ! $DRY_RUN; then
     # Generate minimal .env file for infra even without config
     generate_infra_env "" "$INFRA_DIR"
   fi
+fi
+
+# --- Run Post-Creation Validation ---
+if ! $DRY_RUN && $WITH_CORE_MODULES; then
+  run_post_creation_validation "$STACK_DIR"
 fi
 
 # --- Summary ---

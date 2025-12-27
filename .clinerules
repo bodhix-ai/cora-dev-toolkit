@@ -119,19 +119,168 @@ Phase progress:
 
 Always update the plan's checklists when completing items.
 
+## 🚨 CRITICAL: Template-First Workflow
+
+**Test projects (like ai-sec, pm-app-test, etc.) are TEMPORARY and will be DELETED.**
+
+**ALL changes must be made to TEMPLATES first, then copied to test projects.**
+
+### The Correct Workflow:
+
+1. **ALWAYS update the template FIRST**
+   - `templates/_project-infra-template/` for infrastructure changes
+   - `templates/_project-stack-template/` for application changes
+   - `templates/_cora-core-modules/` for core module changes
+
+2. **THEN copy changes to the test project**
+   - Use the updated template as source
+   - Test the change in the test project
+   - Verify it works correctly
+
+3. **NEVER make changes ONLY to test projects**
+   - Test projects will be deleted on next practice run
+   - Changes made only to test projects are LOST FOREVER
+   - This wastes time and creates confusion
+
+### Example: Fixing a Build Script
+
+❌ **WRONG (What you were doing):**
+```bash
+# Update ai-sec build script directly
+cd ~/code/sts/security/ai-sec-infra/lambdas/authorizer
+# Make changes to build.sh
+```
+
+✅ **CORRECT:**
+```bash
+# 1. Update template FIRST
+cd cora-dev-toolkit/templates/_project-infra-template/lambdas/authorizer
+# Make changes to build.sh
+
+# 2. THEN copy to test project
+cp build.sh ~/code/sts/security/ai-sec-infra/lambdas/authorizer/build.sh
+
+# 3. Test in test project
+cd ~/code/sts/security/ai-sec-infra/lambdas/authorizer
+./build.sh
+```
+
+### Why This Matters:
+
+- **Test projects are ephemeral** - They exist only for testing and will be deleted
+- **Templates are permanent** - They create all future projects
+- **Fixes must persist** - If you only fix the test project, the bug returns in the next project
+- **No wasted work** - Updating templates ensures your work benefits all future projects
+
 ## AI Agent Instructions
 
 When working on this toolkit:
 
 1. **Read memory-bank first** - Understand current context
 2. **Check the plan** - What phase are we in?
-3. **Make focused changes** - One deliverable at a time
-4. **Update progress** - Mark items complete in plan
-5. **Test changes** - Validate scripts work
-6. **Document patterns** - Update docs with new patterns
+3. **FOLLOW TEMPLATE-FIRST WORKFLOW** - See critical rule above
+4. **Make focused changes** - One deliverable at a time
+5. **Update progress** - Mark items complete in plan
+6. **Test changes** - Validate scripts work
+7. **Document patterns** - Update docs with new patterns
+
+## 🚨 CRITICAL: Use Standard Deployment Scripts
+
+**ALL deployments MUST use the standard scripts in {project}-infra/scripts/**
+
+**NEVER call terraform commands directly from envs/dev/ directory.**
+
+### The Rule:
+
+✅ **Use Standard Scripts:**
+```bash
+# From project root (e.g., ai-sec-infra)
+cd ~/code/sts/security/ai-sec-infra
+./scripts/deploy-terraform.sh dev
+```
+
+❌ **DON'T call Terraform directly:**
+```bash
+# DON'T do this!
+cd ~/code/sts/security/ai-sec-infra/envs/dev
+terraform apply -var-file=local-secrets.tfvars
+```
+
+### Why Standard Scripts:
+
+1. **Consistent Environment Setup:** Scripts set correct AWS_PROFILE and variables
+2. **Validation:** Scripts check prerequisites before deployment
+3. **Logging:** Scripts provide better output and error handling
+4. **Safety:** Scripts have built-in guards and confirmations
+5. **Maintainability:** Script changes benefit all deployments
+
+### Available Standard Scripts:
+
+- `scripts/deploy-terraform.sh [env]` - Deploy infrastructure
+- `scripts/bootstrap/bootstrap_tf_state.sh` - Bootstrap Terraform state
+- `scripts/build-and-deploy.sh` - Build and deploy in one command
+- Other project-specific scripts in `scripts/` directory
+
+## 🚨 CRITICAL: Terraform-Only Deployments
+
+**ALL infrastructure changes MUST be deployed through the standard scripts (which use Terraform).**
+
+**NEVER use AWS CLI to create, update, or delete infrastructure resources.**
+
+### The Rule:
+
+✅ **Standard Scripts (which use Terraform) for ALL Infrastructure:**
+- Create resources: `./scripts/deploy-terraform.sh dev`
+- Update resources: `./scripts/deploy-terraform.sh dev`
+- All changes tracked in Terraform state
+
+❌ **AWS CLI for Verification ONLY:**
+- View configurations: `aws lambda get-function-configuration`
+- Check logs: `aws logs tail /aws/lambda/...`
+- Verify deployment: `aws lambda list-functions`
+- NO create/update/delete commands
+
+### Why This Matters:
+
+1. **Prevents Drift:** Manual changes via CLI create drift between Terraform and reality
+2. **Audit Trail:** All changes tracked in Terraform state and version control
+3. **Reproducibility:** Infrastructure is code, can be recreated exactly
+4. **Safety:** Terraform plans show exactly what will change before applying
+5. **Team Collaboration:** Everyone sees infrastructure changes in code reviews
+
+### Examples:
+
+❌ **WRONG:**
+```bash
+# Don't do this!
+aws lambda update-function-configuration --function-name my-function --timeout 60
+aws lambda update-function-code --function-name my-function --zip-file fileb://code.zip
+```
+
+✅ **CORRECT:**
+```bash
+# Update Terraform config
+# Edit main.tf to change timeout or code
+
+# Deploy through Terraform
+terraform plan -var-file=local-secrets.tfvars
+terraform apply -var-file=local-secrets.tfvars
+```
+
+✅ **CLI for Verification (OK):**
+```bash
+# These are fine - read-only operations
+aws lambda get-function-configuration --function-name my-function
+aws logs tail /aws/lambda/my-function
+aws apigatewayv2 get-routes --api-id abc123
+```
 
 ## Do NOT
 
+- **Do NOT update test projects before templates** - See CRITICAL rule above
+- **Do NOT make changes only to test projects** - Changes will be lost when project is deleted
+- **Do NOT use AWS CLI for infrastructure changes** - Terraform only! (See rule above)
+- **Do NOT deploy infrastructure manually** - All deployments through Terraform
 - Do not hardcode project-specific values (pm-app, us-east-1, etc.)
 - Do not create one-off solutions - everything should be reusable
 - Do not skip documentation - all changes need docs

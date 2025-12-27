@@ -1,10 +1,13 @@
-# Module Management Infrastructure - S3 Zip-Based Deployment
+# Module Management Infrastructure - Local Zip-Based Deployment
 # Defines Lambda function, shared layer, IAM roles, and CloudWatch resources
-# Standardized deployment pattern using S3 bucket for Lambda artifacts
+# Uses local .build/ directory for Lambda artifacts
 
 locals {
   # Resource naming prefix
   prefix = "${var.project_name}-${var.environment}-${var.module_name}"
+
+  # Local build directory (relative to this infrastructure/ directory)
+  build_dir = "${path.module}/../backend/.build"
 
   # Common Lambda configuration
   lambda_runtime     = "python3.11"
@@ -20,14 +23,14 @@ locals {
 }
 
 # =============================================================================
-# Lambda Layer - lambda-mgmt-common (S3 zip-based)
+# Lambda Layer - lambda-mgmt-common (Local zip-based)
 # =============================================================================
 
 resource "aws_lambda_layer_version" "lambda_mgmt_common" {
   layer_name          = "${local.prefix}-common"
   description         = "Common utilities for module-mgmt (EventBridge, scheduling helpers)"
-  s3_bucket           = var.lambda_bucket
-  s3_key              = "layers/lambda-mgmt-common-layer.zip"
+  filename            = "${local.build_dir}/lambda-mgmt-common-layer.zip"
+  source_code_hash    = filebase64sha256("${local.build_dir}/lambda-mgmt-common-layer.zip")
   compatible_runtimes = [local.lambda_runtime]
 
   lifecycle {
@@ -155,7 +158,7 @@ resource "aws_cloudwatch_log_group" "lambda_mgmt" {
 }
 
 # =============================================================================
-# Lambda Function - lambda-mgmt (S3 zip-based)
+# Lambda Function - lambda-mgmt (Local zip-based)
 # =============================================================================
 
 resource "aws_lambda_function" "lambda_mgmt" {
@@ -168,9 +171,9 @@ resource "aws_lambda_function" "lambda_mgmt" {
   memory_size   = local.lambda_memory_size
   publish       = true
 
-  # S3 zip-based deployment
-  s3_bucket = var.lambda_bucket
-  s3_key    = "lambdas/lambda-mgmt.zip"
+  # Local zip-based deployment
+  filename         = "${local.build_dir}/lambda-mgmt.zip"
+  source_code_hash = filebase64sha256("${local.build_dir}/lambda-mgmt.zip")
 
   # Attach shared layer
   layers = [aws_lambda_layer_version.lambda_mgmt_common.arn]

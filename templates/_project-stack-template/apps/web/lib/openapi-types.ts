@@ -654,7 +654,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Send a chat message to ${project_display_name} AI */
+        /** Send a chat message to {{PROJECT_DISPLAY_NAME}} AI */
         post: {
             parameters: {
                 query?: never;
@@ -1305,7 +1305,7 @@ export interface components {
             favorited_at?: string;
         };
         ChatRequest: {
-            /** @description The user's message to send to ${project_display_name} AI */
+            /** @description The user's message to send to {{PROJECT_DISPLAY_NAME}} AI */
             message: string;
             /**
              * Format: uuid

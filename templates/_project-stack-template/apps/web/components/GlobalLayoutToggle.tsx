@@ -5,7 +5,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 
 export default function GlobalLayoutToggle() {
   return (
-    <IconButton color="inherit" size="small">
+    <IconButton color="inherit" size="small" aria-label="Toggle layout">
       <MenuIcon />
     </IconButton>
   );

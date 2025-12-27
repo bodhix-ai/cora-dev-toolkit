@@ -239,8 +239,8 @@ import {
 // app/components/ClientProviders.tsx
 "use client";
 import { useAuth } from "@clerk/nextjs"; // Or any other IdP hook
-import { UserProvider, OrgProvider } from "@${project}/org-module-frontend";
-import { createClerkAuthAdapter } from "@${project}/api-client";
+import { UserProvider, OrgProvider } from "@{{PROJECT_NAME}}/org-module-frontend";
+import { createClerkAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
 
 export default function ClientProviders({ children }) {
   const { isSignedIn, ...clerkAuth } = useAuth();

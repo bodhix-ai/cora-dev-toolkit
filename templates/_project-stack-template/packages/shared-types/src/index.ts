@@ -24,6 +24,10 @@ export interface AdminCardConfig {
   description: string;
   icon: ReactNode;
   href: string;
+  context: "platform" | "organization";
+  color?: string;
+  order?: number;
   badge?: string | number;
+  requiredRoles?: string[];
   requiredPermissions?: string[];
 }

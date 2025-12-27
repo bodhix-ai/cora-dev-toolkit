@@ -105,6 +105,7 @@ export function ProviderForm({
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
               label="Name"
+              aria-label="Provider Name"
               value={formData.name}
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
@@ -118,6 +119,7 @@ export function ProviderForm({
 
             <TextField
               label="Display Name"
+              aria-label="Provider Display Name"
               value={formData.displayName}
               onChange={(e) =>
                 setFormData({ ...formData, displayName: e.target.value })
@@ -128,6 +130,7 @@ export function ProviderForm({
             <TextField
               select
               label="Provider Type"
+              aria-label="Provider Type"
               value={formData.providerType}
               onChange={(e) =>
                 setFormData({
@@ -148,6 +151,7 @@ export function ProviderForm({
 
             <TextField
               label="Credentials Secret Path"
+              aria-label="Credentials Secret Path"
               value={formData.credentialsSecretPath}
               onChange={(e) =>
                 setFormData({
@@ -166,6 +170,8 @@ export function ProviderForm({
                   onChange={(e) =>
                     setFormData({ ...formData, isActive: e.target.checked })
                   }
+                  inputProps={{ 'aria-label': 'Active provider' }}
+                  aria-label="Set as default provider"
                 />
               }
               label="Active"

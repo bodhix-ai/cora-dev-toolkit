@@ -64,6 +64,7 @@ export function OrgSelector({ variant = "full" }: OrgSelectorProps) {
         <Select
           value={currentOrganization.orgId}
           onChange={(e) => handleOrgChange(e.target.value)}
+          aria-label="Select organization"
           sx={{
             borderRadius: "8px",
             "& .MuiSelect-select": {
@@ -142,6 +143,7 @@ export function OrgSelector({ variant = "full" }: OrgSelectorProps) {
         <Select
           value={currentOrganization.orgId}
           onChange={(e) => handleOrgChange(e.target.value)}
+          aria-label="Select organization"
           sx={{
             borderRadius: "8px",
             "& .MuiSelect-select": {

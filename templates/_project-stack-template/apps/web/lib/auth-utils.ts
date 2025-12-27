@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useUnifiedAuth } from "module-access";
-import { useUserStore } from "@/store/userStore";
+import { useUnifiedAuth } from "@{{PROJECT_NAME}}/module-access";
 
 /**
  * Token manager for handling authentication tokens
@@ -44,32 +43,27 @@ export function useAuthStateManager(
 
 /**
  * Performs a complete logout:
- * 1. Signs out from Clerk
- * 2. Clears all local state
+ * 1. Signs out from auth provider (Clerk/Okta)
+ * 2. CORA context automatically clears profile state
  * 3. Redirects to sign-in page
  *
- * @param signOut - Clerk signOut function
- * @param clearProfile - Function to clear user profile from store
+ * @param signOut - Auth provider signOut function
  */
 export async function performLogout(
-  signOut: (options?: { redirectUrl?: string }) => Promise<void>,
-  clearProfile: () => void
+  signOut: (options?: { redirectUrl?: string }) => Promise<void>
 ): Promise<void> {
   try {
     console.log("🚪 Initiating logout");
 
-    // Sign out from Clerk (clears cookies/tokens)
+    // Sign out from auth provider (clears cookies/tokens)
+    // CORA context automatically clears profile state
     await signOut({ redirectUrl: "/sign-in" });
-
-    // Clear Zustand stores
-    clearProfile();
 
     console.log("✅ Logout complete");
   } catch (error) {
     console.error("❌ Logout failed:", error);
 
-    // Even if Clerk signOut fails, clear local state and redirect
-    clearProfile();
+    // If signOut fails, redirect manually
     window.location.href = "/sign-in";
   }
 }
@@ -96,9 +90,8 @@ export async function performLogout(
  */
 export function useLogout() {
   const { signOut } = useUnifiedAuth();
-  const { clearProfile } = useUserStore();
 
   return async () => {
-    await performLogout(signOut, clearProfile);
+    await performLogout(signOut);
   };
 }

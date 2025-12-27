@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useChatStore } from "@/store/chatStore";
-import { useOrganizationStore } from "@/store/organizationStore";
+import { useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
 import { useChatFavorites } from "./useChatFavorites";
 import { useChatProjectAssociation } from "./useChatProjectAssociation";
 
@@ -54,7 +54,7 @@ export function useChatActions(
   onError?: (error: string) => void
 ): ChatActionsManager {
   const { getToken } = useAuth();
-  const { selectedOrganization } = useOrganizationStore();
+  const { currentOrganization } = useOrganizationContext();
   const { loadSessions } = useChatStore();
   const chatFavorites = useChatFavorites();
   const chatAssociations = useChatProjectAssociation();
@@ -66,17 +66,17 @@ export function useChatActions(
   const reloadSessions = useCallback(async () => {
     try {
       const token = await getToken({ template: "policy-supabase" });
-      if (token && selectedOrganization) {
+      if (token && currentOrganization) {
         // CRITICAL: Use forceReload=true to bypass cache guard
         // Without this, the cache guard will prevent reload if sessions already exist
-        await loadSessions(token, selectedOrganization.id, true);
+        await loadSessions(token, currentOrganization.orgId, true);
       }
     } catch (error) {
       console.error("[useChatActions] Failed to reload sessions:", error);
       // Don't throw - mutation already succeeded, this is just a UI sync issue
       // The next time sessions load naturally, the UI will be correct
     }
-  }, [getToken, selectedOrganization, loadSessions]);
+  }, [getToken, currentOrganization, loadSessions]);
 
   const associateWithProject = useCallback(
     async (chatId: string, projectId: string) => {

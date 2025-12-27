@@ -93,6 +93,7 @@ okta:
   client_secret: "" # KEEP SECRET!
   issuer: "" # e.g., https://dev-12345678.okta.com/oauth2/default
   jwks_uri: "" # e.g., https://dev-12345678.okta.com/oauth2/default/v1/keys
+  audience: api://default
 
 # --- Clerk Configuration ---
 # Get these from your Clerk Dashboard: https://dashboard.clerk.com
