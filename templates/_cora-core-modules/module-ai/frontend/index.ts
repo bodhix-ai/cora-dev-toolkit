@@ -17,6 +17,12 @@ export { ModelList } from "./components/models/ModelList";
 export { ModelCard } from "./components/models/ModelCard";
 export { TestModelDialog } from "./components/models/TestModelDialog";
 
+// Admin Components
+export { AIEnablementAdmin } from "./components/admin/AIEnablementAdmin";
+export { ProvidersTab } from "./components/admin/ProvidersTab";
+export { ModelsTab } from "./components/admin/ModelsTab";
+export { PlatformConfigTab } from "./components/admin/PlatformConfigTab";
+
 // Hooks
 export { useProviders } from "./hooks/useProviders";
 export { useModels } from "./hooks/useModels";
