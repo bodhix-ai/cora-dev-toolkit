@@ -4,7 +4,7 @@ Handles user profile operations
 """
 import json
 import logging
-from typing import Dict, Any
+from typing import Optional, Dict, Any
 import org_common as common
 from org_common.supabase_client import get_supabase_client
 
@@ -45,6 +45,30 @@ def detect_auth_provider(user_info: Dict[str, Any]) -> str:
     logger.warning(f"Unable to detect auth provider from JWT claims, defaulting to okta. Claims: {list(user_info.keys())}")
     return 'okta'
 
+
+
+def get_supabase_user_id_from_okta_uid(okta_uid: str) -> Optional[str]:
+    """
+    Get Supabase user_id from Okta user ID
+    
+    Args:
+        okta_uid: Okta user ID
+        
+    Returns:
+        Supabase user_id if found, None otherwise
+    """
+    try:
+        identity = common.find_one(
+            table='user_auth_ext_ids',
+            filters={
+                'provider_name': 'okta',
+                'external_id': okta_uid
+            }
+        )
+        return identity['auth_user_id'] if identity else None
+    except Exception as e:
+        print(f"Error getting Supabase user_id from Okta UID: {str(e)}")
+        return None
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """

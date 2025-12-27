@@ -72,15 +72,21 @@ async function request<T>(
 export function createApiClient(token: string) {
   return {
     get: <T>(endpoint: string) => request<T>(endpoint, { method: "GET", token }),
-    post: <T>(endpoint: string, data?: any) =>
+    post: <T>(endpoint: string, data?: unknown) =>
       request<T>(endpoint, {
         method: "POST",
         token,
         body: JSON.stringify(data),
       }),
-    put: <T>(endpoint: string, data?: any) =>
+    put: <T>(endpoint: string, data?: unknown) =>
       request<T>(endpoint, {
         method: "PUT",
+        token,
+        body: JSON.stringify(data),
+      }),
+    patch: <T>(endpoint: string, data?: unknown) =>
+      request<T>(endpoint, {
+        method: "PATCH",
         token,
         body: JSON.stringify(data),
       }),

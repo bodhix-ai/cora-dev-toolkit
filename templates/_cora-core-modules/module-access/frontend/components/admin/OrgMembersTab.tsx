@@ -222,7 +222,7 @@ export function OrgMembersTab({ orgId, authAdapter }: OrgMembersTabProps) {
                   </TableCell>
                   <TableCell align="right">
                     {member.role !== "org_owner" && (
-                      <IconButton
+                      <IconButton aria-label="Action button"
                         size="small"
                         onClick={() => handleRemoveMember(member.id)}
                         disabled={removingMemberId === member.id}

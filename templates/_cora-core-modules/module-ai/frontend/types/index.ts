@@ -48,8 +48,10 @@ export interface ModelCapabilities {
   maxTokens?: number;
   supportsStreaming?: boolean;
   supportsVision?: boolean;
+  dimensions?: number;
+  embeddingDimensions?: number;
   // Allow additional capability properties from different providers
-  [key: string]: any;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 /**

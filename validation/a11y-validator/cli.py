@@ -277,7 +277,35 @@ def main():
         return 0
     
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        # Return JSON error if JSON format requested
+        if args.format == 'json':
+            import json
+            error_result = {
+                "status": "failed",
+                "errors": [str(e)],
+                "warnings": [],
+                "info": [],
+                "summary": {
+                    "total_files": 0,
+                    "files_with_issues": 0,
+                    "total_issues": 1,
+                    "errors": 1,
+                    "warnings": 0,
+                    "info": 0
+                },
+                "details": {
+                    "validation_error": str(e)
+                }
+            }
+            output = json.dumps(error_result, indent=2)
+            if args.output:
+                with open(args.output, 'w') as f:
+                    f.write(output)
+            else:
+                print(output)
+        else:
+            print(f"Error: {e}", file=sys.stderr)
+        
         if args.verbose:
             import traceback
             traceback.print_exc()

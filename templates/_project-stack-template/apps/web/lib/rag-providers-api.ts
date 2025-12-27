@@ -3,6 +3,8 @@
  * Handles platform-level provider management for super admins
  */
 
+import { createApiClient } from "./api-client";
+
 // Get the base URL from environment variables
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -115,29 +117,8 @@ export interface UpdatePlatformRAGConfigRequest {
 export async function getPlatformRAGConfig(
   token: string
 ): Promise<PlatformRAGConfig> {
-  const url = `${API_BASE}/admin/rag/config`;
-
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
-  };
-
-  const res = await fetch(url, { method: "GET", headers });
-  const responseText = await res.text();
-
-  try {
-    const json = JSON.parse(responseText);
-    if (!res.ok) {
-      const errorMessage =
-        json.error || `Request failed with status ${res.status}`;
-      throw new Error(`API Error: ${errorMessage}`);
-    }
-    return json as PlatformRAGConfig;
-  } catch (err) {
-    if (!res.ok) {
-      throw new Error(`API Error: ${res.status} - ${responseText}`);
-    }
-    throw new Error(`Failed to parse API response: ${responseText}`);
-  }
+  const client = createApiClient(token);
+  return client.get<PlatformRAGConfig>("/admin/rag/config");
 }
 
 /**
@@ -150,35 +131,8 @@ export async function updatePlatformRAGConfig(
   token: string,
   config: UpdatePlatformRAGConfigRequest
 ): Promise<PlatformRAGConfig> {
-  const url = `${API_BASE}/admin/rag/config`;
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-
-  const res = await fetch(url, {
-    method: "PUT",
-    headers,
-    body: JSON.stringify(config),
-  });
-
-  const responseText = await res.text();
-
-  try {
-    const json = JSON.parse(responseText);
-    if (!res.ok) {
-      const errorMessage =
-        json.error || `Request failed with status ${res.status}`;
-      throw new Error(`API Error: ${errorMessage}`);
-    }
-    return json as PlatformRAGConfig;
-  } catch (err) {
-    if (!res.ok) {
-      throw new Error(`API Error: ${res.status} - ${responseText}`);
-    }
-    throw new Error(`Failed to parse API response: ${responseText}`);
-  }
+  const client = createApiClient(token);
+  return client.put<PlatformRAGConfig>("/admin/rag/config", config);
 }
 
 /**
@@ -189,29 +143,8 @@ export async function updatePlatformRAGConfig(
 export async function listProviders(
   token: string
 ): Promise<ProvidersListResponse> {
-  const url = `${API_BASE}/admin/rag/providers`;
-
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
-  };
-
-  const res = await fetch(url, { method: "GET", headers });
-  const responseText = await res.text();
-
-  try {
-    const json = JSON.parse(responseText);
-    if (!res.ok) {
-      const errorMessage =
-        json.error || `Request failed with status ${res.status}`;
-      throw new Error(`API Error: ${errorMessage}`);
-    }
-    return json as ProvidersListResponse;
-  } catch (err) {
-    if (!res.ok) {
-      throw new Error(`API Error: ${res.status} - ${responseText}`);
-    }
-    throw new Error(`Failed to parse API response: ${responseText}`);
-  }
+  const client = createApiClient(token);
+  return client.get<ProvidersListResponse>("/admin/rag/providers");
 }
 
 /**
@@ -226,7 +159,7 @@ export async function listModels(
   providerType?: ProviderType,
   modelType?: ModelType
 ): Promise<ModelsListResponse> {
-  let url = `${API_BASE}/admin/rag/providers/models`;
+  let endpoint = "/admin/rag/providers/models";
 
   const params = new URLSearchParams();
   if (providerType) params.append("provider_type", providerType);
@@ -234,30 +167,11 @@ export async function listModels(
 
   const paramString = params.toString();
   if (paramString) {
-    url += `?${paramString}`;
+    endpoint += `?${paramString}`;
   }
 
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
-  };
-
-  const res = await fetch(url, { method: "GET", headers });
-  const responseText = await res.text();
-
-  try {
-    const json = JSON.parse(responseText);
-    if (!res.ok) {
-      const errorMessage =
-        json.error || `Request failed with status ${res.status}`;
-      throw new Error(`API Error: ${errorMessage}`);
-    }
-    return json as ModelsListResponse;
-  } catch (err) {
-    if (!res.ok) {
-      throw new Error(`API Error: ${res.status} - ${responseText}`);
-    }
-    throw new Error(`Failed to parse API response: ${responseText}`);
-  }
+  const client = createApiClient(token);
+  return client.get<ModelsListResponse>(endpoint);
 }
 
 /**
@@ -270,35 +184,8 @@ export async function testProviderConnection(
   token: string,
   request: ConnectionTestRequest
 ): Promise<ConnectionTestResponse> {
-  const url = `${API_BASE}/admin/rag/providers/test`;
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(request),
-  });
-
-  const responseText = await res.text();
-
-  try {
-    const json = JSON.parse(responseText);
-    if (!res.ok) {
-      const errorMessage =
-        json.error || `Request failed with status ${res.status}`;
-      throw new Error(`API Error: ${errorMessage}`);
-    }
-    return json as ConnectionTestResponse;
-  } catch (err) {
-    if (!res.ok) {
-      throw new Error(`API Error: ${res.status} - ${responseText}`);
-    }
-    throw new Error(`Failed to parse API response: ${responseText}`);
-  }
+  const client = createApiClient(token);
+  return client.post<ConnectionTestResponse>("/admin/rag/providers/test", request);
 }
 
 // ============================================================================
@@ -369,21 +256,10 @@ export async function listDeployments(
   token: string,
   providerType: ProviderType
 ): Promise<DeploymentsListResponse> {
-  const response = await fetch(
-    `${API_BASE}/admin/rag/providers/${providerType}/deployments`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
+  const client = createApiClient(token);
+  return client.get<DeploymentsListResponse>(
+    `/admin/rag/providers/${providerType}/deployments`
   );
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to list deployments");
-  }
-
-  return response.json();
 }
 
 /**
@@ -406,24 +282,11 @@ export async function createDeployment(
     endpoint_type?: EndpointType;
   }
 ): Promise<ModelDeployment> {
-  const response = await fetch(
-    `${API_BASE}/admin/rag/providers/${providerType}/deployments`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    }
+  const client = createApiClient(token);
+  return client.post<ModelDeployment>(
+    `/admin/rag/providers/${providerType}/deployments`,
+    data
   );
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to create deployment");
-  }
-
-  return response.json();
 }
 
 /**
@@ -446,24 +309,11 @@ export async function updateDeployment(
     deployment_status: DeploymentStatus;
   }>
 ): Promise<ModelDeployment> {
-  const response = await fetch(
-    `${API_BASE}/admin/rag/providers/${providerType}/deployments/${deploymentId}`,
-    {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    }
+  const client = createApiClient(token);
+  return client.put<ModelDeployment>(
+    `/admin/rag/providers/${providerType}/deployments/${deploymentId}`,
+    data
   );
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to update deployment");
-  }
-
-  return response.json();
 }
 
 /**
@@ -510,20 +360,8 @@ export async function deleteDeployment(
   providerType: ProviderType,
   deploymentId: string
 ): Promise<{ success: boolean; message: string }> {
-  const response = await fetch(
-    `${API_BASE}/admin/rag/providers/${providerType}/deployments/${deploymentId}`,
-    {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
+  const client = createApiClient(token);
+  return client.delete<{ success: boolean; message: string }>(
+    `/admin/rag/providers/${providerType}/deployments/${deploymentId}`
   );
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to delete deployment");
-  }
-
-  return response.json();
 }

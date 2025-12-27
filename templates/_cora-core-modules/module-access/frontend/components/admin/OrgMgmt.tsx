@@ -69,14 +69,30 @@ interface Organization {
 }
 
 /**
+ * Organization API payload types
+ */
+interface CreateOrganizationPayload {
+  name: string;
+  slug: string;
+  description?: string;
+  allowed_domain?: string;
+  domain_default_role?: "org_user" | "org_admin" | "org_owner";
+}
+
+interface UpdateOrganizationPayload extends CreateOrganizationPayload {
+  allowed_domain?: string | null;
+  domain_default_role?: "org_user" | "org_admin" | "org_owner" | null;
+}
+
+/**
  * Props for OrganizationManagement
  */
 interface OrganizationManagementProps {
   /** Authenticated API client for making requests */
   apiClient: {
-    get: (url: string) => Promise<{ data: any; success: boolean }>;
-    post: (url: string, data: any) => Promise<{ data: any; success: boolean }>;
-    put: (url: string, data: any) => Promise<{ data: any; success: boolean }>;
+    get: <T = unknown>(url: string) => Promise<{ data: T; success: boolean }>;
+    post: <T = unknown>(url: string, data: unknown) => Promise<{ data: T; success: boolean }>;
+    put: <T = unknown>(url: string, data: unknown) => Promise<{ data: T; success: boolean }>;
     delete: (url: string) => Promise<{ success: boolean }>;
   };
 }
@@ -127,12 +143,16 @@ export function OrganizationManagement({
   };
 
   const handleDelete = async (orgId: string) => {
+    /*
+    // Organization deletion not implemented in backend yet
     if (!confirm("Are you sure you want to delete this organization?")) {
       return;
     }
 
     try {
-      const response = await apiClient.delete(`/orgs/${orgId}`);
+      // const response = await apiClient.delete_method(`/orgs/${orgId}`);
+      // Mock success for now since backend is not implemented
+      const response = { success: false, error: "Not implemented" }; 
       if (response.success) {
         fetchOrganizations();
       } else {
@@ -142,6 +162,8 @@ export function OrganizationManagement({
       setError("Failed to delete organization");
       console.error("Error deleting organization:", err);
     }
+    */
+    alert("Organization deletion is not currently supported.");
   };
 
   if (loading) {
@@ -301,6 +323,7 @@ function OrganizationList({
                 >
                   <Edit fontSize="small" />
                 </IconButton>
+                {/* 
                 <IconButton
                   size="small"
                   onClick={() => onDelete(org.id)}
@@ -310,6 +333,7 @@ function OrganizationList({
                 >
                   <Delete fontSize="small" />
                 </IconButton>
+                */}
               </TableCell>
             </TableRow>
           ))}
@@ -356,7 +380,7 @@ function CreateOrganizationDialog({
     setSaving(true);
 
     try {
-      const payload: any = {
+      const payload: CreateOrganizationPayload = {
         name: formData.name,
         slug: formData.slug,
         description: formData.description || undefined,
@@ -368,7 +392,7 @@ function CreateOrganizationDialog({
         payload.domain_default_role = formData.domain_default_role;
       }
 
-      const response = await apiClient.post("/orgs", payload);
+      const response = await apiClient.post<Organization>("/orgs", payload);
 
       if (response.success) {
         onSuccess();
@@ -449,7 +473,7 @@ function CreateOrganizationDialog({
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    domain_default_role: e.target.value as any,
+                    domain_default_role: e.target.value as "org_user" | "org_admin" | "org_owner",
                   })
                 }
                 label="Default Role for Domain Users"
@@ -508,7 +532,7 @@ function EditOrganizationDialog({
     setSaving(true);
 
     try {
-      const payload: any = {
+      const payload: UpdateOrganizationPayload = {
         name: formData.name,
         slug: formData.slug,
         description: formData.description || undefined,
@@ -518,7 +542,7 @@ function EditOrganizationDialog({
           : null,
       };
 
-      const response = await apiClient.put(`/orgs/${organization.id}`, payload);
+      const response = await apiClient.put<Organization>(`/orgs/${organization.id}`, payload);
 
       if (response.success) {
         onSuccess();
@@ -596,7 +620,7 @@ function EditOrganizationDialog({
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    domain_default_role: e.target.value as any,
+                    domain_default_role: e.target.value as "org_user" | "org_admin" | "org_owner",
                   })
                 }
                 label="Default Role for Domain Users"

@@ -16,8 +16,8 @@ type CacheEntry<T> = {
 type PendingRequest<T> = Promise<T>;
 
 class ApiCache {
-  private cache = new Map<string, CacheEntry<any>>();
-  private pendingRequests = new Map<string, PendingRequest<any>>();
+  private cache = new Map<string, CacheEntry<unknown>>();
+  private pendingRequests = new Map<string, PendingRequest<unknown>>();
 
   // Default cache duration: 5 minutes for profiles, 2 minutes for other data
   private defaultTTL = 2 * 60 * 1000; // 2 minutes
@@ -26,7 +26,7 @@ class ApiCache {
   /**
    * Get cache key for a request
    */
-  private getCacheKey(fn: Function, args: any[]): string {
+  private getCacheKey(fn: Function, args: unknown[]): string {
     const functionName = fn.name || "anonymous";
     const argsString = JSON.stringify(args);
     return `${functionName}:${argsString}`;
@@ -56,7 +56,7 @@ class ApiCache {
     const entry = this.cache.get(key);
     if (entry && this.isValidCacheEntry(entry)) {
       console.log(`🟢 Cache HIT for ${key}`);
-      return entry.data;
+      return entry.data as T;
     }
 
     if (entry) {
@@ -84,8 +84,8 @@ class ApiCache {
    * Wrap an async API function with caching and deduplication
    */
   async cachedRequest<T>(
-    fn: (...args: any[]) => Promise<T>,
-    ...args: any[]
+    fn: (...args: unknown[]) => Promise<T>,
+    ...args: unknown[]
   ): Promise<T> {
     const key = this.getCacheKey(fn, args);
     const functionName = fn.name || "anonymous";
@@ -128,7 +128,7 @@ class ApiCache {
   /**
    * Clear cache for specific function/args combination
    */
-  invalidate(fn: Function, ...args: any[]): void {
+  invalidate(fn: Function, ...args: unknown[]): void {
     const key = this.getCacheKey(fn, args);
     this.cache.delete(key);
     console.log(`🗑️ Cache INVALIDATED for ${key}`);
@@ -198,8 +198,8 @@ export const apiCache = new ApiCache();
  * const profile = await cached(getProfile, token);
  */
 export const cached = <T>(
-  fn: (...args: any[]) => Promise<T>,
-  ...args: any[]
+  fn: (...args: unknown[]) => Promise<T>,
+  ...args: unknown[]
 ): Promise<T> => {
   return apiCache.cachedRequest(fn, ...args);
 };

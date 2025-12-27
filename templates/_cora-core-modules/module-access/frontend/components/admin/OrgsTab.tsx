@@ -57,6 +57,17 @@ interface OrgsTabProps {
 }
 
 /**
+ * Payload for creating a new organization
+ */
+interface CreateOrganizationPayload {
+  name: string;
+  slug: string;
+  description?: string;
+  allowed_domain?: string;
+  domain_default_role?: "org_user" | "org_admin" | "org_owner";
+}
+
+/**
  * Organizations Tab Component
  * 
  * Displays list of all organizations for platform admins.
@@ -205,7 +216,7 @@ export function OrgsTab({ authAdapter }: OrgsTabProps) {
                     </Typography>
                   </TableCell>
                   <TableCell align="right">
-                    <IconButton
+                    <IconButton aria-label="Action button"
                       size="small"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -273,7 +284,7 @@ function CreateOrganizationDialog({
     setSaving(true);
 
     try {
-      const payload: any = {
+      const payload: CreateOrganizationPayload = {
         name: formData.name,
         slug: formData.slug,
         description: formData.description || undefined,
@@ -366,7 +377,7 @@ function CreateOrganizationDialog({
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    domain_default_role: e.target.value as any,
+                    domain_default_role: e.target.value as "org_user" | "org_admin" | "org_owner",
                   })
                 }
                 label="Default Role for Domain Users"

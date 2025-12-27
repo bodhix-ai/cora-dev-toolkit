@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useChatStore } from "@/store/chatStore";
+import { createApiClient } from "@/lib/api-client";
 
 export interface ChatFavoritesState {
   [chatId: string]: {
@@ -123,25 +124,12 @@ export function useChatFavorites(): ChatFavoritesManager {
           throw new Error("Authentication token not available");
         }
 
-        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-        const endpoint = newFavoriteState
-          ? `${baseUrl}/chat/sessions/${chatId}/favorite`
-          : `${baseUrl}/chat/sessions/${chatId}/favorite`;
-
-        const response = await fetch(endpoint, {
-          method: newFavoriteState ? "POST" : "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `HTTP ${response.status}`);
+        const client = createApiClient(token);
+        if (newFavoriteState) {
+          await client.post(`/chat/sessions/${chatId}/favorite`);
+        } else {
+          await client.delete(`/chat/sessions/${chatId}/favorite`);
         }
-
-        const result = await response.json();
 
         // Update local state (backend returns complete session data)
         setFavoritesState((prev) => ({

@@ -147,8 +147,8 @@ export function useDashboardData() {
       if (!token) return;
 
       // Fetch both project and chat favorites - handle 404 gracefully
-      let projectFavoritesData: any[] = [];
-      let chatFavoritesData: any[] = [];
+      let projectFavoritesData: Project[] = [];
+      let chatFavoritesData: ChatSession[] = [];
 
       try {
         projectFavoritesData = await getFavoriteProjects(
@@ -156,10 +156,10 @@ export function useDashboardData() {
           currentOrganization.orgId,
           10
         );
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.warn(
           "Project favorites endpoint not available:",
-          error.message
+          error instanceof Error ? error.message : String(error)
         );
         projectFavoritesData = [];
       }
@@ -172,8 +172,11 @@ export function useDashboardData() {
         );
         // Handle structured response with data property
         chatFavoritesData = chatResponse?.data || [];
-      } catch (error: any) {
-        console.warn("Chat favorites endpoint not available:", error.message);
+      } catch (error: unknown) {
+        console.warn(
+          "Chat favorites endpoint not available:",
+          error instanceof Error ? error.message : String(error)
+        );
         chatFavoritesData = [];
       }
 
@@ -185,7 +188,7 @@ export function useDashboardData() {
 
       // Transform project favorites into FavoriteItem format
       const projectFavoriteItems: FavoriteItem[] = projectFavoritesData.map(
-        (fav: any, index: number) => ({
+        (fav, index: number) => ({
           id: fav.id,
           type: "project" as const,
           name: fav.name,
@@ -195,14 +198,14 @@ export function useDashboardData() {
           favoriteOrder: index,
           unreadActivity: false,
           created_at: fav.created_at,
-          favorited_at: fav.favorited_at,
+          favorited_at: fav.favorited_at || fav.created_at,
           user_role: fav.user_role,
         })
       );
 
       // Transform chat favorites into FavoriteItem format
       const chatFavoriteItems: FavoriteItem[] = chatFavoritesData.map(
-        (chat: any, index: number) => ({
+        (chat, index: number) => ({
           id: chat.id,
           type: "chat" as const,
           name: chat.title || "Untitled Chat",
@@ -230,7 +233,7 @@ export function useDashboardData() {
 
       // Keep legacy format for backward compatibility
       const quickAccessProjects: Project[] = projectFavoritesData.map(
-        (fav: any) => ({
+        (fav) => ({
           id: fav.id,
           name: fav.name,
           description: fav.description,
@@ -239,7 +242,7 @@ export function useDashboardData() {
           created_at: fav.created_at,
           updated_at: fav.updated_at,
           is_favorited: true,
-          favorited_at: fav.favorited_at,
+          favorited_at: fav.favorited_at || fav.created_at,
         })
       );
 

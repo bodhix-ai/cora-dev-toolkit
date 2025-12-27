@@ -225,7 +225,7 @@ export function OrgInvitesTab({ orgId, authAdapter }: OrgInvitesTabProps) {
                   </TableCell>
                   <TableCell align="right">
                     {invite.status === "pending" && (
-                      <IconButton
+                      <IconButton aria-label="Action button"
                         size="small"
                         onClick={() => handleRevokeInvite(invite.id)}
                         disabled={revokingInviteId === invite.id}

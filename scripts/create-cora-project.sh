@@ -1223,16 +1223,22 @@ run_post_creation_validation() {
   
   # Run structure and portability validators only (no DB required)
   cd "${stack_dir}/scripts/validation"
-  if python3 cora-validate.py project "${stack_dir}" \
+  
+  # Capture exit code while still showing output
+  python3 cora-validate.py project "${stack_dir}" \
     --validators structure portability \
-    --format text 2>/dev/null; then
+    --format text
+  local exit_code=$?
+  
+  cd - > /dev/null
+  
+  # Report results based on exit code
+  if [[ $exit_code -eq 0 ]]; then
     log_info "✅ Initial validation passed"
   else
-    local exit_code=$?
     log_warn "⚠️  Validation found issues (exit code: ${exit_code})"
     log_info "Review validation output above for details"
   fi
-  cd - > /dev/null
   
   log_info "Run full validation after deploying: cd scripts/validation && python3 cora-validate.py project ../.."
 }

@@ -9,12 +9,14 @@ Unified CLI for running all CORA validation tools:
 - api-tracer: API contract validation
 - import-validator: Import path validation
 - schema-validator: Database schema validation
+- cora-compliance-validator: CORA standards validation
+- frontend-compliance-validator: Frontend standards validation
 
 Usage:
     python cora-validate.py --help
     python cora-validate.py project /path/to/project
     python cora-validate.py module /path/to/module
-    python cora-validate.py --all /path/to/project
+    python cora-validate.py report /path/to/results
 """
 
 import sys
@@ -24,7 +26,7 @@ import subprocess
 from pathlib import Path
 from datetime import datetime
 from dataclasses import dataclass, field, asdict
-from typing import Optional
+from typing import Optional, Dict, Any
 from enum import Enum
 
 
@@ -50,6 +52,7 @@ class ValidationResult:
     errors: list = field(default_factory=list)
     warnings: list = field(default_factory=list)
     info: list = field(default_factory=list)
+    details: dict = field(default_factory=dict)  # Detailed results (e.g. lists of files)
     duration_ms: int = 0
     skipped: bool = False
     skip_reason: str = ""
@@ -83,6 +86,20 @@ class ValidationReport:
             "certification_level": self.certification_level,
             "duration_ms": self.duration_ms,
         }
+    
+    def save_results(self, output_dir: Path):
+        """Save individual validator results and summary to output directory."""
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Save summary
+        with open(output_dir / "summary.json", "w") as f:
+            json.dump(self.to_dict(), f, indent=2)
+            
+        # Save individual results
+        for key, result in self.results.items():
+            result_dict = asdict(result)
+            with open(output_dir / f"{key}.json", "w") as f:
+                json.dump(result_dict, f, indent=2)
 
 
 class CoraValidator:
@@ -115,12 +132,12 @@ class CoraValidator:
             "description": "API contract validation",
             "module": "api-tracer",
             "supports": ["project"],
-            "cli_style": "argparse",  # path --format json (assumed)
+            "cli_style": "click",  # --path /path --output json
         },
         "import": {
             "name": "Import Validator",
             "description": "Import path validation",
-            "module": "import-validator",
+            "module": "import_validator",
             "supports": ["project", "module"],
             "cli_style": "click",  # --path /path --output json
         },
@@ -130,6 +147,20 @@ class CoraValidator:
             "module": "schema-validator",
             "supports": ["project"],
             "cli_style": "click_env",  # --path /path --output json + requires .env
+        },
+        "cora": {
+            "name": "CORA Compliance",
+            "description": "Checks backend compliance with CORA standards",
+            "module": "cora-compliance-validator",
+            "supports": ["project", "module"],
+            "cli_style": "argparse",
+        },
+        "frontend": {
+            "name": "Frontend Compliance",
+            "description": "Checks frontend compliance with CORA standards",
+            "module": "frontend-compliance-validator",
+            "supports": ["project", "module"],
+            "cli_style": "argparse",
         },
     }
 
@@ -248,22 +279,39 @@ class CoraValidator:
             try:
                 output = json.loads(result.stdout) if result.stdout else {}
             except json.JSONDecodeError:
-                # Fallback to treating output as text
+                # Fallback: capture both stdout and stderr
                 output = {"raw_output": result.stdout}
+                if result.stderr:
+                    output["raw_error"] = result.stderr
 
             # Determine pass/fail from return code or output
             passed = result.returncode == 0
             
+            # Get lists of actual error/warning objects
             errors = output.get("errors", [])
             warnings = output.get("warnings", [])
             info = output.get("info", [])
+            details = output.get("details", {})
             
-            # Handle summary format (import-validator, a11y-validator, etc.)
-            if "summary" in output:
-                summary = output["summary"]
-                if isinstance(summary, dict):
-                    errors = summary.get("errors", errors)
-                    warnings = summary.get("warnings", warnings)
+            # If validator failed but didn't provide errors, capture stderr
+            if not passed and not errors:
+                if result.stderr:
+                    # Convert stderr to error messages
+                    stderr_lines = [line.strip() for line in result.stderr.split('\n') if line.strip()]
+                    if stderr_lines:
+                        errors = stderr_lines[:10]  # Limit to first 10 lines
+                elif output.get("raw_output"):
+                    # Use stdout as error message if no stderr
+                    errors = [f"Validator failed with output: {output['raw_output'][:200]}"]
+                else:
+                    # No output at all
+                    errors = [f"Validator failed with exit code {result.returncode} but provided no output"]
+            
+            # Handle summary format - DON'T override the lists with counts!
+            # Some validators (portability, a11y, etc.) provide both:
+            # - "errors": [...list of error objects...]
+            # - "summary": {"errors": count, "warnings": count}
+            # We want the lists, not the counts
                 
             return ValidationResult(
                 validator=validator_key,
@@ -271,6 +319,7 @@ class CoraValidator:
                 errors=errors if isinstance(errors, list) else [str(errors)],
                 warnings=warnings if isinstance(warnings, list) else [str(warnings)],
                 info=info if isinstance(info, list) else [str(info)],
+                details=details,
                 duration_ms=duration_ms
             )
 
@@ -445,11 +494,13 @@ class ReportFormatter:
     def _bold(self, text: str) -> str:
         return self._color(text, "1")
 
-    def format(self, report: ValidationReport, output_format: OutputFormat) -> str:
+    def format(self, report: ValidationReport, output_format: OutputFormat, detailed: bool = False) -> str:
         """Format report in specified format."""
         if output_format == OutputFormat.JSON:
             return self.format_json(report)
         elif output_format == OutputFormat.MARKDOWN:
+            if detailed:
+                return self.format_detailed_markdown(report)
             return self.format_markdown(report)
         else:
             return self.format_text(report)
@@ -594,6 +645,102 @@ class ReportFormatter:
                 lines.append("")
         
         return "\n".join(lines)
+    
+    def format_detailed_markdown(self, report: ValidationReport) -> str:
+        """Format as Detailed Markdown with grouped errors."""
+        lines = []
+        
+        # Header
+        lines.append("# Detailed Validation Report")
+        lines.append(f"**Generated:** {report.timestamp}")
+        lines.append(f"**Target:** `{report.target_path}`")
+        lines.append("")
+        
+        # Table of Contents
+        lines.append("## Table of Contents")
+        for key in report.results.keys():
+            validator_info = CoraValidator.VALIDATORS.get(key, {})
+            name = validator_info.get("name", key)
+            lines.append(f"- [{name}](#{key.replace('_', '-')})")
+        lines.append("")
+        
+        lines.append("---")
+        lines.append("")
+
+        for validator_key, result in report.results.items():
+            validator_info = CoraValidator.VALIDATORS.get(validator_key, {})
+            name = validator_info.get("name", validator_key)
+            
+            lines.append(f"## {name} <a name=\"{validator_key.replace('_', '-')}\"></a>")
+            lines.append("")
+            
+            if result.skipped:
+                lines.append(f"⏭️ **Skipped:** {result.skip_reason}")
+                lines.append("")
+                continue
+                
+            if result.passed:
+                lines.append("✅ **Passed**")
+            else:
+                lines.append(f"❌ **Failed** ({len(result.errors)} errors)")
+            
+            lines.append("")
+            
+            # Special handling for certain validators that provide structured details
+            if validator_key == "schema" and result.details:
+                # Schema errors often have specific structure
+                if "errors" in result.details:
+                     # Group errors by file if possible, or just list them
+                     lines.append("### Schema Errors")
+                     for err in result.details.get("errors", []):
+                        lines.append(f"- **Issue:** {err.get('issue', 'Unknown')}")
+                        lines.append(f"  - Table: {err.get('table', 'N/A')}")
+                        lines.append(f"  - Severity: {err.get('severity', 'N/A')}")
+                        lines.append("")
+            
+            elif result.errors:
+                lines.append("### Errors")
+                # Group by file if possible (simple heuristic)
+                errors_by_file = {}
+                general_errors = []
+                
+                for error in result.errors:
+                    err_str = str(error)
+                    # Look for file paths at start of error message
+                    parts = err_str.split(':', 1)
+                    if len(parts) > 1 and (parts[0].endswith('.py') or parts[0].endswith('.ts') or parts[0].endswith('.tsx') or '/' in parts[0]):
+                        file = parts[0]
+                        msg = parts[1].strip()
+                        if file not in errors_by_file:
+                            errors_by_file[file] = []
+                        errors_by_file[file].append(msg)
+                    else:
+                        general_errors.append(err_str)
+                
+                if errors_by_file:
+                    for file, errs in errors_by_file.items():
+                        lines.append(f"#### `{file}`")
+                        for err in errs:
+                            lines.append(f"- {err}")
+                        lines.append("")
+                
+                if general_errors:
+                    if errors_by_file:
+                        lines.append("#### General Errors")
+                    for err in general_errors:
+                         lines.append(f"- {err}")
+                    lines.append("")
+            
+            if result.warnings:
+                lines.append("### Warnings")
+                for warning in result.warnings:
+                     lines.append(f"- {str(warning)}")
+                lines.append("")
+
+            lines.append("---")
+            lines.append("")
+            
+        return "\n".join(lines)
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -606,118 +753,117 @@ Examples:
   # Validate a project with all validators
   python cora-validate.py project /path/to/my-project-stack
 
-  # Validate a specific module
-  python cora-validate.py module /path/to/module-kb
+  # Validate and save results
+  python cora-validate.py project /path/to/project --save-results --detailed-report
 
-  # Run specific validators only
-  python cora-validate.py project /path/to/project --validators structure portability
-
-  # Generate certification report
-  python cora-validate.py project /path/to/project --certify --format markdown --output report.md
-
-  # JSON output for CI/CD
-  python cora-validate.py project /path/to/project --format json
+  # Generate report from existing results
+  python cora-validate.py report validation-results/ --format markdown --output report.md
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Validation commands")
 
+    # Common arguments
+    def add_common_args(p):
+        p.add_argument(
+            "--validators",
+            nargs="+",
+            choices=list(CoraValidator.VALIDATORS.keys()),
+            help="Specific validators to run (default: all)"
+        )
+        p.add_argument(
+            "--format", "-f",
+            choices=["text", "json", "markdown"],
+            default="text",
+            help="Output format"
+        )
+        p.add_argument(
+            "--output", "-o",
+            help="Write report to file"
+        )
+        p.add_argument(
+            "--certify",
+            action="store_true",
+            help="Generate certification report"
+        )
+        p.add_argument(
+            "--detailed-report",
+            action="store_true",
+            help="Generate detailed report (Markdown only)"
+        )
+        p.add_argument(
+            "--save-results",
+            action="store_true",
+            help="Save individual validator results to validation-results/ directory"
+        )
+        p.add_argument(
+            "--verbose", "-v",
+            action="store_true",
+            help="Verbose output"
+        )
+        p.add_argument(
+            "--no-color",
+            action="store_true",
+            help="Disable colored output"
+        )
+
     # Project validation
-    project_parser = subparsers.add_parser(
-        "project",
-        help="Validate a CORA project"
-    )
-    project_parser.add_argument(
-        "path",
-        help="Path to project root"
-    )
-    project_parser.add_argument(
-        "--validators",
-        nargs="+",
-        choices=list(CoraValidator.VALIDATORS.keys()),
-        help="Specific validators to run (default: all)"
-    )
-    project_parser.add_argument(
-        "--format", "-f",
-        choices=["text", "json", "markdown"],
-        default="text",
-        help="Output format"
-    )
-    project_parser.add_argument(
-        "--output", "-o",
-        help="Write report to file"
-    )
-    project_parser.add_argument(
-        "--certify",
-        action="store_true",
-        help="Generate certification report"
-    )
-    project_parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Verbose output"
-    )
-    project_parser.add_argument(
-        "--no-color",
-        action="store_true",
-        help="Disable colored output"
-    )
+    project_parser = subparsers.add_parser("project", help="Validate a CORA project")
+    project_parser.add_argument("path", help="Path to project root")
+    add_common_args(project_parser)
 
     # Module validation
-    module_parser = subparsers.add_parser(
-        "module",
-        help="Validate a CORA module"
-    )
-    module_parser.add_argument(
-        "path",
-        help="Path to module directory"
-    )
-    module_parser.add_argument(
-        "--validators",
-        nargs="+",
-        choices=list(CoraValidator.VALIDATORS.keys()),
-        help="Specific validators to run (default: all)"
-    )
-    module_parser.add_argument(
-        "--format", "-f",
-        choices=["text", "json", "markdown"],
-        default="text",
-        help="Output format"
-    )
-    module_parser.add_argument(
-        "--output", "-o",
-        help="Write report to file"
-    )
-    module_parser.add_argument(
-        "--certify",
-        action="store_true",
-        help="Generate certification report"
-    )
-    module_parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Verbose output"
-    )
-    module_parser.add_argument(
-        "--no-color",
-        action="store_true",
-        help="Disable colored output"
-    )
+    module_parser = subparsers.add_parser("module", help="Validate a CORA module")
+    module_parser.add_argument("path", help="Path to module directory")
+    add_common_args(module_parser)
+
+    # Report generation command
+    report_parser = subparsers.add_parser("report", help="Generate report from existing results")
+    report_parser.add_argument("results_dir", help="Directory containing JSON results")
+    report_parser.add_argument("--format", "-f", choices=["text", "json", "markdown"], default="markdown", help="Output format")
+    report_parser.add_argument("--output", "-o", help="Write report to file")
+    report_parser.add_argument("--detailed-report", action="store_true", help="Generate detailed report")
 
     # List validators
-    list_parser = subparsers.add_parser(
-        "list",
-        help="List available validators"
-    )
-    list_parser.add_argument(
-        "--format", "-f",
-        choices=["text", "json"],
-        default="text",
-        help="Output format"
-    )
+    list_parser = subparsers.add_parser("list", help="List available validators")
+    list_parser.add_argument("--format", "-f", choices=["text", "json"], default="text", help="Output format")
 
     return parser
+
+
+def load_report_from_results(results_dir: str) -> ValidationReport:
+    """Load ValidationReport from a directory of JSON results."""
+    path = Path(results_dir)
+    if not path.exists():
+        raise FileNotFoundError(f"Results directory not found: {results_dir}")
+        
+    summary_path = path / "summary.json"
+    if not summary_path.exists():
+        raise FileNotFoundError(f"Summary file not found: {summary_path}")
+        
+    with open(summary_path, "r") as f:
+        data = json.load(f)
+        
+    # Reconstruct ValidationResult objects
+    results = {}
+    for key, val in data.get("results", {}).items():
+        results[key] = ValidationResult(**val)
+    
+    # Reconstruct ValidationReport
+    report = ValidationReport(
+        target_path=data.get("target_path", ""),
+        validation_type=data.get("validation_type", "project"),
+        timestamp=data.get("timestamp", ""),
+        validators_run=data.get("validators_run", []),
+        results=results,
+        overall_passed=data.get("overall_passed", False),
+        total_errors=data.get("total_errors", 0),
+        total_warnings=data.get("total_warnings", 0),
+        certification_level=data.get("certification_level"),
+        duration_ms=data.get("duration_ms", 0)
+    )
+    return report
 
 
 def main():
@@ -743,6 +889,26 @@ def main():
                 print(f"               Supports: {supports}")
                 print()
         return 0
+        
+    # Report generation command
+    if args.command == "report":
+        try:
+            report = load_report_from_results(args.results_dir)
+            
+            output_format = OutputFormat(args.format)
+            formatter = ReportFormatter(use_colors=True)
+            formatted_report = formatter.format(report, output_format, detailed=args.detailed_report)
+            
+            if args.output:
+                with open(args.output, "w") as f:
+                    f.write(formatted_report)
+                print(f"Report written to: {args.output}")
+            else:
+                print(formatted_report)
+            return 0
+        except Exception as e:
+            print(f"Error generating report: {e}", file=sys.stderr)
+            return 1
 
     # Validate path exists
     path = Path(args.path)
@@ -766,11 +932,17 @@ def main():
     else:
         parser.print_help()
         return 1
+        
+    # Save results if requested
+    if args.save_results:
+        results_dir = Path("validation-results")
+        report.save_results(results_dir)
+        print(f"Results saved to: {results_dir.absolute()}")
 
     # Format output
     output_format = OutputFormat(args.format)
     formatter = ReportFormatter(use_colors=not getattr(args, 'no_color', False))
-    formatted_report = formatter.format(report, output_format)
+    formatted_report = formatter.format(report, output_format, detailed=args.detailed_report)
 
     # Write to file or stdout
     if args.output:

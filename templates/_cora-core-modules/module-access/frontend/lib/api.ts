@@ -6,12 +6,40 @@ import {
   OrgMember,
   InviteMemberInput,
   User,
+  UserOrganization,
 } from "../types";
+
+/**
+ * API response interface (snake_case from backend)
+ */
+interface ProfileApiData {
+  id: string;
+  email: string;
+  full_name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  phone?: string | null;
+  global_role?: "global_user" | "global_admin" | "global_owner" | "platform_owner";
+  current_org_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  organizations?: UserOrganization[];
+}
+
+/**
+ * Authenticated client interface
+ */
+interface AuthenticatedClient {
+  get: <T>(url: string) => Promise<ApiResponse<T>>;
+  post: <T>(url: string, data?: unknown) => Promise<ApiResponse<T>>;
+  put: <T>(url: string, data?: unknown) => Promise<ApiResponse<T>>;
+  delete: <T>(url: string) => Promise<ApiResponse<T>>;
+}
 
 /**
  * Transform snake_case API response to camelCase frontend types
  */
-function transformProfileResponse(apiData: any): Profile {
+function transformProfileResponse(apiData: ProfileApiData): Profile {
   return {
     id: apiData.id,
     email: apiData.email,
@@ -60,26 +88,27 @@ export interface OrgModuleApiClient {
 
 /**
  * Factory function to create org-module API client
- * @param authenticatedClient - Axios instance with authentication
+ * @param authenticatedClient - Authenticated client with CORA auth
  * @returns OrgModuleApiClient
  */
 export function createOrgModuleClient(
-  authenticatedClient: any
+  authenticatedClient: AuthenticatedClient
 ): OrgModuleApiClient {
   return {
     // Profile
     getProfile: async () => {
-      const response = await authenticatedClient.get("/profiles/me");
+      const response = await authenticatedClient.get<ProfileApiData>("/profiles/me");
       // Transform snake_case API response to camelCase
       if (response.success && response.data) {
-        response.data = transformProfileResponse(response.data);
+        const transformed = transformProfileResponse(response.data);
+        return { success: response.success, data: transformed };
       }
-      return response;
+      return { success: false, data: {} as Profile, error: "No data returned" };
     },
     updateProfile: async (data) => {
       console.log("[API Client] updateProfile called with data:", data);
       try {
-        const result = await authenticatedClient.put("/profiles/me", data);
+        const result = await authenticatedClient.put<Profile>("/profiles/me", data);
         console.log("[API Client] updateProfile response:", result);
         return result;
       } catch (error) {
@@ -89,20 +118,20 @@ export function createOrgModuleClient(
     },
 
     // Organizations
-    getOrganizations: () => authenticatedClient.get("/orgs"),
-    getOrganization: (id) => authenticatedClient.get(`/orgs/${id}`),
-    createOrganization: (data) => authenticatedClient.post("/orgs", data),
+    getOrganizations: () => authenticatedClient.get<Organization[]>("/orgs"),
+    getOrganization: (id) => authenticatedClient.get<Organization>(`/orgs/${id}`),
+    createOrganization: (data) => authenticatedClient.post<Organization>("/orgs", data),
     updateOrganization: (id, data) =>
-      authenticatedClient.put(`/orgs/${id}`, data),
-    deleteOrganization: (id) => authenticatedClient.delete(`/orgs/${id}`),
+      authenticatedClient.put<Organization>(`/orgs/${id}`, data),
+    deleteOrganization: (id) => authenticatedClient.delete<void>(`/orgs/${id}`),
 
     // Members
-    getMembers: (orgId) => authenticatedClient.get(`/orgs/${orgId}/members`),
+    getMembers: (orgId) => authenticatedClient.get<OrgMember[]>(`/orgs/${orgId}/members`),
     inviteMember: (orgId, data) =>
-      authenticatedClient.post(`/orgs/${orgId}/members`, data),
+      authenticatedClient.post<OrgMember>(`/orgs/${orgId}/members`, data),
     updateMemberRole: (orgId, memberId, role) =>
-      authenticatedClient.put(`/orgs/${orgId}/members/${memberId}`, { role }),
+      authenticatedClient.put<OrgMember>(`/orgs/${orgId}/members/${memberId}`, { role }),
     removeMember: (orgId, memberId) =>
-      authenticatedClient.delete(`/orgs/${orgId}/members/${memberId}`),
+      authenticatedClient.delete<void>(`/orgs/${orgId}/members/${memberId}`),
   };
 }

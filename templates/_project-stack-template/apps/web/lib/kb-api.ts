@@ -3,6 +3,8 @@
  * Handles document upload, listing, and deletion for chat-scoped knowledge bases
  */
 
+import { createApiClient } from "./api-client";
+
 // Get the base URL from environment variables
 // KB operations use the CORA modular API Gateway (NEXT_PUBLIC_CORA_API_URL)
 // Falls back to main API URL if CORA URL not set
@@ -109,31 +111,14 @@ export async function getDocuments(
   token: string
 ): Promise<KBDocument[]> {
   // CORA route - /chats/{chatId}/kb/documents (kb-document Lambda)
-  const url = `${API_BASE}/chats/${sessionId}/kb/documents`;
-
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
-  };
-
-  const res = await fetch(url, { method: "GET", headers });
-
-  // Robust error handling
-  const responseText = await res.text();
-  try {
-    const json = JSON.parse(responseText);
-    if (!res.ok) {
-      const errorMessage =
-        json.error || `Request failed with status ${res.status}`;
-      throw new Error(`API Error: ${errorMessage}`);
-    }
-    // Backend returns { documents: [...] } or { data: [...] }
-    return (json.documents || json.data || []) as KBDocument[];
-  } catch (err) {
-    if (!res.ok) {
-      throw new Error(`API Error: ${res.status} - ${responseText}`);
-    }
-    throw new Error(`Failed to parse API response: ${responseText}`);
-  }
+  const client = createApiClient(token);
+  const response = await client.get<{
+    documents?: KBDocument[];
+    data?: KBDocument[];
+  }>(`/chats/${sessionId}/kb/documents`);
+  
+  // Backend returns { documents: [...] } or { data: [...] }
+  return (response.documents || response.data || []) as KBDocument[];
 }
 
 /**
@@ -151,25 +136,8 @@ export async function deleteDocument(
   if (!sessionId) {
     throw new Error("sessionId is required for chat document deletion");
   }
-  const url = `${API_BASE}/chats/${sessionId}/kb/documents/${docId}`;
-
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
-  };
-
-  const res = await fetch(url, { method: "DELETE", headers });
-
-  if (!res.ok) {
-    const responseText = await res.text();
-    try {
-      const json = JSON.parse(responseText);
-      const errorMessage =
-        json.error || `Request failed with status ${res.status}`;
-      throw new Error(`API Error: ${errorMessage}`);
-    } catch (err) {
-      throw new Error(`API Error: ${res.status} - ${responseText}`);
-    }
-  }
+  const client = createApiClient(token);
+  await client.delete(`/chats/${sessionId}/kb/documents/${docId}`);
 }
 
 // ============================================================================
@@ -241,31 +209,14 @@ export async function getProjectDocuments(
   projectId: string,
   token: string
 ): Promise<KBDocument[]> {
-  const url = `${API_BASE}/projects/${projectId}/kb/documents`;
-
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
-  };
-
-  const res = await fetch(url, { method: "GET", headers });
-
-  // Robust error handling
-  const responseText = await res.text();
-  try {
-    const json = JSON.parse(responseText);
-    if (!res.ok) {
-      const errorMessage =
-        json.error || `Request failed with status ${res.status}`;
-      throw new Error(`API Error: ${errorMessage}`);
-    }
-    // Backend returns { documents: [...] } or { data: [...] }
-    return (json.documents || json.data || []) as KBDocument[];
-  } catch (err) {
-    if (!res.ok) {
-      throw new Error(`API Error: ${res.status} - ${responseText}`);
-    }
-    throw new Error(`Failed to parse API response: ${responseText}`);
-  }
+  const client = createApiClient(token);
+  const response = await client.get<{
+    documents?: KBDocument[];
+    data?: KBDocument[];
+  }>(`/projects/${projectId}/kb/documents`);
+  
+  // Backend returns { documents: [...] } or { data: [...] }
+  return (response.documents || response.data || []) as KBDocument[];
 }
 
 /**
@@ -280,25 +231,8 @@ export async function deleteProjectDocument(
   docId: string,
   token: string
 ): Promise<void> {
-  const url = `${API_BASE}/projects/${projectId}/kb/documents/${docId}`;
-
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
-  };
-
-  const res = await fetch(url, { method: "DELETE", headers });
-
-  if (!res.ok) {
-    const responseText = await res.text();
-    try {
-      const json = JSON.parse(responseText);
-      const errorMessage =
-        json.error || `Request failed with status ${res.status}`;
-      throw new Error(`API Error: ${errorMessage}`);
-    } catch (err) {
-      throw new Error(`API Error: ${res.status} - ${responseText}`);
-    }
-  }
+  const client = createApiClient(token);
+  await client.delete(`/projects/${projectId}/kb/documents/${docId}`);
 }
 
 /**

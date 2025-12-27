@@ -1,0 +1,96 @@
+================================================================================
+[1mCORA Validation Report[0m
+================================================================================
+
+Target: /Users/aaron/code/sts/test10/ai-sec-stack
+Type: project
+Timestamp: 2025-12-27T16:50:18.743493
+Duration: 10894ms
+
+Overall Status: [31m✗ FAILED[0m
+Certification: [33mBRONZE[0m
+Total Errors: [31m22[0m
+Total Warnings: [33m230[0m
+
+--------------------------------------------------------------------------------
+Validator Results
+--------------------------------------------------------------------------------
+
+[1mStructure Validator[0m: [32m✓ PASSED[0m
+  Duration: 31ms
+
+[1mPortability Validator[0m: [32m✓ PASSED[0m
+  Duration: 641ms
+  Warnings (57):
+    - {'message': 'Hardcoded AWS region detected', 'file': '/Users/aaron/code/sts/test10/ai-sec-stack/validation-results/summary.json', 'line': 43, 'line_content': '          "line_content": "            region = os.environ.get(\'AWS_REGION\', \'us-east-1\')",', 'pattern': 'aws_region', 'matched_value': "'us-east-1'", 'suggestion': 'Use environment variable AWS_REGION or configurable variable'}
+    - {'message': 'Hardcoded AWS region detected', 'file': '/Users/aaron/code/sts/test10/ai-sec-stack/validation-results/summary.json', 'line': 45, 'line_content': '          "matched_value": "\'us-east-1\'",', 'pattern': 'aws_region', 'matched_value': "'us-east-1'", 'suggestion': 'Use environment variable AWS_REGION or configurable variable'}
+    - {'message': 'Hardcoded AWS region detected', 'file': '/Users/aaron/code/sts/test10/ai-sec-stack/validation-results/summary.json', 'line': 52, 'line_content': '          "line_content": "            \'region\': \'us-east-1\'",', 'pattern': 'aws_region', 'matched_value': "'us-east-1'", 'suggestion': 'Use environment variable AWS_REGION or configurable variable'}
+    - {'message': 'Hardcoded AWS region detected', 'file': '/Users/aaron/code/sts/test10/ai-sec-stack/validation-results/summary.json', 'line': 54, 'line_content': '          "matched_value": "\'us-east-1\'",', 'pattern': 'aws_region', 'matched_value': "'us-east-1'", 'suggestion': 'Use environment variable AWS_REGION or configurable variable'}
+    - {'message': 'Hardcoded AWS region detected', 'file': '/Users/aaron/code/sts/test10/ai-sec-stack/validation-results/summary.json', 'line': 61, 'line_content': '          "line_content": "    region = credentials.get(\'region\', \'us-east-1\')",', 'pattern': 'aws_region', 'matched_value': "'us-east-1'", 'suggestion': 'Use environment variable AWS_REGION or configurable variable'}
+    ... and 52 more
+
+[1mAccessibility Validator[0m: [32m✓ PASSED[0m
+  Duration: 812ms
+  Warnings (11):
+    - {'baseline_test_id': '10.B-FormLabel-Placeholder', 'baseline_test': '10.A', 'baseline_name': 'Forms - Label in Name', 'wcag_sc': '1.3.1', 'wcag_level': 'A', 'severity': 'warning', 'rule_name': 'placeholder_not_label', 'message': 'Input has placeholder but no visible label', 'suggestion': 'Placeholder is not a substitute for label. Add visible <label> or TextField label prop', 'element_type': 'textarea', 'line': 215, 'column': 13, 'code_snippet': '<textarea', 'attributes': {'id': 'module-config', 'aria-label': 'Module Configuration JSON', 'value': 'config', 'onChange': '(e) => setConfig(e.target.value)', 'rows': '10', 'placeholder': '{}'}, 'file': '/Users/aaron/code/sts/test10/ai-sec-stack/packages/module-mgmt/frontend/components/ModuleAdminDashboard.tsx'}
+    - {'baseline_test_id': '10.B-FormLabel-Placeholder', 'baseline_test': '10.A', 'baseline_name': 'Forms - Label in Name', 'wcag_sc': '1.3.1', 'wcag_level': 'A', 'severity': 'warning', 'rule_name': 'placeholder_not_label', 'message': 'Input has placeholder but no visible label', 'suggestion': 'Placeholder is not a substitute for label. Add visible <label> or TextField label prop', 'element_type': 'textarea', 'line': 227, 'column': 13, 'code_snippet': '<textarea', 'attributes': {'id': 'feature-flags', 'aria-label': 'Feature Flags JSON', 'value': 'featureFlags', 'onChange': '(e) => setFeatureFlags(e.target.value)', 'rows': '6', 'placeholder': '{}'}, 'file': '/Users/aaron/code/sts/test10/ai-sec-stack/packages/module-mgmt/frontend/components/ModuleAdminDashboard.tsx'}
+    - {'baseline_test_id': '10.B-FormLabel-Placeholder', 'baseline_test': '10.A', 'baseline_name': 'Forms - Label in Name', 'wcag_sc': '1.3.1', 'wcag_level': 'A', 'severity': 'warning', 'rule_name': 'placeholder_not_label', 'message': 'Input has placeholder but no visible label', 'suggestion': 'Placeholder is not a substitute for label. Add visible <label> or TextField label prop', 'element_type': 'input', 'line': 388, 'column': 11, 'code_snippet': '<input', 'attributes': {'type': 'text', 'placeholder': 'Search modules...', 'aria-label': 'Search modules', 'value': 'searchQuery', 'onChange': '(e) => setSearchQuery(e.target.value)'}, 'file': '/Users/aaron/code/sts/test10/ai-sec-stack/packages/module-mgmt/frontend/components/ModuleAdminDashboard.tsx'}
+    - {'baseline_test_id': '10.C-FormValidation', 'baseline_test': '10.C', 'baseline_name': 'Forms - Error Identification', 'wcag_sc': '3.3.1', 'wcag_level': 'A', 'severity': 'warning', 'rule_name': 'form_error_missing_aria', 'message': 'Form validation error may not be accessible', 'suggestion': 'Use aria-invalid and aria-describedby to associate error messages with inputs', 'element_type': 'TextField', 'line': 106, 'column': 13, 'code_snippet': '<TextField', 'attributes': {'label': 'Name', 'aria-label': 'Provider Name', 'value': 'formData.name', 'onChange': '(e) => setFormData({ ...formData, name: e.target.value }) ', 'error': '!!errors.name', 'helperText': 'errors.name', 'required': 'true', 'fullWidth': 'true', 'disabled': '!!initialData'}, 'file': '/Users/aaron/code/sts/test10/ai-sec-stack/packages/module-ai/frontend/components/providers/ProviderForm.tsx'}
+    - {'baseline_test_id': '10.C-FormValidation', 'baseline_test': '10.C', 'baseline_name': 'Forms - Error Identification', 'wcag_sc': '3.3.1', 'wcag_level': 'A', 'severity': 'warning', 'rule_name': 'form_error_missing_aria', 'message': 'Form validation error may not be accessible', 'suggestion': 'Use aria-invalid and aria-describedby to associate error messages with inputs', 'element_type': 'TextField', 'line': 130, 'column': 13, 'code_snippet': '<TextField', 'attributes': {'select': 'true', 'label': 'Provider Type', 'aria-label': 'Provider Type', 'value': 'formData.providerType', 'onChange': '(e) => setFormData({ ...formData, providerType: e.target.value as ProviderType, }) ', 'error': '!!errors.providerType', 'helperText': 'errors.providerType', 'required': 'true', 'fullWidth': 'true', 'disabled': '!!initialData'}, 'file': '/Users/aaron/code/sts/test10/ai-sec-stack/packages/module-ai/frontend/components/providers/ProviderForm.tsx'}
+    ... and 6 more
+
+[1mAPI Tracer[0m: [31m✗ FAILED[0m
+  Duration: 382ms
+  Errors (8):
+    - {'severity': 'error', 'mismatch_type': 'route_not_found', 'endpoint': '/platform/modules/{name}', 'method': 'PUT', 'frontend_file': '/Users/aaron/code/sts/test10/ai-sec-stack/packages/module-mgmt/frontend/hooks/useModuleRegistry.ts', 'frontend_line': 224, 'gateway_file': None, 'lambda_file': None, 'lambda_line': None, 'issue': "Frontend calls PUT /platform/modules/{name} but route doesn't exist in API Gateway", 'suggestion': 'Add route to API Gateway or fix frontend endpoint'}
+    - {'severity': 'error', 'mismatch_type': 'route_not_found', 'endpoint': '/providers/{id}', 'method': 'DELETE', 'frontend_file': '/Users/aaron/code/sts/test10/ai-sec-stack/packages/module-ai/frontend/lib/api.ts', 'frontend_line': 261, 'gateway_file': None, 'lambda_file': None, 'lambda_line': None, 'issue': "Frontend calls DELETE /providers/{id} but route doesn't exist in API Gateway", 'suggestion': 'Add route to API Gateway or fix frontend endpoint'}
+    - {'severity': 'error', 'mismatch_type': 'route_not_found', 'endpoint': '/models/{id}/test', 'method': 'POST', 'frontend_file': '/Users/aaron/code/sts/test10/ai-sec-stack/packages/module-ai/frontend/lib/api.ts', 'frontend_line': 432, 'gateway_file': None, 'lambda_file': None, 'lambda_line': None, 'issue': "Frontend calls POST /models/{id}/test but route doesn't exist in API Gateway", 'suggestion': 'Add route to API Gateway or fix frontend endpoint'}
+    - {'severity': 'error', 'mismatch_type': 'route_not_found', 'endpoint': '/profiles/me', 'method': 'GET', 'frontend_file': '/Users/aaron/code/sts/test10/ai-sec-stack/packages/module-access/frontend/contexts/UserContext.tsx', 'frontend_line': 36, 'gateway_file': None, 'lambda_file': None, 'lambda_line': None, 'issue': "Frontend calls GET /profiles/me but route doesn't exist in API Gateway", 'suggestion': 'Add route to API Gateway or fix frontend endpoint'}
+    - {'severity': 'error', 'mismatch_type': 'route_not_found', 'endpoint': '/profiles/me/login', 'method': 'POST', 'frontend_file': '/Users/aaron/code/sts/test10/ai-sec-stack/packages/module-access/frontend/components/SessionTracking.tsx', 'frontend_line': 65, 'gateway_file': None, 'lambda_file': None, 'lambda_line': None, 'issue': "Frontend calls POST /profiles/me/login but route doesn't exist in API Gateway", 'suggestion': 'Add route to API Gateway or fix frontend endpoint'}
+    ... and 3 more
+  Warnings (94):
+    - {'severity': 'warning', 'mismatch_type': 'orphaned_route', 'endpoint': '/platform/lambda-config', 'method': 'GET', 'issue': 'Lambda handler for GET /platform/lambda-config exists but no frontend calls found', 'suggestion': 'This might be intentional (webhooks, internal APIs) or dead code to remove'}
+    - {'severity': 'warning', 'mismatch_type': 'orphaned_route', 'endpoint': '/platform/lambda-config/{configKey}', 'method': 'GET', 'issue': 'Lambda handler for GET /platform/lambda-config/{configKey} exists but no frontend calls found', 'suggestion': 'This might be intentional (webhooks, internal APIs) or dead code to remove'}
+    - {'severity': 'warning', 'mismatch_type': 'orphaned_route', 'endpoint': '/platform/lambda-config/{configKey}', 'method': 'PUT', 'issue': 'Lambda handler for PUT /platform/lambda-config/{configKey} exists but no frontend calls found', 'suggestion': 'This might be intentional (webhooks, internal APIs) or dead code to remove'}
+    - {'severity': 'warning', 'mismatch_type': 'orphaned_route', 'endpoint': '/platform/lambda-functions', 'method': 'GET', 'issue': 'Lambda handler for GET /platform/lambda-functions exists but no frontend calls found', 'suggestion': 'This might be intentional (webhooks, internal APIs) or dead code to remove'}
+    - {'severity': 'warning', 'mismatch_type': 'orphaned_route', 'endpoint': '/platform/lambda-config/sync', 'method': 'POST', 'issue': 'Lambda handler for POST /platform/lambda-config/sync exists but no frontend calls found', 'suggestion': 'This might be intentional (webhooks, internal APIs) or dead code to remove'}
+    ... and 89 more
+
+[1mImport Validator[0m: [32m✓ PASSED[0m
+  Duration: 5901ms
+
+[1mSchema Validator[0m: [32m✓ PASSED[0m
+  Duration: 1337ms
+  Warnings (60):
+    - {'severity': 'warning', 'file': '/Users/aaron/code/sts/test10/ai-sec-stack/scripts/validation/run_a11y_validator.py', 'line': 11, 'table': None, 'column': None, 'issue': 'Could not extract table name from query', 'suggestion': "Ensure query uses .table('table_name') pattern"}
+    - {'severity': 'warning', 'file': '/Users/aaron/code/sts/test10/ai-sec-stack/scripts/validation/schema-validator/query_parser.py', 'line': 323, 'table': None, 'column': None, 'issue': 'Could not extract table name from query', 'suggestion': "Ensure query uses .table('table_name') pattern"}
+    - {'severity': 'warning', 'file': '/Users/aaron/code/sts/test10/ai-sec-stack/scripts/validation/schema-validator/schema_inspector.py', 'line': 107, 'table': None, 'column': None, 'issue': 'Could not extract table name from query', 'suggestion': "Ensure query uses .table('table_name') pattern"}
+    - {'severity': 'warning', 'file': '/Users/aaron/code/sts/test10/ai-sec-stack/scripts/validation/schema-validator/schema_inspector.py', 'line': 107, 'table': None, 'column': None, 'issue': 'Could not extract table name from query', 'suggestion': "Ensure query uses .table('table_name') pattern"}
+    - {'severity': 'warning', 'file': '/Users/aaron/code/sts/test10/ai-sec-stack/scripts/validation/schema-validator/schema_inspector.py', 'line': 373, 'table': None, 'column': None, 'issue': 'Could not extract table name from query', 'suggestion': "Ensure query uses .table('table_name') pattern"}
+    ... and 55 more
+
+[1mCORA Compliance[0m: [31m✗ FAILED[0m
+  Duration: 1729ms
+  Errors (3):
+    - idp-config: Multi-tenancy - ✗ No org_id usage found
+    - provider: Multi-tenancy - ✗ No org_id usage found
+    - lambda-mgmt: Multi-tenancy - ✗ No org_id usage found
+  Warnings (8):
+    - identities-management: Batch Operations - ✗ No batch processing detected (may not be needed)
+    - idp-config: Batch Operations - ✗ No batch processing detected (may not be needed)
+    - members: Batch Operations - ✗ No batch processing detected (may not be needed)
+    - org-email-domains: Batch Operations - ✗ No batch processing detected (may not be needed)
+    - orgs: Batch Operations - ✗ No batch processing detected (may not be needed)
+    ... and 3 more
+
+[1mFrontend Compliance[0m: [31m✗ FAILED[0m
+  Duration: 55ms
+  Errors (11):
+    - apps/web/lib/kb-api.ts:70: direct_fetch - Use createAuthenticatedClient from @sts-career/api-client instead of direct fetch()
+    - apps/web/lib/kb-api.ts:169: direct_fetch - Use createAuthenticatedClient from @sts-career/api-client instead of direct fetch()
+    - apps/web/lib/rag-providers-api.ts:331: direct_fetch - Use createAuthenticatedClient from @sts-career/api-client instead of direct fetch()
+    - packages/module-access/frontend/hooks/useOrgMembers.ts:1: missing_org_context - Add: import { useOrganizationContext } from "@sts-career/org-module-frontend"
+    - packages/module-access/frontend/hooks/useOrgMembers.ts:1: missing_use_session - Add: import { useSession } from "next-auth/react"
+    ... and 6 more
+
+================================================================================

@@ -66,9 +66,9 @@ interface IdpConfig {
 interface IdpConfigCardProps {
   /** Authenticated API client for making requests */
   apiClient: {
-    get: (url: string) => Promise<{ data: any; success: boolean }>;
-    put: (url: string, data: any) => Promise<{ data: any; success: boolean }>;
-    post: (url: string, data?: any) => Promise<{ data: any; success: boolean }>;
+    get: <T = unknown>(url: string) => Promise<{ data: T; success: boolean }>;
+    put: <T = unknown>(url: string, data: unknown) => Promise<{ data: T; success: boolean }>;
+    post: <T = unknown>(url: string, data?: unknown) => Promise<{ data: T; success: boolean }>;
   };
   /** Callback when IDP is changed */
   onIdpChanged?: () => void;
@@ -95,7 +95,7 @@ export function IdpConfigCard({ apiClient, onIdpChanged }: IdpConfigCardProps) {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get("/admin/idp-config");
+      const response = await apiClient.get<IdpConfig[]>("/admin/idp-config");
       if (response.success) {
         setConfigs(response.data || []);
       } else {
@@ -117,7 +117,7 @@ export function IdpConfigCard({ apiClient, onIdpChanged }: IdpConfigCardProps) {
       setSaving(true);
       setError(null);
 
-      const response = await apiClient.put(
+      const response = await apiClient.put<IdpConfig>(
         `/admin/idp-config/${providerType}`,
         {
           config: configData,
@@ -144,7 +144,7 @@ export function IdpConfigCard({ apiClient, onIdpChanged }: IdpConfigCardProps) {
       setSaving(true);
       setError(null);
 
-      const response = await apiClient.post(
+      const response = await apiClient.post<{ success: boolean }>(
         `/admin/idp-config/${providerType}/activate`
       );
 
