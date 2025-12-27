@@ -1103,6 +1103,140 @@ if ! $DRY_RUN && $WITH_CORE_MODULES; then
   consolidate_database_schemas "${STACK_DIR}"
 fi
 
+# --- Install Validation Dependencies ---
+install_validation_deps() {
+  local stack_dir="$1"
+  local venv_dir="${stack_dir}/scripts/validation/.venv"
+  
+  log_step "Setting up validation environment..."
+  
+  # Check if python3 is available
+  if ! command -v python3 &> /dev/null; then
+    log_warn "python3 not found. Skipping validation dependency installation."
+    log_info "Install Python 3 to enable automatic validation: brew install python3"
+    return
+  fi
+  
+  # Create virtual environment
+  log_info "Creating Python virtual environment at ${venv_dir}..."
+  if python3 -m venv "${venv_dir}" 2>/dev/null; then
+    log_info "✅ Virtual environment created"
+  else
+    log_warn "Failed to create virtual environment"
+    log_info "You may need to install venv: python3 -m pip install --user virtualenv"
+    return
+  fi
+  
+  # Install required packages in virtual environment
+  log_info "Installing validation dependencies in virtual environment..."
+  if "${venv_dir}/bin/pip" install --quiet boto3 supabase python-dotenv click colorama requests 2>/dev/null; then
+    log_info "✅ Validation dependencies installed"
+  else
+    log_warn "Failed to install some validation dependencies"
+    log_info "You may need to install manually:"
+    log_info "  source ${venv_dir}/bin/activate"
+    log_info "  pip install boto3 supabase python-dotenv click colorama requests"
+    return
+  fi
+  
+  # Create activation helper script
+  cat > "${stack_dir}/scripts/validation/activate-venv.sh" << 'ACTIVATESCRIPT'
+#!/bin/bash
+# Activate validation virtual environment
+# Usage: source ./activate-venv.sh
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/.venv/bin/activate"
+
+echo "✅ Validation environment activated"
+echo "Run validators with: python -m api-tracer.cli --help"
+echo "Deactivate with: deactivate"
+ACTIVATESCRIPT
+  
+  chmod +x "${stack_dir}/scripts/validation/activate-venv.sh"
+  log_info "Created activation script: scripts/validation/activate-venv.sh"
+  
+  # Create wrapper script for running validators
+  cat > "${stack_dir}/scripts/validation/run-validators.sh" << 'RUNSCRIPT'
+#!/bin/bash
+# Run CORA validators with automatic venv activation
+# Usage: ./run-validators.sh [validator-args]
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+VENV_DIR="${SCRIPT_DIR}/.venv"
+
+# Check if venv exists
+if [[ ! -d "$VENV_DIR" ]]; then
+  echo "❌ Virtual environment not found at ${VENV_DIR}"
+  echo "Run project creation script with --with-core-modules to set up validation environment"
+  exit 1
+fi
+
+# Activate venv
+source "${VENV_DIR}/bin/activate"
+
+# Get project root (2 levels up from scripts/validation)
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+
+# Run cora-validate.py with all arguments passed through
+python3 "${SCRIPT_DIR}/cora-validate.py" project "${PROJECT_ROOT}" "$@"
+
+# Deactivate venv
+deactivate
+RUNSCRIPT
+  
+  chmod +x "${stack_dir}/scripts/validation/run-validators.sh"
+  log_info "Created wrapper script: scripts/validation/run-validators.sh"
+  
+  # Add .venv to .gitignore if it doesn't already exist
+  if [[ ! -f "${stack_dir}/scripts/validation/.gitignore" ]]; then
+    echo ".venv/" > "${stack_dir}/scripts/validation/.gitignore"
+    echo ".env" >> "${stack_dir}/scripts/validation/.gitignore"
+    log_info "Created .gitignore for validation directory"
+  fi
+  
+  log_info "📦 Validation environment setup complete!"
+  log_info "   To activate: source scripts/validation/activate-venv.sh"
+  log_info "   To run validators: ./scripts/validation/run-validators.sh"
+}
+
+# --- Run Post-Creation Validation ---
+run_post_creation_validation() {
+  local stack_dir="$1"
+  
+  log_step "Running initial validation (structure & portability only)..."
+  
+  # Check if cora-validate.py exists
+  if [[ ! -f "${stack_dir}/scripts/validation/cora-validate.py" ]]; then
+    log_warn "Validation orchestrator not found: ${stack_dir}/scripts/validation/cora-validate.py"
+    log_info "Skipping post-creation validation."
+    return
+  fi
+  
+  # Check if python3 is available
+  if ! command -v python3 &> /dev/null; then
+    log_warn "python3 not found. Skipping validation."
+    return
+  fi
+  
+  # Run structure and portability validators only (no DB required)
+  cd "${stack_dir}/scripts/validation"
+  if python3 cora-validate.py project "${stack_dir}" \
+    --validators structure portability \
+    --format text 2>/dev/null; then
+    log_info "✅ Initial validation passed"
+  else
+    local exit_code=$?
+    log_warn "⚠️  Validation found issues (exit code: ${exit_code})"
+    log_info "Review validation output above for details"
+  fi
+  cd - > /dev/null
+  
+  log_info "Run full validation after deploying: cd scripts/validation && python3 cora-validate.py project ../.."
+}
+
 # --- Copy Validation Scripts ---
 if ! $DRY_RUN; then
   log_step "Copying validation scripts to stack repo..."
@@ -1119,6 +1253,11 @@ if ! $DRY_RUN; then
   fi
 fi
 
+# --- Install Validation Dependencies ---
+if ! $DRY_RUN && $WITH_CORE_MODULES; then
+  install_validation_deps "$STACK_DIR"
+fi
+
 # Look for setup.config.{project}.yaml in stack dir and generate .env files
 if ! $DRY_RUN; then
   CONFIG_FILE="${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml"
@@ -1133,6 +1272,11 @@ if ! $DRY_RUN; then
     # Generate minimal .env file for infra even without config
     generate_infra_env "" "$INFRA_DIR"
   fi
+fi
+
+# --- Run Post-Creation Validation ---
+if ! $DRY_RUN && $WITH_CORE_MODULES; then
+  run_post_creation_validation "$STACK_DIR"
 fi
 
 # --- Summary ---
