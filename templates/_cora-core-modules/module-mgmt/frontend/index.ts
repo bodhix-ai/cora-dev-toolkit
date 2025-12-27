@@ -16,8 +16,18 @@ export { LambdaMgmtApiClient, createLambdaMgmtClient } from "./lib/api";
 // Export all hooks
 export { useLambdaWarming, useLambdaFunctions } from "./hooks";
 
-// Export components (to be added after component migration)
-// export * from "./components";
+// Export admin card
+export { platformMgmtAdminCard } from "./adminCard";
+
+// Export admin components
+export { PlatformMgmtAdmin } from "./components/admin/PlatformMgmtAdmin";
+export { ScheduleTab } from "./components/admin/ScheduleTab";
+export { PerformanceTab } from "./components/admin/PerformanceTab";
+export { StorageTab } from "./components/admin/StorageTab";
+export { CostTab } from "./components/admin/CostTab";
+
+// Export other components
+export { ModuleAdminDashboard } from "./components/ModuleAdminDashboard";
 
 /**
  * Module metadata
