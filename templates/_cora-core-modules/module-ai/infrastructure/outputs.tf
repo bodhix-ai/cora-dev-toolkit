@@ -111,34 +111,34 @@ output "api_routes" {
         integration = aws_lambda_alias.ai_config_handler.invoke_arn
         public      = false
       },
-      # RAG Configuration routes
+      # AI Provider Configuration routes
       {
         method      = "GET"
-        path        = "/admin/rag/config"
+        path        = "/admin/ai/rag-config"
         integration = aws_lambda_alias.ai_config_handler.invoke_arn
         public      = false
       },
       {
         method      = "PUT"
-        path        = "/admin/rag/config"
+        path        = "/admin/ai/rag-config"
         integration = aws_lambda_alias.ai_config_handler.invoke_arn
         public      = false
       },
       {
         method      = "GET"
-        path        = "/admin/rag/providers"
+        path        = "/admin/ai/providers"
         integration = aws_lambda_alias.ai_config_handler.invoke_arn
         public      = false
       },
       {
         method      = "POST"
-        path        = "/admin/rag/providers/test"
+        path        = "/admin/ai/providers/test"
         integration = aws_lambda_alias.ai_config_handler.invoke_arn
         public      = false
       },
       {
         method      = "GET"
-        path        = "/admin/rag/providers/models"
+        path        = "/admin/ai/providers/models"
         integration = aws_lambda_alias.ai_config_handler.invoke_arn
         public      = false
       }
