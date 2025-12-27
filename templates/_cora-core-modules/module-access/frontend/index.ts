@@ -106,5 +106,18 @@ export { InviteMemberDialog } from "./components/org/InviteMemberDialog";
 export { orgNavigation, orgUtilityNavigation } from "./navigation";
 
 // Admin Components (Platform Admins only)
-// Note: IdpConfigCard uses MUI components (@mui/material)
+// Note: All admin components use MUI components (@mui/material)
 export { IdpConfigCard } from "./components/admin/IdpConfigCard";
+export { OrganizationManagement } from "./components/admin/OrgMgmt";
+export { AccessControlAdmin } from "./components/admin/AccessControlAdmin";
+export { OrgsTab } from "./components/admin/OrgsTab";
+export { UsersTab } from "./components/admin/UsersTab";
+export { IdpTab } from "./components/admin/IdpTab";
+export { OrgDetails } from "./components/admin/OrgDetails";
+export { OrgDomainsTab } from "./components/admin/OrgDomainsTab";
+export { OrgMembersTab } from "./components/admin/OrgMembersTab";
+export { OrgInvitesTab } from "./components/admin/OrgInvitesTab";
+export { OrgAIConfigTab } from "./components/admin/OrgAIConfigTab";
+
+// Admin Card (for platform admin page)
+export { accessControlAdminCard } from "./adminCard";

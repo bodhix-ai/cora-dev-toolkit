@@ -1,0 +1,225 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Typography,
+  Tabs,
+  Tab,
+  Breadcrumbs,
+  Link,
+  CircularProgress,
+  Alert,
+  AlertTitle,
+} from "@mui/material";
+import { NavigateNext } from "@mui/icons-material";
+import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
+import { useRouter } from "next/navigation";
+import { OrgDomainsTab } from "./OrgDomainsTab";
+import { OrgMembersTab } from "./OrgMembersTab";
+import { OrgInvitesTab } from "./OrgInvitesTab";
+import { OrgAIConfigTab } from "./OrgAIConfigTab";
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`org-tabpanel-${index}`}
+      aria-labelledby={`org-tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
+    </div>
+  );
+}
+
+interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  allowed_domain?: string;
+  domain_default_role?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface OrgDetailsProps {
+  orgId: string;
+  authAdapter: CoraAuthAdapter;
+  isPlatformAdmin: boolean;
+}
+
+/**
+ * Organization Details Component
+ * 
+ * Displays detailed information about an organization with tabs for:
+ * - Overview: Basic organization info
+ * - Domains: Email domain management
+ * - Members: Organization membership
+ * - Invites: Pending invitations
+ * - AI Config: AI configuration (platform admins only)
+ */
+export function OrgDetails({ orgId, authAdapter, isPlatformAdmin }: OrgDetailsProps) {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState(0);
+  const [organization, setOrganization] = useState<Organization | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchOrganization();
+  }, [orgId]);
+
+  const fetchOrganization = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await authAdapter.get(`/orgs/${orgId}`);
+      if (response.success) {
+        setOrganization(response.data);
+      } else {
+        setError("Failed to load organization");
+      }
+    } catch (err) {
+      setError("Failed to load organization");
+      console.error("Error fetching organization:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error || !organization) {
+    return (
+      <Box sx={{ p: 4 }}>
+        <Alert severity="error">
+          <AlertTitle>Error</AlertTitle>
+          {error || "Organization not found"}
+        </Alert>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ p: 4 }}>
+      {/* Breadcrumbs */}
+      <Breadcrumbs 
+        separator={<NavigateNext fontSize="small" />} 
+        sx={{ mb: 2 }}
+      >
+        <Link
+          color="inherit"
+          href="/admin/access"
+          onClick={(e) => {
+            e.preventDefault();
+            router.push("/admin/access");
+          }}
+          sx={{ cursor: "pointer" }}
+          aria-label="Back to Access Control"
+        >
+          Access Control
+        </Link>
+        <Typography color="text.primary">{organization.name}</Typography>
+      </Breadcrumbs>
+
+      {/* Organization Header */}
+      <Typography variant="h4" gutterBottom>
+        {organization.name}
+      </Typography>
+      {organization.description && (
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+          {organization.description}
+        </Typography>
+      )}
+
+      {/* Tabs */}
+      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+        <Tabs
+          value={activeTab}
+          onChange={handleTabChange}
+          aria-label="Organization details tabs"
+        >
+          <Tab label="Overview" id="org-tab-0" aria-controls="org-tabpanel-0" />
+          <Tab label="Domains" id="org-tab-1" aria-controls="org-tabpanel-1" />
+          <Tab label="Members" id="org-tab-2" aria-controls="org-tabpanel-2" />
+          <Tab label="Invites" id="org-tab-3" aria-controls="org-tabpanel-3" />
+          {isPlatformAdmin && (
+            <Tab label="AI Config" id="org-tab-4" aria-controls="org-tabpanel-4" />
+          )}
+        </Tabs>
+      </Box>
+
+      {/* Tab Panels */}
+      <TabPanel value={activeTab} index={0}>
+        <Box>
+          <Typography variant="h5" gutterBottom>
+            Organization Information
+          </Typography>
+          <Box sx={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 2, mt: 2 }}>
+            <Typography variant="body2" color="text.secondary">Name:</Typography>
+            <Typography variant="body2">{organization.name}</Typography>
+            
+            <Typography variant="body2" color="text.secondary">Slug:</Typography>
+            <Typography variant="body2" fontFamily="monospace">{organization.slug}</Typography>
+            
+            {organization.description && (
+              <>
+                <Typography variant="body2" color="text.secondary">Description:</Typography>
+                <Typography variant="body2">{organization.description}</Typography>
+              </>
+            )}
+            
+            <Typography variant="body2" color="text.secondary">Created:</Typography>
+            <Typography variant="body2">
+              {new Date(organization.created_at).toLocaleString()}
+            </Typography>
+            
+            <Typography variant="body2" color="text.secondary">Last Updated:</Typography>
+            <Typography variant="body2">
+              {new Date(organization.updated_at).toLocaleString()}
+            </Typography>
+          </Box>
+        </Box>
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={1}>
+        <OrgDomainsTab orgId={orgId} authAdapter={authAdapter} />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={2}>
+        <OrgMembersTab orgId={orgId} authAdapter={authAdapter} />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={3}>
+        <OrgInvitesTab orgId={orgId} authAdapter={authAdapter} />
+      </TabPanel>
+
+      {isPlatformAdmin && (
+        <TabPanel value={activeTab} index={4}>
+          <OrgAIConfigTab orgId={orgId} authAdapter={authAdapter} />
+        </TabPanel>
+      )}
+    </Box>
+  );
+}

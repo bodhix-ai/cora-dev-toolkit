@@ -391,6 +391,7 @@ function OktaConfigFields({
       <TextField
         fullWidth
         label="Client ID"
+        aria-label="Okta Client ID"
         value={formData.client_id || ""}
         onChange={(e) =>
           setFormData({ ...formData, client_id: e.target.value })
@@ -402,6 +403,7 @@ function OktaConfigFields({
       <TextField
         fullWidth
         label="Issuer URL"
+        aria-label="Okta Issuer URL"
         value={formData.issuer || ""}
         onChange={(e) => setFormData({ ...formData, issuer: e.target.value })}
         placeholder="https://your-domain.okta.com/oauth2/default"
@@ -412,6 +414,7 @@ function OktaConfigFields({
       <TextField
         fullWidth
         label="JWKS URI (optional)"
+        aria-label="JWKS URI"
         value={formData.jwks_uri || ""}
         onChange={(e) => setFormData({ ...formData, jwks_uri: e.target.value })}
         placeholder="https://your-domain.okta.com/oauth2/default/v1/keys"
@@ -440,6 +443,7 @@ function ClerkConfigFields({
       <TextField
         fullWidth
         label="Publishable Key"
+        aria-label="Clerk Publishable Key"
         value={formData.publishable_key || ""}
         onChange={(e) =>
           setFormData({ ...formData, publishable_key: e.target.value })
@@ -451,6 +455,7 @@ function ClerkConfigFields({
       <TextField
         fullWidth
         label="Issuer URL"
+        aria-label="Clerk Issuer URL"
         value={formData.issuer || ""}
         onChange={(e) => setFormData({ ...formData, issuer: e.target.value })}
         placeholder="https://clerk.your-domain.com"
