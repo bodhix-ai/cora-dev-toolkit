@@ -13,9 +13,11 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import LogoutIcon from "@mui/icons-material/Logout";
 import SettingsIcon from "@mui/icons-material/Settings";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import BusinessIcon from "@mui/icons-material/Business";
+import PersonIcon from "@mui/icons-material/Person";
 import CheckIcon from "@mui/icons-material/Check";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { useOrganizationContext, useProfile } from "module-access";
+import { useOrganizationContext, useProfile } from "@{{PROJECT_NAME}}/module-access";
 import { signOut } from "next-auth/react";
 
 /**
@@ -73,8 +75,18 @@ export function OrganizationSwitcher() {
     handleClose();
   };
 
-  const handleAdmin = () => {
-    router.push("/admin" as any);
+  const handlePlatformAdmin = () => {
+    router.push("/admin/platform" as any);
+    handleClose();
+  };
+
+  const handleOrgAdmin = () => {
+    router.push("/admin/org" as any);
+    handleClose();
+  };
+
+  const handleProfile = () => {
+    router.push("/profile" as any);
     handleClose();
   };
 
@@ -183,23 +195,48 @@ export function OrganizationSwitcher() {
           </>
         )}
 
-        {/* Settings */}
+        {/* Admin Section (conditional visibility) */}
+        {(profile?.globalRole === "platform_owner" || profile?.globalRole === "platform_admin" || 
+          currentOrganization?.role === "org_owner" || currentOrganization?.role === "org_admin") && (
+          <>
+            {/* Platform Admin */}
+            {(profile?.globalRole === "platform_owner" || profile?.globalRole === "platform_admin") && (
+              <MenuItem onClick={handlePlatformAdmin}>
+                <ListItemIcon>
+                  <AdminPanelSettingsIcon fontSize="small" />
+                </ListItemIcon>
+                <Typography variant="body2">Platform Admin</Typography>
+              </MenuItem>
+            )}
+
+            {/* Org Admin */}
+            {currentOrganization && (currentOrganization.role === "org_owner" || currentOrganization.role === "org_admin") && (
+              <MenuItem onClick={handleOrgAdmin}>
+                <ListItemIcon>
+                  <BusinessIcon fontSize="small" />
+                </ListItemIcon>
+                <Typography variant="body2">Org Admin</Typography>
+              </MenuItem>
+            )}
+
+            <Divider sx={{ my: 1 }} />
+          </>
+        )}
+
+        {/* User Section */}
+        <MenuItem onClick={handleProfile}>
+          <ListItemIcon>
+            <PersonIcon fontSize="small" />
+          </ListItemIcon>
+          <Typography variant="body2">Profile</Typography>
+        </MenuItem>
+
         <MenuItem onClick={handleSettings}>
           <ListItemIcon>
             <SettingsIcon fontSize="small" />
           </ListItemIcon>
           <Typography variant="body2">Settings</Typography>
         </MenuItem>
-
-        {/* Admin (conditional on platform_owner or global_admin role) */}
-        {(profile?.globalRole === "platform_owner" || profile?.globalRole === "global_admin") && (
-          <MenuItem onClick={handleAdmin}>
-            <ListItemIcon>
-              <AdminPanelSettingsIcon fontSize="small" />
-            </ListItemIcon>
-            <Typography variant="body2">Admin</Typography>
-          </MenuItem>
-        )}
 
         <Divider sx={{ my: 1 }} />
 

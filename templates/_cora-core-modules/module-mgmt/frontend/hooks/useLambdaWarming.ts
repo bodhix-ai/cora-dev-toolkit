@@ -44,6 +44,7 @@ interface UseLambdaWarmingReturn {
  *     <Switch
  *       checked={config?.enabled || false}
  *       onChange={(e) => toggleEnabled(e.target.checked)}
+ *       aria-label="Enable Lambda warming"
  *     />
  *   );
  * }

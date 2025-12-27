@@ -141,7 +141,7 @@ def handle_list_members(user_id: str, org_id: str, event: Dict[str, Any]) -> Dic
         result = []
         for member in members:
             profile = common.find_one(
-                table='profiles',
+                table='user_profiles',
                 filters={'user_id': member['user_id']},
                 select='user_id, email, full_name, avatar_url'
             )
@@ -196,7 +196,7 @@ def handle_add_member(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
         
         # Find user by email
         target_profile = common.find_one(
-            table='profiles',
+            table='user_profiles',
             filters={'email': email}
         )
         
@@ -313,7 +313,7 @@ def handle_update_member(
         
         # Get profile info
         profile = common.find_one(
-            table='profiles',
+            table='user_profiles',
             filters={'user_id': updated_member['user_id']},
             select='user_id, email, full_name, avatar_url'
         )

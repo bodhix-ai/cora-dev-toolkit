@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { useOrganizationContext } from "module-access";
+import { useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
 import {
   getFavoriteProjects,
   getFavoriteChats,

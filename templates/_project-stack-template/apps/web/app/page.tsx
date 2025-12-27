@@ -24,7 +24,7 @@ import ChatContainer from "../components/ChatContainer";
 import { useChatStore } from "@/store/chatStore";
 import { useTokenManager } from "@/lib/auth-utils";
 import { useSidebarStore } from "@/store/sidebarStore";
-import { useUser, useOrganizationContext } from "module-access";
+import { useUser, useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
 import GlobalLayoutToggle from "../components/GlobalLayoutToggle";
 
 export default function HomePage() {
@@ -73,11 +73,12 @@ export default function HomePage() {
             Welcome to {{PROJECT_DISPLAY_NAME}}
           </Typography>
           <Typography
-            variant="h6"
+            variant="h4"
             sx={{
               color: "text.secondary",
               mb: 4,
               fontWeight: 400,
+              fontSize: "1.25rem",
               fontFamily: '"Inter", "Segoe UI", "Roboto", sans-serif',
             }}
           >
@@ -300,11 +301,12 @@ function AuthenticatedHomePage({ profile }: { profile: any }) {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyPress={handleKeyPress}
+          aria-label="Chat input"
           InputProps={{
             endAdornment: (
               <InputAdornment position="end">
                 <Stack direction="row" spacing={1}>
-                  <IconButton size="small" color="inherit">
+                  <IconButton size="small" color="inherit" aria-label="Attach file">
                     <AttachIcon />
                   </IconButton>
                   <IconButton
@@ -312,6 +314,7 @@ function AuthenticatedHomePage({ profile }: { profile: any }) {
                     color="primary"
                     onClick={handleSend}
                     disabled={!message.trim() || sending}
+                    aria-label="Send message"
                   >
                     <SendIcon />
                   </IconButton>

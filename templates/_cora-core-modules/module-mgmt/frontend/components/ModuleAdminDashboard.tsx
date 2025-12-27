@@ -214,6 +214,7 @@ function ModuleConfigModal({
             <label htmlFor="module-config">Module Configuration (JSON)</label>
             <textarea
               id="module-config"
+              aria-label="Module Configuration JSON"
               value={config}
               onChange={(e) => setConfig(e.target.value)}
               rows={10}
@@ -225,6 +226,7 @@ function ModuleConfigModal({
             <label htmlFor="feature-flags">Feature Flags (JSON)</label>
             <textarea
               id="feature-flags"
+              aria-label="Feature Flags JSON"
               value={featureFlags}
               onChange={(e) => setFeatureFlags(e.target.value)}
               rows={6}
@@ -233,7 +235,7 @@ function ModuleConfigModal({
           </div>
 
           <div className="module-info">
-            <h4>Module Information</h4>
+            <h3>Module Information</h3>
             <dl>
               <dt>Name:</dt>
               <dd>{module.name}</dd>
@@ -386,6 +388,7 @@ export function ModuleAdminDashboard({
           <input
             type="text"
             placeholder="Search modules..."
+            aria-label="Search modules"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />

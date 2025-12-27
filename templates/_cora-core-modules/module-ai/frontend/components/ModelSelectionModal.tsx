@@ -104,6 +104,7 @@ export const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
                 value={providerFilter}
                 onChange={(e) => setProviderFilter(e.target.value)}
                 label="Provider"
+                aria-label="Filter by provider"
               >
                 <MenuItem value="all">All</MenuItem>
                 {providers.map((provider) => (
@@ -119,6 +120,7 @@ export const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
                 value={dimensionFilter}
                 onChange={(e) => setDimensionFilter(e.target.value)}
                 label="Dimensions"
+                aria-label="Filter by dimensions"
               >
                 <MenuItem value="all">All</MenuItem>
                 {dimensions.map((dim) => (

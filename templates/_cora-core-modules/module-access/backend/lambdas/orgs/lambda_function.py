@@ -86,13 +86,14 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
 def handle_list_orgs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
-    List user's organizations
+    List organizations
     
     Query parameters:
     - limit: Number of results (default: 100)
     - offset: Pagination offset (default: 0)
     
-    Returns organizations where user is a member
+    For platform admins: Returns ALL organizations with member counts
+    For regular users: Returns organizations where user is a member
     """
     query_params = event.get('queryStringParameters', {}) or {}
     
@@ -110,37 +111,71 @@ def handle_list_orgs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     )
     
     try:
-        # Get user's organization memberships
-        memberships = common.find_many(
-            table='org_members',
-            filters={'user_id': user_id},
-            select='org_id, role',
-            order='created_at.desc',
-            limit=limit,
-            offset=offset
+        # Get user's profile to check platform role
+        profile = common.find_one(
+            table='user_profiles',
+            filters={'user_id': user_id}
         )
         
-        # Get organization details for each membership
-        org_ids = [m['org_id'] for m in memberships]
+        is_platform_admin = profile and profile.get('global_role') in ['platform_owner', 'platform_admin']
         
-        if not org_ids:
-            return common.success_response([])
-        
-        # Build organizations list with role info
-        result = []
-        for membership in memberships:
-            org = common.find_one(
+        if is_platform_admin:
+            # Platform admin: Return ALL organizations
+            orgs = common.find_many(
                 table='orgs',
-                filters={'id': membership['org_id']},
-                select='*'
+                filters={},
+                select='*',
+                order='created_at.desc',
+                limit=limit,
+                offset=offset
             )
             
-            if org:
+            # Get member counts for each org
+            result = []
+            for org in orgs:
+                member_count_result = common.find_many(
+                    table='org_members',
+                    filters={'org_id': org['id']},
+                    select='id'
+                )
+                
                 org_data = common.format_record(org)
-                org_data['user_role'] = membership['role']
+                org_data['member_count'] = len(member_count_result)
                 result.append(org_data)
-        
-        return common.success_response(result)
+            
+            return common.success_response(result)
+        else:
+            # Regular user: Return only their organizations
+            memberships = common.find_many(
+                table='org_members',
+                filters={'user_id': user_id},
+                select='org_id, role',
+                order='created_at.desc',
+                limit=limit,
+                offset=offset
+            )
+            
+            # Get organization details for each membership
+            org_ids = [m['org_id'] for m in memberships]
+            
+            if not org_ids:
+                return common.success_response([])
+            
+            # Build organizations list with role info
+            result = []
+            for membership in memberships:
+                org = common.find_one(
+                    table='orgs',
+                    filters={'id': membership['org_id']},
+                    select='*'
+                )
+                
+                if org:
+                    org_data = common.format_record(org)
+                    org_data['user_role'] = membership['role']
+                    result.append(org_data)
+            
+            return common.success_response(result)
         
     except Exception as e:
         print(f"Error listing organizations: {str(e)}")
@@ -205,12 +240,16 @@ def handle_create_org(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     Request body:
     {
         "name": "Organization Name",
+        "slug": "organization-slug",
         "description": "Optional description",
         "logo_url": "https://...",
-        "website_url": "https://..."
+        "website_url": "https://...",
+        "allowed_domain": "example.com",  // Optional - for domain-based auto-provisioning
+        "domain_default_role": "org_user"  // Optional - role for domain users
     }
     
     Creator automatically becomes org_owner
+    Platform admins can create orgs with domain configuration
     
     Note: user_id is already the Supabase UUID (converted from Okta UID in lambda_handler)
     """
@@ -220,6 +259,10 @@ def handle_create_org(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     # Validate required fields
     name = common.validate_required(body.get('name'), 'name')
     name = common.validate_string_length(name, 'name', min_length=1, max_length=255)
+    
+    # Slug (required)
+    slug = common.validate_required(body.get('slug'), 'slug')
+    slug = common.validate_string_length(slug, 'slug', min_length=1, max_length=255)
     
     # Optional fields
     description = body.get('description', '')
@@ -236,25 +279,39 @@ def handle_create_org(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     if website_url:
         website_url = common.validate_url(website_url, 'website_url')
     
+    # Domain configuration (platform admin only)
+    allowed_domain = body.get('allowed_domain', '')
+    domain_default_role = body.get('domain_default_role', 'org_user')
+    
+    # Validate domain_default_role if provided
+    if domain_default_role and domain_default_role not in ['org_user', 'org_admin', 'org_owner']:
+        raise common.ValidationError('domain_default_role must be one of: org_user, org_admin, org_owner')
+    
     try:
         # user_id is already the Supabase UUID
         supabase_user_id = user_id
         
         # Get user's profile for updating current_org_id later
         profile = common.find_one(
-            table='profiles',
+            table='user_profiles',
             filters={'user_id': supabase_user_id}
         )
         
         # Create organization
         org_data = {
             'name': name,
+            'slug': slug,
             'owner_id': supabase_user_id,  # Use Supabase UUID, not email
             'description': description,
             'logo_url': logo_url or None,
             'website_url': website_url or None,
             'created_by': supabase_user_id
         }
+        
+        # Add domain configuration if provided
+        if allowed_domain:
+            org_data['allowed_domain'] = allowed_domain
+            org_data['domain_default_role'] = domain_default_role
         
         org = common.insert_one(
             table='orgs',
@@ -276,7 +333,7 @@ def handle_create_org(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         # Update user's current_org_id if not set
         if not profile.get('current_org_id'):
             common.update_one(
-                table='profiles',
+                table='user_profiles',
                 filters={'id': profile['id']},
                 data={'current_org_id': org['id']}
             )
@@ -298,12 +355,16 @@ def handle_update_org(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
     Request body:
     {
         "name": "New Name",
+        "slug": "new-slug",
         "description": "New description",
         "logo_url": "https://...",
-        "website_url": "https://..."
+        "website_url": "https://...",
+        "allowed_domain": "example.com",  // Optional - null to remove
+        "domain_default_role": "org_user"  // Optional
     }
     
     Requires org_admin or org_owner role
+    Platform admins can update domain configuration
     """
     # Validate org_id
     org_id = common.validate_uuid(org_id, 'org_id')
@@ -312,6 +373,14 @@ def handle_update_org(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
     body = json.loads(event.get('body', '{}'))
     
     try:
+        # Get user's profile to check platform role
+        profile = common.find_one(
+            table='user_profiles',
+            filters={'user_id': user_id}
+        )
+        
+        is_platform_admin = profile and profile.get('global_role') in ['platform_owner', 'platform_admin']
+        
         # Check if user has admin access (RLS enforces this via can_modify_org_data)
         membership = common.find_one(
             table='org_members',
@@ -321,11 +390,13 @@ def handle_update_org(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
             }
         )
         
-        if not membership:
-            raise common.ForbiddenError('You do not have access to this organization')
-        
-        if membership['role'] not in ['org_admin', 'org_owner']:
-            raise common.ForbiddenError('Only org admins and owners can update organizations')
+        # Platform admins can update any org, regular users must be org admin/owner
+        if not is_platform_admin:
+            if not membership:
+                raise common.ForbiddenError('You do not have access to this organization')
+            
+            if membership['role'] not in ['org_admin', 'org_owner']:
+                raise common.ForbiddenError('Only org admins and owners can update organizations')
         
         # Build update data
         update_data = {}
@@ -335,6 +406,13 @@ def handle_update_org(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
             if name:
                 update_data['name'] = common.validate_string_length(
                     name, 'name', min_length=1, max_length=255
+                )
+        
+        if 'slug' in body:
+            slug = body['slug']
+            if slug:
+                update_data['slug'] = common.validate_string_length(
+                    slug, 'slug', min_length=1, max_length=255
                 )
         
         if 'description' in body:
@@ -360,6 +438,20 @@ def handle_update_org(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
             else:
                 update_data['website_url'] = None
         
+        # Domain configuration (platform admin or org owner only)
+        if 'allowed_domain' in body:
+            allowed_domain = body.get('allowed_domain')
+            update_data['allowed_domain'] = allowed_domain if allowed_domain else None
+        
+        if 'domain_default_role' in body:
+            domain_default_role = body.get('domain_default_role')
+            if domain_default_role:
+                if domain_default_role not in ['org_user', 'org_admin', 'org_owner']:
+                    raise common.ValidationError('domain_default_role must be one of: org_user, org_admin, org_owner')
+                update_data['domain_default_role'] = domain_default_role
+            else:
+                update_data['domain_default_role'] = None
+        
         if not update_data:
             raise common.ValidationError('No valid fields to update')
         
@@ -374,7 +466,8 @@ def handle_update_org(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
         )
         
         result = common.format_record(updated_org)
-        result['user_role'] = membership['role']
+        if membership:
+            result['user_role'] = membership['role']
         
         return common.success_response(result)
         

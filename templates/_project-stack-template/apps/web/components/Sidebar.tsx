@@ -48,12 +48,8 @@ const navigationItems: NavItem[] = [
     path: "/",
     icon: <DashboardIcon />,
   },
-  {
-    label: "Settings",
-    path: "/settings",
-    icon: <SettingsIcon />,
-  },
   // Add more navigation items as needed
+  // Note: Settings is in OrganizationSwitcher (bottom menu), not main nav
 ];
 
 export function Sidebar() {
@@ -122,7 +118,7 @@ export function Sidebar() {
       {isMobile && (
         <IconButton
           color="inherit"
-          aria-label="open drawer"
+          aria-label="Open navigation menu"
           edge="start"
           onClick={handleDrawerToggle}
           sx={{

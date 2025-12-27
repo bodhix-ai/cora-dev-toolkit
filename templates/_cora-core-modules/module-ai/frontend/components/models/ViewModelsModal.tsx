@@ -296,7 +296,7 @@ export function ViewModelsModal({
               {filteredAndSortedModels.length} of {models.length} models
             </Typography>
           </Box>
-          <IconButton onClick={onClose} aria-label="Close">
+          <IconButton onClick={onClose} aria-label="Close models dialog">
             <CloseIcon />
           </IconButton>
         </Box>
@@ -307,6 +307,7 @@ export function ViewModelsModal({
         <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
           <TextField
             placeholder="Search models..."
+            aria-label="Search models"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             size="small"
@@ -324,6 +325,7 @@ export function ViewModelsModal({
             <Select
               value={statusFilter}
               label="Status"
+              aria-label="Filter by status"
               onChange={(e) =>
                 setStatusFilter(e.target.value as ModelStatus | "all")
               }
@@ -361,6 +363,7 @@ export function ViewModelsModal({
             <Select
               value={categoryFilter}
               label="Category"
+              aria-label="Filter by category"
               onChange={(e) =>
                 setCategoryFilter(e.target.value as ValidationCategory | "all")
               }

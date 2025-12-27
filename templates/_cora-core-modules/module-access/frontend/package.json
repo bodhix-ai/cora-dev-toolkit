@@ -1,5 +1,5 @@
 {
-  "name": "module-access",
+  "name": "@{{PROJECT_NAME}}/module-access",
   "version": "1.0.0",
   "description": "Organization and user management frontend for CORA",
   "main": "./index.ts",

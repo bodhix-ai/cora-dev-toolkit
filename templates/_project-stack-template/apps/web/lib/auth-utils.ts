@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useUnifiedAuth } from "module-access";
+import { useUnifiedAuth } from "@{{PROJECT_NAME}}/module-access";
 
 /**
  * Token manager for handling authentication tokens

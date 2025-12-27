@@ -6,7 +6,7 @@ import {
   EnhancedProjectsResponse,
   Project,
 } from "../lib/api";
-import { useOrganizationContext } from "module-access";
+import { useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
 
 export interface FilterState {
   searchQuery: string;

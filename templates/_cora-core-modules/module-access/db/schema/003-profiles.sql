@@ -52,7 +52,7 @@ COMMENT ON COLUMN public.user_profiles.user_id IS 'Foreign key to auth.users.id 
 COMMENT ON COLUMN public.user_profiles.email IS 'User email (duplicated from auth.users for convenience)';
 COMMENT ON COLUMN public.user_profiles.full_name IS 'Full name of user';
 COMMENT ON COLUMN public.user_profiles.current_org_id IS 'Persists the user''s currently selected organization across sessions';
-COMMENT ON COLUMN public.user_profiles.global_role IS 'Global role: global_user, global_admin, global_owner, super_admin';
+COMMENT ON COLUMN public.user_profiles.global_role IS 'Global role: platform_user, platform_admin, platform_owner';
 COMMENT ON COLUMN public.user_profiles.requires_invitation IS 'TRUE if user was denied auto-provisioning and requires explicit invitation';
 COMMENT ON COLUMN public.user_profiles.avatar_url IS 'URL to avatar image (external storage)';
 COMMENT ON COLUMN public.user_profiles.avatar IS 'Binary storage for avatar image';

@@ -7,8 +7,9 @@
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
+  process.env.NEXT_PUBLIC_CORA_API_URL ||
   process.env.NEXT_PUBLIC_API_GATEWAY_URL ||
-  "https://api.example.com";
+  "";
 
 interface RequestOptions extends RequestInit {
   token?: string;

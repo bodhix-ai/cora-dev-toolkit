@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useChatStore } from "@/store/chatStore";
-import { useOrganizationContext } from "module-access";
+import { useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
 import { useChatFavorites } from "./useChatFavorites";
 import { useChatProjectAssociation } from "./useChatProjectAssociation";
 

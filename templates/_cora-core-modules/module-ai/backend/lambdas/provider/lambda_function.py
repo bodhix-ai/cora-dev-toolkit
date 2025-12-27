@@ -79,7 +79,7 @@ def _check_admin_access(user_id: str) -> bool:
     Returns True if user has access, False otherwise.
     """
     try:
-        profile = common.find_one('profiles', {'user_id': user_id})
+        profile = common.find_one('user_profiles', {'user_id': user_id})
         if not profile:
             return False
         

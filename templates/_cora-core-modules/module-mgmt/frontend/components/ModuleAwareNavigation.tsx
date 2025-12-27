@@ -62,6 +62,7 @@ const defaultRenderItem = (item: NavItem, index: number): React.ReactNode => {
       href={item.route}
       className="module-nav-item"
       data-module={item.moduleName}
+      aria-label={item.label || `Navigate to ${item.moduleName}`}
     >
       {item.icon && <span className="module-nav-icon">{item.icon}</span>}
       <span className="module-nav-label">{item.label}</span>

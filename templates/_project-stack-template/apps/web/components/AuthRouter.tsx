@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
-import { useProfile } from "module-access";
+import { useProfile } from "@{{PROJECT_NAME}}/module-access";
 import { redirect } from "next/navigation";
 import { usePathname } from "next/navigation";
 import { Box, CircularProgress, Typography } from "@mui/material";

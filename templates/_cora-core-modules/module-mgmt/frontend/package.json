@@ -1,5 +1,5 @@
 {
-  "name": "module-mgmt",
+  "name": "@{{PROJECT_NAME}}/module-mgmt",
   "version": "1.0.0",
   "description": "Lambda Management Module for CORA projects - warming, monitoring, and configuration",
   "main": "./index.ts",

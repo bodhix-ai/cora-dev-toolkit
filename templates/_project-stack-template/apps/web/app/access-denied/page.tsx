@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useProfile } from "module-access";
+import { useProfile } from "@{{PROJECT_NAME}}/module-access";
 import { Box, Typography, Button, Container, Paper } from "@mui/material";
 import { Lock as LockIcon } from "@mui/icons-material";
 

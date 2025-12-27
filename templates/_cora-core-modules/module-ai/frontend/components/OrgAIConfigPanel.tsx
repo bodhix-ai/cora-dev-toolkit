@@ -213,6 +213,7 @@ export default function OrgAIConfigPanel({
             placeholder="Add organization-specific instructions here..."
             data-testid="org-system-prompt-input"
             helperText={`${orgSystemPrompt.length} characters${orgSystemPrompt ? " - This will be appended to the platform prompt" : ""}`}
+            aria-label="System prompt override"
           />
 
           {orgSystemPrompt && (

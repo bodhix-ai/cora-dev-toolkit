@@ -31,9 +31,11 @@ Deploy All - Full Build and Deploy Pipeline
 Usage: $0 <environment> [OPTIONS]
 
 Orchestrates the complete deployment process:
+  0. Sync config to Terraform variables (sync-config-to-terraform.sh)
   1. Build Lambda zip packages (build-cora-modules.sh)
   2. Upload packages to S3 (deploy-cora-modules.sh)
   3. Apply Terraform infrastructure (deploy-terraform.sh)
+  4. Update frontend environment variables (update-env-from-terraform.sh)
 
 Arguments:
   environment         Target environment (dev, stg, prd) - default: dev
@@ -107,9 +109,20 @@ log_info "Environment: ${ENVIRONMENT}"
 log_info "Skip Build:  ${SKIP_BUILD}"
 echo ""
 
+# Step 0: Sync configuration to Terraform variables
+log_step "Step 0/4: Syncing configuration to Terraform variables..."
+if [ -f "${SCRIPT_DIR}/sync-config-to-terraform.sh" ]; then
+  "${SCRIPT_DIR}/sync-config-to-terraform.sh" "${ENVIRONMENT}"
+  echo ""
+else
+  log_warn "sync-config-to-terraform.sh not found - skipping config sync"
+  log_info "Terraform will use existing local-secrets.tfvars"
+  echo ""
+fi
+
 # Step 1: Build Lambda packages
 if ! $SKIP_BUILD; then
-  log_step "Step 1/3: Building Lambda packages..."
+  log_step "Step 1/4: Building Lambda packages..."
   
   # Build CORA modules (module-mgmt, module-ai, module-access)
   "${SCRIPT_DIR}/build-cora-modules.sh"
@@ -133,7 +146,7 @@ else
 fi
 
 # Step 2: Upload to S3
-log_step "Step 2/3: Uploading artifacts to S3..."
+log_step "Step 2/4: Uploading artifacts to S3..."
 "${SCRIPT_DIR}/deploy-cora-modules.sh"
 echo ""
 

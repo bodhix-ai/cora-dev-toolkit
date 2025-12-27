@@ -112,7 +112,7 @@ def authorize_domain_management(user_id: str, org_id: str) -> bool:
     """
     # Check platform admin access
     profile = common.find_one(
-        table='profiles',
+        table='user_profiles',
         filters={'user_id': user_id}
     )
     

@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { Metadata } from "next";
-import { AuthProvider, UserProviderWrapper, OrgProvider } from "module-access";
+import { AuthProvider, UserProviderWrapper, OrgProvider } from "@{{PROJECT_NAME}}/module-access";
 import ThemeRegistry from "../components/ThemeRegistry";
 import AppShell from "../components/AppShell";
 import { auth } from "@/auth";

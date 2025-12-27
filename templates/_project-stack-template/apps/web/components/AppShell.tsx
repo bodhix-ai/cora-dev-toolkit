@@ -8,7 +8,7 @@ import Typography from "@mui/material/Typography";
 import Paper from "@mui/material/Paper";
 import LockIcon from "@mui/icons-material/Lock";
 import Button from "@mui/material/Button";
-import { useUser } from "module-access";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { Sidebar } from "./Sidebar";
 
 /**

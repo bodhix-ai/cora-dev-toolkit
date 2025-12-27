@@ -85,53 +85,141 @@ class ComponentParser:
         elements = []
         lines = content.splitlines()
         
-        # Patterns for different JSX element types
-        # Self-closing tags: <img src="..." alt="..." />
-        self_closing_pattern = r'<(\w+)([^>]*)/>'
-        # Opening tags: <button aria-label="...">
-        opening_tag_pattern = r'<(\w+)([^/>]*?)(?:>|$)'
+        # Pattern to find JSX opening tags
+        tag_start_pattern = r'<(\w+)\b'
         
-        for line_num, line in enumerate(lines, start=1):
-            # Find self-closing elements
-            for match in re.finditer(self_closing_pattern, line):
-                element_name = match.group(1)
-                attributes_str = match.group(2)
-                
-                element = {
-                    'type': element_name,
-                    'line': line_num,
-                    'column': match.start() + 1,
-                    'attributes': self.parse_attributes(attributes_str),
-                    'self_closing': True,
-                    'content': '',
-                    'code_snippet': line.strip()
-                }
-                elements.append(element)
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            line_num = i + 1
             
-            # Find opening tags (for elements with content)
-            for match in re.finditer(opening_tag_pattern, line):
-                element_name = match.group(1)
-                attributes_str = match.group(2)
-                
-                # Skip if this is a closing tag
-                if line[match.start():match.start()+2] == '</':
+            # Find all tag starts in this line
+            for match in re.finditer(tag_start_pattern, line):
+                # Skip closing tags
+                if match.start() > 0 and line[match.start()-1:match.start()+1] == '</':
                     continue
                 
-                # Extract content between opening and closing tags (same line only for now)
-                content = self.extract_element_content(line, match.end())
+                element_name = match.group(1)
+                start_line = line_num
+                start_col = match.start() + 1
                 
-                element = {
-                    'type': element_name,
-                    'line': line_num,
-                    'column': match.start() + 1,
-                    'attributes': self.parse_attributes(attributes_str),
-                    'self_closing': False,
-                    'content': content,
-                    'code_snippet': line.strip()
-                }
-                elements.append(element)
+                # Extract complete tag (may span multiple lines)
+                tag_info = self.extract_complete_tag(lines, i, match.start())
+                
+                if tag_info:
+                    element = {
+                        'type': element_name,
+                        'line': start_line,
+                        'column': start_col,
+                        'attributes': self.parse_attributes(tag_info['attributes_str']),
+                        'self_closing': tag_info['self_closing'],
+                        'content': tag_info['content'],
+                        'code_snippet': line.strip()
+                    }
+                    elements.append(element)
+            
+            i += 1
         
         return elements
+    
+    def extract_complete_tag(self, lines: List[str], start_line_idx: int, start_pos: int) -> Optional[Dict[str, Any]]:
+        """
+        Extract complete JSX tag including attributes that may span multiple lines.
+        
+        Args:
+            lines: List of all lines in file
+            start_line_idx: Index of line where tag starts (0-based)
+            start_pos: Position in line where tag starts
+            
+        Returns:
+            Dictionary with attributes_str, self_closing, and content
+        """
+        # Build complete tag string by reading lines until we find > or />
+        tag_str = lines[start_line_idx][start_pos:]
+        current_line = start_line_idx
+        
+        # Keep reading lines until we find the closing > or />
+        max_lines_to_read = 20  # Safety limit to avoid infinite loops
+        lines_read = 0
+        
+        while current_line < len(lines) and lines_read < max_lines_to_read:
+            # Check if this line contains the closing > or /> (outside of braces)
+            # We need to avoid matching > inside expressions like onChange={(e) => ...}
+            brace_depth = 0
+            i = 0
+            closing_pos = -1
+            is_self_closing = False
+            
+            while i < len(tag_str):
+                if tag_str[i] == '{':
+                    brace_depth += 1
+                elif tag_str[i] == '}':
+                    brace_depth -= 1
+                elif brace_depth == 0:  # Only check for > when outside braces
+                    if i < len(tag_str) - 1 and tag_str[i:i+2] == '/>':
+                        closing_pos = i + 2
+                        is_self_closing = True
+                        break
+                    elif tag_str[i] == '>':
+                        closing_pos = i + 1
+                        break
+                i += 1
+            
+            if closing_pos > 0:
+                tag_str = tag_str[:closing_pos]
+                break
+            
+            # Continue to next line
+            current_line += 1
+            lines_read += 1
+            if current_line < len(lines):
+                tag_str += ' ' + lines[current_line].strip()
+        
+        # Parse the complete tag
+        # Since we've already found the correct closing > or /> by counting braces,
+        # we know tag_str contains the complete tag. Extract the element name and
+        # everything between the name and the final > or />
+        
+        # Match tag name
+        tag_name_match = re.match(r'<(\w+)', tag_str)
+        if not tag_name_match:
+            return None
+        
+        element_name = tag_name_match.group(1)
+        
+        # Extract attributes: everything between tag name and final > or />
+        # Check if self-closing
+        if tag_str.rstrip().endswith('/>'):
+            # Self-closing tag
+            attributes_str = tag_str[len(element_name) + 1:-2].strip()
+            self_closing_final = True
+        elif tag_str.rstrip().endswith('>'):
+            # Regular opening tag
+            attributes_str = tag_str[len(element_name) + 1:-1].strip()
+            self_closing_final = False
+        else:
+            # Shouldn't happen, but handle it
+            attributes_str = tag_str[len(element_name) + 1:].strip()
+            self_closing_final = False
+        
+        # Use is_self_closing from the loop if it was set, otherwise use what we just determined
+        try:
+            self_closing = is_self_closing if 'is_self_closing' in locals() else self_closing_final
+        except:
+            self_closing = self_closing_final
+        
+        # For non-self-closing tags, try to extract content (same line only)
+        content = ''
+        if not self_closing and '>' in tag_str:
+            after_opening = tag_str.split('>', 1)[1] if '>' in tag_str else ''
+            # Remove any nested JSX
+            content = re.sub(r'<[^>]+>', '', after_opening).strip()
+        
+        return {
+            'attributes_str': attributes_str,
+            'self_closing': self_closing,
+            'content': content
+        }
     
     def parse_attributes(self, attributes_str: str) -> Dict[str, str]:
         """
@@ -145,22 +233,96 @@ class ComponentParser:
         """
         attributes = {}
         
-        # Pattern for JSX attributes:
-        # - name="value" (string literal)
-        # - name={value} (expression)
-        # - name (boolean true)
-        attr_pattern = r'(\w+)(?:=(?:"([^"]*)"|{([^}]*)}|\'([^\']*)\'))?'
+        # Clean up whitespace/newlines for easier parsing
+        cleaned_str = ' '.join(attributes_str.split())
         
-        for match in re.finditer(attr_pattern, attributes_str):
-            attr_name = match.group(1)
+        # Pattern for JSX attributes (improved to handle complex expressions):
+        # - name="value" (string literal)
+        # - name={value} (expression - now handles nested braces better)
+        # - name='value' (single quote string)
+        # - name (boolean true)
+        
+        i = 0
+        while i < len(cleaned_str):
+            # Skip whitespace
+            while i < len(cleaned_str) and cleaned_str[i].isspace():
+                i += 1
             
-            # Get the value from whichever group matched
-            attr_value = (
-                match.group(2) or  # "value"
-                match.group(3) or  # {value}
-                match.group(4) or  # 'value'
-                'true'             # Boolean attribute
-            )
+            if i >= len(cleaned_str):
+                break
+            
+            # Match attribute name
+            attr_name_match = re.match(r'(\w+(?:-\w+)*)', cleaned_str[i:])
+            if not attr_name_match:
+                i += 1
+                continue
+            
+            attr_name = attr_name_match.group(1)
+            i += len(attr_name)
+            
+            # Skip whitespace
+            while i < len(cleaned_str) and cleaned_str[i].isspace():
+                i += 1
+            
+            # Check for = sign
+            if i < len(cleaned_str) and cleaned_str[i] == '=':
+                i += 1
+                
+                # Skip whitespace
+                while i < len(cleaned_str) and cleaned_str[i].isspace():
+                    i += 1
+                
+                if i >= len(cleaned_str):
+                    attributes[attr_name] = 'true'
+                    break
+                
+                # Parse value based on quote/brace
+                if cleaned_str[i] == '"':
+                    # Double-quoted string
+                    i += 1
+                    start = i
+                    while i < len(cleaned_str) and cleaned_str[i] != '"':
+                        if cleaned_str[i] == '\\':
+                            i += 2  # Skip escaped character
+                        else:
+                            i += 1
+                    attr_value = cleaned_str[start:i]
+                    i += 1  # Skip closing quote
+                    
+                elif cleaned_str[i] == "'":
+                    # Single-quoted string
+                    i += 1
+                    start = i
+                    while i < len(cleaned_str) and cleaned_str[i] != "'":
+                        if cleaned_str[i] == '\\':
+                            i += 2  # Skip escaped character
+                        else:
+                            i += 1
+                    attr_value = cleaned_str[start:i]
+                    i += 1  # Skip closing quote
+                    
+                elif cleaned_str[i] == '{':
+                    # Expression - count braces to find matching closing brace
+                    brace_count = 1
+                    i += 1
+                    start = i
+                    while i < len(cleaned_str) and brace_count > 0:
+                        if cleaned_str[i] == '{':
+                            brace_count += 1
+                        elif cleaned_str[i] == '}':
+                            brace_count -= 1
+                        i += 1
+                    attr_value = cleaned_str[start:i-1]  # Exclude closing brace
+                    
+                else:
+                    # Unquoted value (shouldn't happen in JSX, but handle it)
+                    start = i
+                    while i < len(cleaned_str) and not cleaned_str[i].isspace():
+                        i += 1
+                    attr_value = cleaned_str[start:i]
+            else:
+                # Boolean attribute (no value)
+                attr_value = 'true'
             
             attributes[attr_name] = attr_value
         

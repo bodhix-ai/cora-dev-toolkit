@@ -23,6 +23,11 @@ def detect_auth_provider(user_info: Dict[str, Any]) -> str:
     Returns:
         'okta' or 'clerk' based on JWT claim patterns
     """
+    # First, check if provider was explicitly passed from authorizer
+    if user_info.get('provider'):
+        return user_info['provider']
+    
+    # Fallback: Detect from JWT claims
     # Okta JWTs typically have 'iss' (issuer) with okta domain
     issuer = user_info.get('iss', '')
     if 'okta' in issuer.lower():
@@ -36,9 +41,9 @@ def detect_auth_provider(user_info: Dict[str, Any]) -> str:
     if 'azp' in user_info:
         return 'clerk'
     
-    # Default to clerk if unable to detect
-    logger.warning(f"Unable to detect auth provider from JWT claims, defaulting to clerk. Claims: {list(user_info.keys())}")
-    return 'clerk'
+    # Default to okta if unable to detect
+    logger.warning(f"Unable to detect auth provider from JWT claims, defaulting to okta. Claims: {list(user_info.keys())}")
+    return 'okta'
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -48,6 +53,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Endpoints:
     - GET /profiles/me - Get current user's profile
     - PUT /profiles/me - Update current user's profile
+    - POST /profiles/me/login - Handle user login
     - POST /profiles/me/logout - End current user session
     
     Args:
@@ -264,7 +270,7 @@ def evaluate_new_user_provisioning(user_info: Dict[str, Any]) -> Dict[str, Any]:
     
     # 4. No valid path - create profile with requires_invitation flag
     logger.warning(f"Provisioning denied for {redacted_email}: no invite, no domain match, platform already initialized")
-    return create_user_profile(user_info, global_role='global_user', requires_invitation=True)
+    return create_user_profile(user_info, global_role='platform_user', requires_invitation=True)
 
 
 def provision_with_invite(user_info: Dict[str, Any], invite: Dict[str, Any]) -> Dict[str, Any]:
@@ -281,7 +287,7 @@ def provision_with_invite(user_info: Dict[str, Any], invite: Dict[str, Any]) -> 
     logger.info(f"Provisioning user with invite: {invite['id']}")
     
     # Create user profile
-    profile = create_user_profile(user_info, global_role='global_user')
+    profile = create_user_profile(user_info, global_role='platform_user')
     
     # Add user to invited org with specified role
     common.insert_one(
@@ -339,7 +345,7 @@ def provision_with_domain(user_info: Dict[str, Any], domain_match: Dict[str, Any
     logger.info(f"Provisioning user with domain match: {domain_match['domain']}")
     
     # Create user profile
-    profile = create_user_profile(user_info, global_role='global_user')
+    profile = create_user_profile(user_info, global_role='platform_user')
     
     # Add user to matched org with default role
     common.insert_one(
@@ -441,7 +447,7 @@ def create_platform_owner_with_org(user_info: Dict[str, Any]) -> Dict[str, Any]:
     return profile
 
 
-def create_user_profile(user_info: Dict[str, Any], global_role: str = 'global_user', requires_invitation: bool = False) -> Dict[str, Any]:
+def create_user_profile(user_info: Dict[str, Any], global_role: str = 'platform_user', requires_invitation: bool = False) -> Dict[str, Any]:
     """
     Create user in auth.users, user_auth_ext_ids, and user_profiles
     
@@ -859,9 +865,9 @@ def handle_update_profile(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
     # Check if user is trying to update global_role (accept both camelCase and snake_case)
     if 'globalRole' in body or 'global_role' in body:
         global_role_value = body.get('globalRole') or body.get('global_role')
-        # Only global_admin or global_owner can update global_role
-        if current_profile['global_role'] not in ['global_admin', 'global_owner']:
-            raise common.ForbiddenError('Only global admins can update global role')
+        # Only platform_admin or platform_owner can update global_role
+        if current_profile['global_role'] not in ['platform_admin', 'platform_owner']:
+            raise common.ForbiddenError('Only platform admins can update global role')
         
         # Validate new role
         new_role = common.validate_global_role(global_role_value)

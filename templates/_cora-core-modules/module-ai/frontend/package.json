@@ -1,5 +1,5 @@
 {
-  "name": "module-ai",
+  "name": "@{{PROJECT_NAME}}/module-ai",
   "version": "1.0.0",
   "description": "AI Enablement Module frontend for CORA",
   "main": "./index.ts",
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@{{PROJECT_NAME}}/api-client": "workspace:*",
-    "module-access": "workspace:*",
+    "@{{PROJECT_NAME}}/module-access": "workspace:*",
     "@{{PROJECT_NAME}}/shared-types": "workspace:*",
     "@types/react": "^18.3.3",
     "next-auth": "^4.24.7"
