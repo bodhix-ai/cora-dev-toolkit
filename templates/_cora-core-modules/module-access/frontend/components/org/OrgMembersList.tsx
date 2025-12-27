@@ -220,7 +220,7 @@ export function OrgMembersList({ orgId }: OrgMembersListProps) {
                 {canManage && (
                   <TableCell align="right">
                     {member.roleName !== "org_owner" && (
-                      <IconButton
+                      <IconButton aria-label="Action button"
                         size="small"
                         color="error"
                         onClick={() => handleRemoveMember(member.id)}

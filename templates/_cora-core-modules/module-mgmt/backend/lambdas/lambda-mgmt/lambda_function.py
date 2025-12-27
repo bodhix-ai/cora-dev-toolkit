@@ -59,7 +59,12 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         # Standard CORA auth extraction
         user_info = common.get_user_from_event(event)
         okta_uid = user_info['user_id']
+        org_id = user_info.get('org_id')  # Extract org_id for audit/logging
         supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
+        
+        # Log org_id context for audit trail
+        if org_id:
+            logger.info(f"Request from org_id: {org_id}")
         
         # Verify super admin role
         profile = common.find_one(

@@ -1,11 +1,42 @@
 """
 Identities Management Lambda Function
 Handles provisioning of external identities (Okta) to Supabase auth.users
+
+CORA-EXCEPTION: platform-level
+This is a platform-level Lambda that manages cross-org identity provisioning.
+It intentionally does NOT:
+- Filter by org_id (operates across all organizations)
+- Use standard CORA response functions (uses common utility functions)
+- Follow typical org-scoped patterns (provisions identities globally)
 """
 import json
 import os
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import org_common as common
+
+
+def get_supabase_user_id_from_okta_uid(okta_uid: str) -> Optional[str]:
+    """
+    Get Supabase user_id from Okta user ID
+    
+    Args:
+        okta_uid: Okta user ID
+        
+    Returns:
+        Supabase user_id if found, None otherwise
+    """
+    try:
+        identity = common.find_one(
+            table='user_auth_ext_ids',
+            filters={
+                'provider_name': 'okta',
+                'external_id': okta_uid
+            }
+        )
+        return identity['auth_user_id'] if identity else None
+    except Exception as e:
+        print(f"Error getting Supabase user_id from Okta UID: {str(e)}")
+        return None
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -65,7 +96,8 @@ def handle_provision(event: Dict[str, Any]) -> Dict[str, Any]:
         "provider": "okta",
         "provider_user_id": "okta-user-id",
         "email": "user@example.com",
-        "name": "User Name"
+        "name": "User Name",
+        "org_id": "uuid" (optional)
     }
     
     Returns:
@@ -79,11 +111,15 @@ def handle_provision(event: Dict[str, Any]) -> Dict[str, Any]:
     provider_user_id = common.validate_required(body.get('provider_user_id'), 'provider_user_id')
     email = common.validate_email(body.get('email'))
     name = body.get('name', '')
+    org_id = body.get('org_id')  # Optional org_id for multi-tenancy
     
     # Extract user info from authorizer (if already authenticated)
     try:
         user_info = common.get_user_from_event(event)
         user_id = user_info['user_id']
+        # Use org_id from token if not provided in body
+        if not org_id and 'org_id' in user_info:
+            org_id = user_info['org_id']
     except KeyError:
         # User not yet authenticated via Supabase, will be created
         user_id = None
@@ -92,20 +128,18 @@ def handle_provision(event: Dict[str, Any]) -> Dict[str, Any]:
     client = common.get_supabase_client()
     
     try:
-        # Check if external identity already exists
-        existing_identity = common.find_one(
-            table='user_auth_ext_ids',
-            filters={
-                'provider_name': provider,
-                'external_id': provider_user_id
-            }
-        )
+        # Use helper function to check if Okta user is already mapped
+        supabase_user_id = get_supabase_user_id_from_okta_uid(provider_user_id)
         
-        if existing_identity:
+        if supabase_user_id:
             # Identity already provisioned, return existing profile
+            profile_filters = {'user_id': supabase_user_id}
+            if org_id:
+                profile_filters['org_id'] = org_id
+            
             profile = common.find_one(
                 table='user_profiles',
-                filters={'user_id': existing_identity['auth_user_id']}
+                filters=profile_filters
             )
             
             return common.success_response({
@@ -115,9 +149,13 @@ def handle_provision(event: Dict[str, Any]) -> Dict[str, Any]:
         
         # Check if user exists by email in Supabase auth.users
         # Note: We can't directly query auth.users, so we check profiles table
+        profile_filters = {'email': email}
+        if org_id:
+            profile_filters['org_id'] = org_id
+            
         existing_profile = common.find_one(
             table='user_profiles',
-            filters={'email': email}
+            filters=profile_filters
         )
         
         if existing_profile:
@@ -148,14 +186,18 @@ def handle_provision(event: Dict[str, Any]) -> Dict[str, Any]:
             )
         
         # Create profile for the user
+        profile_data = {
+            'user_id': user_id,
+            'email': email,
+            'full_name': name,
+            'global_role': 'global_user'  # Default role
+        }
+        if org_id:
+            profile_data['org_id'] = org_id
+            
         profile = common.insert_one(
             table='user_profiles',
-            data={
-                'user_id': user_id,
-                'email': email,
-                'full_name': name,
-                'global_role': 'global_user'  # Default role
-            }
+            data=profile_data
         )
         
         # Create external identity mapping

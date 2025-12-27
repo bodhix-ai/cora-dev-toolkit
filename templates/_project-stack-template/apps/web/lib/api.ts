@@ -1680,7 +1680,7 @@ export type ChatSessionMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   created_at: string;
 };
 
@@ -2619,7 +2619,7 @@ export type RAGOrganizationSettings = {
   preferred_embedding_model?: string;
   preferred_chunking_strategy?: string;
   ocr_enabled: boolean;
-  custom_config?: any;
+  custom_config?: Record<string, unknown>;
   last_modified_by?: string;
   updated_at?: string;
 };
@@ -2658,7 +2658,7 @@ export type PlatformLimits = {
   allowed_file_types: string[];
   available_embedding_models: string[];
   available_chunking_strategies: string[];
-  feature_flags: any;
+  feature_flags: Record<string, unknown>;
   billing_contact_email: string;
   contract_start_date: string;
   contract_end_date: string;

@@ -109,8 +109,8 @@ export function ViewModelsModal({
 
     // Apply sorting
     const sorted = [...filtered].sort((a, b) => {
-      let aValue: any = a[sortField];
-      let bValue: any = b[sortField];
+      let aValue: string | number | undefined | null = a[sortField];
+      let bValue: string | number | undefined | null = b[sortField];
 
       // Handle null/undefined values
       if (aValue === null || aValue === undefined) return 1;
@@ -118,9 +118,9 @@ export function ViewModelsModal({
 
       // Convert to comparable values
       if (sortField === "createdAt") {
-        aValue = new Date(aValue).getTime();
-        bValue = new Date(bValue).getTime();
-      } else if (typeof aValue === "string") {
+        aValue = new Date(aValue as string).getTime();
+        bValue = new Date(bValue as string).getTime();
+      } else if (typeof aValue === "string" && typeof bValue === "string") {
         aValue = aValue.toLowerCase();
         bValue = bValue.toLowerCase();
       }

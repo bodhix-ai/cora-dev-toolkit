@@ -96,6 +96,30 @@ def _require_admin_access(user_id: str):
     if not _check_admin_access(user_id):
         raise common.ForbiddenError('Access denied. Platform admin role required (super_admin, global_owner, or global_admin).')
 
+
+def get_supabase_user_id_from_okta_uid(okta_uid: str) -> Optional[str]:
+    """
+    Get Supabase user_id from Okta user ID
+    
+    Args:
+        okta_uid: Okta user ID
+        
+    Returns:
+        Supabase user_id if found, None otherwise
+    """
+    try:
+        identity = common.find_one(
+            table='user_auth_ext_ids',
+            filters={
+                'provider_name': 'okta',
+                'external_id': okta_uid
+            }
+        )
+        return identity['auth_user_id'] if identity else None
+    except Exception as e:
+        print(f"Error getting Supabase user_id from Okta UID: {str(e)}")
+        return None
+
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Handle ai_provider operations (platform-level, admin only)
@@ -521,24 +545,15 @@ def handle_validate_models(event: Dict[str, Any], user_id: str, provider_id: str
             )
             return common.internal_error_response(f'Failed to start async validation: {str(e)}')
         
-        # Return 202 Accepted immediately
-        return {
-            'statusCode': 202,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-                'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
-            },
-            'body': json.dumps({
-                'message': 'Validation started',
-                'status': 'in_progress',
-                'total': len(models),
-                'validated': 0,
-                'available': 0,
-                'unavailable': 0
-            })
-        }
+        # Return 202 Accepted immediately using common.success_response with 202 status
+        return common.created_response({
+            'message': 'Validation started',
+            'status': 'in_progress',
+            'total': len(models),
+            'validated': 0,
+            'available': 0,
+            'unavailable': 0
+        })
         
     except Exception as e:
         print(f'Error starting validation: {str(e)}')
@@ -560,13 +575,13 @@ def handle_async_validation_worker(event: Dict[str, Any]) -> Dict[str, Any]:
         
         if not all([provider_id, progress_id, user_id]):
             print(f"Missing required parameters: provider_id={provider_id}, progress_id={progress_id}, user_id={user_id}")
-            return {'statusCode': 400, 'body': 'Missing required parameters'}
+            return common.bad_request_response('Missing required parameters')
         
         # Get provider and credentials
         provider = common.find_one('ai_providers', {'id': provider_id})
         if not provider:
             print(f"Provider not found: {provider_id}")
-            return {'statusCode': 404, 'body': 'Provider not found'}
+            return common.not_found_response('Provider not found')
         
         # Get all models for this provider
         models = common.find_many('ai_models', {'provider_id': provider_id})
@@ -583,13 +598,13 @@ def handle_async_validation_worker(event: Dict[str, Any]) -> Dict[str, Any]:
             user_id=user_id
         )
         
-        return {'statusCode': 200, 'body': 'Validation completed'}
+        return common.success_response({'message': 'Validation completed'})
         
     except Exception as e:
         print(f'Error in async validation worker: {str(e)}')
         import traceback
         traceback.print_exc()
-        return {'statusCode': 500, 'body': f'Error: {str(e)}'}
+        return common.internal_error_response(f'Error: {str(e)}')
 
 def _process_validation_async(
     provider_id: str,

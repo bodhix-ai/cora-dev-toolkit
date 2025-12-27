@@ -207,15 +207,27 @@ def validate(
         logger.error(f"Validation failed: {e}", exc_info=verbose)
         if output == 'json':
             import json
+            # Return standardized error format for orchestrator compatibility
             error_output = {
-                'status': 'error',
-                'error': str(e),
-                'error_type': type(e).__name__
+                'status': 'failed',
+                'errors': [f"{type(e).__name__}: {str(e)}"],
+                'warnings': [],
+                'info': [],
+                'summary': {
+                    'total_issues': 1,
+                    'errors': 1,
+                    'warnings': 0,
+                    'info': 0
+                },
+                'details': {
+                    'error_type': type(e).__name__,
+                    'validation_error': str(e)
+                }
             }
             print(json.dumps(error_output, indent=2))
         else:
             print(f"\n❌ ERROR: {e}\n", file=sys.stderr)
-        sys.exit(2)
+        sys.exit(1)
 
 
 @click.group()
@@ -237,8 +249,8 @@ cli.add_command(validate, name='validate')
 
 
 if __name__ == '__main__':
-    # If no command specified, run validate
-    if len(sys.argv) == 1 or (len(sys.argv) > 1 and not sys.argv[1] in ['version', '--help', '--version']):
+    # If no command provided, default to validate  
+    if len(sys.argv) == 1 or (len(sys.argv) > 1 and not sys.argv[1].startswith('--') and sys.argv[1] not in ['validate', 'version']):
         validate()
     else:
         cli()

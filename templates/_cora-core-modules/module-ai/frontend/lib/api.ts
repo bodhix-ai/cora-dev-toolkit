@@ -9,14 +9,77 @@ import {
   DiscoverModelsResponse,
   ValidateModelsResponse,
   ValidationProgress,
+  ModelStatus,
+  ValidationCategory,
+  ModelCapabilities,
 } from "../types";
+
+/**
+ * API response interfaces (snake_case from backend)
+ */
+interface ProviderApiData {
+  id: string;
+  name: string;
+  display_name?: string | null;
+  provider_type: string;
+  credentials_secret_path?: string | null;
+  is_active?: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+  updated_by?: string | null;
+  model_counts?: {
+    total?: number;
+    discovered?: number;
+    testing?: number;
+    available?: number;
+    unavailable?: number;
+    deprecated?: number;
+    by_category?: Record<string, number>;
+  };
+  last_validated_at?: string | null;
+}
+
+interface ModelApiData {
+  id: string;
+  provider_id: string;
+  model_id: string;
+  display_name?: string | null;
+  capabilities?: ModelCapabilities | null;
+  status?: ModelStatus;
+  validation_category?: ValidationCategory | null;
+  cost_per_1k_tokens_input?: number | null;
+  cost_per_1k_tokens_output?: number | null;
+  last_discovered_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+  updated_by?: string | null;
+}
+
+interface ProviderInputApiData {
+  name?: string;
+  display_name?: string;
+  provider_type?: string;
+  credentials_secret_path?: string;
+  is_active?: boolean;
+}
+
+/**
+ * Authenticated client interface
+ */
+interface AuthenticatedClient {
+  get: <T = unknown>(url: string) => Promise<ApiResponse<T>>;
+  post: <T = unknown>(url: string, data?: unknown) => Promise<ApiResponse<T>>;
+  put: <T = unknown>(url: string, data?: unknown) => Promise<ApiResponse<T>>;
+  delete: <T = unknown>(url: string) => Promise<ApiResponse<T>>;
+}
 
 /**
  * Transform snake_case API response to camelCase frontend types
  * Note: org_id removed as providers/models are now platform-level
- * @ts-expect-error - Using any for API response data as we're transforming external API responses
  */
-function transformProviderResponse(apiData: any): AIProvider {
+function transformProviderResponse(apiData: ProviderApiData): AIProvider {
   return {
     id: apiData.id,
     name: apiData.name,
@@ -43,7 +106,7 @@ function transformProviderResponse(apiData: any): AIProvider {
   };
 }
 
-function transformModelResponse(apiData: any): AIModel {
+function transformModelResponse(apiData: ModelApiData): AIModel {
   return {
     id: apiData.id,
     providerId: apiData.provider_id,
@@ -67,8 +130,8 @@ function transformModelResponse(apiData: any): AIModel {
  */
 function transformProviderInput(
   input: CreateProviderInput | UpdateProviderInput
-): any {
-  const result: any = {};
+): ProviderInputApiData {
+  const result: ProviderInputApiData = {};
 
   if ("name" in input) result.name = input.name;
   if ("displayName" in input) result.display_name = input.displayName;
@@ -120,7 +183,7 @@ export interface AIEnablementApiClient {
  * @returns AIEnablementApiClient
  */
 export function createAIEnablementClient(
-  authenticatedClient: any
+  authenticatedClient: AuthenticatedClient
 ): AIEnablementApiClient {
   return {
     // Provider operations
@@ -128,7 +191,7 @@ export function createAIEnablementClient(
       try {
         // authenticatedClient returns raw API response
         // Backend returns { success: true, data: [...] }
-        const response: any = await authenticatedClient.get(`/providers`);
+        const response = await authenticatedClient.get<ProviderApiData[] | { data: ProviderApiData[] }>(`/providers`);
         const providers = Array.isArray(response)
           ? response
           : Array.isArray(response?.data)
@@ -152,35 +215,36 @@ export function createAIEnablementClient(
     },
 
     getProvider: async (id: string) => {
-      const response = await authenticatedClient.get(`/providers/${id}`);
+      const response = await authenticatedClient.get<ProviderApiData>(`/providers/${id}`);
       if (response.success && response.data) {
-        response.data = transformProviderResponse(response.data);
+        const transformed = transformProviderResponse(response.data);
+        return { success: response.success, data: transformed };
       }
-      return response;
+      return { success: false, data: {} as AIProvider, error: response.error };
     },
 
     createProvider: async (data: CreateProviderInput) => {
       const payload = transformProviderInput(data);
-      const response = await authenticatedClient.post(`/providers`, payload);
+      const response = await authenticatedClient.post<ProviderApiData>(`/providers`, payload);
       if (response.success && response.data) {
-        response.data = transformProviderResponse(response.data);
+        const transformed = transformProviderResponse(response.data);
+        return { success: response.success, data: transformed };
       }
-      return response;
+      return { success: false, data: {} as AIProvider, error: response.error };
     },
 
     updateProvider: async (id: string, data: UpdateProviderInput) => {
       try {
         const payload = transformProviderInput(data);
-        const responseData = await authenticatedClient.put(
+        const response = await authenticatedClient.put<ProviderApiData>(
           `/providers/${id}`,
           payload
         );
-        // Transform the response data
-        const transformedData = transformProviderResponse(responseData);
-        return {
-          success: true,
-          data: transformedData,
-        };
+        if (response.success && response.data) {
+          const transformed = transformProviderResponse(response.data);
+          return { success: true, data: transformed };
+        }
+        return { success: false, data: {} as AIProvider, error: response.error };
       } catch (error) {
         return {
           success: false,
@@ -201,16 +265,28 @@ export function createAIEnablementClient(
     // Note: Parameter named 'id' to match API Gateway path parameter {id}
     discoverModels: async (id: string) => {
       try {
-        const responseData = await authenticatedClient.post(
+        const response = await authenticatedClient.post<{ success: boolean; discoveredCount: number; models: ModelApiData[] }>(
           `/providers/${id}/discover`
         );
-        // Transform the models in the response
-        if (responseData.models) {
-          responseData.models = responseData.models.map(transformModelResponse);
+        if (response.success && response.data) {
+          const transformedModels = response.data.models?.map(transformModelResponse) || [];
+          return {
+            success: true,
+            data: {
+              success: response.data.success,
+              discoveredCount: response.data.discoveredCount,
+              models: transformedModels,
+            },
+          };
         }
         return {
-          success: true,
-          data: responseData,
+          success: false,
+          data: {
+            success: false,
+            discoveredCount: 0,
+            models: [],
+          },
+          error: response.error,
         };
       } catch (error) {
         return {
@@ -232,12 +308,22 @@ export function createAIEnablementClient(
     // Note: Parameter named 'id' to match API Gateway path parameter {id}
     validateModels: async (id: string) => {
       try {
-        const responseData = await authenticatedClient.post(
+        const response = await authenticatedClient.post<ValidateModelsResponse>(
           `/providers/${id}/validate-models`
         );
+        if (response.success && response.data) {
+          return { success: true, data: response.data };
+        }
         return {
-          success: true,
-          data: responseData,
+          success: false,
+          data: {
+            message: "",
+            validated: 0,
+            available: 0,
+            unavailable: 0,
+            results: [],
+          },
+          error: response.error,
         };
       } catch (error) {
         return {
@@ -261,19 +347,32 @@ export function createAIEnablementClient(
     // Note: Parameter named 'id' to match API Gateway path parameter {id}
     getValidationStatus: async (id: string) => {
       try {
-        const responseData = await authenticatedClient.get(
+        const response = await authenticatedClient.get<{ status: string; current_model_id?: string; validated?: number; total?: number; available?: number; unavailable?: number }>(
           `/providers/${id}/validation-status`
         );
+        if (response.success && response.data) {
+          return {
+            success: true,
+            data: {
+              isValidating: response.data.status === "in_progress",
+              currentModel: response.data.current_model_id || undefined,
+              validated: response.data.validated || 0,
+              total: response.data.total || 0,
+              available: response.data.available || 0,
+              unavailable: response.data.unavailable || 0,
+            },
+          };
+        }
         return {
-          success: true,
+          success: false,
           data: {
-            isValidating: responseData.status === "in_progress",
-            currentModel: responseData.current_model_id || undefined,
-            validated: responseData.validated || 0,
-            total: responseData.total || 0,
-            available: responseData.available || 0,
-            unavailable: responseData.unavailable || 0,
+            isValidating: false,
+            validated: 0,
+            total: 0,
+            available: 0,
+            unavailable: 0,
           },
+          error: response.error,
         };
       } catch (error) {
         return {
@@ -296,7 +395,7 @@ export function createAIEnablementClient(
     // Model operations
     getModels: async (providerId: string) => {
       try {
-        const response: any = await authenticatedClient.get(
+        const response = await authenticatedClient.get<ModelApiData[] | { data: ModelApiData[] }>(
           `/models?providerId=${providerId}`
         );
         // Backend returns models in the response data array
@@ -321,11 +420,12 @@ export function createAIEnablementClient(
     },
 
     getModel: async (id: string) => {
-      const response = await authenticatedClient.get(`/models/${id}`);
+      const response = await authenticatedClient.get<ModelApiData>(`/models/${id}`);
       if (response.success && response.data) {
-        response.data = transformModelResponse(response.data);
+        const transformed = transformModelResponse(response.data);
+        return { success: response.success, data: transformed };
       }
-      return response;
+      return { success: false, data: {} as AIModel, error: response.error };
     },
 
     testModel: async (id: string, data: TestModelInput) => {

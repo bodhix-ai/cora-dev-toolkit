@@ -86,6 +86,8 @@ def main():
                 print("Warnings:")
                 for warn in warnings:
                     print(f"  - {warn}")
+        
+        sys.exit(0 if overall_passed else 1)
             
     except Exception as e:
         error_out = {

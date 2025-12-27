@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useChatStore } from "@/store/chatStore";
+import { createApiClient } from "@/lib/api-client";
 
 export interface ChatAssociationState {
   [chatId: string]: {
@@ -130,25 +131,12 @@ export function useChatProjectAssociation(): ChatProjectAssociationManager {
           throw new Error("Authentication token not available");
         }
 
-        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-        const response = await fetch(
-          `${baseUrl}/chat/sessions/${chatId}/project`,
-          {
-            method: "PUT",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ project_id: projectId }),
-          }
-        );
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `HTTP ${response.status}`);
-        }
-
-        const result = await response.json();
+        const client = createApiClient(token);
+        const result = await client.put<{
+          project_id: string;
+          shared_with_project_members: boolean;
+          project?: { name: string };
+        }>(`/chat/sessions/${chatId}/project`, { project_id: projectId });
 
         // Update local state (backend returns complete session data including favorites)
         setAssociationState((prev) => ({
@@ -217,22 +205,8 @@ export function useChatProjectAssociation(): ChatProjectAssociationManager {
           throw new Error("Authentication token not available");
         }
 
-        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-        const response = await fetch(
-          `${baseUrl}/chat/sessions/${chatId}/project`,
-          {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `HTTP ${response.status}`);
-        }
+        const client = createApiClient(token);
+        await client.delete(`/chat/sessions/${chatId}/project`);
 
         // Update local state (backend returns complete session data including favorites)
         setAssociationState((prev) => ({
@@ -299,25 +273,12 @@ export function useChatProjectAssociation(): ChatProjectAssociationManager {
           throw new Error("Authentication token not available");
         }
 
-        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-        const response = await fetch(
-          `${baseUrl}/chat/sessions/${chatId}/sharing`,
-          {
-            method: "PATCH",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ shared_with_project_members: enabled }),
-          }
-        );
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `HTTP ${response.status}`);
-        }
-
-        const result = await response.json();
+        const client = createApiClient(token);
+        const result = await client.patch<{
+          shared_with_project_members: boolean;
+        }>(`/chat/sessions/${chatId}/sharing`, {
+          shared_with_project_members: enabled,
+        });
 
         // Update local state (backend returns complete session data including favorites)
         setAssociationState((prev) => ({

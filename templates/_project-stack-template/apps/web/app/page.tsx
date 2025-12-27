@@ -24,7 +24,7 @@ import ChatContainer from "../components/ChatContainer";
 import { useChatStore } from "@/store/chatStore";
 import { useTokenManager } from "@/lib/auth-utils";
 import { useSidebarStore } from "@/store/sidebarStore";
-import { useUser, useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useOrganizationContext, type Profile } from "@{{PROJECT_NAME}}/module-access";
 import GlobalLayoutToggle from "../components/GlobalLayoutToggle";
 
 export default function HomePage() {
@@ -111,7 +111,7 @@ export default function HomePage() {
  * AuthenticatedHomePage - Only rendered when user is authenticated
  * This allows us to safely call useOrganizationContext() which requires OrgProvider
  */
-function AuthenticatedHomePage({ profile }: { profile: any }) {
+function AuthenticatedHomePage({ profile }: { profile: Profile | null }) {
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const theme = useTheme();
@@ -158,7 +158,7 @@ function AuthenticatedHomePage({ profile }: { profile: any }) {
 
       if (currentPath === "/") {
         console.log(`Streaming completed, navigating to: ${targetPath}`);
-        router.push(targetPath as any);
+        router.push(targetPath);
       }
     }
     

@@ -4,6 +4,13 @@ IDP Configuration Lambda
 Manages Identity Provider (IDP) configurations for the platform.
 Only accessible to platform admins (super_admin, platform_owner, platform_admin, global_owner, global_admin).
 
+CORA-EXCEPTION: platform-level
+This is a platform-level Lambda that manages IDP configurations across the platform.
+It intentionally does NOT:
+- Filter by org_id (operates on platform-wide IDP configuration)
+- Use typical org-scoped patterns (manages platform identity providers)
+- Follow org-specific CORA patterns (platform admin functionality)
+
 Routes:
 - GET    /admin/idp-config                         - List all IDP configurations
 - PUT    /admin/idp-config/{providerType}          - Update IDP configuration
@@ -21,9 +28,8 @@ from typing import Any, Dict, Optional
 import sys
 sys.path.insert(0, '/opt/python')
 
+import org_common as common
 from org_common.db import get_supabase_client
-from org_common.responses import success_response, error_response
-from org_common.validators import validate_required_fields
 
 # Configure logging
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
@@ -40,6 +46,30 @@ PLATFORM_ADMIN_ROLES = [
 ]
 
 
+def get_supabase_user_id_from_okta_uid(okta_uid: str) -> Optional[str]:
+    """
+    Get Supabase user_id from Okta user ID
+    
+    Args:
+        okta_uid: Okta user ID
+        
+    Returns:
+        Supabase user_id if found, None otherwise
+    """
+    try:
+        identity = common.find_one(
+            table='user_auth_ext_ids',
+            filters={
+                'provider_name': 'okta',
+                'external_id': okta_uid
+            }
+        )
+        return identity['auth_user_id'] if identity else None
+    except Exception as e:
+        logger.error(f"Error getting Supabase user_id from Okta UID: {e}")
+        return None
+
+
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Main Lambda handler for IDP configuration management."""
     
@@ -50,16 +80,17 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     path = event.get('rawPath', '')
     path_parameters = event.get('pathParameters', {}) or {}
     
-    # Get user context from authorizer
-    authorizer_context = event.get('requestContext', {}).get('authorizer', {}).get('lambda', {})
-    user_id = authorizer_context.get('user_id')
-    
-    if not user_id:
-        return error_response("Unauthorized: No user context", 401)
+    # Get user context from JWT using standard auth helper
+    try:
+        user_info = common.get_user_from_event(event)
+        user_id = user_info['user_id']
+        org_id = user_info.get('org_id')  # Extract org_id for multi-tenancy
+    except (KeyError, common.UnauthorizedError):
+        return common.unauthorized_response("No user context")
     
     # Verify platform admin access
     if not is_platform_admin(user_id):
-        return error_response("Forbidden: Platform admin access required", 403)
+        return common.forbidden_response("Platform admin access required")
     
     try:
         # Route to appropriate handler
@@ -76,13 +107,21 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         elif http_method == 'GET':
             return list_idp_configs()
         else:
-            return error_response(f"Method not allowed: {http_method}", 405)
+            return common.method_not_allowed_response()
             
     except json.JSONDecodeError:
-        return error_response("Invalid JSON in request body", 400)
+        return common.bad_request_response("Invalid JSON in request body")
+    except common.ValidationError as e:
+        return common.bad_request_response(str(e))
+    except common.UnauthorizedError as e:
+        return common.unauthorized_response(str(e))
+    except common.ForbiddenError as e:
+        return common.forbidden_response(str(e))
+    except common.NotFoundError as e:
+        return common.not_found_response(str(e))
     except Exception as e:
         logger.exception(f"Error handling IDP config request: {e}")
-        return error_response(f"Internal server error: {str(e)}", 500)
+        return common.internal_error_response(f"Internal server error: {str(e)}")
 
 
 def is_platform_admin(user_id: str) -> bool:
@@ -108,80 +147,75 @@ def is_platform_admin(user_id: str) -> bool:
 def list_idp_configs() -> Dict[str, Any]:
     """List all IDP configurations."""
     try:
+        # Use Supabase client directly for fetching all records
         client = get_supabase_client()
-        
         result = client.table('platform_idp_config') \
             .select('id, provider_type, display_name, config, is_active, is_configured, created_at, updated_at') \
-            .order('provider_type') \
             .execute()
         
-        return success_response(result.data)
+        configs = result.data if result.data else []
+        return common.success_response(configs)
         
     except Exception as e:
         logger.error(f"Error listing IDP configs: {e}")
-        return error_response(f"Failed to list IDP configs: {str(e)}", 500)
+        return common.internal_error_response(f"Failed to list IDP configs: {str(e)}")
 
 
 def get_idp_config(provider_type: str) -> Dict[str, Any]:
     """Get specific IDP configuration."""
     try:
-        client = get_supabase_client()
+        # Use standard database helper with correct parameter name
+        config = common.find_one(
+            table='platform_idp_config',
+            filters={'provider_type': provider_type},
+            select='id, provider_type, display_name, config, is_active, is_configured, created_at, updated_at'
+        )
         
-        result = client.table('platform_idp_config') \
-            .select('id, provider_type, display_name, config, is_active, is_configured, created_at, updated_at') \
-            .eq('provider_type', provider_type) \
-            .single() \
-            .execute()
+        if not config:
+            return common.not_found_response(f"IDP config not found: {provider_type}")
         
-        if not result.data:
-            return error_response(f"IDP config not found: {provider_type}", 404)
-        
-        return success_response(result.data)
+        return common.success_response(config)
         
     except Exception as e:
         logger.error(f"Error getting IDP config: {e}")
-        return error_response(f"Failed to get IDP config: {str(e)}", 500)
+        return common.internal_error_response(f"Failed to get IDP config: {str(e)}")
 
 
 def get_active_idp() -> Dict[str, Any]:
     """Get the currently active IDP configuration."""
     try:
-        client = get_supabase_client()
+        # Use standard database helper with correct parameter name
+        config = common.find_one(
+            table='platform_idp_config',
+            filters={'is_active': True},
+            select='id, provider_type, display_name, config, is_active, is_configured'
+        )
         
-        result = client.table('platform_idp_config') \
-            .select('id, provider_type, display_name, config, is_active, is_configured') \
-            .eq('is_active', True) \
-            .single() \
-            .execute()
+        if not config:
+            return common.success_response({"message": "No active IDP configured", "idp": None})
         
-        if not result.data:
-            return success_response({"message": "No active IDP configured", "idp": None})
-        
-        return success_response(result.data)
+        return common.success_response(config)
         
     except Exception as e:
         logger.error(f"Error getting active IDP: {e}")
-        return error_response(f"Failed to get active IDP: {str(e)}", 500)
+        return common.internal_error_response(f"Failed to get active IDP: {str(e)}")
 
 
 def update_idp_config(provider_type: str, body: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """Update IDP configuration."""
     try:
-        client = get_supabase_client()
-        
         # Validate provider type
         if provider_type not in ['clerk', 'okta']:
-            return error_response(f"Invalid provider type: {provider_type}", 400)
+            return common.bad_request_response(f"Invalid provider type: {provider_type}")
         
-        # Get current config for audit
-        current = client.table('platform_idp_config') \
-            .select('*') \
-            .eq('provider_type', provider_type) \
-            .single() \
-            .execute()
+        # Get current config for audit using standard helper
+        current = common.find_one(
+            table='platform_idp_config',
+            filters={'provider_type': provider_type}
+        )
         
-        if not current.data:
-            return error_response(f"IDP config not found: {provider_type}", 404)
+        if not current:
+            return common.not_found_response(f"IDP config not found: {provider_type}")
         
         # Build update data
         update_data = {
@@ -200,19 +234,19 @@ def update_idp_config(provider_type: str, body: Dict[str, Any], user_id: str) ->
             update_data['config'] = config
             update_data['is_configured'] = is_configured
         
-        # Perform update
-        result = client.table('platform_idp_config') \
-            .update(update_data) \
-            .eq('provider_type', provider_type) \
-            .execute()
+        # Perform update using standard helper
+        result = common.update_one(
+            table='platform_idp_config',
+            filters={'provider_type': provider_type},
+            data=update_data
+        )
         
         # Log audit entry
         log_audit(
-            client,
-            idp_config_id=current.data['id'],
+            idp_config_id=current['id'],
             action='updated',
-            old_config=redact_sensitive(current.data.get('config', {})),
-            new_config=redact_sensitive(update_data.get('config', current.data.get('config', {}))),
+            old_config=redact_sensitive(current.get('config', {})),
+            new_config=redact_sensitive(update_data.get('config', current.get('config', {}))),
             performed_by=user_id
         )
         
@@ -223,53 +257,50 @@ def update_idp_config(provider_type: str, body: Dict[str, Any], user_id: str) ->
         
     except Exception as e:
         logger.error(f"Error updating IDP config: {e}")
-        return error_response(f"Failed to update IDP config: {str(e)}", 500)
+        return common.internal_error_response(f"Failed to update IDP config: {str(e)}")
 
 
 def activate_idp(provider_type: str, user_id: str) -> Dict[str, Any]:
     """Activate an IDP (deactivates any other active IDP)."""
     try:
-        client = get_supabase_client()
-        
         # Validate provider type
         if provider_type not in ['clerk', 'okta']:
-            return error_response(f"Invalid provider type: {provider_type}", 400)
+            return common.bad_request_response(f"Invalid provider type: {provider_type}")
         
-        # Check if IDP is configured
-        current = client.table('platform_idp_config') \
-            .select('*') \
-            .eq('provider_type', provider_type) \
-            .single() \
-            .execute()
+        # Check if IDP is configured using standard helper
+        current = common.find_one(
+            table='platform_idp_config',
+            filters={'provider_type': provider_type}
+        )
         
-        if not current.data:
-            return error_response(f"IDP config not found: {provider_type}", 404)
+        if not current:
+            return common.not_found_response(f"IDP config not found: {provider_type}")
         
-        if not current.data.get('is_configured'):
-            return error_response(f"IDP {provider_type} is not fully configured", 400)
+        if not current.get('is_configured'):
+            return common.bad_request_response(f"IDP {provider_type} is not fully configured")
         
-        # Activate this IDP (trigger will deactivate others)
-        result = client.table('platform_idp_config') \
-            .update({
+        # Activate this IDP (trigger will deactivate others) using standard helper
+        result = common.update_one(
+            table='platform_idp_config',
+            filters={'provider_type': provider_type},
+            data={
                 'is_active': True,
                 'updated_by': user_id
-            }) \
-            .eq('provider_type', provider_type) \
-            .execute()
+            }
+        )
         
         # Log audit entry
         log_audit(
-            client,
-            idp_config_id=current.data['id'],
+            idp_config_id=current['id'],
             action='activated',
-            old_config={'is_active': current.data.get('is_active')},
+            old_config={'is_active': current.get('is_active')},
             new_config={'is_active': True},
             performed_by=user_id
         )
         
         logger.info(f"Activated IDP: {provider_type}")
         
-        return success_response({
+        return common.success_response({
             'provider_type': provider_type,
             'is_active': True,
             'message': f'{provider_type} is now the active identity provider'
@@ -277,7 +308,7 @@ def activate_idp(provider_type: str, user_id: str) -> Dict[str, Any]:
         
     except Exception as e:
         logger.error(f"Error activating IDP: {e}")
-        return error_response(f"Failed to activate IDP: {str(e)}", 500)
+        return common.internal_error_response(f"Failed to activate IDP: {str(e)}")
 
 
 def validate_idp_config(provider_type: str, config: Dict[str, Any]) -> bool:
@@ -310,7 +341,6 @@ def redact_sensitive(config: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def log_audit(
-    client,
     idp_config_id: str,
     action: str,
     old_config: Optional[Dict] = None,
@@ -319,12 +349,15 @@ def log_audit(
 ) -> None:
     """Log an audit entry for IDP config changes."""
     try:
-        client.table('platform_idp_audit_log').insert({
-            'idp_config_id': idp_config_id,
-            'action': action,
-            'old_config': old_config,
-            'new_config': new_config,
-            'performed_by': performed_by
-        }).execute()
+        common.insert_one(
+            table='platform_idp_audit_log',
+            data={
+                'idp_config_id': idp_config_id,
+                'action': action,
+                'old_config': old_config,
+                'new_config': new_config,
+                'performed_by': performed_by
+            }
+        )
     except Exception as e:
         logger.error(f"Failed to log audit entry: {e}")

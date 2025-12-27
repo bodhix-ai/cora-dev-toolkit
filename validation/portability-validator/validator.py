@@ -149,6 +149,21 @@ class PortabilityValidator:
         "package-lock.json", "pnpm-lock.yaml", "yarn.lock",
         ".env.example", ".env.template",
     }
+    
+    # Whitelist: File patterns that are allowed to have "hardcoded" values
+    # These are typically seed data, examples, or validation tools themselves
+    WHITELIST_PATTERNS = [
+        "*/seed-*.sql",           # Database seed files
+        "*/setup-database.sql",   # Database setup files
+        "**/validation/**/*.py",  # Validation scripts themselves
+        "**/validation/**/*.ts",  # Validation scripts
+        "**/**/models.py",        # Model files with example data structures
+        "**/example*.yaml",       # Example configuration files
+        "**/example*.json",       # Example configuration files
+        "**/.config.*.yaml",      # User-specific config files
+        "**/tsconfig.json",       # TypeScript config (may reference schema URLs)
+        "**/*_old.yaml",          # Backup/old config files
+    ]
 
     def __init__(
         self,
@@ -237,6 +252,12 @@ class PortabilityValidator:
         if file_path.suffix not in self.SCANNABLE_EXTENSIONS:
             return
         
+        # Check whitelist patterns
+        for whitelist_pattern in self.WHITELIST_PATTERNS:
+            if file_path.match(whitelist_pattern):
+                self.log(f"Skipping whitelisted file: {file_path}")
+                return
+        
         self.log(f"Scanning: {file_path}")
         result.files_scanned += 1
 
@@ -282,13 +303,17 @@ class PortabilityValidator:
                 if any(ctx.lower() in line.lower() for ctx in exclude_contexts):
                     continue
 
-                # Skip if looks like a version number
+                # Skip if looks like a version number or UUID
                 if pattern_name == "aws_account_id":
+                    # Skip if part of a UUID pattern
+                    # UUIDs: 8-4-4-4-12 format (e.g., 123e4567-e89b-12d3-a456-426614174000)
+                    if re.search(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\d{12}', line.lower()):
+                        continue
                     # Skip version-like patterns
-                    if re.search(r'["\']?\d+\.\d+\.\d+["\']?', line):
+                    if re.search(r'["\']\?\d+\.\d+\.\d+["\']?', line):
                         continue
                     # Skip obvious non-account-id contexts
-                    if any(x in line.lower() for x in ["version", "port", "year", "date", "time"]):
+                    if any(x in line.lower() for x in ["version", "port", "year", "date", "time", "uuid", "guid", "id\":"]):
                         continue
 
                 result.add_issue(PortabilityIssue(

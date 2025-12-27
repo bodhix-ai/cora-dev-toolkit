@@ -132,12 +132,12 @@ class CoraValidator:
             "description": "API contract validation",
             "module": "api-tracer",
             "supports": ["project"],
-            "cli_style": "argparse",  # path --format json (assumed)
+            "cli_style": "click",  # --path /path --output json
         },
         "import": {
             "name": "Import Validator",
             "description": "Import path validation",
-            "module": "import-validator",
+            "module": "import_validator",
             "supports": ["project", "module"],
             "cli_style": "click",  # --path /path --output json
         },
@@ -279,23 +279,39 @@ class CoraValidator:
             try:
                 output = json.loads(result.stdout) if result.stdout else {}
             except json.JSONDecodeError:
-                # Fallback to treating output as text
+                # Fallback: capture both stdout and stderr
                 output = {"raw_output": result.stdout}
+                if result.stderr:
+                    output["raw_error"] = result.stderr
 
             # Determine pass/fail from return code or output
             passed = result.returncode == 0
             
+            # Get lists of actual error/warning objects
             errors = output.get("errors", [])
             warnings = output.get("warnings", [])
             info = output.get("info", [])
             details = output.get("details", {})
             
-            # Handle summary format (import-validator, a11y-validator, etc.)
-            if "summary" in output:
-                summary = output["summary"]
-                if isinstance(summary, dict):
-                    errors = summary.get("errors", errors)
-                    warnings = summary.get("warnings", warnings)
+            # If validator failed but didn't provide errors, capture stderr
+            if not passed and not errors:
+                if result.stderr:
+                    # Convert stderr to error messages
+                    stderr_lines = [line.strip() for line in result.stderr.split('\n') if line.strip()]
+                    if stderr_lines:
+                        errors = stderr_lines[:10]  # Limit to first 10 lines
+                elif output.get("raw_output"):
+                    # Use stdout as error message if no stderr
+                    errors = [f"Validator failed with output: {output['raw_output'][:200]}"]
+                else:
+                    # No output at all
+                    errors = [f"Validator failed with exit code {result.returncode} but provided no output"]
+            
+            # Handle summary format - DON'T override the lists with counts!
+            # Some validators (portability, a11y, etc.) provide both:
+            # - "errors": [...list of error objects...]
+            # - "summary": {"errors": count, "warnings": count}
+            # We want the lists, not the counts
                 
             return ValidationResult(
                 validator=validator_key,

@@ -76,8 +76,13 @@ class QueryParser:
         """
         all_queries = []
         path = Path(directory)
+        ignored_dirs = {'.build', 'dist', 'node_modules', '.venv', '__pycache__', 'backend-archive'}
         
         for file_path in path.glob(pattern):
+            # Check if file is in an ignored directory
+            if any(part in ignored_dirs for part in file_path.parts):
+                continue
+                
             if file_path.is_file():
                 queries = self.parse_file(str(file_path))
                 all_queries.extend(queries)

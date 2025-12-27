@@ -883,6 +883,30 @@ def get_rag_provider_models_handler(event: Dict[str, Any], user_id: str) -> Dict
 # LAMBDA HANDLER (Router)
 # ============================================================================
 
+
+def get_supabase_user_id_from_okta_uid(okta_uid: str) -> Optional[str]:
+    """
+    Get Supabase user_id from Okta user ID
+    
+    Args:
+        okta_uid: Okta user ID
+        
+    Returns:
+        Supabase user_id if found, None otherwise
+    """
+    try:
+        identity = common.find_one(
+            table='user_auth_ext_ids',
+            filters={
+                'provider_name': 'okta',
+                'external_id': okta_uid
+            }
+        )
+        return identity['auth_user_id'] if identity else None
+    except Exception as e:
+        print(f"Error getting Supabase user_id from Okta UID: {str(e)}")
+        return None
+
 def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
     """
     Main Lambda handler that routes requests to appropriate functions.

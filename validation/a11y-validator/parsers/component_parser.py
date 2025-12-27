@@ -29,8 +29,29 @@ class ComponentParser:
         if not directory.exists():
             raise ValueError(f"Directory not found: {directory_path}")
         
+        # Directories to exclude from scanning
+        excluded_dirs = {
+            'node_modules',
+            '.next',
+            'dist',
+            'build',
+            '.git',
+            '__pycache__',
+            'coverage',
+            '.turbo',
+            '.pnpm',
+        }
+        
         results = []
         for file_path in directory.rglob('*'):
+            # Skip if any parent directory is in excluded list
+            if any(excluded in file_path.parts for excluded in excluded_dirs):
+                continue
+            
+            # Only process actual files, not directories
+            if not file_path.is_file():
+                continue
+                
             if file_path.suffix in self.supported_extensions:
                 if self.verbose:
                     print(f"Parsing: {file_path}")

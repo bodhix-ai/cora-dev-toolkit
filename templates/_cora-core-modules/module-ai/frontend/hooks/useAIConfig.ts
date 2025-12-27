@@ -7,6 +7,37 @@ import {
 } from "@{{PROJECT_NAME}}/api-client";
 
 // Types for AI Configuration
+
+/**
+ * API response wrapper type - handles both wrapped and unwrapped responses
+ */
+type ApiResponse<T> = T | { success: boolean; data: T };
+
+/**
+ * Raw deployment data from API before processing
+ */
+interface RawDeploymentData {
+  id: string;
+  provider_type: string;
+  model_id: string;
+  deployment_name: string;
+  deployment_status: "available" | "testing" | "configured";
+  created_at: string;
+  updated_at: string;
+  description?: string;
+  display_name?: string;
+  capabilities?: string | {
+    chat: boolean;
+    embedding: boolean;
+    vision: boolean;
+    streaming: boolean;
+    max_tokens: number;
+    embedding_dimensions: number;
+  };
+  supports_chat?: boolean;
+  supports_embeddings?: boolean;
+}
+
 export type DeploymentInfo = {
   id: string;
   provider_type: string;
@@ -84,12 +115,13 @@ export function usePlatformAIConfig(authAdapter: CoraAuthAdapter) {
       }
 
       const client = createCoraAuthenticatedClient(token);
-      const response: any =
-        await client.get<PlatformAIConfig>("/admin/ai/config");
+      const response = await client.get<ApiResponse<PlatformAIConfig>>("/admin/ai/config");
 
       // Handle wrapped response { success: true, data: {...} }
-      const data =
-        response?.success && response?.data ? response.data : response;
+      const data = (response as { success: boolean; data: PlatformAIConfig })?.success && 
+                   (response as { success: boolean; data: PlatformAIConfig })?.data 
+                   ? (response as { success: boolean; data: PlatformAIConfig }).data 
+                   : response as PlatformAIConfig;
 
       setConfig(data);
       return data;
@@ -188,13 +220,15 @@ export function useOrgAIConfig(authAdapter: CoraAuthAdapter, orgId: string) {
       }
 
       const client = createCoraAuthenticatedClient(token, orgId);
-      const response: any = await client.get<OrgAIConfig>(
+      const response = await client.get<ApiResponse<OrgAIConfig>>(
         `/orgs/${orgId}/ai/config`
       );
 
       // Handle wrapped response { success: true, data: {...} }
-      const data =
-        response?.success && response?.data ? response.data : response;
+      const data = (response as { success: boolean; data: OrgAIConfig })?.success && 
+                   (response as { success: boolean; data: OrgAIConfig })?.data 
+                   ? (response as { success: boolean; data: OrgAIConfig }).data 
+                   : response as OrgAIConfig;
 
       setConfig(data);
       return data;
@@ -275,13 +309,13 @@ export function useDeployments(
         url += `?capability=${capability}`;
       }
 
-      const data: any = await client.get<
-        | { deployments?: DeploymentInfo[]; models?: DeploymentInfo[] }
-        | DeploymentInfo[]
+      const data = await client.get<
+        | { deployments?: RawDeploymentData[]; models?: RawDeploymentData[] }
+        | RawDeploymentData[]
       >(url);
 
       // Handle both direct array and wrapped response { success: true, data: [...] }
-      let rawList: any[] = [];
+      let rawList: RawDeploymentData[] = [];
 
       if (Array.isArray(data)) {
         rawList = data;
@@ -302,7 +336,7 @@ export function useDeployments(
         rawList = data.models;
       }
 
-      const deploymentList = rawList.map((d: any) => {
+      const deploymentList = rawList.map((d: RawDeploymentData) => {
         try {
           const capabilities =
             typeof d.capabilities === "string"

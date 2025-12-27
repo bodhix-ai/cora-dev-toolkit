@@ -12,6 +12,7 @@ import type {
   LambdaFunctionInfo,
   EventBridgeSyncResult,
   ApiResponse,
+  ConfigValue,
 } from "../types";
 
 /**
@@ -76,7 +77,7 @@ export class LambdaMgmtApiClient {
       }
 
       // config_value is JSONB, should already be parsed
-      const warmingConfig = config.config_value as LambdaWarmingConfig;
+      const warmingConfig = config.config_value as unknown as LambdaWarmingConfig;
       return warmingConfig;
     } catch (error) {
       console.error("Failed to get warming config:", error);
@@ -96,7 +97,7 @@ export class LambdaMgmtApiClient {
    */
   async updateConfig(
     configKey: string,
-    value: any
+    value: ConfigValue
   ): Promise<LambdaConfig | null> {
     try {
       const response = await this.client.put<LambdaConfig>(
@@ -121,7 +122,7 @@ export class LambdaMgmtApiClient {
   async updateWarmingConfig(
     warmingConfig: LambdaWarmingConfig
   ): Promise<LambdaConfig | null> {
-    return this.updateConfig("lambda_warming", warmingConfig);
+    return this.updateConfig("lambda_warming", warmingConfig as unknown as ConfigValue);
   }
 
   /**

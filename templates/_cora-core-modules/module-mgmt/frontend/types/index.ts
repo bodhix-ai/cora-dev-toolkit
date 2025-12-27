@@ -6,12 +6,23 @@
  */
 
 /**
+ * Configuration value type - supports JSON-serializable values
+ */
+export type ConfigValue = 
+  | string 
+  | number 
+  | boolean 
+  | null 
+  | ConfigValue[] 
+  | { [key: string]: ConfigValue };
+
+/**
  * Platform Lambda configuration stored in platform_lambda_config table
  */
 export interface LambdaConfig {
   id: string;
   config_key: string;
-  config_value: any;
+  config_value: ConfigValue;
   description?: string;
   is_active: boolean;
   created_at: string;
