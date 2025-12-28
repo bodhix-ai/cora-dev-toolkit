@@ -179,10 +179,11 @@ When working on this toolkit:
 1. **Read memory-bank first** - Understand current context
 2. **Check the plan** - What phase are we in?
 3. **FOLLOW TEMPLATE-FIRST WORKFLOW** - See critical rule above
-4. **Make focused changes** - One deliverable at a time
-5. **Update progress** - Mark items complete in plan
-6. **Test changes** - Validate scripts work
-7. **Document patterns** - Update docs with new patterns
+4. **EXPLAIN CHANGES FIRST** - Always provide an explanation of what you are doing and why before proposing a change that requires user approval (saving files).
+5. **Make focused changes** - One deliverable at a time
+6. **Update progress** - Mark items complete in plan
+7. **Test changes** - Validate scripts work
+8. **Document patterns** - Update docs with new patterns
 
 ## 🚨 CRITICAL: Use Standard Deployment Scripts
 

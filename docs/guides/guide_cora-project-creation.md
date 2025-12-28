@@ -79,13 +79,30 @@ node --version  # Should be v18 or higher
 pnpm --version  # Should output version number
 ```
 
-#### 4. AWS CLI (Optional - for infrastructure deployment)
+#### 4. Terraform (Required for infrastructure deployment)
+
+```bash
+brew install terraform
+```
+
+**Why needed:** Provision and manage AWS infrastructure (API Gateway, Lambda functions, S3 buckets, etc.).
+
+**Verify installation:**
+
+```bash
+terraform --version
+# Should output: Terraform v1.5.7 or higher
+```
+
+**Note:** Homebrew installs Terraform 1.5.7, the last open-source version before the license change to BUSL.
+
+#### 5. AWS CLI (Optional - for infrastructure deployment)
 
 ```bash
 brew install awscli
 ```
 
-**Why needed:** Deploy Terraform infrastructure to AWS.
+**Why needed:** Deploy Terraform infrastructure to AWS and manage AWS resources.
 
 **Verify installation:**
 
@@ -93,7 +110,7 @@ brew install awscli
 aws --version
 ```
 
-#### 5. Python 3 with venv (Required for validation tools and Lambda builds)
+#### 6. Python 3 with venv (Required for validation tools and Lambda builds)
 
 ```bash
 # Python 3 is typically pre-installed on macOS
@@ -118,7 +135,7 @@ python3 -m venv --help  # Should display venv help
 
 **Note:** The project creation script will automatically create a virtual environment and install all required validation dependencies (boto3, supabase, click, colorama, etc.) in `scripts/validation/.venv`.
 
-#### 6. GitHub CLI (Optional - for repo creation)
+#### 7. GitHub CLI (Optional - for repo creation)
 
 ```bash
 brew install gh

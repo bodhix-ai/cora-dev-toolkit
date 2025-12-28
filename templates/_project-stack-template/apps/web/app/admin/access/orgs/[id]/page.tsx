@@ -1,8 +1,7 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { OrgDetails } from "@{{PROJECT_NAME}}/module-access";
-import { createAuthenticatedApiClient } from "@{{PROJECT_NAME}}/api-client";
 
 /**
  * Organization Details Page
@@ -19,14 +18,11 @@ import { createAuthenticatedApiClient } from "@{{PROJECT_NAME}}/api-client";
  * - Org owners/admins (Overview, Domains, Members, Invites only)
  */
 export default function OrgDetailsPage({ params }: { params: { id: string } }) {
-  const { data: session } = useSession();
-
-  // Create authenticated API client
-  const authAdapter = createAuthenticatedApiClient(session);
+  const { profile, authAdapter } = useUser();
 
   // Determine if user is platform admin
   const isPlatformAdmin = ["platform_owner", "platform_admin"].includes(
-    session?.user?.global_role || ""
+    profile?.globalRole || ""
   );
 
   return (

@@ -30,6 +30,36 @@ PROHIBITED_HOOKS = {
     'useSignUp': 'Clerk sign-up hook',
 }
 
+# Anti-patterns: Accessing user data from NextAuth session instead of backend Profile
+# NextAuth session contains minimal auth info (tokens), NOT user profile data
+SESSION_ANTIPATTERNS = {
+    r'session.*\.global_role': {
+        'message': 'Accessing global_role from NextAuth session',
+        'suggestion': 'Use profile.globalRole from useUser() hook instead. NextAuth session does not contain user profile data.',
+        'severity': 'error'
+    },
+    r'session.*\.globalRole': {
+        'message': 'Accessing globalRole from NextAuth session',
+        'suggestion': 'Use profile.globalRole from useUser() hook instead. NextAuth session does not contain user profile data.',
+        'severity': 'error'
+    },
+    r'session.*\.current_org_id': {
+        'message': 'Accessing current_org_id from NextAuth session',
+        'suggestion': 'Use profile.currentOrgId from useUser() hook instead. NextAuth session does not contain user profile data.',
+        'severity': 'error'
+    },
+    r'session.*\.currentOrgId': {
+        'message': 'Accessing currentOrgId from NextAuth session',
+        'suggestion': 'Use profile.currentOrgId from useUser() hook instead. NextAuth session does not contain user profile data.',
+        'severity': 'error'
+    },
+    r'session.*\.organizations': {
+        'message': 'Accessing organizations from NextAuth session',
+        'suggestion': 'Use organizations from useOrganizationContext() hook instead. NextAuth session does not contain user profile data.',
+        'severity': 'error'
+    },
+}
+
 # Files that are exempted from auth independence checks
 # These are the ONLY files allowed to import auth providers directly
 EXEMPTED_FILES = [
@@ -158,6 +188,23 @@ class FrontendValidator:
                         }
                         result['errors'].append(error)
                         self.errors.append({**error, 'file': str(relative_path)})
+            
+            # Check for session anti-patterns (applies to apps/web files)
+            # These are NOT CORA module violations, but incorrect usage patterns
+            if 'apps/web' in str(relative_path) and not is_exempted:
+                for line_num, line in enumerate(content.split('\n'), start=1):
+                    for pattern, config in SESSION_ANTIPATTERNS.items():
+                        if re.search(pattern, line):
+                            error = {
+                                'line': line_num,
+                                'severity': config['severity'],
+                                'issue': config['message'],
+                                'code': line.strip(),
+                                'suggestion': config['suggestion'],
+                                'rationale': 'NextAuth session only contains authentication tokens, not user profile data from backend'
+                            }
+                            result['errors'].append(error)
+                            self.errors.append({**error, 'file': str(relative_path)})
             
             # Add exemption info if applicable
             if is_exempted:
