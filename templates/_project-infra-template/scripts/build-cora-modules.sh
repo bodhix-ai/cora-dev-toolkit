@@ -61,18 +61,27 @@ echo ""
 # Run import validator if available
 log_info "🔍 Validating Lambda function imports..."
 VALIDATOR_PATH="${STACK_REPO_ABSOLUTE}/scripts/validation/import_validator"
+VENV_PATH="${STACK_REPO_ABSOLUTE}/scripts/validation/.venv"
 
 if [ -f "${VALIDATOR_PATH}/cli.py" ]; then
-  # Run validator as a module to support relative imports
-  cd "${STACK_REPO_ABSOLUTE}/scripts/validation"
+  # Check if virtual environment exists
+  if [ ! -d "${VENV_PATH}" ]; then
+    log_warn "⚠️  Virtual environment not found at ${VENV_PATH}"
+    log_warn "Skipping validation. Run 'cd ${STACK_REPO_ABSOLUTE} && python3 -m venv scripts/validation/.venv && source scripts/validation/.venv/bin/activate && pip install -r scripts/validation/requirements.txt'"
+    echo ""
+  else
+    # Run validator as a module to support relative imports
+    cd "${STACK_REPO_ABSOLUTE}/scripts/validation"
 
-  # Run validator with text output to check for errors
-  python3 -m import_validator.cli validate --path "${STACK_REPO_ABSOLUTE}/packages/" --backend --output text
-  VALIDATOR_EXIT_CODE=$?
+    # Activate virtual environment and run validator
+    source "${VENV_PATH}/bin/activate"
+    python3 -m import_validator.cli validate --path "${STACK_REPO_ABSOLUTE}/packages/" --backend --output text
+    VALIDATOR_EXIT_CODE=$?
+    deactivate
 
-  cd "${INFRA_ROOT}"
+    cd "${INFRA_ROOT}"
   
-  if [ $VALIDATOR_EXIT_CODE -ne 0 ]; then
+    if [ $VALIDATOR_EXIT_CODE -ne 0 ]; then
     echo ""
     echo "========================================================================"
     echo "❌ VALIDATION FAILED - Build blocked"
@@ -89,11 +98,12 @@ if [ -f "${VALIDATOR_PATH}/cli.py" ]; then
     echo "For more information:"
     echo "  ${STACK_REPO_ABSOLUTE}/scripts/validation/import_validator/README.md"
     echo ""
-    exit 1
+      exit 1
+    fi
+    
+    log_info "✅ Import validation passed"
+    echo ""
   fi
-  
-  log_info "✅ Import validation passed"
-  echo ""
 else
   log_warn "⚠️  Import validator not found at ${VALIDATOR_PATH}/cli.py"
   log_warn "Skipping validation. Run validation manually before deploying."

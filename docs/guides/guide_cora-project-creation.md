@@ -26,6 +26,8 @@ This guide walks you through creating a new CORA project from scratch, including
 
 ### Required Software
 
+**Important:** The tools below are system-level CLI utilities installed via Homebrew. They can be run from any directory and will be installed globally on your system (not in a virtual environment). The project creation script will separately create a Python virtual environment for validation dependencies (boto3, supabase, etc.).
+
 Install these tools before proceeding:
 
 #### 1. yq - YAML Processor
