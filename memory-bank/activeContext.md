@@ -2,7 +2,213 @@
 
 ## Current Focus
 
-**Phase 27: Database Schema SQL References & Role Standardization** - ✅ **COMPLETE**
+**Phase 28: Platform Management Schedule Enhancement** - 🔄 **IN PROGRESS**
+
+## Session: December 29, 2025 (3:28 PM - 3:53 PM) - Session 39
+
+### 🎯 Focus: Platform Management Schedule Enhancement - Foundation & Core Components
+
+**Context:** Implementing enhanced Lambda warming schedule management to achieve feature parity with legacy `pm-app-stack`. Adding visual schedule management, cost estimation, preset configurations, and Lambda inventory display.
+
+**Status:** 🔄 **IN PROGRESS** (Phase 1 & 2 Partial Complete)
+
+---
+
+## Solution Summary (Session 39)
+
+### Task Overview
+
+Enhance `module-mgmt` Lambda warming UI to match legacy `pm-app-stack` functionality:
+- Visual weekly schedule editor with day-by-day configuration
+- Schedule presets (Business Hours, 24/7, Custom, Off)
+- Timezone selector for schedule interpretation
+- Cost calculator with monthly/annual estimates
+- Lambda functions inventory display
+- Breadcrumb navigation
+- Accordion layout with expand/collapse
+
+### Implementation Progress
+
+**✅ Phase 1: Foundation - COMPLETE**
+
+Created utility files and hooks:
+
+1. **`utils/schedulePresets.ts`** - Schedule preset utilities
+   - Preset definitions (Business Hours, 24/7, Off, Custom)
+   - Schedule comparison and detection functions
+   - Time validation (HH:mm format)
+   - Weekly hours calculation
+   - Deep copy and manipulation utilities
+
+2. **`utils/costCalculation.ts`** - Cost estimation
+   - AWS pricing constants (Lambda, EventBridge, CloudWatch)
+   - Monthly cost calculation based on schedule
+   - Cost impact level determination (low/medium/high)
+   - Formatting utilities for cost and invocations
+   - Annual projection calculations
+   - Cost breakdown descriptions
+
+3. **`hooks/useLambdaFunctions.ts`** - Lambda inventory hook
+   - Fetches Lambda functions from API
+   - Returns memory, timeout, runtime details
+   - Loading and error state management
+   - Uses CORA auth adapter pattern
+
+**✅ Phase 2: Core Components - 3 of 5 COMPLETE**
+
+Created visual components:
+
+4. **`components/admin/schedule/SchedulePresets.tsx`** - Preset selector
+   - Toggle button group for preset selection
+   - Visual icons for each preset (💼 🔄 ⚙️ ⏸️)
+   - Descriptions and warnings for each option
+   - Contextual alerts for Custom and Off modes
+
+5. **`components/admin/schedule/TimezoneSelector.tsx`** - Timezone dropdown
+   - Common US and international timezones
+   - IANA timezone format
+   - Helper text explaining timezone usage
+   - Icon-enhanced label
+
+6. **`components/admin/schedule/CostCalculator.tsx`** - Cost display
+   - Monthly cost estimate with impact level
+   - Detailed breakdown (Lambda, EventBridge, CloudWatch)
+   - Usage statistics (invocations, hours/week, interval)
+   - Annual projection
+   - Optimization tips for high-cost scenarios
+   - Educational info for low-cost scenarios
+
+**⏳ Phase 2: Remaining Components**
+
+Still need to create:
+- `WeeklyScheduleVisualizer.tsx` - Visual weekly schedule grid (complex)
+- `DayScheduleEditor.tsx` - Modal for editing day schedules (complex)
+
+**📋 Phase 3-5: Remaining Work**
+
+Integration and testing phases still pending:
+- Refactor ScheduleTab.tsx to use new components
+- Add breadcrumb navigation to admin pages
+- Implement accordion layout
+- Update CostTab and PerformanceTab
+- Backend API validation
+- End-to-end testing
+
+### Files Created (6 new files)
+
+**Utilities:**
+- `templates/_cora-core-modules/module-mgmt/frontend/utils/schedulePresets.ts`
+- `templates/_cora-core-modules/module-mgmt/frontend/utils/costCalculation.ts`
+
+**Hooks:**
+- `templates/_cora-core-modules/module-mgmt/frontend/hooks/useLambdaFunctions.ts`
+
+**Components:**
+- `templates/_cora-core-modules/module-mgmt/frontend/components/admin/schedule/SchedulePresets.tsx`
+- `templates/_cora-core-modules/module-mgmt/frontend/components/admin/schedule/TimezoneSelector.tsx`
+- `templates/_cora-core-modules/module-mgmt/frontend/components/admin/schedule/CostCalculator.tsx`
+
+### Documentation Created
+
+**Plan Document:**
+- `docs/plans/plan_platform-management-schedule-enhancement.md`
+  - Comprehensive project plan
+  - Feature comparison table
+  - Progress tracking
+  - Implementation notes
+  - Testing plan
+  - Time estimates
+
+### Key Design Decisions
+
+**1. Data Model Already Exists**
+- `WeeklySchedule`, `DaySchedule`, `TimeRange` types already defined in `types/index.ts`
+- Current UI only uses basic `schedule` and `concurrency` fields
+- Enhancement will leverage existing `weekly_schedule` field
+- Maintains backward compatibility
+
+**2. CORA Auth Pattern**
+- All hooks use `CoraAuthAdapter` from `useUser()`
+- Consistent with module-access pattern
+- Token management handled by auth adapter
+
+**3. Component Structure**
+- Organized in `components/admin/schedule/` subdirectory
+- Consistent import paths: `from "../../../utils/..."`
+- Follows MUI Material-UI patterns
+- Reusable, composable components
+
+**4. Cost Transparency**
+- Real AWS pricing (as of 2025)
+- Detailed breakdown by service
+- Educational messaging about Lambda cost-effectiveness
+- Optimization recommendations
+
+### Implementation Notes
+
+**Import Path Adaptations:**
+- Legacy: `from "../types/schedule"`
+- CORA: `from "../../../types"`
+- Legacy: `from "../utils/schedulePresets"`
+- CORA: `from "../../../utils/schedulePresets"`
+
+**Type Exports:**
+- `PresetName` type defined in `schedulePresets.ts` (not in types file)
+- Exported alongside utility functions
+- Maintains encapsulation
+
+**Component Patterns:**
+- All components follow functional component pattern
+- Props interfaces defined inline
+- Comprehensive JSDoc documentation
+- Accessibility considerations (aria-labels)
+
+### Progress Metrics
+
+**Completion:** ~40% (Phase 1 + 60% of Phase 2)
+
+**Time Spent:** ~25 minutes
+
+**Files Created:** 6 files
+
+**Estimated Remaining:** 4-5 hours
+- Remaining components: 1-2 hours
+- Integration: 2 hours
+- Backend validation: 0.5 hours
+- Testing: 1 hour
+
+### Next Steps
+
+**Immediate (Complete Phase 2):**
+1. Port `WeeklyScheduleVisualizer.tsx` from legacy
+2. Port `DayScheduleEditor.tsx` from legacy
+
+**Then (Phase 3 - Integration):**
+1. Refactor `ScheduleTab.tsx` to use new components
+2. Replace EventBridge expression input with visual schedule
+3. Add breadcrumb navigation
+4. Implement accordion layout
+
+**Testing:**
+1. Verify all components render correctly
+2. Test schedule preset detection
+3. Test cost calculations
+4. Test Lambda inventory display
+
+### Feature Comparison Status
+
+| Feature | Status |
+|---------|--------|
+| Toggle On/Off | ✅ Already implemented |
+| Schedule Presets | ⏳ Components ready, integration pending |
+| Timezone Selector | ⏳ Components ready, integration pending |
+| Weekly Schedule Editor | ❌ Pending (visualizer + editor) |
+| Cost Calculator | ⏳ Component ready, integration pending |
+| Lambda Inventory | ⏳ Hook ready, UI pending |
+| Breadcrumb Navigation | ❌ Pending |
+| Accordion Layout | ❌ Pending |
+
+---
 
 ## Session: December 29, 2025 (11:58 AM - 2:40 PM) - Session 38
 
