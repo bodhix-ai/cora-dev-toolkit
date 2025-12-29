@@ -10,7 +10,7 @@ locals {
   build_dir = "${path.module}/../backend/.build"
 
   # Common Lambda configuration
-  lambda_runtime     = "python3.13"
+  lambda_runtime     = "python3.11"
   lambda_timeout     = 30
   lambda_memory_size = 256
 

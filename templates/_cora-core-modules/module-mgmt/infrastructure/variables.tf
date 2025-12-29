@@ -57,3 +57,12 @@ variable "common_tags" {
   type        = map(string)
   default     = {}
 }
+
+# =============================================================================
+# Layer Dependencies
+# =============================================================================
+
+variable "org_common_layer_arn" {
+  description = "ARN of org-common Lambda layer from module-access (provides org_common utilities)"
+  type        = string
+}
