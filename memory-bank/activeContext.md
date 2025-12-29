@@ -2,7 +2,104 @@
 
 ## Current Focus
 
-**Phase 24: Platform Management Access Control Fix** - ✅ **COMPLETE**
+**Phase 25: API Gateway Authorizer Resource Policy Fix** - ✅ **COMPLETE**
+
+## Session: December 28, 2025 (8:00 PM - 8:36 PM) - Session 36
+
+### 🎯 Focus: Fix API Gateway 403 Forbidden on Platform Management Routes
+
+**Context:** Platform owner was getting `403 Forbidden` when accessing `/platform/lambda-config/lambda_warming` and other platform management API routes, despite having valid authentication.
+
+**Status:** ✅ **FIXED & VALIDATED**
+
+---
+
+## Solution Summary (Session 36)
+
+### Root Cause
+
+The API Gateway Lambda authorizer was generating **route-specific IAM policies** instead of **API-wide policies**:
+
+```python
+# BROKEN CODE:
+resource = method_arn.rsplit("/", 1)[0] + "/*"
+# Result: arn:aws:execute-api:us-east-1:account:api-id/$default/GET/profiles/*
+```
+
+**The Problem:**
+1. User accesses `/profiles/me` → Authorizer creates policy allowing **only** `/profiles/*` routes
+2. API Gateway **caches this policy** for ~5 minutes
+3. User tries `/platform/lambda-config/lambda_warming` → Cached policy **denies it** → `403 Forbidden`
+4. Authorizer **not re-invoked** because cached response is used
+5. No Lambda logs because request never reaches Lambda
+
+### Investigation Process
+
+Used API Gateway request ID `WU3mnjwJIAMEJeQ=` to trace the exact request:
+
+1. ✅ Found API Gateway log showing route matched: `GET /platform/lambda-config/{configKey}`
+2. ✅ Confirmed `resourcePath: "-"` (indicates authorization failure before integration)
+3. ✅ Checked authorizer logs at exact timestamp - **NO logs** (authorizer not invoked!)
+4. ✅ Found earlier authorizer invocation 80 seconds before the 403
+5. ✅ Confirmed **cached authorizer response** was being used
+6. ✅ Read authorizer code and found the route-specific policy bug
+
+### Files Fixed
+
+**Templates (Template-First Workflow):**
+1. `templates/_project-infra-template/lambdas/api-gateway-authorizer/lambda_function.py`
+
+**Test13 Project:**
+1. `sts/test13/ai-sec-infra/lambdas/api-gateway-authorizer/lambda_function.py`
+
+### Changes Made
+
+**Before (Broken):**
+```python
+# Allow all methods on this API
+resource = method_arn.rsplit("/", 1)[0] + "/*"
+# Creates: arn:.../GET/profiles/* (TOO SPECIFIC!)
+```
+
+**After (Fixed):**
+```python
+# Allow all methods and paths on this API
+# Extract API ARN (format: arn:aws:execute-api:region:account:api-id/stage/method/path)
+api_parts = method_arn.split("/")
+api_arn = "/".join(api_parts[:2])  # Get arn:...:api-id/stage
+resource = f"{api_arn}/*/*"  # Allow all methods and paths
+# Creates: arn:.../$default/*/* (ALLOWS ALL ROUTES!)
+```
+
+### Why This Works
+
+- Authorizer now grants access to **ALL routes** on the API, not just specific patterns
+- Cached policies allow access to any route, not just the first one accessed
+- Eliminates route-specific authorization failures
+- One successful authorization works for entire API
+
+### Additional Fix: Module-MGMT Outputs.tf
+
+Also fixed a related issue where `module-mgmt/infrastructure/outputs.tf` was using Lambda **alias ARN** instead of **function ARN**:
+
+**Changed:**
+```terraform
+integration = aws_lambda_alias.lambda_mgmt.invoke_arn
+# Result: arn:...function:name:live (breaks permission regex)
+```
+
+**To:**
+```terraform
+integration = aws_lambda_function.lambda_mgmt.invoke_arn
+# Result: arn:...function:name (works correctly)
+```
+
+This fixed Lambda permission creation in the modular API Gateway.
+
+### Testing Results
+✅ User confirmed fix works - Platform owner can now access `/platform/lambda-config/lambda_warming` successfully after redeployment!
+
+---
 
 ## Session: December 28, 2025 (3:30 PM - 4:20 PM) - Session 35
 
