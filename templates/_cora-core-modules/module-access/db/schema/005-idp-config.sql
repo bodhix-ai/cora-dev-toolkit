@@ -151,7 +151,7 @@ CREATE POLICY idp_config_select_policy ON platform_idp_config
         EXISTS (
             SELECT 1 FROM user_profiles p
             WHERE p.user_id = auth.uid()
-            AND p.global_role IN ('super_admin', 'platform_owner', 'platform_admin', 'global_owner', 'global_admin')
+            AND p.global_role IN ('platform_owner', 'platform_admin')
         )
     );
 
@@ -163,7 +163,7 @@ CREATE POLICY idp_config_insert_policy ON platform_idp_config
         EXISTS (
             SELECT 1 FROM user_profiles p 
             WHERE p.user_id = auth.uid() 
-            AND p.global_role IN ('super_admin', 'platform_owner', 'platform_admin', 'global_owner', 'global_admin')
+            AND p.global_role IN ('platform_owner', 'platform_admin')
         )
     );
 
@@ -175,14 +175,14 @@ CREATE POLICY idp_config_update_policy ON platform_idp_config
         EXISTS (
             SELECT 1 FROM user_profiles p 
             WHERE p.user_id = auth.uid() 
-            AND p.global_role IN ('super_admin', 'platform_owner', 'platform_admin', 'global_owner', 'global_admin')
+            AND p.global_role IN ('platform_owner', 'platform_admin')
         )
     )
     WITH CHECK (
         EXISTS (
             SELECT 1 FROM user_profiles p 
             WHERE p.user_id = auth.uid() 
-            AND p.global_role IN ('super_admin', 'platform_owner', 'platform_admin', 'global_owner', 'global_admin')
+            AND p.global_role IN ('platform_owner', 'platform_admin')
         )
     );
 
@@ -194,7 +194,7 @@ CREATE POLICY idp_audit_select_policy ON platform_idp_audit_log
         EXISTS (
             SELECT 1 FROM user_profiles p 
             WHERE p.user_id = auth.uid() 
-            AND p.global_role IN ('super_admin', 'platform_owner', 'platform_admin', 'global_owner', 'global_admin')
+            AND p.global_role IN ('platform_owner', 'platform_admin')
         )
     );
 

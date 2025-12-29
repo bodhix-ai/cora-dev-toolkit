@@ -262,7 +262,7 @@ CREATE POLICY user_auth_log_select_admin ON public.user_auth_log
         EXISTS (
             SELECT 1 FROM public.user_profiles p
             WHERE p.user_id = auth.uid()
-            AND p.global_role IN ('platform_owner', 'platform_admin', 'super_admin', 'global_admin', 'global_owner')
+            AND p.global_role IN ('platform_owner', 'platform_admin')
         )
     );
 
@@ -290,7 +290,7 @@ CREATE POLICY user_sessions_select_admin ON public.user_sessions
         EXISTS (
             SELECT 1 FROM public.user_profiles p
             WHERE p.user_id = auth.uid()
-            AND p.global_role IN ('platform_owner', 'platform_admin', 'super_admin', 'global_admin', 'global_owner')
+            AND p.global_role IN ('platform_owner', 'platform_admin')
         )
     );
 
