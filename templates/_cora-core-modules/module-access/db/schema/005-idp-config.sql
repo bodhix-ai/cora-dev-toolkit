@@ -41,12 +41,12 @@ CREATE TABLE IF NOT EXISTS platform_idp_config (
 );
 
 -- Only one active IDP at a time (partial unique index)
-CREATE UNIQUE INDEX idx_single_active_idp 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_single_active_idp 
     ON platform_idp_config (is_active) 
     WHERE is_active = true;
 
 -- Index for quick lookups
-CREATE INDEX idx_idp_provider_type ON platform_idp_config(provider_type);
+CREATE INDEX IF NOT EXISTS idx_idp_provider_type ON platform_idp_config(provider_type);
 
 -- -----------------------------------------------------------------------------
 -- Table: platform_idp_audit_log
@@ -72,8 +72,8 @@ CREATE TABLE IF NOT EXISTS platform_idp_audit_log (
     user_agent TEXT
 );
 
-CREATE INDEX idx_idp_audit_config ON platform_idp_audit_log(idp_config_id);
-CREATE INDEX idx_idp_audit_performed_at ON platform_idp_audit_log(performed_at);
+CREATE INDEX IF NOT EXISTS idx_idp_audit_config ON platform_idp_audit_log(idp_config_id);
+CREATE INDEX IF NOT EXISTS idx_idp_audit_performed_at ON platform_idp_audit_log(performed_at);
 
 -- -----------------------------------------------------------------------------
 -- Function: update_idp_timestamp
@@ -87,8 +87,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_idp_config_timestamp
-    BEFORE UPDATE ON platform_idp_config
+DROP TRIGGER IF EXISTS trg_idp_config_timestamp ON platform_idp_config;
+CREATE TRIGGER trg_idp_config_timestamp BEFORE UPDATE ON platform_idp_config
     FOR EACH ROW
     EXECUTE FUNCTION update_idp_timestamp();
 

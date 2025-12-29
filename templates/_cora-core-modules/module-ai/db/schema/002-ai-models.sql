@@ -9,7 +9,7 @@
 -- AI_MODELS TABLE
 -- =============================================
 
-CREATE TABLE public.ai_models (
+CREATE TABLE IF NOT EXISTS public.ai_models (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     provider_id UUID NOT NULL REFERENCES public.ai_providers(id) ON DELETE CASCADE,
     model_id TEXT NOT NULL,  -- Unique identifier from the provider
@@ -34,10 +34,10 @@ CREATE TABLE public.ai_models (
 -- INDEXES
 -- =============================================
 
-CREATE INDEX idx_ai_models_provider_id ON public.ai_models(provider_id);
-CREATE INDEX idx_ai_models_model_id ON public.ai_models(model_id);
-CREATE INDEX idx_ai_models_status ON public.ai_models(status);
-CREATE INDEX idx_ai_models_validation_category ON public.ai_models(validation_category);
+CREATE INDEX IF NOT EXISTS idx_ai_models_provider_id ON public.ai_models(provider_id);
+CREATE INDEX IF NOT EXISTS idx_ai_models_model_id ON public.ai_models(model_id);
+CREATE INDEX IF NOT EXISTS idx_ai_models_status ON public.ai_models(status);
+CREATE INDEX IF NOT EXISTS idx_ai_models_validation_category ON public.ai_models(validation_category);
 
 -- =============================================
 -- COMMENTS
@@ -57,6 +57,7 @@ COMMENT ON COLUMN public.ai_models.validation_category IS 'Categorizes validatio
 ALTER TABLE public.ai_models ENABLE ROW LEVEL SECURITY;
 
 -- Admin-only access (super_admin, global_owner, global_admin)
+DROP POLICY IF EXISTS "ai_models_admin_access" ON public.ai_models;
 CREATE POLICY "ai_models_admin_access" ON public.ai_models
     FOR ALL
     USING (
@@ -68,8 +69,8 @@ CREATE POLICY "ai_models_admin_access" ON public.ai_models
     );
 
 -- Service role has full access
-CREATE POLICY "Service role full access to ai_models" 
-    ON public.ai_models
+DROP POLICY IF EXISTS "Service role full access to ai_models" ON public.ai_models;
+CREATE POLICY "Service role full access to ai_models" ON public.ai_models
     FOR ALL
     USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
 
@@ -86,8 +87,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER ai_models_updated_at
-    BEFORE UPDATE ON public.ai_models
+DROP TRIGGER IF EXISTS ai_models_updated_at ON public.ai_models;
+CREATE TRIGGER ai_models_updated_at BEFORE UPDATE ON public.ai_models
     FOR EACH ROW
     EXECUTE FUNCTION update_ai_models_updated_at();
 
@@ -105,7 +106,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER ai_models_created_by
-    BEFORE INSERT ON public.ai_models
+DROP TRIGGER IF EXISTS ai_models_created_by ON public.ai_models;
+CREATE TRIGGER ai_models_created_by BEFORE INSERT ON public.ai_models
     FOR EACH ROW
     EXECUTE FUNCTION set_ai_models_created_by();

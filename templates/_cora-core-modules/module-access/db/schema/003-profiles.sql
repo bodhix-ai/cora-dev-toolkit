@@ -116,27 +116,27 @@ DROP POLICY IF EXISTS "Users can create own profile" ON public.user_profiles;
 DROP POLICY IF EXISTS "Service role full access to user_profiles" ON public.user_profiles;
 
 -- Recreate policies (now idempotent)
-CREATE POLICY "Users can view own profile" 
-    ON public.user_profiles
+DROP POLICY IF EXISTS "Users can view own profile" ON public.user_profiles;
+CREATE POLICY "Users can view own profile" ON public.user_profiles
     FOR SELECT 
     TO authenticated
     USING (user_id = auth.uid());
 
-CREATE POLICY "Users can update own profile" 
-    ON public.user_profiles
+DROP POLICY IF EXISTS "Users can update own profile" ON public.user_profiles;
+CREATE POLICY "Users can update own profile" ON public.user_profiles
     FOR UPDATE 
     TO authenticated
     USING (user_id = auth.uid())
     WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Users can create own profile" 
-    ON public.user_profiles
+DROP POLICY IF EXISTS "Users can create own profile" ON public.user_profiles;
+CREATE POLICY "Users can create own profile" ON public.user_profiles
     FOR INSERT 
     TO authenticated
     WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Service role full access to user_profiles" 
-    ON public.user_profiles
+DROP POLICY IF EXISTS "Service role full access to user_profiles" ON public.user_profiles;
+CREATE POLICY "Service role full access to user_profiles" ON public.user_profiles
     FOR ALL
     USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
 
@@ -155,7 +155,7 @@ $$ LANGUAGE plpgsql;
 
 -- Drop and recreate trigger (idempotent)
 DROP TRIGGER IF EXISTS user_profiles_updated_at ON public.user_profiles;
-CREATE TRIGGER user_profiles_updated_at
-    BEFORE UPDATE ON public.user_profiles
+DROP TRIGGER IF EXISTS user_profiles_updated_at ON public.user_profiles;
+CREATE TRIGGER user_profiles_updated_at BEFORE UPDATE ON public.user_profiles
     FOR EACH ROW
     EXECUTE FUNCTION update_user_profiles_updated_at();

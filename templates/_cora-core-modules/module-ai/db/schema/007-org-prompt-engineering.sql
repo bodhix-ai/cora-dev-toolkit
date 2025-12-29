@@ -9,7 +9,7 @@
 -- ORG_PROMPT_ENGINEERING TABLE
 -- =============================================
 
-CREATE TABLE public.org_prompt_engineering (
+CREATE TABLE IF NOT EXISTS public.org_prompt_engineering (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     org_id uuid NOT NULL,
     policy_mission_type text,
@@ -51,7 +51,7 @@ ALTER TABLE ONLY public.org_prompt_engineering
 -- INDEXES
 -- =============================================
 
-CREATE INDEX idx_org_prompt_engineering_org_id ON public.org_prompt_engineering USING btree (org_id);
+CREATE INDEX IF NOT EXISTS idx_org_prompt_engineering_org_id ON public.org_prompt_engineering USING btree (org_id);
 
 -- =============================================
 -- TRIGGERS
@@ -65,8 +65,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_org_prompt_engineering_updated_at 
-    BEFORE UPDATE ON public.org_prompt_engineering 
+DROP TRIGGER IF EXISTS update_org_prompt_engineering_updated_at ON public.org_prompt_engineering;
+CREATE TRIGGER update_org_prompt_engineering_updated_at BEFORE UPDATE ON public.org_prompt_engineering 
     FOR EACH ROW 
     EXECUTE FUNCTION update_org_prompt_engineering_updated_at();
 
@@ -92,8 +92,8 @@ ALTER TABLE ONLY public.org_prompt_engineering
 ALTER TABLE public.org_prompt_engineering ENABLE ROW LEVEL SECURITY;
 
 -- Super admins can manage all prompt engineering settings
-CREATE POLICY "Super admins can manage prompt engineering" 
-    ON public.org_prompt_engineering 
+DROP POLICY IF EXISTS "Super admins can manage prompt engineering" ON public.org_prompt_engineering;
+CREATE POLICY "Super admins can manage prompt engineering" ON public.org_prompt_engineering 
     TO authenticated 
     USING ((EXISTS ( SELECT 1
        FROM public.profiles

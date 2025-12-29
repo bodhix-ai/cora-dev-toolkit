@@ -91,8 +91,8 @@ DROP POLICY IF EXISTS "org_email_domains_delete" ON public.org_email_domains;
 
 -- Org members can view their org's email domains
 -- Platform admins can view all email domains
-CREATE POLICY "org_email_domains_select" 
-    ON public.org_email_domains
+DROP POLICY IF EXISTS "org_email_domains_select" ON public.org_email_domains;
+CREATE POLICY "org_email_domains_select" ON public.org_email_domains
     FOR SELECT 
     TO authenticated
     USING (
@@ -114,8 +114,8 @@ CREATE POLICY "org_email_domains_select"
 
 -- Org owners/admins can insert email domains for their org
 -- Platform admins can insert email domains for any org
-CREATE POLICY "org_email_domains_insert" 
-    ON public.org_email_domains
+DROP POLICY IF EXISTS "org_email_domains_insert" ON public.org_email_domains;
+CREATE POLICY "org_email_domains_insert" ON public.org_email_domains
     FOR INSERT 
     TO authenticated
     WITH CHECK (
@@ -138,8 +138,8 @@ CREATE POLICY "org_email_domains_insert"
 
 -- Org owners/admins can update email domains for their org
 -- Platform admins can update email domains for any org
-CREATE POLICY "org_email_domains_update" 
-    ON public.org_email_domains
+DROP POLICY IF EXISTS "org_email_domains_update" ON public.org_email_domains;
+CREATE POLICY "org_email_domains_update" ON public.org_email_domains
     FOR UPDATE 
     TO authenticated
     USING (
@@ -178,8 +178,8 @@ CREATE POLICY "org_email_domains_update"
 
 -- Org owners/admins can delete email domains for their org
 -- Platform admins can delete email domains for any org
-CREATE POLICY "org_email_domains_delete" 
-    ON public.org_email_domains
+DROP POLICY IF EXISTS "org_email_domains_delete" ON public.org_email_domains;
+CREATE POLICY "org_email_domains_delete" ON public.org_email_domains
     FOR DELETE 
     TO authenticated
     USING (
@@ -215,8 +215,8 @@ DROP POLICY IF EXISTS "user_invites_delete" ON public.user_invites;
 -- Org members can view invites for their orgs
 -- Platform admins can view all invites
 -- Users can view invites addressed to them
-CREATE POLICY "user_invites_select" 
-    ON public.user_invites
+DROP POLICY IF EXISTS "user_invites_select" ON public.user_invites;
+CREATE POLICY "user_invites_select" ON public.user_invites
     FOR SELECT 
     TO authenticated
     USING (
@@ -245,8 +245,8 @@ CREATE POLICY "user_invites_select"
 
 -- Org owners/admins can create invites for their org
 -- Platform admins can create invites for any org
-CREATE POLICY "user_invites_insert" 
-    ON public.user_invites
+DROP POLICY IF EXISTS "user_invites_insert" ON public.user_invites;
+CREATE POLICY "user_invites_insert" ON public.user_invites
     FOR INSERT 
     TO authenticated
     WITH CHECK (
@@ -269,8 +269,8 @@ CREATE POLICY "user_invites_insert"
 
 -- Org owners/admins can update invites for their org
 -- Platform admins can update any invite
-CREATE POLICY "user_invites_update" 
-    ON public.user_invites
+DROP POLICY IF EXISTS "user_invites_update" ON public.user_invites;
+CREATE POLICY "user_invites_update" ON public.user_invites
     FOR UPDATE 
     TO authenticated
     USING (
@@ -309,8 +309,8 @@ CREATE POLICY "user_invites_update"
 
 -- Org owners/admins can delete invites for their org
 -- Platform admins can delete any invite
-CREATE POLICY "user_invites_delete" 
-    ON public.user_invites
+DROP POLICY IF EXISTS "user_invites_delete" ON public.user_invites;
+CREATE POLICY "user_invites_delete" ON public.user_invites
     FOR DELETE 
     TO authenticated
     USING (
@@ -346,8 +346,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS org_email_domains_updated_at ON public.org_email_domains;
-CREATE TRIGGER org_email_domains_updated_at
-    BEFORE UPDATE ON public.org_email_domains
+DROP TRIGGER IF EXISTS org_email_domains_updated_at ON public.org_email_domains;
+CREATE TRIGGER org_email_domains_updated_at BEFORE UPDATE ON public.org_email_domains
     FOR EACH ROW
     EXECUTE FUNCTION update_org_email_domains_updated_at();
 
@@ -360,8 +360,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS user_invites_updated_at ON public.user_invites;
-CREATE TRIGGER user_invites_updated_at
-    BEFORE UPDATE ON public.user_invites
+DROP TRIGGER IF EXISTS user_invites_updated_at ON public.user_invites;
+CREATE TRIGGER user_invites_updated_at BEFORE UPDATE ON public.user_invites
     FOR EACH ROW
     EXECUTE FUNCTION update_user_invites_updated_at();
 

@@ -118,8 +118,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS user_sessions_activity_trigger ON public.user_sessions;
-CREATE TRIGGER user_sessions_activity_trigger
-    BEFORE UPDATE ON public.user_sessions
+DROP TRIGGER IF EXISTS user_sessions_activity_trigger ON public.user_sessions;
+CREATE TRIGGER user_sessions_activity_trigger BEFORE UPDATE ON public.user_sessions
     FOR EACH ROW
     WHEN (OLD.ended_at IS NULL AND NEW.ended_at IS NULL)
     EXECUTE FUNCTION update_session_activity();

@@ -9,7 +9,7 @@
 -- AI_PROVIDERS TABLE
 -- =============================================
 
-CREATE TABLE public.ai_providers (
+CREATE TABLE IF NOT EXISTS public.ai_providers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL UNIQUE,
     display_name TEXT,
@@ -26,9 +26,9 @@ CREATE TABLE public.ai_providers (
 -- INDEXES
 -- =============================================
 
-CREATE INDEX idx_ai_providers_name ON public.ai_providers(name);
-CREATE INDEX idx_ai_providers_provider_type ON public.ai_providers(provider_type);
-CREATE INDEX idx_ai_providers_is_active ON public.ai_providers(is_active);
+CREATE INDEX IF NOT EXISTS idx_ai_providers_name ON public.ai_providers(name);
+CREATE INDEX IF NOT EXISTS idx_ai_providers_provider_type ON public.ai_providers(provider_type);
+CREATE INDEX IF NOT EXISTS idx_ai_providers_is_active ON public.ai_providers(is_active);
 
 -- =============================================
 -- COMMENTS
@@ -47,6 +47,7 @@ COMMENT ON COLUMN public.ai_providers.is_active IS 'Whether provider is currentl
 ALTER TABLE public.ai_providers ENABLE ROW LEVEL SECURITY;
 
 -- Admin-only access (super_admin, global_owner, global_admin)
+DROP POLICY IF EXISTS "ai_providers_admin_access" ON public.ai_providers;
 CREATE POLICY "ai_providers_admin_access" ON public.ai_providers
     FOR ALL
     USING (
@@ -58,8 +59,8 @@ CREATE POLICY "ai_providers_admin_access" ON public.ai_providers
     );
 
 -- Service role has full access
-CREATE POLICY "Service role full access to ai_providers" 
-    ON public.ai_providers
+DROP POLICY IF EXISTS "Service role full access to ai_providers" ON public.ai_providers;
+CREATE POLICY "Service role full access to ai_providers" ON public.ai_providers
     FOR ALL
     USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
 
@@ -76,8 +77,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER ai_providers_updated_at
-    BEFORE UPDATE ON public.ai_providers
+DROP TRIGGER IF EXISTS ai_providers_updated_at ON public.ai_providers;
+CREATE TRIGGER ai_providers_updated_at BEFORE UPDATE ON public.ai_providers
     FOR EACH ROW
     EXECUTE FUNCTION update_ai_providers_updated_at();
 
@@ -95,7 +96,25 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER ai_providers_created_by
-    BEFORE INSERT ON public.ai_providers
+DROP TRIGGER IF EXISTS ai_providers_created_by ON public.ai_providers;
+CREATE TRIGGER ai_providers_created_by BEFORE INSERT ON public.ai_providers
     FOR EACH ROW
     EXECUTE FUNCTION set_ai_providers_created_by();
+
+-- =============================================
+-- SEED DATA: Default AI Providers
+-- =============================================
+-- These are the standard AI providers available in CORA
+-- Idempotent: Safe to run multiple times
+
+INSERT INTO public.ai_providers (name, display_name, provider_type, credentials_secret_path, is_active)
+VALUES 
+    ('google_ai', 'Google AI', 'google_vertex', NULL, true),
+    ('azure_ai_foundry', 'Azure AI Foundry', 'azure_openai', NULL, true),
+    ('aws_bedrock', 'AWS Bedrock', 'aws_bedrock', NULL, true)
+ON CONFLICT (name) 
+DO UPDATE SET
+    display_name = EXCLUDED.display_name,
+    provider_type = EXCLUDED.provider_type,
+    is_active = EXCLUDED.is_active,
+    updated_at = NOW();
