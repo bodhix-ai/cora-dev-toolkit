@@ -144,6 +144,7 @@ ALTER TABLE platform_idp_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE platform_idp_audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Platform admins can read IDP config
+DROP POLICY IF EXISTS idp_config_select_policy ON platform_idp_config;
 CREATE POLICY idp_config_select_policy ON platform_idp_config
     FOR SELECT
     TO authenticated
@@ -156,6 +157,7 @@ CREATE POLICY idp_config_select_policy ON platform_idp_config
     );
 
 -- Platform admins can insert IDP config
+DROP POLICY IF EXISTS idp_config_insert_policy ON platform_idp_config;
 CREATE POLICY idp_config_insert_policy ON platform_idp_config
     FOR INSERT
     TO authenticated
@@ -168,6 +170,7 @@ CREATE POLICY idp_config_insert_policy ON platform_idp_config
     );
 
 -- Platform admins can update IDP config
+DROP POLICY IF EXISTS idp_config_update_policy ON platform_idp_config;
 CREATE POLICY idp_config_update_policy ON platform_idp_config
     FOR UPDATE
     TO authenticated
@@ -187,6 +190,7 @@ CREATE POLICY idp_config_update_policy ON platform_idp_config
     );
 
 -- Platform admins can read audit log
+DROP POLICY IF EXISTS idp_audit_select_policy ON platform_idp_audit_log;
 CREATE POLICY idp_audit_select_policy ON platform_idp_audit_log
     FOR SELECT
     TO authenticated
@@ -199,6 +203,7 @@ CREATE POLICY idp_audit_select_policy ON platform_idp_audit_log
     );
 
 -- Service role can insert audit logs (from Lambda)
+DROP POLICY IF EXISTS idp_audit_insert_policy ON platform_idp_audit_log;
 CREATE POLICY idp_audit_insert_policy ON platform_idp_audit_log
     FOR INSERT
     TO service_role
