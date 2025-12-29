@@ -9,7 +9,7 @@
 -- AI_MODEL_VALIDATION_HISTORY TABLE
 -- =============================================
 
-CREATE TABLE public.ai_model_validation_history (
+CREATE TABLE IF NOT EXISTS public.ai_model_validation_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     provider_id UUID NOT NULL REFERENCES public.ai_providers(id) ON DELETE CASCADE,
     model_id UUID REFERENCES public.ai_models(id) ON DELETE CASCADE,
@@ -27,11 +27,11 @@ CREATE TABLE public.ai_model_validation_history (
 -- INDEXES
 -- =============================================
 
-CREATE INDEX idx_ai_model_validation_history_provider 
+CREATE INDEX IF NOT EXISTS idx_ai_model_validation_history_provider 
     ON public.ai_model_validation_history(provider_id, validated_at DESC);
-CREATE INDEX idx_ai_model_validation_history_model 
+CREATE INDEX IF NOT EXISTS idx_ai_model_validation_history_model 
     ON public.ai_model_validation_history(model_id, validated_at DESC);
-CREATE INDEX idx_ai_model_validation_history_status 
+CREATE INDEX IF NOT EXISTS idx_ai_model_validation_history_status 
     ON public.ai_model_validation_history(status);
 
 -- =============================================
@@ -51,8 +51,8 @@ COMMENT ON COLUMN public.ai_model_validation_history.validation_category IS 'Cat
 ALTER TABLE public.ai_model_validation_history ENABLE ROW LEVEL SECURITY;
 
 -- Admin-only access (super_admin, global_owner, global_admin)
-CREATE POLICY "ai_model_validation_history_admin_access" 
-    ON public.ai_model_validation_history
+DROP POLICY IF EXISTS "ai_model_validation_history_admin_access" ON public.ai_model_validation_history;
+CREATE POLICY "ai_model_validation_history_admin_access" ON public.ai_model_validation_history
     FOR ALL
     USING (
         EXISTS (
@@ -63,8 +63,8 @@ CREATE POLICY "ai_model_validation_history_admin_access"
     );
 
 -- Service role has full access (for Lambda functions)
-CREATE POLICY "Service role full access to ai_model_validation_history" 
-    ON public.ai_model_validation_history
+DROP POLICY IF EXISTS "Service role full access to ai_model_validation_history" ON public.ai_model_validation_history;
+CREATE POLICY "Service role full access to ai_model_validation_history" ON public.ai_model_validation_history
     FOR ALL
     USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
 
@@ -80,7 +80,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER ai_model_validation_history_updated_at
-    BEFORE UPDATE ON public.ai_model_validation_history
+DROP TRIGGER IF EXISTS ai_model_validation_history_updated_at ON public.ai_model_validation_history;
+CREATE TRIGGER ai_model_validation_history_updated_at BEFORE UPDATE ON public.ai_model_validation_history
     FOR EACH ROW
     EXECUTE FUNCTION update_ai_model_validation_history_updated_at();

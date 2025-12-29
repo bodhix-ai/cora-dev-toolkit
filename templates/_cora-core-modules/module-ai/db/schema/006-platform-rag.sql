@@ -9,7 +9,7 @@
 -- PLATFORM_RAG TABLE
 -- =============================================
 
-CREATE TABLE public.platform_rag (
+CREATE TABLE IF NOT EXISTS public.platform_rag (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     available_embedding_models text[] DEFAULT ARRAY['text-embedding-3-small'::text, 'text-embedding-3-large'::text] NOT NULL,
     default_embedding_model text DEFAULT 'text-embedding-3-small'::text NOT NULL,
@@ -68,13 +68,13 @@ ALTER TABLE ONLY public.platform_rag
 -- INDEXES
 -- =============================================
 
-CREATE INDEX idx_platform_rag_active_providers ON public.platform_rag USING gin (active_providers);
-CREATE INDEX idx_platform_rag_chat_deployment ON public.platform_rag USING btree (default_chat_model_id);
-CREATE INDEX idx_platform_rag_embedding_deployment ON public.platform_rag USING btree (default_embedding_model_id);
-CREATE INDEX idx_platform_rag_provider_configs ON public.platform_rag USING gin (provider_configurations);
+CREATE INDEX IF NOT EXISTS idx_platform_rag_active_providers ON public.platform_rag USING gin (active_providers);
+CREATE INDEX IF NOT EXISTS idx_platform_rag_chat_deployment ON public.platform_rag USING btree (default_chat_model_id);
+CREATE INDEX IF NOT EXISTS idx_platform_rag_embedding_deployment ON public.platform_rag USING btree (default_embedding_model_id);
+CREATE INDEX IF NOT EXISTS idx_platform_rag_provider_configs ON public.platform_rag USING gin (provider_configurations);
 
 -- Singleton constraint - only one platform_rag record allowed
-CREATE UNIQUE INDEX platform_rag_singleton ON public.platform_rag USING btree ((true));
+CREATE UNIQUE INDEX IF NOT EXISTS platform_rag_singleton ON public.platform_rag USING btree ((true));
 
 -- =============================================
 -- TRIGGERS
@@ -88,8 +88,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_platform_rag_updated_at 
-    BEFORE UPDATE ON public.platform_rag 
+DROP TRIGGER IF EXISTS update_platform_rag_updated_at ON public.platform_rag;
+CREATE TRIGGER update_platform_rag_updated_at BEFORE UPDATE ON public.platform_rag 
     FOR EACH ROW 
     EXECUTE FUNCTION update_platform_rag_updated_at();
 
@@ -121,15 +121,15 @@ ALTER TABLE ONLY public.platform_rag
 ALTER TABLE public.platform_rag ENABLE ROW LEVEL SECURITY;
 
 -- Authenticated users can view platform RAG settings
-CREATE POLICY "Authenticated users can view platform_rag" 
-    ON public.platform_rag 
+DROP POLICY IF EXISTS "Authenticated users can view platform_rag" ON public.platform_rag;
+CREATE POLICY "Authenticated users can view platform_rag" ON public.platform_rag 
     FOR SELECT 
     TO authenticated 
     USING (true);
 
 -- Super admins can modify platform RAG settings
-CREATE POLICY "Super admins can modify platform_rag" 
-    ON public.platform_rag 
+DROP POLICY IF EXISTS "Super admins can modify platform_rag" ON public.platform_rag;
+CREATE POLICY "Super admins can modify platform_rag" ON public.platform_rag 
     TO authenticated 
     USING ((EXISTS ( SELECT 1
        FROM public.profiles

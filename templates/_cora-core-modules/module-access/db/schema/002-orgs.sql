@@ -8,7 +8,7 @@
 -- ORGS TABLE
 -- =============================================
 
-CREATE TABLE public.orgs (
+CREATE TABLE IF NOT EXISTS public.orgs (
     id UUID NOT NULL DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     slug TEXT NOT NULL,
@@ -53,30 +53,30 @@ COMMENT ON COLUMN public.orgs.logo_url IS 'URL to organization logo image';
 ALTER TABLE public.orgs ENABLE ROW LEVEL SECURITY;
 
 -- Organization owners can update their organizations
-CREATE POLICY "Org owners can update org" 
-    ON public.orgs
+DROP POLICY IF EXISTS "Org owners can update org" ON public.orgs;
+CREATE POLICY "Org owners can update org" ON public.orgs
     FOR UPDATE 
     TO authenticated
     USING (owner_id = auth.uid())
     WITH CHECK (owner_id = auth.uid());
 
 -- Users can create new organizations
-CREATE POLICY "Users can create organizations" 
-    ON public.orgs
+DROP POLICY IF EXISTS "Users can create organizations" ON public.orgs;
+CREATE POLICY "Users can create organizations" ON public.orgs
     FOR INSERT 
     TO authenticated
     WITH CHECK (owner_id = auth.uid());
 
 -- Organization owners can delete their organizations
-CREATE POLICY "Org owners can delete org" 
-    ON public.orgs
+DROP POLICY IF EXISTS "Org owners can delete org" ON public.orgs;
+CREATE POLICY "Org owners can delete org" ON public.orgs
     FOR DELETE 
     TO authenticated
     USING (owner_id = auth.uid());
 
 -- Service role has full access
-CREATE POLICY "Service role full access to orgs" 
-    ON public.orgs
+DROP POLICY IF EXISTS "Service role full access to orgs" ON public.orgs;
+CREATE POLICY "Service role full access to orgs" ON public.orgs
     FOR ALL
     USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
 
@@ -92,7 +92,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_orgs_updated_at 
-    BEFORE UPDATE ON orgs 
+DROP TRIGGER IF EXISTS update_orgs_updated_at ON orgs;
+CREATE TRIGGER update_orgs_updated_at BEFORE UPDATE ON orgs 
     FOR EACH ROW
     EXECUTE FUNCTION update_orgs_updated_at();

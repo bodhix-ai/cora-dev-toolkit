@@ -1,12 +1,14 @@
--- Lambda Management Module - Platform Lambda Config Table
--- Created: December 8, 2025
--- Purpose: Store Lambda warming schedules and future management configurations
+-- =============================================
+-- MODULE-MGMT: Platform Lambda Config
+-- =============================================
+-- Purpose: Platform-level Lambda management configurations
+-- Source: Created for CORA toolkit Dec 2025
 
--- Drop existing table if it exists (for development)
-DROP TABLE IF EXISTS platform_lambda_config CASCADE;
+-- =============================================
+-- PLATFORM_LAMBDA_CONFIG TABLE
+-- =============================================
 
--- Create platform_lambda_config table
-CREATE TABLE platform_lambda_config (
+CREATE TABLE IF NOT EXISTS public.platform_lambda_config (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     config_key VARCHAR(100) NOT NULL UNIQUE,
     config_value JSONB NOT NULL DEFAULT '{}',
@@ -22,12 +24,114 @@ CREATE TABLE platform_lambda_config (
     CONSTRAINT config_value_not_empty CHECK (jsonb_typeof(config_value) IS NOT NULL)
 );
 
--- Create indexes for common queries
-CREATE INDEX idx_platform_lambda_config_key ON platform_lambda_config(config_key);
-CREATE INDEX idx_platform_lambda_config_active ON platform_lambda_config(is_active);
-CREATE INDEX idx_platform_lambda_config_updated ON platform_lambda_config(updated_at DESC);
+-- =============================================
+-- INDEXES
+-- =============================================
 
--- Create updated_at trigger
+CREATE INDEX IF NOT EXISTS idx_platform_lambda_config_key ON public.platform_lambda_config(config_key);
+CREATE INDEX IF NOT EXISTS idx_platform_lambda_config_active ON public.platform_lambda_config(is_active);
+CREATE INDEX IF NOT EXISTS idx_platform_lambda_config_updated ON public.platform_lambda_config(updated_at DESC);
+
+-- =============================================
+-- COMMENTS
+-- =============================================
+
+COMMENT ON TABLE public.platform_lambda_config IS 'Platform-level Lambda management configurations including warming schedules, monitoring settings, and performance parameters';
+COMMENT ON COLUMN public.platform_lambda_config.config_key IS 'Unique configuration key (e.g., lambda_warming, monitoring_settings)';
+COMMENT ON COLUMN public.platform_lambda_config.config_value IS 'JSONB configuration value - structure depends on config_key';
+COMMENT ON COLUMN public.platform_lambda_config.description IS 'Human-readable description of configuration purpose';
+COMMENT ON COLUMN public.platform_lambda_config.is_active IS 'Whether this configuration is currently active';
+COMMENT ON COLUMN public.platform_lambda_config.created_by IS 'Platform admin who created this configuration';
+COMMENT ON COLUMN public.platform_lambda_config.updated_by IS 'Platform admin who last updated this configuration';
+
+-- =============================================
+-- ROW LEVEL SECURITY (RLS)
+-- =============================================
+
+ALTER TABLE public.platform_lambda_config ENABLE ROW LEVEL SECURITY;
+
+-- Platform admins can view all platform configs
+DROP POLICY IF EXISTS "Platform admins can view all platform configs" ON public.platform_lambda_config;
+CREATE POLICY "Platform admins can view all platform configs" ON public.platform_lambda_config
+FOR SELECT
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 
+        FROM public.user_profiles 
+        WHERE user_profiles.user_id = auth.uid() 
+        AND user_profiles.global_role IN ('platform_owner', 'platform_admin')
+    )
+);
+
+-- Platform admins can insert platform configs
+DROP POLICY IF EXISTS "Platform admins can insert platform configs" ON public.platform_lambda_config;
+CREATE POLICY "Platform admins can insert platform configs" ON public.platform_lambda_config
+FOR INSERT
+TO authenticated
+WITH CHECK (
+    EXISTS (
+        SELECT 1 
+        FROM public.user_profiles 
+        WHERE user_profiles.user_id = auth.uid() 
+        AND user_profiles.global_role IN ('platform_owner', 'platform_admin')
+    )
+);
+
+-- Platform admins can update platform configs
+DROP POLICY IF EXISTS "Platform admins can update platform configs" ON public.platform_lambda_config;
+CREATE POLICY "Platform admins can update platform configs" ON public.platform_lambda_config
+FOR UPDATE
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 
+        FROM public.user_profiles 
+        WHERE user_profiles.user_id = auth.uid() 
+        AND user_profiles.global_role IN ('platform_owner', 'platform_admin')
+    )
+)
+WITH CHECK (
+    EXISTS (
+        SELECT 1 
+        FROM public.user_profiles 
+        WHERE user_profiles.user_id = auth.uid() 
+        AND user_profiles.global_role IN ('platform_owner', 'platform_admin')
+    )
+);
+
+-- Platform admins can delete platform configs
+DROP POLICY IF EXISTS "Platform admins can delete platform configs" ON public.platform_lambda_config;
+CREATE POLICY "Platform admins can delete platform configs" ON public.platform_lambda_config
+FOR DELETE
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 
+        FROM public.user_profiles 
+        WHERE user_profiles.user_id = auth.uid() 
+        AND user_profiles.global_role IN ('platform_owner', 'platform_admin')
+    )
+);
+
+-- Service role has full access
+DROP POLICY IF EXISTS "Service role full access to platform_lambda_config" ON public.platform_lambda_config;
+CREATE POLICY "Service role full access to platform_lambda_config" ON public.platform_lambda_config
+FOR ALL
+USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
+
+-- Grant usage to authenticated users (RLS policies will restrict actual access)
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.platform_lambda_config TO authenticated;
+
+COMMENT ON POLICY "Platform admins can view all platform configs" ON public.platform_lambda_config IS 'Only platform_owner and platform_admin roles can view platform Lambda configurations';
+COMMENT ON POLICY "Platform admins can insert platform configs" ON public.platform_lambda_config IS 'Only platform_owner and platform_admin roles can create platform Lambda configurations';
+COMMENT ON POLICY "Platform admins can update platform configs" ON public.platform_lambda_config IS 'Only platform_owner and platform_admin roles can update platform Lambda configurations';
+COMMENT ON POLICY "Platform admins can delete platform configs" ON public.platform_lambda_config IS 'Only platform_owner and platform_admin roles can delete platform Lambda configurations';
+
+-- =============================================
+-- TRIGGER: Auto-update updated_at
+-- =============================================
+
 CREATE OR REPLACE FUNCTION update_platform_lambda_config_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -36,13 +140,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER platform_lambda_config_updated_at
-    BEFORE UPDATE ON platform_lambda_config
+DROP TRIGGER IF EXISTS platform_lambda_config_updated_at ON public.platform_lambda_config;
+CREATE TRIGGER platform_lambda_config_updated_at 
+    BEFORE UPDATE ON public.platform_lambda_config
     FOR EACH ROW
     EXECUTE FUNCTION update_platform_lambda_config_updated_at();
 
--- Insert default lambda_warming configuration
-INSERT INTO platform_lambda_config (config_key, config_value, description, is_active)
+-- =============================================
+-- SEED DATA: Default Lambda Warming Config
+-- =============================================
+-- Idempotent: Safe to run multiple times
+
+INSERT INTO public.platform_lambda_config (config_key, config_value, description, is_active)
 VALUES (
     'lambda_warming',
     jsonb_build_object(
@@ -86,12 +195,10 @@ VALUES (
     ),
     'Lambda warming schedule configuration - controls EventBridge rules for warming Lambda functions during business hours',
     true
-);
-
-COMMENT ON TABLE platform_lambda_config IS 'Platform-level Lambda management configurations including warming schedules, monitoring settings, and performance parameters';
-COMMENT ON COLUMN platform_lambda_config.config_key IS 'Unique configuration key (e.g., lambda_warming, monitoring_settings)';
-COMMENT ON COLUMN platform_lambda_config.config_value IS 'JSONB configuration value - structure depends on config_key';
-COMMENT ON COLUMN platform_lambda_config.description IS 'Human-readable description of configuration purpose';
-COMMENT ON COLUMN platform_lambda_config.is_active IS 'Whether this configuration is currently active';
-COMMENT ON COLUMN platform_lambda_config.created_by IS 'Super admin user who created this configuration';
-COMMENT ON COLUMN platform_lambda_config.updated_by IS 'Super admin user who last updated this configuration';
+)
+ON CONFLICT (config_key) 
+DO UPDATE SET
+    config_value = EXCLUDED.config_value,
+    description = EXCLUDED.description,
+    is_active = EXCLUDED.is_active,
+    updated_at = NOW();

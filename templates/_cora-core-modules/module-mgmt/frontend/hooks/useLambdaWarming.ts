@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import type { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
+import type { CoraAuthAdapter } from "@ai-sec/api-client";
 import { createLambdaMgmtClient } from "../lib/api";
 import type { LambdaWarmingConfig, LambdaConfig } from "../types";
 import { DEFAULT_WARMING_CONFIG } from "../types";
@@ -32,7 +32,7 @@ interface UseLambdaWarmingReturn {
  *
  * @example
  * ```tsx
- * import { useUser } from '@{{PROJECT_NAME}}/org-module-frontend';
+ * import { useUser } from '@ai-sec/org-module-frontend';
  *
  * function MyComponent() {
  *   const { authAdapter } = useUser();
@@ -102,7 +102,13 @@ export function useLambdaWarming(
 
       if (response) {
         setRawConfig(response);
-        const warmingConfig = response.config_value as LambdaWarmingConfig;
+        // Parse config_value - it's stored as a JSON string in the database
+        let warmingConfig: LambdaWarmingConfig;
+        if (typeof response.config_value === 'string') {
+          warmingConfig = JSON.parse(response.config_value) as LambdaWarmingConfig;
+        } else {
+          warmingConfig = response.config_value as unknown as LambdaWarmingConfig;
+        }
         setConfig(warmingConfig);
       } else {
         // No config exists yet - use default
@@ -141,7 +147,14 @@ export function useLambdaWarming(
 
         if (response) {
           setRawConfig(response);
-          setConfig(response.config_value as LambdaWarmingConfig);
+          // Parse config_value - it's stored as a JSON string in the database
+          let warmingConfig: LambdaWarmingConfig;
+          if (typeof response.config_value === 'string') {
+            warmingConfig = JSON.parse(response.config_value) as LambdaWarmingConfig;
+          } else {
+            warmingConfig = response.config_value as unknown as LambdaWarmingConfig;
+          }
+          setConfig(warmingConfig);
           return true;
         }
 
@@ -160,24 +173,43 @@ export function useLambdaWarming(
   );
 
   /**
-   * Toggle Lambda warming enabled/disabled
+   * Toggle Lambda warming enabled/disabled with optimistic UI updates
+   *
+   * Updates the UI immediately (optimistic), then makes the API call.
+   * If the API call fails, reverts to the previous state.
    *
    * @param enabled - Whether to enable or disable warming
    * @returns True if successful, false otherwise
    */
   const toggleEnabled = useCallback(
     async (enabled: boolean): Promise<boolean> => {
-      if (!config) {
+      // Store previous config for rollback if needed
+      const previousConfig = config;
+      
+      if (!previousConfig) {
         console.error("Cannot toggle enabled - no config loaded");
         return false;
       }
 
+      // Create updated config
       const updatedConfig: LambdaWarmingConfig = {
-        ...config,
+        ...previousConfig,
         enabled,
       };
 
-      return updateConfig(updatedConfig);
+      // Optimistic update - update UI immediately
+      setConfig(updatedConfig);
+
+      // Make API call in background
+      const success = await updateConfig(updatedConfig);
+
+      // If API call failed, revert to previous config
+      if (!success && previousConfig) {
+        console.warn("API call failed, reverting to previous config");
+        setConfig(previousConfig);
+      }
+
+      return success;
     },
     [config, updateConfig]
   );

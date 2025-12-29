@@ -1065,35 +1065,130 @@ run_migrations() {
   local encoded_password=$(url_encode_password "$SUPABASE_DB_PASSWORD")
   local conn_string="postgresql://${SUPABASE_DB_USER}:${encoded_password}@${SUPABASE_DB_HOST}:${SUPABASE_DB_PORT:-6543}/${SUPABASE_DB_NAME:-postgres}"
   
-  # Execute setup-database.sql
+  # Execute setup-database.sql with detailed output
   if [[ -f "${stack_dir}/scripts/setup-database.sql" ]]; then
     log_info "Executing setup-database.sql..."
-    if psql "$conn_string" -f "${stack_dir}/scripts/setup-database.sql" > /dev/null 2>&1; then
+    echo ""
+    echo "  ========================================="
+    echo "  Database Schema Creation - Detailed Log"
+    echo "  ========================================="
+    echo ""
+    
+    # Create temporary file to capture psql output
+    local psql_output=$(mktemp)
+    local psql_errors=$(mktemp)
+    
+    # Execute with verbose output
+    if psql "$conn_string" -f "${stack_dir}/scripts/setup-database.sql" \
+         -v ON_ERROR_STOP=1 \
+         --echo-errors \
+         > "$psql_output" 2> "$psql_errors"; then
+      
+      # Show summary of what was executed
+      log_info "Schema creation completed. Summary:"
+      echo ""
+      
+      # Count and show created objects
+      local tables_created=$(grep -c "CREATE TABLE" "$psql_output" 2>/dev/null || echo "0")
+      local indexes_created=$(grep -c "CREATE INDEX" "$psql_output" 2>/dev/null || echo "0")
+      local functions_created=$(grep -c "CREATE FUNCTION\|CREATE OR REPLACE FUNCTION" "$psql_output" 2>/dev/null || echo "0")
+      local policies_created=$(grep -c "CREATE POLICY" "$psql_output" 2>/dev/null || echo "0")
+      local inserts_done=$(grep -c "INSERT INTO" "$psql_output" 2>/dev/null || echo "0")
+      
+      echo "  📊 Objects Created:"
+      echo "     - Tables: $tables_created"
+      echo "     - Indexes: $indexes_created"
+      echo "     - Functions: $functions_created"
+      echo "     - Policies: $policies_created"
+      echo "     - Data Inserts: $inserts_done"
+      echo ""
+      
+      # Check for any warnings or notices in output
+      if grep -q "NOTICE\|WARNING" "$psql_output" 2>/dev/null; then
+        log_warn "Notices/Warnings detected:"
+        grep "NOTICE\|WARNING" "$psql_output" | sed 's/^/     /'
+        echo ""
+      fi
+      
       log_info "✅ Database schema created successfully"
+      
     else
       log_error "❌ Failed to execute setup-database.sql"
+      echo ""
+      log_error "PostgreSQL Errors:"
+      cat "$psql_errors" | sed 's/^/     /'
+      echo ""
+      
+      if grep -q "does not exist" "$psql_errors"; then
+        log_warn "💡 Possible causes:"
+        echo "     - Table referenced in policy/constraint doesn't exist yet"
+        echo "     - Schema files may be in wrong order"
+        echo "     - Check for typos in table names (e.g., 'profiles' vs 'user_profiles')"
+        echo ""
+      fi
+      
       log_warn "You may need to run migrations manually:"
       echo "  psql \"${conn_string}\" -f ${stack_dir}/scripts/setup-database.sql"
+      echo ""
+      log_info "Or run with verbose output to see details:"
+      echo "  psql \"${conn_string}\" -f ${stack_dir}/scripts/setup-database.sql -v ON_ERROR_STOP=1 --echo-all"
+      
+      rm -f "$psql_output" "$psql_errors"
       return 1
     fi
+    
+    # Cleanup temp files
+    rm -f "$psql_output" "$psql_errors"
   else
     log_warn "setup-database.sql not found, skipping schema creation"
   fi
   
-  # Execute seed-idp-config.sql
+  echo ""
+  
+  # Execute seed-idp-config.sql with detailed output
   if [[ -f "${stack_dir}/scripts/seed-idp-config.sql" ]]; then
     log_info "Executing seed-idp-config.sql..."
-    if psql "$conn_string" -f "${stack_dir}/scripts/seed-idp-config.sql" > /dev/null 2>&1; then
+    echo ""
+    
+    # Create temporary file to capture psql output
+    local psql_output=$(mktemp)
+    local psql_errors=$(mktemp)
+    
+    if psql "$conn_string" -f "${stack_dir}/scripts/seed-idp-config.sql" \
+         -v ON_ERROR_STOP=1 \
+         --echo-errors \
+         > "$psql_output" 2> "$psql_errors"; then
+      
+      log_info "IDP configuration seeded:"
+      
+      # Show what was inserted/updated
+      if grep -q "INSERT\|UPDATE" "$psql_output" 2>/dev/null; then
+        grep "INSERT\|UPDATE" "$psql_output" | sed 's/^/     /'
+      fi
+      
+      echo ""
       log_info "✅ IDP configuration seeded successfully"
+      
     else
       log_error "❌ Failed to execute seed-idp-config.sql"
+      echo ""
+      log_error "PostgreSQL Errors:"
+      cat "$psql_errors" | sed 's/^/     /'
+      echo ""
       log_warn "You may need to run seeding manually:"
       echo "  psql \"${conn_string}\" -f ${stack_dir}/scripts/seed-idp-config.sql"
+      
+      rm -f "$psql_output" "$psql_errors"
       return 1
     fi
+    
+    # Cleanup temp files
+    rm -f "$psql_output" "$psql_errors"
   else
     log_warn "seed-idp-config.sql not found, skipping IDP seeding"
   fi
+  
+  echo ""
   
   log_info "🎉 Database migrations completed successfully!"
 }

@@ -19,7 +19,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { useLambdaWarming } from "../../hooks/useLambdaWarming";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser } from "@ai-sec/module-access";
 
 /**
  * Schedule Tab - Lambda Warming Management
@@ -48,6 +48,15 @@ export function ScheduleTab(): React.ReactElement {
       setConcurrency(config.concurrency || 1);
     }
   }, [config]);
+
+  // Check if there are unsaved changes to schedule or concurrency
+  const hasChanges = React.useMemo(() => {
+    if (!config) return false;
+    return (
+      schedule !== (config.schedule || "rate(5 minutes)") ||
+      concurrency !== (config.concurrency || 1)
+    );
+  }, [config, schedule, concurrency]);
 
   const handleSave = async () => {
     if (!config) return;
@@ -122,7 +131,7 @@ export function ScheduleTab(): React.ReactElement {
             <Button
               variant="contained"
               onClick={handleSave}
-              disabled={!config?.enabled || saving}
+              disabled={!config?.enabled || saving || !hasChanges}
             >
               {saving ? "Saving..." : "Save Configuration"}
             </Button>

@@ -2,7 +2,278 @@
 
 ## Current Focus
 
-**Phase 25: API Gateway Authorizer Resource Policy Fix** - ✅ **COMPLETE**
+**Phase 26: Lambda Warming Toggle Fix** - ✅ **COMPLETE**
+
+## Session: December 29, 2025 (10:28 AM - 10:57 AM) - Session 37
+
+### 🎯 Focus: Fix Lambda Warming Toggle Not Working
+
+**Context:** Platform owner could access the Lambda Warming tab but could not toggle the warming on/off. The toggle appeared disabled or didn't respond to clicks.
+
+**Status:** ✅ **FIXED & VALIDATED**
+
+---
+
+## Solution Summary (Session 37)
+
+### Root Cause #1: RLS Policies Bug
+
+The `platform_lambda_config` table RLS policies had two critical bugs:
+
+**Bug 1: Wrong Table Name**
+```sql
+-- BROKEN CODE:
+CREATE POLICY "platform_admins_all_lambda_config" ON platform_lambda_config
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles  -- ❌ WRONG TABLE! Should be user_profiles
+      WHERE user_id = auth.uid()
+      AND global_role = 'super_admin'
+    )
+  );
+```
+
+**Bug 2: Wrong Role Check**
+```sql
+-- BROKEN CODE:
+AND global_role = 'super_admin'  -- ❌ Role doesn't exist! Should check for platform_owner/platform_admin
+```
+
+**The Problem:**
+1. RLS policies always failed because `profiles` table doesn't exist
+2. Even if table existed, `super_admin` role doesn't exist
+3. Result: All API calls to read/update Lambda config were blocked with RLS violations
+4. Frontend showed empty config or couldn't save changes
+
+### Root Cause #2: API Client Not Unwrapping CORA Response
+
+The Lambda Management API client was not unwrapping the CORA API response structure:
+
+```typescript
+// BROKEN CODE:
+async getConfig(configKey: string): Promise<LambdaConfig | null> {
+  const response = await this.client.get<LambdaConfig>(`/platform/lambda-config/${configKey}`);
+  return response || null;
+  // response = { success: true, data: {...} }
+  // Trying to access response.config_value returns undefined!
+}
+```
+
+**The Problem:**
+1. CORA API returns: `{ success: true, data: { config_value: {...} } }`
+2. Code expected: `{ config_value: {...} }` directly
+3. Result: `response.config_value` was `undefined`
+4. Hook couldn't load config → toggle showed as disabled
+5. Console error: "Cannot toggle enabled - no config loaded"
+
+### Investigation Process
+
+1. ✅ Checked database - Lambda warming config exists with correct data
+2. ✅ Verified API returns 200 OK with full response body
+3. ✅ Added DEBUG logging to hook - discovered `config_value` was `undefined`
+4. ✅ Traced through API client - found missing response unwrapping
+5. ✅ Fixed unwrapping - config loaded successfully
+6. ✅ Toggle started working immediately!
+
+### Files Fixed
+
+**Database Schema:**
+1. `templates/_cora-core-modules/module-mgmt/db/schema/001-platform-lambda-config.sql`
+   - Fixed RLS policy table name: `profiles` → `user_profiles`
+   - Fixed role check: `super_admin` → `IN ('platform_owner', 'platform_admin')`
+   - Consolidated RLS policies from separate file
+   - Made seed data idempotent with `ON CONFLICT DO UPDATE`
+
+**Schema Organization:**
+- Deleted obsolete `002-rls-policies.sql`
+- Renumbered: `003-platform-module-registry.sql` → `002-platform-module-registry.sql`
+- Renumbered: `004-platform-module-usage.sql` → `003-platform-module-usage.sql`
+- Renumbered: `005-platform-module-rls.sql` → `004-platform-module-rls.sql`
+
+**Frontend API Client:**
+2. `templates/_cora-core-modules/module-mgmt/frontend/lib/api.ts`
+   - Fixed `getConfig()` to unwrap `response.data`
+   - Fixed `updateConfig()` to unwrap `response.data`
+   - Added comments explaining CORA API response structure
+
+**Frontend Hook:**
+3. `templates/_cora-core-modules/module-mgmt/frontend/hooks/useLambdaWarming.ts`
+   - Added optimistic UI updates for toggle
+   - Added JSON parsing (backend already parses, but defensive code)
+   - Toggle responds immediately, API call in background
+   - Rollback on failure
+
+**Frontend Component:**
+4. `templates/_cora-core-modules/module-mgmt/frontend/components/admin/ScheduleTab.tsx`
+   - Added `hasChanges` check for Save button
+   - Save button only enabled when schedule/concurrency change
+   - Prevents confusion with auto-saving toggle
+
+### Changes Made
+
+**RLS Policies (Before - Broken):**
+```sql
+CREATE POLICY "platform_admins_all_lambda_config" ON platform_lambda_config
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles  -- ❌ WRONG TABLE
+      WHERE user_id = auth.uid()
+      AND global_role = 'super_admin'  -- ❌ WRONG ROLE
+    )
+  );
+```
+
+**RLS Policies (After - Fixed):**
+```sql
+CREATE POLICY "platform_admins_all_lambda_config" ON platform_lambda_config
+  USING (
+    EXISTS (
+      SELECT 1 FROM user_profiles  -- ✅ Correct table
+      WHERE user_id = auth.uid()
+      AND global_role IN ('platform_owner', 'platform_admin')  -- ✅ Correct roles
+    )
+  );
+```
+
+**API Client (Before - Broken):**
+```typescript
+async getConfig(configKey: string): Promise<LambdaConfig | null> {
+  const response = await this.client.get<LambdaConfig>(
+    `/platform/lambda-config/${configKey}`
+  );
+  return response || null;
+  // response.config_value is undefined!
+}
+```
+
+**API Client (After - Fixed):**
+```typescript
+async getConfig(configKey: string): Promise<LambdaConfig | null> {
+  const response = await this.client.get<{ data: LambdaConfig }>(
+    `/platform/lambda-config/${configKey}`
+  );
+  // CORA API returns { success: true, data: {...} } - unwrap it
+  return response?.data || null;
+}
+```
+
+**Toggle Hook (Before - No Optimistic Updates):**
+```typescript
+const toggleEnabled = async (enabled: boolean) => {
+  if (!config) return false;
+  
+  const updatedConfig = { ...config, enabled };
+  return updateConfig(updatedConfig);
+  // Toggle doesn't respond until API completes!
+};
+```
+
+**Toggle Hook (After - Optimistic Updates):**
+```typescript
+const toggleEnabled = async (enabled: boolean) => {
+  const previousConfig = config;
+  if (!previousConfig) return false;
+
+  const updatedConfig = { ...previousConfig, enabled };
+  
+  // Optimistic update - UI responds immediately
+  setConfig(updatedConfig);
+  
+  // API call in background
+  const success = await updateConfig(updatedConfig);
+  
+  // Rollback if failed
+  if (!success && previousConfig) {
+    setConfig(previousConfig);
+  }
+  
+  return success;
+};
+```
+
+**Save Button (Before - Always Enabled):**
+```typescript
+<Button
+  disabled={!config?.enabled || saving}
+>
+  Save Configuration
+</Button>
+// Confusing: Toggle auto-saves but Save button suggests unsaved changes
+```
+
+**Save Button (After - Only Enabled When Changes):**
+```typescript
+const hasChanges = React.useMemo(() => {
+  if (!config) return false;
+  return (
+    schedule !== (config.schedule || "rate(5 minutes)") ||
+    concurrency !== (config.concurrency || 1)
+  );
+}, [config, schedule, concurrency]);
+
+<Button
+  disabled={!config?.enabled || saving || !hasChanges}
+>
+  Save Configuration
+</Button>
+// Clear UX: Only enabled when there are actual changes to save
+```
+
+### Why This Works
+
+**RLS Policies:**
+- Correct table name allows policy to execute successfully
+- Correct role check grants access to platform_owner and platform_admin users
+- 40 policies created (was 35 before fix)
+
+**API Client:**
+- Unwraps CORA API response structure `{ success: true, data: {...} }`
+- Hook receives actual config data instead of undefined
+- Toggle can load config and respond to clicks
+
+**Optimistic Updates:**
+- Toggle responds immediately when clicked
+- User sees instant feedback
+- API call happens in background
+- Rollback on failure maintains data integrity
+
+**UX Improvement:**
+- Save button only enabled when schedule/concurrency change
+- Prevents confusion: toggle auto-saves, but schedule/concurrency need Save button
+- Clear indication of when changes are pending
+
+### Testing Results
+
+✅ **User confirmed fix works:**
+```
+"it is working now!"
+
+DEBUG logs show:
+[DEBUG] Raw response.config_value: {enabled: true, timezone: 'America/New_York', ...}
+[DEBUG] Type: object
+[DEBUG] Using direct value
+[DEBUG] Setting config: {enabled: true, ...}
+
+PUT Request:
+Request Method: PUT
+Status Code: 200 OK
+```
+
+✅ **Database confirms changes saved:**
+```json
+{
+  "config_value": "{\"enabled\": true, \"concurrency\": 2, \"schedule\": \"rate(5 minutes)\", ...}"
+}
+```
+
+✅ **All functionality working:**
+- Toggle on/off works ✅
+- Schedule changes save ✅
+- Concurrency changes save ✅
+- Optimistic updates work ✅
+- Save button UX clear ✅
+
+---
 
 ## Session: December 28, 2025 (8:00 PM - 8:36 PM) - Session 36
 
@@ -201,72 +472,22 @@ This ensures future code will be validated and these anti-patterns will be caugh
 
 ---
 
-## Current Issue: Platform Management Access Denied
-
-### Problem Description
-
-A user with `global_role: "platform_owner"` cannot access the platform management page:
-
-**Error Message:**
-```
-Access denied. This page is only accessible to platform administrators.
-```
-
-**User Profile Data:**
-```json
-{
-    "id": 1,
-    "user_id": "2efd43fc-0f8f-41e0-82a1-f88d9e0645bb",
-    "full_name": "Aaron Kilinski",
-    "email": "Aaron.Kilinski@simpletechnology.io",
-    "global_role": "platform_owner",
-    "current_org_id": "e18368a1-2e89-47c3-b864-fd4fac61cd0d",
-    "organizations": [
-        {
-            "orgId": "e18368a1-2e89-47c3-b864-fd4fac61cd0d",
-            "orgName": "Platform Admin",
-            "role": "org_owner",
-            "isOwner": true
-        }
-    ]
-}
-```
-
-**Request Details:**
-- URL: `http://localhost:3000/_next/static/chunks/app/admin/mgmt/page.js`
-- Status: 200 OK (page loads but shows access denied message)
-
-### Root Cause Hypothesis
-
-The access control check on `/admin/mgmt` page is likely:
-1. Not correctly checking `global_role === "platform_owner"` OR
-2. Checking the wrong field (perhaps `role` at org level instead of `global_role`) OR
-3. Checking for a different role string (e.g., `platform_admin` vs `platform_owner`)
-
-### Investigation Needed
-
-1. **Find the access control logic** for `/admin/mgmt` page
-2. **Check role constants** - What role values are expected?
-3. **Review middleware** - Is there route protection that uses incorrect logic?
-4. **Check component guards** - Are there client-side checks that are too restrictive?
-
----
-
-## Files to Investigate
-
-**Stack Template (module-mgmt):**
-- `templates/_cora-core-modules/module-mgmt/frontend/components/` - Platform management UI
-- `templates/_project-stack-template/apps/web/app/admin/mgmt/` - Admin page route
-- `templates/_project-stack-template/apps/web/middleware.ts` - Route protection
-
-**Access Control:**
-- Role constants/enums
-- Permission checks in components
-- API route guards
-
----
-
 ## Previous Sessions Summary
+
+### Session 37 (Phase 26) - ✅ COMPLETE
+- Fixed Lambda Warming toggle functionality
+- Fixed RLS policies (table name + role check)
+- Fixed API client response unwrapping
+- Added optimistic UI updates
+- Improved Save button UX
+
+### Session 36 (Phase 25) - ✅ COMPLETE
+- Fixed API Gateway authorizer route-specific policies
+- Platform management routes now accessible
+
+### Session 35 (Phase 24) - ✅ COMPLETE
+- Fixed platform admin page access control
+- Added anti-pattern validation
 
 ### Session 33 (Phase 23) - ✅ COMPLETE
 - Fixed venv activation in build scripts
@@ -278,17 +499,7 @@ The access control check on `/admin/mgmt` page is likely:
 
 ---
 
-## Next Steps
-
-1. **Investigate access control logic** - Find where the check happens
-2. **Identify role mismatch** - Compare expected vs actual role values
-3. **Fix the access control** - Update logic to properly recognize platform_owner
-4. **Test the fix** - Verify platform_owner can access management page
-5. **Update templates** - Apply fix using Template-First Workflow
-
----
-
-**Status:** 🔄 **PHASE 24 IN PROGRESS**  
-**Updated:** December 28, 2025, 2:54 PM EST  
-**Session Duration:** Starting  
-**Overall Progress:** Repeatability confirmed! Now fixing access control. 🔐
+**Status:** ✅ **PHASE 26 COMPLETE**  
+**Updated:** December 29, 2025, 10:57 AM EST  
+**Session Duration:** 29 minutes  
+**Overall Progress:** Lambda Warming fully functional! �

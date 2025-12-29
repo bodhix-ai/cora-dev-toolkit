@@ -62,8 +62,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
-CREATE TRIGGER set_platform_module_usage_event_date
-    BEFORE INSERT ON platform_module_usage
+DROP TRIGGER IF EXISTS set_platform_module_usage_event_date ON platform_module_usage;
+CREATE TRIGGER set_platform_module_usage_event_date BEFORE INSERT ON platform_module_usage
     FOR EACH ROW
     EXECUTE FUNCTION set_event_date();
 

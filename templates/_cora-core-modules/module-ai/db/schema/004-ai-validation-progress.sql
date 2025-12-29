@@ -9,7 +9,7 @@
 -- AI_MODEL_VALIDATION_PROGRESS TABLE
 -- =============================================
 
-CREATE TABLE public.ai_model_validation_progress (
+CREATE TABLE IF NOT EXISTS public.ai_model_validation_progress (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     provider_id UUID NOT NULL REFERENCES public.ai_providers(id) ON DELETE CASCADE,
     total_models INTEGER NOT NULL DEFAULT 0,
@@ -30,9 +30,9 @@ CREATE TABLE public.ai_model_validation_progress (
 -- INDEXES
 -- =============================================
 
-CREATE INDEX idx_ai_model_validation_progress_provider 
+CREATE INDEX IF NOT EXISTS idx_ai_model_validation_progress_provider 
     ON public.ai_model_validation_progress(provider_id, started_at DESC);
-CREATE INDEX idx_ai_model_validation_progress_status 
+CREATE INDEX IF NOT EXISTS idx_ai_model_validation_progress_status 
     ON public.ai_model_validation_progress(status, started_at DESC);
 
 -- =============================================
@@ -54,8 +54,8 @@ COMMENT ON COLUMN public.ai_model_validation_progress.status IS 'Job status: pen
 ALTER TABLE public.ai_model_validation_progress ENABLE ROW LEVEL SECURITY;
 
 -- Admin-only access (super_admin, global_owner, global_admin)
-CREATE POLICY "ai_model_validation_progress_admin_access" 
-    ON public.ai_model_validation_progress
+DROP POLICY IF EXISTS "ai_model_validation_progress_admin_access" ON public.ai_model_validation_progress;
+CREATE POLICY "ai_model_validation_progress_admin_access" ON public.ai_model_validation_progress
     FOR ALL
     USING (
         EXISTS (
@@ -66,8 +66,8 @@ CREATE POLICY "ai_model_validation_progress_admin_access"
     );
 
 -- Service role has full access (for Lambda functions)
-CREATE POLICY "Service role full access to ai_model_validation_progress" 
-    ON public.ai_model_validation_progress
+DROP POLICY IF EXISTS "Service role full access to ai_model_validation_progress" ON public.ai_model_validation_progress;
+CREATE POLICY "Service role full access to ai_model_validation_progress" ON public.ai_model_validation_progress
     FOR ALL
     USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
 
@@ -84,7 +84,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER ai_model_validation_progress_updated_at
-    BEFORE UPDATE ON public.ai_model_validation_progress
+DROP TRIGGER IF EXISTS ai_model_validation_progress_updated_at ON public.ai_model_validation_progress;
+CREATE TRIGGER ai_model_validation_progress_updated_at BEFORE UPDATE ON public.ai_model_validation_progress
     FOR EACH ROW
     EXECUTE FUNCTION update_ai_model_validation_progress_updated_at();
