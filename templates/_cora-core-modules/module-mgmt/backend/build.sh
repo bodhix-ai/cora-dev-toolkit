@@ -35,10 +35,15 @@ fi
 
 mkdir -p "${LAYER_BUILD_DIR}/python"
 
-# Install layer dependencies
+# Install layer dependencies for Lambda Python 3.11
 if [ -f "${LAYER_DIR}/requirements.txt" ]; then
-    echo "Installing layer dependencies..."
-    pip3 install -r "${LAYER_DIR}/requirements.txt" -t "${LAYER_BUILD_DIR}/python" --upgrade --quiet
+    echo "Installing layer dependencies for Python 3.11..."
+    pip3 install -r "${LAYER_DIR}/requirements.txt" -t "${LAYER_BUILD_DIR}/python" \
+        --platform manylinux2014_x86_64 \
+        --python-version 3.11 \
+        --implementation cp \
+        --only-binary=:all: \
+        --upgrade --quiet
 fi
 
 # Copy layer code
