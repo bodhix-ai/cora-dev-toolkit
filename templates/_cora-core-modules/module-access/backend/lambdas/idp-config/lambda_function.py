@@ -2,7 +2,7 @@
 IDP Configuration Lambda
 
 Manages Identity Provider (IDP) configurations for the platform.
-Only accessible to platform admins (super_admin, platform_owner, platform_admin, global_owner, global_admin).
+Only accessible to platform admins.
 
 CORA-EXCEPTION: platform-level
 This is a platform-level Lambda that manages IDP configurations across the platform.
@@ -37,13 +37,7 @@ logger = logging.getLogger()
 logger.setLevel(LOG_LEVEL)
 
 # Platform admin roles
-PLATFORM_ADMIN_ROLES = [
-    'super_admin',
-    'platform_owner', 
-    'platform_admin',
-    'global_owner',
-    'global_admin'
-]
+PLATFORM_ADMIN_ROLES = ['platform_owner', 'platform_admin']
 
 
 def get_supabase_user_id_from_okta_uid(okta_uid: str) -> Optional[str]:

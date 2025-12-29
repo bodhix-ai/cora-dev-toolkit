@@ -175,8 +175,11 @@ resource "aws_lambda_function" "lambda_mgmt" {
   filename         = "${local.build_dir}/lambda-mgmt.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/lambda-mgmt.zip")
 
-  # Attach shared layer
-  layers = [aws_lambda_layer_version.lambda_mgmt_common.arn]
+  # Attach shared layers (both mgmt-common and org-common)
+  layers = [
+    var.org_common_layer_arn,
+    aws_lambda_layer_version.lambda_mgmt_common.arn
+  ]
 
   environment {
     variables = {

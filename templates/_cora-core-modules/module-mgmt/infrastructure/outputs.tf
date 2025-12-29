@@ -9,8 +9,8 @@ output "lambda_function_name" {
 }
 
 output "lambda_invoke_arn" {
-  description = "Invoke ARN of the Lambda alias (for API Gateway integration)"
-  value       = aws_lambda_alias.lambda_mgmt.invoke_arn
+  description = "Invoke ARN of the Lambda function (for API Gateway integration)"
+  value       = aws_lambda_function.lambda_mgmt.invoke_arn
 }
 
 output "lambda_role_arn" {
@@ -24,68 +24,68 @@ output "api_routes" {
     {
       method      = "GET"
       path        = "/platform/lambda-config"
-      integration = aws_lambda_alias.lambda_mgmt.invoke_arn
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "GET"
       path        = "/platform/lambda-config/{configKey}"
-      integration = aws_lambda_alias.lambda_mgmt.invoke_arn
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "PUT"
       path        = "/platform/lambda-config/{configKey}"
-      integration = aws_lambda_alias.lambda_mgmt.invoke_arn
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "GET"
       path        = "/platform/lambda-functions"
-      integration = aws_lambda_alias.lambda_mgmt.invoke_arn
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "POST"
       path        = "/platform/lambda-config/sync"
-      integration = aws_lambda_alias.lambda_mgmt.invoke_arn
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     # Module registry routes
     {
       method      = "GET"
       path        = "/platform/modules"
-      integration = aws_lambda_alias.lambda_mgmt.invoke_arn
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "GET"
       path        = "/platform/modules/{name}"
-      integration = aws_lambda_alias.lambda_mgmt.invoke_arn
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "PUT"
       path        = "/platform/modules/{name}"
-      integration = aws_lambda_alias.lambda_mgmt.invoke_arn
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "POST"
       path        = "/platform/modules/{name}/enable"
-      integration = aws_lambda_alias.lambda_mgmt.invoke_arn
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "POST"
       path        = "/platform/modules/{name}/disable"
-      integration = aws_lambda_alias.lambda_mgmt.invoke_arn
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "POST"
       path        = "/platform/modules"
-      integration = aws_lambda_alias.lambda_mgmt.invoke_arn
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     }
   ]

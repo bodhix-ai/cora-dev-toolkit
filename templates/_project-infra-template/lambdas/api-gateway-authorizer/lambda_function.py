@@ -200,8 +200,11 @@ def lambda_handler(event: dict, context: Any) -> dict:
         
         # Build allow policy with user context
         method_arn = event.get("methodArn", event.get("routeArn", "*"))
-        # Allow all methods on this API
-        resource = method_arn.rsplit("/", 1)[0] + "/*"
+        # Allow all methods and paths on this API
+        # Extract API ARN (format: arn:aws:execute-api:region:account:api-id/stage/method/path)
+        api_parts = method_arn.split("/")
+        api_arn = "/".join(api_parts[:2])  # Get arn:...:api-id/stage
+        resource = f"{api_arn}/*/*"  # Allow all methods and paths
         
         policy = build_policy("Allow", resource, user_context)
         logger.debug(f"Generated policy: {json.dumps(policy, default=str)}")
