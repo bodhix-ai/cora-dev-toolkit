@@ -1,11 +1,11 @@
 /**
  * Lambda Management Module - Lambda Functions Hook
  *
- * React hook for fetching and managing Lambda function information.
+ * React hook for fetching and managing Lambda functions inventory.
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import type { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
+import type { CoraAuthAdapter } from "@ai-sec/api-client";
 import { createLambdaMgmtClient } from "../lib/api";
 import type { LambdaFunctionInfo } from "../types";
 
@@ -17,24 +17,29 @@ interface UseLambdaFunctionsReturn {
 }
 
 /**
- * Hook for fetching Lambda function information
+ * Hook for fetching Lambda functions inventory
  *
- * Provides a list of Lambda functions in the environment with their
+ * Provides a list of all Lambda functions in the environment with their
  * memory, timeout, runtime, and other configuration details.
  *
- * @returns Lambda functions state and refresh method
+ * @param authAdapter - CORA authentication adapter from useUser() context
+ * @returns Lambda functions state and methods
  *
  * @example
  * ```tsx
+ * import { useUser } from '@ai-sec/module-access';
+ *
  * function MyComponent() {
- *   const { functions, loading, refresh } = useLambdaFunctions();
+ *   const { authAdapter } = useUser();
+ *   const { functions, loading, error } = useLambdaFunctions(authAdapter);
  *
  *   if (loading) return <CircularProgress />;
+ *   if (error) return <Alert severity="error">{error}</Alert>;
  *
  *   return (
  *     <Table>
  *       {functions.map(fn => (
- *         <TableRow key={fn.name}>
+ *         <TableRow key={fn.arn}>
  *           <TableCell>{fn.name}</TableCell>
  *           <TableCell>{fn.memory_mb} MB</TableCell>
  *         </TableRow>
@@ -90,8 +95,8 @@ export function useLambdaFunctions(
       setLoading(true);
       setError(null);
 
-      const response = await client.listLambdaFunctions();
-      setFunctions(response);
+      const lambdaFunctions = await client.listLambdaFunctions();
+      setFunctions(lambdaFunctions);
     } catch (err) {
       console.error("Failed to fetch Lambda functions:", err);
       setError(
@@ -104,7 +109,7 @@ export function useLambdaFunctions(
   }, [client]);
 
   /**
-   * Manually refresh the Lambda functions list
+   * Manually refresh the functions list from the API
    */
   const refresh = useCallback(async () => {
     await fetchFunctions();

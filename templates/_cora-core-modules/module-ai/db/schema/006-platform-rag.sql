@@ -127,16 +127,16 @@ CREATE POLICY "Authenticated users can view platform_rag" ON public.platform_rag
     TO authenticated 
     USING (true);
 
--- Super admins can modify platform RAG settings
+-- Platform admins can modify platform RAG settings
 DROP POLICY IF EXISTS "Super admins can modify platform_rag" ON public.platform_rag;
 CREATE POLICY "Super admins can modify platform_rag" ON public.platform_rag 
     TO authenticated 
     USING ((EXISTS ( SELECT 1
-       FROM public.profiles
-      WHERE ((profiles.user_id = auth.uid()) AND (profiles.global_role = 'super_admin'::text))))) 
+       FROM public.user_profiles
+      WHERE ((user_profiles.user_id = auth.uid()) AND (user_profiles.global_role IN ('platform_owner', 'platform_admin')))))) 
     WITH CHECK ((EXISTS ( SELECT 1
-       FROM public.profiles
-      WHERE ((profiles.user_id = auth.uid()) AND (profiles.global_role = 'super_admin'::text)))));
+       FROM public.user_profiles
+      WHERE ((user_profiles.user_id = auth.uid()) AND (user_profiles.global_role IN ('platform_owner', 'platform_admin'))))));
 
 -- =============================================
 -- EXAMPLE USAGE

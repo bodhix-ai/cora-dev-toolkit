@@ -34,7 +34,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_providers_is_active ON public.ai_providers(is_
 -- COMMENTS
 -- =============================================
 
-COMMENT ON TABLE public.ai_providers IS 'Platform-level configuration for external AI providers. Only accessible by super_admin, global_owner, and global_admin.';
+COMMENT ON TABLE public.ai_providers IS 'Platform-level configuration for external AI providers. Only accessible by platform_owner and platform_admin.';
 COMMENT ON COLUMN public.ai_providers.name IS 'Unique provider name';
 COMMENT ON COLUMN public.ai_providers.provider_type IS 'Provider type: aws_bedrock, azure_openai, openai, etc.';
 COMMENT ON COLUMN public.ai_providers.credentials_secret_path IS 'Path to the secret in a secrets manager (e.g., AWS Secrets Manager ARN).';
@@ -46,15 +46,15 @@ COMMENT ON COLUMN public.ai_providers.is_active IS 'Whether provider is currentl
 
 ALTER TABLE public.ai_providers ENABLE ROW LEVEL SECURITY;
 
--- Admin-only access (super_admin, global_owner, global_admin)
+-- Admin-only access (platform_owner, platform_admin)
 DROP POLICY IF EXISTS "ai_providers_admin_access" ON public.ai_providers;
 CREATE POLICY "ai_providers_admin_access" ON public.ai_providers
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE profiles.user_id = auth.uid()
-            AND profiles.global_role IN ('super_admin', 'global_owner', 'global_admin')
+            SELECT 1 FROM public.user_profiles
+            WHERE user_profiles.user_id = auth.uid()
+            AND user_profiles.global_role IN ('platform_owner', 'platform_admin')
         )
     );
 

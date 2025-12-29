@@ -91,13 +91,13 @@ ALTER TABLE ONLY public.org_prompt_engineering
 
 ALTER TABLE public.org_prompt_engineering ENABLE ROW LEVEL SECURITY;
 
--- Super admins can manage all prompt engineering settings
+-- Platform admins can manage all prompt engineering settings
 DROP POLICY IF EXISTS "Super admins can manage prompt engineering" ON public.org_prompt_engineering;
 CREATE POLICY "Super admins can manage prompt engineering" ON public.org_prompt_engineering 
     TO authenticated 
     USING ((EXISTS ( SELECT 1
-       FROM public.profiles
-      WHERE ((profiles.user_id = auth.uid()) AND (profiles.global_role = 'super_admin'::text)))));
+       FROM public.user_profiles
+      WHERE ((user_profiles.user_id = auth.uid()) AND (user_profiles.global_role IN ('platform_owner', 'platform_admin'))))));
 
 -- =============================================
 -- EXAMPLE USAGE
