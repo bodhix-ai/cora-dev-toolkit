@@ -13,16 +13,16 @@ ALTER TABLE org_members DISABLE TRIGGER ensure_org_has_owner_trigger;
 DELETE FROM org_members;
 
 -- Step 3: Delete org records (has FK to auth.users for owner_id, created_by, updated_by)
-DELETE FROM org;
+DELETE FROM orgs;
 
 -- Step 4: Re-enable the trigger
 ALTER TABLE org_members ENABLE TRIGGER ensure_org_has_owner_trigger;
 
 -- Step 5: Delete profiles (has FK to auth.users for user_id, created_by, updated_by)
-DELETE FROM profiles;
+DELETE FROM user_profiles;
 
 -- Step 6: Delete external_identities (has FK to auth.users)
-DELETE FROM external_identities;
+DELETE FROM user_auth_ext_ids;
 
 -- Step 7: Delete from auth.users
 -- NOTE: This requires service_role access in Supabase
@@ -37,11 +37,11 @@ WHERE email = 'Aaron.Kilinski@simpletechnology.io';
 -- Step 8: Verify all tables are empty
 SELECT 'org_members' as table_name, COUNT(*) as count FROM org_members
 UNION ALL
-SELECT 'org', COUNT(*) FROM org
+SELECT 'orgs', COUNT(*) FROM orgs
 UNION ALL
-SELECT 'profiles', COUNT(*) FROM profiles
+SELECT 'user_profiles', COUNT(*) FROM user_profiles
 UNION ALL
-SELECT 'external_identities', COUNT(*) FROM external_identities
+SELECT 'user_auth_ext_ids', COUNT(*) FROM user_auth_ext_ids
 UNION ALL
 SELECT 'auth.users', COUNT(*) FROM auth.users WHERE email = 'Aaron.Kilinski@simpletechnology.io';
 

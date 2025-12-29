@@ -31,15 +31,15 @@ BEGIN
 
     -- Step 4: Delete orgs owned by the user
     RAISE NOTICE 'Deleting from orgs...';
-    DELETE FROM public.org WHERE owner_id = user_to_delete_id;
+    DELETE FROM public.orgs WHERE owner_id = user_to_delete_id;
 
     -- Step 5: Delete the user's profile
-    RAISE NOTICE 'Deleting from profiles...';
-    DELETE FROM public.profiles WHERE user_id = user_to_delete_id;
+    RAISE NOTICE 'Deleting from user_profiles...';
+    DELETE FROM public.user_profiles WHERE user_id = user_to_delete_id;
 
     -- Step 6: Delete external identities
-    RAISE NOTICE 'Deleting from external_identities...';
-    DELETE FROM public.external_identities WHERE auth_user_id = user_to_delete_id;
+    RAISE NOTICE 'Deleting from user_auth_ext_ids...';
+    DELETE FROM public.user_auth_ext_ids WHERE auth_user_id = user_to_delete_id;
 
     -- Step 7: Finally, delete the user from auth.users
     -- This requires elevated privileges.

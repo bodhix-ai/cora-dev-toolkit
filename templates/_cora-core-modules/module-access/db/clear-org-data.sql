@@ -12,12 +12,12 @@ ALTER TABLE public.org_members DISABLE TRIGGER ensure_org_has_owner_trigger;
 RAISE NOTICE 'Deleting all records from org_members...';
 DELETE FROM public.org_members;
 
--- Step 3: Delete all records from the org table.
-RAISE NOTICE 'Deleting all records from org...';
-DELETE FROM public.org;
+-- Step 3: Delete all records from the orgs table.
+RAISE NOTICE 'Deleting all records from orgs...';
+DELETE FROM public.orgs;
 
 -- Step 4: Re-enable the trigger.
 RAISE NOTICE 'Re-enabling org_members trigger...';
 ALTER TABLE public.org_members ENABLE TRIGGER ensure_org_has_owner_trigger;
 
-RAISE NOTICE 'Successfully cleared org and org_members tables.';
+RAISE NOTICE 'Successfully cleared orgs and org_members tables.';
