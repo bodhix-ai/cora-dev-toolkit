@@ -5,7 +5,7 @@
  * Uses CORA-compliant authentication and the new platform endpoints.
  */
 
-import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
+import { createCoraAuthenticatedClient } from "@ai-sec/api-client";
 import type {
   LambdaConfig,
   LambdaWarmingConfig,
@@ -54,10 +54,11 @@ export class LambdaMgmtApiClient {
    */
   async getConfig(configKey: string): Promise<LambdaConfig | null> {
     try {
-      const response = await this.client.get<LambdaConfig>(
+      const response = await this.client.get<{ data: LambdaConfig }>(
         `/platform/lambda-config/${configKey}`
       );
-      return response || null;
+      // CORA API returns { success: true, data: {...} } - unwrap it
+      return response?.data || null;
     } catch (error) {
       console.error(`Failed to get config ${configKey}:`, error);
       return null;
@@ -100,11 +101,12 @@ export class LambdaMgmtApiClient {
     value: ConfigValue
   ): Promise<LambdaConfig | null> {
     try {
-      const response = await this.client.put<LambdaConfig>(
+      const response = await this.client.put<{ data: LambdaConfig }>(
         `/platform/lambda-config/${configKey}`,
         { config_value: value }
       );
-      return response || null;
+      // CORA API returns { success: true, data: {...} } - unwrap it
+      return response?.data || null;
     } catch (error) {
       console.error(`Failed to update config ${configKey}:`, error);
       throw new Error(`Failed to update ${configKey} configuration`);
