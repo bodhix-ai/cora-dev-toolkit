@@ -3,7 +3,7 @@ AI Providers Lambda Function - CORA Compliant
 Handles CRUD operations for ai_providers (platform-level).
 Also handles model discovery and testing operations.
 
-Platform-level access: Only super_admin, global_owner, and global_admin can access.
+Platform-level access: Only platform admins can access.
 """
 import json
 import boto3
@@ -14,6 +14,9 @@ import org_common as common
 
 # Get Lambda function name from environment
 LAMBDA_FUNCTION_NAME = os.environ.get('AWS_LAMBDA_FUNCTION_NAME', 'ai-provider-function')
+
+# Platform admin roles
+PLATFORM_ADMIN_ROLES = ['platform_owner', 'platform_admin']
 
 # Error categorization patterns
 ERROR_CATEGORIES = {
@@ -75,7 +78,7 @@ def _categorize_error(error_message: str) -> str:
 
 def _check_admin_access(user_id: str) -> bool:
     """
-    Check if user has platform admin access (super_admin, global_owner, or global_admin).
+    Check if user has platform admin access.
     Returns True if user has access, False otherwise.
     """
     try:
@@ -84,7 +87,7 @@ def _check_admin_access(user_id: str) -> bool:
             return False
         
         global_role = profile.get('global_role')
-        return global_role in ('super_admin', 'global_owner', 'global_admin')
+        return global_role in PLATFORM_ADMIN_ROLES
     except Exception as e:
         print(f'Error checking admin access: {str(e)}')
         return False
@@ -94,7 +97,7 @@ def _require_admin_access(user_id: str):
     Require platform admin access, raise ForbiddenError if user doesn't have it.
     """
     if not _check_admin_access(user_id):
-        raise common.ForbiddenError('Access denied. Platform admin role required (super_admin, global_owner, or global_admin).')
+        raise common.ForbiddenError('Access denied. Platform admin role required.')
 
 
 def get_supabase_user_id_from_okta_uid(okta_uid: str) -> Optional[str]:

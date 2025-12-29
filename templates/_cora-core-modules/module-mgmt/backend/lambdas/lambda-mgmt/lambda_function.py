@@ -34,12 +34,15 @@ from lambda_mgmt_common import EventBridgeManager
 logger = logging.getLogger()
 logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
 
+# Platform admin roles
+PLATFORM_ADMIN_ROLES = ['platform_owner', 'platform_admin']
+
 
 def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
     """
     Main Lambda handler with route dispatcher.
     
-    All routes require super_admin role. Uses standard CORA auth patterns.
+    All routes require platform admin role. Uses standard CORA auth patterns.
     
     Args:
         event: API Gateway proxy event
@@ -66,17 +69,17 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         if org_id:
             logger.info(f"Request from org_id: {org_id}")
         
-        # Verify super admin role
+        # Verify platform admin role
         profile = common.find_one(
             table='user_profiles',
             filters={'user_id': supabase_user_id}
         )
         
-        if not profile or profile.get('global_role') != 'super_admin':
-            logger.warning(f"Access denied for user {supabase_user_id} - not super_admin")
-            return common.forbidden_response('Super admin role required')
+        if not profile or profile.get('global_role') not in PLATFORM_ADMIN_ROLES:
+            logger.warning(f"Access denied for user {supabase_user_id} - not platform admin")
+            return common.forbidden_response('Platform admin role required')
         
-        logger.info(f"Super admin access granted for user {supabase_user_id}")
+        logger.info(f"Platform admin access granted for user {supabase_user_id}")
         
         # Route dispatcher
         if path.endswith('/platform/lambda-config') and http_method == 'GET':

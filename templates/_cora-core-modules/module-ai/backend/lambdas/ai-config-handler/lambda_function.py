@@ -28,10 +28,16 @@ from ai_common import (
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+# Platform admin roles
+PLATFORM_ADMIN_ROLES = ['platform_owner', 'platform_admin']
 
-def _check_super_admin(user_id: str) -> bool:
+# Organization admin roles
+ORG_ADMIN_ROLES = ['org_owner', 'org_admin']
+
+
+def _check_platform_admin(user_id: str) -> bool:
     """
-    Verify that the user has super_admin, global_owner, or global_admin role.
+    Verify that the user has platform admin role.
     
     Args:
         user_id: Supabase user ID
@@ -45,24 +51,24 @@ def _check_super_admin(user_id: str) -> bool:
             return False
         
         global_role = profile.get('global_role')
-        return global_role in ('super_admin', 'global_owner', 'global_admin')
+        return global_role in PLATFORM_ADMIN_ROLES
     except Exception as e:
-        logger.error(f"Error checking super_admin role: {e}")
+        logger.error(f"Error checking platform admin role: {e}")
         return False
 
 
-def _require_super_admin(user_id: str):
+def _require_platform_admin(user_id: str):
     """
-    Require super_admin access, raise ForbiddenError if user doesn't have it.
+    Require platform admin access, raise ForbiddenError if user doesn't have it.
     
     Args:
         user_id: Supabase user ID
         
     Raises:
-        ForbiddenError: If user doesn't have super_admin role
+        ForbiddenError: If user doesn't have platform admin role
     """
-    if not _check_super_admin(user_id):
-        raise common.ForbiddenError('Access denied. Super admin role required.')
+    if not _check_platform_admin(user_id):
+        raise common.ForbiddenError('Access denied. Platform admin role required.')
 
 
 def _check_org_admin(user_id: str, organization_id: str) -> bool:
@@ -84,7 +90,7 @@ def _check_org_admin(user_id: str, organization_id: str) -> bool:
         if not membership:
             return False
         
-        return membership.get('role') in ('admin', 'owner')
+        return membership.get('role') in ORG_ADMIN_ROLES
     except Exception as e:
         logger.error(f"Error checking org admin role: {e}")
         return False
@@ -97,7 +103,7 @@ def _check_org_admin(user_id: str, organization_id: str) -> bool:
 def list_models_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
     List available AI models.
-    Only accessible to super_admin users.
+    Only accessible to platform admin users.
     
     Query parameters:
         capability: Optional filter by 'chat' or 'embedding'
@@ -106,9 +112,9 @@ def list_models_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         List of available models with their capabilities.
     """
     try:
-        _require_super_admin(user_id)
+        _require_platform_admin(user_id)
         
-        logger.info(f"Super admin access granted for user {user_id}")
+        logger.info(f"Platform admin access granted for user {user_id}")
         
         # Get capability filter from query parameters
         query_params = event.get("queryStringParameters") or {}
@@ -152,15 +158,15 @@ def list_models_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
 def get_platform_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
     Get platform-level AI configuration.
-    Only accessible to super_admin users.
+    Only accessible to platform admin users.
     
     Returns:
         Platform AI configuration including default models and system prompt.
     """
     try:
-        _require_super_admin(user_id)
+        _require_platform_admin(user_id)
         
-        logger.info(f"Super admin access granted for user {user_id}")
+        logger.info(f"Platform admin access granted for user {user_id}")
         
         # Get platform AI configuration
         config = common.find_one('platform_rag', {})
@@ -199,7 +205,7 @@ def get_platform_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[
 def update_platform_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
     Update platform-level AI configuration.
-    Only accessible to super_admin users.
+    Only accessible to platform admin users.
     
     Request body:
         {
@@ -212,9 +218,9 @@ def update_platform_ai_config_handler(event: Dict[str, Any], user_id: str) -> Di
         Updated platform AI configuration.
     """
     try:
-        _require_super_admin(user_id)
+        _require_platform_admin(user_id)
         
-        logger.info(f"Super admin access granted for user {user_id}")
+        logger.info(f"Platform admin access granted for user {user_id}")
         
         # Parse request body
         try:
@@ -336,11 +342,11 @@ def get_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, 
         
         organization_id = common.validate_uuid(organization_id, 'organizationId')
         
-        # Verify user is admin of the organization or super_admin
-        is_super_admin = _check_super_admin(user_id)
+        # Verify user is admin of the organization or platform admin
+        is_platform_admin = _check_platform_admin(user_id)
         is_org_admin = _check_org_admin(user_id, organization_id)
         
-        if not is_super_admin and not is_org_admin:
+        if not is_platform_admin and not is_org_admin:
             logger.warning(
                 f"Access denied for user {user_id} - "
                 f"not admin of organization {organization_id}"
@@ -502,11 +508,11 @@ def update_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[st
         
         organization_id = common.validate_uuid(organization_id, 'organizationId')
         
-        # Verify user is admin of the organization or super_admin
-        is_super_admin = _check_super_admin(user_id)
+        # Verify user is admin of the organization or platform admin
+        is_platform_admin = _check_platform_admin(user_id)
         is_org_admin = _check_org_admin(user_id, organization_id)
         
-        if not is_super_admin and not is_org_admin:
+        if not is_platform_admin and not is_org_admin:
             logger.warning(
                 f"Access denied for user {user_id} - "
                 f"not admin of organization {organization_id}"
@@ -591,15 +597,15 @@ def update_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[st
 def get_platform_rag_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
     Get platform-level RAG configuration.
-    Only accessible to super_admin users.
+    Only accessible to platform admin users.
     
     Returns:
         Platform RAG configuration including provider settings.
     """
     try:
-        _require_super_admin(user_id)
+        _require_platform_admin(user_id)
         
-        logger.info(f"Super admin access granted for user {user_id}")
+        logger.info(f"Platform admin access granted for user {user_id}")
         
         # Get platform RAG configuration
         rag_config = common.find_one(
@@ -632,7 +638,7 @@ def get_platform_rag_config_handler(event: Dict[str, Any], user_id: str) -> Dict
 def update_platform_rag_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
     Update platform-level RAG configuration.
-    Only accessible to super_admin users.
+    Only accessible to platform admin users.
     
     Request body:
         {
@@ -647,9 +653,9 @@ def update_platform_rag_config_handler(event: Dict[str, Any], user_id: str) -> D
         Updated platform RAG configuration.
     """
     try:
-        _require_super_admin(user_id)
+        _require_platform_admin(user_id)
         
-        logger.info(f"Super admin access granted for user {user_id}")
+        logger.info(f"Platform admin access granted for user {user_id}")
         
         # Parse request body
         try:
@@ -727,15 +733,15 @@ def update_platform_rag_config_handler(event: Dict[str, Any], user_id: str) -> D
 def list_rag_providers_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
     List all available AI providers.
-    Only accessible to super_admin users.
+    Only accessible to platform admin users.
     
     Returns:
         List of AI providers with their status and capabilities.
     """
     try:
-        _require_super_admin(user_id)
+        _require_platform_admin(user_id)
         
-        logger.info(f"Super admin access granted for user {user_id}")
+        logger.info(f"Platform admin access granted for user {user_id}")
         
         # Get all AI providers
         providers = common.find_many(
@@ -760,7 +766,7 @@ def list_rag_providers_handler(event: Dict[str, Any], user_id: str) -> Dict[str,
 def test_rag_provider_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
     Test connection to a specific AI provider.
-    Only accessible to super_admin users.
+    Only accessible to platform admin users.
     
     Request body:
         {
@@ -772,9 +778,9 @@ def test_rag_provider_handler(event: Dict[str, Any], user_id: str) -> Dict[str, 
         Connection test results.
     """
     try:
-        _require_super_admin(user_id)
+        _require_platform_admin(user_id)
         
-        logger.info(f"Super admin access granted for user {user_id}")
+        logger.info(f"Platform admin access granted for user {user_id}")
         
         # Parse request body
         try:
@@ -831,7 +837,7 @@ def test_rag_provider_handler(event: Dict[str, Any], user_id: str) -> Dict[str, 
 def get_rag_provider_models_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
     Get available models for AI providers.
-    Only accessible to super_admin users.
+    Only accessible to platform admin users.
     
     Query parameters:
         provider_id: Optional provider UUID to filter by
@@ -840,9 +846,9 @@ def get_rag_provider_models_handler(event: Dict[str, Any], user_id: str) -> Dict
         List of AI models with their capabilities.
     """
     try:
-        _require_super_admin(user_id)
+        _require_platform_admin(user_id)
         
-        logger.info(f"Super admin access granted for user {user_id}")
+        logger.info(f"Platform admin access granted for user {user_id}")
         
         # Get query parameters
         query_params = event.get('queryStringParameters') or {}
