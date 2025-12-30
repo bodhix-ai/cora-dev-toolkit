@@ -145,6 +145,16 @@ export const DAY_ABBREVIATIONS: Record<DayOfWeek, string> = {
 };
 
 /**
+ * Apply a preset to get its schedule
+ * 
+ * @param preset - The preset name to apply
+ * @returns A deep copy of the preset schedule
+ */
+export function applyPreset(preset: PresetName): WeeklySchedule {
+  return cloneSchedule(SCHEDULE_PRESETS[preset]);
+}
+
+/**
  * Determine which preset matches the given schedule
  * 
  * @param schedule - The weekly schedule to check

@@ -157,6 +157,50 @@ export type DayOfWeek =
   | "sunday";
 
 /**
+ * Alias for backward compatibility
+ */
+export type DayName = DayOfWeek;
+
+/**
+ * Array of all day names in week order
+ */
+export const DAY_NAMES: DayName[] = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+];
+
+/**
+ * Display names for days of the week
+ */
+export const DAY_DISPLAY_NAMES: Record<DayName, string> = {
+  monday: "Monday",
+  tuesday: "Tuesday",
+  wednesday: "Wednesday",
+  thursday: "Thursday",
+  friday: "Friday",
+  saturday: "Saturday",
+  sunday: "Sunday",
+};
+
+/**
+ * Abbreviated day names
+ */
+export const DAY_ABBREVIATIONS: Record<DayName, string> = {
+  monday: "Mon",
+  tuesday: "Tue",
+  wednesday: "Wed",
+  thursday: "Thu",
+  friday: "Fri",
+  saturday: "Sat",
+  sunday: "Sun",
+};
+
+/**
  * Available timezones for warming schedule
  */
 export const AVAILABLE_TIMEZONES = [

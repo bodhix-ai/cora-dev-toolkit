@@ -111,7 +111,11 @@ export default function CostCalculator({
               }
               placement="top"
             >
-              <IconButton size="small" sx={{ ml: 0.5 }}>
+              <IconButton 
+                size="small" 
+                sx={{ ml: 0.5 }}
+                aria-label="View cost breakdown details"
+              >
                 <InfoOutlined fontSize="small" />
               </IconButton>
             </Tooltip>
