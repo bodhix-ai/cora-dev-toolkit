@@ -10,7 +10,15 @@
  */
 
 import React, { useState } from "react";
-import { Box, Tabs, Tab, Typography } from "@mui/material";
+import {
+  Box,
+  Tabs,
+  Tab,
+  Typography,
+  Breadcrumbs,
+  Link,
+} from "@mui/material";
+import { NavigateNext as NavigateNextIcon } from "@mui/icons-material";
 import { ScheduleTab } from "./ScheduleTab";
 import { PerformanceTab } from "./PerformanceTab";
 import { StorageTab } from "./StorageTab";
@@ -39,6 +47,24 @@ export function PlatformMgmtAdmin(): React.ReactElement {
 
   return (
     <Box sx={{ width: "100%", p: 3 }}>
+      {/* Breadcrumb Navigation */}
+      <Breadcrumbs
+        separator={<NavigateNextIcon fontSize="small" />}
+        aria-label="breadcrumb"
+        sx={{ mb: 2 }}
+      >
+        <Link
+          underline="hover"
+          color="inherit"
+          href="/admin/platform"
+          sx={{ display: "flex", alignItems: "center" }}
+          aria-label="Navigate to Admin Dashboard"
+        >
+          Admin Dashboard
+        </Link>
+        <Typography color="text.primary">Platform Management</Typography>
+      </Breadcrumbs>
+
       <Box sx={{ mb: 3 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Platform Management

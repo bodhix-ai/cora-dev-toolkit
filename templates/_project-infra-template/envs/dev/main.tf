@@ -89,6 +89,7 @@ resource "aws_lambda_function" "authorizer" {
   runtime          = "python3.11"
   timeout          = 30
   memory_size      = 256
+  description      = "API Gateway JWT authorizer - validates tokens from Okta or Clerk"
 
   environment {
     variables = {
@@ -171,12 +172,13 @@ module "module_ai" {
 module "module_mgmt" {
   source = "../../../{{PROJECT_NAME}}-stack/packages/module-mgmt/infrastructure"
 
-  project_name        = "{{PROJECT_NAME}}"
-  environment         = "dev"
-  module_name         = "mgmt"
-  supabase_secret_arn = module.secrets.supabase_secret_arn
-  aws_region          = var.aws_region
-  log_level           = var.log_level
+  project_name         = "{{PROJECT_NAME}}"
+  environment          = "dev"
+  module_name          = "mgmt"
+  org_common_layer_arn = module.module_access.layer_arn
+  supabase_secret_arn  = module.secrets.supabase_secret_arn
+  aws_region           = var.aws_region
+  log_level            = var.log_level
 
   common_tags = {
     Environment = "dev"

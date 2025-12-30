@@ -272,6 +272,8 @@ def evaluate_new_user_provisioning(user_info: Dict[str, Any]) -> Dict[str, Any]:
     if invite:
         logger.info(f"Found pending invite for {redacted_email}")
         return provision_with_invite(user_info, invite)
+    else:
+        logger.info(f"No pending invite found for {redacted_email}")
     
     # 2. Common path: Check email domain match (indexed query)
     domain_match = common.find_one(
@@ -281,6 +283,8 @@ def evaluate_new_user_provisioning(user_info: Dict[str, Any]) -> Dict[str, Any]:
     if domain_match:
         logger.info(f"Found domain match for {domain}")
         return provision_with_domain(user_info, domain_match)
+    else:
+        logger.info(f"No email domain match found for {domain}")
     
     # 3. Rare fallback: First user ever (only runs once)
     # Check for existing platform_owner instead of counting user_profiles
@@ -289,8 +293,10 @@ def evaluate_new_user_provisioning(user_info: Dict[str, Any]) -> Dict[str, Any]:
         filters={'global_role': 'platform_owner'}
     )
     if not platform_owner:
-        logger.info(f"First user on platform (bootstrap): {redacted_email}")
+        logger.info(f"No platform_owner exists - bootstrap condition met for {redacted_email}")
         return create_platform_owner_with_org(user_info)
+    else:
+        logger.info(f"Platform already initialized (platform_owner exists)")
     
     # 4. No valid path - create profile with requires_invitation flag
     logger.warning(f"Provisioning denied for {redacted_email}: no invite, no domain match, platform already initialized")
@@ -549,7 +555,15 @@ def create_user_profile(user_info: Dict[str, Any], global_role: str = 'platform_
         logger.info(f"Created auth.users record: {auth_user_id} with provider: {provider_name}")
         
     except Exception as e:
-        logger.error(f"Error creating auth.users record: {str(e)}")
+        error_msg = str(e)
+        logger.error(f"Error creating auth.users record: {error_msg}")
+        
+        # Detect orphaned user scenario (user exists in auth.users but not in public tables)
+        if "already been registered" in error_msg.lower():
+            logger.error(f"ORPHANED USER DETECTED: Email {email} exists in auth.users but has no user_auth_ext_ids or user_profiles records.")
+            logger.error("This usually happens when public tables are reset but auth.users is not cleaned up.")
+            logger.error("To fix: DELETE FROM auth.users WHERE email = '{email}' OR run drop-all-schema-objects.sql before setup-database.sql")
+        
         raise
     
     # Create user_auth_ext_ids mapping

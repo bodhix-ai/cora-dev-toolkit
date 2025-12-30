@@ -10,8 +10,8 @@
 -- =============================================
 
 CREATE TABLE IF NOT EXISTS public.org_prompt_engineering (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    org_id uuid NOT NULL,
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    org_id uuid NOT NULL UNIQUE,
     policy_mission_type text,
     custom_system_prompt text,
     custom_context_prompt text,
@@ -36,16 +36,6 @@ CREATE TABLE IF NOT EXISTS public.org_prompt_engineering (
 
 COMMENT ON TABLE public.org_prompt_engineering IS 'Organization prompt engineering settings (renamed from organization_rag_settings in Oct 2025 refactoring). Contains RAG configuration, citation style, and custom prompts.';
 COMMENT ON COLUMN public.org_prompt_engineering.org_system_prompt IS 'Organization-specific system prompt override. When set, this is combined with the platform system prompt for this organization.';
-
--- =============================================
--- CONSTRAINTS
--- =============================================
-
-ALTER TABLE ONLY public.org_prompt_engineering
-    ADD CONSTRAINT org_prompt_engineering_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.org_prompt_engineering
-    ADD CONSTRAINT org_prompt_engineering_organization_id_key UNIQUE (org_id);
 
 -- =============================================
 -- INDEXES
@@ -74,16 +64,32 @@ CREATE TRIGGER update_org_prompt_engineering_updated_at BEFORE UPDATE ON public.
 -- FOREIGN KEY CONSTRAINTS
 -- =============================================
 
-ALTER TABLE ONLY public.org_prompt_engineering
-    ADD CONSTRAINT org_prompt_engineering_configured_by_fkey 
-    FOREIGN KEY (configured_by) 
-    REFERENCES auth.users(id);
+-- Add foreign keys if they don't exist (idempotent)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'org_prompt_engineering_configured_by_fkey'
+        AND conrelid = 'public.org_prompt_engineering'::regclass
+    ) THEN
+        ALTER TABLE ONLY public.org_prompt_engineering
+            ADD CONSTRAINT org_prompt_engineering_configured_by_fkey 
+            FOREIGN KEY (configured_by) 
+            REFERENCES auth.users(id);
+    END IF;
 
-ALTER TABLE ONLY public.org_prompt_engineering
-    ADD CONSTRAINT org_prompt_engineering_organization_id_fkey 
-    FOREIGN KEY (org_id) 
-    REFERENCES public.orgs(id) 
-    ON DELETE CASCADE;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'org_prompt_engineering_organization_id_fkey'
+        AND conrelid = 'public.org_prompt_engineering'::regclass
+    ) THEN
+        ALTER TABLE ONLY public.org_prompt_engineering
+            ADD CONSTRAINT org_prompt_engineering_organization_id_fkey 
+            FOREIGN KEY (org_id) 
+            REFERENCES public.orgs(id) 
+            ON DELETE CASCADE;
+    END IF;
+END $$;
 
 -- =============================================
 -- ROW LEVEL SECURITY (RLS)
