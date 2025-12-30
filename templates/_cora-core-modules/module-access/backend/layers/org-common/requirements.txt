@@ -1,8 +1,10 @@
 # Org-Module Common Layer Dependencies
-# Python 3.13 compatible
+# Python 3.11 compatible
 
-# Supabase client for database access
-supabase>=2.3.4
+# Supabase client for database access (pinned to tested working version)
+# Version 2.3.4 is BROKEN with Python 3.11 (TypeError: unexpected keyword 'proxy')
+# Version 2.27.0 tested and confirmed working
+supabase==2.27.0
 
 # AWS SDK for Secrets Manager
 boto3>=1.34.0

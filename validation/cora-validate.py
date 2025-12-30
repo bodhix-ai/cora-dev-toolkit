@@ -23,6 +23,7 @@ import sys
 import json
 import argparse
 import subprocess
+import os
 from pathlib import Path
 from datetime import datetime
 from dataclasses import dataclass, field, asdict
@@ -104,6 +105,35 @@ class ValidationReport:
 
 class CoraValidator:
     """Main CORA validation orchestrator."""
+
+    def clear_cache(self):
+        """Clear Python bytecode cache to ensure fresh validation results."""
+        import shutil
+        
+        self.log("Clearing Python cache files...")
+        
+        # Remove .pyc files and __pycache__ directories
+        for root, dirs, files in os.walk(self.validation_dir):
+            # Remove __pycache__ directories
+            if '__pycache__' in dirs:
+                pycache_path = os.path.join(root, '__pycache__')
+                try:
+                    shutil.rmtree(pycache_path)
+                    self.log(f"Removed {pycache_path}")
+                except Exception as e:
+                    self.log(f"Failed to remove {pycache_path}: {e}")
+            
+            # Remove .pyc files
+            for file in files:
+                if file.endswith('.pyc'):
+                    pyc_path = os.path.join(root, file)
+                    try:
+                        os.remove(pyc_path)
+                        self.log(f"Removed {pyc_path}")
+                    except Exception as e:
+                        self.log(f"Failed to remove {pyc_path}: {e}")
+        
+        self.log("Cache cleared")
 
     VALIDATORS = {
         "structure": {
@@ -356,6 +386,9 @@ class CoraValidator:
         import time
         start_time = time.time()
         
+        # Clear cache to ensure fresh results
+        self.clear_cache()
+        
         # Default to all validators that support project validation
         if validators is None:
             validators = [
@@ -402,6 +435,9 @@ class CoraValidator:
         """
         import time
         start_time = time.time()
+        
+        # Clear cache to ensure fresh results
+        self.clear_cache()
         
         # Default to all validators that support module validation
         if validators is None:
