@@ -135,9 +135,10 @@ export class LambdaMgmtApiClient {
   async listLambdaFunctions(): Promise<LambdaFunctionInfo[]> {
     try {
       const response = await this.client.get<{
-        functions: LambdaFunctionInfo[];
+        data: LambdaFunctionInfo[];
       }>("/platform/lambda-functions");
-      return response?.functions || [];
+      // CORA API returns { success: true, data: [...] } - unwrap it
+      return response?.data || [];
     } catch (error) {
       console.error("Failed to list Lambda functions:", error);
       return [];
