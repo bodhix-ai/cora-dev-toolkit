@@ -10,7 +10,7 @@
 -- =============================================
 
 CREATE TABLE IF NOT EXISTS public.platform_rag (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
     available_embedding_models text[] DEFAULT ARRAY['text-embedding-3-small'::text, 'text-embedding-3-large'::text] NOT NULL,
     default_embedding_model text DEFAULT 'text-embedding-3-small'::text NOT NULL,
     embedding_model_costs jsonb DEFAULT '{"text-embedding-3-large": 1.5, "text-embedding-3-small": 1.0}'::jsonb,
@@ -58,13 +58,6 @@ COMMENT ON COLUMN public.platform_rag.default_chat_model_id IS 'Default chat mod
 COMMENT ON COLUMN public.platform_rag.system_prompt IS 'Platform-wide system prompt that defines the AI assistant behavior and guidelines.';
 
 -- =============================================
--- CONSTRAINTS
--- =============================================
-
-ALTER TABLE ONLY public.platform_rag
-    ADD CONSTRAINT platform_rag_pkey PRIMARY KEY (id);
-
--- =============================================
 -- INDEXES
 -- =============================================
 
@@ -97,22 +90,44 @@ CREATE TRIGGER update_platform_rag_updated_at BEFORE UPDATE ON public.platform_r
 -- FOREIGN KEY CONSTRAINTS
 -- =============================================
 
-ALTER TABLE ONLY public.platform_rag
-    ADD CONSTRAINT platform_rag_default_chat_model_id_fkey 
-    FOREIGN KEY (default_chat_model_id) 
-    REFERENCES public.ai_models(id) 
-    ON DELETE SET NULL;
+-- Add foreign keys if they don't exist (idempotent)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'platform_rag_default_chat_model_id_fkey'
+        AND conrelid = 'public.platform_rag'::regclass
+    ) THEN
+        ALTER TABLE ONLY public.platform_rag
+            ADD CONSTRAINT platform_rag_default_chat_model_id_fkey 
+            FOREIGN KEY (default_chat_model_id) 
+            REFERENCES public.ai_models(id) 
+            ON DELETE SET NULL;
+    END IF;
 
-ALTER TABLE ONLY public.platform_rag
-    ADD CONSTRAINT platform_rag_default_embedding_model_id_fkey 
-    FOREIGN KEY (default_embedding_model_id) 
-    REFERENCES public.ai_models(id) 
-    ON DELETE SET NULL;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'platform_rag_default_embedding_model_id_fkey'
+        AND conrelid = 'public.platform_rag'::regclass
+    ) THEN
+        ALTER TABLE ONLY public.platform_rag
+            ADD CONSTRAINT platform_rag_default_embedding_model_id_fkey 
+            FOREIGN KEY (default_embedding_model_id) 
+            REFERENCES public.ai_models(id) 
+            ON DELETE SET NULL;
+    END IF;
 
-ALTER TABLE ONLY public.platform_rag
-    ADD CONSTRAINT platform_rag_updated_by_fkey 
-    FOREIGN KEY (updated_by) 
-    REFERENCES auth.users(id);
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'platform_rag_updated_by_fkey'
+        AND conrelid = 'public.platform_rag'::regclass
+    ) THEN
+        ALTER TABLE ONLY public.platform_rag
+            ADD CONSTRAINT platform_rag_updated_by_fkey 
+            FOREIGN KEY (updated_by) 
+            REFERENCES auth.users(id);
+    END IF;
+END $$;
 
 -- =============================================
 -- ROW LEVEL SECURITY (RLS)

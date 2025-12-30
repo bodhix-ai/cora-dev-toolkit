@@ -109,6 +109,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_single_active_idp ON platform_idp_config;
 CREATE TRIGGER trg_single_active_idp
     BEFORE INSERT OR UPDATE OF is_active ON platform_idp_config
     FOR EACH ROW
