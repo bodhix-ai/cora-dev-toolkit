@@ -2,15 +2,487 @@
 
 ## Current Focus
 
-**Phase 28: Platform Management Schedule Enhancement** - 🔄 **IN PROGRESS**
+**Phase 31: Platform Admin Features Implementation** - ✅ **COMPLETE**
 
-## Session: December 29, 2025 (3:28 PM - 3:53 PM) - Session 39
+## Session: December 30, 2025 (11:56 AM - 12:34 PM) - Session 42
 
-### 🎯 Focus: Platform Management Schedule Enhancement - Foundation & Core Components
+### 🎯 Focus: Fix Lambda Functions Display & Breadcrumb Navigation
+
+**Context:** Platform owner reported "No Lambda functions found" on Performance tab despite all Lambdas being present in AWS. Also breadcrumb navigation pointing to wrong URL.
+
+**Status:** ✅ **FIXED & VALIDATED**
+
+---
+
+## Solution Summary (Session 42)
+
+### Root Cause #1: Lambda Functions Display Bug
+
+**Problem:** Performance tab showed "No Lambda functions found in this environment" even though all 10 Lambda functions existed in AWS.
+
+**Root Cause:**
+- API client trying to access `response.functions`
+- CORA backend returns `{ success: true, data: [...] }`
+- Should have been accessing `response.data`
+
+**Fix Applied:**
+```typescript
+// BEFORE (Broken)
+async listLambdaFunctions(): Promise<LambdaFunction[]> {
+  const response = await this.client.get<{ functions: LambdaFunction[] }>(
+    `/platform/lambda-functions`
+  );
+  return response?.functions || [];
+}
+
+// AFTER (Fixed)
+async listLambdaFunctions(): Promise<LambdaFunction[]> {
+  const response = await this.client.get<{ data: LambdaFunction[] }>(
+    `/platform/lambda-functions`
+  );
+  return response?.data || [];
+}
+```
+
+### Root Cause #2: Breadcrumb Navigation Bug
+
+**Problem:** Clicking breadcrumb → navigated to `/admin` → 404 error. Should navigate to `/admin/platform`.
+
+**Root Cause:**
+- Hardcoded `href="/admin"` in `PlatformMgmtAdmin.tsx`
+- Correct route is `/admin/platform`
+
+**Fix Applied:**
+```tsx
+// BEFORE
+<Link href="/admin">Admin Dashboard</Link>
+
+// AFTER
+<Link href="/admin/platform">Admin Dashboard</Link>
+```
+
+### Root Cause #3: API Gateway Authorizer Missing Description
+
+**Problem:** API Gateway authorizer Lambda showed "-" for description in Performance tab.
+
+**Fix Applied:**
+Added description to Terraform Lambda resource:
+```terraform
+description = "API Gateway JWT authorizer - validates tokens from Okta or Clerk"
+```
+
+### Additional Fix: Access Page Build Error
+
+**Problem:** Build error in `apps/web/app/admin/access/page.tsx` - using non-existent `createAuthenticatedApiClient`.
+
+**Fix Applied:**
+Changed to CORA-compliant pattern:
+```typescript
+// BEFORE
+import { createAuthenticatedApiClient } from "@ai-sec/api-client";
+const authAdapter = createAuthenticatedApiClient(session);
+
+// AFTER
+import { useUser } from "@ai-sec/module-access";
+const { authAdapter } = useUser();
+```
+
+### Files Modified
+
+**Template Files:**
+1. `templates/_cora-core-modules/module-mgmt/frontend/lib/api.ts`
+   - Fixed `listLambdaFunctions()` response parsing
+
+2. `templates/_cora-core-modules/module-mgmt/frontend/components/admin/PlatformMgmtAdmin.tsx`
+   - Fixed breadcrumb href from `/admin` to `/admin/platform`
+
+3. `templates/_project-infra-template/envs/dev/main.tf`
+   - Added Lambda authorizer description
+
+**Test14 Files:**
+1. `sts/test14/ai-sec-stack/packages/module-mgmt/frontend/lib/api.ts`
+   - Fixed `listLambdaFunctions()` response parsing
+
+2. `sts/test14/ai-sec-stack/packages/module-mgmt/frontend/components/admin/PlatformMgmtAdmin.tsx`
+   - Fixed breadcrumb href from `/admin` to `/admin/platform`
+
+3. `sts/test14/ai-sec-stack/apps/web/app/admin/access/page.tsx`
+   - Fixed to use CORA-compliant `useUser()` hook
+
+4. `sts/test14/ai-sec-infra/envs/dev/main.tf`
+   - Added Lambda authorizer description
+
+### Testing Results
+
+✅ **All Features Tested & Working:**
+
+**Lambda Functions Inventory:**
+- Performance tab displays all 10 Lambda functions
+- Function details accurate (name, memory, timeout, runtime, last modified)
+- API Gateway authorizer shows description instead of "-"
+- Loading states work correctly
+- Error handling works correctly
+
+**Breadcrumb Navigation:**
+- Clicking breadcrumb navigates to `/admin/platform`
+- No 404 errors
+- Navigation flow works correctly
+
+**Build & Deployment:**
+- Next.js dev server builds successfully on port 3001
+- No TypeScript errors
+- All imports resolved correctly
+
+### Documentation Updated
+
+**Plan Document:**
+- `docs/plans/plan_platform-management-schedule-enhancement.md`
+  - Marked all features as COMPLETED
+  - Updated completion date to December 30, 2025
+  - Added note about orphaned user 422 error prerequisite fix
+
+### Time Spent
+
+**Session Duration:** ~38 minutes
+
+**Activities:**
+- Investigated "No Lambda functions found" issue
+- Fixed API response parsing bug
+- Fixed breadcrumb navigation URL
+- Added API Gateway authorizer description
+- Fixed access page build error
+- Updated documentation
+- Restarted Next.js dev server
+- Validated all fixes
+
+### Benefits
+
+**User Experience:**
+- ✅ Platform owner can see all Lambda functions in Performance tab
+- ✅ Breadcrumb navigation works correctly
+- ✅ API Gateway authorizer has descriptive label
+- ✅ No build errors blocking development
+
+**Code Quality:**
+- ✅ Consistent CORA API response unwrapping pattern
+- ✅ CORA-compliant auth adapter usage
+- ✅ Clear Lambda descriptions for operational visibility
+
+---
+
+## Session: December 30, 2025 (10:15 AM - 11:43 AM) - Session 41
+
+### 🎯 Focus: Resolve Orphaned User Issue & Enhance Lambda Logging
+
+**Context:** Investigation from Session 40 revealed the actual root cause was orphaned users in auth.users, not HTTP/2 issues. The 422 error (not 406) was the critical failure blocking user provisioning.
+
+**Status:** ✅ **FIXED & VALIDATED**
+
+---
+
+## Solution Summary (Session 41)
+
+### Root Cause (Corrected from Session 40)
+
+**NOT an HTTP/2 issue** - The actual problem was **orphaned users in auth.users table**.
+
+**What Actually Happened:**
+1. Database public tables were reset/dropped (`user_profiles`, `user_auth_ext_ids`)
+2. `auth.users` table (Supabase auth schema) was **NOT** reset
+3. User existed in `auth.users` but had no corresponding public table records
+4. Lambda tried to provision user → found no records → tried to create auth.users entry
+5. **Failed with 422 error**: "A user with this email address has already been registered"
+6. Login blocked with 500 Internal Server Error
+
+**406 Errors Were Red Herrings:**
+- 406 errors on SELECT queries simply indicated empty results (no rows found)
+- Not actual failures - supabase-py handles these gracefully
+- The critical failure was the **422 error** when trying to create duplicate auth.users record
+
+### Investigation Process
+
+1. ✅ Checked database tables directly with service_role key
+2. ✅ Found `user_auth_ext_ids` and `user_profiles` tables empty
+3. ✅ Found `auth.users` had 1 orphaned user from before reset
+4. ✅ User deleted orphaned record from auth.users
+5. ✅ Login tested successfully - bootstrap created all records correctly
+
+### Fixes Implemented
+
+**1. Enhanced Lambda Logging (Test14 + Templates)**
+
+Added two critical logging improvements:
+
+**A. Orphaned User Detection:**
+```python
+if "already been registered" in error_msg.lower():
+    logger.error(f"ORPHANED USER DETECTED: Email {email} exists in auth.users...")
+    logger.error("To fix: DELETE FROM auth.users OR run drop-all-schema-objects.sql")
+```
+
+**B. Interpretive Logging for 406 Errors:**
+```python
+# user_invites query
+logger.info(f"No pending invite found for {redacted_email}")
+
+# org_email_domains query  
+logger.info(f"No email domain match found for {domain}")
+
+# platform_owner check
+logger.info(f"No platform_owner exists - bootstrap condition met...")
+# OR
+logger.info(f"Platform already initialized (platform_owner exists)")
+```
+
+**2. Database Reset Script Enhancement (Test14 + Templates)**
+
+Updated `drop-all-schema-objects.sql` to prevent future orphaned users:
+
+```sql
+-- =============================================
+-- DELETE ALL AUTH USERS (Supabase auth schema)
+-- =============================================
+-- CRITICAL: Delete auth.users FIRST to prevent orphaned users
+
+DELETE FROM auth.users;
+
+DO $$
+BEGIN
+    RAISE NOTICE 'Deleted all users from auth.users';
+    RAISE NOTICE 'This prevents orphaned users when public tables are reset';
+END $$;
+```
+
+### Files Updated
+
+**Test14 Project:**
+1. `sts/test14/ai-sec-stack/packages/module-access/backend/lambdas/profiles/lambda_function.py`
+   - Added orphaned user detection with clear error messages
+   - Added interpretive logging for all empty query results
+
+2. `sts/test14/ai-sec-stack/scripts/drop-all-schema-objects.sql`
+   - Added `DELETE FROM auth.users` before dropping public tables
+   - Added helpful NOTICE messages
+
+**Templates (for future projects):**
+1. `bodhix/cora-dev-toolkit/templates/_cora-core-modules/module-access/backend/lambdas/profiles/lambda_function.py`
+   - Same logging enhancements
+
+2. `bodhix/cora-dev-toolkit/templates/_project-stack-template/scripts/drop-all-schema-objects.sql`
+   - Same auth.users cleanup
+
+### Testing Results
+
+✅ **User Login Verified:**
+```
+Bootstrap sequence completed successfully:
+- Created auth.users record
+- Created user_auth_ext_ids mapping
+- Created user_profiles entry (platform_owner)
+- Created Platform Admin org
+- Created org_members entry
+- Started user session
+
+Result: User logged in successfully!
+```
+
+### Benefits
+
+**Future Debugging:**
+- Clear error messages when orphaned users are detected
+- Interpretive logging makes 406 errors understandable
+- Explicit fix instructions provided in logs
+
+**Prevention:**
+- Database reset script now cleans up auth.users automatically
+- Future projects inherit this fix from templates
+- No more orphaned user scenarios
+
+### Time Spent
+
+**Investigation & Fix:** ~90 minutes
+
+**Activities:**
+- Database investigation and direct queries
+- Root cause identification (orphaned users)
+- Lambda logging enhancements
+- Database reset script updates
+- Template updates for future projects
+- Testing and validation
+
+---
+
+## Session: December 29, 2025 (7:30 PM - 7:54 PM) - Session 40
+
+### 🎯 Focus: Investigate Supabase 406 Not Acceptable Errors in Lambda
+
+**Context:** Users unable to log in due to 500 Internal Server Error. Lambda logs showing HTTP/2 406 Not Acceptable errors from Supabase REST API. Comprehensive investigation to identify root cause.
+
+**Status:** ⚠️ **MISDIAGNOSED - See Session 41 for Actual Root Cause**
+
+---
+
+## Solution Summary (Session 40)
+
+### Problem Statement
+
+Users getting **500 Internal Server Error** when logging in. Lambda logs showing:
+```
+HTTP Request: GET https://kxshyoaxjkwvcdmjrfxz.supabase.co/rest/v1/user_auth_ext_ids... "HTTP/2 406 Not Acceptable"
+```
+
+### Investigation Conducted
+
+**Systematic elimination of potential causes:**
+
+1. ✅ **Supabase Library Version** - Updated to 2.27.0, deployed successfully
+2. ✅ **Python Version** - Confirmed Python 3.11 in both local and Lambda
+3. ✅ **Architecture Compatibility** - Build script correctly using Linux x86_64 platform flags
+4. ✅ **Deployment** - Lambda layer v45 with supabase 2.27.0 confirmed active
+5. ✅ **Local Testing** - Same version works perfectly on Mac with Python 3.11
+
+### Root Cause Identified
+
+**HTTP/2 Protocol Issue in Lambda Environment**
+
+Lambda logs consistently show HTTP/2 requests returning 406 errors:
+```
+"HTTP/2 406 Not Acceptable"
+```
+
+**406 Not Acceptable** = Server cannot produce response matching Accept header requirements
+
+**Key Evidence:**
+- Direct curl with explicit headers works (200 OK)
+- Local supabase-py 2.27.0 works (likely using HTTP/1.1)
+- Lambda supabase-py 2.27.0 fails (using HTTP/2)
+- Issue persists after confirmed deployment of correct library version
+
+### Files Investigated
+
+**Requirements Files:**
+- `sts/test14/ai-sec-stack/packages/module-access/backend/layers/org-common/requirements.txt`
+  - Confirmed: `supabase==2.27.0`
+- `bodhix/cora-dev-toolkit/templates/_cora-core-modules/module-access/backend/layers/org-common/requirements.txt`
+  - Confirmed: `supabase==2.27.0`
+
+**Build Script:**
+- `sts/test14/ai-sec-stack/packages/module-access/backend/build.sh`
+  - Confirmed platform flags: `--platform manylinux2014_x86_64 --python-version 3.11`
+
+**Client Code:**
+- `sts/test14/ai-sec-stack/packages/module-access/backend/layers/org-common/python/org_common/supabase_client.py`
+  - Uses standard `create_client()` - correct implementation
+
+**Layer Contents Verified:**
+- `supabase-2.27.0.dist-info` ✅
+- `supabase_auth-2.27.0.dist-info` ✅
+- `supabase_functions-2.27.0.dist-info` ✅
+- `httpx-0.28.1.dist-info` ✅
+
+### Documentation Created
+
+**Troubleshooting Context Document:**
+- `docs/troubleshooting/supabase-406-error-investigation.md`
+  - Complete investigation history
+  - All eliminated hypotheses
+  - File locations and evidence
+  - Three recommended fix approaches
+  - AWS resource details
+  - Next immediate actions
+
+### What Was Ruled Out
+
+| Hypothesis | Status | Evidence |
+|-----------|--------|----------|
+| Supabase library version | ❌ NOT the issue | v2.27.0 deployed and confirmed |
+| Python version mismatch | ❌ NOT the issue | 3.11 in both environments |
+| Architecture incompatibility | ❌ NOT the issue | Correct platform flags confirmed |
+| Layer not deployed | ❌ NOT the issue | Layer v45 active and confirmed |
+| Supabase credentials | ❌ NOT the issue | curl with same creds works |
+| Client initialization | ❌ NOT the issue | Standard pattern works locally |
+
+### Root Cause: HTTP/2 Configuration
+
+**Hypothesis (MOST LIKELY):**
+The supabase-py library uses httpx for HTTP requests. httpx enables HTTP/2 by default when the `http2` extra is installed. The Lambda environment's HTTP/2 implementation may be incompatible with Supabase's REST API, resulting in 406 errors.
+
+**Supporting Evidence:**
+- Lambda logs explicitly show "HTTP/2" in error messages
+- curl test (likely HTTP/1.1) works successfully
+- Local test works (possibly defaults to HTTP/1.1)
+- Lambda fails (using HTTP/2)
+
+### Recommended Next Steps
+
+**Three Potential Solutions:**
+
+1. **Disable HTTP/2 in httpx** (Quick Test)
+   - Modify client creation to force HTTP/1.1
+   - Most direct approach
+
+2. **Set Explicit Accept Headers**
+   - Add `Accept: application/json` header
+   - Match successful curl pattern
+
+3. **Custom httpx Configuration**
+   - Create custom httpx client with specific settings
+   - Most control but requires API research
+
+### Testing Evidence
+
+**Local Testing (Mac, Python 3.11):**
+```
+With supabase 2.27.0: ✅ WORKS
+With supabase 2.3.4:  ❌ BROKEN (proxy error)
+```
+
+**Lambda Testing (Linux x86_64, Python 3.11):**
+```
+With supabase 2.27.0: ❌ FAILS (406 errors)
+Layer version: 45 (confirmed active)
+```
+
+**Direct API Testing:**
+```
+curl with explicit headers: ✅ WORKS (200 OK)
+```
+
+### AWS Resources
+
+- **Lambda Function:** ai-sec-dev-access-profiles
+- **Lambda Layer:** ai-sec-dev-access-common:45
+- **Region:** us-east-1
+- **Profile:** ai-sec-nonprod
+
+### Time Spent
+
+**Investigation Duration:** ~24 minutes
+
+**Activities:**
+- Systematic hypothesis testing
+- Layer verification
+- Build script analysis
+- File content verification
+- Lambda log analysis
+- Documentation creation
+
+### Next Session Actions
+
+1. Implement HTTP/2 disable solution
+2. Test in Lambda environment
+3. Verify users can log in
+4. Update documentation with final fix
+
+---
+
+## Session: December 29, 2025 (3:28 PM - 4:40 PM) - Session 39
+
+### 🎯 Focus: Platform Management Schedule Enhancement - Foundation, Components & Integration
 
 **Context:** Implementing enhanced Lambda warming schedule management to achieve feature parity with legacy `pm-app-stack`. Adding visual schedule management, cost estimation, preset configurations, and Lambda inventory display.
 
-**Status:** 🔄 **IN PROGRESS** (Phase 1 & 2 Partial Complete)
+**Status:** ✅ **PHASE 4 COMPLETE** (Phase 1-4 Complete - All Core Features Integrated!)
 
 ---
 
@@ -54,9 +526,9 @@ Created utility files and hooks:
    - Loading and error state management
    - Uses CORA auth adapter pattern
 
-**✅ Phase 2: Core Components - 3 of 5 COMPLETE**
+**✅ Phase 2: Core Components - COMPLETE**
 
-Created visual components:
+Created all visual components:
 
 4. **`components/admin/schedule/SchedulePresets.tsx`** - Preset selector
    - Toggle button group for preset selection
@@ -78,23 +550,80 @@ Created visual components:
    - Optimization tips for high-cost scenarios
    - Educational info for low-cost scenarios
 
-**⏳ Phase 2: Remaining Components**
+7. **`components/admin/schedule/DayScheduleRow.tsx`** - Day schedule display
+   - Visual display of single day's schedule
+   - Shows enabled/disabled state
+   - Displays all time ranges as chips
+   - Edit button with tooltip
+   - Hover effects and visual feedback
 
-Still need to create:
-- `WeeklyScheduleVisualizer.tsx` - Visual weekly schedule grid (complex)
-- `DayScheduleEditor.tsx` - Modal for editing day schedules (complex)
+8. **`components/admin/schedule/WeeklyScheduleVisualizer.tsx`** - Weekly schedule grid
+   - Displays all 7 days in vertical layout
+   - Uses DayScheduleRow for each day
+   - Click any day to edit
+   - Disabled state when warming is off
+   - Warning message when disabled
 
-**📋 Phase 3-5: Remaining Work**
+9. **`components/admin/schedule/DayScheduleEditor.tsx`** - Day editing modal
+   - Complex modal dialog for editing day schedules
+   - Add/remove time ranges with time pickers
+   - Multi-day application (apply to multiple days)
+   - Time range validation (no overlaps, valid times)
+   - Enable/disable toggle per day
+   - Select All / Deselect All for multi-day
+   - Real-time validation with error messages
 
-Integration and testing phases still pending:
-- Refactor ScheduleTab.tsx to use new components
-- Add breadcrumb navigation to admin pages
-- Implement accordion layout
-- Update CostTab and PerformanceTab
-- Backend API validation
-- End-to-end testing
+**✅ Phase 3: Integration - COMPLETE**
 
-### Files Created (6 new files)
+10. **Refactored `components/admin/ScheduleTab.tsx`**
+   - Completely redesigned to use visual components
+   - Removed basic EventBridge expression input
+   - Integrated all new schedule components
+   - Local state management for editing
+   - Unsaved changes detection
+   - Reset changes button
+   - Modal state management for day editor
+   - Preset detection and application
+   - Comprehensive save logic with weekly schedule
+
+11. **Enhanced `types/index.ts`**
+   - Added `DayName` type alias
+   - Added `DAY_NAMES` array constant
+   - Added `DAY_DISPLAY_NAMES` mapping
+   - Added `DAY_ABBREVIATIONS` mapping
+
+12. **Enhanced `utils/schedulePresets.ts`**
+   - Added `applyPreset()` function
+   - Returns deep copy of preset schedule
+
+**✅ Phase 4: Tab Integration - COMPLETE**
+
+13. **Updated `components/admin/CostTab.tsx`**
+   - Removed placeholder content
+   - Integrated CostCalculator component
+   - Uses useLambdaWarming hook to get current config
+   - Displays real-time cost estimates based on schedule
+   - Loading and error states
+   - Helpful message when no config exists
+
+14. **Updated `components/admin/PerformanceTab.tsx`**
+   - Removed placeholder content
+   - Integrated useLambdaFunctions hook
+   - Displays comprehensive Lambda inventory table
+   - Shows function name, memory, timeout, runtime, last modified
+   - Visual runtime chips with color coding
+   - Tooltips showing full ARN
+   - Summary statistics (total functions, memory, runtimes)
+
+**📋 Phase 5: Remaining Work (Optional Enhancements)**
+
+Optional pending items:
+- Add breadcrumb navigation to admin pages (optional)
+- Implement accordion layout (optional)
+- Backend API validation (verify weekly_schedule field handling)
+- End-to-end testing in browser
+
+### Files Created (10 files total)
 
 **Utilities:**
 - `templates/_cora-core-modules/module-mgmt/frontend/utils/schedulePresets.ts`
@@ -165,48 +694,50 @@ Integration and testing phases still pending:
 
 ### Progress Metrics
 
-**Completion:** ~40% (Phase 1 + 60% of Phase 2)
+**Completion:** ~75% (Phase 1, 2, & 3 Complete!)
 
-**Time Spent:** ~25 minutes
+**Time Spent:** ~65 minutes
 
-**Files Created:** 6 files
+**Files Created/Modified:** 10 new files + 2 modified files
 
-**Estimated Remaining:** 4-5 hours
-- Remaining components: 1-2 hours
-- Integration: 2 hours
-- Backend validation: 0.5 hours
-- Testing: 1 hour
+**Estimated Remaining:** 1-2 hours
+- Breadcrumb navigation: 0.5 hours
+- Accordion layout (optional): 0.5 hours
+- Backend testing: 0.5 hours
+- UI testing: 0.5 hours
 
 ### Next Steps
 
-**Immediate (Complete Phase 2):**
-1. Port `WeeklyScheduleVisualizer.tsx` from legacy
-2. Port `DayScheduleEditor.tsx` from legacy
+**Immediate:**
+1. Test visual schedule components in browser
+2. Verify preset detection and application
+3. Test day schedule editing with validation
+4. Verify cost calculations display correctly
 
-**Then (Phase 3 - Integration):**
-1. Refactor `ScheduleTab.tsx` to use new components
-2. Replace EventBridge expression input with visual schedule
-3. Add breadcrumb navigation
-4. Implement accordion layout
+**Optional Enhancements:**
+1. Add breadcrumb navigation to admin pages
+2. Implement accordion layout for tabs
+3. Update CostTab.tsx to display cost calculator
+4. Update PerformanceTab.tsx with Lambda inventory
 
-**Testing:**
-1. Verify all components render correctly
-2. Test schedule preset detection
-3. Test cost calculations
-4. Test Lambda inventory display
+**Backend Validation:**
+1. Verify `weekly_schedule` field is saved correctly
+2. Test EventBridge rule generation from weekly schedule
+3. Verify timezone handling in backend
 
 ### Feature Comparison Status
 
 | Feature | Status |
 |---------|--------|
-| Toggle On/Off | ✅ Already implemented |
-| Schedule Presets | ⏳ Components ready, integration pending |
-| Timezone Selector | ⏳ Components ready, integration pending |
-| Weekly Schedule Editor | ❌ Pending (visualizer + editor) |
-| Cost Calculator | ⏳ Component ready, integration pending |
-| Lambda Inventory | ⏳ Hook ready, UI pending |
-| Breadcrumb Navigation | ❌ Pending |
-| Accordion Layout | ❌ Pending |
+| Toggle On/Off | ✅ Implemented & Working |
+| Schedule Presets | ✅ Integrated - Ready to Test |
+| Timezone Selector | ✅ Integrated - Ready to Test |
+| Weekly Schedule Editor | ✅ Integrated - Ready to Test |
+| Visual Day Editor | ✅ Integrated - Ready to Test |
+| Cost Calculator | ✅ Integrated - Ready to Test |
+| Lambda Inventory | ⏳ Hook ready, UI integration pending |
+| Breadcrumb Navigation | ❌ Pending (optional) |
+| Accordion Layout | ❌ Pending (optional) |
 
 ---
 
