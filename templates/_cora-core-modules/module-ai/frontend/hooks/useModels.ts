@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import {
   createCoraAuthenticatedClient,
   type CoraAuthAdapter,
-} from "@{{PROJECT_NAME}}/api-client";
+} from "@ai-sec/api-client";
 import { createAIEnablementClient } from "../lib/api";
 import { AIModel, TestModelInput, TestModelResponse } from "../types";
 
@@ -17,8 +17,8 @@ import { AIModel, TestModelInput, TestModelResponse } from "../types";
  * @example
  * ```tsx
  * import { useAuth } from '@clerk/nextjs';
- * import { createClerkAuthAdapter } from '@{{PROJECT_NAME}}/api-client';
- * import { useModels } from '@{{PROJECT_NAME}}/ai-enablement-module';
+ * import { createClerkAuthAdapter } from '@ai-sec/api-client';
+ * import { useModels } from '@ai-sec/ai-enablement-module';
  *
  * const clerkAuth = useAuth();
  * const authAdapter = createClerkAuthAdapter(clerkAuth);
@@ -45,25 +45,23 @@ export function useModels(authAdapter: CoraAuthAdapter, providerId?: string) {
         );
         setApi(newApi);
 
-        // Fetch models immediately if providerId exists
-        if (providerId) {
-          setLoading(true);
-          setError(null);
-          try {
-            const response = await newApi.getModels(providerId);
-            if (response.success) {
-              setModels(response.data);
-            } else {
-              setError(response.error || "Failed to fetch models");
-            }
-          } catch (err) {
-            setError(
-              err instanceof Error ? err.message : "Failed to fetch models"
-            );
-            console.error("Error fetching models:", err);
-          } finally {
-            setLoading(false);
+        // Fetch models immediately (all models or filtered by providerId)
+        setLoading(true);
+        setError(null);
+        try {
+          const response = await newApi.getModels(providerId);
+          if (response.success) {
+            setModels(response.data);
+          } else {
+            setError(response.error || "Failed to fetch models");
           }
+        } catch (err) {
+          setError(
+            err instanceof Error ? err.message : "Failed to fetch models"
+          );
+          console.error("Error fetching models:", err);
+        } finally {
+          setLoading(false);
         }
       } else {
         setApi(null);
@@ -73,7 +71,7 @@ export function useModels(authAdapter: CoraAuthAdapter, providerId?: string) {
   }, [authAdapter, providerId]);
 
   const fetchModels = useCallback(async () => {
-    if (!api || !providerId) return;
+    if (!api) return;
 
     setLoading(true);
     setError(null);

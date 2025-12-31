@@ -268,6 +268,7 @@ def handle_get_all(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                 'name': provider['name'],
                 'display_name': provider.get('display_name'),
                 'provider_type': provider['provider_type'],
+                'auth_method': provider.get('auth_method', 'secrets_manager'),
                 'credentials_secret_path': provider.get('credentials_secret_path'),
                 'is_active': provider.get('is_active', True),
                 'created_at': provider.get('created_at'),
@@ -340,12 +341,14 @@ def handle_update(event: Dict[str, Any], user_id: str, provider_id: str) -> Dict
     update_data = {}
     if 'name' in body:
         update_data['name'] = body['name']
-    if 'display_name' in body:
-        update_data['display_name'] = body['display_name']
-    if 'credentials_secret_path' in body:
-        update_data['credentials_secret_path'] = body['credentials_secret_path']
-    if 'is_active' in body:
-        update_data['is_active'] = body['is_active']
+    if 'display_name' in body or 'displayName' in body:
+        update_data['display_name'] = body.get('display_name') or body.get('displayName')
+    if 'auth_method' in body or 'authMethod' in body:
+        update_data['auth_method'] = body.get('auth_method') or body.get('authMethod')
+    if 'credentials_secret_path' in body or 'credentialsSecretPath' in body:
+        update_data['credentials_secret_path'] = body.get('credentials_secret_path') or body.get('credentialsSecretPath')
+    if 'is_active' in body or 'isActive' in body:
+        update_data['is_active'] = body.get('is_active') if 'is_active' in body else body.get('isActive')
     
     if not update_data:
         raise common.ValidationError('No valid fields to update')
@@ -421,7 +424,7 @@ def handle_discover_models(event: Dict[str, Any], user_id: str, provider_id: str
                 'model_id': model_info['model_id'],
                 'display_name': model_info['display_name'],
                 'description': model_info.get('description'),
-                'capabilities': json.dumps(model_info['capabilities']),
+                'capabilities': model_info['capabilities'],
                 'status': 'discovered',
                 'cost_per_1k_tokens_input': model_info.get('cost_per_1k_tokens'),
                 'cost_per_1k_tokens_output': model_info.get('cost_per_1k_tokens'),
@@ -980,41 +983,63 @@ def handle_test_model(event: Dict[str, Any], user_id: str, model_id: str) -> Dic
 
 def _get_provider_credentials(provider: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Get provider credentials from secrets manager using secret_resolver.
+    Get provider credentials from AWS Secrets Manager or SSM Parameter Store.
     Supports both SSM Parameter Store (paths starting with '/') and Secrets Manager ARNs.
     """
-    from src import secret_resolver
+    # Check auth_method FIRST - if using IAM role, return immediately without any secret lookups
+    auth_method = provider.get('auth_method', 'secrets_manager')
+    if auth_method == 'iam_role':
+        return {
+            'use_iam_role': True,
+            'region': os.environ.get('AWS_REGION', 'us-east-1')
+        }
     
+    # Only look up credentials if NOT using IAM role
     credentials_path = provider.get('credentials_secret_path')
     
     if not credentials_path:
-        # Default to IAM role authentication if no credentials configured
+        # No credentials path configured - default to IAM role
         return {
             'use_iam_role': True,
-            'region': 'us-east-1'
+            'region': os.environ.get('AWS_REGION', 'us-east-1')
         }
     
     try:
         # Handle Secrets Manager ARNs
         if credentials_path.startswith('arn:aws:secretsmanager:'):
-            secret_data = secret_resolver.resolve_secrets_manager_secret(credentials_path)
-            if secret_data:
-                return secret_data
-            else:
-                raise ValueError(f'Failed to retrieve secret from Secrets Manager: {credentials_path}')
+            secrets_client = boto3.client('secretsmanager')
+            try:
+                response = secrets_client.get_secret_value(SecretId=credentials_path)
+                secret_string = response.get('SecretString')
+                if secret_string:
+                    # Try to parse as JSON
+                    try:
+                        return json.loads(secret_string)
+                    except json.JSONDecodeError:
+                        # If not JSON, return as simple value
+                        return {'value': secret_string}
+                else:
+                    raise ValueError(f'No SecretString in Secrets Manager response: {credentials_path}')
+            except Exception as sm_error:
+                raise ValueError(f'Failed to retrieve secret from Secrets Manager: {str(sm_error)}')
         
         # Handle SSM Parameter Store paths (starting with '/')
         elif credentials_path.startswith('/'):
-            secret_value = secret_resolver.resolve_secret(credentials_path)
-            if secret_value:
-                # Try to parse as JSON
-                try:
-                    return json.loads(secret_value)
-                except json.JSONDecodeError:
-                    # If not JSON, assume it's a simple string value
-                    return {'value': secret_value}
-            else:
-                raise ValueError(f'Failed to retrieve secret from SSM Parameter Store: {credentials_path}')
+            ssm_client = boto3.client('ssm')
+            try:
+                response = ssm_client.get_parameter(Name=credentials_path, WithDecryption=True)
+                parameter_value = response.get('Parameter', {}).get('Value')
+                if parameter_value:
+                    # Try to parse as JSON
+                    try:
+                        return json.loads(parameter_value)
+                    except json.JSONDecodeError:
+                        # If not JSON, return as simple value
+                        return {'value': parameter_value}
+                else:
+                    raise ValueError(f'No value in SSM Parameter Store response: {credentials_path}')
+            except Exception as ssm_error:
+                raise ValueError(f'Failed to retrieve secret from SSM Parameter Store: {str(ssm_error)}')
         
         else:
             raise ValueError(f'Invalid credentials path format: {credentials_path}. Must start with "/" (SSM) or "arn:aws:secretsmanager:" (Secrets Manager)')

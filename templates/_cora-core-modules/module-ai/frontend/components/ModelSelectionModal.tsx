@@ -48,7 +48,7 @@ export const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
   const dimensions = [
     ...new Set(
       models
-        .map((model) => model.capabilities?.embedding_dimensions)
+        .map((model) => model.capabilities?.embeddingDimensions)
         .filter(Boolean)
     ),
   ];
@@ -60,7 +60,7 @@ export const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
     .filter(
       (model) =>
         dimensionFilter === "all" ||
-        model.capabilities?.embedding_dimensions === parseInt(dimensionFilter)
+        model.capabilities?.embeddingDimensions === parseInt(dimensionFilter)
     )
     .filter((model) =>
       model.model_name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -68,8 +68,8 @@ export const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
 
   const handleSelect = (model: DeploymentInfo) => {
     if (
-      model.capabilities?.embedding_dimensions &&
-      model.capabilities.embedding_dimensions !== RECOMMENDED_DIMENSIONS
+      model.capabilities?.embeddingDimensions &&
+      model.capabilities.embeddingDimensions !== RECOMMENDED_DIMENSIONS
     ) {
       setSelectedModel(model);
       setWarningOpen(true);
@@ -99,12 +99,12 @@ export const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <FormControl sx={{ minWidth: 200 }}>
-              <InputLabel>Provider</InputLabel>
+              <InputLabel>Model Vendor</InputLabel>
               <Select
                 value={providerFilter}
                 onChange={(e) => setProviderFilter(e.target.value)}
-                label="Provider"
-                aria-label="Filter by provider"
+                label="Model Vendor"
+                aria-label="Filter by model vendor"
               >
                 <MenuItem value="all">All</MenuItem>
                 {providers.map((provider) => (
@@ -148,7 +148,7 @@ export const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
         <DialogContent>
           <DialogContentText>
             The selected model has a dimension of{" "}
-            {selectedModel?.capabilities?.embedding_dimensions}. The database is
+            {selectedModel?.capabilities?.embeddingDimensions}. The database is
             configured for {RECOMMENDED_DIMENSIONS}. Using this model will
             require re-embedding all existing documents.
           </DialogContentText>

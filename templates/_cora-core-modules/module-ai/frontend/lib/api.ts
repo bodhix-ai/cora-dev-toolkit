@@ -22,6 +22,7 @@ interface ProviderApiData {
   name: string;
   display_name?: string | null;
   provider_type: string;
+  auth_method?: string | null;
   credentials_secret_path?: string | null;
   is_active?: boolean;
   created_at: string;
@@ -61,6 +62,7 @@ interface ProviderInputApiData {
   name?: string;
   display_name?: string;
   provider_type?: string;
+  auth_method?: string;
   credentials_secret_path?: string;
   is_active?: boolean;
 }
@@ -85,6 +87,7 @@ function transformProviderResponse(apiData: ProviderApiData): AIProvider {
     name: apiData.name,
     displayName: apiData.display_name || null,
     providerType: apiData.provider_type,
+    authMethod: (apiData.auth_method as 'iam_role' | 'secrets_manager' | 'ssm_parameter') || 'secrets_manager',
     credentialsSecretPath: apiData.credentials_secret_path || null,
     isActive: apiData.is_active ?? true,
     createdAt: apiData.created_at,
@@ -107,12 +110,32 @@ function transformProviderResponse(apiData: ProviderApiData): AIProvider {
 }
 
 function transformModelResponse(apiData: ModelApiData): AIModel {
+  // Transform capabilities keys from snake_case (backend) to camelCase (frontend)
+  let capabilities: ModelCapabilities | null = null;
+  if (apiData.capabilities) {
+    // Handle stringified capabilities (legacy data) or object (new data)
+    const caps = typeof apiData.capabilities === 'string' 
+      ? JSON.parse(apiData.capabilities) 
+      : apiData.capabilities as any;
+      
+    capabilities = {
+      chat: caps.chat,
+      embedding: caps.embedding,
+      maxTokens: caps.max_tokens,
+      supportsStreaming: caps.streaming,
+      supportsVision: caps.vision,
+      embeddingDimensions: caps.embedding_dimensions,
+      ...caps, // Keep other properties
+    };
+  }
+
   return {
     id: apiData.id,
     providerId: apiData.provider_id,
     modelId: apiData.model_id,
     displayName: apiData.display_name || null,
-    capabilities: apiData.capabilities || null,
+    description: (apiData as any).description || null, // Ensure description is mapped
+    capabilities,
     status: apiData.status || "available",
     validationCategory: apiData.validation_category || null,
     costPer1kTokensInput: apiData.cost_per_1k_tokens_input || null,
@@ -136,6 +159,7 @@ function transformProviderInput(
   if ("name" in input) result.name = input.name;
   if ("displayName" in input) result.display_name = input.displayName;
   if ("providerType" in input) result.provider_type = input.providerType;
+  if ("authMethod" in input) result.auth_method = input.authMethod;
   if ("credentialsSecretPath" in input)
     result.credentials_secret_path = input.credentialsSecretPath;
   if ("isActive" in input) result.is_active = input.isActive;
@@ -168,7 +192,7 @@ export interface AIEnablementApiClient {
   ) => Promise<ApiResponse<ValidationProgress>>;
 
   // Model endpoints
-  getModels: (providerId: string) => Promise<ApiResponse<AIModel[]>>;
+  getModels: (providerId?: string) => Promise<ApiResponse<AIModel[]>>;
   getModel: (id: string) => Promise<ApiResponse<AIModel>>;
   testModel: (
     id: string,
@@ -393,10 +417,11 @@ export function createAIEnablementClient(
     },
 
     // Model operations
-    getModels: async (providerId: string) => {
+    getModels: async (providerId?: string) => {
       try {
+        const url = providerId ? `/models?providerId=${providerId}` : "/models";
         const response = await authenticatedClient.get<ModelApiData[] | { data: ModelApiData[] }>(
-          `/models?providerId=${providerId}`
+          url
         );
         // Backend returns models in the response data array
         const models = Array.isArray(response)

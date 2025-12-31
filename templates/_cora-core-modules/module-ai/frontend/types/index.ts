@@ -7,6 +7,7 @@ export interface AIProvider {
   name: string;
   displayName: string | null;
   providerType: string; // e.g., 'aws_bedrock', 'azure_openai', 'openai'
+  authMethod: 'iam_role' | 'secrets_manager' | 'ssm_parameter'; // Authentication method
   credentialsSecretPath: string | null;
   isActive: boolean;
   createdAt: string;
@@ -26,6 +27,7 @@ export interface AIModel {
   providerId: string;
   modelId: string;
   displayName: string | null;
+  description: string | null;
   capabilities: ModelCapabilities | null;
   status: ModelStatus;
   validationCategory?: ValidationCategory | null;
@@ -76,6 +78,7 @@ export interface CreateProviderInput {
   name: string;
   displayName?: string;
   providerType: ProviderType;
+  authMethod?: 'iam_role' | 'secrets_manager' | 'ssm_parameter';
   credentialsSecretPath?: string;
   isActive?: boolean;
 }
@@ -85,6 +88,7 @@ export interface CreateProviderInput {
  */
 export interface UpdateProviderInput {
   displayName?: string;
+  authMethod?: 'iam_role' | 'secrets_manager' | 'ssm_parameter';
   credentialsSecretPath?: string;
   isActive?: boolean;
 }

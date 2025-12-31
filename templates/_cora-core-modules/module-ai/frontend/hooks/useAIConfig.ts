@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   createCoraAuthenticatedClient,
   type CoraAuthAdapter,
-} from "@{{PROJECT_NAME}}/api-client";
+} from "@ai-sec/api-client";
 
 // Types for AI Configuration
 
@@ -34,6 +34,10 @@ interface RawDeploymentData {
     max_tokens: number;
     embedding_dimensions: number;
   };
+  metadata?: {
+    provider_name?: string;
+    [key: string]: any;
+  };
   supports_chat?: boolean;
   supports_embeddings?: boolean;
 }
@@ -52,12 +56,17 @@ export type DeploymentInfo = {
   updated_at: string;
   description?: string;
   capabilities?: {
-    chat: boolean;
-    embedding: boolean;
-    vision: boolean;
-    streaming: boolean;
-    max_tokens: number;
-    embedding_dimensions: number;
+    chat?: boolean;
+    embedding?: boolean;
+    vision?: boolean;
+    streaming?: boolean;
+    max_tokens?: number;
+    embedding_dimensions?: number;
+    supportsStreaming?: boolean;
+    supportsVision?: boolean;
+    maxTokens?: number;
+    embeddingDimensions?: number;
+    [key: string]: any;
   };
 };
 
@@ -90,8 +99,8 @@ export type OrgAIConfig = {
  * @example
  * ```tsx
  * import { useAuth } from '@clerk/nextjs';
- * import { createClerkAuthAdapter } from '@{{PROJECT_NAME}}/api-client';
- * import { usePlatformAIConfig } from '@{{PROJECT_NAME}}/ai-config-module';
+ * import { createClerkAuthAdapter } from '@ai-sec/api-client';
+ * import { usePlatformAIConfig } from '@ai-sec/ai-config-module';
  *
  * const clerkAuth = useAuth();
  * const authAdapter = createClerkAuthAdapter(clerkAuth);
@@ -309,10 +318,7 @@ export function useDeployments(
         url += `?capability=${capability}`;
       }
 
-      const data = await client.get<
-        | { deployments?: RawDeploymentData[]; models?: RawDeploymentData[] }
-        | RawDeploymentData[]
-      >(url);
+      const data = await client.get<any>(url);
 
       // Handle both direct array and wrapped response { success: true, data: [...] }
       let rawList: RawDeploymentData[] = [];
@@ -338,33 +344,120 @@ export function useDeployments(
 
       const deploymentList = rawList.map((d: RawDeploymentData) => {
         try {
-          const capabilities =
+          const rawCapabilities =
             typeof d.capabilities === "string"
               ? JSON.parse(d.capabilities)
               : d.capabilities;
 
-          const displayName = d.display_name || "";
-          const providerMatch = displayName.match(/\(([^)]+)\)/);
-          const provider = providerMatch ? providerMatch[1] : "Unknown";
-          const modelName = displayName.replace(/\s*\([^)]+\)/, "").trim();
+          // Transform capabilities to camelCase for compatibility with AIModel
+          const capabilities = rawCapabilities
+            ? {
+                chat: rawCapabilities.chat,
+                embedding: rawCapabilities.embedding,
+                vision: rawCapabilities.vision,
+                supportsStreaming: rawCapabilities.streaming, // Map to camelCase
+                supportsVision: rawCapabilities.vision, // Map to camelCase
+                maxTokens: rawCapabilities.max_tokens, // Map to camelCase
+                embeddingDimensions: rawCapabilities.embedding_dimensions, // Map to camelCase
+                ...rawCapabilities,
+              }
+            : null;
 
-          return {
-            ...d,
-            model_name: modelName,
+          const displayName = d.display_name || "";
+          let provider = "Unknown";
+
+          // Try to get provider from metadata first
+          if (d.metadata?.provider_name) {
+            provider = d.metadata.provider_name;
+          } else {
+            // Fallback to regex on display name
+            const providerMatch = displayName.match(/\(([^)]+)\)$/);
+            const extracted = providerMatch ? providerMatch[1] : "Unknown";
+
+            // Refine provider name if generic
+            if (
+              extracted === "Inference Profile" ||
+              extracted === "Bedrock" ||
+              extracted === "Unknown"
+            ) {
+              const lowerName = displayName.toLowerCase();
+              if (lowerName.includes("anthropic") || lowerName.includes("claude"))
+                provider = "Anthropic";
+              else if (lowerName.includes("meta") || lowerName.includes("llama"))
+                provider = "Meta";
+              else if (
+                lowerName.includes("amazon") ||
+                lowerName.includes("titan") ||
+                lowerName.includes("nova")
+              )
+                provider = "Amazon";
+              else if (
+                lowerName.includes("mistral") ||
+                lowerName.includes("mixtral")
+              )
+                provider = "Mistral AI";
+              else if (
+                lowerName.includes("cohere") ||
+                lowerName.includes("command")
+              )
+                provider = "Cohere";
+              else if (
+                lowerName.includes("stability") ||
+                lowerName.includes("stable")
+              )
+                provider = "Stability AI";
+              else if (
+                lowerName.includes("ai21") ||
+                lowerName.includes("jamba") ||
+                lowerName.includes("jurassic")
+              )
+                provider = "AI21 Labs";
+              else if (extracted === "Bedrock") provider = "Amazon Bedrock";
+              else provider = extracted;
+            } else {
+              provider = extracted;
+            }
+          }
+
+          // Clean model name
+          const modelName = displayName.replace(/\s*\([^)]+\)$/, "").trim();
+
+          // Construct DeploymentInfo explicitly to avoid spread type issues
+          const info: DeploymentInfo = {
+            id: d.id,
+            provider_type: d.provider_type,
             provider: provider,
-            capabilities: capabilities,
+            model_id: d.model_id,
+            model_name: modelName,
+            deployment_name: d.deployment_name,
+            deployment_status: d.deployment_status,
+            created_at: d.created_at,
+            updated_at: d.updated_at,
+            description: d.description,
+            capabilities: capabilities as any,
             supports_chat: !!capabilities?.chat,
             supports_embeddings: !!capabilities?.embedding,
           };
+
+          return info;
         } catch (e) {
           console.error("Failed to parse model data:", d);
-          return {
-            ...d,
-            model_name: "Invalid Model",
+          const errorInfo: DeploymentInfo = {
+            id: d.id,
+            provider_type: d.provider_type,
             provider: "Unknown",
+            model_id: d.model_id,
+            model_name: "Invalid Model",
+            deployment_name: d.deployment_name,
+            deployment_status: d.deployment_status,
+            created_at: d.created_at,
+            updated_at: d.updated_at,
+            description: d.description,
+            capabilities: undefined,
             supports_chat: false,
             supports_embeddings: false,
           };
+          return errorInfo;
         }
       });
 
