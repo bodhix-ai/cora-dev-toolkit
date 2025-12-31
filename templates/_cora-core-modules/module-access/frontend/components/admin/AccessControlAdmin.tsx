@@ -1,7 +1,15 @@
 "use client";
 
 import React, { useState } from "react";
-import { Box, Typography, Tabs, Tab } from "@mui/material";
+import { 
+  Box, 
+  Typography, 
+  Tabs, 
+  Tab, 
+  Breadcrumbs,
+  Link,
+} from "@mui/material";
+import { NavigateNext as NavigateNextIcon } from "@mui/icons-material";
 import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
 import { OrgsTab } from "./OrgsTab";
 import { UsersTab } from "./UsersTab";
@@ -51,6 +59,24 @@ export function AccessControlAdmin({ authAdapter }: AccessControlAdminProps) {
 
   return (
     <Box sx={{ p: 4 }}>
+      {/* Breadcrumb Navigation */}
+      <Breadcrumbs
+        separator={<NavigateNextIcon fontSize="small" />}
+        aria-label="breadcrumb"
+        sx={{ mb: 2 }}
+      >
+        <Link
+          underline="hover"
+          color="inherit"
+          href="/admin/platform"
+          sx={{ display: "flex", alignItems: "center" }}
+          aria-label="Navigate to Admin Dashboard"
+        >
+          Admin Dashboard
+        </Link>
+        <Typography color="text.primary">Access Control</Typography>
+      </Breadcrumbs>
+
       <Typography variant="h4" gutterBottom>
         Access Control
       </Typography>

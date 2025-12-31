@@ -1,7 +1,15 @@
 "use client";
 
 import React, { useState } from "react";
-import { Box, Typography, Tabs, Tab } from "@mui/material";
+import { 
+  Box, 
+  Typography, 
+  Tabs, 
+  Tab, 
+  Breadcrumbs,
+  Link,
+} from "@mui/material";
+import { NavigateNext as NavigateNextIcon } from "@mui/icons-material";
 import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
 import { ProvidersTab } from "./ProvidersTab";
 import { ModelsTab } from "./ModelsTab";
@@ -42,6 +50,24 @@ export function AIEnablementAdmin({ authAdapter }: AIEnablementAdminProps) {
 
   return (
     <Box sx={{ p: 4 }}>
+      {/* Breadcrumb Navigation */}
+      <Breadcrumbs
+        separator={<NavigateNextIcon fontSize="small" />}
+        aria-label="breadcrumb"
+        sx={{ mb: 2 }}
+      >
+        <Link
+          underline="hover"
+          color="inherit"
+          href="/admin/platform"
+          sx={{ display: "flex", alignItems: "center" }}
+          aria-label="Navigate to Admin Dashboard"
+        >
+          Admin Dashboard
+        </Link>
+        <Typography color="text.primary">AI Enablement</Typography>
+      </Breadcrumbs>
+
       <Typography variant="h4" gutterBottom>
         AI Enablement
       </Typography>

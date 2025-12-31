@@ -126,6 +126,85 @@ nextauth:
   url: ""
 
 # =============================================================================
+# AI Provider Configuration
+# =============================================================================
+# Configure authentication for AI providers used in the platform.
+# Supports multiple authentication methods based on provider type.
+#
+# Authentication Methods:
+#   - iam_role: Use AWS IAM role (recommended for AWS Bedrock)
+#   - secrets_manager: Store credentials in AWS Secrets Manager
+#   - ssm_parameter: Store credentials in AWS Systems Manager Parameter Store
+#
+# Security Best Practices:
+#   - Prefer IAM role-based auth when possible (no long-term credentials)
+#   - Use Secrets Manager for non-AWS providers (Azure, Google)
+#   - Never use environment variables for production credentials
+#
+# For detailed setup instructions, see:
+#   docs/guides/ai-provider-authentication.md
+
+ai_providers:
+  # AWS Bedrock (Recommended: IAM Role-Based Auth)
+  # -------------------------------------------------
+  # AWS Bedrock is the recommended provider for production deployments.
+  # It supports IAM role-based authentication, eliminating the need for
+  # long-term credentials.
+  aws_bedrock:
+    enabled: true
+    auth_method: "iam_role"  # "iam_role" | "secrets_manager" | "ssm_parameter"
+    
+    # For IAM role auth (recommended):
+    # Leave credentials_secret_path empty. Ensure Lambda execution role has
+    # bedrock:InvokeModel permission (automatically added by Terraform).
+    credentials_secret_path: ""
+    
+    # For Secrets Manager auth (alternative):
+    # credentials_secret_path: "arn:aws:secretsmanager:us-east-1:123456789012:secret:my-project/ai/bedrock"
+    
+    # For SSM Parameter Store auth (dev only):
+    # credentials_secret_path: "/my-project/ai/bedrock/api-key"
+    
+  # Azure OpenAI (Requires API Key via Secrets Manager)
+  # -------------------------------------------------
+  # Azure OpenAI requires an API key stored in AWS Secrets Manager.
+  # 
+  # Setup Steps:
+  # 1. Create Azure OpenAI resource: https://portal.azure.com
+  # 2. Copy API key from Keys and Endpoint section
+  # 3. Create AWS secret: aws secretsmanager create-secret --name my-project/ai/azure_openai --secret-string "YOUR_AZURE_API_KEY"
+  # 4. Update credentials_secret_path below with the secret ARN
+  azure_ai_foundry:
+    enabled: false
+    auth_method: "secrets_manager"  # Azure requires API key
+    credentials_secret_path: ""  # e.g., "arn:aws:secretsmanager:us-east-1:123456789012:secret:my-project/ai/azure_openai"
+    
+    # Azure-specific configuration
+    azure:
+      endpoint: ""  # e.g., "https://your-resource.openai.azure.com/"
+      api_version: "2024-02-15-preview"
+      
+  # Google Vertex AI (Requires Service Account via Secrets Manager)
+  # -------------------------------------------------
+  # Google Vertex AI requires a service account JSON key stored in AWS Secrets Manager.
+  #
+  # Setup Steps:
+  # 1. Create service account: https://console.cloud.google.com/iam-admin/serviceaccounts
+  # 2. Grant Vertex AI User role
+  # 3. Create and download JSON key
+  # 4. Create AWS secret: aws secretsmanager create-secret --name my-project/ai/google_vertex --secret-string file://service-account-key.json
+  # 5. Update credentials_secret_path below with the secret ARN
+  google_ai:
+    enabled: false
+    auth_method: "secrets_manager"  # Google requires service account JSON
+    credentials_secret_path: ""  # e.g., "arn:aws:secretsmanager:us-east-1:123456789012:secret:my-project/ai/google_vertex"
+    
+    # Google-specific configuration
+    google:
+      project_id: ""
+      location: "us-central1"
+
+# =============================================================================
 # Feature Flags
 # =============================================================================
 features:

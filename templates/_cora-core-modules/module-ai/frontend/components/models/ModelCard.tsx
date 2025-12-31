@@ -75,6 +75,12 @@ export function ModelCard({ model, onTest }: ModelCardProps) {
           </Box>
         </Box>
 
+        {model.description && (
+          <Typography variant="body2" color="text.secondary" paragraph>
+            {model.description}
+          </Typography>
+        )}
+
         {model.capabilities && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="subtitle2" gutterBottom>
@@ -95,7 +101,14 @@ export function ModelCard({ model, onTest }: ModelCardProps) {
               )}
               {model.capabilities.maxTokens && (
                 <Chip
-                  label={`Max: ${model.capabilities.maxTokens} tokens`}
+                  label={`Max: ${model.capabilities.maxTokens.toLocaleString()} tokens`}
+                  size="small"
+                  variant="outlined"
+                />
+              )}
+              {model.capabilities.embeddingDimensions && (
+                <Chip
+                  label={`${model.capabilities.embeddingDimensions} dims`}
                   size="small"
                   variant="outlined"
                 />

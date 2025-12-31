@@ -1,6 +1,6 @@
 -- ============================================================================
 -- CORA Module Registry - Usage Tracking
--- Schema: 004-platform-module-usage.sql
+-- Schema: 003-platform-module-usage.sql
 -- Purpose: Track module usage for analytics and billing
 -- ============================================================================
 
@@ -49,23 +49,6 @@ CREATE TABLE IF NOT EXISTS platform_module_usage (
     -- Partitioning Support (for future time-based partitioning)
     event_date DATE
 );
-
--- ============================================================================
--- Trigger to auto-populate event_date
--- ============================================================================
-
-CREATE OR REPLACE FUNCTION set_event_date()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.event_date := NEW.created_at::DATE;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql IMMUTABLE;
-
-DROP TRIGGER IF EXISTS set_platform_module_usage_event_date ON platform_module_usage;
-CREATE TRIGGER set_platform_module_usage_event_date BEFORE INSERT ON platform_module_usage
-    FOR EACH ROW
-    EXECUTE FUNCTION set_event_date();
 
 -- ============================================================================
 -- Indexes for platform_module_usage
@@ -142,9 +125,28 @@ CREATE INDEX IF NOT EXISTS idx_usage_daily_date
     ON platform_module_usage_daily(usage_date DESC);
 
 -- ============================================================================
--- Function: Aggregate Usage to Daily Table
+-- Triggers
 -- ============================================================================
 
+-- Trigger to auto-populate event_date
+CREATE OR REPLACE FUNCTION set_event_date()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.event_date := NEW.created_at::DATE;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+DROP TRIGGER IF EXISTS set_platform_module_usage_event_date ON platform_module_usage;
+CREATE TRIGGER set_platform_module_usage_event_date BEFORE INSERT ON platform_module_usage
+    FOR EACH ROW
+    EXECUTE FUNCTION set_event_date();
+
+-- ============================================================================
+-- Functions
+-- ============================================================================
+
+-- Function: Aggregate Usage to Daily Table
 CREATE OR REPLACE FUNCTION aggregate_module_usage_daily(
     p_date DATE DEFAULT CURRENT_DATE - INTERVAL '1 day'
 )
@@ -195,15 +197,131 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to get current user's organization ID from JWT claims
+CREATE OR REPLACE FUNCTION get_current_org_id()
+RETURNS UUID AS $$
+BEGIN
+    -- Extract org_id from JWT claims (Supabase style)
+    -- Customize this based on your auth implementation
+    RETURN NULLIF(
+        current_setting('request.jwt.claims', true)::jsonb->>'org_id',
+        ''
+    )::UUID;
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+-- Function to check if current user is a platform admin
+CREATE OR REPLACE FUNCTION is_platform_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+    -- Check for platform admin role in JWT claims
+    -- Customize this based on your auth implementation
+    RETURN COALESCE(
+        (current_setting('request.jwt.claims', true)::jsonb->>'is_platform_admin')::boolean,
+        false
+    );
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN false;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+-- Function to check if current user is an org admin
+CREATE OR REPLACE FUNCTION is_org_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+    -- Check for org admin role in JWT claims
+    RETURN COALESCE(
+        (current_setting('request.jwt.claims', true)::jsonb->>'is_org_admin')::boolean,
+        false
+    );
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN false;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+-- ============================================================================
+-- Row Level Security
+-- ============================================================================
+
+-- Enable RLS on Tables
+ALTER TABLE platform_module_usage ENABLE ROW LEVEL SECURITY;
+ALTER TABLE platform_module_usage_daily ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for platform_module_usage
+
+-- Policy: Users can insert their own usage records
+DROP POLICY IF EXISTS module_usage_insert_own ON platform_module_usage;
+CREATE POLICY module_usage_insert_own ON platform_module_usage
+    FOR INSERT
+    WITH CHECK (
+        org_id = get_current_org_id()
+    );
+
+-- Policy: Org admins can read their organization's usage
+DROP POLICY IF EXISTS module_usage_select_org ON platform_module_usage;
+CREATE POLICY module_usage_select_org ON platform_module_usage
+    FOR SELECT
+    USING (
+        org_id = get_current_org_id()
+        AND (is_org_admin() OR is_platform_admin())
+    );
+
+-- Policy: Platform admins can read all usage
+DROP POLICY IF EXISTS module_usage_select_platform_admin ON platform_module_usage;
+CREATE POLICY module_usage_select_platform_admin ON platform_module_usage
+    FOR SELECT
+    USING (is_platform_admin());
+
+-- Policy: Platform admins can delete old usage records (for cleanup)
+DROP POLICY IF EXISTS module_usage_delete_admin ON platform_module_usage;
+CREATE POLICY module_usage_delete_admin ON platform_module_usage
+    FOR DELETE
+    USING (is_platform_admin());
+
+-- RLS Policies for platform_module_usage_daily
+
+-- Policy: Org admins can read their organization's daily stats
+DROP POLICY IF EXISTS usage_daily_select_org ON platform_module_usage_daily;
+CREATE POLICY usage_daily_select_org ON platform_module_usage_daily
+    FOR SELECT
+    USING (
+        org_id = get_current_org_id()
+        AND (is_org_admin() OR is_platform_admin())
+    );
+
+-- Policy: Platform admins can read all daily stats
+DROP POLICY IF EXISTS usage_daily_select_platform_admin ON platform_module_usage_daily;
+CREATE POLICY usage_daily_select_platform_admin ON platform_module_usage_daily
+    FOR SELECT
+    USING (is_platform_admin());
+
+-- Policy: Platform admins can delete old daily stats (for cleanup)
+DROP POLICY IF EXISTS usage_daily_delete_admin ON platform_module_usage_daily;
+CREATE POLICY usage_daily_delete_admin ON platform_module_usage_daily
+    FOR DELETE
+    USING (is_platform_admin());
+
 -- ============================================================================
 -- Comments
 -- ============================================================================
 
 COMMENT ON TABLE platform_module_usage IS 'Raw usage events for all modules - used for detailed analytics';
 COMMENT ON TABLE platform_module_usage_daily IS 'Aggregated daily usage statistics for dashboard display';
-COMMENT ON FUNCTION aggregate_module_usage_daily IS 'Aggregates raw usage data into daily summaries. Run daily via cron/scheduler.';
 
 COMMENT ON COLUMN platform_module_usage.event_type IS 'Type of usage event: api_call, page_view, feature_use, error, export, import';
 COMMENT ON COLUMN platform_module_usage.event_action IS 'Specific action within the module, e.g., kb.document.create';
 COMMENT ON COLUMN platform_module_usage.request_id IS 'Correlation ID for distributed tracing';
 COMMENT ON COLUMN platform_module_usage.event_date IS 'Generated column for efficient date-based partitioning';
+
+COMMENT ON FUNCTION aggregate_module_usage_daily IS 'Aggregates raw usage data into daily summaries. Run daily via cron/scheduler.';
+COMMENT ON FUNCTION get_current_org_id IS 'Extract current user org_id from JWT claims';
+COMMENT ON FUNCTION is_platform_admin IS 'Check if current user is a platform administrator';
+COMMENT ON FUNCTION is_org_admin IS 'Check if current user is an organization administrator';
+
+COMMENT ON POLICY module_usage_select_org ON platform_module_usage IS 'Allow org admins to read their org usage data';
+COMMENT ON POLICY usage_daily_select_org ON platform_module_usage_daily IS 'Allow org admins to read their org daily stats';

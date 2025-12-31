@@ -14,7 +14,7 @@ import {
   ValidationProgress,
   ValidationCategory,
 } from "../../types";
-import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
+import { CoraAuthAdapter } from "@ai-sec/api-client";
 
 interface ProviderListProps {
   authAdapter: CoraAuthAdapter;
@@ -63,6 +63,7 @@ export function ProviderList({ authAdapter }: ProviderListProps) {
       displayName?: string;
       credentialsSecretPath?: string;
       isActive?: boolean;
+      authMethod?: 'iam_role' | 'secrets_manager' | 'ssm_parameter';
     } = {};
 
     if (data.displayName !== null && data.displayName !== undefined) {
@@ -76,6 +77,9 @@ export function ProviderList({ authAdapter }: ProviderListProps) {
     }
     if (data.isActive !== undefined) {
       updateData.isActive = data.isActive;
+    }
+    if (data.authMethod !== null && data.authMethod !== undefined) {
+      updateData.authMethod = data.authMethod;
     }
 
     const result = await updateProvider(id, updateData);
@@ -283,6 +287,7 @@ export function ProviderList({ authAdapter }: ProviderListProps) {
         }
         loading={modelsLoading}
         initialCategoryFilter={initialCategoryFilter || undefined}
+        initialStatusFilter="available"
       />
     </Box>
   );

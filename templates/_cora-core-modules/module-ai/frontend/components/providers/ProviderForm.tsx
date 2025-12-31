@@ -32,6 +32,7 @@ export function ProviderForm({
     name: "",
     displayName: "",
     providerType: "aws_bedrock" as ProviderType,
+    authMethod: "iam_role" as "iam_role" | "secrets_manager" | "ssm_parameter",
     credentialsSecretPath: "",
     isActive: true,
   });
@@ -44,6 +45,7 @@ export function ProviderForm({
         name: initialData.name,
         displayName: initialData.displayName || "",
         providerType: initialData.providerType as ProviderType,
+        authMethod: (initialData.authMethod || "secrets_manager") as "iam_role" | "secrets_manager" | "ssm_parameter",
         credentialsSecretPath: initialData.credentialsSecretPath || "",
         isActive: initialData.isActive,
       });
@@ -88,6 +90,7 @@ export function ProviderForm({
       name: "",
       displayName: "",
       providerType: "aws_bedrock",
+      authMethod: "iam_role",
       credentialsSecretPath: "",
       isActive: true,
     });
@@ -150,6 +153,34 @@ export function ProviderForm({
             </TextField>
 
             <TextField
+              select
+              label="Authentication Method"
+              aria-label="Authentication Method"
+              value={formData.authMethod}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  authMethod: e.target.value as "iam_role" | "secrets_manager" | "ssm_parameter",
+                })
+              }
+              helperText={
+                formData.authMethod === "iam_role"
+                  ? "Uses Lambda execution role (AWS Bedrock only)"
+                  : formData.authMethod === "secrets_manager"
+                  ? "Credentials stored in AWS Secrets Manager"
+                  : "Credentials in SSM Parameter Store (dev only)"
+              }
+              required
+              fullWidth
+            >
+              <MenuItem value="iam_role" disabled={formData.providerType !== "aws_bedrock"}>
+                IAM Role (AWS Bedrock only)
+              </MenuItem>
+              <MenuItem value="secrets_manager">Secrets Manager (Recommended)</MenuItem>
+              <MenuItem value="ssm_parameter">SSM Parameter Store (Dev only)</MenuItem>
+            </TextField>
+
+            <TextField
               label="Credentials Secret Path"
               aria-label="Credentials Secret Path"
               value={formData.credentialsSecretPath}
@@ -159,8 +190,13 @@ export function ProviderForm({
                   credentialsSecretPath: e.target.value,
                 })
               }
-              helperText="Path to credentials in AWS Secrets Manager"
+              helperText={
+                formData.authMethod === "iam_role"
+                  ? "Not required for IAM role authentication"
+                  : "Path to credentials in AWS Secrets Manager or SSM"
+              }
               fullWidth
+              disabled={formData.authMethod === "iam_role"}
             />
 
             <FormControlLabel
