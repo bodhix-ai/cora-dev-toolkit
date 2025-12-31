@@ -14,12 +14,15 @@ CREATE TABLE IF NOT EXISTS public.ai_providers (
     name TEXT NOT NULL UNIQUE,
     display_name TEXT,
     provider_type TEXT NOT NULL,  -- e.g., 'aws_bedrock', 'azure_openai', 'openai'
-    credentials_secret_path TEXT,  -- Path to secret in AWS Secrets Manager
+    auth_method TEXT DEFAULT 'secrets_manager',  -- 'iam_role', 'secrets_manager', 'ssm_parameter'
+    credentials_secret_path TEXT,  -- Path to secret (null for iam_role)
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     created_by UUID REFERENCES auth.users(id),
-    updated_by UUID REFERENCES auth.users(id)
+    updated_by UUID REFERENCES auth.users(id),
+    
+    CONSTRAINT valid_auth_method CHECK (auth_method IN ('iam_role', 'secrets_manager', 'ssm_parameter'))
 );
 
 -- =============================================
@@ -37,7 +40,8 @@ CREATE INDEX IF NOT EXISTS idx_ai_providers_is_active ON public.ai_providers(is_
 COMMENT ON TABLE public.ai_providers IS 'Platform-level configuration for external AI providers. Only accessible by platform_owner and platform_admin.';
 COMMENT ON COLUMN public.ai_providers.name IS 'Unique provider name';
 COMMENT ON COLUMN public.ai_providers.provider_type IS 'Provider type: aws_bedrock, azure_openai, openai, etc.';
-COMMENT ON COLUMN public.ai_providers.credentials_secret_path IS 'Path to the secret in a secrets manager (e.g., AWS Secrets Manager ARN).';
+COMMENT ON COLUMN public.ai_providers.auth_method IS 'Authentication method: iam_role (AWS only), secrets_manager (all providers), ssm_parameter (dev only)';
+COMMENT ON COLUMN public.ai_providers.credentials_secret_path IS 'Path to secret in AWS Secrets Manager or Parameter Store. Null for iam_role auth.';
 COMMENT ON COLUMN public.ai_providers.is_active IS 'Whether provider is currently enabled';
 
 -- =============================================

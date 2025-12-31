@@ -192,7 +192,12 @@ export function ProviderCard({
     }
   };
 
-  const hasCredentials = Boolean(provider.credentialsSecretPath);
+  // Check if provider has credentials configured
+  // For iam_role auth, credentials are configured even without secret path
+  const hasCredentials = 
+    provider.authMethod === 'iam_role' || 
+    Boolean(provider.credentialsSecretPath);
+  
   const modelCounts = provider.modelCounts || {
     total: 0,
     discovered: 0,

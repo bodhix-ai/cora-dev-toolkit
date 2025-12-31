@@ -154,18 +154,68 @@ CREATE POLICY "Super admins can modify platform_rag" ON public.platform_rag
       WHERE ((user_profiles.user_id = auth.uid()) AND (user_profiles.global_role IN ('platform_owner', 'platform_admin'))))));
 
 -- =============================================
--- EXAMPLE USAGE
+-- SEED DATA
 -- =============================================
+-- Insert default platform RAG configuration
+-- Idempotent: Safe to run multiple times using WHERE NOT EXISTS
 
-/*
--- Insert initial platform RAG configuration
 INSERT INTO public.platform_rag (
+    available_embedding_models,
+    default_embedding_model,
+    embedding_model_costs,
+    available_chunking_strategies,
+    default_chunking_strategy,
+    max_chunk_size_tokens,
+    min_chunk_size_tokens,
+    search_quality_presets,
+    default_search_quality,
+    default_similarity_threshold,
+    max_search_results_global,
+    max_context_tokens_global,
+    ocr_enabled,
+    processing_timeout_minutes,
+    max_concurrent_jobs_global,
+    vector_index_type,
+    backup_retention_days,
+    auto_scaling_enabled,
+    max_embedding_batch_size,
+    embedding_cache_ttl_hours,
+    provider_configurations,
     default_ai_provider,
     active_providers,
+    default_embedding_model_id,
+    default_chat_model_id,
     system_prompt
-) VALUES (
+) 
+SELECT 
+    ARRAY['text-embedding-3-small', 'text-embedding-3-large'],
+    'text-embedding-3-small',
+    '{"text-embedding-3-small": 1.0, "text-embedding-3-large": 1.5}'::jsonb,
+    ARRAY['fixed', 'semantic', 'hybrid'],
+    'hybrid',
+    2000,
+    100,
+    '{
+      "fast": {"similarity_threshold": 0.6, "max_results": 5},
+      "balanced": {"similarity_threshold": 0.7, "max_results": 10},
+      "comprehensive": {"similarity_threshold": 0.5, "max_results": 25}
+    }'::jsonb,
+    'balanced',
+    0.7,
+    50,
+    8000,
+    true,
+    30,
+    100,
+    'ivfflat',
+    90,
+    true,
+    100,
+    24,
+    '{}'::jsonb,
     'openai',
     ARRAY['openai'],
-    'You are a helpful AI assistant that provides accurate, well-sourced answers based on the knowledge base.'
-);
-*/
+    NULL,  -- Set after models are discovered via "Discover Models" button
+    NULL,  -- Set after models are discovered via "Discover Models" button
+    'You are a helpful AI assistant that provides accurate, well-sourced answers based on the knowledge base. Always cite your sources and acknowledge when you don''t have enough information to answer a question.'
+WHERE NOT EXISTS (SELECT 1 FROM public.platform_rag);

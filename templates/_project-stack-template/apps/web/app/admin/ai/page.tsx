@@ -2,8 +2,7 @@
 
 import React from "react";
 import { AIEnablementAdmin } from "@{{PROJECT_NAME}}/module-ai";
-import { createAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
-import { useSession } from "next-auth/react";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
 
 /**
  * AI Enablement Admin Page
@@ -19,14 +18,9 @@ import { useSession } from "next-auth/react";
  * - Configure platform-wide AI defaults (chat model, embedding model, system prompt)
  */
 export default function AIAdminPage() {
-  const { data: session } = useSession();
+  const { authAdapter, loading } = useUser();
   
-  // Create authenticated API client
-  const authAdapter = session?.accessToken 
-    ? createAuthenticatedClient(session.accessToken)
-    : null;
-  
-  if (!authAdapter) {
+  if (loading || !authAdapter) {
     return (
       <div style={{ padding: '2rem' }}>
         <p>Loading...</p>

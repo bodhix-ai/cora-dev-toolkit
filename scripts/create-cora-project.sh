@@ -851,7 +851,7 @@ seed_idp_config() {
   # Create scripts directory if it doesn't exist
   mkdir -p "${stack_dir}/scripts"
   
-  # Generate SQL seed file based on auth provider (using INSERT...ON CONFLICT for idempotency)
+  # Generate SQL seed file based on auth provider (using UPDATE since schema seeds empty records)
   if [[ "$auth_provider" == "okta" ]]; then
     cat > "${stack_dir}/scripts/seed-idp-config.sql" << 'SQLEOF'
 -- Seed Okta IDP Configuration
@@ -859,26 +859,19 @@ seed_idp_config() {
 -- This configures Okta as the active identity provider
 -- Idempotent: Safe to run multiple times
 
--- Configure Okta provider
-INSERT INTO platform_idp_config (provider_type, display_name, config, is_configured, is_active)
-VALUES (
-  'okta',
-  'Okta',
-  jsonb_build_object(
+-- Configure Okta provider (schema already seeds empty record)
+UPDATE platform_idp_config
+SET 
+  config = jsonb_build_object(
     'client_id', '${OKTA_CLIENT_ID}',
     'issuer', '${OKTA_ISSUER}'
   ),
-  true,
-  true
-)
-ON CONFLICT (provider_type) 
-DO UPDATE SET
-  config = EXCLUDED.config,
   is_configured = true,
   is_active = true,
-  updated_at = NOW();
+  updated_at = NOW()
+WHERE provider_type = 'okta';
 
--- Deactivate other providers
+-- Deactivate other providers (trigger handles this, but explicit is safer)
 UPDATE platform_idp_config
 SET is_active = false, updated_at = NOW()
 WHERE provider_type != 'okta';
@@ -900,26 +893,19 @@ SQLEOF
 -- This configures Clerk as the active identity provider
 -- Idempotent: Safe to run multiple times
 
--- Configure Clerk provider
-INSERT INTO platform_idp_config (provider_type, display_name, config, is_configured, is_active)
-VALUES (
-  'clerk',
-  'Clerk',
-  jsonb_build_object(
+-- Configure Clerk provider (schema already seeds empty record)
+UPDATE platform_idp_config
+SET 
+  config = jsonb_build_object(
     'publishable_key', '${CLERK_PUBLISHABLE_KEY}',
     'issuer', '${CLERK_ISSUER}'
   ),
-  true,
-  true
-)
-ON CONFLICT (provider_type) 
-DO UPDATE SET
-  config = EXCLUDED.config,
   is_configured = true,
   is_active = true,
-  updated_at = NOW();
+  updated_at = NOW()
+WHERE provider_type = 'clerk';
 
--- Deactivate other providers
+-- Deactivate other providers (trigger handles this, but explicit is safer)
 UPDATE platform_idp_config
 SET is_active = false, updated_at = NOW()
 WHERE provider_type != 'clerk';
@@ -1022,6 +1008,126 @@ To add new modules or update schemas, regenerate with:
 READMEEOF
   
   log_info "Created ${stack_dir}/scripts/README-database-setup.md with setup instructions"
+}
+
+# --- Seed AI Provider Credentials ---
+seed_ai_provider_credentials() {
+  local config_file="$1"
+  local stack_dir="$2"
+  
+  if [[ ! -f "$config_file" ]]; then
+    log_warn "Config file not found: $config_file"
+    log_info "Skipping AI provider credential seeding."
+    return
+  fi
+  
+  log_step "Generating AI provider credentials seed file from ${config_file}..."
+  
+  # Extract provider configurations using yq (with grep fallback)
+  local bedrock_enabled="false"
+  local bedrock_auth_method="iam_role"
+  local bedrock_creds_path=""
+  local azure_enabled="false"
+  local azure_auth_method="secrets_manager"
+  local azure_creds_path=""
+  local google_enabled="false"
+  local google_auth_method="secrets_manager"
+  local google_creds_path=""
+  
+  if command -v yq &> /dev/null; then
+    bedrock_enabled=$(yq '.ai_providers.aws_bedrock.enabled // false' "$config_file")
+    bedrock_auth_method=$(yq '.ai_providers.aws_bedrock.auth_method // "iam_role"' "$config_file")
+    bedrock_creds_path=$(yq '.ai_providers.aws_bedrock.credentials_secret_path // ""' "$config_file")
+    azure_enabled=$(yq '.ai_providers.azure_ai_foundry.enabled // false' "$config_file")
+    azure_auth_method=$(yq '.ai_providers.azure_ai_foundry.auth_method // "secrets_manager"' "$config_file")
+    azure_creds_path=$(yq '.ai_providers.azure_ai_foundry.credentials_secret_path // ""' "$config_file")
+    google_enabled=$(yq '.ai_providers.google_ai.enabled // false' "$config_file")
+    google_auth_method=$(yq '.ai_providers.google_ai.auth_method // "secrets_manager"' "$config_file")
+    google_creds_path=$(yq '.ai_providers.google_ai.credentials_secret_path // ""' "$config_file")
+  else
+    # Fallback: grep-based extraction
+    log_info "Using grep-based YAML parsing (yq not available)"
+    bedrock_enabled=$(grep -A5 "aws_bedrock:" "$config_file" | grep "enabled:" | sed 's/.*enabled: *\([^ ]*\).*/\1/' || echo "false")
+    bedrock_auth_method=$(grep -A5 "aws_bedrock:" "$config_file" | grep "auth_method:" | sed 's/.*auth_method: *"\([^"]*\)".*/\1/' || echo "iam_role")
+    bedrock_creds_path=$(grep -A5 "aws_bedrock:" "$config_file" | grep "credentials_secret_path:" | sed 's/.*credentials_secret_path: *"\([^"]*\)".*/\1/' || echo "")
+    azure_enabled=$(grep -A5 "azure_ai_foundry:" "$config_file" | grep "enabled:" | sed 's/.*enabled: *\([^ ]*\).*/\1/' || echo "false")
+    azure_auth_method=$(grep -A5 "azure_ai_foundry:" "$config_file" | grep "auth_method:" | sed 's/.*auth_method: *"\([^"]*\)".*/\1/' || echo "secrets_manager")
+    azure_creds_path=$(grep -A5 "azure_ai_foundry:" "$config_file" | grep "credentials_secret_path:" | sed 's/.*credentials_secret_path: *"\([^"]*\)".*/\1/' || echo "")
+    google_enabled=$(grep -A5 "google_ai:" "$config_file" | grep "enabled:" | sed 's/.*enabled: *\([^ ]*\).*/\1/' || echo "false")
+    google_auth_method=$(grep -A5 "google_ai:" "$config_file" | grep "auth_method:" | sed 's/.*auth_method: *"\([^"]*\)".*/\1/' || echo "secrets_manager")
+    google_creds_path=$(grep -A5 "google_ai:" "$config_file" | grep "credentials_secret_path:" | sed 's/.*credentials_secret_path: *"\([^"]*\)".*/\1/' || echo "")
+  fi
+  
+  # Create scripts directory if it doesn't exist
+  mkdir -p "${stack_dir}/scripts"
+  
+  # Generate SQL seed file using UPDATE (providers are already seeded by schema)
+  cat > "${stack_dir}/scripts/seed-ai-provider-credentials.sql" << 'SQLEOF'
+-- Seed AI Provider Credentials
+-- Generated by create-cora-project.sh
+-- This configures authentication for AI providers
+-- Idempotent: Safe to run multiple times
+
+-- AWS Bedrock
+UPDATE public.ai_providers
+SET 
+  auth_method = '${BEDROCK_AUTH_METHOD}',
+  credentials_secret_path = '${BEDROCK_CREDS_PATH}',
+  is_active = ${BEDROCK_ENABLED},
+  updated_at = NOW()
+WHERE name = 'aws_bedrock';
+
+-- Azure AI Foundry
+UPDATE public.ai_providers
+SET 
+  auth_method = '${AZURE_AUTH_METHOD}',
+  credentials_secret_path = '${AZURE_CREDS_PATH}',
+  is_active = ${AZURE_ENABLED},
+  updated_at = NOW()
+WHERE name = 'azure_ai_foundry';
+
+-- Google AI
+UPDATE public.ai_providers
+SET 
+  auth_method = '${GOOGLE_AUTH_METHOD}',
+  credentials_secret_path = '${GOOGLE_CREDS_PATH}',
+  is_active = ${GOOGLE_ENABLED},
+  updated_at = NOW()
+WHERE name = 'google_ai';
+SQLEOF
+  
+  # Replace placeholders (using | as delimiter to avoid conflicts with URLs/ARNs)
+  sed -i '' "s|\${BEDROCK_AUTH_METHOD}|${bedrock_auth_method}|g" "${stack_dir}/scripts/seed-ai-provider-credentials.sql" 2>/dev/null || \
+  sed -i "s|\${BEDROCK_AUTH_METHOD}|${bedrock_auth_method}|g" "${stack_dir}/scripts/seed-ai-provider-credentials.sql"
+  
+  sed -i '' "s|\${BEDROCK_CREDS_PATH}|${bedrock_creds_path}|g" "${stack_dir}/scripts/seed-ai-provider-credentials.sql" 2>/dev/null || \
+  sed -i "s|\${BEDROCK_CREDS_PATH}|${bedrock_creds_path}|g" "${stack_dir}/scripts/seed-ai-provider-credentials.sql"
+  
+  sed -i '' "s|\${BEDROCK_ENABLED}|${bedrock_enabled}|g" "${stack_dir}/scripts/seed-ai-provider-credentials.sql" 2>/dev/null || \
+  sed -i "s|\${BEDROCK_ENABLED}|${bedrock_enabled}|g" "${stack_dir}/scripts/seed-ai-provider-credentials.sql"
+  
+  sed -i '' "s|\${AZURE_AUTH_METHOD}|${azure_auth_method}|g" "${stack_dir}/scripts/seed-ai-provider-credentials.sql" 2>/dev/null || \
+  sed -i "s|\${AZURE_AUTH_METHOD}|${azure_auth_method}|g" "${stack_dir}/scripts/seed-ai-provider-credentials.sql"
+  
+  sed -i '' "s|\${AZURE_CREDS_PATH}|${azure_creds_path}|g" "${stack_dir}/scripts/seed-ai-provider-credentials.sql" 2>/dev/null || \
+  sed -i "s|\${AZURE_CREDS_PATH}|${azure_creds_path}|g" "${stack_dir}/scripts/seed-ai-provider-credentials.sql"
+  
+  sed -i '' "s|\${AZURE_ENABLED}|${azure_enabled}|g" "${stack_dir}/scripts/seed-ai-provider-credentials.sql" 2>/dev/null || \
+  sed -i "s|\${AZURE_ENABLED}|${azure_enabled}|g" "${stack_dir}/scripts/seed-ai-provider-credentials.sql"
+  
+  sed -i '' "s|\${GOOGLE_AUTH_METHOD}|${google_auth_method}|g" "${stack_dir}/scripts/seed-ai-provider-credentials.sql" 2>/dev/null || \
+  sed -i "s|\${GOOGLE_AUTH_METHOD}|${google_auth_method}|g" "${stack_dir}/scripts/seed-ai-provider-credentials.sql"
+  
+  sed -i '' "s|\${GOOGLE_CREDS_PATH}|${google_creds_path}|g" "${stack_dir}/scripts/seed-ai-provider-credentials.sql" 2>/dev/null || \
+  sed -i "s|\${GOOGLE_CREDS_PATH}|${google_creds_path}|g" "${stack_dir}/scripts/seed-ai-provider-credentials.sql"
+  
+  sed -i '' "s|\${GOOGLE_ENABLED}|${google_enabled}|g" "${stack_dir}/scripts/seed-ai-provider-credentials.sql" 2>/dev/null || \
+  sed -i "s|\${GOOGLE_ENABLED}|${google_enabled}|g" "${stack_dir}/scripts/seed-ai-provider-credentials.sql"
+  
+  log_info "Created ${stack_dir}/scripts/seed-ai-provider-credentials.sql"
+  log_info "  AWS Bedrock: enabled=${bedrock_enabled}, auth_method=${bedrock_auth_method}"
+  log_info "  Azure AI Foundry: enabled=${azure_enabled}, auth_method=${azure_auth_method}"
+  log_info "  Google AI: enabled=${google_enabled}, auth_method=${google_auth_method}"
 }
 
 # --- Run Database Migrations ---
@@ -1186,6 +1292,51 @@ run_migrations() {
     rm -f "$psql_output" "$psql_errors"
   else
     log_warn "seed-idp-config.sql not found, skipping IDP seeding"
+  fi
+  
+  echo ""
+  
+  # Execute seed-ai-provider-credentials.sql with detailed output
+  if [[ -f "${stack_dir}/scripts/seed-ai-provider-credentials.sql" ]]; then
+    log_info "Executing seed-ai-provider-credentials.sql..."
+    echo ""
+    
+    # Create temporary file to capture psql output
+    local psql_output=$(mktemp)
+    local psql_errors=$(mktemp)
+    
+    if psql "$conn_string" -f "${stack_dir}/scripts/seed-ai-provider-credentials.sql" \
+         -v ON_ERROR_STOP=1 \
+         --echo-errors \
+         > "$psql_output" 2> "$psql_errors"; then
+      
+      log_info "AI provider credentials configured:"
+      
+      # Show what was updated
+      if grep -q "UPDATE" "$psql_output" 2>/dev/null; then
+        grep "UPDATE" "$psql_output" | sed 's/^/     /'
+      fi
+      
+      echo ""
+      log_info "✅ AI provider credentials seeded successfully"
+      
+    else
+      log_error "❌ Failed to execute seed-ai-provider-credentials.sql"
+      echo ""
+      log_error "PostgreSQL Errors:"
+      cat "$psql_errors" | sed 's/^/     /'
+      echo ""
+      log_warn "You may need to run seeding manually:"
+      echo "  psql \"${conn_string}\" -f ${stack_dir}/scripts/seed-ai-provider-credentials.sql"
+      
+      rm -f "$psql_output" "$psql_errors"
+      return 1
+    fi
+    
+    # Cleanup temp files
+    rm -f "$psql_output" "$psql_errors"
+  else
+    log_warn "seed-ai-provider-credentials.sql not found, skipping AI provider credentials seeding"
   fi
   
   echo ""
@@ -1367,6 +1518,7 @@ if ! $DRY_RUN; then
     generate_terraform_vars "$CONFIG_FILE" "$INFRA_DIR"
     generate_infra_env "$CONFIG_FILE" "$INFRA_DIR"
     seed_idp_config "$CONFIG_FILE" "$STACK_DIR"
+    seed_ai_provider_credentials "$CONFIG_FILE" "$STACK_DIR"
     run_migrations "$STACK_DIR"
   else
     log_info "No setup.config.${PROJECT_NAME}.yaml found. Copy setup.config.example.yaml to setup.config.${PROJECT_NAME}.yaml and re-run to generate .env and tfvars files."
