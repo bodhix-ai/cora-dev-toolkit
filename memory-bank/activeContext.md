@@ -403,10 +403,144 @@ Error: element 53: attribute "public" is required
 
 ---
 
-**Status:** ✅ **PHASE 4 COMPLETE - READY FOR PR**  
-**Updated:** January 1, 2026, 4:30 PM EST  
-**Session Duration:** ~3 hours 5 minutes (troubleshooting + fixes + testing)  
-**Overall Progress:** All 4 phases of Functional Module Integration complete. Module-WS successfully deployed. Ready for fresh test run to validate repeatability.
+**Status:** ✅ **PHASE 4 COMPLETE - PR #12 CREATED**  
+**Updated:** January 1, 2026, 5:58 PM EST  
+**Session Duration:** Session 60: ~3 hours (1:25 PM - 4:30 PM), Session 61: ~35 minutes (5:18 PM - 5:58 PM)  
+**Overall Progress:** All 4 phases of Functional Module Integration complete. Module-WS successfully deployed. Lambda descriptions standardized. Module UI Integration planned for future work.
+
+---
+
+## Session 61 Extension: Lambda Descriptions & UI Integration Planning
+
+### 🎯 Focus: Lambda Description Standardization & UI Integration Documentation
+
+**Time:** January 1, 2026 (5:18 PM - 5:58 PM) - ~40 minutes
+
+**Context:** Following successful module-ws deployment in Session 60, user tested dev server and discovered that workspace module doesn't appear in UI navigation or admin pages. Investigation revealed missing frontend integration system.
+
+### Work Completed (Session 61)
+
+#### 1. ✅ UI Integration Issue Analysis
+**Problem Identified:**
+- Workspaces don't appear in left navigation sidebar
+- Workspaces Configuration cards missing from Platform Admin page
+- Workspaces Configuration cards missing from Org Admin page
+
+**Root Cause:**
+- Backend module registry exists (database tables: `platform_module_registry`, `platform_module_usage`, `platform_module_usage_daily`)
+- Frontend template never implemented module registration UI
+- Sidebar has hardcoded navigation items
+- Admin pages have hardcoded cards
+- No dynamic module loading system
+
+**Investigation Process:**
+- Examined template Sidebar component - found hardcoded `navigationItems` array
+- Reviewed career project (`~/code/sts/career/sts-career-stack`) for reference implementation
+- Found career project has dynamic navigation using `NavigationConfig` prop pattern
+- Confirmed this is NOT a quick fix - requires significant frontend architecture work
+
+#### 2. ✅ Module UI Integration Plan Created
+**File:** `docs/plans/plan_module-ui-integration.md`
+
+**Plan Contents:**
+- **Phase 1:** Type Definitions (NavItemConfig, NavSectionConfig, AdminCardConfig)
+- **Phase 2:** Module Registry Loader (queries DB, reads config, dynamically imports)
+- **Phase 3:** Update Sidebar Component (accept navigation prop, render dynamically)
+- **Phase 4:** Update Layout Component (fetch navigation, pass to Sidebar)
+- **Phase 5:** Update Admin Pages (dynamic card loading)
+- **Phase 6:** Update Module Exports (add navigation exports)
+- **Phase 7:** Testing
+
+**Complexity Estimate:** 3-4 hours for complete implementation  
+**Priority:** High (blocks functional module adoption)  
+**Status:** Planned - Not Started (separate from current PR)
+
+#### 3. ✅ Lambda Description Standardization
+**Problem:** Lambda function descriptions lacked module prefixes, making it hard to identify which module owns each function in AWS Console.
+
+**Solution:** Added module prefixes to ALL Lambda function descriptions:
+- **CORE-ACCESS:** for module-access functions
+- **CORE-AI:** for module-ai functions  
+- **CORE-MGMT:** for module-mgmt functions
+- **FUNC-WS:** for module-ws functions
+
+**Functions Updated (11 total):**
+
+**Module-Access (6 functions):**
+1. `identities-management` - "CORE-ACCESS: Identity provisioning - Okta to Supabase (POST /identities/provision)"
+2. `idp-config` - "CORE-ACCESS: IDP configuration management (GET/PUT /idp-config)"
+3. `profiles` - "CORE-ACCESS: User profile management (GET/PUT /profiles/me)"
+4. `orgs` - "CORE-ACCESS: Organization CRUD (GET/POST /orgs, GET/PUT/DELETE /orgs/:id)"
+5. `members` - "CORE-ACCESS: Membership management (GET/POST/PUT/DELETE /orgs/:id/members)"
+6. `org-email-domains` - "CORE-ACCESS: Email domain management for auto-provisioning (GET/POST/PUT/DELETE /orgs/:id/email-domains)"
+
+**Module-AI (2 functions):**
+1. `ai-config-handler` - "CORE-AI: AI Configuration management (platform and org-level settings)"
+2. `provider` - "CORE-AI: AI Provider and Model management (CRUD, discovery, testing)"
+
+**Module-MGMT (1 function):**
+1. `lambda-mgmt` - "CORE-MGMT: Module management - registry and usage tracking"
+
+**Module-WS (2 functions):**
+1. `workspace` - "FUNC-WS: Workspace management handler for CRUD operations"
+2. `cleanup` - "FUNC-WS: Automated cleanup job for workspace maintenance"
+
+**Files Modified:**
+- `templates/_modules-core/module-access/infrastructure/main.tf` - 6 descriptions updated
+- `templates/_modules-core/module-ai/infrastructure/main.tf` - 2 descriptions updated
+- `templates/_modules-core/module-mgmt/infrastructure/main.tf` - 1 description updated
+- `templates/_modules-functional/module-ws/infrastructure/main.tf` - 2 descriptions updated (from earlier session)
+
+**Benefit:** AWS Lambda Console now clearly shows module ownership for all functions
+
+### Decision Points & Rationale
+
+**UI Integration: Chose Option B (Separate Task)**
+- Complexity: 3-4 hours of frontend architecture work
+- Not a quick fix: Requires types, loaders, dynamic imports, YAML parsing
+- Better as focused, dedicated implementation
+- Current PR stays focused on deployment fixes + Lambda descriptions
+
+**Why Separate:**
+- Different scope (frontend vs backend/infrastructure)
+- Different skillset required (React/TypeScript vs Terraform/Python)
+- Can be implemented and tested independently
+- User can review and plan implementation timing
+
+### Files Created/Modified (Session 61)
+
+**Created (1 file):**
+1. `docs/plans/plan_module-ui-integration.md` (~350 lines) - Complete implementation plan
+
+**Modified (5 files):**
+1. `templates/_modules-core/module-access/infrastructure/main.tf` - Lambda descriptions
+2. `templates/_modules-core/module-ai/infrastructure/main.tf` - Lambda descriptions
+3. `templates/_modules-core/module-mgmt/infrastructure/main.tf` - Lambda descriptions
+4. `templates/_modules-functional/module-ws/infrastructure/main.tf` - Lambda descriptions (from earlier)
+5. `memory-bank/activeContext.md` (this file) - Session 61 documentation
+
+**Total Changes:** ~400 lines (350 new plan + 50 description updates)
+
+### Key Outcomes
+
+1. ✅ **UI integration issue properly diagnosed** - Not a bug, but missing feature
+2. ✅ **Comprehensive implementation plan created** - Ready for future session
+3. ✅ **Lambda descriptions standardized** - Better AWS Console organization
+4. ✅ **Scope properly separated** - Infrastructure fixes (PR #12) vs UI work (future PR)
+
+### Next Steps
+
+**Immediate (This Session):**
+- [x] Update activeContext.md ✅
+- [ ] Commit Lambda description changes
+- [ ] Push to PR #12
+
+**Future Session (Module UI Integration):**
+- [ ] Implement NavigationConfig types
+- [ ] Create module registry loader
+- [ ] Update Sidebar for dynamic navigation
+- [ ] Update admin pages for dynamic cards
+- [ ] Test with multiple modules
 
 ---
 

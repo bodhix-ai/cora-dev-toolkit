@@ -176,7 +176,7 @@ resource "aws_lambda_layer_version" "common_ai" {
 
 resource "aws_lambda_function" "ai_config_handler" {
   function_name = "${local.prefix}-config"
-  description   = "AI Configuration management (platform and org-level settings)"
+  description   = "CORE-AI: AI Configuration management (platform and org-level settings)"
   role          = aws_iam_role.lambda.arn
   handler       = "lambda_function.lambda_handler"
   runtime       = local.lambda_runtime
@@ -228,7 +228,7 @@ resource "aws_cloudwatch_log_group" "ai_config_handler" {
 
 resource "aws_lambda_function" "provider" {
   function_name = "${local.prefix}-provider"
-  description   = "AI Provider and Model management (CRUD, discovery, testing)"
+  description   = "CORE-AI: AI Provider and Model management (CRUD, discovery, testing)"
   role          = aws_iam_role.lambda.arn
   handler       = "lambda_function.lambda_handler"
   runtime       = local.lambda_runtime
