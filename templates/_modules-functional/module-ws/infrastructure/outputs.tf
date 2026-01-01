@@ -63,30 +63,35 @@ output "api_routes" {
       path        = "/api/ws/workspaces"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "List user's workspaces"
+      public      = false
     },
     {
       method      = "POST"
       path        = "/api/ws/workspaces"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Create new workspace"
+      public      = false
     },
     {
       method      = "GET"
       path        = "/api/ws/workspaces/{id}"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Get workspace details"
+      public      = false
     },
     {
       method      = "PUT"
       path        = "/api/ws/workspaces/{id}"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Update workspace"
+      public      = false
     },
     {
       method      = "DELETE"
       path        = "/api/ws/workspaces/{id}"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Soft delete workspace"
+      public      = false
     },
     # Workspace Restore
     {
@@ -94,6 +99,7 @@ output "api_routes" {
       path        = "/api/ws/workspaces/{id}/restore"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Restore soft-deleted workspace"
+      public      = false
     },
     # Workspace Members
     {
@@ -101,24 +107,28 @@ output "api_routes" {
       path        = "/api/ws/workspaces/{id}/members"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "List workspace members"
+      public      = false
     },
     {
       method      = "POST"
       path        = "/api/ws/workspaces/{id}/members"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Add member to workspace"
+      public      = false
     },
     {
       method      = "PUT"
       path        = "/api/ws/workspaces/{workspaceId}/members/{memberId}"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Update member role"
+      public      = false
     },
     {
       method      = "DELETE"
       path        = "/api/ws/workspaces/{workspaceId}/members/{memberId}"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Remove member from workspace"
+      public      = false
     },
     # Workspace Favorites
     {
@@ -126,12 +136,14 @@ output "api_routes" {
       path        = "/api/ws/workspaces/{id}/favorite"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Toggle workspace favorite"
+      public      = false
     },
     {
       method      = "GET"
       path        = "/api/ws/favorites"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "List user's favorite workspaces"
+      public      = false
     }
   ]
 }
