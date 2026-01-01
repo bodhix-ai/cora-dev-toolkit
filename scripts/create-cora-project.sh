@@ -198,7 +198,294 @@ if $DRY_RUN; then
   echo ""
 fi
 
+# --- Dependency Check ---
+check_dependencies() {
+  log_step "Checking required dependencies..."
+  
+  local missing_deps=()
+  
+  # Check for yq (required for YAML parsing)
+  if ! command -v yq &> /dev/null; then
+    log_warn "yq not found - YAML parsing will use grep fallback (less reliable)"
+    log_info "Install yq for better reliability: brew install yq"
+  else
+    local yq_version=$(yq --version 2>&1 | head -1)
+    log_info "✅ yq found: ${yq_version}"
+  fi
+  
+  # Check for git (required for repo initialization)
+  if $INIT_GIT && ! command -v git &> /dev/null; then
+    log_error "git not found but --init-git specified"
+    missing_deps+=("git")
+  fi
+  
+  # Check for gh CLI (required for GitHub repo creation)
+  if $CREATE_REPOS && ! command -v gh &> /dev/null; then
+    log_error "GitHub CLI (gh) not found but --create-repos specified"
+    log_info "Install from: https://cli.github.com/"
+    missing_deps+=("gh")
+  fi
+  
+  # Check for openssl (required for secret generation)
+  if ! command -v openssl &> /dev/null; then
+    log_error "openssl not found (required for secret generation)"
+    missing_deps+=("openssl")
+  fi
+  
+  # Fail if critical dependencies are missing
+  if [[ ${#missing_deps[@]} -gt 0 ]]; then
+    log_error "Missing required dependencies: ${missing_deps[*]}"
+    exit 1
+  fi
+  
+  log_info "Dependency check complete"
+  echo ""
+}
+
+# --- Module Registry Functions ---
+REGISTRY_FILE="${TOOLKIT_ROOT}/templates/_modules-core/module-registry.yaml"
+
+# Load module metadata from registry
+get_module_metadata() {
+  local module_name="$1"
+  local field="$2"
+  
+  if [[ ! -f "$REGISTRY_FILE" ]]; then
+    log_error "Module registry not found: ${REGISTRY_FILE}"
+    return 1
+  fi
+  
+  if command -v yq &> /dev/null; then
+    yq ".modules.${module_name}.${field} // \"\"" "$REGISTRY_FILE"
+  else
+    # Fallback: grep-based extraction (limited functionality)
+    log_warn "Using grep fallback for module registry (yq not available)"
+    grep -A10 "^  ${module_name}:" "$REGISTRY_FILE" | grep "    ${field}:" | sed "s/.*${field}: *\"*\\([^\"]*\\)\"*.*/\\1/" | head -1
+  fi
+}
+
+# Resolve module dependencies recursively
+resolve_module_dependencies() {
+  local -n enabled_modules_ref=$1  # Pass array by reference
+  local -n resolved_modules_ref=$2  # Pass array by reference
+  
+  log_step "Resolving module dependencies..."
+  
+  if [[ ! -f "$REGISTRY_FILE" ]]; then
+    log_error "Module registry not found: ${REGISTRY_FILE}"
+    return 1
+  fi
+  
+  # Keep track of modules we've processed to avoid infinite loops
+  local -A processed_modules
+  local modules_to_process=("${enabled_modules_ref[@]}")
+  
+  while [[ ${#modules_to_process[@]} -gt 0 ]]; do
+    local current_module="${modules_to_process[0]}"
+    modules_to_process=("${modules_to_process[@]:1}")  # Remove first element
+    
+    # Skip if already processed
+    if [[ -n "${processed_modules[$current_module]}" ]]; then
+      continue
+    fi
+    
+    # Mark as processed
+    processed_modules["$current_module"]=1
+    
+    # Check if module exists in registry
+    local module_type=$(get_module_metadata "$current_module" "type")
+    if [[ -z "$module_type" ]]; then
+      log_error "Module not found in registry: ${current_module}"
+      return 1
+    fi
+    
+    log_info "  Processing ${current_module} (type: ${module_type})"
+    
+    # Get dependencies for this module
+    local dependencies=""
+    if command -v yq &> /dev/null; then
+      dependencies=$(yq ".modules.${current_module}.dependencies[]" "$REGISTRY_FILE" 2>/dev/null | tr '\n' ' ')
+    else
+      # Fallback: extract dependencies array (limited)
+      dependencies=$(grep -A10 "^  ${current_module}:" "$REGISTRY_FILE" | grep "dependencies:" | sed 's/.*dependencies: *\[\(.*\)\].*/\1/' | tr ',' ' ')
+    fi
+    
+    # Add dependencies to processing queue
+    if [[ -n "$dependencies" ]]; then
+      for dep in $dependencies; do
+        dep=$(echo "$dep" | tr -d '[],\" ')  # Clean up formatting
+        if [[ -n "$dep" ]]; then
+          log_info "    Dependency: ${dep}"
+          modules_to_process+=("$dep")
+        fi
+      done
+    fi
+    
+    # Add current module to resolved list (if not already there)
+    if [[ ! " ${resolved_modules_ref[*]} " =~ " ${current_module} " ]]; then
+      resolved_modules_ref+=("$current_module")
+    fi
+  done
+  
+  log_info "Dependency resolution complete. Modules to install:"
+  for module in "${resolved_modules_ref[@]}"; do
+    log_info "  - ${module}"
+  done
+  echo ""
+}
+
+# Validate module compatibility
+validate_modules() {
+  local -n modules_to_validate=$1
+  
+  log_step "Validating module configuration..."
+  
+  for module in "${modules_to_validate[@]}"; do
+    local module_type=$(get_module_metadata "$module" "type")
+    local required=$(get_module_metadata "$module" "required")
+    
+    # Core modules are always valid
+    if [[ "$module_type" == "core" ]]; then
+      log_info "  ✅ ${module} (core module, tier $(get_module_metadata "$module" "tier"))"
+      continue
+    fi
+    
+    # Functional modules need validation
+    if [[ "$module_type" == "functional" ]]; then
+      log_info "  ✅ ${module} (functional module)"
+      continue
+    fi
+    
+    log_warn "  ⚠️  ${module} (unknown type: ${module_type})"
+  done
+  
+  echo ""
+}
+
+# Merge module configurations
+merge_module_configs() {
+  local config_file="$1"
+  local stack_dir="$2"
+  
+  log_step "Merging module configurations..."
+  
+  # Check if config file exists
+  if [[ ! -f "$config_file" ]]; then
+    log_warn "Config file not found: $config_file"
+    log_info "Skipping module config merging. Module configurations will use defaults."
+    return
+  fi
+  
+  # Read enabled functional modules from config
+  local enabled_modules=()
+  if command -v yq &> /dev/null; then
+    # Use yq to read the enabled modules array
+    while IFS= read -r module; do
+      [[ -n "$module" && "$module" != "null" ]] && enabled_modules+=("$module")
+    done < <(yq '.modules.enabled[]' "$config_file" 2>/dev/null)
+  else
+    # Fallback: grep-based extraction (limited)
+    log_warn "Using grep fallback for module list (yq not available)"
+    while IFS= read -r line; do
+      # Extract module names from "- module-name" format
+      if [[ "$line" =~ ^[[:space:]]*-[[:space:]]*(module-[a-z]+) ]]; then
+        enabled_modules+=("${BASH_REMATCH[1]}")
+      fi
+    done < <(sed -n '/^modules:/,/^[^ ]/p' "$config_file" | grep -E '^\s+- module-')
+  fi
+  
+  # Always include core modules
+  local all_modules=("module-access" "module-ai" "module-mgmt")
+  
+  # Add enabled functional modules
+  for module in "${enabled_modules[@]}"; do
+    if [[ ! " ${all_modules[*]} " =~ " ${module} " ]]; then
+      all_modules+=("$module")
+    fi
+  done
+  
+  # Resolve dependencies
+  local resolved_modules=()
+  if ! resolve_module_dependencies all_modules resolved_modules; then
+    log_error "Failed to resolve module dependencies"
+    return 1
+  fi
+  
+  # Validate modules
+  if ! validate_modules resolved_modules; then
+    log_error "Module validation failed"
+    return 1
+  fi
+  
+  # Create output directory for merged config
+  mkdir -p "${stack_dir}/apps/web/config"
+  
+  # Start merged config file
+  local merged_config="${stack_dir}/apps/web/config/cora-modules.config.yaml"
+  cat > "$merged_config" << 'CONFIGHEADER'
+# =============================================================================
+# CORA Modules Configuration
+# =============================================================================
+# This file is auto-generated by merging all enabled module configurations.
+# DO NOT EDIT MANUALLY - changes will be overwritten!
+#
+# Generated by: create-cora-project.sh
+# To modify: Update individual module.config.yaml files and regenerate
+# =============================================================================
+
+CONFIGHEADER
+  
+  # Merge each module's config
+  local modules_merged=0
+  for module in "${resolved_modules[@]}"; do
+    # Determine module path (core vs functional)
+    local module_type=$(get_module_metadata "$module" "type")
+    local module_config_file=""
+    
+    if [[ "$module_type" == "core" ]]; then
+      module_config_file="${TOOLKIT_ROOT}/templates/_modules-core/${module}/module.config.yaml"
+    elif [[ "$module_type" == "functional" ]]; then
+      module_config_file="${TOOLKIT_ROOT}/templates/_modules-functional/${module}/module.config.yaml"
+    else
+      log_warn "Unknown module type for ${module}: ${module_type}"
+      continue
+    fi
+    
+    # Check if module config exists
+    if [[ ! -f "$module_config_file" ]]; then
+      log_warn "Module config not found: ${module_config_file}"
+      log_info "Skipping ${module} (no configuration file)"
+      continue
+    fi
+    
+    # Append module config to merged file
+    echo "" >> "$merged_config"
+    echo "# -----------------------------------------------------------------------------" >> "$merged_config"
+    echo "# Module: ${module} (${module_type})" >> "$merged_config"
+    echo "# -----------------------------------------------------------------------------" >> "$merged_config"
+    echo "" >> "$merged_config"
+    
+    # Copy the module config content (skip comments at top)
+    sed '/^# =/,/^$/d' "$module_config_file" >> "$merged_config"
+    
+    modules_merged=$((modules_merged + 1))
+    log_info "  ✅ Merged ${module} configuration"
+  done
+  
+  log_info "Merged ${modules_merged} module configurations"
+  log_info "Created: ${merged_config}"
+  
+  # Create a .gitkeep in config directory to ensure it's tracked
+  touch "${stack_dir}/apps/web/config/.gitkeep"
+  
+  echo ""
+}
+
 # --- Helper Functions ---
+
+# Run dependency check early (after functions are defined)
+check_dependencies
+
 replace_placeholders() {
   local dir="$1"
   
@@ -1515,6 +1802,7 @@ if ! $DRY_RUN; then
   CONFIG_FILE="${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml"
   if [[ -f "$CONFIG_FILE" ]]; then
     generate_env_files "$CONFIG_FILE" "$STACK_DIR"
+    merge_module_configs "$CONFIG_FILE" "$STACK_DIR"
     generate_terraform_vars "$CONFIG_FILE" "$INFRA_DIR"
     generate_infra_env "$CONFIG_FILE" "$INFRA_DIR"
     seed_idp_config "$CONFIG_FILE" "$STACK_DIR"
