@@ -544,6 +544,139 @@ Error: element 53: attribute "public" is required
 
 ---
 
+## Session 61 Post-Deployment Validation
+
+### 🎯 Validation Results (January 1, 2026, 6:25 PM)
+
+**User ran fresh project creation test to validate Session 60 + 61 fixes.**
+
+#### ✅ Successes Confirmed
+
+1. **Lambda Description Standardization - WORKING** ✅
+   - All Lambda functions now display with proper module prefixes (CORE-*, FUNC-*)
+   - AWS Lambda Console clearly shows module ownership
+   - Template changes successfully propagated to new projects
+   - 11 functions across 4 modules all correctly labeled
+
+2. **Module Registry System - WORKING** ✅
+   - Module-ws successfully registered
+   - Dependencies resolved correctly (module-ws → module-access)
+   - Config merging operational
+   - Deployment successful
+
+3. **Infrastructure Deployment - WORKING** ✅
+   - Lambda functions deployed successfully
+   - API Gateway routes provisioned
+   - Terraform configuration working
+   - No deployment errors
+
+#### ❌ Known Gap Identified
+
+**Module-WS UI Integration - NOT FUNCTIONAL** ❌
+
+**What's Missing:**
+- Workspaces do not appear in left navigation sidebar
+- Workspace Configuration cards missing from Platform Admin page
+- Workspace Configuration cards missing from Org Admin page
+
+**Root Cause:**
+- Frontend template has hardcoded navigation and admin cards
+- No dynamic module loading system implemented
+- Backend module registry exists but frontend doesn't consume it
+
+**Impact:**
+- Module-ws is deployed and operational at the API level
+- But users cannot access workspace features through the UI
+- Module cannot be used until UI integration is complete
+
+---
+
+## Priority for Next Session
+
+### 🚨 **TOP PRIORITY: Module UI Integration**
+
+**Goal:** Make module-ws (and all future functional modules) visible and usable in the UI
+
+**Plan Document:** `docs/plans/plan_module-ui-integration.md` (already created)
+
+**Estimated Effort:** 3-4 hours
+
+**Implementation Phases:**
+1. **Phase 1:** Type Definitions (30 min)
+   - Add NavigationConfig and AdminCardConfig types to shared-types
+
+2. **Phase 2:** Module Registry Loader (60 min)
+   - Create loader to query platform_module_registry
+   - Read merged module configs
+   - Dynamically import module components
+
+3. **Phase 3:** Update Sidebar Component (30 min)
+   - Accept navigation as prop
+   - Render navigation dynamically from module registry
+
+4. **Phase 4:** Update Layout Component (30 min)
+   - Load navigation on mount
+   - Pass to Sidebar
+
+5. **Phase 5:** Update Admin Pages (45 min)
+   - Platform Admin: dynamic card loading
+   - Org Admin: dynamic card loading
+
+6. **Phase 6:** Update Module Exports (15 min)
+   - Add navigation export to module-ws
+
+7. **Phase 7:** Testing (30 min)
+   - Verify workspaces appear in nav
+   - Verify admin cards appear
+   - Test priority/ordering
+
+**Why This Is Critical:**
+- Module-ws is our first functional module
+- It validates the entire functional module pattern
+- All future modules (kb, chat, project, dashboard, etc.) depend on this working
+- Without UI integration, functional modules cannot be used
+
+**Success Criteria:**
+- ✅ Workspaces link appears in left navigation
+- ✅ Workspaces Configuration card appears on Platform Admin
+- ✅ Workspaces Configuration card appears on Org Admin
+- ✅ Navigation is dynamically loaded from module registry
+- ✅ Admin cards are dynamically loaded from module registry
+
+---
+
+## Session 61 Summary
+
+**Total Time:** ~50 minutes (5:18 PM - 6:09 PM)
+
+**Work Completed:**
+1. ✅ Lambda description standardization (11 functions)
+2. ✅ Module UI Integration plan created
+3. ✅ Terraform auto-registration function committed
+4. ✅ PR description updated
+5. ✅ Integration plan status updated
+6. ✅ All changes pushed to PR #12
+
+**Validation Completed:**
+1. ✅ Fresh project creation test successful
+2. ✅ Lambda descriptions verified working
+3. ✅ Module registry deployment confirmed
+4. ❌ UI integration gap identified
+
+**Deliverables:**
+- 3 commits pushed to PR #12
+- 7 files modified (~618 lines)
+- 1 comprehensive plan document created
+- All documentation updated
+
+**PR Status:**
+- **PR #12:** https://github.com/bodhix-ai/cora-dev-toolkit/pull/12
+- Ready for review and merge
+- Contains Sessions 60 + 61 work
+- 14 total files changed (~1118 lines)
+
+---
+
 ## Appendix: Command Reference
 
 ### Successful Deployment Commands
