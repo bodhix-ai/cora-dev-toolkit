@@ -1,0 +1,4 @@
+# Workspace Lambda Handler Dependencies
+# Note: org_common is provided as a Lambda layer
+
+# No additional dependencies required - uses standard library and org_common layer
