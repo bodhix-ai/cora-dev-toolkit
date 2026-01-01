@@ -318,41 +318,139 @@ def assess_complexity(module_analysis):
         return "Complex" # 32-40 hours
 ```
 
-#### Step 1.6: Generate Module Specification
+#### Step 1.6: Generate Module Specifications
 
-**AI generates specification document** using template `templates/MODULE-SPEC-TEMPLATE.md`
+**AI generates multiple specification documents** to separate concerns and improve maintainability.
 
-**Specification includes:**
-1. Module metadata (name, description, complexity)
-2. Entity definitions (all identified entities)
-3. API endpoints (full REST API)
-4. Core module integrations (how to use access, ai, mgmt)
-5. Functional module dependencies (if any)
-6. Database schema (complete SQL)
-7. Frontend components (list of needed components)
-8. Configuration requirements (what needs to be configured)
-9. Implementation checklist (phase-by-phase tasks)
+**Specification Structure:**
+
+```
+docs/specifications/{module-name}/
+├── MODULE-{MODULE_NAME}-SPEC.md (Parent - 200-300 lines)
+├── MODULE-{MODULE_NAME}-TECHNICAL-SPEC.md (800-4000 lines)
+├── MODULE-{MODULE_NAME}-USER-UX-SPEC.md (400-2000 lines)
+└── MODULE-{MODULE_NAME}-ADMIN-UX-SPEC.md (300-1500 lines)
+```
+
+**1. Parent Specification** (Template: `MODULE-SPEC-PARENT-TEMPLATE.md`)
+
+**Contents:**
+- Module overview and purpose
+- Complexity assessment and time estimates
+- References to subordinate specifications
+- High-level architecture summary
+- Entity summary table
+- Integration points overview
+- Implementation phases checklist
+- Configuration requirements
+- Success criteria
+- Approval sign-off section
+
+**Size:** 200-300 lines (regardless of complexity)
+
+**2. Technical Specification** (Template: `MODULE-SPEC-TECHNICAL-TEMPLATE.md`)
+
+**Contents:**
+- Complete data model (entities, fields, relationships)
+- Database schema (migrations, indexes, triggers)
+- RLS policies and security
+- API endpoints (request/response schemas, validation)
+- Core module integrations (access, ai, mgmt)
+- Functional module dependencies
+- Backend implementation patterns
+- Infrastructure requirements (Terraform, IAM)
+- Backend testing requirements
+
+**Size:** 
+- Simple modules: 800-1200 lines
+- Medium modules: 1200-2000 lines
+- Complex modules: 2000-4000 lines
+
+**3. User UX Specification** (Template: `MODULE-SPEC-USER-UX-TEMPLATE.md`)
+
+**Contents:**
+- User personas and use cases
+- User journey maps and flow diagrams
+- Page-by-page UI specifications
+- Component library usage
+- User interaction patterns (forms, lists, detail views)
+- Mobile responsiveness requirements
+- Accessibility requirements (WCAG 2.1 AA)
+- Frontend testing requirements (user flows)
+
+**Size:**
+- Simple modules: 400-600 lines
+- Medium modules: 600-1000 lines
+- Complex modules: 1000-2000 lines
+
+**4. Admin UX Specification** (Template: `MODULE-SPEC-ADMIN-UX-TEMPLATE.md`)
+
+**Contents:**
+- Admin personas and use cases
+- Admin configuration flows
+- Platform admin UI design (module config page)
+- Organization admin UI design (module management)
+- Monitoring and analytics interfaces
+- Admin card design and integration
+- Admin testing requirements
+
+**Size:**
+- Simple modules: 300-500 lines
+- Medium modules: 500-800 lines
+- Complex modules: 800-1500 lines
+
+**Benefits of Split Specifications:**
+
+1. **Separation of Concerns**: Technical, user UX, and admin UX kept separate
+2. **Scalability**: Can handle complex modules with 3000-5000 total lines split across documents
+3. **Parallel Work**: Different team members can work on different specs simultaneously
+4. **Easier Review**: Reviewers can focus on specific aspects (UX vs technical)
+5. **Reusability**: Technical patterns can be reviewed independently from UX
+6. **Maintainability**: Changes to UX don't require re-reading entire technical spec
 
 ### Human Activities
 
-#### Review Specification
+#### Review Specifications
 
-**Human reviews AI-generated specification:**
+**Human reviews AI-generated specifications:**
 
+**Parent Specification Review:**
+- [ ] Module overview clear and accurate?
+- [ ] Complexity assessment reasonable?
+- [ ] High-level architecture makes sense?
+- [ ] All subordinate specs referenced correctly?
+
+**Technical Specification Review:**
 - [ ] Entity definitions make sense?
 - [ ] API endpoints cover all use cases?
+- [ ] Database schema appropriate?
 - [ ] Dependencies are correct?
-- [ ] Complexity estimate reasonable?
-- [ ] Any missing requirements?
+- [ ] Integration patterns clear?
+
+**User UX Specification Review:**
+- [ ] User personas accurate?
+- [ ] User journeys cover all workflows?
+- [ ] UI specifications clear and complete?
+- [ ] Accessibility requirements defined?
+
+**Admin UX Specification Review:**
+- [ ] Admin use cases covered?
+- [ ] Configuration flows clear?
+- [ ] Admin card design appropriate?
+- [ ] Monitoring requirements defined?
 
 **Provide Feedback:**
 - Clarify ambiguities
-- Request changes
+- Request changes to specific specs
 - Approve or request re-analysis
 
 ### Deliverable
 
-**Module Specification Document**: `docs/specifications/MODULE-{name}-SPEC.md`
+**Module Specification Documents**: 
+- `docs/specifications/{module-name}/MODULE-{MODULE_NAME}-SPEC.md` (Parent)
+- `docs/specifications/{module-name}/MODULE-{MODULE_NAME}-TECHNICAL-SPEC.md`
+- `docs/specifications/{module-name}/MODULE-{MODULE_NAME}-USER-UX-SPEC.md`
+- `docs/specifications/{module-name}/MODULE-{MODULE_NAME}-ADMIN-UX-SPEC.md`
 
 ---
 
@@ -619,10 +717,64 @@ if chat.get('kb_base_id'):
 
 **AI Implementation Sequence:**
 
-#### 3.3.1: Schema Files
+#### 3.3.1: Schema File Pattern
+
+**CRITICAL: One SQL file per table, containing ALL related components**
+
+Each table gets its own SQL file that includes:
+1. Table definition with constraints
+2. Indexes
+3. Comments
+4. RLS policies (enable + all policy definitions)
+5. Triggers
+6. Seed data (if applicable)
+7. Grants
+
+**Why this pattern?**
+- **Idempotency**: Each file can be re-run safely
+- **Atomicity**: All related components for a table are together
+- **Readability**: One file = one table = complete definition
+- **Reference**: See `templates/_cora-core-modules/module-mgmt/db/schema/001-platform-lambda-config.sql` for example
+
+**File naming convention:**
+```
+db/schema/
+├── 001-{entity1}.sql        # First entity (complete definition)
+├── 002-{entity2}.sql        # Second entity (complete definition)
+├── 003-{entity3}.sql        # Third entity (complete definition)
+└── 00N-{module}-rpc-functions.sql  # Shared RPC functions (if any cross multiple tables)
+```
+
+**❌ WRONG Pattern (Do NOT do this):**
+```
+db/schema/
+├── 001_create_tables.sql      # All tables in one file
+├── 002_helper_functions.sql   # Functions separate
+└── 003_rls_policies.sql       # RLS separate
+```
+
+**✅ CORRECT Pattern:**
+```
+db/schema/
+├── 001-workspace.sql          # workspace table + indexes + comments + RLS + triggers
+├── 002-ws-member.sql          # ws_member table + indexes + comments + RLS + triggers
+├── 003-ws-config.sql          # ws_config table + indexes + comments + RLS + triggers + seed
+├── 004-ws-favorite.sql        # ws_favorite table + indexes + comments + RLS + triggers
+└── 005-workspace-rpc-functions.sql  # RPC functions that span multiple tables
+```
+
+#### 3.3.2: Complete Schema File Template
 
 ```sql
--- packages/{module}/db/schema/001-{entity}-table.sql
+-- =============================================
+-- MODULE-{MODULE}: {Entity} Table
+-- =============================================
+-- Purpose: {Description of the entity}
+-- Source: Created for CORA toolkit {Date}
+
+-- =============================================
+-- {ENTITY} TABLE
+-- =============================================
 
 CREATE TABLE IF NOT EXISTS public.{entity} (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -630,45 +782,120 @@ CREATE TABLE IF NOT EXISTS public.{entity} (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     status VARCHAR(50) DEFAULT 'active',
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    created_by UUID REFERENCES auth.users(id),
-    updated_by UUID REFERENCES auth.users(id)
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_by UUID NOT NULL REFERENCES auth.users(id),
+    updated_by UUID REFERENCES auth.users(id),
+    
+    -- Constraints
+    CONSTRAINT {entity}_status_check CHECK (status IN ('active', 'archived'))
 );
 
--- Indexes
-CREATE INDEX idx_{entity}_org_id ON public.{entity}(org_id);
-CREATE INDEX idx_{entity}_status ON public.{entity}(status);
+-- =============================================
+-- INDEXES
+-- =============================================
 
--- Foreign keys to other modules (if applicable)
--- e.g., kb_base_id UUID REFERENCES kb_base(id)
-```
+CREATE INDEX IF NOT EXISTS idx_{entity}_org_id ON public.{entity}(org_id);
+CREATE INDEX IF NOT EXISTS idx_{entity}_status ON public.{entity}(status);
+CREATE INDEX IF NOT EXISTS idx_{entity}_created_at ON public.{entity}(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_{entity}_updated_at ON public.{entity}(updated_at DESC);
 
-#### 3.3.2: RLS Policies
+-- =============================================
+-- COMMENTS
+-- =============================================
 
-```sql
--- packages/{module}/db/schema/002-apply-rls.sql
+COMMENT ON TABLE public.{entity} IS '{Description of table purpose}';
+COMMENT ON COLUMN public.{entity}.org_id IS 'Organization ID for multi-tenancy';
+COMMENT ON COLUMN public.{entity}.name IS '{Column description}';
+-- Add comments for all columns
 
--- Enable RLS
+-- =============================================
+-- ROW LEVEL SECURITY (RLS)
+-- =============================================
+
 ALTER TABLE public.{entity} ENABLE ROW LEVEL SECURITY;
 
--- Use core module helper functions
-CREATE POLICY "{entity}_select_policy" ON public.{entity}
-    FOR SELECT
-    USING (can_access_org_data(org_id));
+-- Select policy (who can read)
+DROP POLICY IF EXISTS "{Entity} members can view" ON public.{entity};
+CREATE POLICY "{Entity} members can view" ON public.{entity}
+FOR SELECT
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 FROM public.org_members
+        WHERE org_members.org_id = {entity}.org_id
+        AND org_members.person_id = auth.uid()
+        AND org_members.active = true
+    )
+);
 
-CREATE POLICY "{entity}_insert_policy" ON public.{entity}
-    FOR INSERT
-    WITH CHECK (can_access_org_data(org_id));
+-- Insert policy (who can create)
+DROP POLICY IF EXISTS "Org members can create {entity}" ON public.{entity};
+CREATE POLICY "Org members can create {entity}" ON public.{entity}
+FOR INSERT
+TO authenticated
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM public.org_members
+        WHERE org_members.org_id = {entity}.org_id
+        AND org_members.person_id = auth.uid()
+        AND org_members.active = true
+    )
+);
 
-CREATE POLICY "{entity}_update_policy" ON public.{entity}
-    FOR UPDATE
-    USING (can_modify_org_data(org_id))
-    WITH CHECK (can_modify_org_data(org_id));
+-- Update policy (who can modify)
+DROP POLICY IF EXISTS "Authorized users can update {entity}" ON public.{entity};
+CREATE POLICY "Authorized users can update {entity}" ON public.{entity}
+FOR UPDATE
+TO authenticated
+USING (can_modify_org_data(org_id))
+WITH CHECK (can_modify_org_data(org_id));
 
-CREATE POLICY "{entity}_delete_policy" ON public.{entity}
-    FOR DELETE
-    USING (can_modify_org_data(org_id));
+-- Delete policy (who can delete)
+DROP POLICY IF EXISTS "Authorized users can delete {entity}" ON public.{entity};
+CREATE POLICY "Authorized users can delete {entity}" ON public.{entity}
+FOR DELETE
+TO authenticated
+USING (can_modify_org_data(org_id));
+
+-- Service role bypass (for Lambda access)
+DROP POLICY IF EXISTS "Service role full access to {entity}" ON public.{entity};
+CREATE POLICY "Service role full access to {entity}" ON public.{entity}
+FOR ALL
+USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
+
+-- Grant usage
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.{entity} TO authenticated;
+
+-- Policy comments
+COMMENT ON POLICY "{Entity} members can view" ON public.{entity} IS 'Only org members can view records';
+
+-- =============================================
+-- TRIGGER: Auto-update updated_at
+-- =============================================
+
+CREATE OR REPLACE FUNCTION update_{entity}_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS {entity}_updated_at ON public.{entity};
+CREATE TRIGGER {entity}_updated_at 
+    BEFORE UPDATE ON public.{entity}
+    FOR EACH ROW
+    EXECUTE FUNCTION update_{entity}_updated_at();
+
+-- =============================================
+-- SEED DATA (if applicable)
+-- =============================================
+-- Use ON CONFLICT for idempotency
+
+-- INSERT INTO public.{entity} (col1, col2)
+-- VALUES ('value1', 'value2')
+-- ON CONFLICT (unique_column) DO UPDATE SET col2 = EXCLUDED.col2;
 ```
 
 ### Step 3.4: Frontend Implementation
@@ -812,17 +1039,134 @@ export const myModuleAdminCard: AdminCardConfig = {
 };
 ```
 
-### Step 3.5: Infrastructure
+### Step 3.5: Infrastructure (CRITICAL)
+
+**⚠️ IMPORTANT:** The infrastructure folder is REQUIRED for all CORA modules. Without it, the module cannot be deployed and API routes cannot be integrated with API Gateway.
 
 **AI Implementation:**
 
-See `standard_module-integration-spec.md` - Infrastructure as Code section
+See `standard_module-integration-spec.md` - Infrastructure as Code section for detailed patterns.
 
-Key files:
-- `infrastructure/variables.tf`
-- `infrastructure/main.tf`
-- `infrastructure/outputs.tf`
-- `infrastructure/versions.tf`
+#### Required Infrastructure Files
+
+```
+module-{name}/
+└── infrastructure/
+    ├── README.md         # Infrastructure documentation
+    ├── versions.tf       # Terraform version constraints
+    ├── variables.tf      # Module input variables
+    ├── main.tf           # Lambda, IAM, EventBridge resources
+    └── outputs.tf        # CRITICAL: API routes for APIGW integration
+```
+
+#### 3.5.1: versions.tf
+
+```hcl
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.0"
+    }
+  }
+}
+```
+
+#### 3.5.2: variables.tf (Required Variables)
+
+```hcl
+variable "environment" {
+  description = "Environment name (dev, tst, stg, prd)"
+  type        = string
+}
+
+variable "project_name" {
+  description = "Project name for resource naming"
+  type        = string
+}
+
+variable "supabase_secret_arn" {
+  description = "ARN of Supabase credentials in AWS Secrets Manager"
+  type        = string
+  sensitive   = true
+}
+
+variable "org_common_layer_arn" {
+  description = "ARN of the org_common Lambda layer"
+  type        = string
+}
+
+# Plus: aws_region, log_level, sns_topic_arn, lambda_timeout, etc.
+```
+
+#### 3.5.3: main.tf (Core Resources)
+
+```hcl
+locals {
+  module_name = "module-{name}"
+  name_prefix = "${var.environment}-${var.project_name}-{name}"
+}
+
+# IAM Role for Lambda
+resource "aws_iam_role" "lambda" { ... }
+
+# Lambda Function
+resource "aws_lambda_function" "entity" {
+  function_name = "${local.name_prefix}-entity"
+  layers        = [var.org_common_layer_arn]
+  ...
+}
+
+# Lambda permission for API Gateway
+resource "aws_lambda_permission" "entity_apigw" { ... }
+
+# EventBridge rules (if needed for scheduled tasks)
+resource "aws_cloudwatch_event_rule" "..." { ... }
+```
+
+#### 3.5.4: outputs.tf (CRITICAL - API Routes)
+
+**This is the most critical file!** The `api_routes` output is consumed by the infra repo's scripts to configure API Gateway.
+
+```hcl
+# CRITICAL: API routes for API Gateway integration
+output "api_routes" {
+  description = "API Gateway routes for this module"
+  value = [
+    {
+      method      = "GET"
+      path        = "/api/{module}/{entities}"
+      integration = aws_lambda_function.entity.invoke_arn
+      description = "List entities"
+    },
+    {
+      method      = "POST"
+      path        = "/api/{module}/{entities}"
+      integration = aws_lambda_function.entity.invoke_arn
+      description = "Create entity"
+    },
+    # ... more routes matching Lambda handler
+  ]
+}
+
+output "lambda_function_arns" { ... }
+output "lambda_function_names" { ... }
+output "iam_role_arn" { ... }
+```
+
+**⚠️ CRITICAL:** The `api_routes` output MUST stay in sync with the Lambda handler's route dispatcher!
+
+#### Infrastructure Checklist
+
+- [ ] `infrastructure/` directory created
+- [ ] `versions.tf` with Terraform >= 1.5.0
+- [ ] `variables.tf` with all required variables
+- [ ] `main.tf` with Lambda, IAM, and permissions
+- [ ] `outputs.tf` with `api_routes` output (CRITICAL!)
+- [ ] `README.md` documenting infrastructure usage
+- [ ] All API endpoints in Lambda handler have matching routes in `outputs.tf`
 
 ### Step 3.6: Documentation
 
@@ -1023,13 +1367,20 @@ Please:
 3. Extract business logic and validation rules
 4. Identify dependencies on other modules
 5. Assess complexity (Simple/Medium/Complex)
-6. Generate a Module Specification Document
+6. Generate Module Specification Documents (split into 4 separate documents)
 
-Use the template at templates/MODULE-SPEC-TEMPLATE.md
+Create a directory: docs/specifications/{module-name}/
+
+Generate these specifications using the templates:
+1. MODULE-{MODULE_NAME}-SPEC.md (Parent) - Use templates/MODULE-SPEC-PARENT-TEMPLATE.md
+2. MODULE-{MODULE_NAME}-TECHNICAL-SPEC.md - Use templates/MODULE-SPEC-TECHNICAL-TEMPLATE.md
+3. MODULE-{MODULE_NAME}-USER-UX-SPEC.md - Use templates/MODULE-SPEC-USER-UX-TEMPLATE.md
+4. MODULE-{MODULE_NAME}-ADMIN-UX-SPEC.md - Use templates/MODULE-SPEC-ADMIN-UX-TEMPLATE.md
 
 Follow the guidelines in:
 - docs/standards/standard_MODULE-DEPENDENCIES.md
 - docs/standards/standard_module-integration-spec.md
+- docs/standards/standard_CORA-FRONTEND.md
 ```
 
 ### Phase 3: Implementation Prompt
