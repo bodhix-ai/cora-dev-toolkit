@@ -1,0 +1,35 @@
+{
+  "name": "@{{PROJECT_NAME}}/module-ws",
+  "version": "1.0.0",
+  "description": "CORA Workspace Module - Frontend components, hooks, and API client",
+  "main": "index.ts",
+  "types": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint . --ext .ts,.tsx",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@{{PROJECT_NAME}}/api-client": "workspace:*",
+    "@{{PROJECT_NAME}}/shared-types": "workspace:*"
+  },
+  "peerDependencies": {
+    "@mui/icons-material": "^5.0.0",
+    "@mui/material": "^5.0.0",
+    "next-auth": "^4.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "cora",
+    "module",
+    "workspace",
+    "frontend"
+  ],
+  "author": "CORA Development Team",
+  "license": "UNLICENSED"
+}

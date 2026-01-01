@@ -1,0 +1,100 @@
+{
+  "name": "module-ws",
+  "displayName": "Workspace Module",
+  "version": "1.0.0",
+  "description": "Collaborative workspace containers for organizing team resources, chats, knowledge bases, and workflows",
+  "tier": "functional",
+  "category": "collaboration",
+  "dependencies": {
+    "core": [
+      "module-access@1.0.0",
+      "module-mgmt@1.0.0"
+    ],
+    "functional": []
+  },
+  "provides": {
+    "tables": ["workspace", "ws_member", "ws_config", "ws_favorite"],
+    "api": {
+      "basePath": "/api/ws",
+      "endpoints": [
+        "GET /workspaces",
+        "POST /workspaces",
+        "GET /workspaces/:id",
+        "PUT /workspaces/:id",
+        "DELETE /workspaces/:id",
+        "POST /workspaces/:id/restore",
+        "GET /workspaces/:id/members",
+        "POST /workspaces/:id/members",
+        "PUT /workspaces/:workspaceId/members/:memberId",
+        "DELETE /workspaces/:workspaceId/members/:memberId",
+        "POST /workspaces/:id/favorite",
+        "GET /favorites"
+      ]
+    },
+    "frontend": {
+      "components": ["WorkspaceList", "WorkspaceCard", "WorkspaceForm", "MemberList"],
+      "hooks": ["useWorkspaces", "useWorkspace", "useWorkspaceMembers", "useWorkspaceForm"],
+      "adminCards": ["wsAdminCard", "wsOrgAdminCard"]
+    },
+    "functions": [
+      "is_workspace_member",
+      "is_workspace_owner",
+      "is_workspace_admin_or_owner",
+      "get_workspace_role",
+      "create_workspace_with_owner",
+      "soft_delete_workspace",
+      "restore_workspace",
+      "toggle_workspace_favorite",
+      "get_workspaces_with_member_info",
+      "cleanup_expired_workspaces"
+    ]
+  },
+  "configuration": {
+    "platform": {
+      "nav_label_singular": {
+        "type": "string",
+        "default": "Workspace",
+        "description": "Navigation label (singular)"
+      },
+      "nav_label_plural": {
+        "type": "string",
+        "default": "Workspaces",
+        "description": "Navigation label (plural)"
+      },
+      "nav_icon": {
+        "type": "string",
+        "default": "WorkspaceIcon",
+        "description": "Material UI icon name"
+      },
+      "enable_favorites": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enable favorites functionality"
+      },
+      "enable_tags": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enable tags functionality"
+      },
+      "enable_color_coding": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enable color customization"
+      },
+      "default_color": {
+        "type": "string",
+        "default": "#1976d2",
+        "description": "Default hex color for new workspaces"
+      }
+    }
+  },
+  "roles": {
+    "workspace": {
+      "ws_owner": "Full control over workspace and members",
+      "ws_admin": "Can update workspace settings, view-only for members",
+      "ws_user": "View-only access to workspace and members"
+    }
+  },
+  "author": "CORA Development Toolkit",
+  "license": "Proprietary"
+}
