@@ -87,7 +87,7 @@ resource "aws_iam_role_policy" "secrets" {
 
 resource "aws_lambda_function" "identities_management" {
   function_name = "${local.prefix}-identities-management"
-  description   = "Identity provisioning - Okta to Supabase (POST /identities/provision)"
+  description   = "CORE-ACCESS: Identity provisioning - Okta to Supabase (POST /identities/provision)"
   handler       = "lambda_function.lambda_handler"
   runtime       = local.lambda_runtime
   role          = aws_iam_role.lambda.arn
@@ -134,7 +134,7 @@ resource "aws_cloudwatch_log_group" "identities_management" {
 
 resource "aws_lambda_function" "idp_config" {
   function_name = "${local.prefix}-idp-config"
-  description   = "IDP configuration management (GET/PUT /idp-config)"
+  description   = "CORE-ACCESS: IDP configuration management (GET/PUT /idp-config)"
   handler       = "lambda_function.lambda_handler"
   runtime       = local.lambda_runtime
   role          = aws_iam_role.lambda.arn
@@ -181,7 +181,7 @@ resource "aws_cloudwatch_log_group" "idp_config" {
 
 resource "aws_lambda_function" "profiles" {
   function_name = "${local.prefix}-profiles"
-  description   = "User profile management (GET/PUT /profiles/me)"
+  description   = "CORE-ACCESS: User profile management (GET/PUT /profiles/me)"
   handler       = "lambda_function.lambda_handler"
   runtime       = local.lambda_runtime
   role          = aws_iam_role.lambda.arn
@@ -228,7 +228,7 @@ resource "aws_cloudwatch_log_group" "profiles" {
 
 resource "aws_lambda_function" "orgs" {
   function_name = "${local.prefix}-orgs"
-  description   = "Organization CRUD (GET/POST /orgs, GET/PUT/DELETE /orgs/:id)"
+  description   = "CORE-ACCESS: Organization CRUD (GET/POST /orgs, GET/PUT/DELETE /orgs/:id)"
   handler       = "lambda_function.lambda_handler"
   runtime       = local.lambda_runtime
   role          = aws_iam_role.lambda.arn
@@ -275,7 +275,7 @@ resource "aws_cloudwatch_log_group" "orgs" {
 
 resource "aws_lambda_function" "members" {
   function_name = "${local.prefix}-members"
-  description   = "Membership management (GET/POST/PUT/DELETE /orgs/:id/members)"
+  description   = "CORE-ACCESS: Membership management (GET/POST/PUT/DELETE /orgs/:id/members)"
   handler       = "lambda_function.lambda_handler"
   runtime       = local.lambda_runtime
   role          = aws_iam_role.lambda.arn
@@ -322,7 +322,7 @@ resource "aws_cloudwatch_log_group" "members" {
 
 resource "aws_lambda_function" "org_email_domains" {
   function_name = "${local.prefix}-org-email-domains"
-  description   = "Email domain management for auto-provisioning (GET/POST/PUT/DELETE /orgs/:id/email-domains)"
+  description   = "CORE-ACCESS: Email domain management for auto-provisioning (GET/POST/PUT/DELETE /orgs/:id/email-domains)"
   handler       = "lambda_function.lambda_handler"
   runtime       = local.lambda_runtime
   role          = aws_iam_role.lambda.arn

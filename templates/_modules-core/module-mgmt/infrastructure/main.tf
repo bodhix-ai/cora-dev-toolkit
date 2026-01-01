@@ -163,7 +163,7 @@ resource "aws_cloudwatch_log_group" "lambda_mgmt" {
 
 resource "aws_lambda_function" "lambda_mgmt" {
   function_name = "${local.prefix}-registry"
-  description   = "Module management - registry and usage tracking"
+  description   = "CORE-MGMT: Module management - registry and usage tracking"
   role          = aws_iam_role.lambda_mgmt.arn
   handler       = "lambda_function.lambda_handler"
   runtime       = local.lambda_runtime

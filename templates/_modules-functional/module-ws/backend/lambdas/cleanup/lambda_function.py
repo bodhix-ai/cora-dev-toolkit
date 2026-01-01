@@ -44,7 +44,7 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
     
     try:
         # Call the cleanup RPC function
-        result = common.call_rpc(
+        result = common.rpc(
             function_name='cleanup_expired_workspaces',
             params={}
         )

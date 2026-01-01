@@ -35,6 +35,155 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
 
+# Function to add CORA module to Terraform configuration
+add_module_to_terraform() {
+  local module_name="$1"
+  local infra_dir="$2"
+  local project_name="$3"
+  local main_tf="${infra_dir}/envs/dev/main.tf"
+  
+  # Skip if dry run or file doesn't exist
+  if [[ ! -f "$main_tf" ]]; then
+    log_warn "main.tf not found at $main_tf, skipping Terraform registration"
+    return 1
+  fi
+  
+  # Check if module already exists
+  if grep -q "module \"${module_name}\"" "$main_tf"; then
+    log_info "Module ${module_name} already in Terraform config, skipping"
+    return 0
+  fi
+  
+  log_info "Adding ${module_name} to Terraform configuration..."
+  
+  # Generate module declaration based on module type
+  local module_declaration=""
+  local module_underscore="${module_name//-/_}"
+  
+  # Determine module type and description prefix
+  local module_type=$(get_module_metadata "$module_name" "type" 2>/dev/null || echo "functional")
+  local module_prefix=""
+  local module_description=""
+  
+  case "$module_name" in
+    module-access)
+      module_prefix="CORE-ACCESS"
+      module_description="Identity & Access Control"
+      ;;
+    module-ai)
+      module_prefix="CORE-AI"
+      module_description="AI Provider Management"
+      ;;
+    module-mgmt)
+      module_prefix="CORE-MGMT"
+      module_description="Platform Management & Monitoring"
+      ;;
+    module-ws)
+      module_prefix="FUNC-WS"
+      module_description="Workspace Management"
+      ;;
+    module-kb)
+      module_prefix="FUNC-KB"
+      module_description="Knowledge Base"
+      ;;
+    module-chat)
+      module_prefix="FUNC-CHAT"
+      module_description="Chat & Messaging"
+      ;;
+    module-project)
+      module_prefix="FUNC-PROJECT"
+      module_description="Project Management"
+      ;;
+    *)
+      # Generic functional module
+      module_prefix="FUNC-$(echo ${module_name#module-} | tr '[:lower:]' '[:upper:]')"
+      module_description="$(echo ${module_name#module-} | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2));}1')"
+      ;;
+  esac
+  
+  case "$module_name" in
+    module-ws)
+      module_declaration="
+# ========================================================================
+# ${module_prefix}: ${module_description}
+# ========================================================================
+
+module \"${module_underscore}\" {
+  source = \"../../../${project_name}-stack/packages/${module_name}/infrastructure\"
+
+  project_name         = \"${project_name}\"
+  environment          = \"dev\"
+  org_common_layer_arn = module.module_access.layer_arn
+  supabase_secret_arn  = module.secrets.supabase_secret_arn
+  aws_region           = var.aws_region
+  log_level            = var.log_level
+
+  # Lambda deployment packages
+  workspace_lambda_zip = \"../../../${project_name}-stack/packages/${module_name}/backend/.build/workspace.zip\"
+  cleanup_lambda_zip   = \"../../../${project_name}-stack/packages/${module_name}/backend/.build/cleanup.zip\"
+
+  common_tags = {
+    Environment = \"dev\"
+    Project     = \"${project_name}\"
+    ManagedBy   = \"terraform\"
+    Module      = \"${module_name}\"
+    ModuleType  = \"CORA\"
+  }
+}
+"
+      ;;
+    *)
+      # Generic functional module template
+      module_declaration="
+# ========================================================================
+# ${module_prefix}: ${module_description}
+# ========================================================================
+
+module \"${module_underscore}\" {
+  source = \"../../../${project_name}-stack/packages/${module_name}/infrastructure\"
+
+  project_name         = \"${project_name}\"
+  environment          = \"dev\"
+  org_common_layer_arn = module.module_access.layer_arn
+  supabase_secret_arn  = module.secrets.supabase_secret_arn
+  aws_region           = var.aws_region
+  log_level            = var.log_level
+
+  common_tags = {
+    Environment = \"dev\"
+    Project     = \"${project_name}\"
+    ManagedBy   = \"terraform\"
+    Module      = \"${module_name}\"
+    ModuleType  = \"CORA\"
+  }
+}
+"
+      ;;
+  esac
+  
+  # Find insertion point (before "# CORA Modular API Gateway")
+  local marker="# CORA Modular API Gateway"
+  local line_num=$(grep -n "$marker" "$main_tf" | head -1 | cut -d: -f1)
+  
+  if [[ -z "$line_num" ]]; then
+    log_error "Could not find insertion marker in main.tf"
+    return 1
+  fi
+  
+  # Insert module declaration before the marker
+  # Create temp file with module declaration inserted
+  {
+    head -n $((line_num - 1)) "$main_tf"
+    echo "$module_declaration"
+    tail -n +$line_num "$main_tf"
+  } > "${main_tf}.tmp"
+  
+  mv "${main_tf}.tmp" "$main_tf"
+  log_info "✅ Added ${module_name} to Terraform configuration"
+  
+  return 0
+}
+
 show_help() {
   cat << EOF
 Create CORA Project
@@ -264,10 +413,10 @@ get_module_metadata() {
   fi
 }
 
-# Resolve module dependencies recursively
+# Resolve module dependencies recursively (bash 3.x compatible)
 resolve_module_dependencies() {
-  local -n enabled_modules_ref=$1  # Pass array by reference
-  local -n resolved_modules_ref=$2  # Pass array by reference
+  local enabled_modules_var="$1"
+  local resolved_modules_var="$2"
   
   log_step "Resolving module dependencies..."
   
@@ -276,21 +425,29 @@ resolve_module_dependencies() {
     return 1
   fi
   
-  # Keep track of modules we've processed to avoid infinite loops
-  local -A processed_modules
-  local modules_to_process=("${enabled_modules_ref[@]}")
+  # Get input arrays using eval (bash 3.x compatible indirect reference)
+  eval "local modules_to_process=(\"\${${enabled_modules_var}[@]}\")"
+  
+  # Track processed modules using space-delimited string (bash 3.x compatible)
+  local processed_modules=" "
+  local resolved_modules=()
   
   while [[ ${#modules_to_process[@]} -gt 0 ]]; do
     local current_module="${modules_to_process[0]}"
-    modules_to_process=("${modules_to_process[@]:1}")  # Remove first element
+    # Remove first element (bash 3.x compatible)
+    local new_queue=()
+    for ((i=1; i<${#modules_to_process[@]}; i++)); do
+      new_queue+=("${modules_to_process[$i]}")
+    done
+    modules_to_process=("${new_queue[@]}")
     
-    # Skip if already processed
-    if [[ -n "${processed_modules[$current_module]}" ]]; then
+    # Skip if already processed (check space-delimited string)
+    if [[ "$processed_modules" == *" $current_module "* ]]; then
       continue
     fi
     
-    # Mark as processed
-    processed_modules["$current_module"]=1
+    # Mark as processed (add to space-delimited string)
+    processed_modules="${processed_modules}${current_module} "
     
     # Check if module exists in registry
     local module_type=$(get_module_metadata "$current_module" "type")
@@ -322,23 +479,36 @@ resolve_module_dependencies() {
     fi
     
     # Add current module to resolved list (if not already there)
-    if [[ ! " ${resolved_modules_ref[*]} " =~ " ${current_module} " ]]; then
-      resolved_modules_ref+=("$current_module")
+    local already_in_resolved=false
+    for mod in "${resolved_modules[@]}"; do
+      if [[ "$mod" == "$current_module" ]]; then
+        already_in_resolved=true
+        break
+      fi
+    done
+    if ! $already_in_resolved; then
+      resolved_modules+=("$current_module")
     fi
   done
   
+  # Return resolved modules by setting the output variable using eval
+  eval "${resolved_modules_var}=(\"\${resolved_modules[@]}\")"
+  
   log_info "Dependency resolution complete. Modules to install:"
-  for module in "${resolved_modules_ref[@]}"; do
+  for module in "${resolved_modules[@]}"; do
     log_info "  - ${module}"
   done
   echo ""
 }
 
-# Validate module compatibility
+# Validate module compatibility (bash 3.x compatible)
 validate_modules() {
-  local -n modules_to_validate=$1
+  local modules_var="$1"
   
   log_step "Validating module configuration..."
+  
+  # Get array using eval (bash 3.x compatible)
+  eval "local modules_to_validate=(\"\${${modules_var}[@]}\")"
   
   for module in "${modules_to_validate[@]}"; do
     local module_type=$(get_module_metadata "$module" "type")
@@ -645,7 +815,7 @@ if $WITH_CORE_MODULES && ! $DRY_RUN; then
   mkdir -p "${STACK_DIR}/packages"
   
   CORE_MODULES=("module-access" "module-ai" "module-mgmt")
-  CORE_MODULES_DIR="${TOOLKIT_ROOT}/templates/_cora-core-modules"
+  CORE_MODULES_DIR="${TOOLKIT_ROOT}/templates/_modules-core"
   MODULE_TEMPLATE="${TOOLKIT_ROOT}/templates/_module-template"
   
   for module in "${CORE_MODULES[@]}"; do
@@ -712,6 +882,83 @@ READMEEOF
   done
   
   log_info "Core modules created: ${CORE_MODULES[*]}"
+fi
+
+# --- Create Functional Modules from Config ---
+if ! $DRY_RUN; then
+  # Check if config file exists in the template (it gets copied with the stack)
+  STACK_CONFIG_IN_TEMPLATE="${TEMPLATE_STACK}/setup.config.${PROJECT_NAME}.yaml"
+  
+  if [[ -f "$STACK_CONFIG_IN_TEMPLATE" ]]; then
+    log_step "Creating functional modules from config..."
+    
+    # Read enabled functional modules from template config
+    enabled_modules=()
+    if command -v yq &> /dev/null; then
+      # Use yq to read the enabled modules array
+      while IFS= read -r module; do
+        [[ -n "$module" && "$module" != "null" ]] && enabled_modules+=("$module")
+      done < <(yq '.modules.enabled[]' "$STACK_CONFIG_IN_TEMPLATE" 2>/dev/null)
+    else
+      # Fallback: grep-based extraction
+      log_warn "Using grep fallback for module list (yq not available)"
+      while IFS= read -r line; do
+        # Extract module names from "- module-name" format
+        if [[ "$line" =~ ^[[:space:]]*-[[:space:]]*(module-[a-z]+) ]]; then
+          enabled_modules+=("${BASH_REMATCH[1]}")
+        fi
+      done < <(sed -n '/^modules:/,/^[^ ]/p' "$STACK_CONFIG_IN_TEMPLATE" | grep -E '^\s+- module-')
+    fi
+    
+    if [[ ${#enabled_modules[@]} -gt 0 ]]; then
+      log_info "Found ${#enabled_modules[@]} functional modules to create: ${enabled_modules[*]}"
+      
+      # Ensure packages directory exists
+      mkdir -p "${STACK_DIR}/packages"
+      
+      FUNCTIONAL_MODULES_DIR="${TOOLKIT_ROOT}/templates/_modules-functional"
+      
+      for module in "${enabled_modules[@]}"; do
+        # Skip core modules (they're already created)
+        if [[ "$module" == "module-access" ]] || [[ "$module" == "module-ai" ]] || [[ "$module" == "module-mgmt" ]]; then
+          log_info "Skipping ${module} (core module, already created)"
+          continue
+        fi
+        
+        MODULE_DIR="${STACK_DIR}/packages/${module}"
+        FUNCTIONAL_MODULE_TEMPLATE="${FUNCTIONAL_MODULES_DIR}/${module}"
+        
+        if [[ -d "$FUNCTIONAL_MODULE_TEMPLATE" ]]; then
+          log_info "Creating ${module} from functional module template..."
+          cp -r "$FUNCTIONAL_MODULE_TEMPLATE" "$MODULE_DIR"
+          
+          # Replace standardized placeholders ({{...}} format only)
+          find "$MODULE_DIR" -type f \( -name "*.py" -o -name "*.ts" -o -name "*.tsx" -o -name "*.json" -o -name "*.tf" -o -name "*.md" -o -name "*.sql" \) | while read -r file; do
+            # Replace machine-readable project name
+            sed -i '' "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file" 2>/dev/null || \
+            sed -i "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file"
+            
+            # Replace display name (fallback to PROJECT_NAME if not set)
+            PROJECT_DISPLAY_NAME="${PROJECT_DISPLAY_NAME:-${PROJECT_NAME}}"
+            sed -i '' "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_DISPLAY_NAME}/g" "$file" 2>/dev/null || \
+            sed -i "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_DISPLAY_NAME}/g" "$file"
+          done
+          
+          log_info "✅ Created ${module}"
+          
+          # Add module to Terraform configuration
+          add_module_to_terraform "$module" "$INFRA_DIR" "$PROJECT_NAME"
+        else
+          log_warn "Functional module template not found: ${FUNCTIONAL_MODULE_TEMPLATE}"
+          log_info "Skipping ${module}"
+        fi
+      done
+    else
+      log_info "No functional modules enabled in config"
+    fi
+  else
+    log_info "No project-specific config found in template, skipping functional modules"
+  fi
 fi
 
 # --- Initialize Git ---

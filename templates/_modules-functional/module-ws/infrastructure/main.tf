@@ -65,6 +65,7 @@ resource "aws_iam_role_policy" "secrets" {
 
 resource "aws_lambda_function" "workspace" {
   function_name = "${local.name_prefix}-workspace"
+  description   = "FUNC-WS: Workspace management handler for CRUD operations"
   filename      = var.workspace_lambda_zip
   handler       = "lambda_function.lambda_handler"
   runtime       = "python3.13"
@@ -109,6 +110,7 @@ resource "aws_lambda_function" "cleanup" {
   count = var.enable_cleanup_job ? 1 : 0
 
   function_name = "${local.name_prefix}-cleanup"
+  description   = "FUNC-WS: Automated cleanup job for workspace maintenance"
   filename      = var.cleanup_lambda_zip
   handler       = "lambda_function.lambda_handler"
   runtime       = "python3.13"
