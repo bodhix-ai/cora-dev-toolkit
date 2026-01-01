@@ -205,12 +205,25 @@ ai_providers:
       location: "us-central1"
 
 # =============================================================================
-# Feature Flags
+# Module Configuration
 # =============================================================================
-features:
-  enable_ai_module: true
-  enable_kb_module: false
-  enable_chat_module: false
+# Configure which functional modules to include in your project.
+# Core modules (module-access, module-ai, module-mgmt) are always included.
+#
+# Available Functional Modules:
+#   - module-ws: Workspace Management (collaborative workspace containers)
+#   - module-kb: Knowledge Base (RAG-based knowledge management) [Coming Soon]
+#   - module-chat: Chat & Messaging (real-time communication) [Coming Soon]
+#
+# Module configurations are automatically merged from each module's
+# module.config.yaml file when enabled.
+modules:
+  # List of functional modules to enable
+  # Dependencies are automatically resolved (e.g., enabling module-kb also enables module-ai)
+  enabled:
+    - module-ws
+    # - module-kb
+    # - module-chat
 
 # =============================================================================
 # Validation Settings

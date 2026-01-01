@@ -1,0 +1,109 @@
+# =============================================================================
+# Module-WS Configuration
+# =============================================================================
+# This file defines the default configuration for the Workspace Management module.
+# These values are merged into the project's setup.config.yaml when module-ws is enabled.
+
+module_ws:
+  # Module Display Settings
+  display_name: "Workspace Management"
+  
+  # Navigation Configuration
+  navigation:
+    label_singular: "Workspace"
+    label_plural: "Workspaces"
+    icon: "WorkspaceIcon"
+    show_in_main_nav: true
+    nav_priority: 10  # Lower number = higher in navigation order
+  
+  # Admin Card Configuration
+  admin_card:
+    enabled: true
+    path: "/admin/workspaces"
+    title: "Workspace Management"
+    description: "Manage workspaces, members, and configurations"
+    icon: "WorkspaceIcon"
+    priority: 40  # Lower number = higher priority in admin dashboard
+  
+  # Workspace Features
+  features:
+    # Enable favorites functionality
+    enable_favorites: true
+    
+    # Enable tags/labels for workspaces
+    enable_tags: true
+    
+    # Enable color-coding for workspaces
+    enable_color_coding: true
+    
+    # Enable workspace templates
+    enable_templates: false
+    
+    # Enable workspace archiving (soft delete)
+    enable_archiving: true
+  
+  # Workspace Settings
+  workspace:
+    # Default color for new workspaces (hex format)
+    default_color: "#1976d2"
+    
+    # Maximum workspaces per organization (0 = unlimited)
+    max_workspaces_per_org: 0
+    
+    # Maximum members per workspace (0 = unlimited)
+    max_members_per_workspace: 0
+    
+    # Retention period for deleted workspaces (days)
+    deleted_retention_days: 30
+    
+    # Auto-cleanup expired workspaces
+    enable_auto_cleanup: true
+    cleanup_schedule: "0 3 * * *"  # Daily at 3 AM (cron format)
+  
+  # Member Management
+  members:
+    # Default role for new workspace members
+    default_role: "ws_user"
+    
+    # Allow workspace owners to invite external users
+    allow_external_invites: false
+    
+    # Require approval for new members
+    require_member_approval: false
+  
+  # Permissions
+  permissions:
+    # Allow non-owners to create workspaces
+    allow_user_workspace_creation: true
+    
+    # Workspace visibility options
+    default_visibility: "private"  # private | organization | public
+    
+    # Role-based access control
+    roles:
+      ws_owner:
+        description: "Full control over workspace and members"
+        can_delete: true
+        can_manage_members: true
+        can_edit_settings: true
+      ws_admin:
+        description: "Can update workspace settings, view-only for members"
+        can_delete: false
+        can_manage_members: false
+        can_edit_settings: true
+      ws_user:
+        description: "View-only access to workspace and members"
+        can_delete: false
+        can_manage_members: false
+        can_edit_settings: false
+  
+  # Integration Settings
+  integrations:
+    # Enable workspace-specific AI contexts
+    enable_ai_context: false
+    
+    # Enable workspace-specific knowledge bases
+    enable_kb_integration: false
+    
+    # Enable workspace chat channels
+    enable_chat_integration: false

@@ -1,0 +1,42 @@
+# =============================================================================
+# Module-Access Configuration
+# =============================================================================
+# This file defines the default configuration for the Access Control module.
+# These values are merged into the project's setup.config.yaml automatically.
+
+module_access:
+  # Module Display Settings
+  display_name: "Access Control"
+  nav_icon: "Shield"
+  
+  # Admin Card Configuration
+  admin_card:
+    enabled: true
+    path: "/admin/access"
+    title: "User & Access Management"
+    description: "Manage users, organizations, roles, and permissions"
+    icon: "Shield"
+    priority: 10  # Lower number = higher priority in admin dashboard
+  
+  # Organization Settings
+  organizations:
+    enable_multi_org: true
+    require_domain_verification: false
+    default_role: "org_user"  # Default role for new org members
+  
+  # User Profile Settings
+  user_profiles:
+    enable_profile_images: true
+    enable_bio: true
+    enable_custom_fields: false
+  
+  # Permission Settings
+  permissions:
+    enable_fine_grained_permissions: true
+    cache_ttl_seconds: 300  # 5 minutes
+  
+  # Security Settings
+  security:
+    session_timeout_minutes: 60
+    enforce_mfa: false  # Multi-factor authentication
+    password_reset_token_ttl_hours: 24
