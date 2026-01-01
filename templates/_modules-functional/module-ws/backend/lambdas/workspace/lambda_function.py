@@ -187,7 +187,7 @@ def _transform_member(data: Dict[str, Any]) -> Dict[str, Any]:
 
 def _get_user_workspace_role(workspace_id: str, user_id: str) -> Optional[str]:
     """Get user's role in a workspace."""
-    result = common.call_rpc(
+    result = common.rpc(
         function_name='get_workspace_role',
         params={'p_ws_id': workspace_id, 'p_user_id': user_id}
     )
@@ -196,7 +196,7 @@ def _get_user_workspace_role(workspace_id: str, user_id: str) -> Optional[str]:
 
 def _is_workspace_member(workspace_id: str, user_id: str) -> bool:
     """Check if user is a member of the workspace."""
-    result = common.call_rpc(
+    result = common.rpc(
         function_name='is_workspace_member',
         params={'p_ws_id': workspace_id, 'p_user_id': user_id}
     )
@@ -205,7 +205,7 @@ def _is_workspace_member(workspace_id: str, user_id: str) -> bool:
 
 def _is_workspace_owner(workspace_id: str, user_id: str) -> bool:
     """Check if user is an owner of the workspace."""
-    result = common.call_rpc(
+    result = common.rpc(
         function_name='is_workspace_owner',
         params={'p_ws_id': workspace_id, 'p_user_id': user_id}
     )
@@ -214,7 +214,7 @@ def _is_workspace_owner(workspace_id: str, user_id: str) -> bool:
 
 def _is_workspace_admin_or_owner(workspace_id: str, user_id: str) -> bool:
     """Check if user is admin or owner of the workspace."""
-    result = common.call_rpc(
+    result = common.rpc(
         function_name='is_workspace_admin_or_owner',
         params={'p_ws_id': workspace_id, 'p_user_id': user_id}
     )
@@ -250,7 +250,7 @@ def handle_list_workspaces(
         status = query_params.get('status', 'active')
         
         # Call RPC function
-        workspaces = common.call_rpc(
+        workspaces = common.rpc(
             function_name='get_workspaces_with_member_info',
             params={
                 'p_org_id': org_id,
@@ -312,7 +312,7 @@ def handle_create_workspace(
     
     try:
         # Call RPC function to create workspace with owner
-        result = common.call_rpc(
+        result = common.rpc(
             function_name='create_workspace_with_owner',
             params={
                 'p_org_id': org_id,
@@ -369,7 +369,7 @@ def handle_get_workspace(
     try:
         # Get workspace
         workspace = common.find_one(
-            table='workspace',
+            table='workspaces',
             filters={'id': workspace_id, 'deleted_at': None}
         )
         
@@ -382,7 +382,7 @@ def handle_get_workspace(
         
         # Check if favorited
         favorite = common.find_one(
-            table='ws_favorite',
+            table='ws_favorites',
             filters={'ws_id': workspace_id, 'user_id': user_id}
         )
         workspace['is_favorited'] = favorite is not None
@@ -390,7 +390,7 @@ def handle_get_workspace(
         
         # Get member count
         members = common.find_many(
-            table='ws_member',
+            table='ws_members',
             filters={'ws_id': workspace_id, 'deleted_at': None}
         )
         workspace['member_count'] = len(members)
@@ -450,7 +450,7 @@ def handle_update_workspace(
     
     try:
         updated_workspace = common.update_one(
-            table='workspace',
+            table='workspaces',
             filters={'id': workspace_id, 'deleted_at': None},
             data=update_data
         )
@@ -462,13 +462,13 @@ def handle_update_workspace(
         updated_workspace['user_role'] = _get_user_workspace_role(workspace_id, user_id)
         
         favorite = common.find_one(
-            table='ws_favorite',
+            table='ws_favorites',
             filters={'ws_id': workspace_id, 'user_id': user_id}
         )
         updated_workspace['is_favorited'] = favorite is not None
         
         members = common.find_many(
-            table='ws_member',
+            table='ws_members',
             filters={'ws_id': workspace_id, 'deleted_at': None}
         )
         updated_workspace['member_count'] = len(members)
@@ -504,7 +504,7 @@ def handle_delete_workspace(
     
     try:
         # Call RPC function (handles authorization check internally)
-        result = common.call_rpc(
+        result = common.rpc(
             function_name='soft_delete_workspace',
             params={
                 'p_workspace_id': workspace_id,
@@ -549,7 +549,7 @@ def handle_restore_workspace(
     
     try:
         # Call RPC function (handles authorization check internally)
-        result = common.call_rpc(
+        result = common.rpc(
             function_name='restore_workspace',
             params={
                 'p_workspace_id': workspace_id,
@@ -562,7 +562,7 @@ def handle_restore_workspace(
         result['is_favorited'] = False
         
         members = common.find_many(
-            table='ws_member',
+            table='ws_members',
             filters={'ws_id': workspace_id, 'deleted_at': None}
         )
         result['member_count'] = len(members)
@@ -616,7 +616,7 @@ def handle_list_members(
         # Get members with user profile info
         # Using a join via RPC or separate queries
         members = common.find_many(
-            table='ws_member',
+            table='ws_members',
             filters={'ws_id': workspace_id, 'deleted_at': None}
         )
         
@@ -683,7 +683,7 @@ def handle_add_member(
     try:
         # Check if user is already a member
         existing = common.find_one(
-            table='ws_member',
+            table='ws_members',
             filters={'ws_id': workspace_id, 'user_id': member_user_id, 'deleted_at': None}
         )
         if existing:
@@ -691,7 +691,7 @@ def handle_add_member(
         
         # Get workspace to verify org membership
         workspace = common.find_one(
-            table='workspace',
+            table='workspaces',
             filters={'id': workspace_id, 'deleted_at': None}
         )
         if not workspace:
@@ -700,14 +700,14 @@ def handle_add_member(
         # Verify new member is in the same org
         org_member = common.find_one(
             table='org_members',
-            filters={'org_id': workspace['org_id'], 'person_id': member_user_id, 'active': True}
+            filters={'org_id': workspace['org_id'], 'user_id': member_user_id}
         )
         if not org_member:
-            raise common.ValidationError('User must be an active member of the organization')
+            raise common.ValidationError('User must be a member of the organization')
         
         # Create member
         new_member = common.insert_one(
-            table='ws_member',
+            table='ws_members',
             data={
                 'ws_id': workspace_id,
                 'user_id': member_user_id,
@@ -774,7 +774,7 @@ def handle_update_member(
     try:
         # Get current member
         member = common.find_one(
-            table='ws_member',
+            table='ws_members',
             filters={'id': member_id, 'ws_id': workspace_id, 'deleted_at': None}
         )
         if not member:
@@ -782,7 +782,7 @@ def handle_update_member(
         
         # Prevent demoting the last owner
         if member['ws_role'] == 'ws_owner' and ws_role != 'ws_owner':
-            owner_count = common.call_rpc(
+            owner_count = common.rpc(
                 function_name='count_workspace_owners',
                 params={'p_ws_id': workspace_id}
             )
@@ -791,7 +791,7 @@ def handle_update_member(
         
         # Update member
         updated_member = common.update_one(
-            table='ws_member',
+            table='ws_members',
             filters={'id': member_id},
             data={'ws_role': ws_role, 'updated_by': user_id}
         )
@@ -838,7 +838,7 @@ def handle_remove_member(
     try:
         # Get member
         member = common.find_one(
-            table='ws_member',
+            table='ws_members',
             filters={'id': member_id, 'ws_id': workspace_id, 'deleted_at': None}
         )
         if not member:
@@ -853,7 +853,7 @@ def handle_remove_member(
         
         # Prevent removing the last owner
         if member['ws_role'] == 'ws_owner':
-            owner_count = common.call_rpc(
+            owner_count = common.rpc(
                 function_name='count_workspace_owners',
                 params={'p_ws_id': workspace_id}
             )
@@ -862,14 +862,14 @@ def handle_remove_member(
         
         # Soft delete member
         common.update_one(
-            table='ws_member',
+            table='ws_members',
             filters={'id': member_id},
             data={'deleted_at': 'NOW()'}
         )
         
         # Remove favorite if exists
         common.delete_many(
-            table='ws_favorite',
+            table='ws_favorites',
             filters={'ws_id': workspace_id, 'user_id': member['user_id']}
         )
         
@@ -909,7 +909,7 @@ def handle_toggle_favorite(
     
     try:
         # Call RPC function (handles membership check internally)
-        result = common.call_rpc(
+        result = common.rpc(
             function_name='toggle_workspace_favorite',
             params={
                 'p_workspace_id': workspace_id,
@@ -950,7 +950,7 @@ def handle_list_favorites(
     """
     try:
         # Use the list workspaces function with favorites_only=True
-        workspaces = common.call_rpc(
+        workspaces = common.rpc(
             function_name='get_workspaces_with_member_info',
             params={
                 'p_org_id': org_id,
