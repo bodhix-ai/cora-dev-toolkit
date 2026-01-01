@@ -15,7 +15,7 @@ CREATE OR REPLACE FUNCTION is_workspace_member(
 ) RETURNS BOOLEAN AS $$
 BEGIN
     RETURN EXISTS (
-        SELECT 1 FROM ws_member
+        SELECT 1 FROM ws_members
         WHERE ws_id = p_ws_id
         AND user_id = p_user_id
         AND deleted_at IS NULL
@@ -33,7 +33,7 @@ CREATE OR REPLACE FUNCTION is_workspace_owner(
 ) RETURNS BOOLEAN AS $$
 BEGIN
     RETURN EXISTS (
-        SELECT 1 FROM ws_member
+        SELECT 1 FROM ws_members
         WHERE ws_id = p_ws_id
         AND user_id = p_user_id
         AND ws_role = 'ws_owner'
@@ -52,7 +52,7 @@ CREATE OR REPLACE FUNCTION is_workspace_admin_or_owner(
 ) RETURNS BOOLEAN AS $$
 BEGIN
     RETURN EXISTS (
-        SELECT 1 FROM ws_member
+        SELECT 1 FROM ws_members
         WHERE ws_id = p_ws_id
         AND user_id = p_user_id
         AND ws_role IN ('ws_owner', 'ws_admin')
@@ -73,7 +73,7 @@ DECLARE
     v_role VARCHAR(50);
 BEGIN
     SELECT ws_role INTO v_role
-    FROM ws_member
+    FROM ws_members
     WHERE ws_id = p_ws_id
     AND user_id = p_user_id
     AND deleted_at IS NULL;
@@ -93,7 +93,7 @@ DECLARE
     v_count INTEGER;
 BEGIN
     SELECT COUNT(*) INTO v_count
-    FROM ws_member
+    FROM ws_members
     WHERE ws_id = p_ws_id
     AND ws_role = 'ws_owner'
     AND deleted_at IS NULL;
@@ -120,10 +120,10 @@ CREATE OR REPLACE FUNCTION create_workspace_with_owner(
     p_owner_id UUID
 ) RETURNS JSON AS $$
 DECLARE
-    v_workspace workspace%ROWTYPE;
+    v_workspace workspaces%ROWTYPE;
 BEGIN
     -- Insert workspace
-    INSERT INTO workspace (
+    INSERT INTO workspaces (
         org_id, name, description, color, icon, tags, created_by
     ) VALUES (
         p_org_id, p_name, p_description, 
@@ -134,7 +134,7 @@ BEGIN
     ) RETURNING * INTO v_workspace;
     
     -- Add creator as owner
-    INSERT INTO ws_member (ws_id, user_id, ws_role, created_by)
+    INSERT INTO ws_members (ws_id, user_id, ws_role, created_by)
     VALUES (v_workspace.id, p_owner_id, 'ws_owner', p_owner_id);
     
     -- Return workspace as JSON
@@ -151,7 +151,7 @@ CREATE OR REPLACE FUNCTION soft_delete_workspace(
     p_user_id UUID
 ) RETURNS JSON AS $$
 DECLARE
-    v_workspace workspace%ROWTYPE;
+    v_workspace workspaces%ROWTYPE;
 BEGIN
     -- Verify user is owner
     IF NOT is_workspace_owner(p_workspace_id, p_user_id) THEN
@@ -159,18 +159,18 @@ BEGIN
     END IF;
     
     -- Soft delete workspace
-    UPDATE workspace
+    UPDATE workspaces
     SET deleted_at = NOW(), deleted_by = p_user_id
     WHERE id = p_workspace_id
     RETURNING * INTO v_workspace;
     
     -- Soft delete all members
-    UPDATE ws_member
+    UPDATE ws_members
     SET deleted_at = NOW()
     WHERE ws_id = p_workspace_id;
     
     -- Remove all favorites
-    DELETE FROM ws_favorite
+    DELETE FROM ws_favorites
     WHERE ws_id = p_workspace_id;
     
     -- Return result
@@ -191,10 +191,10 @@ CREATE OR REPLACE FUNCTION restore_workspace(
     p_user_id UUID
 ) RETURNS JSON AS $$
 DECLARE
-    v_workspace workspace%ROWTYPE;
+    v_workspace workspaces%ROWTYPE;
 BEGIN
     -- Get workspace
-    SELECT * INTO v_workspace FROM workspace WHERE id = p_workspace_id;
+    SELECT * INTO v_workspace FROM workspaces WHERE id = p_workspace_id;
     
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Workspace not found';
@@ -206,7 +206,7 @@ BEGIN
     
     -- Verify user was an owner before deletion
     IF NOT EXISTS (
-        SELECT 1 FROM ws_member
+        SELECT 1 FROM ws_members
         WHERE ws_id = p_workspace_id
         AND user_id = p_user_id
         AND ws_role = 'ws_owner'
@@ -215,13 +215,13 @@ BEGIN
     END IF;
     
     -- Restore workspace
-    UPDATE workspace
+    UPDATE workspaces
     SET deleted_at = NULL, deleted_by = NULL, updated_by = p_user_id, updated_at = NOW()
     WHERE id = p_workspace_id
     RETURNING * INTO v_workspace;
     
     -- Restore all members
-    UPDATE ws_member
+    UPDATE ws_members
     SET deleted_at = NULL
     WHERE ws_id = p_workspace_id;
     
@@ -248,13 +248,13 @@ BEGIN
     
     -- Check if already favorited
     SELECT EXISTS (
-        SELECT 1 FROM ws_favorite
+        SELECT 1 FROM ws_favorites
         WHERE ws_id = p_workspace_id AND user_id = p_user_id
     ) INTO v_is_favorited;
     
     IF v_is_favorited THEN
         -- Remove favorite
-        DELETE FROM ws_favorite
+        DELETE FROM ws_favorites
         WHERE ws_id = p_workspace_id AND user_id = p_user_id;
         
         RETURN json_build_object(
@@ -264,7 +264,7 @@ BEGIN
         );
     ELSE
         -- Add favorite
-        INSERT INTO ws_favorite (ws_id, user_id)
+        INSERT INTO ws_favorites (ws_id, user_id)
         VALUES (p_workspace_id, p_user_id)
         RETURNING created_at INTO v_favorited_at;
         
@@ -319,16 +319,16 @@ BEGIN
         wm.ws_role AS user_role,
         (wf.ws_id IS NOT NULL) AS is_favorited,
         wf.created_at AS favorited_at,
-        (SELECT COUNT(*) FROM ws_member WHERE ws_id = w.id AND deleted_at IS NULL) AS member_count,
+        (SELECT COUNT(*) FROM ws_members WHERE ws_id = w.id AND deleted_at IS NULL) AS member_count,
         w.created_at,
         w.updated_at,
         w.created_by,
         w.updated_by
-    FROM workspace w
-    INNER JOIN ws_member wm ON w.id = wm.ws_id 
+    FROM workspaces w
+    INNER JOIN ws_members wm ON w.id = wm.ws_id 
         AND wm.user_id = p_user_id 
         AND wm.deleted_at IS NULL
-    LEFT JOIN ws_favorite wf ON w.id = wf.ws_id AND wf.user_id = p_user_id
+    LEFT JOIN ws_favorites wf ON w.id = wf.ws_id AND wf.user_id = p_user_id
     WHERE w.org_id = p_org_id
         AND w.deleted_at IS NULL
         AND (p_status = 'all' OR w.status = p_status)
@@ -358,12 +358,12 @@ DECLARE
 BEGIN
     -- Find expired workspaces
     SELECT ARRAY_AGG(id) INTO v_deleted_ids
-    FROM workspace
+    FROM workspaces
     WHERE deleted_at IS NOT NULL
     AND deleted_at + INTERVAL '1 day' * retention_days < NOW();
     
-    -- Permanently delete (cascades to ws_member via FK)
-    DELETE FROM workspace
+    -- Permanently delete (cascades to ws_members via FK)
+    DELETE FROM workspaces
     WHERE id = ANY(v_deleted_ids);
     
     GET DIAGNOSTICS v_count = ROW_COUNT;

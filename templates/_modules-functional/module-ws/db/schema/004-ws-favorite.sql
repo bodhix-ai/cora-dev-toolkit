@@ -5,12 +5,12 @@
 -- Source: Created for CORA toolkit Dec 2025
 
 -- =============================================
--- WS_FAVORITE TABLE
+-- WS_FAVORITES TABLE
 -- =============================================
 
-CREATE TABLE IF NOT EXISTS public.ws_favorite (
+CREATE TABLE IF NOT EXISTS public.ws_favorites (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    ws_id UUID NOT NULL REFERENCES public.workspace(id) ON DELETE CASCADE,
+    ws_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES auth.users(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -19,66 +19,24 @@ CREATE TABLE IF NOT EXISTS public.ws_favorite (
 -- INDEXES
 -- =============================================
 
-CREATE INDEX IF NOT EXISTS idx_ws_favorite_ws_id ON public.ws_favorite(ws_id);
-CREATE INDEX IF NOT EXISTS idx_ws_favorite_user_id ON public.ws_favorite(user_id);
-CREATE INDEX IF NOT EXISTS idx_ws_favorite_created_at ON public.ws_favorite(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ws_favorites_ws_id ON public.ws_favorites(ws_id);
+CREATE INDEX IF NOT EXISTS idx_ws_favorites_user_id ON public.ws_favorites(user_id);
+CREATE INDEX IF NOT EXISTS idx_ws_favorites_created_at ON public.ws_favorites(created_at DESC);
 
 -- Unique constraint: one favorite per user per workspace
-CREATE UNIQUE INDEX IF NOT EXISTS idx_ws_favorite_unique ON public.ws_favorite(ws_id, user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ws_favorites_unique ON public.ws_favorites(ws_id, user_id);
 
 -- =============================================
 -- COMMENTS
 -- =============================================
 
-COMMENT ON TABLE public.ws_favorite IS 'Per-user workspace favorites for quick access';
-COMMENT ON COLUMN public.ws_favorite.ws_id IS 'Foreign key to workspace table';
-COMMENT ON COLUMN public.ws_favorite.user_id IS 'User who favorited the workspace';
-COMMENT ON COLUMN public.ws_favorite.created_at IS 'When the workspace was favorited';
+COMMENT ON TABLE public.ws_favorites IS 'Per-user workspace favorites for quick access';
+COMMENT ON COLUMN public.ws_favorites.ws_id IS 'Foreign key to workspaces table';
+COMMENT ON COLUMN public.ws_favorites.user_id IS 'User who favorited the workspace';
+COMMENT ON COLUMN public.ws_favorites.created_at IS 'When the workspace was favorited';
 
 -- =============================================
--- ROW LEVEL SECURITY (RLS)
+-- NOTE: Row Level Security (RLS) Policies
 -- =============================================
-
-ALTER TABLE public.ws_favorite ENABLE ROW LEVEL SECURITY;
-
--- Users can only view their own favorites
-DROP POLICY IF EXISTS "Users can view own favorites" ON public.ws_favorite;
-CREATE POLICY "Users can view own favorites" ON public.ws_favorite
-FOR SELECT
-TO authenticated
-USING (user_id = auth.uid());
-
--- Users can add favorites for themselves if they're a workspace member
-DROP POLICY IF EXISTS "Members can add favorites" ON public.ws_favorite;
-CREATE POLICY "Members can add favorites" ON public.ws_favorite
-FOR INSERT
-TO authenticated
-WITH CHECK (
-    user_id = auth.uid() AND
-    EXISTS (
-        SELECT 1 FROM public.ws_member
-        WHERE ws_member.ws_id = ws_favorite.ws_id
-        AND ws_member.user_id = auth.uid()
-        AND ws_member.deleted_at IS NULL
-    )
-);
-
--- Users can only remove their own favorites
-DROP POLICY IF EXISTS "Users can remove own favorites" ON public.ws_favorite;
-CREATE POLICY "Users can remove own favorites" ON public.ws_favorite
-FOR DELETE
-TO authenticated
-USING (user_id = auth.uid());
-
--- Service role has full access
-DROP POLICY IF EXISTS "Service role full access to ws_favorite" ON public.ws_favorite;
-CREATE POLICY "Service role full access to ws_favorite" ON public.ws_favorite
-FOR ALL
-USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
-
--- Grant usage to authenticated users (RLS policies will restrict actual access)
-GRANT SELECT, INSERT, DELETE ON public.ws_favorite TO authenticated;
-
-COMMENT ON POLICY "Users can view own favorites" ON public.ws_favorite IS 'Users can only see their own favorites';
-COMMENT ON POLICY "Members can add favorites" ON public.ws_favorite IS 'Only workspace members can favorite a workspace';
-COMMENT ON POLICY "Users can remove own favorites" ON public.ws_favorite IS 'Users can only unfavorite their own favorites';
+-- RLS policies for this table are defined in 006-apply-rls.sql
+-- This ensures all tables exist before applying security constraints
