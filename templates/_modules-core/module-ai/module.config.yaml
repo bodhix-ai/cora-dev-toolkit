@@ -1,0 +1,76 @@
+# =============================================================================
+# Module-AI Configuration
+# =============================================================================
+# This file defines the default configuration for the AI Provider Management module.
+# These values are merged into the project's setup.config.yaml automatically.
+
+module_ai:
+  # Module Display Settings
+  display_name: "AI Provider Management"
+  nav_icon: "Psychology"
+  
+  # Admin Card Configuration
+  admin_card:
+    enabled: true
+    path: "/admin/ai"
+    title: "AI Provider Management"
+    description: "Configure AI providers, models, and access control"
+    icon: "Psychology"
+    priority: 20  # Lower number = higher priority in admin dashboard
+  
+  # Provider Management
+  providers:
+    # Enable multiple providers simultaneously
+    enable_multi_provider: true
+    
+    # Default provider when multiple are enabled
+    default_provider: "aws_bedrock"  # aws_bedrock | azure_ai_foundry | google_ai
+    
+    # Provider failover (try next provider if primary fails)
+    enable_failover: true
+    
+    # Provider health monitoring
+    enable_health_checks: true
+    health_check_interval_seconds: 300  # 5 minutes
+  
+  # Model Configuration
+  models:
+    # Default model for each provider
+    defaults:
+      aws_bedrock: "anthropic.claude-3-5-sonnet-20241022-v2:0"
+      azure_ai_foundry: "gpt-4"
+      google_ai: "gemini-pro"
+    
+    # Model access control
+    restrict_models_by_org: false  # Restrict models per organization
+    restrict_models_by_role: false  # Restrict models by user role
+  
+  # Usage & Rate Limiting
+  usage:
+    # Enable usage tracking
+    enable_usage_tracking: true
+    
+    # Rate limiting
+    enable_rate_limiting: false
+    requests_per_minute: 60
+    requests_per_day: 1000
+    
+    # Cost tracking
+    enable_cost_tracking: true
+  
+  # Caching & Performance
+  cache:
+    # Enable response caching for identical requests
+    enable_response_cache: false
+    cache_ttl_seconds: 3600  # 1 hour
+  
+  # Security
+  security:
+    # Require organization context for all AI requests
+    require_org_context: true
+    
+    # Log all AI requests for audit
+    enable_request_logging: true
+    
+    # Content filtering
+    enable_content_filtering: false

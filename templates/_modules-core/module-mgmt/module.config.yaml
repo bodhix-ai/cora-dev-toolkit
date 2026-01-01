@@ -1,0 +1,76 @@
+# =============================================================================
+# Module-Mgmt Configuration
+# =============================================================================
+# This file defines the default configuration for the Platform Management module.
+# These values are merged into the project's setup.config.yaml automatically.
+
+module_mgmt:
+  # Module Display Settings
+  display_name: "Platform Management"
+  nav_icon: "Settings"
+  
+  # Admin Card Configuration
+  admin_card:
+    enabled: true
+    path: "/admin/platform"
+    title: "Platform Management"
+    description: "Monitor system health, manage configurations, and view analytics"
+    icon: "Settings"
+    priority: 30  # Lower number = higher priority in admin dashboard
+  
+  # Health Monitoring
+  health:
+    # Enable health check endpoints
+    enable_health_checks: true
+    
+    # Health check interval
+    check_interval_seconds: 60
+    
+    # Alert on failures
+    enable_alerts: false
+    alert_threshold_failures: 3
+  
+  # Analytics & Metrics
+  analytics:
+    # Enable platform analytics
+    enable_analytics: true
+    
+    # Metrics collection
+    collect_api_metrics: true
+    collect_user_metrics: true
+    collect_performance_metrics: true
+    
+    # Retention period for metrics (days)
+    metrics_retention_days: 90
+  
+  # System Configuration
+  system:
+    # Maintenance mode
+    enable_maintenance_mode: false
+    maintenance_message: "System is currently under maintenance. Please check back soon."
+    
+    # Feature flags management
+    enable_feature_flags: true
+    
+    # System notifications
+    enable_system_notifications: true
+  
+  # Audit Logging
+  audit:
+    # Enable audit logging for admin actions
+    enable_audit_logging: true
+    
+    # Log retention period (days)
+    log_retention_days: 365
+    
+    # Events to log
+    log_user_actions: true
+    log_system_events: true
+    log_security_events: true
+  
+  # Backup & Recovery
+  backup:
+    # Enable automated backups
+    enable_auto_backup: false
+    backup_schedule: "0 2 * * *"  # Daily at 2 AM (cron format)
+    backup_retention_days: 30
