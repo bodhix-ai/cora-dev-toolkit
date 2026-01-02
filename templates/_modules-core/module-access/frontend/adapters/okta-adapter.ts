@@ -8,7 +8,7 @@
  * providing the JWT token needed for API Gateway authorization.
  */
 
-import { getSession } from "next-auth/react";
+import { getSession, signOut } from "next-auth/react";
 import type { AuthAdapter } from "./types";
 import type { OktaSession } from "../providers/okta";
 
@@ -69,6 +69,9 @@ export function createOktaAuthAdapter(): AuthAdapter {
         return null;
       }
     },
+    signOut: async () => {
+      await signOut();
+    },
   };
 }
 
@@ -123,6 +126,9 @@ export function createOktaServerAdapter(
         console.error("[OktaServerAdapter] Error getting token:", error);
         return null;
       }
+    },
+    signOut: async () => {
+      console.warn("[OktaServerAdapter] signOut called on server side - no-op");
     },
   };
 }

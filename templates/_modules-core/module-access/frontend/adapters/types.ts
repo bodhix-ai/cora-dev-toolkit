@@ -19,6 +19,12 @@ export interface AuthAdapter {
    * @returns Promise resolving to JWT token string, or null if not authenticated
    */
   getToken: () => Promise<string | null>;
+
+  /**
+   * Sign the user out
+   * @returns Promise that resolves when sign out is complete
+   */
+  signOut: () => Promise<void>;
 }
 
 /**

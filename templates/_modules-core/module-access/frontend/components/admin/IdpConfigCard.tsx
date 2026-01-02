@@ -43,16 +43,19 @@ import {
 
 /**
  * IDP Configuration type
+ * 
+ * **Phase 1: Okta-Only (ADR-010)**
+ * Currently supports only Okta. Future phases will migrate to AWS Cognito
+ * with federated external IDPs (Google, Microsoft, Okta).
  */
 interface IdpConfig {
   id: string;
-  provider_type: "clerk" | "okta";
+  provider_type: "okta";
   display_name: string;
   config: {
     client_id?: string;
     issuer?: string;
     jwks_uri?: string;
-    publishable_key?: string;
   };
   is_active: boolean;
   is_configured: boolean;
@@ -287,9 +290,7 @@ function IdpProviderRow({
             )}
           </Box>
           <Typography variant="body2" color="text.secondary">
-            {config.provider_type === "okta"
-              ? "Okta OIDC Authentication"
-              : "Clerk Authentication"}
+            Okta OIDC Authentication
           </Typography>
         </Box>
       </Box>
@@ -348,9 +349,7 @@ function IdpEditDialog({
       <DialogTitle>Configure {config.display_name}</DialogTitle>
       <DialogContent>
         <DialogContentText sx={{ mb: 2 }}>
-          {config.provider_type === "okta"
-            ? "Enter your Okta OIDC credentials. Client secrets are stored securely in AWS Secrets Manager."
-            : "Enter your Clerk credentials. Secret keys are stored securely in AWS Secrets Manager."}
+          Enter your Okta OIDC credentials. Client secrets are stored securely in AWS Secrets Manager.
         </DialogContentText>
 
         <Box
@@ -358,11 +357,7 @@ function IdpEditDialog({
           onSubmit={handleSubmit}
           sx={{ display: "flex", flexDirection: "column", gap: 2 }}
         >
-          {config.provider_type === "okta" ? (
-            <OktaConfigFields formData={formData} setFormData={setFormData} />
-          ) : (
-            <ClerkConfigFields formData={formData} setFormData={setFormData} />
-          )}
+          <OktaConfigFields formData={formData} setFormData={setFormData} />
         </Box>
       </DialogContent>
       <DialogActions>
@@ -423,47 +418,6 @@ function OktaConfigFields({
 
       <Alert severity="info" icon={<VpnKey />}>
         Client Secret is managed separately in AWS Secrets Manager for security.
-      </Alert>
-    </>
-  );
-}
-
-/**
- * Clerk-specific configuration fields
- */
-function ClerkConfigFields({
-  formData,
-  setFormData,
-}: {
-  formData: Record<string, string>;
-  setFormData: (data: Record<string, string>) => void;
-}) {
-  return (
-    <>
-      <TextField
-        fullWidth
-        label="Publishable Key"
-        aria-label="Clerk Publishable Key"
-        value={formData.publishable_key || ""}
-        onChange={(e) =>
-          setFormData({ ...formData, publishable_key: e.target.value })
-        }
-        placeholder="pk_test_..."
-        required
-      />
-
-      <TextField
-        fullWidth
-        label="Issuer URL"
-        aria-label="Clerk Issuer URL"
-        value={formData.issuer || ""}
-        onChange={(e) => setFormData({ ...formData, issuer: e.target.value })}
-        placeholder="https://clerk.your-domain.com"
-        required
-      />
-
-      <Alert severity="info" icon={<VpnKey />}>
-        Secret Key is managed separately in AWS Secrets Manager for security.
       </Alert>
     </>
   );
