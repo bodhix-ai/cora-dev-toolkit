@@ -1986,7 +1986,7 @@ RUNSCRIPT
 run_post_creation_validation() {
   local stack_dir="$1"
   
-  log_step "Running initial validation (structure & portability only)..."
+  log_step "Running full validation suite..."
   
   # Check if cora-validate.py exists
   if [[ ! -f "${stack_dir}/scripts/validation/cora-validate.py" ]]; then
@@ -2001,12 +2001,11 @@ run_post_creation_validation() {
     return
   fi
   
-  # Run structure and portability validators only (no DB required)
+  # Run all validators (full validation suite)
   cd "${stack_dir}/scripts/validation"
   
   # Capture exit code while still showing output
   python3 cora-validate.py project "${stack_dir}" \
-    --validators structure portability \
     --format text
   local exit_code=$?
   
