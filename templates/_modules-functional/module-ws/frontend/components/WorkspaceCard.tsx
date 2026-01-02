@@ -220,6 +220,7 @@ export function WorkspaceCard({
                   <IconButton
                     size="small"
                     onClick={handleFavoriteClick}
+                    aria-label={workspace.is_favorited ? "Remove from favorites" : "Add to favorites"}
                     sx={{ color: workspace.is_favorited ? "warning.main" : "action.disabled" }}
                   >
                     {workspace.is_favorited ? <Star /> : <StarBorder />}
@@ -228,7 +229,7 @@ export function WorkspaceCard({
               )}
               {showMenu && canEdit && !isDeleted && (
                 <>
-                  <IconButton size="small" onClick={handleMenuOpen}>
+                  <IconButton size="small" onClick={handleMenuOpen} aria-label="Workspace options">
                     <MoreVert />
                   </IconButton>
                   <Menu
