@@ -34,25 +34,15 @@ import { OrganizationSwitcher } from "./OrganizationSwitcher";
  * @see cora-dev-toolkit/docs/ADR-008-SIDEBAR-AND-ORG-SELECTOR-STANDARD.md
  */
 
+import type { NavigationConfig } from "@{{PROJECT_NAME}}/shared-types";
+
 const DRAWER_WIDTH = 280;
 
-interface NavItem {
-  label: string;
-  path: string;
-  icon: React.ReactNode;
+interface SidebarProps {
+  navigation: NavigationConfig;
 }
 
-const navigationItems: NavItem[] = [
-  {
-    label: "Dashboard",
-    path: "/",
-    icon: <DashboardIcon />,
-  },
-  // Add more navigation items as needed
-  // Note: Settings is in OrganizationSwitcher (bottom menu), not main nav
-];
-
-export function Sidebar() {
+export function Sidebar({ navigation }: SidebarProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -81,30 +71,32 @@ export function Sidebar() {
 
       {/* Navigation Items */}
       <List sx={{ flexGrow: 1, overflowY: "auto", py: 2 }}>
-        {navigationItems.map((item) => (
-          <ListItem key={item.path} disablePadding sx={{ px: 2 }}>
-            <ListItemButton
-              selected={pathname === item.path}
-              onClick={() => handleNavigation(item.path)}
-              sx={{
-                borderRadius: 1,
-                "&.Mui-selected": {
-                  bgcolor: "primary.main",
-                  color: "primary.contrastText",
-                  "&:hover": {
-                    bgcolor: "primary.dark",
-                  },
-                  "& .MuiListItemIcon-root": {
+        {navigation.flatMap((section) =>
+          section.items.map((item) => (
+            <ListItem key={item.href} disablePadding sx={{ px: 2 }}>
+              <ListItemButton
+                selected={pathname === item.href}
+                onClick={() => handleNavigation(item.href)}
+                sx={{
+                  borderRadius: 1,
+                  "&.Mui-selected": {
+                    bgcolor: "primary.main",
                     color: "primary.contrastText",
+                    "&:hover": {
+                      bgcolor: "primary.dark",
+                    },
+                    "& .MuiListItemIcon-root": {
+                      color: "primary.contrastText",
+                    },
                   },
-                },
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} />
-            </ListItemButton>
-          </ListItem>
-        ))}
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.label} />
+              </ListItemButton>
+            </ListItem>
+          ))
+        )}
       </List>
 
       {/* Organization Switcher at Bottom */}

@@ -10,6 +10,7 @@ import LockIcon from "@mui/icons-material/Lock";
 import Button from "@mui/material/Button";
 import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { Sidebar } from "./Sidebar";
+import type { NavigationConfig } from "@{{PROJECT_NAME}}/shared-types";
 
 /**
  * AppShell Component - Following ADR-007 & ADR-008 CORA Standards
@@ -32,7 +33,12 @@ import { Sidebar } from "./Sidebar";
  * @see cora-dev-toolkit/docs/ADR-007-CORA-AUTH-SHELL-STANDARD.md
  * @see cora-dev-toolkit/docs/ADR-008-SIDEBAR-AND-ORG-SELECTOR-STANDARD.md
  */
-export default function AppShell({ children }: { children: React.ReactNode }) {
+interface AppShellProps {
+  children: React.ReactNode;
+  navigation: NavigationConfig;
+}
+
+export default function AppShell({ children, navigation }: AppShellProps) {
   const pathname = usePathname();
 
   // Auth pages don't need the shell - return BEFORE calling any hooks
@@ -47,7 +53,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   // For non-auth pages, use the full AppShell with profile checks
-  return <AppShellWithProfile>{children}</AppShellWithProfile>;
+  return <AppShellWithProfile navigation={navigation}>{children}</AppShellWithProfile>;
 }
 
 /**
@@ -55,7 +61,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
  * 
  * This component is only rendered for non-auth pages, so it's safe to call useProfile()
  */
-function AppShellWithProfile({ children }: { children: React.ReactNode }) {
+function AppShellWithProfile({ 
+  children, 
+  navigation 
+}: { 
+  children: React.ReactNode;
+  navigation: NavigationConfig;
+}) {
   const { profile, loading, isAuthenticated } = useUser();
 
   // Show loading while auth state is being determined
@@ -141,7 +153,7 @@ function AppShellWithProfile({ children }: { children: React.ReactNode }) {
   // Following ADR-008: Sidebar with OrganizationSwitcher at bottom
   return (
     <Box sx={{ display: "flex", height: "100vh" }}>
-      <Sidebar />
+      <Sidebar navigation={navigation} />
       <Box
         component="main"
         sx={{
