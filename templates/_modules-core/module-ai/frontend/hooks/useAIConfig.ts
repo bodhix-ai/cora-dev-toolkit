@@ -36,7 +36,8 @@ interface RawDeploymentData {
   };
   metadata?: {
     provider_name?: string;
-    [key: string]: any;
+    // @ts-expect-error - Dynamic metadata fields from various providers
+    [key: string]: unknown;
   };
   supports_chat?: boolean;
   supports_embeddings?: boolean;
@@ -66,7 +67,8 @@ export type DeploymentInfo = {
     supportsVision?: boolean;
     maxTokens?: number;
     embeddingDimensions?: number;
-    [key: string]: any;
+    // @ts-expect-error - Additional capability fields from various providers
+    [key: string]: unknown;
   };
 };
 
@@ -318,7 +320,7 @@ export function useDeployments(
         url += `?capability=${capability}`;
       }
 
-      const data = await client.get<any>(url);
+      const data = await client.get<unknown>(url);
 
       // Handle both direct array and wrapped response { success: true, data: [...] }
       let rawList: RawDeploymentData[] = [];
@@ -434,7 +436,7 @@ export function useDeployments(
             created_at: d.created_at,
             updated_at: d.updated_at,
             description: d.description,
-            capabilities: capabilities as any,
+            capabilities: capabilities ?? undefined,
             supports_chat: !!capabilities?.chat,
             supports_embeddings: !!capabilities?.embedding,
           };
