@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   createCoraAuthenticatedClient,
   type CoraAuthAdapter,
-} from "@ai-sec/api-client";
+} from "@{{PROJECT_NAME}}/api-client";
 
 // Types for AI Configuration
 
