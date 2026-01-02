@@ -1,29 +1,19 @@
-"use client";
-
 import React from "react";
 import { Box, Grid, Card, CardContent, Typography, CardActionArea } from "@mui/material";
-import { useRouter } from "next/navigation";
-import { accessControlAdminCard } from "@{{PROJECT_NAME}}/module-access";
-import { aiEnablementAdminCard } from "@{{PROJECT_NAME}}/module-ai";
-import { platformMgmtAdminCard } from "@{{PROJECT_NAME}}/module-mgmt";
+import Link from "next/link";
+import { getPlatformAdminCards } from "@/lib/moduleRegistry";
 
 /**
  * Platform Administration Page
  * 
- * Displays admin cards from all enabled modules.
- * Each module exports an admin card that links to its admin page.
+ * Displays admin cards from all enabled modules dynamically.
+ * Module admin cards are loaded from the merged cora-modules.config.yaml.
  * 
  * Only accessible to platform_owner and platform_admin roles.
  */
 export default function PlatformAdminPage() {
-  const router = useRouter();
-  
-  // Collect all admin cards from modules
-  const adminCards = [
-    accessControlAdminCard,
-    aiEnablementAdminCard,
-    platformMgmtAdminCard,
-  ].sort((a, b) => (a.order || 0) - (b.order || 0));
+  // Load admin cards dynamically from module registry
+  const adminCards = getPlatformAdminCards();
   
   return (
     <Box sx={{ p: 3 }}>
@@ -38,7 +28,7 @@ export default function PlatformAdminPage() {
         {adminCards.map((card) => (
           <Grid item xs={12} sm={6} md={4} key={card.id}>
             <Card>
-              <CardActionArea onClick={() => router.push(card.href)}>
+              <CardActionArea component={Link} href={card.href}>
                 <CardContent sx={{ textAlign: "center", py: 4 }}>
                   <Box sx={{ color: card.color || "primary.main", mb: 2 }}>
                     {card.icon}

@@ -1168,7 +1168,206 @@ output "iam_role_arn" { ... }
 - [ ] `README.md` documenting infrastructure usage
 - [ ] All API endpoints in Lambda handler have matching routes in `outputs.tf`
 
-### Step 3.6: Documentation
+### Step 3.6: Module UI Integration Configuration
+
+**⚠️ IMPORTANT:** All modules must configure their UI integration in `module.config.yaml` to appear in navigation and admin pages.
+
+**See:** `docs/arch decisions/ADR-009-MODULE-UI-INTEGRATION.md` for full architecture details.
+
+#### 3.6.1: Navigation Configuration
+
+**For functional modules that users access directly**, add navigation configuration:
+
+```yaml
+# module.config.yaml
+module_{name}:
+  display_name: "My Module Name"
+  
+  # Navigation configuration (optional - only for user-facing modules)
+  navigation:
+    label_singular: "Item"           # Singular form (e.g., "Workspace")
+    label_plural: "Items"             # Plural form used in nav (e.g., "Workspaces")
+    icon: "FolderIcon"                # Must exist in iconMap.tsx
+    show_in_main_nav: true            # Set to true to appear in left sidebar
+    nav_priority: 20                  # Lower = higher in list (10-90)
+```
+
+**When to add navigation:**
+- ✅ Functional modules with user-facing pages (`module-ws`, `module-kb`, `module-chat`)
+- ✅ Modules where users browse/manage items
+- ❌ Core modules that are infrastructure only (`module-access`, `module-ai`, `module-mgmt`)
+- ❌ Modules with no user-facing UI
+
+**Icon Names:**
+
+Icons must exist in `templates/_project-stack-template/apps/web/lib/iconMap.tsx`:
+
+```typescript
+// Common icons available:
+Dashboard, Shield, SmartToy, Settings, People, Business
+WorkspaceIcon, Workspaces, LibraryBooks, Chat, Folder
+```
+
+**To add a new icon:**
+
+1. Import from MUI in `iconMap.tsx`:
+   ```typescript
+   import MyIcon from "@mui/icons-material/MyIcon";
+   ```
+
+2. Add to `iconMap`:
+   ```typescript
+   export const iconMap: Record<string, ReactNode> = {
+     // ...
+     MyIcon: <MyIcon />,
+   };
+   ```
+
+3. Use in config:
+   ```yaml
+   icon: "MyIcon"
+   ```
+
+#### 3.6.2: Admin Card Configuration
+
+**All modules should provide an admin card** for configuration and management:
+
+```yaml
+# module.config.yaml
+module_{name}:
+  display_name: "My Module Name"
+  
+  # Admin card configuration (recommended for all modules)
+  admin_card:
+    enabled: true                     # Set to true to show admin card
+    path: "/admin/{module}"           # Link to admin page
+    title: "My Module Settings"       # Card title
+    description: "Manage module configuration and settings"
+    icon: "FolderIcon"                # Must exist in iconMap.tsx
+    priority: 50                      # Lower = higher priority (10-90)
+    context: "platform"               # or "organization" or omit for both
+```
+
+**Context Options:**
+
+- `context: "platform"` - Card appears **only** on Platform Admin page
+  - Use for: Platform-level settings, global configurations
+  - Examples: `module-mgmt`, `module-ai` (AI providers)
+
+- `context: "organization"` - Card appears **only** on Organization Admin page
+  - Use for: Org-specific settings, org member management
+  - Examples: Org-specific module configurations
+
+- **Omit context** - Card appears on **both** Platform and Org Admin pages
+  - Use for: Modules with both platform and org settings
+  - Example: `module-access` (platform IDP config + org member management)
+
+**Priority Guidelines:**
+
+- **10-20**: Critical core modules (`module-access`, `module-ai`, `module-mgmt`)
+- **30-50**: Primary functional modules (`module-ws`, `module-kb`)
+- **60-80**: Secondary functional modules
+- **90+**: Optional/utility modules
+
+Lower priority = appears first in admin page.
+
+#### 3.6.3: Complete Example
+
+**Functional module with navigation and admin card:**
+
+```yaml
+# module-ws/module.config.yaml
+module_ws:
+  display_name: "Workspace Management"
+  
+  # User navigation
+  navigation:
+    label_singular: "Workspace"
+    label_plural: "Workspaces"
+    icon: "WorkspaceIcon"
+    show_in_main_nav: true
+    nav_priority: 10
+  
+  # Admin card
+  admin_card:
+    enabled: true
+    path: "/admin/workspaces"
+    title: "Workspace Management"
+    description: "Manage workspaces, members, and configurations"
+    icon: "WorkspaceIcon"
+    priority: 40
+    context: "platform"
+  
+  # Module features, settings, etc.
+  features:
+    enable_favorites: true
+    enable_tags: true
+    # ...
+```
+
+**Core module (no navigation, admin card only):**
+
+```yaml
+# module-ai/module.config.yaml
+module_ai:
+  display_name: "AI Provider Management"
+  
+  # No navigation (infrastructure module, no user-facing pages)
+  
+  # Admin card only
+  admin_card:
+    enabled: true
+    path: "/admin/ai"
+    title: "AI Providers"
+    description: "Configure AI providers and models"
+    icon: "SmartToy"
+    priority: 20
+    context: "platform"  # Platform-level only
+  
+  # AI-specific configuration
+  providers:
+    # ...
+```
+
+#### 3.6.4: How It Works
+
+**Build Time:**
+1. Project creation merges all `module.config.yaml` files
+2. Creates: `apps/web/config/cora-modules.config.yaml`
+
+**Runtime:**
+1. **Layout (Server Component)** calls `buildNavigationConfig()`
+   - Reads merged config YAML
+   - Filters modules with `show_in_main_nav: true`
+   - Maps icon strings to React components
+   - Returns `NavigationConfig`
+
+2. **Sidebar (Client Component)** receives navigation as prop
+   - Renders MUI List dynamically
+   - No hardcoded navigation items
+
+3. **Admin Pages (Server Components)** call `getPlatformAdminCards()` or `getOrganizationAdminCards()`
+   - Reads merged config YAML
+   - Filters by `enabled: true` and `context`
+   - Sorts by `priority`
+   - Returns `AdminCardConfig[]`
+
+**Result:** Modules automatically appear in navigation and admin pages - no code changes needed!
+
+#### 3.6.5: Validation Checklist
+
+After adding module UI configuration:
+
+- [ ] `module.config.yaml` created with required sections
+- [ ] Icon name exists in `iconMap.tsx` (or added)
+- [ ] Navigation config added if module has user-facing pages
+- [ ] Admin card config added (recommended for all modules)
+- [ ] Admin card context set appropriately
+- [ ] Priority set (10-90 range)
+- [ ] Admin page created at path specified in config
+- [ ] User page created (if navigation enabled)
+
+### Step 3.7: Documentation
 
 **AI generates:**
 
@@ -1178,11 +1377,13 @@ output "iam_role_arn" { ... }
    - Installation
    - Usage examples
    - API reference
+   - UI configuration reference
 
 2. **MODULE-CONFIG-GUIDE.md**
    - Prerequisites
    - Configuration steps
    - Environment variables
+   - Navigation and admin card setup
    - Validation
 
 3. **API Reference** (if complex)
@@ -1193,7 +1394,8 @@ output "iam_role_arn" { ... }
 
 **Code Review:**
 - Review AI-generated code
-- Test locally
+- Verify UI integration config
+- Test navigation and admin cards
 - Provide feedback for adjustments
 
 ---

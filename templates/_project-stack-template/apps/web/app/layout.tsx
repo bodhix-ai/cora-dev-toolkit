@@ -4,6 +4,7 @@ import { AuthProvider, UserProviderWrapper, OrgProvider } from "@{{PROJECT_NAME}
 import ThemeRegistry from "../components/ThemeRegistry";
 import AppShell from "../components/AppShell";
 import { auth } from "@/auth";
+import { buildNavigationConfig } from "@/lib/moduleRegistry";
 
 export const metadata: Metadata = {
   title: "{{PROJECT_DISPLAY_NAME}}",
@@ -36,6 +37,10 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
+  
+  // Load navigation from module registry
+  // This reads the merged cora-modules.config.yaml and builds navigation dynamically
+  const navigation = buildNavigationConfig();
 
   return (
     <html lang="en" style={{ height: "100%" }}>
@@ -44,7 +49,7 @@ export default async function RootLayout({
           <ThemeRegistry>
             <UserProviderWrapper>
               <OrgProvider>
-                <AppShell>{children}</AppShell>
+                <AppShell navigation={navigation}>{children}</AppShell>
               </OrgProvider>
             </UserProviderWrapper>
           </ThemeRegistry>
