@@ -205,7 +205,7 @@ export function PlatformAdminConfigPage({
           <Grid container spacing={4}>
             {/* Navigation Settings */}
             <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h5" gutterBottom>
                 Navigation Settings
               </Typography>
               <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -249,7 +249,7 @@ export function PlatformAdminConfigPage({
 
             {/* Feature Flags */}
             <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+              <Typography variant="h5" gutterBottom sx={{ mt: 2 }}>
                 Feature Flags
               </Typography>
               <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -265,6 +265,7 @@ export function PlatformAdminConfigPage({
                     checked={enableFavorites}
                     onChange={(e) => setEnableFavorites(e.target.checked)}
                     disabled={isSaving}
+                    aria-label="Enable favorites feature"
                   />
                 }
                 label="Enable Favorites"
@@ -281,6 +282,7 @@ export function PlatformAdminConfigPage({
                     checked={enableTags}
                     onChange={(e) => setEnableTags(e.target.checked)}
                     disabled={isSaving}
+                    aria-label="Enable tags feature"
                   />
                 }
                 label="Enable Tags"
@@ -297,6 +299,7 @@ export function PlatformAdminConfigPage({
                     checked={enableColorCoding}
                     onChange={(e) => setEnableColorCoding(e.target.checked)}
                     disabled={isSaving}
+                    aria-label="Enable color coding feature"
                   />
                 }
                 label="Enable Color Coding"
@@ -308,7 +311,7 @@ export function PlatformAdminConfigPage({
 
             {/* Default Settings */}
             <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+              <Typography variant="h5" gutterBottom sx={{ mt: 2 }}>
                 Default Settings
               </Typography>
               <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -354,7 +357,7 @@ export function PlatformAdminConfigPage({
 
             {/* Tag Constraints */}
             <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+              <Typography variant="h5" gutterBottom sx={{ mt: 2 }}>
                 Tag Constraints
               </Typography>
               <Typography variant="body2" color="text.secondary" gutterBottom>

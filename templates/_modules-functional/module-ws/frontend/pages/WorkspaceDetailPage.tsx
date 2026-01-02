@@ -200,6 +200,7 @@ export function WorkspaceDetailPage({
             <IconButton
               onClick={handleToggleFavorite}
               color={workspace.is_favorited ? "warning" : "default"}
+              aria-label={workspace.is_favorited ? "Remove from favorites" : "Add to favorites"}
             >
               {workspace.is_favorited ? <Star /> : <StarBorder />}
             </IconButton>
