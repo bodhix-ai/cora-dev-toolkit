@@ -1,6 +1,7 @@
 import * as React from "react";
 import type { Metadata } from "next";
-import { AuthProvider, UserProviderWrapper, OrgProvider } from "@{{PROJECT_NAME}}/module-access";
+import { AuthProvider, UserProviderWrapper } from "@{{PROJECT_NAME}}/module-access";
+import OrgProviderWrapper from "../components/OrgProviderWrapper";
 import ThemeRegistry from "../components/ThemeRegistry";
 import AppShell from "../components/AppShell";
 import { auth } from "@/auth";
@@ -19,17 +20,22 @@ export const metadata: Metadata = {
 /**
  * Root Layout - Following ADR-007 CORA Auth Shell Standard
  * 
- * Provider hierarchy: AuthProvider → ThemeRegistry → UserProviderWrapper → OrgProvider → AppShell
+ * Provider hierarchy: AuthProvider → ThemeRegistry → UserProviderWrapper → OrgProviderWrapper → AppShell
  * 
  * Key principles (per industry standards):
  * - Single root layout for ALL pages (no route groups for auth separation)
- * - AuthProvider wraps SessionProvider (Okta) or ClerkProvider (Clerk)
+ * - AuthProvider wraps SessionProvider (Okta/NextAuth)
  * - UserProviderWrapper loads user profile from API
- * - OrgProvider loads organization context for the current user
+ * - OrgProviderWrapper creates auth adapter and wraps OrgProvider
  * - AppShell handles conditional UI rendering (loading states, access denied)
  * - NO AuthRouter component - middleware handles all auth redirects
  * 
+ * **Auth Regression Fix:**
+ * OrgProviderWrapper now provides the required authAdapter to OrgProvider,
+ * fixing the regression where navigation menu and admin cards disappeared.
+ * 
  * @see cora-dev-toolkit/docs/ADR-007-CORA-AUTH-SHELL-STANDARD.md
+ * @see cora-dev-toolkit/docs/arch decisions/ADR-010-COGNITO-EXTERNAL-IDP-STRATEGY.md
  */
 export default async function RootLayout({
   children,
@@ -48,9 +54,9 @@ export default async function RootLayout({
         <AuthProvider session={session}>
           <ThemeRegistry>
             <UserProviderWrapper>
-              <OrgProvider>
+              <OrgProviderWrapper>
                 <AppShell navigation={navigation}>{children}</AppShell>
-              </OrgProvider>
+              </OrgProviderWrapper>
             </UserProviderWrapper>
           </ThemeRegistry>
         </AuthProvider>

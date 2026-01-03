@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
-import { Box, Typography } from "@mui/material";
-import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
+import React, { useState, useEffect } from "react";
+import { Box, Typography, CircularProgress } from "@mui/material";
+import { CoraAuthAdapter, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import { IdpConfigCard } from "./IdpConfigCard";
 
 interface IdpTabProps {
@@ -16,6 +16,26 @@ interface IdpTabProps {
  * Allows platform admins to configure identity providers.
  */
 export function IdpTab({ authAdapter }: IdpTabProps) {
+  const [apiClient, setApiClient] = useState<ReturnType<typeof createCoraAuthenticatedClient> | null>(null);
+
+  useEffect(() => {
+    const initClient = async () => {
+      const token = await authAdapter.getToken();
+      if (token) {
+        setApiClient(createCoraAuthenticatedClient(token));
+      }
+    };
+    initClient();
+  }, [authAdapter]);
+
+  if (!apiClient) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <Box>
       <Typography variant="h6" gutterBottom>
@@ -25,7 +45,7 @@ export function IdpTab({ authAdapter }: IdpTabProps) {
         Configure authentication providers for your platform. Only one provider can be active at a time.
       </Typography>
       
-      <IdpConfigCard apiClient={authAdapter} />
+      <IdpConfigCard apiClient={apiClient} />
     </Box>
   );
 }

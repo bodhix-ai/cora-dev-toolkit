@@ -13,7 +13,7 @@ import {
   AlertTitle,
 } from "@mui/material";
 import { NavigateNext } from "@mui/icons-material";
-import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
+import { CoraAuthAdapter, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import { useRouter } from "next/navigation";
 import { OrgDomainsTab } from "./OrgDomainsTab";
 import { OrgMembersTab } from "./OrgMembersTab";
@@ -84,7 +84,13 @@ export function OrgDetails({ orgId, authAdapter, isPlatformAdmin }: OrgDetailsPr
     try {
       setLoading(true);
       setError(null);
-      const response = await authAdapter.get(`/orgs/${orgId}`);
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Authentication required");
+        return;
+      }
+      const apiClient = createCoraAuthenticatedClient(token);
+      const response = await apiClient.get<{ success: boolean; data: Organization }>(`/orgs/${orgId}`);
       if (response.success) {
         setOrganization(response.data);
       } else {

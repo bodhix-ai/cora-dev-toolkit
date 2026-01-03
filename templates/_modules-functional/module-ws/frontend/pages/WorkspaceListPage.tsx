@@ -16,13 +16,14 @@ import {
   Alert,
 } from "@mui/material";
 import { Add } from "@mui/icons-material";
-import type { Workspace } from "../types";
+import type { Workspace, WorkspaceFormValues, WorkspaceCreateRequest } from "../types";
 import { DEFAULT_FILTERS } from "../types";
 import { useWorkspaces } from "../hooks/useWorkspaces";
 import { WorkspaceCard } from "../components/WorkspaceCard";
 import { FilterBar, ViewMode } from "../components/FilterBar";
 import { EmptyState } from "../components/EmptyState";
 import { WorkspaceForm } from "../components/WorkspaceForm";
+import type { WorkspaceApiClient } from "../lib/api";
 
 export interface WorkspaceListPageProps {
   /** Organization ID to filter workspaces */
@@ -32,7 +33,7 @@ export interface WorkspaceListPageProps {
   /** Callback when workspace is clicked */
   onWorkspaceClick?: (workspace: Workspace) => void;
   /** API client for workspace operations */
-  apiClient?: any;
+  apiClient?: WorkspaceApiClient;
   /** Whether user can create workspaces */
   canCreate?: boolean;
 }
@@ -123,13 +124,29 @@ export function WorkspaceListPage({
     refetch();
   };
 
+  // Wrapper function to adapt apiClient.createWorkspace signature to WorkspaceForm's onCreate prop
+  const handleCreateWorkspace = async (orgId: string, values: WorkspaceFormValues): Promise<Workspace> => {
+    if (!apiClient?.createWorkspace) {
+      throw new Error("API client not available");
+    }
+    
+    // Convert WorkspaceFormValues to WorkspaceCreateRequest
+    const request: WorkspaceCreateRequest = {
+      name: values.name,
+      description: values.description,
+      org_id: orgId,
+    };
+    
+    return await apiClient.createWorkspace(request);
+  };
+
   const handleClearFilters = () => {
     setFilters(DEFAULT_FILTERS);
   };
 
   const filteredWorkspaces = workspaces;
   const hasActiveFilters =
-    filters.search ||
+    !!filters.search ||
     filters.status !== "all" ||
     filters.favoritesOnly ||
     filters.tags.length > 0;
@@ -239,7 +256,7 @@ export function WorkspaceListPage({
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
         orgId={orgId}
-        onCreate={apiClient?.createWorkspace}
+        onCreate={handleCreateWorkspace}
         onCreateSuccess={handleCreateSuccess}
       />
 

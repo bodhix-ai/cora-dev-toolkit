@@ -22,7 +22,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { Info as InfoIcon } from "@mui/icons-material";
-import { useUser } from "@ai-sec/module-access";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { useLambdaFunctions } from "../../hooks/useLambdaFunctions";
 
 /**

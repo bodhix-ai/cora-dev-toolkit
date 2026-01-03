@@ -139,6 +139,7 @@ export function TagInput({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
+          aria-label="Add new tag"
           disabled={disabled}
           size="small"
           fullWidth
@@ -151,6 +152,7 @@ export function TagInput({
                   onClick={addTag}
                   disabled={disabled}
                   edge="end"
+                  aria-label="Add tag"
                 >
                   <Add fontSize="small" />
                 </IconButton>

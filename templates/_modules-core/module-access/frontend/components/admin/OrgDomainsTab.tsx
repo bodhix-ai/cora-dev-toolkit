@@ -35,7 +35,7 @@ import {
   Warning,
   Language,
 } from "@mui/icons-material";
-import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
+import { CoraAuthAdapter, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 
 /**
  * Email Domain type
@@ -76,7 +76,13 @@ export function OrgDomainsTab({ orgId, authAdapter }: OrgDomainsTabProps) {
     try {
       setLoading(true);
       setError(null);
-      const response = await authAdapter.get(`/orgs/${orgId}/email-domains`);
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Authentication required");
+        return;
+      }
+      const apiClient = createCoraAuthenticatedClient(token);
+      const response = await apiClient.get<{ success: boolean; data: EmailDomain[] }>(`/orgs/${orgId}/email-domains`);
       if (response.success) {
         setDomains(response.data || []);
       } else {
@@ -101,7 +107,13 @@ export function OrgDomainsTab({ orgId, authAdapter }: OrgDomainsTabProps) {
     }
 
     try {
-      const response = await authAdapter.delete(
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Authentication required");
+        return;
+      }
+      const apiClient = createCoraAuthenticatedClient(token);
+      const response = await apiClient.delete<{ success: boolean }>(
         `/orgs/${orgId}/email-domains/${domainId}`
       );
       if (response.success) {
@@ -272,7 +284,13 @@ function AddDomainDialog({
     setSaving(true);
 
     try {
-      const response = await authAdapter.post(
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Authentication required");
+        return;
+      }
+      const apiClient = createCoraAuthenticatedClient(token);
+      const response = await apiClient.post<{ success: boolean; data: EmailDomain }>(
         `/orgs/${orgId}/email-domains`,
         formData
       );

@@ -12,7 +12,7 @@ import {
   SelectChangeEvent,
   Stack,
 } from "@mui/material";
-import { CoraAuthAdapter } from "@ai-sec/api-client";
+import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
 import { useModels } from "../../hooks/useModels";
 import { ModelCard } from "../models/ModelCard";
 import { TestModelDialog } from "../models/TestModelDialog";

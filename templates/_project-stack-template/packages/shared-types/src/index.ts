@@ -30,4 +30,5 @@ export interface AdminCardConfig {
   badge?: string | number;
   requiredRoles?: string[];
   requiredPermissions?: string[];
+  stats?: (orgId: string, token: string) => Promise<string | null>;
 }

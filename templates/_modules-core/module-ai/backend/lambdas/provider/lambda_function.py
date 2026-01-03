@@ -989,9 +989,12 @@ def _get_provider_credentials(provider: Dict[str, Any]) -> Dict[str, Any]:
     # Check auth_method FIRST - if using IAM role, return immediately without any secret lookups
     auth_method = provider.get('auth_method', 'secrets_manager')
     if auth_method == 'iam_role':
+        region = os.environ.get('AWS_REGION')
+        if not region:
+            raise ValueError('AWS_REGION environment variable is not set. This should be automatically provided by AWS Lambda.')
         return {
             'use_iam_role': True,
-            'region': os.environ.get('AWS_REGION', 'us-east-1')
+            'region': region
         }
     
     # Only look up credentials if NOT using IAM role
@@ -999,9 +1002,12 @@ def _get_provider_credentials(provider: Dict[str, Any]) -> Dict[str, Any]:
     
     if not credentials_path:
         # No credentials path configured - default to IAM role
+        region = os.environ.get('AWS_REGION')
+        if not region:
+            raise ValueError('AWS_REGION environment variable is not set. This should be automatically provided by AWS Lambda.')
         return {
             'use_iam_role': True,
-            'region': os.environ.get('AWS_REGION', 'us-east-1')
+            'region': region
         }
     
     try:

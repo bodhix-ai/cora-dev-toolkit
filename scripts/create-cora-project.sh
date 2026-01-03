@@ -15,6 +15,7 @@ TEMPLATE_STACK="${TOOLKIT_ROOT}/templates/_project-stack-template"
 
 # Defaults
 PROJECT_NAME=""
+PROJECT_FOLDER=""
 GITHUB_ORG=""
 AWS_REGION="us-east-1"
 OUTPUT_DIR="."
@@ -193,14 +194,19 @@ Usage: $0 <project-name> [OPTIONS]
 Creates both {project}-infra and {project}-stack repositories from CORA templates.
 
 Arguments:
-  project-name          Name of the project (e.g., "my-app")
-                        Will create my-app-infra and my-app-stack
+  project-name          Name of the project (e.g., "ai-sec")
+                        Used for repo folder names: ai-sec-infra, ai-sec-stack
+                        Also used for package naming: @ai-sec/module-access
 
 Options:
+  --folder <name>       Parent directory name (e.g., "test-ws-06")
+                        If specified, repos created in: <folder-path>/<folder>/{project}-{infra,stack}
+                        If not specified, repos created directly in folder-path
   --org, --github-org   GitHub organization/owner for the repositories
                         Required if using --create-repos
   --region              AWS region for infrastructure (default: us-east-1)
-  --output-dir          Directory to create projects in (default: current directory)
+  --output-dir          Base directory path (default: current directory)
+                        This is the folder_path where parent folder is created
   --create-repos        Create GitHub repositories (requires gh CLI)
   --with-core-modules   Include scaffolding for the 3 core CORA modules:
                         module-access, module-ai, module-mgmt
@@ -213,17 +219,13 @@ Environment Variables:
   AWS_REGION            Default AWS region
 
 Examples:
-  # Create project locally
-  $0 my-app --org mycompany
+  # Create in parent folder (recommended)
+  $0 ai-sec --folder test-ws-06 --output-dir ~/code/sts --with-core-modules
+  # Creates: ~/code/sts/test-ws-06/ai-sec-infra and ~/code/sts/test-ws-06/ai-sec-stack
 
-  # Create with GitHub repos
-  $0 my-app --org mycompany --create-repos
-
-  # Specify region and output directory
-  $0 my-app --org mycompany --region eu-west-1 --output-dir ~/projects
-
-  # Preview what would be created
-  $0 my-app --org mycompany --dry-run
+  # Create directly in output dir (no parent folder)
+  $0 my-app --output-dir ~/projects
+  # Creates: ~/projects/my-app-infra and ~/projects/my-app-stack
 
 EOF
 }
@@ -231,6 +233,10 @@ EOF
 # --- Parse Arguments ---
 while [[ $# -gt 0 ]]; do
   case $1 in
+    --folder|--project-folder)
+      PROJECT_FOLDER="$2"
+      shift 2
+      ;;
     --org|--github-org)
       GITHUB_ORG="$2"
       shift 2
@@ -317,8 +323,17 @@ fi
 # --- Derived Values ---
 INFRA_NAME="${PROJECT_NAME}-infra"
 STACK_NAME="${PROJECT_NAME}-stack"
-INFRA_DIR="${OUTPUT_DIR}/${INFRA_NAME}"
-STACK_DIR="${OUTPUT_DIR}/${STACK_NAME}"
+
+# If PROJECT_FOLDER is specified, create parent directory and place repos inside
+if [[ -n "$PROJECT_FOLDER" ]]; then
+  PARENT_DIR="${OUTPUT_DIR}/${PROJECT_FOLDER}"
+  INFRA_DIR="${PARENT_DIR}/${INFRA_NAME}"
+  STACK_DIR="${PARENT_DIR}/${STACK_NAME}"
+else
+  # No parent folder - create repos directly in OUTPUT_DIR
+  INFRA_DIR="${OUTPUT_DIR}/${INFRA_NAME}"
+  STACK_DIR="${OUTPUT_DIR}/${STACK_NAME}"
+fi
 
 # --- Generate Secrets ---
 # Generate NEXTAUTH_SECRET for NextAuth.js (used with Okta)
@@ -656,6 +671,13 @@ CONFIGHEADER
 # Run dependency check early (after functions are defined)
 check_dependencies
 
+# --- Create Parent Directory (if specified) ---
+if [[ -n "$PROJECT_FOLDER" ]] && ! $DRY_RUN; then
+  log_step "Creating parent directory: ${PARENT_DIR}"
+  mkdir -p "$PARENT_DIR"
+  log_info "Created ${PARENT_DIR}"
+fi
+
 replace_placeholders() {
   local dir="$1"
   
@@ -752,6 +774,50 @@ else
   if [[ -d "$TEMPLATE_STACK" ]]; then
     cp -r "$TEMPLATE_STACK" "$STACK_DIR"
     replace_placeholders "$STACK_DIR"
+    
+    # Keep setup.config.{project}.yaml if it exists, but ensure it's in .gitignore
+    # This file contains secrets and should not be committed
+    if [[ -f "${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml" ]]; then
+      log_info "Found setup.config.${PROJECT_NAME}.yaml - adding to .gitignore"
+      
+      # Add to .gitignore if not already there
+      if [[ -f "${STACK_DIR}/.gitignore" ]]; then
+        if ! grep -q "setup.config.*.yaml" "${STACK_DIR}/.gitignore"; then
+          echo "" >> "${STACK_DIR}/.gitignore"
+          echo "# Project-specific configuration (contains secrets)" >> "${STACK_DIR}/.gitignore"
+          echo "setup.config.*.yaml" >> "${STACK_DIR}/.gitignore"
+          echo "!setup.config.example.yaml" >> "${STACK_DIR}/.gitignore"
+          log_info "Added setup.config.*.yaml to .gitignore"
+        fi
+      fi
+      
+      # Also add to validation .gitignore to exclude from validation
+      VALIDATION_GITIGNORE="${STACK_DIR}/scripts/validation/.gitignore"
+      if [[ ! -f "$VALIDATION_GITIGNORE" ]]; then
+        mkdir -p "$(dirname "$VALIDATION_GITIGNORE")"
+        cat > "$VALIDATION_GITIGNORE" << 'VALGITIGNORE'
+# Validation environment and credentials
+.venv/
+.env
+
+# Project configuration files (contain secrets)
+../../setup.config.*.yaml
+!../../setup.config.example.yaml
+VALGITIGNORE
+        log_info "Created validation .gitignore"
+      else
+        if ! grep -q "setup.config" "$VALIDATION_GITIGNORE"; then
+          echo "" >> "$VALIDATION_GITIGNORE"
+          echo "# Project configuration files (contain secrets)" >> "$VALIDATION_GITIGNORE"
+          echo "../../setup.config.*.yaml" >> "$VALIDATION_GITIGNORE"
+          echo "!../../setup.config.example.yaml" >> "$VALIDATION_GITIGNORE"
+          log_info "Added setup.config exclusions to validation .gitignore"
+        fi
+      fi
+    else
+      log_info "No setup.config.${PROJECT_NAME}.yaml found in template"
+      log_info "Copy setup.config.example.yaml to setup.config.${PROJECT_NAME}.yaml and configure before deployment"
+    fi
     
     # Make scripts executable
     chmod +x "$STACK_DIR"/scripts/*.sh 2>/dev/null || true
@@ -1986,7 +2052,7 @@ RUNSCRIPT
 run_post_creation_validation() {
   local stack_dir="$1"
   
-  log_step "Running initial validation (structure & portability only)..."
+  log_step "Running full validation suite..."
   
   # Check if cora-validate.py exists
   if [[ ! -f "${stack_dir}/scripts/validation/cora-validate.py" ]]; then
@@ -2001,12 +2067,11 @@ run_post_creation_validation() {
     return
   fi
   
-  # Run structure and portability validators only (no DB required)
+  # Run all validators (full validation suite)
   cd "${stack_dir}/scripts/validation"
   
   # Capture exit code while still showing output
   python3 cora-validate.py project "${stack_dir}" \
-    --validators structure portability \
     --format text
   local exit_code=$?
   

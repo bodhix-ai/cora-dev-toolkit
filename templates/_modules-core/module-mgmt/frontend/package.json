@@ -22,12 +22,16 @@
   "author": "{{PROJECT_DISPLAY_NAME}} Team",
   "license": "MIT",
   "dependencies": {
-    "@{{PROJECT_NAME}}/api-client": "workspace:*"
+    "@{{PROJECT_NAME}}/api-client": "workspace:*",
+    "@{{PROJECT_NAME}}/shared-types": "workspace:*",
+    "@{{PROJECT_NAME}}/module-access": "workspace:*",
+    "date-fns": "^4.0.0"
   },
   "peerDependencies": {
     "react": "^18.0.0",
     "@mui/material": "^5.0.0",
     "@mui/icons-material": "^5.0.0",
+    "@mui/x-date-pickers": "^8.0.0",
     "@emotion/react": "^11.0.0",
     "@emotion/styled": "^11.0.0",
     "next-auth": "^4.0.0"

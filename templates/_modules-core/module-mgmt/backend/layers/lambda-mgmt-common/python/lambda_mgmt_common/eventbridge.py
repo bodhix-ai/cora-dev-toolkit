@@ -145,9 +145,11 @@ class EventBridgeManager:
             # Get function configuration
             self.lambda_client.get_function_configuration(FunctionName=warmer_function_name)
             
-            # Construct ARN
+            # Construct ARN - AWS_REGION is always set by Lambda runtime
             account_id = boto3.client('sts').get_caller_identity()['Account']
-            region = os.environ.get('AWS_REGION', 'us-east-1')
+            region = os.environ.get('AWS_REGION')
+            if not region:
+                raise ValueError('AWS_REGION environment variable is not set. This should be automatically provided by AWS Lambda.')
             function_arn = f"arn:aws:lambda:{region}:{account_id}:function:{warmer_function_name}"
             
             return function_arn

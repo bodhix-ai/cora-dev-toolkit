@@ -1,8 +1,5 @@
 // Auth Adapters
 export {
-  createClerkAuthAdapter,
-  createClerkAuthAdapterWithOptions,
-  createClerkServerAdapter,
   createOktaAuthAdapter,
   createOktaServerAdapter,
 } from "./adapters";
@@ -13,17 +10,12 @@ export type { AuthProvider as AuthProviderType } from "./adapters";
 export {
   createOktaAuthOptions,
   getOktaConfig,
-  getClerkConfig,
-  isClerkConfigured,
-  clerkRoutes,
-  clerkPublicRoutes,
   getActiveAuthProvider,
 } from "./providers";
 export type {
   OktaConfig,
   OktaSession,
   OktaJWT,
-  ClerkConfig,
 } from "./providers";
 
 // Unified Auth (Dynamic Clerk/Okta Support)

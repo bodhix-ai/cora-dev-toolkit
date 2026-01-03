@@ -12,7 +12,7 @@ import {
   Paper,
 } from "@mui/material";
 import { Save, Settings } from "@mui/icons-material";
-import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
+import { CoraAuthAdapter, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 
 /**
  * Org AI Configuration type
@@ -57,7 +57,13 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
     try {
       setLoading(true);
       setError(null);
-      const response = await authAdapter.get(`/orgs/${orgId}/ai/config`);
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Authentication required");
+        return;
+      }
+      const apiClient = createCoraAuthenticatedClient(token);
+      const response = await apiClient.get<{ success: boolean; data: OrgAIConfig }>(`/orgs/${orgId}/ai/config`);
       if (response.success) {
         const data = response.data || {};
         setConfig(data);
@@ -84,7 +90,13 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
     setSaving(true);
 
     try {
-      const response = await authAdapter.put(`/orgs/${orgId}/ai/config`, {
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Authentication required");
+        return;
+      }
+      const apiClient = createCoraAuthenticatedClient(token);
+      const response = await apiClient.put<{ success: boolean; data: OrgAIConfig }>(`/orgs/${orgId}/ai/config`, {
         custom_system_prompt: formData.custom_system_prompt || null,
         default_chat_model: formData.default_chat_model || null,
         default_embedding_model: formData.default_embedding_model || null,

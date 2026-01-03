@@ -17,12 +17,5 @@
 // Types
 export type { AuthAdapter, AuthProvider, AuthConfig } from "./types";
 
-// Clerk Adapters
-export {
-  createClerkAuthAdapter,
-  createClerkAuthAdapterWithOptions,
-  createClerkServerAdapter,
-} from "./clerk-adapter";
-
 // Okta Adapters
 export { createOktaAuthAdapter, createOktaServerAdapter } from "./okta-adapter";

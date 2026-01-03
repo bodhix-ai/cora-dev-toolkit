@@ -22,7 +22,7 @@ import {
   Mail,
   Schedule,
 } from "@mui/icons-material";
-import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
+import { CoraAuthAdapter, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 
 /**
  * Invitation type
@@ -67,7 +67,13 @@ export function OrgInvitesTab({ orgId, authAdapter }: OrgInvitesTabProps) {
     try {
       setLoading(true);
       setError(null);
-      const response = await authAdapter.get(`/orgs/${orgId}/invites`);
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Authentication required");
+        return;
+      }
+      const apiClient = createCoraAuthenticatedClient(token);
+      const response = await apiClient.get<{ success: boolean; data: Invitation[] }>(`/orgs/${orgId}/invites`);
       if (response.success) {
         setInvites(response.data || []);
       } else {
@@ -88,7 +94,13 @@ export function OrgInvitesTab({ orgId, authAdapter }: OrgInvitesTabProps) {
 
     try {
       setRevokingInviteId(inviteId);
-      const response = await authAdapter.delete(
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Authentication required");
+        return;
+      }
+      const apiClient = createCoraAuthenticatedClient(token);
+      const response = await apiClient.delete<{ success: boolean }>(
         `/orgs/${orgId}/invites/${inviteId}`
       );
       if (response.success) {
@@ -225,7 +237,7 @@ export function OrgInvitesTab({ orgId, authAdapter }: OrgInvitesTabProps) {
                   </TableCell>
                   <TableCell align="right">
                     {invite.status === "pending" && (
-                      <IconButton aria-label="Action button"
+                      <IconButton
                         size="small"
                         onClick={() => handleRevokeInvite(invite.id)}
                         disabled={revokingInviteId === invite.id}

@@ -29,9 +29,9 @@ export function getActiveAuthProvider(): AuthProvider {
 
   if (!provider || !["clerk", "okta"].includes(provider)) {
     console.warn(
-      `[getActiveAuthProvider] Invalid AUTH_PROVIDER "${provider}", defaulting to clerk`
+      `[getActiveAuthProvider] Invalid AUTH_PROVIDER "${provider}", defaulting to okta`
     );
-    return "clerk";
+    return "okta";
   }
 
   return provider;
@@ -45,12 +45,3 @@ export {
   type OktaSession,
   type OktaJWT,
 } from "./okta";
-
-// Clerk Provider
-export {
-  getClerkConfig,
-  isClerkConfigured,
-  clerkRoutes,
-  clerkPublicRoutes,
-  type ClerkConfig,
-} from "./clerk";
