@@ -17,8 +17,8 @@ import { AIModel, TestModelInput, TestModelResponse } from "../types";
  * @example
  * ```tsx
  * import { useAuth } from '@clerk/nextjs';
- * import { createClerkAuthAdapter } from '@ai-sec/api-client';
- * import { useModels } from '@ai-sec/ai-enablement-module';
+ * import { createClerkAuthAdapter } from '@{{PROJECT_NAME}}/api-client';
+ * import { useModels } from '@{{PROJECT_NAME}}/ai-enablement-module';
  *
  * const clerkAuth = useAuth();
  * const authAdapter = createClerkAuthAdapter(clerkAuth);

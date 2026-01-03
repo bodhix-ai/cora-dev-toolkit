@@ -32,7 +32,7 @@ interface UseLambdaWarmingReturn {
  *
  * @example
  * ```tsx
- * import { useUser } from '@ai-sec/org-module-frontend';
+ * import { useUser } from '@{{PROJECT_NAME}}/org-module-frontend';
  *
  * function MyComponent() {
  *   const { authAdapter } = useUser();

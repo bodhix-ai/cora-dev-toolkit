@@ -31,11 +31,12 @@ import {
   ArrowBack,
   Settings,
 } from "@mui/icons-material";
-import type { Workspace } from "../types";
+import type { Workspace, WorkspaceRole } from "../types";
 import { ROLE_DISPLAY_NAMES, STATUS_DISPLAY_NAMES } from "../types";
 import { useWorkspace } from "../hooks/useWorkspace";
 import { MemberList } from "../components/MemberList";
 import { WorkspaceForm } from "../components/WorkspaceForm";
+import type { WorkspaceApiClient } from "../lib/api";
 
 export interface WorkspaceDetailPageProps {
   /** Workspace ID */
@@ -43,7 +44,7 @@ export interface WorkspaceDetailPageProps {
   /** Current user ID */
   userId?: string;
   /** API client for workspace operations */
-  apiClient?: any;
+  apiClient?: WorkspaceApiClient;
   /** Callback when back button is clicked */
   onBack?: () => void;
   /** Callback when workspace is deleted */
@@ -68,7 +69,7 @@ export function WorkspaceDetailPage({
     deleteWorkspace,
     toggleFavorite,
     addMember,
-    updateMemberRole,
+    updateMember,
     removeMember,
     refetch,
   } = useWorkspace(workspaceId, { autoFetch: true });
@@ -123,6 +124,14 @@ export function WorkspaceDetailPage({
   const handleUpdateSuccess = () => {
     setEditDialogOpen(false);
     refetch();
+  };
+
+  const handleUpdateMemberRole = async (memberId: string, newRole: WorkspaceRole) => {
+    try {
+      await updateMember(memberId, { ws_role: newRole });
+    } catch (error) {
+      console.error("Failed to update member role:", error);
+    }
   };
 
   return (
@@ -242,7 +251,7 @@ export function WorkspaceDetailPage({
           members={members}
           currentUserRole={userRole}
           currentUserId={userId}
-          onUpdateRole={updateMemberRole}
+          onUpdateRole={handleUpdateMemberRole}
           onRemoveMember={removeMember}
           onAddMember={() => {
             // TODO: Implement add member dialog

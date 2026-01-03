@@ -217,7 +217,7 @@ export function ScheduleTab(): React.ReactElement {
           {/* Timezone Selector */}
           <Box sx={{ mb: 3 }}>
             <TimezoneSelector
-              timezone={localTimezone}
+              selectedTimezone={localTimezone}
               onTimezoneChange={handleTimezoneChange}
               disabled={!config?.enabled || saving}
             />

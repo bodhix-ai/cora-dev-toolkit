@@ -27,7 +27,7 @@ interface UseLambdaFunctionsReturn {
  *
  * @example
  * ```tsx
- * import { useUser } from '@ai-sec/module-access';
+ * import { useUser } from '@{{PROJECT_NAME}}/module-access';
  *
  * function MyComponent() {
  *   const { authAdapter } = useUser();

@@ -24,8 +24,9 @@ export interface OktaConfig {
  * Extended session type with Okta-specific fields
  */
 export interface OktaSession extends Session {
-  accessToken?: string;
-  idToken?: string;
+  accessToken: string;
+  idToken: string;
+  expiresAt: number;
   oktaUserId?: string;
   error?: string;
 }
@@ -130,8 +131,9 @@ export function createOktaAuthOptions(
 
         return {
           ...session,
-          accessToken: oktaToken.accessToken,
-          idToken: oktaToken.idToken,
+          accessToken: oktaToken.accessToken ?? "",
+          idToken: oktaToken.idToken ?? "",
+          expiresAt: oktaToken.accessTokenExpires ?? Date.now(),
           oktaUserId: oktaToken.oktaUserId,
           error: oktaToken.error,
         };

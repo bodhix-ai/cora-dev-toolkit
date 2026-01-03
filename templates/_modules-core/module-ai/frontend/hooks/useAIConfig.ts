@@ -101,8 +101,8 @@ export type OrgAIConfig = {
  * @example
  * ```tsx
  * import { useAuth } from '@clerk/nextjs';
- * import { createClerkAuthAdapter } from '@ai-sec/api-client';
- * import { usePlatformAIConfig } from '@ai-sec/ai-config-module';
+ * import { createClerkAuthAdapter } from '@{{PROJECT_NAME}}/api-client';
+ * import { usePlatformAIConfig } from '@{{PROJECT_NAME}}/ai-config-module';
  *
  * const clerkAuth = useAuth();
  * const authAdapter = createClerkAuthAdapter(clerkAuth);

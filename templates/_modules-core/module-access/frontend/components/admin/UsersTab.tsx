@@ -23,7 +23,7 @@ import {
   InputLabel,
 } from "@mui/material";
 import { Search, Person } from "@mui/icons-material";
-import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
+import { CoraAuthAdapter, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 
 /**
  * User type
@@ -72,7 +72,13 @@ export function UsersTab({ authAdapter }: UsersTabProps) {
     try {
       setLoading(true);
       setError(null);
-      const response = await authAdapter.get("/admin/users");
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Authentication required");
+        return;
+      }
+      const apiClient = createCoraAuthenticatedClient(token);
+      const response = await apiClient.get<{ success: boolean; data: User[] }>("/admin/users");
       if (response.success) {
         setUsers(response.data || []);
       } else {

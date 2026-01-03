@@ -14,6 +14,8 @@
 project:
   name: "{{PROJECT_NAME}}" # Project name (lowercase, alphanumeric, hyphens)
   display_name: "My CORA App" # Human-readable project name
+  folder_path: "~/code/sts" # Path that the project folder is created in
+  folder_name: "test-ws-06" # Parent folder that the two repos are placed in
   description: "CORA-compliant application"
   organization: "{{ORGANIZATION_NAME}}" # GitHub organization
 

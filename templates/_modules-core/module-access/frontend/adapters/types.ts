@@ -11,6 +11,8 @@
  * All auth adapters must implement this interface to work with OrgContext.
  * The getToken function returns a JWT that is sent to the API Gateway
  * Lambda authorizer for verification.
+ * 
+ * Also includes HTTP methods for API calls (authenticated with the token).
  */
 export interface AuthAdapter {
   /**
@@ -25,6 +27,26 @@ export interface AuthAdapter {
    * @returns Promise that resolves when sign out is complete
    */
   signOut: () => Promise<void>;
+
+  /**
+   * Perform authenticated GET request
+   */
+  get: <T = unknown>(url: string) => Promise<{ data: T; success: boolean }>;
+
+  /**
+   * Perform authenticated PUT request
+   */
+  put: <T = unknown>(url: string, data: unknown) => Promise<{ data: T; success: boolean }>;
+
+  /**
+   * Perform authenticated POST request
+   */
+  post: <T = unknown>(url: string, data?: unknown) => Promise<{ data: T; success: boolean }>;
+
+  /**
+   * Perform authenticated DELETE request
+   */
+  delete: <T = unknown>(url: string) => Promise<{ data: T; success: boolean }>;
 }
 
 /**

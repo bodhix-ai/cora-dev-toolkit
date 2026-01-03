@@ -11,6 +11,7 @@
 import { getSession, signOut } from "next-auth/react";
 import type { AuthAdapter } from "./types";
 import type { OktaSession } from "../providers/okta";
+import { createAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 
 /**
  * Create Okta Auth Adapter for client-side usage
@@ -36,41 +37,67 @@ import type { OktaSession } from "../providers/okta";
  * ```
  */
 export function createOktaAuthAdapter(): AuthAdapter {
-  return {
-    getToken: async () => {
-      try {
-        const session = (await getSession()) as OktaSession | null;
+  const getToken = async () => {
+    try {
+      const session = (await getSession()) as OktaSession | null;
 
-        if (!session) {
-          console.warn("[OktaAdapter] No session found");
-          return null;
-        }
-
-        // Check for refresh token errors
-        if (session.error === "RefreshTokenError") {
-          console.error(
-            "[OktaAdapter] Session has refresh token error, user needs to re-authenticate"
-          );
-          return null;
-        }
-
-        // Return the access token (used for API Gateway authorization)
-        // The Lambda authorizer expects a JWT from Okta
-        const token = session.accessToken || session.idToken;
-
-        if (!token) {
-          console.warn("[OktaAdapter] Session exists but no token found");
-          return null;
-        }
-
-        return token;
-      } catch (error) {
-        console.error("[OktaAdapter] Error getting token:", error);
+      if (!session) {
+        console.warn("[OktaAdapter] No session found");
         return null;
       }
-    },
+
+      // Check for refresh token errors
+      if (session.error === "RefreshTokenError") {
+        console.error(
+          "[OktaAdapter] Session has refresh token error, user needs to re-authenticate"
+        );
+        return null;
+      }
+
+      // Return the access token (used for API Gateway authorization)
+      // The Lambda authorizer expects a JWT from Okta
+      const token = session.accessToken || session.idToken;
+
+      if (!token) {
+        console.warn("[OktaAdapter] Session exists but no token found");
+        return null;
+      }
+
+      return token;
+    } catch (error) {
+      console.error("[OktaAdapter] Error getting token:", error);
+      return null;
+    }
+  };
+
+  const getAuthenticatedClient = async () => {
+    const token = await getToken();
+    if (!token) {
+      throw new Error("No authentication token available");
+    }
+    return createAuthenticatedClient(token);
+  };
+
+  return {
+    getToken,
     signOut: async () => {
       await signOut();
+    },
+    get: async <T = unknown>(url: string) => {
+      const client = await getAuthenticatedClient();
+      return client.get<T>(url);
+    },
+    put: async <T = unknown>(url: string, data: unknown) => {
+      const client = await getAuthenticatedClient();
+      return client.put<T>(url, data);
+    },
+    post: async <T = unknown>(url: string, data?: unknown) => {
+      const client = await getAuthenticatedClient();
+      return client.post<T>(url, data);
+    },
+    delete: async <T = unknown>(url: string) => {
+      const client = await getAuthenticatedClient();
+      return client.delete<T>(url);
     },
   };
 }
@@ -99,36 +126,62 @@ export function createOktaAuthAdapter(): AuthAdapter {
 export function createOktaServerAdapter(
   getServerSessionFn: () => Promise<OktaSession | null>
 ): AuthAdapter {
-  return {
-    getToken: async () => {
-      try {
-        const session = await getServerSessionFn();
+  const getToken = async () => {
+    try {
+      const session = await getServerSessionFn();
 
-        if (!session) {
-          console.warn("[OktaServerAdapter] No session found");
-          return null;
-        }
-
-        if (session.error === "RefreshTokenError") {
-          console.error("[OktaServerAdapter] Session has refresh token error");
-          return null;
-        }
-
-        const token = session.accessToken || session.idToken;
-
-        if (!token) {
-          console.warn("[OktaServerAdapter] Session exists but no token found");
-          return null;
-        }
-
-        return token;
-      } catch (error) {
-        console.error("[OktaServerAdapter] Error getting token:", error);
+      if (!session) {
+        console.warn("[OktaServerAdapter] No session found");
         return null;
       }
-    },
+
+      if (session.error === "RefreshTokenError") {
+        console.error("[OktaServerAdapter] Session has refresh token error");
+        return null;
+      }
+
+      const token = session.accessToken || session.idToken;
+
+      if (!token) {
+        console.warn("[OktaServerAdapter] Session exists but no token found");
+        return null;
+      }
+
+      return token;
+    } catch (error) {
+      console.error("[OktaServerAdapter] Error getting token:", error);
+      return null;
+    }
+  };
+
+  const getAuthenticatedClient = async () => {
+    const token = await getToken();
+    if (!token) {
+      throw new Error("No authentication token available");
+    }
+    return createAuthenticatedClient(token);
+  };
+
+  return {
+    getToken,
     signOut: async () => {
       console.warn("[OktaServerAdapter] signOut called on server side - no-op");
+    },
+    get: async <T = unknown>(url: string) => {
+      const client = await getAuthenticatedClient();
+      return client.get<T>(url);
+    },
+    put: async <T = unknown>(url: string, data: unknown) => {
+      const client = await getAuthenticatedClient();
+      return client.put<T>(url, data);
+    },
+    post: async <T = unknown>(url: string, data?: unknown) => {
+      const client = await getAuthenticatedClient();
+      return client.post<T>(url, data);
+    },
+    delete: async <T = unknown>(url: string) => {
+      const client = await getAuthenticatedClient();
+      return client.delete<T>(url);
     },
   };
 }
