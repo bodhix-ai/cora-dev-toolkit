@@ -26,40 +26,26 @@ project-name/
 └── ai-sec-stack/     # or {project}-stack
 ```
 
-## 🚨 CRITICAL: Create Parent Directory FIRST
+## Quick Start
 
-**Before running the creation script, you MUST create the parent directory:**
+The simplest way to create a CORA project:
 
 ```bash
-# 1. Create parent directory FIRST
-mkdir -p ~/code/sts/my-project
-
-# 2. THEN run the creation script
 cd ~/code/bodhix/cora-dev-toolkit
-./scripts/create-cora-project.sh my-project --with-core-modules --output-dir ~/code/sts
-
-# 3. Move repos into parent directory
-cd ~/code/sts
-mv my-project-infra my-project/ai-sec-infra
-mv my-project-stack my-project/ai-sec-stack
+./scripts/create-cora-project.sh ai-sec --folder test-ws-07 --output-dir ~/code/sts --with-core-modules
 ```
 
-### Why This Matters
-
-If you skip step 1 (creating the parent directory), you'll end up with:
+This creates:
 ```
-~/code/sts/
-├── my-project-infra/    # ❌ Repos at top level, not organized
-└── my-project-stack/    # ❌ Harder to manage
+~/code/sts/test-ws-07/
+├── ai-sec-infra/
+└── ai-sec-stack/
 ```
 
-Instead of the correct structure:
-```
-~/code/sts/
-└── my-project/           # ✅ Parent directory organizes both repos
-    ├── ai-sec-infra/     # ✅ Infrastructure repo
-    └── ai-sec-stack/     # ✅ Application repo
-```
+**Key Points:**
+- `ai-sec` = project name (used for package naming)
+- `--folder test-ws-07` = parent directory name
+- Both repos are automatically placed in the parent folder
 
 ## Basic Usage
 
@@ -75,6 +61,7 @@ Instead of the correct structure:
 
 ### Common Options
 
+- `--folder <name>` - Parent directory name (creates organized folder structure)
 - `--with-core-modules` - Include the 3 core CORA modules (module-access, module-ai, module-mgmt)
 - `--output-dir <path>` - Directory to create projects in (default: current directory)
 - `--org <name>` - GitHub organization/owner
@@ -86,29 +73,22 @@ Instead of the correct structure:
 ## Complete Example
 
 ```bash
-# 1. Create parent directory
-mkdir -p ~/projects/my-app
-
-# 2. Navigate to toolkit
+# Navigate to toolkit
 cd ~/code/bodhix/cora-dev-toolkit
 
-# 3. Create project
+# Create project with organized folder structure
 ./scripts/create-cora-project.sh my-app \
+  --folder my-app \
   --with-core-modules \
   --org mycompany \
   --region us-east-1 \
   --output-dir ~/projects
 
-# 4. Organize repos
-cd ~/projects
-mv my-app-infra my-app/ai-sec-infra
-mv my-app-stack my-app/ai-sec-stack
-
-# 5. Verify structure
-ls -la my-app/
+# Verify structure
+ls -la ~/projects/my-app/
 # Should show:
-#   ai-sec-infra/
-#   ai-sec-stack/
+#   my-app-infra/
+#   my-app-stack/
 ```
 
 ## What Gets Created
@@ -156,7 +136,7 @@ my-app-stack/
 Copy the example config and fill in your credentials:
 
 ```bash
-cd ~/projects/my-app/ai-sec-stack
+cd ~/projects/my-app/my-app-stack
 cp setup.config.example.yaml setup.config.my-app.yaml
 # Edit setup.config.my-app.yaml with your values
 ```
@@ -166,21 +146,21 @@ cp setup.config.example.yaml setup.config.my-app.yaml
 Set up Terraform state backend:
 
 ```bash
-cd ~/projects/my-app/ai-sec-infra
+cd ~/projects/my-app/my-app-infra
 ./scripts/bootstrap/bootstrap_tf_state.sh
 ```
 
 ### 3. Deploy Infrastructure
 
 ```bash
-cd ~/projects/my-app/ai-sec-infra
+cd ~/projects/my-app/my-app-infra
 ./scripts/deploy-terraform.sh dev
 ```
 
 ### 4. Set Up Database
 
 ```bash
-cd ~/projects/my-app/ai-sec-stack
+cd ~/projects/my-app/my-app-stack
 
 # Option 1: Using Supabase CLI (recommended)
 supabase db push scripts/setup-database.sql
@@ -194,7 +174,7 @@ psql "postgresql://..." -f scripts/seed-idp-config.sql
 ### 5. Install Dependencies & Build
 
 ```bash
-cd ~/projects/my-app/ai-sec-stack
+cd ~/projects/my-app/my-app-stack
 pnpm install
 pnpm build
 ```
@@ -206,6 +186,7 @@ pnpm build
 ```bash
 # Requires gh CLI and authentication
 ./scripts/create-cora-project.sh my-app \
+  --folder my-app \
   --with-core-modules \
   --org mycompany \
   --create-repos \
@@ -213,7 +194,7 @@ pnpm build
 ```
 
 This will:
-1. Create local repositories
+1. Create local repositories in organized folder structure
 2. Initialize git
 3. Create remote GitHub repositories
 4. Push initial commit
@@ -222,6 +203,7 @@ This will:
 
 ```bash
 ./scripts/create-cora-project.sh my-app \
+  --folder my-app \
   --with-core-modules \
   --dry-run
 ```
