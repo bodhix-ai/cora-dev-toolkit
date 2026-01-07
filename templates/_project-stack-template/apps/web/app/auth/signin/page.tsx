@@ -1,37 +1,41 @@
 "use client";
 
-import { signIn, useSession } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { Box, Button, Typography, Alert, CircularProgress } from "@mui/material";
 import { useEffect } from "react";
+import { useUnifiedAuth } from "@{{PROJECT_NAME}}/module-access";
 
 /**
  * Sign In Page
  * 
  * Checks if user is already authenticated and redirects if so.
  * Otherwise shows sign-in button and handles Okta redirect.
+ * 
+ * Uses useUnifiedAuth instead of useSession directly to ensure
+ * consistent session handling across the provider hierarchy.
  */
 export default function SignInPage() {
   const searchParams = useSearchParams();
-  const { data: session, status } = useSession();
+  const { isSignedIn, isLoading } = useUnifiedAuth();
   const error = searchParams.get("error");
   const callbackUrl = searchParams.get("callbackUrl") || "/";
   
   // Redirect authenticated users away from signin page
   useEffect(() => {
-    if (status === "authenticated" && session) {
+    if (isSignedIn) {
       console.log("[SIGNIN PAGE] User already authenticated, redirecting to:", callbackUrl);
       // Use window.location to avoid TypeScript route typing issues with dynamic URLs
       window.location.href = callbackUrl;
     }
-  }, [status, session, callbackUrl]);
+  }, [isSignedIn, callbackUrl]);
 
   const handleSignIn = () => {
     signIn("okta", { callbackUrl });
   };
 
   // Show loading while checking session
-  if (status === "loading") {
+  if (isLoading) {
     return (
       <Box
         sx={{
@@ -52,7 +56,7 @@ export default function SignInPage() {
   }
 
   // Show loading while redirecting authenticated user
-  if (status === "authenticated") {
+  if (isSignedIn) {
     return (
       <Box
         sx={{

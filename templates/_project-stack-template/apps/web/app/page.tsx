@@ -158,7 +158,7 @@ function AuthenticatedHomePage({ profile }: { profile: Profile | null }) {
 
       if (currentPath === "/") {
         console.log(`Streaming completed, navigating to: ${targetPath}`);
-        router.push(targetPath);
+        router.push(targetPath as any);
       }
     }
     

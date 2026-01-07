@@ -1,8 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { AccessControlAdmin } from "@{{PROJECT_NAME}}/module-access";
-import { createAuthenticatedApiClient } from "@{{PROJECT_NAME}}/api-client";
+import { AccessControlAdmin, createOktaAuthAdapter } from "@{{PROJECT_NAME}}/module-access";
 
 /**
  * Access Control Admin Page
@@ -17,8 +16,9 @@ import { createAuthenticatedApiClient } from "@{{PROJECT_NAME}}/api-client";
 export default function AccessControlPage() {
   const { data: session } = useSession();
 
-  // Create authenticated API client
-  const authAdapter = createAuthenticatedApiClient(session);
+  // Create Okta auth adapter
+  // Session is guaranteed to exist here because route is protected by middleware
+  const authAdapter = createOktaAuthAdapter();
 
   return <AccessControlAdmin authAdapter={authAdapter} />;
 }
