@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@{{PROJECT_NAME}}/api-client": "workspace:*",
+    "@{{PROJECT_NAME}}/module-access": "workspace:*",
     "@{{PROJECT_NAME}}/shared-types": "workspace:*"
   },
   "peerDependencies": {

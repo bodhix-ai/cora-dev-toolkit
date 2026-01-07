@@ -142,6 +142,7 @@ export function WorkspaceDetailPage({
           component="button"
           variant="body2"
           onClick={onBack}
+          aria-label="Back to workspaces list"
           sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
         >
           <ArrowBack fontSize="small" sx={{ mr: 0.5 }} />
