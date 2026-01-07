@@ -99,6 +99,12 @@ export function useWorkspaces(options: UseWorkspacesOptions = {}): UseWorkspaces
       return;
     }
 
+    // Don't fetch until org context is available - prevents 400 errors
+    if (!orgId) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 

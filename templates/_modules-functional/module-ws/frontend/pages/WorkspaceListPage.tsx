@@ -5,7 +5,7 @@
  * Shows workspace cards in grid/list view with filtering and search.
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
   Container,
@@ -16,6 +16,8 @@ import {
   Alert,
 } from "@mui/material";
 import { Add } from "@mui/icons-material";
+import { useSession } from "next-auth/react";
+import { useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
 import type { Workspace, WorkspaceFormValues, WorkspaceCreateRequest } from "../types";
 import { DEFAULT_FILTERS } from "../types";
 import { useWorkspaces } from "../hooks/useWorkspaces";
@@ -23,11 +25,12 @@ import { WorkspaceCard } from "../components/WorkspaceCard";
 import { FilterBar, ViewMode } from "../components/FilterBar";
 import { EmptyState } from "../components/EmptyState";
 import { WorkspaceForm } from "../components/WorkspaceForm";
+import { createWorkspaceApiClient } from "../lib/api";
 import type { WorkspaceApiClient } from "../lib/api";
 
 export interface WorkspaceListPageProps {
-  /** Organization ID to filter workspaces */
-  orgId: string;
+  /** Organization ID to filter workspaces (optional - falls back to context) */
+  orgId?: string;
   /** Current user ID */
   userId?: string;
   /** Callback when workspace is clicked */
@@ -39,12 +42,28 @@ export interface WorkspaceListPageProps {
 }
 
 export function WorkspaceListPage({
-  orgId,
+  orgId: providedOrgId,
   userId,
   onWorkspaceClick,
-  apiClient,
+  apiClient: providedApiClient,
   canCreate = true,
 }: WorkspaceListPageProps): React.ReactElement {
+  // Get orgId from context if not provided as prop
+  const { currentOrganization } = useOrganizationContext();
+  const orgId = providedOrgId || currentOrganization?.orgId || "";
+  
+  // Get session for API client creation
+  const { data: session } = useSession();
+  
+  // Create API client if not provided
+  const apiClient = useMemo(() => {
+    if (providedApiClient) return providedApiClient;
+    if (session?.accessToken) {
+      return createWorkspaceApiClient(session.accessToken as string);
+    }
+    return null;
+  }, [providedApiClient, session?.accessToken]);
+  
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editWorkspace, setEditWorkspace] = useState<Workspace | null>(null);

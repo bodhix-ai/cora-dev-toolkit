@@ -60,12 +60,20 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         okta_uid = user_info['user_id']
         supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
         
-        # Get org_id from query parameters (required for workspace operations)
+        # Get org_id from query parameters OR request body (for POST/PUT)
         query_params = event.get('queryStringParameters') or {}
         org_id = query_params.get('org_id')
+        
+        # For POST/PUT requests, also check the request body for org_id
+        if not org_id and http_method in ('POST', 'PUT'):
+            try:
+                body = json.loads(event.get('body', '{}'))
+                org_id = body.get('org_id')
+            except json.JSONDecodeError:
+                pass
 
         if not org_id:
-            return common.bad_request_response('org_id query parameter is required')
+            return common.bad_request_response('org_id is required (in query params or request body)')
         
         logger.info(f"Request from org_id: {org_id}, user_id: {supabase_user_id}")
         
