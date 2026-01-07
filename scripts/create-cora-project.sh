@@ -182,7 +182,22 @@ module \"${module_underscore}\" {
   
   mv "${main_tf}.tmp" "$main_tf"
   log_info "✅ Added ${module_name} to Terraform configuration"
+
+  # Also add the module's api_routes to the modular_api_gateway module_routes
+  # This ensures the module's API endpoints are registered with the API Gateway
+  local module_underscore="${module_name//-/_}"
+  local routes_pattern="module.module_mgmt.api_routes,"
+  local new_routes="module.module_mgmt.api_routes,\n    module.${module_underscore}.api_routes,"
   
+  if grep -q "module.${module_underscore}.api_routes" "$main_tf"; then
+    log_info "  Module routes already in API Gateway config"
+  else
+    # Add the module's api_routes to the concat
+    sed -i '' "s|${routes_pattern}|${new_routes}|" "$main_tf" 2>/dev/null || \
+    sed -i "s|${routes_pattern}|${new_routes}|" "$main_tf"
+    log_info "  ✅ Added ${module_name} API routes to API Gateway"
+  fi
+
   return 0
 }
 
