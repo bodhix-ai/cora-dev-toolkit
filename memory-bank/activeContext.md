@@ -172,27 +172,19 @@ The `create-cora-project.sh` script's `merge_module_configs()` function only run
 ## Next Session Tasks
 
 ### High Priority
-1. **Test automated config integration**
-   - Create a fresh project with module-ws enabled in setup.config.yaml
-   - Verify `create-cora-project.sh` correctly:
-     - Merges module-ws config into cora-modules.config.yaml
-     - Creates /ws and /admin/workspaces route pages
-     - Adds module-ws to Terraform configuration
-   - Fix any automation gaps discovered
-
-2. **Troubleshoot ws API issues**
+1. **Troubleshoot ws API issues**
    - Backend is deployed but ws API calls returning errors
    - Investigate workspace Lambda function and API Gateway routes
    - Verify database schema and permissions are correct
 
 ### Medium Priority
-3. **Update module-ws route pattern in template**
+2. **Update module-ws route pattern in template**
    - Add route page stubs to functional module template
    - Document in module development guide
 
-4. **Clean up test projects**
+3. **Clean up test projects**
    - Delete older test-ws-* projects
-   - Keep test-ws-08 as the working reference
+   - Keep test-ws-10 as the working reference (latest)
 
 ---
 
@@ -208,8 +200,8 @@ The `create-cora-project.sh` script's `merge_module_configs()` function only run
 
 ---
 
-**Status:** ✅ **SESSION 69 COMPLETE**  
-**UI Integration:** ✅ ALL ROUTES WORKING  
-**API Integration:** ⏳ PENDING INFRASTRUCTURE DEPLOYMENT  
-**Next Step:** Deploy infrastructure or proceed to next task  
-**Updated:** January 7, 2026, 11:07 AM EST
+**Status:** ✅ **SESSION 70 COMPLETE**  
+**Config Integration:** ✅ MODULE CONFIG MERGING FIXED  
+**API Integration:** ⏳ PENDING - ws API troubleshooting  
+**Next Step:** Troubleshoot ws API issues  
+**Updated:** January 7, 2026, 1:35 PM EST
