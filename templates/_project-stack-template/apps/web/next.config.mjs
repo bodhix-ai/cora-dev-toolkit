@@ -7,6 +7,6 @@ const nextConfig = {
     "@{{PROJECT_NAME}}/module-mgmt",
   ],
   reactStrictMode: true,
-  experimental: { typedRoutes: true },
+  experimental: { typedRoutes: false },
 };
 export default nextConfig;
