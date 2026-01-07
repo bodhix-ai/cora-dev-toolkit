@@ -6,22 +6,22 @@ CRUD operations, member management, and favorites. It follows CORA patterns
 with standard auth and role-based authorization.
 
 Routes - Workspaces:
-- GET /api/ws/workspaces - List user's workspaces
-- POST /api/ws/workspaces - Create new workspace
-- GET /api/ws/workspaces/{id} - Get workspace details
-- PUT /api/ws/workspaces/{id} - Update workspace
-- DELETE /api/ws/workspaces/{id} - Soft delete workspace
-- POST /api/ws/workspaces/{id}/restore - Restore deleted workspace
+- GET /ws - List user's workspaces
+- POST /ws - Create new workspace
+- GET /ws/{id} - Get workspace details
+- PUT /ws/{id} - Update workspace
+- DELETE /ws/{id} - Soft delete workspace
+- POST /ws/{id}/restore - Restore deleted workspace
 
 Routes - Members:
-- GET /api/ws/workspaces/{id}/members - List workspace members
-- POST /api/ws/workspaces/{id}/members - Add member
-- PUT /api/ws/workspaces/{workspaceId}/members/{memberId} - Update member role
-- DELETE /api/ws/workspaces/{workspaceId}/members/{memberId} - Remove member
+- GET /ws/{id}/members - List workspace members
+- POST /ws/{id}/members - Add member
+- PUT /ws/{wsId}/members/{memberId} - Update member role
+- DELETE /ws/{wsId}/members/{memberId} - Remove member
 
 Routes - Favorites:
-- POST /api/ws/workspaces/{id}/favorite - Toggle favorite
-- GET /api/ws/favorites - List user's favorites
+- POST /ws/{id}/favorite - Toggle favorite
+- GET /ws/favorites - List user's favorites
 """
 
 import json
@@ -58,66 +58,69 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         # Standard CORA auth extraction
         user_info = common.get_user_from_event(event)
         okta_uid = user_info['user_id']
-        org_id = user_info.get('org_id')
         supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
         
+        # Get org_id from query parameters (required for workspace operations)
+        query_params = event.get('queryStringParameters') or {}
+        org_id = query_params.get('org_id')
+
         if not org_id:
-            return common.bad_request_response('org_id is required in request context')
+            return common.bad_request_response('org_id query parameter is required')
         
         logger.info(f"Request from org_id: {org_id}, user_id: {supabase_user_id}")
         
         # Route dispatcher - Workspaces
-        if path.endswith('/workspaces') and http_method == 'GET':
+        # Note: path is /ws, /ws/{id}, /ws/{id}/members, etc.
+        if path == '/ws' and http_method == 'GET':
             return handle_list_workspaces(org_id, supabase_user_id, event)
         
-        elif path.endswith('/workspaces') and http_method == 'POST':
+        elif path == '/ws' and http_method == 'POST':
             body = json.loads(event.get('body', '{}'))
             return handle_create_workspace(org_id, supabase_user_id, body)
         
-        elif '/workspaces/' in path and path.endswith('/restore') and http_method == 'POST':
+        elif path.endswith('/restore') and http_method == 'POST':
             workspace_id = path_parameters.get('id')
             return handle_restore_workspace(workspace_id, supabase_user_id)
         
-        elif '/workspaces/' in path and path.endswith('/favorite') and http_method == 'POST':
+        elif path.endswith('/favorite') and http_method == 'POST':
             workspace_id = path_parameters.get('id')
             return handle_toggle_favorite(workspace_id, supabase_user_id)
         
-        elif '/workspaces/' in path and path.endswith('/members') and http_method == 'GET':
+        elif path.endswith('/members') and http_method == 'GET':
             workspace_id = path_parameters.get('id')
             return handle_list_members(workspace_id, supabase_user_id)
         
-        elif '/workspaces/' in path and path.endswith('/members') and http_method == 'POST':
+        elif path.endswith('/members') and http_method == 'POST':
             workspace_id = path_parameters.get('id')
             body = json.loads(event.get('body', '{}'))
             return handle_add_member(workspace_id, supabase_user_id, body)
         
-        elif '/workspaces/' in path and '/members/' in path and http_method == 'PUT':
-            workspace_id = path_parameters.get('workspaceId')
+        elif '/members/' in path and http_method == 'PUT':
+            workspace_id = path_parameters.get('wsId')
             member_id = path_parameters.get('memberId')
             body = json.loads(event.get('body', '{}'))
             return handle_update_member(workspace_id, member_id, supabase_user_id, body)
         
-        elif '/workspaces/' in path and '/members/' in path and http_method == 'DELETE':
-            workspace_id = path_parameters.get('workspaceId')
+        elif '/members/' in path and http_method == 'DELETE':
+            workspace_id = path_parameters.get('wsId')
             member_id = path_parameters.get('memberId')
             return handle_remove_member(workspace_id, member_id, supabase_user_id)
         
-        elif '/workspaces/' in path and http_method == 'GET':
+        elif path == '/ws/favorites' and http_method == 'GET':
+            return handle_list_favorites(org_id, supabase_user_id)
+        
+        elif path.startswith('/ws/') and http_method == 'GET':
             workspace_id = path_parameters.get('id')
             return handle_get_workspace(workspace_id, supabase_user_id)
         
-        elif '/workspaces/' in path and http_method == 'PUT':
+        elif path.startswith('/ws/') and http_method == 'PUT':
             workspace_id = path_parameters.get('id')
             body = json.loads(event.get('body', '{}'))
             return handle_update_workspace(workspace_id, supabase_user_id, body)
         
-        elif '/workspaces/' in path and http_method == 'DELETE':
+        elif path.startswith('/ws/') and http_method == 'DELETE':
             workspace_id = path_parameters.get('id')
             return handle_delete_workspace(workspace_id, supabase_user_id)
-        
-        # Favorites
-        elif path.endswith('/favorites') and http_method == 'GET':
-            return handle_list_favorites(org_id, supabase_user_id)
         
         else:
             return common.not_found_response(f'Route not found: {http_method} {path}')

@@ -1625,6 +1625,100 @@ Fix any compliance issues found.
 
 ---
 
+## Known Issues and Gotchas (Lessons from module-ws)
+
+> **Updated:** January 7, 2026 - Based on module-ws development experience
+
+### Critical Backend Requirements
+
+#### 1. Python Runtime Must Be 3.11
+
+**CRITICAL:** All Lambda functions MUST use `python3.11` to match the org-common layer.
+
+```hcl
+# In infrastructure/main.tf
+resource "aws_lambda_function" "my_lambda" {
+  runtime = "python3.11"  # MUST match org-common layer
+}
+```
+
+**Symptom if wrong:** `ImportModuleError: No module named 'pydantic_core._pydantic_core'`
+
+**Why:** The org-common layer (from module-access) is built with Python 3.11 binaries. Using python3.13 or another version causes binary incompatibility.
+
+#### 2. org_id Comes from Query Parameters
+
+**CRITICAL:** Get `org_id` from query parameters, NOT from authorizer context.
+
+```python
+# ✅ CORRECT - Get org_id from query parameters
+query_params = event.get('queryStringParameters') or {}
+org_id = query_params.get('org_id')
+
+if not org_id:
+    return common.bad_request_response('org_id query parameter is required')
+
+# ❌ WRONG - get_user_from_event does NOT return org_id
+user_info = common.get_user_from_event(event)
+org_id = user_info.get('org_id')  # This will be None!
+```
+
+**Symptom if wrong:** `400 Bad Request: org_id is required`
+
+**Why:** The `get_user_from_event()` function extracts user identity (user_id, email, name) but NOT org_id. The frontend passes org_id as a query parameter.
+
+### Infrastructure Gotchas
+
+#### 3. All Routes Need Authorizer
+
+Every API Gateway route must have an authorizer attached:
+
+```hcl
+resource "aws_apigatewayv2_route" "my_route" {
+  authorization_type = "CUSTOM"
+  authorizer_id      = var.authorizer_id  # CRITICAL!
+  # ...
+}
+```
+
+**Symptom if missing:** `401 Unauthorized` or requests bypass auth entirely.
+
+#### 4. Lambda Permission for API Gateway
+
+API Gateway needs explicit permission to invoke Lambda:
+
+```hcl
+resource "aws_lambda_permission" "api_gateway" {
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.my_lambda.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${var.api_gateway_execution_arn}/*/*"
+}
+```
+
+**Symptom if missing:** `500 Internal Server Error` when calling API.
+
+### Frontend/Config Gotchas
+
+#### 5. Module Config Must Be Merged
+
+When adding modules manually (not via `create-cora-project.sh`), ensure `cora-modules.config.yaml` is updated.
+
+**Symptom if missing:** Navigation items or admin cards don't appear.
+
+### Pre-Deployment Checklist
+
+Before deploying any new functional module, verify:
+
+- [ ] Lambda runtime is `python3.11` (not 3.12, 3.13, etc.)
+- [ ] Lambda has org-common layer attached
+- [ ] Lambda gets org_id from `queryStringParameters`
+- [ ] All routes have authorizer configured
+- [ ] Lambda has permission for API Gateway
+- [ ] Module config merged into cora-modules.config.yaml
+
+---
+
 ## Related Documentation
 
 - [standard_MODULE-REGISTRATION.md](../standards/standard_MODULE-REGISTRATION.md) - Module import and configuration

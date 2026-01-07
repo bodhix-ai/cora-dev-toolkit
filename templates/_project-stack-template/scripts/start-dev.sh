@@ -20,7 +20,8 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 PORT=3000
 DO_BUILD=false
-DO_TYPE_CHECK=false
+DO_TYPE_CHECK=true
+SKIP_TYPE_CHECK=false
 WAIT_GRACE=8
 
 # simple arg parsing
@@ -36,6 +37,12 @@ while [[ $# -gt 0 ]]; do
       ;;
     --type-check)
       DO_TYPE_CHECK=true
+      SKIP_TYPE_CHECK=false
+      shift
+      ;;
+    --skip-type-check)
+      SKIP_TYPE_CHECK=true
+      DO_TYPE_CHECK=false
       shift
       ;;
     --help|-h)
@@ -44,10 +51,11 @@ while [[ $# -gt 0 ]]; do
       echo "Start the Next.js dev server, ensuring the port is free first."
       echo ""
       echo "Options:"
-      echo "  --port PORT    Port number (default: 3000)"
-      echo "  --build        Run pnpm build before starting dev server"
-      echo "  --type-check   Run TypeScript type checking before starting (faster than build)"
-      echo "  --help         Show this help"
+      echo "  --port PORT        Port number (default: 3000)"
+      echo "  --build            Run pnpm build before starting dev server"
+      echo "  --type-check       Run TypeScript type checking before starting (default)"
+      echo "  --skip-type-check  Skip type checking for faster startup"
+      echo "  --help             Show this help"
       exit 0
       ;;
     *)
@@ -130,15 +138,47 @@ check_and_install_dependencies() {
 # Install dependencies if needed
 check_and_install_dependencies
 
+# Check if shared packages need building (dist/ folders missing)
+check_and_build_packages() {
+  local needs_build=false
+  local packages_to_check=("api-client" "shared-types" "contracts")
+  
+  for pkg in "${packages_to_check[@]}"; do
+    local pkg_dir="${REPO_ROOT}/packages/${pkg}"
+    if [[ -d "$pkg_dir" && -f "$pkg_dir/package.json" ]]; then
+      # Check if package has a build script and main points to dist/
+      local main_path=$(grep -o '"main"[[:space:]]*:[[:space:]]*"[^"]*"' "$pkg_dir/package.json" | grep -o '"[^"]*"$' | tr -d '"')
+      if [[ "$main_path" == dist/* && ! -d "$pkg_dir/dist" ]]; then
+        echo "[start-dev] Package '${pkg}' needs building (dist/ missing)"
+        needs_build=true
+      fi
+    fi
+  done
+  
+  if [[ "$needs_build" == "true" ]]; then
+    echo "[start-dev] Building shared packages (first-time setup)..."
+    pnpm -r --filter './packages/*' run build 2>&1 || {
+      echo "[start-dev] ⚠️  Some packages failed to build. This may cause import errors."
+      echo "[start-dev] Try running 'pnpm build' manually to see detailed errors."
+    }
+    echo "[start-dev] ✅ Shared packages built"
+  fi
+}
+
+# Build shared packages if needed
+check_and_build_packages
+
 if [[ "${DO_BUILD}" == "true" ]]; then
   echo "[start-dev] running pnpm build..."
   pnpm build
-elif [[ "${DO_TYPE_CHECK}" == "true" ]]; then
-  echo "[start-dev] running TypeScript type check..."
+elif [[ "${DO_TYPE_CHECK}" == "true" && "${SKIP_TYPE_CHECK}" == "false" ]]; then
+  echo "[start-dev] running TypeScript type check (use --skip-type-check to bypass)..."
   pnpm -r run type-check 2>&1 || {
     echo "[start-dev] ⚠️  Type errors found. Run 'pnpm build' for details."
     echo "[start-dev] Starting dev server anyway (type errors may cause issues)..."
   }
+elif [[ "${SKIP_TYPE_CHECK}" == "true" ]]; then
+  echo "[start-dev] skipping type check (--skip-type-check flag)"
 fi
 
 echo "[start-dev] starting dev server on port ${PORT}..."

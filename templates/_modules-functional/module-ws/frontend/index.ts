@@ -17,6 +17,9 @@ export * from "./hooks";
 // Admin Cards
 export { wsPlatformAdminCard, wsOrgAdminCard } from "./admin";
 
+// Pages (for app route integration)
+export * from "./pages";
+
 // Re-export commonly used types for convenience
 export type {
   Workspace,
