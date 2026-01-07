@@ -68,7 +68,7 @@ resource "aws_lambda_function" "workspace" {
   description   = "FUNC-WS: Workspace management handler for CRUD operations"
   filename      = var.workspace_lambda_zip
   handler       = "lambda_function.lambda_handler"
-  runtime       = "python3.13"
+  runtime       = "python3.11"
   role          = aws_iam_role.lambda.arn
 
   layers = [var.org_common_layer_arn]
@@ -113,7 +113,7 @@ resource "aws_lambda_function" "cleanup" {
   description   = "FUNC-WS: Automated cleanup job for workspace maintenance"
   filename      = var.cleanup_lambda_zip
   handler       = "lambda_function.lambda_handler"
-  runtime       = "python3.13"
+  runtime       = "python3.11"
   role          = aws_iam_role.lambda.arn
 
   layers = [var.org_common_layer_arn]
