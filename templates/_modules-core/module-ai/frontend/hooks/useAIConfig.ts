@@ -36,7 +36,6 @@ interface RawDeploymentData {
   };
   metadata?: {
     provider_name?: string;
-    // @ts-expect-error - Dynamic metadata fields from various providers
     [key: string]: unknown;
   };
   supports_chat?: boolean;
@@ -67,7 +66,6 @@ export type DeploymentInfo = {
     supportsVision?: boolean;
     maxTokens?: number;
     embeddingDimensions?: number;
-    // @ts-expect-error - Additional capability fields from various providers
     [key: string]: unknown;
   };
 };
@@ -320,28 +318,34 @@ export function useDeployments(
         url += `?capability=${capability}`;
       }
 
-      const data = await client.get<unknown>(url);
+      // Cast to permissive type for flexible response handling
+      const data = await client.get<unknown>(url) as Record<string, unknown> | unknown[];
 
       // Handle both direct array and wrapped response { success: true, data: [...] }
       let rawList: RawDeploymentData[] = [];
 
       if (Array.isArray(data)) {
-        rawList = data;
-      } else if (data?.data?.deployments) {
-        // Wrapped response with deployments inside data
-        rawList = data.data.deployments;
-      } else if (data?.data?.models) {
-        // Wrapped response with models inside data
-        rawList = data.data.models;
-      } else if (Array.isArray(data?.data)) {
-        // Wrapped response with array directly in data
-        rawList = data.data;
-      } else if (data?.deployments) {
-        // Legacy/Direct object with deployments
-        rawList = data.deployments;
-      } else if (data?.models) {
-        // Legacy/Direct object with models
-        rawList = data.models;
+        rawList = data as RawDeploymentData[];
+      } else if (data && typeof data === 'object') {
+        const dataObj = data as Record<string, unknown>;
+        const nestedData = dataObj.data as Record<string, unknown> | unknown[] | undefined;
+        
+        if (nestedData && typeof nestedData === 'object' && !Array.isArray(nestedData) && (nestedData as Record<string, unknown>).deployments) {
+          // Wrapped response with deployments inside data
+          rawList = (nestedData as Record<string, unknown>).deployments as RawDeploymentData[];
+        } else if (nestedData && typeof nestedData === 'object' && !Array.isArray(nestedData) && (nestedData as Record<string, unknown>).models) {
+          // Wrapped response with models inside data
+          rawList = (nestedData as Record<string, unknown>).models as RawDeploymentData[];
+        } else if (Array.isArray(nestedData)) {
+          // Wrapped response with array directly in data
+          rawList = nestedData as RawDeploymentData[];
+        } else if (dataObj.deployments) {
+          // Legacy/Direct object with deployments
+          rawList = dataObj.deployments as RawDeploymentData[];
+        } else if (dataObj.models) {
+          // Legacy/Direct object with models
+          rawList = dataObj.models as RawDeploymentData[];
+        }
       }
 
       const deploymentList = rawList.map((d: RawDeploymentData) => {

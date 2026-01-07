@@ -56,8 +56,9 @@ export function useUnifiedAuth(): UnifiedAuthState {
   const { data: session, status } = useSession();
 
   // Extract stable primitive to prevent infinite re-render loops
-  const accessToken = session?.accessToken ?? null;
-  const userId = session?.user?.id ?? null;
+  // Use type assertion for custom session properties added via next-auth.d.ts
+  const accessToken = (session as { accessToken?: string } | null)?.accessToken ?? null;
+  const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
   
   // Use status from NextAuth for reliable authentication state
   const isSignedIn = status === "authenticated";

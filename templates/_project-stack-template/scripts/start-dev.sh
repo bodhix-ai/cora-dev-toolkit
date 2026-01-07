@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Idempotent helper to free up PORT (default 3000), verify it's free, optionally build, then start Next.js dev.
 # Usage:
-#   ./scripts/start-dev.sh [--port PORT] [--build]
+#   ./scripts/start-dev.sh [--port PORT] [--build] [--type-check]
 # Examples:
 #   ./scripts/start-dev.sh
 #   ./scripts/start-dev.sh --port 3000 --build
@@ -20,6 +20,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 PORT=3000
 DO_BUILD=false
+DO_TYPE_CHECK=false
 WAIT_GRACE=8
 
 # simple arg parsing
@@ -33,6 +34,10 @@ while [[ $# -gt 0 ]]; do
       DO_BUILD=true
       shift
       ;;
+    --type-check)
+      DO_TYPE_CHECK=true
+      shift
+      ;;
     --help|-h)
       echo "Usage: $0 [--port PORT] [--build]"
       echo ""
@@ -41,6 +46,7 @@ while [[ $# -gt 0 ]]; do
       echo "Options:"
       echo "  --port PORT    Port number (default: 3000)"
       echo "  --build        Run pnpm build before starting dev server"
+      echo "  --type-check   Run TypeScript type checking before starting (faster than build)"
       echo "  --help         Show this help"
       exit 0
       ;;
@@ -127,6 +133,12 @@ check_and_install_dependencies
 if [[ "${DO_BUILD}" == "true" ]]; then
   echo "[start-dev] running pnpm build..."
   pnpm build
+elif [[ "${DO_TYPE_CHECK}" == "true" ]]; then
+  echo "[start-dev] running TypeScript type check..."
+  pnpm -r run type-check 2>&1 || {
+    echo "[start-dev] ⚠️  Type errors found. Run 'pnpm build' for details."
+    echo "[start-dev] Starting dev server anyway (type errors may cause issues)..."
+  }
 fi
 
 echo "[start-dev] starting dev server on port ${PORT}..."
