@@ -2,7 +2,58 @@
 
 ## Current Focus
 
-**Session 69: Module-WS UI Integration** - ✅ **COMPLETE**
+**Session 70: Config Merging Fix** - ✅ **COMPLETE**
+
+## Session: January 7, 2026 (11:21 AM - 1:31 PM) - Session 70
+
+### 🎯 Focus: Fix create-cora-project.sh Config Integration
+
+**Context:** Session 69 identified that functional module configs weren't being merged during project creation. This session fixed the bug.
+
+**Status:** ✅ **CONFIG MERGING FIXED**
+
+---
+
+## ✅ Issues Fixed This Session
+
+### 1. Bash Array Eval Bug (Root Cause)
+- **Problem:** `eval "${resolved_modules_var}=(\"${_resolved_list[@]}\")"` expanded array BEFORE eval
+- **Result:** 4 modules became 1 element: `"module-access module-ai module-mgmt module-ws"`
+- **Fix:** Escape inner array: `eval "${resolved_modules_var}=(\"\\${_resolved_list[@]}\")"`
+- **Status:** ✅ FIXED
+
+### 2. Documentation Consolidation
+- **Problem:** Two duplicate guides: `guide_cora-project-creation.md` and `guide_cora-project-setup.md`
+- **Fix:** Merged content into setup guide, deleted creation guide
+- **Status:** ✅ FIXED
+
+---
+
+## 📋 Test Results
+
+### Final Verification: ✅ SUCCESS
+
+```
+[INFO] ✅ Created module-ws
+[INFO]   ✅ Merged module-access configuration
+[INFO]   ✅ Merged module-ai configuration
+[INFO]   ✅ Merged module-mgmt configuration
+[INFO]   ✅ Merged module-ws configuration
+[INFO] Merged 4 module configurations
+[INFO] Created: .../ai-sec-stack/apps/web/config/cora-modules.config.yaml
+```
+
+---
+
+## 📁 Files Modified
+
+1. `scripts/create-cora-project.sh` - Fixed eval array expansion bug
+2. `docs/guides/guide_cora-project-setup.md` - Updated with functional module options
+3. `docs/guides/guide_cora-project-creation.md` - DELETED (duplicate)
+
+---
+
+## Previous Session Summary
 
 ## Session: January 7, 2026 (10:10 AM - 11:07 AM) - Session 69
 
