@@ -1022,24 +1022,24 @@ if ! $DRY_RUN && [[ ${#ENABLED_MODULES[@]} -gt 0 ]]; then
       done
 
       # Copy module routes to app directory if they exist
-      local routes_dir="${FUNCTIONAL_MODULE_TEMPLATE}/routes"
+      routes_dir="${FUNCTIONAL_MODULE_TEMPLATE}/routes"
       if [[ -d "$routes_dir" ]]; then
-        local app_routes_dir="${STACK_DIR}/apps/web/app"
+        app_routes_dir="${STACK_DIR}/apps/web/app"
         log_info "  Copying routes from ${module}..."
-        
+
         # Copy each route directory
         find "$routes_dir" -name "page.tsx" | while read -r route_file; do
-          local relative_path="${route_file#$routes_dir/}"
-          local target_dir="${app_routes_dir}/$(dirname "$relative_path")"
-          
+          relative_path="${route_file#$routes_dir/}"
+          target_dir="${app_routes_dir}/$(dirname "$relative_path")"
+
           mkdir -p "$target_dir"
           cp "$route_file" "$target_dir/"
-          
+
           # Replace placeholders in the copied route file
-          local target_file="${target_dir}/$(basename "$route_file")"
+          target_file="${target_dir}/$(basename "$route_file")"
           sed -i '' "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$target_file" 2>/dev/null || \
           sed -i "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$target_file"
-          
+
           log_info "    ✅ Created route: /$(dirname "$relative_path")"
         done
       fi
