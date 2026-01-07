@@ -196,7 +196,7 @@ export function OrganizationSwitcher() {
         )}
 
         {/* Admin Section (conditional visibility) */}
-        {(profile?.globalRole === "platform_owner" || profile?.globalRole === "platform_admin" || 
+        {(profile?.globalRole === "platform_owner" || profile?.globalRole === "platform_admin" ||
           currentOrganization?.role === "org_owner" || currentOrganization?.role === "org_admin") && (
           <>
             {/* Platform Admin */}

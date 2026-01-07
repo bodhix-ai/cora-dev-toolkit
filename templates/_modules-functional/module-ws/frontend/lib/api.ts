@@ -5,7 +5,7 @@
  * Uses CORA-compliant authentication via the api-client package.
  */
 
-import { createCoraAuthenticatedClient } from "@ai-sec/api-client";
+import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import type {
   Workspace,
   WorkspaceConfig,

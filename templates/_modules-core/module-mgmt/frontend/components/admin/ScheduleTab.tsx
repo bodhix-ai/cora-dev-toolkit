@@ -19,7 +19,7 @@ import {
   Divider,
 } from "@mui/material";
 import { useLambdaWarming } from "../../hooks/useLambdaWarming";
-import { useUser } from "@ai-sec/module-access";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import type { DayName, DaySchedule, LambdaWarmingConfig, WeeklySchedule } from "../../types";
 import { DEFAULT_WARMING_CONFIG } from "../../types";
 import SchedulePresets from "./schedule/SchedulePresets";
@@ -217,7 +217,7 @@ export function ScheduleTab(): React.ReactElement {
           {/* Timezone Selector */}
           <Box sx={{ mb: 3 }}>
             <TimezoneSelector
-              timezone={localTimezone}
+              selectedTimezone={localTimezone}
               onTimezoneChange={handleTimezoneChange}
               disabled={!config?.enabled || saving}
             />

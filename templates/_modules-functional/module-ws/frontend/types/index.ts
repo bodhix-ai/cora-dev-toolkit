@@ -294,6 +294,7 @@ export interface WorkspaceFormErrors {
   color?: string;
   icon?: string;
   tags?: string;
+  status?: string;
 }
 
 /**

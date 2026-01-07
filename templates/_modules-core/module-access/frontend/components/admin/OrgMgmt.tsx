@@ -79,9 +79,12 @@ interface CreateOrganizationPayload {
   domain_default_role?: "org_user" | "org_admin" | "org_owner";
 }
 
-interface UpdateOrganizationPayload extends CreateOrganizationPayload {
-  allowed_domain?: string | null;
-  domain_default_role?: "org_user" | "org_admin" | "org_owner" | null;
+interface UpdateOrganizationPayload {
+  name: string;
+  slug: string;
+  description?: string;
+  allowed_domain?: string;
+  domain_default_role?: "org_user" | "org_admin" | "org_owner";
 }
 
 /**
@@ -118,7 +121,7 @@ export function OrganizationManagement({
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get("/orgs");
+      const response = await apiClient.get<Organization[]>("/orgs");
       if (response.success) {
         setOrganizations(response.data || []);
       } else {
@@ -536,10 +539,10 @@ function EditOrganizationDialog({
         name: formData.name,
         slug: formData.slug,
         description: formData.description || undefined,
-        allowed_domain: formData.allowed_domain || null,
+        allowed_domain: formData.allowed_domain || undefined,
         domain_default_role: formData.allowed_domain
           ? formData.domain_default_role
-          : null,
+          : undefined,
       };
 
       const response = await apiClient.put<Organization>(`/orgs/${organization.id}`, payload);

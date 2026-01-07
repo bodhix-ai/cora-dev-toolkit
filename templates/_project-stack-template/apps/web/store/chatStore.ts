@@ -469,7 +469,13 @@ export const useChatStore = create<ChatState>()(
                 msg.role === "user"
                   ? (msg as any).created_by_name || "You"
                   : undefined,
-              tokenUsage: msg.metadata?.usage,
+              tokenUsage: msg.metadata?.usage as
+                | {
+                    prompt_tokens: number;
+                    completion_tokens: number;
+                    total_tokens: number;
+                  }
+                | undefined,
             })) || [];
 
           set({

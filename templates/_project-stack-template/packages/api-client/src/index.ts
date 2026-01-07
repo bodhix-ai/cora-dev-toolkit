@@ -198,6 +198,23 @@ export function createAuthenticatedClient(token: string, orgId?: string) {
  */
 export type AuthenticatedClient = ReturnType<typeof createAuthenticatedClient>;
 
+/**
+ * Create authenticated API client from NextAuth session
+ * 
+ * This is a convenience wrapper that extracts the token from the session
+ * and creates an authenticated client.
+ */
+export function createAuthenticatedApiClient(session: any) {
+  if (!session?.accessToken) {
+    throw new Error("No access token in session");
+  }
+  
+  // Extract orgId from session if available
+  const orgId = session?.user?.orgId || session?.orgId;
+  
+  return createAuthenticatedClient(session.accessToken, orgId);
+}
+
 // Re-export CORA client for CORA API Gateway endpoints
 export {
   createCoraAuthenticatedClient,

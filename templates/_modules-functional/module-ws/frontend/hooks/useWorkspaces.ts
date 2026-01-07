@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
+import { useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
 import { createWorkspaceApiClient } from "../lib/api";
 import type {
   Workspace,
@@ -63,7 +64,7 @@ const DEFAULT_PAGE_SIZE = 50;
 
 export function useWorkspaces(options: UseWorkspacesOptions = {}): UseWorkspacesReturn {
   const {
-    orgId,
+    orgId: providedOrgId,
     initialFilters = {
       search: "",
       status: "all",
@@ -80,6 +81,10 @@ export function useWorkspaces(options: UseWorkspacesOptions = {}): UseWorkspaces
   } = options;
 
   const { data: session } = useSession();
+  const { currentOrganization } = useOrganizationContext();
+  
+  // Use provided orgId or fall back to context orgId
+  const orgId = providedOrgId || currentOrganization?.orgId;
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

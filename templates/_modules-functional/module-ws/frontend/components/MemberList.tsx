@@ -239,6 +239,7 @@ export function MemberList({
                       size="small"
                       onClick={(e) => handleMenuOpen(e, member.id)}
                       disabled={loading}
+                      aria-label="Member actions"
                     >
                       <MoreVert fontSize="small" />
                     </IconButton>

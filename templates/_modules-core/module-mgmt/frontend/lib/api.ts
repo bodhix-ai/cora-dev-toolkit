@@ -5,7 +5,7 @@
  * Uses CORA-compliant authentication and the new platform endpoints.
  */
 
-import { createCoraAuthenticatedClient } from "@ai-sec/api-client";
+import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import type {
   LambdaConfig,
   LambdaWarmingConfig,

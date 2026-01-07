@@ -24,7 +24,7 @@ import {
   Delete,
   Person,
 } from "@mui/icons-material";
-import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
+import { CoraAuthAdapter, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 
 /**
  * Organization Member type
@@ -68,7 +68,13 @@ export function OrgMembersTab({ orgId, authAdapter }: OrgMembersTabProps) {
     try {
       setLoading(true);
       setError(null);
-      const response = await authAdapter.get(`/orgs/${orgId}/members`);
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Authentication required");
+        return;
+      }
+      const apiClient = createCoraAuthenticatedClient(token);
+      const response = await apiClient.get<{ success: boolean; data: OrgMember[] }>(`/orgs/${orgId}/members`);
       if (response.success) {
         setMembers(response.data || []);
       } else {
@@ -89,7 +95,13 @@ export function OrgMembersTab({ orgId, authAdapter }: OrgMembersTabProps) {
 
     try {
       setRemovingMemberId(memberId);
-      const response = await authAdapter.delete(
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Authentication required");
+        return;
+      }
+      const apiClient = createCoraAuthenticatedClient(token);
+      const response = await apiClient.delete<{ success: boolean }>(
         `/orgs/${orgId}/members/${memberId}`
       );
       if (response.success) {
@@ -222,7 +234,7 @@ export function OrgMembersTab({ orgId, authAdapter }: OrgMembersTabProps) {
                   </TableCell>
                   <TableCell align="right">
                     {member.role !== "org_owner" && (
-                      <IconButton aria-label="Action button"
+                      <IconButton
                         size="small"
                         onClick={() => handleRemoveMember(member.id)}
                         disabled={removingMemberId === member.id}

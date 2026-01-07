@@ -7,7 +7,7 @@
 
 import React from "react";
 import { Box, Typography, CircularProgress, Alert } from "@mui/material";
-import { useUser } from "@ai-sec/module-access";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { useLambdaWarming } from "../../hooks/useLambdaWarming";
 import CostCalculator from "./schedule/CostCalculator";
 

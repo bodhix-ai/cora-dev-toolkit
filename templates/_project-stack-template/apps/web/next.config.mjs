@@ -1,7 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["@pm-app/ai-config-module-frontend"],
+  transpilePackages: [
+    "@{{PROJECT_NAME}}/api-client",
+    "@{{PROJECT_NAME}}/module-access",
+    "@{{PROJECT_NAME}}/module-ai",
+    "@{{PROJECT_NAME}}/module-mgmt",
+  ],
   reactStrictMode: true,
-  experimental: { typedRoutes: true },
+  experimental: { typedRoutes: false },
 };
 export default nextConfig;

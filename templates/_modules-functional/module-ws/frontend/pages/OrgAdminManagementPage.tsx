@@ -408,7 +408,7 @@ export function OrgAdminManagementPage({
           {/* Most Active Workspaces */}
           {analytics.most_active.length > 0 && (
             <Paper sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h5" gutterBottom>
                 Most Active Workspaces
               </Typography>
               <Grid container spacing={2}>
@@ -488,6 +488,7 @@ export function OrgAdminManagementPage({
                         selectedIds.length < workspaces.length
                       }
                       onChange={(e) => handleSelectAll(e.target.checked)}
+                      aria-label="Select all workspaces"
                     />
                   </TableCell>
                   <TableCell>Name</TableCell>
@@ -512,6 +513,7 @@ export function OrgAdminManagementPage({
                         onChange={(e) =>
                           handleSelectOne(workspace.id, e.target.checked)
                         }
+                        aria-label={`Select ${workspace.name}`}
                       />
                     </TableCell>
                     <TableCell>
@@ -563,6 +565,7 @@ export function OrgAdminManagementPage({
                       <IconButton
                         size="small"
                         onClick={(e) => handleMenuOpen(e, workspace)}
+                        aria-label="Workspace actions"
                       >
                         <MoreVert />
                       </IconButton>

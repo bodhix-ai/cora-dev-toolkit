@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   createCoraAuthenticatedClient,
   type CoraAuthAdapter,
-} from "@ai-sec/api-client";
+} from "@{{PROJECT_NAME}}/api-client";
 
 // Types for AI Configuration
 
@@ -36,7 +36,7 @@ interface RawDeploymentData {
   };
   metadata?: {
     provider_name?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   supports_chat?: boolean;
   supports_embeddings?: boolean;
@@ -66,7 +66,7 @@ export type DeploymentInfo = {
     supportsVision?: boolean;
     maxTokens?: number;
     embeddingDimensions?: number;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 };
 
@@ -99,8 +99,8 @@ export type OrgAIConfig = {
  * @example
  * ```tsx
  * import { useAuth } from '@clerk/nextjs';
- * import { createClerkAuthAdapter } from '@ai-sec/api-client';
- * import { usePlatformAIConfig } from '@ai-sec/ai-config-module';
+ * import { createClerkAuthAdapter } from '@{{PROJECT_NAME}}/api-client';
+ * import { usePlatformAIConfig } from '@{{PROJECT_NAME}}/ai-config-module';
  *
  * const clerkAuth = useAuth();
  * const authAdapter = createClerkAuthAdapter(clerkAuth);
@@ -318,28 +318,34 @@ export function useDeployments(
         url += `?capability=${capability}`;
       }
 
-      const data = await client.get<any>(url);
+      // Cast to permissive type for flexible response handling
+      const data = await client.get<unknown>(url) as Record<string, unknown> | unknown[];
 
       // Handle both direct array and wrapped response { success: true, data: [...] }
       let rawList: RawDeploymentData[] = [];
 
       if (Array.isArray(data)) {
-        rawList = data;
-      } else if (data?.data?.deployments) {
-        // Wrapped response with deployments inside data
-        rawList = data.data.deployments;
-      } else if (data?.data?.models) {
-        // Wrapped response with models inside data
-        rawList = data.data.models;
-      } else if (Array.isArray(data?.data)) {
-        // Wrapped response with array directly in data
-        rawList = data.data;
-      } else if (data?.deployments) {
-        // Legacy/Direct object with deployments
-        rawList = data.deployments;
-      } else if (data?.models) {
-        // Legacy/Direct object with models
-        rawList = data.models;
+        rawList = data as RawDeploymentData[];
+      } else if (data && typeof data === 'object') {
+        const dataObj = data as Record<string, unknown>;
+        const nestedData = dataObj.data as Record<string, unknown> | unknown[] | undefined;
+        
+        if (nestedData && typeof nestedData === 'object' && !Array.isArray(nestedData) && (nestedData as Record<string, unknown>).deployments) {
+          // Wrapped response with deployments inside data
+          rawList = (nestedData as Record<string, unknown>).deployments as RawDeploymentData[];
+        } else if (nestedData && typeof nestedData === 'object' && !Array.isArray(nestedData) && (nestedData as Record<string, unknown>).models) {
+          // Wrapped response with models inside data
+          rawList = (nestedData as Record<string, unknown>).models as RawDeploymentData[];
+        } else if (Array.isArray(nestedData)) {
+          // Wrapped response with array directly in data
+          rawList = nestedData as RawDeploymentData[];
+        } else if (dataObj.deployments) {
+          // Legacy/Direct object with deployments
+          rawList = dataObj.deployments as RawDeploymentData[];
+        } else if (dataObj.models) {
+          // Legacy/Direct object with models
+          rawList = dataObj.models as RawDeploymentData[];
+        }
       }
 
       const deploymentList = rawList.map((d: RawDeploymentData) => {
@@ -434,7 +440,7 @@ export function useDeployments(
             created_at: d.created_at,
             updated_at: d.updated_at,
             description: d.description,
-            capabilities: capabilities as any,
+            capabilities: capabilities ?? undefined,
             supports_chat: !!capabilities?.chat,
             supports_embeddings: !!capabilities?.embedding,
           };

@@ -59,24 +59,21 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         else:
             logger.info("Cleanup complete: No expired workspaces to delete")
         
-        return {
-            'statusCode': 200,
-            'body': json.dumps({
+        return common.success_response(
+            data={
                 'message': 'Workspace cleanup completed successfully',
                 'deletedCount': deleted_count,
                 'workspaceIds': workspace_ids
-            })
-        }
+            }
+        )
     
     except Exception as e:
         logger.exception(f'Error during workspace cleanup: {str(e)}')
         
         # Return error but don't raise - we want the Lambda to complete
         # so EventBridge doesn't retry excessively
-        return {
-            'statusCode': 500,
-            'body': json.dumps({
-                'message': 'Workspace cleanup failed',
-                'error': str(e)
-            })
-        }
+        return common.error_response(
+            status_code=500,
+            message='Workspace cleanup failed',
+            details=str(e)
+        )

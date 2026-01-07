@@ -143,6 +143,7 @@ export function FilterBar({
         value={filters.search}
         onChange={handleSearchChange}
         placeholder="Search workspaces..."
+        aria-label="Search workspaces"
         size="small"
         disabled={loading}
         sx={{ minWidth: 250, flex: { md: 1 }, maxWidth: { md: 400 } }}
@@ -154,7 +155,7 @@ export function FilterBar({
           ),
           endAdornment: filters.search && (
             <InputAdornment position="end">
-              <IconButton size="small" onClick={handleClearSearch} edge="end">
+              <IconButton size="small" onClick={handleClearSearch} edge="end" aria-label="Clear search">
                 <Clear fontSize="small" />
               </IconButton>
             </InputAdornment>
@@ -184,6 +185,7 @@ export function FilterBar({
           onClick={handleFavoritesToggle}
           disabled={loading}
           color={filters.favoritesOnly ? "warning" : "default"}
+          aria-label={filters.favoritesOnly ? "Show all workspaces" : "Show favorites only"}
           sx={{
             border: 1,
             borderColor: filters.favoritesOnly ? "warning.main" : "divider",
@@ -222,7 +224,7 @@ export function FilterBar({
       {/* Clear filters button */}
       {hasActiveFilters && (
         <Tooltip title="Clear all filters">
-          <IconButton onClick={handleClearFilters} disabled={loading}>
+          <IconButton onClick={handleClearFilters} disabled={loading} aria-label="Clear all filters">
             <Badge badgeContent={activeFilterCount} color="primary">
               <FilterList />
             </Badge>

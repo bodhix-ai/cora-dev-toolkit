@@ -34,7 +34,7 @@ import {
   Language,
   People,
 } from "@mui/icons-material";
-import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
+import { CoraAuthAdapter, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import { useRouter } from "next/navigation";
 
 /**
@@ -88,7 +88,13 @@ export function OrgsTab({ authAdapter }: OrgsTabProps) {
     try {
       setLoading(true);
       setError(null);
-      const response = await authAdapter.get("/orgs");
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Authentication required");
+        return;
+      }
+      const apiClient = createCoraAuthenticatedClient(token);
+      const response = await apiClient.get<{ success: boolean; data: Organization[] }>("/orgs");
       if (response.success) {
         setOrganizations(response.data || []);
       } else {
@@ -216,7 +222,7 @@ export function OrgsTab({ authAdapter }: OrgsTabProps) {
                     </Typography>
                   </TableCell>
                   <TableCell align="right">
-                    <IconButton aria-label="Action button"
+                    <IconButton
                       size="small"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -296,7 +302,13 @@ function CreateOrganizationDialog({
         payload.domain_default_role = formData.domain_default_role;
       }
 
-      const response = await authAdapter.post("/orgs", payload);
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Authentication required");
+        return;
+      }
+      const apiClient = createCoraAuthenticatedClient(token);
+      const response = await apiClient.post<{ success: boolean; data: Organization }>("/orgs", payload);
 
       if (response.success) {
         onSuccess();
