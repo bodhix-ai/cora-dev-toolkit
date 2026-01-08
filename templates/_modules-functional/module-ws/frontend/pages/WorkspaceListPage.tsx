@@ -98,10 +98,10 @@ export function WorkspaceListPage({
   };
 
   const handleArchiveClick = async (workspace: Workspace) => {
-    if (!apiClient) return;
+    if (!apiClient || !orgId) return;
     try {
       const newStatus = workspace.status === "active" ? "archived" : "active";
-      await apiClient.updateWorkspace(workspace.id, { status: newStatus });
+      await apiClient.updateWorkspace(workspace.id, { status: newStatus }, orgId);
       refetch();
     } catch (err) {
       console.error("Failed to archive workspace:", err);
@@ -109,13 +109,13 @@ export function WorkspaceListPage({
   };
 
   const handleDeleteClick = async (workspace: Workspace) => {
-    if (!apiClient) return;
+    if (!apiClient || !orgId) return;
     const confirmed = window.confirm(
       `Are you sure you want to delete "${workspace.name}"? This action cannot be undone.`
     );
     if (confirmed) {
       try {
-        await apiClient.deleteWorkspace(workspace.id);
+        await apiClient.deleteWorkspace(workspace.id, orgId);
         refetch();
       } catch (err) {
         console.error("Failed to delete workspace:", err);
@@ -124,12 +124,16 @@ export function WorkspaceListPage({
   };
 
   const handleToggleFavorite = async (workspace: Workspace) => {
-    if (!apiClient) return;
+    if (!apiClient || !orgId) return;
     try {
-      await apiClient.toggleFavorite(workspace.id);
+      const result = await apiClient.toggleFavorite(workspace.id, orgId);
+      // Optimistic UI update: Update local workspace state immediately
+      // The hook's setWorkspaces should handle this, but we also refetch to ensure consistency
       refetch();
     } catch (err) {
       console.error("Failed to toggle favorite:", err);
+      // Revert on error by refetching
+      refetch();
     }
   };
 
@@ -154,6 +158,9 @@ export function WorkspaceListPage({
       name: values.name,
       description: values.description,
       org_id: orgId,
+      color: values.color,
+      icon: values.icon,
+      tags: values.tags,
     };
     
     return await apiClient.createWorkspace(request);
@@ -284,7 +291,7 @@ export function WorkspaceListPage({
         open={Boolean(editWorkspace)}
         onClose={() => setEditWorkspace(null)}
         workspace={editWorkspace}
-        onUpdate={apiClient?.updateWorkspace}
+        onUpdate={apiClient ? async (wsId, values) => apiClient.updateWorkspace(wsId, values, orgId) : undefined}
         onUpdateSuccess={handleUpdateSuccess}
       />
     </Container>

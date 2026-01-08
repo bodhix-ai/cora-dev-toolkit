@@ -10,35 +10,87 @@ This guide provides step-by-step instructions for creating a new CORA project. T
 
 When a user requests a new CORA project, follow these steps:
 
+### Standard Approach: Using Config File (RECOMMENDED)
+
 ```bash
 # 1. Navigate to the toolkit
 cd /path/to/cora-dev-toolkit
 
-# 2. Run the project creation script
-./scripts/create-cora-project.sh {project-name} \
-  --folder {test-folder} \
-  --output-dir ~/code/sts \
-  --org {github-org} \
-  --region {aws-region} \
-  --with-core-modules \
-  --create-repos
+# 2. Create or locate the setup config file
+# Example: setup.config.{project-name}.yaml
+
+# 3. Run the project creation script with --input
+./scripts/create-cora-project.sh --input setup.config.{project-name}.yaml
 ```
+
+**That's it!** All project settings, credentials, and module configurations are read from the config file.
 
 This creates:
 
 - `{project-name}-infra` - Infrastructure repository
 - `{project-name}-stack` - Application code repository
-- Core modules: module-access, module-ai, module-mgmt
-- Functional modules from `setup.config.{project}.yaml` (if configured)
+- Core modules: module-access, module-ai, module-mgmt (always included)
+- Functional modules from `modules.enabled` in config file
 - Merged `cora-modules.config.yaml` for navigation and admin cards
+- Environment files (`.env.local`, `.env`, `local-secrets.tfvars`) auto-generated
+- Database setup scripts ready to run
+
+### Config File Structure
+
+The `setup.config.{project-name}.yaml` file contains all project settings:
+
+```yaml
+project:
+  name: "my-app"              # Project name
+  folder_name: "test-ws-12"   # Parent folder name
+  folder_path: "~/code/sts"   # Base output directory
+  organization: "my-org"      # GitHub org
+
+modules:
+  enabled:
+    - module-ws
+    - module-kb
+
+aws:
+  region: us-east-1
+  profile: my-app-nonprod
+
+supabase:
+  url: "https://xxx.supabase.co"
+  anon_key: "..."
+  service_role_key: "..."
+  # ... database credentials
+
+auth:
+  okta:
+    domain: "..."
+    client_id: "..."
+    client_secret: "..."
+    issuer: "..."
+```
+
+### Alternative: Command-Line Arguments (Advanced)
+
+For quick testing or when you don't have a config file:
+
+```bash
+./scripts/create-cora-project.sh {project-name} \
+  --folder {test-folder} \
+  --output-dir ~/code/sts \
+  --org {github-org} \
+  --with-core-modules
+```
+
+**Note:** This approach requires manual configuration of environment files and credentials afterward.
 
 ### Script Options
 
 | Option | Description |
 |--------|-------------|
+| `--input <file>` | **RECOMMENDED:** Path to setup.config.yaml with all project settings |
 | `--folder <name>` | Parent directory name (organizes repos in a folder) |
 | `--output-dir <path>` | Base directory (default: current) |
-| `--with-core-modules` | Include core modules (access, ai, mgmt) |
+| `--with-core-modules` | Include core modules (required for CORA projects) |
 | `--modules <list>` | Comma-separated functional modules (e.g., `module-ws`) |
 | `--org <name>` | GitHub organization |
 | `--region <region>` | AWS region (default: us-east-1) |
@@ -46,28 +98,26 @@ This creates:
 | `--no-git` | Skip git initialization |
 | `--dry-run` | Preview without creating |
 
+**When using `--input`:** All other options are read from the config file. Command-line arguments override config file values if specified.
+
 ### Functional Module Selection
 
-Functional modules can be enabled via config file or command line:
+Functional modules are specified in the config file:
 
-**Option 1: Config File (Recommended)**
 ```yaml
-# templates/_project-stack-template/setup.config.{project}.yaml
+# setup.config.{project-name}.yaml
 modules:
   enabled:
     - module-ws
     - module-kb
+    - module-chat
 ```
 
-**Option 2: Command Line**
-```bash
-./scripts/create-cora-project.sh my-app --with-core-modules --modules module-ws,module-kb
-```
-
-For each enabled functional module, the script:
+For each enabled functional module, the script automatically:
 1. Creates package in `packages/module-{name}/`
 2. Adds module to Terraform `main.tf`
 3. Merges config into `cora-modules.config.yaml`
+4. Copies route files to Next.js app directory
 
 ---
 
@@ -283,10 +333,19 @@ When helping users set up CORA projects:
 **Cline should:**
 
 1. Navigate to cora-dev-toolkit
-2. Run: `./scripts/create-cora-project.sh my-app --org acme-corp --with-core-modules`
+2. Check if `setup.config.my-app.yaml` exists
+   - If yes: Run `./scripts/create-cora-project.sh --input setup.config.my-app.yaml`
+   - If no: Ask user to provide the config file or use command-line approach
 3. Report what was created
+4. Confirm environment files were generated
+5. Offer to help with deployment
+
+**Alternative (if no config file):**
+
+1. Navigate to cora-dev-toolkit
+2. Run: `./scripts/create-cora-project.sh my-app --org acme-corp --with-core-modules`
+3. Inform user they need to manually configure environment files
 4. Provide the manual steps checklist
-5. Offer to help with deployment once manual steps are done
 
 ---
 

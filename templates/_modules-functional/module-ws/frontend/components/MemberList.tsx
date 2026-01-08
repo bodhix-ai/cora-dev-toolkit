@@ -88,7 +88,7 @@ function getRoleIcon(role: WorkspaceRole): React.ReactNode {
 }
 
 export function MemberList({
-  members,
+  members = [],
   currentUserRole,
   currentUserId,
   onUpdateRole,
@@ -97,6 +97,9 @@ export function MemberList({
   loading = false,
   showAddButton = true,
 }: MemberListProps): React.ReactElement {
+  // Defensive check - ensure members is always an array
+  const membersList = Array.isArray(members) ? members : [];
+  
   const [menuAnchor, setMenuAnchor] = useState<{
     element: HTMLElement;
     memberId: string;
@@ -139,13 +142,13 @@ export function MemberList({
   };
 
   const getMember = (memberId: string): WorkspaceMember | undefined => {
-    return members.find((m) => m.id === memberId);
+    return membersList.find((m) => m.id === memberId);
   };
 
   const currentMenuMember = menuAnchor ? getMember(menuAnchor.memberId) : null;
 
   // Sort members: owners first, then admins, then users
-  const sortedMembers = [...members].sort((a, b) => {
+  const sortedMembers = [...membersList].sort((a, b) => {
     const roleOrder: Record<WorkspaceRole, number> = {
       ws_owner: 0,
       ws_admin: 1,
@@ -166,7 +169,7 @@ export function MemberList({
         }}
       >
         <Typography variant="subtitle1" fontWeight={600}>
-          Members ({members.length})
+          Members ({membersList.length})
         </Typography>
         {showAddButton && canManageMembers && onAddMember && (
           <Button
@@ -252,7 +255,7 @@ export function MemberList({
       </List>
 
       {/* Empty state */}
-      {members.length === 0 && (
+      {membersList.length === 0 && (
         <Box sx={{ textAlign: "center", py: 4 }}>
           <Typography variant="body2" color="text.secondary">
             No members in this workspace

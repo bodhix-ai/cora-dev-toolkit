@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
 import { createWorkspaceApiClient } from "../lib/api";
 import type {
   Workspace,
@@ -22,6 +23,8 @@ export interface UseWorkspaceOptions {
   autoFetch?: boolean;
   /** Whether to fetch members along with workspace */
   includeMembers?: boolean;
+  /** Organization ID (optional - falls back to context) */
+  orgId?: string;
 }
 
 export interface UseWorkspaceReturn {
@@ -63,9 +66,12 @@ export function useWorkspace(
   workspaceId: string | null,
   options: UseWorkspaceOptions = {}
 ): UseWorkspaceReturn {
-  const { autoFetch = true, includeMembers = true } = options;
+  const { autoFetch = true, includeMembers = true, orgId: providedOrgId } = options;
 
   const { data: session } = useSession();
+  const { currentOrganization } = useOrganizationContext();
+  const orgId = providedOrgId || currentOrganization?.orgId || "";
+  
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +80,7 @@ export function useWorkspace(
 
   // Fetch workspace data
   const fetchWorkspace = useCallback(async () => {
-    if (!session?.accessToken || !workspaceId) {
+    if (!session?.accessToken || !workspaceId || !orgId) {
       setLoading(false);
       return;
     }
@@ -84,14 +90,14 @@ export function useWorkspace(
 
     try {
       const client = createWorkspaceApiClient(session.accessToken as string);
-      const ws = await client.getWorkspace(workspaceId);
+      const ws = await client.getWorkspace(workspaceId, orgId);
       setWorkspace(ws);
 
       // Fetch members if requested
       if (includeMembers && ws) {
         setMembersLoading(true);
         try {
-          const membersList = await client.listMembers(workspaceId);
+          const membersList = await client.listMembers(workspaceId, orgId);
           setMembers(membersList);
         } catch (err) {
           console.error("Failed to fetch members:", err);
@@ -106,7 +112,7 @@ export function useWorkspace(
     } finally {
       setLoading(false);
     }
-  }, [session?.accessToken, workspaceId, includeMembers]);
+  }, [session?.accessToken, workspaceId, orgId, includeMembers]);
 
   // Auto-fetch on mount
   useEffect(() => {
@@ -118,11 +124,11 @@ export function useWorkspace(
   // Update workspace
   const updateWorkspace = useCallback(
     async (data: WorkspaceUpdateRequest): Promise<Workspace | null> => {
-      if (!session?.accessToken || !workspaceId) return null;
+      if (!session?.accessToken || !workspaceId || !orgId) return null;
 
       try {
         const client = createWorkspaceApiClient(session.accessToken as string);
-        const updated = await client.updateWorkspace(workspaceId, data);
+        const updated = await client.updateWorkspace(workspaceId, data, orgId);
         setWorkspace(updated);
         return updated;
       } catch (err) {
@@ -130,48 +136,48 @@ export function useWorkspace(
         throw err;
       }
     },
-    [session?.accessToken, workspaceId]
+    [session?.accessToken, workspaceId, orgId]
   );
 
   // Delete workspace
   const deleteWorkspace = useCallback(
     async (permanent = false): Promise<boolean> => {
-      if (!session?.accessToken || !workspaceId) return false;
+      if (!session?.accessToken || !workspaceId || !orgId) return false;
 
       try {
         const client = createWorkspaceApiClient(session.accessToken as string);
-        await client.deleteWorkspace(workspaceId, permanent);
+        await client.deleteWorkspace(workspaceId, orgId, permanent);
         return true;
       } catch (err) {
         console.error("Failed to delete workspace:", err);
         throw err;
       }
     },
-    [session?.accessToken, workspaceId]
+    [session?.accessToken, workspaceId, orgId]
   );
 
   // Restore workspace
   const restoreWorkspace = useCallback(async (): Promise<Workspace | null> => {
-    if (!session?.accessToken || !workspaceId) return null;
+    if (!session?.accessToken || !workspaceId || !orgId) return null;
 
     try {
       const client = createWorkspaceApiClient(session.accessToken as string);
-      const restored = await client.restoreWorkspace(workspaceId);
+      const restored = await client.restoreWorkspace(workspaceId, orgId);
       setWorkspace(restored);
       return restored;
     } catch (err) {
       console.error("Failed to restore workspace:", err);
       throw err;
     }
-  }, [session?.accessToken, workspaceId]);
+  }, [session?.accessToken, workspaceId, orgId]);
 
   // Toggle favorite
   const toggleFavorite = useCallback(async (): Promise<boolean> => {
-    if (!session?.accessToken || !workspaceId || !workspace) return false;
+    if (!session?.accessToken || !workspaceId || !workspace || !orgId) return false;
 
     try {
       const client = createWorkspaceApiClient(session.accessToken as string);
-      const result = await client.toggleFavorite(workspaceId);
+      const result = await client.toggleFavorite(workspaceId, orgId);
       setWorkspace((prev) =>
         prev
           ? {
@@ -186,16 +192,16 @@ export function useWorkspace(
       console.error("Failed to toggle favorite:", err);
       throw err;
     }
-  }, [session?.accessToken, workspaceId, workspace]);
+  }, [session?.accessToken, workspaceId, workspace, orgId]);
 
   // Add member
   const addMember = useCallback(
     async (data: AddMemberRequest): Promise<WorkspaceMember | null> => {
-      if (!session?.accessToken || !workspaceId) return null;
+      if (!session?.accessToken || !workspaceId || !orgId) return null;
 
       try {
         const client = createWorkspaceApiClient(session.accessToken as string);
-        const member = await client.addMember(workspaceId, data);
+        const member = await client.addMember(workspaceId, data, orgId);
         setMembers((prev) => [...prev, member]);
         return member;
       } catch (err) {
@@ -203,17 +209,17 @@ export function useWorkspace(
         throw err;
       }
     },
-    [session?.accessToken, workspaceId]
+    [session?.accessToken, workspaceId, orgId]
   );
 
   // Update member role
   const updateMember = useCallback(
     async (userId: string, data: UpdateMemberRequest): Promise<WorkspaceMember | null> => {
-      if (!session?.accessToken || !workspaceId) return null;
+      if (!session?.accessToken || !workspaceId || !orgId) return null;
 
       try {
         const client = createWorkspaceApiClient(session.accessToken as string);
-        const updated = await client.updateMember(workspaceId, userId, data);
+        const updated = await client.updateMember(workspaceId, userId, data, orgId);
         setMembers((prev) =>
           prev.map((m) => (m.user_id === userId ? updated : m))
         );
@@ -223,17 +229,17 @@ export function useWorkspace(
         throw err;
       }
     },
-    [session?.accessToken, workspaceId]
+    [session?.accessToken, workspaceId, orgId]
   );
 
   // Remove member
   const removeMember = useCallback(
     async (userId: string): Promise<boolean> => {
-      if (!session?.accessToken || !workspaceId) return false;
+      if (!session?.accessToken || !workspaceId || !orgId) return false;
 
       try {
         const client = createWorkspaceApiClient(session.accessToken as string);
-        await client.removeMember(workspaceId, userId);
+        await client.removeMember(workspaceId, userId, orgId);
         setMembers((prev) => prev.filter((m) => m.user_id !== userId));
         return true;
       } catch (err) {
@@ -241,7 +247,7 @@ export function useWorkspace(
         throw err;
       }
     },
-    [session?.accessToken, workspaceId]
+    [session?.accessToken, workspaceId, orgId]
   );
 
   // Derived values

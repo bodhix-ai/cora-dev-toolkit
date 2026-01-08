@@ -176,7 +176,7 @@ export function useWorkspaceForm(
 
   // Check if form is valid
   const isValid = useMemo(() => {
-    return Object.keys(errors).length === 0 && values.name.trim() !== "";
+    return Object.keys(errors).length === 0 && (values.name || "").trim() !== "";
   }, [errors, values.name]);
 
   // Set a single field value

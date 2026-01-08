@@ -158,7 +158,7 @@ export function OrgAdminManagementPage({
       const client = createWorkspaceApiClient(session.accessToken as string);
       const newStatus: WorkspaceStatus =
         selectedWorkspace.status === "active" ? "archived" : "active";
-      await client.updateWorkspace(selectedWorkspace.id, { status: newStatus });
+      await client.updateWorkspace(selectedWorkspace.id, { status: newStatus }, orgId);
       fetchWorkspaces();
       fetchAnalytics();
       onWorkspacesUpdated?.();
@@ -183,7 +183,7 @@ export function OrgAdminManagementPage({
 
     try {
       const client = createWorkspaceApiClient(session.accessToken as string);
-      await client.deleteWorkspace(selectedWorkspace.id);
+      await client.deleteWorkspace(selectedWorkspace.id, orgId);
       fetchWorkspaces();
       fetchAnalytics();
       onWorkspacesUpdated?.();
@@ -207,7 +207,7 @@ export function OrgAdminManagementPage({
       const client = createWorkspaceApiClient(session.accessToken as string);
       await Promise.all(
         selectedIds.map((id) =>
-          client.updateWorkspace(id, { status: "archived" })
+          client.updateWorkspace(id, { status: "archived" }, orgId)
         )
       );
       setSelectedIds([]);
@@ -234,7 +234,7 @@ export function OrgAdminManagementPage({
 
     try {
       const client = createWorkspaceApiClient(session.accessToken as string);
-      await Promise.all(selectedIds.map((id) => client.deleteWorkspace(id)));
+      await Promise.all(selectedIds.map((id) => client.deleteWorkspace(id, orgId)));
       setSelectedIds([]);
       fetchWorkspaces();
       fetchAnalytics();
