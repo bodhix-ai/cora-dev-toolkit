@@ -24,6 +24,7 @@ INIT_GIT=true
 DRY_RUN=false
 WITH_CORE_MODULES=false
 ENABLED_MODULES=()  # Functional modules specified via --modules
+INPUT_CONFIG=""  # Path to setup.config.yaml file
 
 # --- Colors ---
 RED='\033[0;31m'
@@ -215,6 +216,10 @@ Arguments:
                         Also used for package naming: @ai-sec/module-access
 
 Options:
+  --input <file>        Path to setup.config.yaml file that contains all project settings.
+                        This is the recommended way to create projects. The config file
+                        provides: project.name, project.folder_path, project.folder_name,
+                        project.organization, modules.enabled, and all credentials.
   --folder <name>       Parent directory name (e.g., "test-ws-06")
                         If specified, repos created in: <folder-path>/<folder>/{project}-{infra,stack}
                         If not specified, repos created directly in folder-path
@@ -235,7 +240,11 @@ Environment Variables:
   AWS_REGION            Default AWS region
 
 Examples:
-  # Create in parent folder (recommended)
+  # Create from config file (RECOMMENDED)
+  $0 --input setup.config.test-ws-12.yaml
+  # Reads all settings from the config file
+
+  # Create in parent folder (legacy CLI approach)
   $0 ai-sec --folder test-ws-06 --output-dir ~/code/sts --with-core-modules
   # Creates: ~/code/sts/test-ws-06/ai-sec-infra and ~/code/sts/test-ws-06/ai-sec-stack
 
@@ -278,6 +287,10 @@ while [[ $# -gt 0 ]]; do
       IFS=',' read -ra ENABLED_MODULES <<< "$2"
       shift 2
       ;;
+    --input)
+      INPUT_CONFIG="$2"
+      shift 2
+      ;;
     --no-git)
       INIT_GIT=false
       shift
@@ -307,6 +320,45 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# --- Read from Input Config File (if specified) ---
+if [[ -n "$INPUT_CONFIG" ]]; then
+  if [[ ! -f "$INPUT_CONFIG" ]]; then
+    log_error "Input config file not found: $INPUT_CONFIG"
+    exit 1
+  fi
+  
+  log_info "Reading project configuration from: $INPUT_CONFIG"
+  
+  # Check if yq is available for YAML parsing
+  if ! command -v yq &> /dev/null; then
+    log_error "yq is required for --input option. Install with: brew install yq"
+    exit 1
+  fi
+  
+  # Read project settings from config file (only if not already set via CLI)
+  [[ -z "$PROJECT_NAME" ]] && PROJECT_NAME=$(yq '.project.name // ""' "$INPUT_CONFIG")
+  [[ -z "$PROJECT_FOLDER" ]] && PROJECT_FOLDER=$(yq '.project.folder_name // ""' "$INPUT_CONFIG")
+  [[ -z "$OUTPUT_DIR" || "$OUTPUT_DIR" == "." ]] && OUTPUT_DIR=$(yq '.project.folder_path // "."' "$INPUT_CONFIG")
+  [[ -z "$GITHUB_ORG" ]] && GITHUB_ORG=$(yq '.project.organization // ""' "$INPUT_CONFIG")
+  
+  # Read AWS region if specified
+  config_region=$(yq '.aws.region // ""' "$INPUT_CONFIG")
+  [[ -n "$config_region" && "$config_region" != "null" ]] && AWS_REGION="$config_region"
+  
+  # Expand tilde in OUTPUT_DIR
+  OUTPUT_DIR="${OUTPUT_DIR/#\~/$HOME}"
+  
+  # When using --input, always enable core modules (required for CORA projects)
+  WITH_CORE_MODULES=true
+  
+  log_info "  Project Name:   $PROJECT_NAME"
+  log_info "  Folder Name:    $PROJECT_FOLDER"
+  log_info "  Output Dir:     $OUTPUT_DIR"
+  log_info "  Organization:   $GITHUB_ORG"
+  log_info "  Core Modules:   enabled (always required)"
+  echo ""
+fi
 
 # --- Validate Arguments ---
 if [[ -z "$PROJECT_NAME" ]]; then

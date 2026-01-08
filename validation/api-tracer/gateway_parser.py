@@ -261,7 +261,7 @@ class GatewayParser:
     def _parse_cora_module_routes(self, content: str):
         """
         Parse CORA module api_routes output blocks.
-        
+
         Example:
             output "api_routes" {
               value = [
@@ -274,16 +274,31 @@ class GatewayParser:
                 ...
               ]
             }
+        
+        Also handles concat() pattern:
+            output "api_routes" {
+              value = concat(
+                [...],
+                [...]
+              )
+            }
         """
         # Find output "api_routes" block start
         output_start = re.search(r'output\s+"api_routes"\s*\{', content)
         if not output_start:
             return
-        
-        # Find the value = [ position
+
+        # Find the value = [ or value = concat( position
         value_start_pattern = r'value\s*=\s*\['
         value_start = re.search(value_start_pattern, content[output_start.start():])
+        
+        # Also check for concat() pattern
         if not value_start:
+            concat_pattern = r'value\s*=\s*concat\s*\('
+            concat_start = re.search(concat_pattern, content[output_start.start():])
+            if concat_start:
+                # For concat, we need to find all arrays inside and parse them
+                self._parse_concat_routes(content, output_start.start() + concat_start.end())
             return
         
         # Calculate absolute position
@@ -368,6 +383,109 @@ class GatewayParser:
             
             # Calculate line number (from start of content)
             line = content[:array_start + start_pos].count('\n') + 1
+            
+            self.routes.append(GatewayRoute(
+                file=self.current_file,
+                line=line,
+                method=method,
+                path=path,
+                lambda_function=lambda_function,
+                authorization=authorization,
+                source_code=routes_content[start_pos:end_pos + 1]
+            ))
+    
+    def _parse_concat_routes(self, content: str, start_pos: int):
+        """
+        Parse routes from a concat() block.
+        
+        This extracts all arrays inside the concat() and parses route objects from each.
+        """
+        # Find all arrays in the concat block by tracking parenthesis depth
+        paren_depth = 1  # We're already inside the concat(
+        i = start_pos
+        
+        while i < len(content) and paren_depth > 0:
+            char = content[i]
+            if char == '(':
+                paren_depth += 1
+            elif char == ')':
+                paren_depth -= 1
+            elif char == '[' and paren_depth == 1:
+                # Found start of an array inside concat
+                array_start = i + 1
+                bracket_depth = 1
+                brace_depth = 0
+                
+                for j, c in enumerate(content[array_start:], start=array_start):
+                    if c == '{':
+                        brace_depth += 1
+                    elif c == '}':
+                        brace_depth -= 1
+                    elif c == '[':
+                        bracket_depth += 1
+                    elif c == ']':
+                        bracket_depth -= 1
+                        if bracket_depth == 0:
+                            # Found matching ]
+                            routes_content = content[array_start:j]
+                            self._parse_routes_from_array(routes_content, array_start)
+                            i = j  # Continue after this array
+                            break
+            i += 1
+    
+    def _parse_routes_from_array(self, routes_content: str, base_offset: int):
+        """Parse route objects from an array content string."""
+        # Find all route objects by tracking braces
+        route_starts = []
+        for match in re.finditer(r'\{', routes_content):
+            route_starts.append(match.start())
+        
+        for start_pos in route_starts:
+            # Find matching closing brace
+            depth = 1
+            end_pos = start_pos + 1
+            for i, char in enumerate(routes_content[start_pos + 1:], start=start_pos + 1):
+                if char == '{':
+                    depth += 1
+                elif char == '}':
+                    depth -= 1
+                    if depth == 0:
+                        end_pos = i
+                        break
+            
+            if depth != 0:
+                continue  # Couldn't find matching brace
+            
+            # Extract route body
+            route_body = routes_content[start_pos + 1:end_pos]
+            
+            # Extract method
+            method_match = re.search(r'method\s*=\s*"([^"]+)"', route_body)
+            if not method_match:
+                continue
+            method = method_match.group(1).upper()
+            
+            # Extract path
+            path_match = re.search(r'path\s*=\s*"([^"]+)"', route_body)
+            if not path_match:
+                continue
+            path = path_match.group(1)
+            
+            # Extract integration (Lambda ARN)
+            integration_match = re.search(r'integration\s*=\s*([^\n]+)', route_body)
+            lambda_function = None
+            if integration_match:
+                integration = integration_match.group(1).strip()
+                lambda_match = re.search(r'(?:aws_lambda_alias|aws_lambda_function)\.(\\w+)', integration)
+                if lambda_match:
+                    lambda_function = lambda_match.group(1)
+            
+            # Extract public flag
+            public_match = re.search(r'public\s*=\s*(true|false)', route_body)
+            authorization = None if (public_match and public_match.group(1) == 'true') else 'JWT'
+            
+            # Calculate approximate line number
+            line = routes_content[:start_pos].count('\n') + 1
             
             self.routes.append(GatewayRoute(
                 file=self.current_file,

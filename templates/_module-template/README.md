@@ -7,6 +7,24 @@
 
 Brief description of what this module does and why it exists.
 
+## ⚠️ Important Standards
+
+### Lambda Route Docstring (REQUIRED)
+
+If your Lambda uses **dynamic routing** (dispatcher pattern), you MUST document routes in the module docstring. See: [Lambda Route Docstring Standard](../../docs/standards/standard_LAMBDA-ROUTE-DOCSTRING.md)
+
+```python
+"""
+Module Name - Description
+
+Routes - Category:
+- GET /path - Description
+- POST /path/{id} - Description
+"""
+```
+
+This enables validation tools to verify API Gateway routes match Lambda handlers.
+
 ## Features
 
 - Feature 1: Description

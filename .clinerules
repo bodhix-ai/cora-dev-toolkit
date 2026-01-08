@@ -37,6 +37,23 @@ Before making changes, review these in order:
 3. `docs/CORA-PROJECT-BOILERPLATE.md` - Project creation standards (when created)
 4. `docs/CORA-CORE-MODULES.md` - Core module specifications (when created)
 
+## Lambda Route Docstring Standard
+
+CORA Lambda functions using **dynamic routing** (dispatcher pattern) MUST document their routes in the module docstring. See: `docs/standards/standard_LAMBDA-ROUTE-DOCSTRING.md`
+
+**Required format in `lambda_function.py`:**
+```python
+"""
+Module Name - Description
+
+Routes - Category:
+- GET /path - Description
+- POST /path/{id} - Description
+"""
+```
+
+This enables the API Tracer validator to match API Gateway routes to Lambda handlers during static analysis.
+
 ## Module Naming Convention
 
 CORA uses a strict naming convention for modules:

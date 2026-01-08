@@ -122,8 +122,9 @@ class FullStackValidator:
                 logger.info("Using Terraform parsing (AWS credentials not configured)")
             
             # Parse from CORA module infrastructure outputs
+            # CORA modules are named module-* (e.g., module-ws, module-ai, module-mgmt)
             all_gateway_routes = []
-            for module_path in (project / 'packages').glob('*-module/infrastructure/outputs.tf'):
+            for module_path in (project / 'packages').glob('module-*/infrastructure/outputs.tf'):
                 # Skip _module-template
                 if '_module-template' in str(module_path):
                     logger.info(f"Skipping template module: {module_path}")
@@ -296,6 +297,10 @@ class FullStackValidator:
         Detects:
         - Gateway routes without Lambda handlers
         - Lambda handler configuration issues
+        
+        Note: Lambdas using dynamic routing MUST document their routes in a docstring
+        following the CORA Lambda Route Docstring Standard. See:
+        docs/standards/standard_LAMBDA-ROUTE-DOCSTRING.md
         """
         logger.info("Matching API Gateway → Lambda...")
         
@@ -303,7 +308,11 @@ class FullStackValidator:
         lambda_routes_index = self._build_lambda_routes_index()
         
         for route in self.gateway_parser.routes:
-            route_key = f"{route.method} {route.path}"
+            # Normalize Gateway route path to match Lambda index format
+            # This allows matching routes with different param names:
+            # Gateway: /ws/{workspaceId}/members  ->  Lambda: /ws/{id}/members
+            normalized_path = self.lambda_parser.normalize_path(route.path)
+            route_key = f"{route.method} {normalized_path}"
             
             # Check if Lambda handler exists for this route
             if route_key not in lambda_routes_index:
@@ -320,7 +329,7 @@ class FullStackValidator:
                         endpoint=route.path,
                         method=route.method,
                         issue=f"API Gateway defines {route.method} {route.path} but Lambda only handles: {', '.join(available_methods)}",
-                        suggestion=f"Add {route.method} handler to Lambda or remove route from API Gateway"
+                        suggestion=f"Add {route.method} handler to Lambda or add route to Lambda docstring (see CORA Lambda Route Docstring Standard)"
                     ))
                 else:
                     # No handler found at all
@@ -331,7 +340,7 @@ class FullStackValidator:
                         endpoint=route.path,
                         method=route.method,
                         issue=f"API Gateway defines {route.method} {route.path} but no Lambda handler found",
-                        suggestion=f"Implement Lambda handler for this route (Lambda function: {route.lambda_function or 'unknown'})"
+                        suggestion=f"Add route to Lambda docstring for function '{route.lambda_function or 'unknown'}' (see CORA Lambda Route Docstring Standard)"
                     ))
     
     def _validate_parameters(self):

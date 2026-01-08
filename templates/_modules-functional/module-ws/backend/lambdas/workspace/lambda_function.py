@@ -22,6 +22,17 @@ Routes - Members:
 Routes - Favorites:
 - POST /ws/{id}/favorite - Toggle favorite
 - GET /ws/favorites - List user's favorites
+
+Routes - Config:
+- GET /ws/config - Get workspace config
+- PUT /ws/config - Update workspace config
+
+Routes - Admin:
+- GET /ws/admin/stats - Get workspace statistics
+- GET /ws/admin/analytics - Get workspace analytics
+- GET /ws/admin/workspaces - List all workspaces (admin)
+- POST /ws/admin/workspaces/{id}/restore - Restore deleted workspace (admin)
+- DELETE /ws/admin/workspaces/{id} - Delete workspace (admin)
 """
 
 import json
