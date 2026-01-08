@@ -16,6 +16,8 @@ cd /path/to/cora-dev-toolkit
 
 # 2. Run the project creation script
 ./scripts/create-cora-project.sh {project-name} \
+  --folder {test-folder} \
+  --output-dir ~/code/sts \
   --org {github-org} \
   --region {aws-region} \
   --with-core-modules \
@@ -27,6 +29,45 @@ This creates:
 - `{project-name}-infra` - Infrastructure repository
 - `{project-name}-stack` - Application code repository
 - Core modules: module-access, module-ai, module-mgmt
+- Functional modules from `setup.config.{project}.yaml` (if configured)
+- Merged `cora-modules.config.yaml` for navigation and admin cards
+
+### Script Options
+
+| Option | Description |
+|--------|-------------|
+| `--folder <name>` | Parent directory name (organizes repos in a folder) |
+| `--output-dir <path>` | Base directory (default: current) |
+| `--with-core-modules` | Include core modules (access, ai, mgmt) |
+| `--modules <list>` | Comma-separated functional modules (e.g., `module-ws`) |
+| `--org <name>` | GitHub organization |
+| `--region <region>` | AWS region (default: us-east-1) |
+| `--create-repos` | Create GitHub repositories |
+| `--no-git` | Skip git initialization |
+| `--dry-run` | Preview without creating |
+
+### Functional Module Selection
+
+Functional modules can be enabled via config file or command line:
+
+**Option 1: Config File (Recommended)**
+```yaml
+# templates/_project-stack-template/setup.config.{project}.yaml
+modules:
+  enabled:
+    - module-ws
+    - module-kb
+```
+
+**Option 2: Command Line**
+```bash
+./scripts/create-cora-project.sh my-app --with-core-modules --modules module-ws,module-kb
+```
+
+For each enabled functional module, the script:
+1. Creates package in `packages/module-{name}/`
+2. Adds module to Terraform `main.tf`
+3. Merges config into `cora-modules.config.yaml`
 
 ---
 

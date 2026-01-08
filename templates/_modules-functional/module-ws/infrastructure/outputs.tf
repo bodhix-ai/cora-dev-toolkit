@@ -60,35 +60,35 @@ output "api_routes" {
     # Workspace CRUD
     {
       method      = "GET"
-      path        = "/api/ws/workspaces"
+      path        = "/ws"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "List user's workspaces"
       public      = false
     },
     {
       method      = "POST"
-      path        = "/api/ws/workspaces"
+      path        = "/ws"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Create new workspace"
       public      = false
     },
     {
       method      = "GET"
-      path        = "/api/ws/workspaces/{id}"
+      path        = "/ws/{id}"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Get workspace details"
       public      = false
     },
     {
       method      = "PUT"
-      path        = "/api/ws/workspaces/{id}"
+      path        = "/ws/{id}"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Update workspace"
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/api/ws/workspaces/{id}"
+      path        = "/ws/{id}"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Soft delete workspace"
       public      = false
@@ -96,7 +96,7 @@ output "api_routes" {
     # Workspace Restore
     {
       method      = "POST"
-      path        = "/api/ws/workspaces/{id}/restore"
+      path        = "/ws/{id}/restore"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Restore soft-deleted workspace"
       public      = false
@@ -104,28 +104,28 @@ output "api_routes" {
     # Workspace Members
     {
       method      = "GET"
-      path        = "/api/ws/workspaces/{id}/members"
+      path        = "/ws/{workspaceId}/members"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "List workspace members"
       public      = false
     },
     {
       method      = "POST"
-      path        = "/api/ws/workspaces/{id}/members"
+      path        = "/ws/{workspaceId}/members"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Add member to workspace"
       public      = false
     },
     {
       method      = "PUT"
-      path        = "/api/ws/workspaces/{workspaceId}/members/{memberId}"
+      path        = "/ws/{workspaceId}/members/{userId}"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Update member role"
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/api/ws/workspaces/{workspaceId}/members/{memberId}"
+      path        = "/ws/{workspaceId}/members/{userId}"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Remove member from workspace"
       public      = false
@@ -133,16 +133,67 @@ output "api_routes" {
     # Workspace Favorites
     {
       method      = "POST"
-      path        = "/api/ws/workspaces/{id}/favorite"
+      path        = "/ws/{id}/favorite"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Toggle workspace favorite"
       public      = false
     },
     {
       method      = "GET"
-      path        = "/api/ws/favorites"
+      path        = "/ws/favorites"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "List user's favorite workspaces"
+      public      = false
+    },
+    # Workspace Config
+    {
+      method      = "GET"
+      path        = "/ws/config"
+      integration = aws_lambda_function.workspace.invoke_arn
+      description = "Get workspace module configuration"
+      public      = false
+    },
+    {
+      method      = "PUT"
+      path        = "/ws/config"
+      integration = aws_lambda_function.workspace.invoke_arn
+      description = "Update workspace module configuration"
+      public      = false
+    },
+    # Admin Routes
+    {
+      method      = "GET"
+      path        = "/ws/admin/stats"
+      integration = aws_lambda_function.workspace.invoke_arn
+      description = "Get workspace statistics (org admin)"
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/ws/admin/analytics"
+      integration = aws_lambda_function.workspace.invoke_arn
+      description = "Get workspace analytics (org admin)"
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/ws/admin/workspaces"
+      integration = aws_lambda_function.workspace.invoke_arn
+      description = "List all org workspaces (admin view)"
+      public      = false
+    },
+    {
+      method      = "POST"
+      path        = "/ws/admin/workspaces/{id}/restore"
+      integration = aws_lambda_function.workspace.invoke_arn
+      description = "Admin restore workspace"
+      public      = false
+    },
+    {
+      method      = "DELETE"
+      path        = "/ws/admin/workspaces/{id}"
+      integration = aws_lambda_function.workspace.invoke_arn
+      description = "Admin force delete workspace"
       public      = false
     }
   ]

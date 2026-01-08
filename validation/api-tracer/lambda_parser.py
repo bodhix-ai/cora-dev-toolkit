@@ -135,7 +135,15 @@ class LambdaParser:
         all_routes = []
         path = Path(directory)
         
+        # Directories to skip (build artifacts, node_modules, etc.)
+        skip_patterns = ['.build', 'node_modules', '__pycache__', '.venv', 'dist', 'build']
+        
         for file_path in path.glob(pattern):
+            # Skip files in build/artifact directories
+            if any(skip_dir in str(file_path) for skip_dir in skip_patterns):
+                logger.debug(f"Skipping build artifact: {file_path}")
+                continue
+            
             if file_path.is_file():
                 routes = self.parse_file(str(file_path))
                 all_routes.extend(routes)
@@ -772,25 +780,33 @@ class LambdaParser:
     def normalize_path(self, path: str) -> str:
         """
         Normalize path for comparison.
-        
+
         Ensures consistent path parameter format.
         Converts:
         - Express-style :param to {param}
         - Regex patterns to normalized paths
+        - All path parameter names to generic {param} for comparison
+          (e.g., {id}, {workspaceId}, {userId} all become {param})
         """
         # Ensure path starts with /
         if not path.startswith('/'):
             path = f"/{path}"
-        
+
         # Convert Express-style :param to {param}
         # e.g., /orgs/:id -> /orgs/{id}
         path = re.sub(r':(\w+)', r'{\1}', path)
-        
+
         # Convert regex patterns to normalized paths
         # e.g., /orgs/[^/]+/ai/config -> /orgs/{orgId}/ai/config
         if '[^/]+' in path or '[^/]*' in path:
             path = self._regex_to_path(path)
-        
+
+        # Normalize all path parameter names to generic {param}
+        # This allows matching paths with different param names:
+        # /ws/{id}/members matches /ws/{workspaceId}/members
+        # /ws/{wsId}/members/{memberId} matches /ws/{workspaceId}/members/{userId}
+        path = re.sub(r'\{[^}]+\}', '{param}', path)
+
         return path
     
     def get_unique_routes(self) -> Set[str]:

@@ -23,6 +23,8 @@ CREATE_REPOS=false
 INIT_GIT=true
 DRY_RUN=false
 WITH_CORE_MODULES=false
+ENABLED_MODULES=()  # Functional modules specified via --modules
+INPUT_CONFIG=""  # Path to setup.config.yaml file
 
 # --- Colors ---
 RED='\033[0;31m'
@@ -181,7 +183,22 @@ module \"${module_underscore}\" {
   
   mv "${main_tf}.tmp" "$main_tf"
   log_info "✅ Added ${module_name} to Terraform configuration"
+
+  # Also add the module's api_routes to the modular_api_gateway module_routes
+  # This ensures the module's API endpoints are registered with the API Gateway
+  local module_underscore="${module_name//-/_}"
+  local routes_pattern="module.module_mgmt.api_routes,"
+  local new_routes="module.module_mgmt.api_routes,\n    module.${module_underscore}.api_routes,"
   
+  if grep -q "module.${module_underscore}.api_routes" "$main_tf"; then
+    log_info "  Module routes already in API Gateway config"
+  else
+    # Add the module's api_routes to the concat
+    sed -i '' "s|${routes_pattern}|${new_routes}|" "$main_tf" 2>/dev/null || \
+    sed -i "s|${routes_pattern}|${new_routes}|" "$main_tf"
+    log_info "  ✅ Added ${module_name} API routes to API Gateway"
+  fi
+
   return 0
 }
 
@@ -199,6 +216,10 @@ Arguments:
                         Also used for package naming: @ai-sec/module-access
 
 Options:
+  --input <file>        Path to setup.config.yaml file that contains all project settings.
+                        This is the recommended way to create projects. The config file
+                        provides: project.name, project.folder_path, project.folder_name,
+                        project.organization, modules.enabled, and all credentials.
   --folder <name>       Parent directory name (e.g., "test-ws-06")
                         If specified, repos created in: <folder-path>/<folder>/{project}-{infra,stack}
                         If not specified, repos created directly in folder-path
@@ -219,7 +240,11 @@ Environment Variables:
   AWS_REGION            Default AWS region
 
 Examples:
-  # Create in parent folder (recommended)
+  # Create from config file (RECOMMENDED)
+  $0 --input setup.config.test-ws-12.yaml
+  # Reads all settings from the config file
+
+  # Create in parent folder (legacy CLI approach)
   $0 ai-sec --folder test-ws-06 --output-dir ~/code/sts --with-core-modules
   # Creates: ~/code/sts/test-ws-06/ai-sec-infra and ~/code/sts/test-ws-06/ai-sec-stack
 
@@ -257,6 +282,15 @@ while [[ $# -gt 0 ]]; do
       WITH_CORE_MODULES=true
       shift
       ;;
+    --modules)
+      # Parse comma-separated list of modules
+      IFS=',' read -ra ENABLED_MODULES <<< "$2"
+      shift 2
+      ;;
+    --input)
+      INPUT_CONFIG="$2"
+      shift 2
+      ;;
     --no-git)
       INIT_GIT=false
       shift
@@ -286,6 +320,45 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# --- Read from Input Config File (if specified) ---
+if [[ -n "$INPUT_CONFIG" ]]; then
+  if [[ ! -f "$INPUT_CONFIG" ]]; then
+    log_error "Input config file not found: $INPUT_CONFIG"
+    exit 1
+  fi
+  
+  log_info "Reading project configuration from: $INPUT_CONFIG"
+  
+  # Check if yq is available for YAML parsing
+  if ! command -v yq &> /dev/null; then
+    log_error "yq is required for --input option. Install with: brew install yq"
+    exit 1
+  fi
+  
+  # Read project settings from config file (only if not already set via CLI)
+  [[ -z "$PROJECT_NAME" ]] && PROJECT_NAME=$(yq '.project.name // ""' "$INPUT_CONFIG")
+  [[ -z "$PROJECT_FOLDER" ]] && PROJECT_FOLDER=$(yq '.project.folder_name // ""' "$INPUT_CONFIG")
+  [[ -z "$OUTPUT_DIR" || "$OUTPUT_DIR" == "." ]] && OUTPUT_DIR=$(yq '.project.folder_path // "."' "$INPUT_CONFIG")
+  [[ -z "$GITHUB_ORG" ]] && GITHUB_ORG=$(yq '.project.organization // ""' "$INPUT_CONFIG")
+  
+  # Read AWS region if specified
+  config_region=$(yq '.aws.region // ""' "$INPUT_CONFIG")
+  [[ -n "$config_region" && "$config_region" != "null" ]] && AWS_REGION="$config_region"
+  
+  # Expand tilde in OUTPUT_DIR
+  OUTPUT_DIR="${OUTPUT_DIR/#\~/$HOME}"
+  
+  # When using --input, always enable core modules (required for CORA projects)
+  WITH_CORE_MODULES=true
+  
+  log_info "  Project Name:   $PROJECT_NAME"
+  log_info "  Folder Name:    $PROJECT_FOLDER"
+  log_info "  Output Dir:     $OUTPUT_DIR"
+  log_info "  Organization:   $GITHUB_ORG"
+  log_info "  Core Modules:   enabled (always required)"
+  echo ""
+fi
 
 # --- Validate Arguments ---
 if [[ -z "$PROJECT_NAME" ]]; then
@@ -420,7 +493,8 @@ get_module_metadata() {
   fi
   
   if command -v yq &> /dev/null; then
-    yq ".modules.${module_name}.${field} // \"\"" "$REGISTRY_FILE"
+    # Use -r flag to output raw strings without quotes, and trim whitespace
+    yq -r ".modules.${module_name}.${field} // \"\"" "$REGISTRY_FILE" | tr -d '[:space:]'
   else
     # Fallback: grep-based extraction (limited functionality)
     log_warn "Using grep fallback for module registry (yq not available)"
@@ -445,7 +519,7 @@ resolve_module_dependencies() {
   
   # Track processed modules using space-delimited string (bash 3.x compatible)
   local processed_modules=" "
-  local resolved_modules=()
+  local _resolved_list=()  # Use underscore prefix to avoid shadowing output variable
   
   while [[ ${#modules_to_process[@]} -gt 0 ]]; do
     local current_module="${modules_to_process[0]}"
@@ -495,22 +569,23 @@ resolve_module_dependencies() {
     
     # Add current module to resolved list (if not already there)
     local already_in_resolved=false
-    for mod in "${resolved_modules[@]}"; do
+    for mod in "${_resolved_list[@]}"; do
       if [[ "$mod" == "$current_module" ]]; then
         already_in_resolved=true
         break
       fi
     done
     if ! $already_in_resolved; then
-      resolved_modules+=("$current_module")
+      _resolved_list+=("$current_module")
     fi
   done
   
   # Return resolved modules by setting the output variable using eval
-  eval "${resolved_modules_var}=(\"\${resolved_modules[@]}\")"
+  # Note: Must escape the inner array so it expands AFTER eval, not before
+  eval "${resolved_modules_var}=(\"\${_resolved_list[@]}\")"
   
   log_info "Dependency resolution complete. Modules to install:"
-  for module in "${resolved_modules[@]}"; do
+  for module in "${_resolved_list[@]}"; do
     log_info "  - ${module}"
   done
   echo ""
@@ -582,15 +657,22 @@ merge_module_configs() {
   # Always include core modules
   local all_modules=("module-access" "module-ai" "module-mgmt")
   
-  # Add enabled functional modules
+  # Add enabled functional modules from config file
   for module in "${enabled_modules[@]}"; do
     if [[ ! " ${all_modules[*]} " =~ " ${module} " ]]; then
       all_modules+=("$module")
     fi
   done
   
-  # Resolve dependencies
-  local resolved_modules=()
+  # Also add functional modules from --modules command line parameter
+  for module in "${ENABLED_MODULES[@]}"; do
+    if [[ ! " ${all_modules[*]} " =~ " ${module} " ]]; then
+      all_modules+=("$module")
+    fi
+  done
+  
+  # Resolve dependencies (don't use 'local' - eval needs to set this from the called function)
+  resolved_modules=()
   if ! resolve_module_dependencies all_modules resolved_modules; then
     log_error "Failed to resolve module dependencies"
     return 1
@@ -950,81 +1032,94 @@ READMEEOF
   log_info "Core modules created: ${CORE_MODULES[*]}"
 fi
 
-# --- Create Functional Modules from Config ---
-if ! $DRY_RUN; then
-  # Check if config file exists in the template (it gets copied with the stack)
-  STACK_CONFIG_IN_TEMPLATE="${TEMPLATE_STACK}/setup.config.${PROJECT_NAME}.yaml"
-  
-  if [[ -f "$STACK_CONFIG_IN_TEMPLATE" ]]; then
-    log_step "Creating functional modules from config..."
-    
-    # Read enabled functional modules from template config
-    enabled_modules=()
-    if command -v yq &> /dev/null; then
-      # Use yq to read the enabled modules array
-      while IFS= read -r module; do
-        [[ -n "$module" && "$module" != "null" ]] && enabled_modules+=("$module")
-      done < <(yq '.modules.enabled[]' "$STACK_CONFIG_IN_TEMPLATE" 2>/dev/null)
-    else
-      # Fallback: grep-based extraction
-      log_warn "Using grep fallback for module list (yq not available)"
-      while IFS= read -r line; do
-        # Extract module names from "- module-name" format
-        if [[ "$line" =~ ^[[:space:]]*-[[:space:]]*(module-[a-z]+) ]]; then
-          enabled_modules+=("${BASH_REMATCH[1]}")
-        fi
-      done < <(sed -n '/^modules:/,/^[^ ]/p' "$STACK_CONFIG_IN_TEMPLATE" | grep -E '^\s+- module-')
-    fi
-    
-    if [[ ${#enabled_modules[@]} -gt 0 ]]; then
-      log_info "Found ${#enabled_modules[@]} functional modules to create: ${enabled_modules[*]}"
-      
-      # Ensure packages directory exists
-      mkdir -p "${STACK_DIR}/packages"
-      
-      FUNCTIONAL_MODULES_DIR="${TOOLKIT_ROOT}/templates/_modules-functional"
-      
-      for module in "${enabled_modules[@]}"; do
-        # Skip core modules (they're already created)
-        if [[ "$module" == "module-access" ]] || [[ "$module" == "module-ai" ]] || [[ "$module" == "module-mgmt" ]]; then
-          log_info "Skipping ${module} (core module, already created)"
-          continue
-        fi
-        
-        MODULE_DIR="${STACK_DIR}/packages/${module}"
-        FUNCTIONAL_MODULE_TEMPLATE="${FUNCTIONAL_MODULES_DIR}/${module}"
-        
-        if [[ -d "$FUNCTIONAL_MODULE_TEMPLATE" ]]; then
-          log_info "Creating ${module} from functional module template..."
-          cp -r "$FUNCTIONAL_MODULE_TEMPLATE" "$MODULE_DIR"
-          
-          # Replace standardized placeholders ({{...}} format only)
-          find "$MODULE_DIR" -type f \( -name "*.py" -o -name "*.ts" -o -name "*.tsx" -o -name "*.json" -o -name "*.tf" -o -name "*.md" -o -name "*.sql" \) | while read -r file; do
-            # Replace machine-readable project name
-            sed -i '' "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file" 2>/dev/null || \
-            sed -i "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file"
-            
-            # Replace display name (fallback to PROJECT_NAME if not set)
-            PROJECT_DISPLAY_NAME="${PROJECT_DISPLAY_NAME:-${PROJECT_NAME}}"
-            sed -i '' "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_DISPLAY_NAME}/g" "$file" 2>/dev/null || \
-            sed -i "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_DISPLAY_NAME}/g" "$file"
-          done
-          
-          log_info "✅ Created ${module}"
-          
-          # Add module to Terraform configuration
-          add_module_to_terraform "$module" "$INFRA_DIR" "$PROJECT_NAME"
-        else
-          log_warn "Functional module template not found: ${FUNCTIONAL_MODULE_TEMPLATE}"
-          log_info "Skipping ${module}"
-        fi
-      done
-    else
-      log_info "No functional modules enabled in config"
-    fi
-  else
-    log_info "No project-specific config found in template, skipping functional modules"
+# --- Create Functional Modules from config file or --modules parameter ---
+# First, read modules from config file if it exists
+CONFIG_MODULES=()
+CONFIG_FILE_FOR_MODULES="${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml"
+if [[ -f "$CONFIG_FILE_FOR_MODULES" ]] && ! $DRY_RUN; then
+  if command -v yq &> /dev/null; then
+    while IFS= read -r module; do
+      [[ -n "$module" && "$module" != "null" ]] && CONFIG_MODULES+=("$module")
+    done < <(yq '.modules.enabled[]' "$CONFIG_FILE_FOR_MODULES" 2>/dev/null)
   fi
+  if [[ ${#CONFIG_MODULES[@]} -gt 0 ]]; then
+    log_info "Found modules in config file: ${CONFIG_MODULES[*]}"
+    # Merge config modules into ENABLED_MODULES
+    for module in "${CONFIG_MODULES[@]}"; do
+      if [[ ! " ${ENABLED_MODULES[*]} " =~ " ${module} " ]]; then
+        ENABLED_MODULES+=("$module")
+      fi
+    done
+  fi
+fi
+
+if ! $DRY_RUN && [[ ${#ENABLED_MODULES[@]} -gt 0 ]]; then
+  log_step "Creating functional modules..."
+  log_info "Found ${#ENABLED_MODULES[@]} functional modules to create: ${ENABLED_MODULES[*]}"
+
+  # Ensure packages directory exists
+  mkdir -p "${STACK_DIR}/packages"
+
+  FUNCTIONAL_MODULES_DIR="${TOOLKIT_ROOT}/templates/_modules-functional"
+
+  for module in "${ENABLED_MODULES[@]}"; do
+    # Skip core modules (they're created separately with --with-core-modules)
+    if [[ "$module" == "module-access" ]] || [[ "$module" == "module-ai" ]] || [[ "$module" == "module-mgmt" ]]; then
+      log_info "Skipping ${module} (core module, use --with-core-modules)"
+      continue
+    fi
+
+    MODULE_DIR="${STACK_DIR}/packages/${module}"
+    FUNCTIONAL_MODULE_TEMPLATE="${FUNCTIONAL_MODULES_DIR}/${module}"
+
+    if [[ -d "$FUNCTIONAL_MODULE_TEMPLATE" ]]; then
+      log_info "Creating ${module} from functional module template..."
+      cp -r "$FUNCTIONAL_MODULE_TEMPLATE" "$MODULE_DIR"
+
+      # Replace standardized placeholders ({{...}} format only)
+      find "$MODULE_DIR" -type f \( -name "*.py" -o -name "*.ts" -o -name "*.tsx" -o -name "*.json" -o -name "*.tf" -o -name "*.md" -o -name "*.sql" \) | while read -r file; do
+        # Replace machine-readable project name
+        sed -i '' "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file" 2>/dev/null || \
+        sed -i "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file"
+
+        # Replace display name (fallback to PROJECT_NAME if not set)
+        PROJECT_DISPLAY_NAME="${PROJECT_DISPLAY_NAME:-${PROJECT_NAME}}"
+        sed -i '' "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_DISPLAY_NAME}/g" "$file" 2>/dev/null || \
+        sed -i "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_DISPLAY_NAME}/g" "$file"
+      done
+
+      # Copy module routes to app directory if they exist
+      routes_dir="${FUNCTIONAL_MODULE_TEMPLATE}/routes"
+      if [[ -d "$routes_dir" ]]; then
+        app_routes_dir="${STACK_DIR}/apps/web/app"
+        log_info "  Copying routes from ${module}..."
+
+        # Copy each route directory
+        find "$routes_dir" -name "page.tsx" | while read -r route_file; do
+          relative_path="${route_file#$routes_dir/}"
+          target_dir="${app_routes_dir}/$(dirname "$relative_path")"
+
+          mkdir -p "$target_dir"
+          cp "$route_file" "$target_dir/"
+
+          # Replace placeholders in the copied route file
+          target_file="${target_dir}/$(basename "$route_file")"
+          sed -i '' "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$target_file" 2>/dev/null || \
+          sed -i "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$target_file"
+
+          log_info "    ✅ Created route: /$(dirname "$relative_path")"
+        done
+      fi
+
+      log_info "✅ Created ${module}"
+
+      # Add module to Terraform configuration
+      add_module_to_terraform "$module" "$INFRA_DIR" "$PROJECT_NAME"
+    else
+      log_warn "Functional module template not found: ${FUNCTIONAL_MODULE_TEMPLATE}"
+      log_info "Skipping ${module}"
+    fi
+  done
 fi
 
 # --- Initialize Git ---

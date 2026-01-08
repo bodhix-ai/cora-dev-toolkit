@@ -180,8 +180,24 @@ class CoraComplianceChecker:
             issues=issues
         )
     
-    def check_standard_2_authentication(self, content: str) -> StandardCheck:
+    # Scheduled/background jobs that don't receive user requests
+    SCHEDULED_JOB_LAMBDAS = ['cleanup']
+    
+    def check_standard_2_authentication(self, content: str, lambda_name: str = "") -> StandardCheck:
         """Check Standard 2: Authentication & Authorization"""
+        # Whitelist: Scheduled jobs triggered by EventBridge don't receive user JWTs
+        is_scheduled_job = any(sj in lambda_name for sj in self.SCHEDULED_JOB_LAMBDAS)
+        
+        if is_scheduled_job:
+            return StandardCheck(
+                standard_number=2,
+                standard_name="Authentication & Authorization",
+                is_compliant=True,
+                score=1.0,
+                details=["ℹ Scheduled job (EventBridge trigger)", "✓ No user authentication required"],
+                issues=[]
+            )
+        
         auth_checks = {
             'get_user_from_event': False,
             'get_supabase_user_id': False,
@@ -230,7 +246,8 @@ class CoraComplianceChecker:
     def check_standard_3_multi_tenancy(self, content: str, lambda_name: str = "") -> StandardCheck:
         """Check Standard 3: Multi-tenancy"""
         # Whitelist: Platform-level Lambdas that manage cross-org infrastructure
-        platform_lambdas = ['idp-config', 'provider', 'lambda-mgmt']
+        # Also includes scheduled jobs (cleanup) that process all orgs in background
+        platform_lambdas = ['idp-config', 'provider', 'lambda-mgmt', 'cleanup']
         is_platform_lambda = any(pl in lambda_name for pl in platform_lambdas)
         
         org_id_count = 0
@@ -275,8 +292,21 @@ class CoraComplianceChecker:
             issues=issues
         )
     
-    def check_standard_4_validation(self, content: str) -> StandardCheck:
+    def check_standard_4_validation(self, content: str, lambda_name: str = "") -> StandardCheck:
         """Check Standard 4: Validation"""
+        # Whitelist: Scheduled jobs have minimal validation needs (no user input)
+        is_scheduled_job = any(sj in lambda_name for sj in self.SCHEDULED_JOB_LAMBDAS)
+        
+        if is_scheduled_job:
+            return StandardCheck(
+                standard_number=4,
+                standard_name="Validation",
+                is_compliant=True,
+                score=1.0,
+                details=["ℹ Scheduled job (EventBridge trigger)", "✓ No user input validation required"],
+                issues=[]
+            )
+        
         validation_count = 0
         validation_types = []
         
@@ -318,8 +348,24 @@ class CoraComplianceChecker:
             issues=issues
         )
     
-    def check_standard_5_database_helpers(self, content: str) -> StandardCheck:
+    def check_standard_5_database_helpers(self, content: str, lambda_name: str = "") -> StandardCheck:
         """Check Standard 5: Database Helpers"""
+        # Whitelist: Scheduled jobs use RPC calls, not direct DB operations
+        is_scheduled_job = any(sj in lambda_name for sj in self.SCHEDULED_JOB_LAMBDAS)
+        
+        # Check for RPC calls (used by cleanup lambda)
+        rpc_count = len(re.findall(r'common\.rpc\s*\(', content))
+        
+        if is_scheduled_job and rpc_count > 0:
+            return StandardCheck(
+                standard_number=5,
+                standard_name="Database Helpers",
+                is_compliant=True,
+                score=1.0,
+                details=["ℹ Scheduled job (EventBridge trigger)", f"✓ Uses {rpc_count} RPC call(s)"],
+                issues=[]
+            )
+        
         helper_count = 0
         raw_sql_count = 0
         
@@ -479,13 +525,13 @@ class CoraComplianceChecker:
         alias_match = self.COMMON_ALIAS.search(content)
         common_alias = alias_match.group(1) if alias_match else 'org_common'
         
-        # Check all 7 standards (pass lambda_name to multi-tenancy check for whitelisting)
+        # Check all 7 standards (pass lambda_name for whitelisting scheduled jobs)
         standards = [
             self.check_standard_1_response_format(content, common_alias),
-            self.check_standard_2_authentication(content),
+            self.check_standard_2_authentication(content, lambda_name),
             self.check_standard_3_multi_tenancy(content, lambda_name),
-            self.check_standard_4_validation(content),
-            self.check_standard_5_database_helpers(content),
+            self.check_standard_4_validation(content, lambda_name),
+            self.check_standard_5_database_helpers(content, lambda_name),
             self.check_standard_6_error_handling(content),
             self.check_standard_7_batch_operations(content),
         ]

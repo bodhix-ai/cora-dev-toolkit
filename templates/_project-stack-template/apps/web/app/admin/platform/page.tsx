@@ -26,7 +26,7 @@ export default function PlatformAdminPage() {
         {adminCards.map((card) => (
           <Grid item xs={12} sm={6} md={4} key={card.id}>
             <Card>
-              <Link href={card.href as any} style={{ textDecoration: "none", color: "inherit" }}>
+              <Link href={card.href as any} style={{ textDecoration: "none", color: "inherit" }} aria-label={card.title}>
                 <CardActionArea>
                   <CardContent sx={{ textAlign: "center", py: 4 }}>
                     <Box sx={{ color: card.color || "primary.main", mb: 2 }}>
