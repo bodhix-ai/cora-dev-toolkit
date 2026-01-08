@@ -110,7 +110,7 @@ log_info "Skip Build:  ${SKIP_BUILD}"
 echo ""
 
 # Step 0: Sync configuration to Terraform variables
-log_step "Step 0/4: Syncing configuration to Terraform variables..."
+log_step "Step 0/3: Syncing configuration to Terraform variables..."
 if [ -f "${SCRIPT_DIR}/sync-config-to-terraform.sh" ]; then
   "${SCRIPT_DIR}/sync-config-to-terraform.sh" "${ENVIRONMENT}"
   echo ""
@@ -122,7 +122,7 @@ fi
 
 # Step 1: Build Lambda packages
 if ! $SKIP_BUILD; then
-  log_step "Step 1/4: Building Lambda packages..."
+  log_step "Step 1/3: Building Lambda packages..."
   
   # Build CORA modules (module-mgmt, module-ai, module-access)
   "${SCRIPT_DIR}/build-cora-modules.sh"
@@ -146,24 +146,17 @@ else
 fi
 
 # Step 2: Upload to S3
-log_step "Step 2/4: Uploading artifacts to S3..."
+log_step "Step 2/3: Uploading artifacts to S3..."
 "${SCRIPT_DIR}/deploy-cora-modules.sh"
 echo ""
 
-# Step 3: Apply Terraform
-log_step "Step 3/4: Applying Terraform infrastructure..."
+# Step 3: Apply Terraform (includes environment variable updates)
+log_step "Step 3/3: Applying Terraform infrastructure..."
 "${SCRIPT_DIR}/deploy-terraform.sh" "${ENVIRONMENT}" ${AUTO_APPROVE}
 echo ""
 
-# Step 4: Update environment variables
-log_step "Step 4/4: Updating frontend environment variables..."
-if [ -f "${SCRIPT_DIR}/update-env-from-terraform.sh" ]; then
-  "${SCRIPT_DIR}/update-env-from-terraform.sh" "${ENVIRONMENT}"
-  echo ""
-else
-  log_warn "update-env-from-terraform.sh not found - skipping"
-  echo ""
-fi
+# Note: deploy-terraform.sh already calls update-env-from-terraform.sh
+# so we don't need to call it again here
 
 # --- Summary ---
 echo "========================================"
@@ -177,3 +170,4 @@ log_info "  • View API Gateway URL in Terraform outputs"
 log_info "  • Test endpoints with api-tracer"
 log_info "  • Run validation suite"
 echo ""
+log_info ""

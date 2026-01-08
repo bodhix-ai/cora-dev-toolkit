@@ -46,11 +46,25 @@ interface MergedModuleConfig {
  */
 function loadModuleConfig(): MergedModuleConfig {
   try {
-    const configPath = path.join(process.cwd(), "config", "cora-modules.config.yaml");
+    // Try multiple possible config locations to handle both:
+    // 1. Running from apps/web directory (process.cwd() = apps/web)
+    // 2. Running from monorepo root via pnpm/turbo (process.cwd() = monorepo root)
+    const possiblePaths = [
+      path.join(process.cwd(), "config", "cora-modules.config.yaml"),
+      path.join(process.cwd(), "apps", "web", "config", "cora-modules.config.yaml"),
+    ];
+    
+    let configPath = "";
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        configPath = p;
+        break;
+      }
+    }
     
     // Check if config file exists
-    if (!fs.existsSync(configPath)) {
-      console.warn(`Module config not found at ${configPath}. Using empty config.`);
+    if (!configPath) {
+      console.warn(`Module config not found. Checked:\n  ${possiblePaths.join("\n  ")}\nUsing empty config.`);
       return {};
     }
     

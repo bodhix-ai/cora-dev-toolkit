@@ -2,161 +2,113 @@
 
 ## Current Focus
 
-**Session 72: Validation Suite Zero Errors** - ✅ **COMPLETE**
+**Session 73: Deploy Script & Module Config Path Fixes** - ✅ **COMPLETE**
 
-## Session: January 8, 2026 (8:50 AM - 10:00 AM) - Session 72
+## Session: January 8, 2026 (10:20 AM - 11:00 AM) - Session 73
 
-### 🎯 Focus: Drive Validation Errors to Zero
+### 🎯 Focus: Fix Post-Deployment Issues
 
-**Context:** Session 71 fixed API Gateway route integration. This session resolved ALL remaining validation errors to achieve 0 errors on fresh project creation.
+**Context:** After running deploy-all.sh, users experienced "Loading your session..." stuck state and missing platform admin functionality. Root cause analysis identified two bugs.
 
-**Status:** ✅ **VALIDATION ERRORS = 0 ACHIEVED**
+**Status:** ✅ **DEPLOYMENT ISSUES FIXED**
 
 ---
 
 ## ✅ Issues Fixed This Session
 
-### 1. API Tracer Route Detection (FIXED)
-- **Problem:** Lambda parser wasn't detecting routes from docstrings
-- **Fix:** Updated `lambda_parser.py` to parse route docstrings per new standard
+### 1. deploy-all.sh Double-Update Bug (FIXED)
+- **Problem:** Script called `update-env-from-terraform.sh` twice - once in `deploy-terraform.sh` (worked) and again as Step 4/4 (got empty URL and overwrote)
+- **Fix:** Removed redundant Step 4 from `deploy-all.sh`, updated step numbering from 0-4 to 0-3
+- **File:** `templates/_project-infra-template/scripts/deploy-all.sh`
 - **Status:** ✅ FIXED
 
-### 2. Accessibility Errors - Admin Card Links (FIXED)
-- **Problem:** `apps/web/app/admin/org/page.tsx` and `apps/web/app/admin/platform/page.tsx` had links without text content
-- **Fix:** Added `aria-label` attributes to all card links
+### 2. moduleRegistry.ts Path Resolution (FIXED)
+- **Problem:** Used `process.cwd()` which resolves to monorepo root when running via pnpm/turbo, but config file is at `apps/web/config/`
+- **Fix:** Added multi-path lookup checking both `config/` and `apps/web/config/` locations
+- **File:** `templates/_project-stack-template/apps/web/lib/moduleRegistry.ts`
 - **Status:** ✅ FIXED
-
-### 3. CORA Compliance Errors - Workspace Lambda (FIXED)
-- **Problem:** workspace lambda was missing required compliance elements
-- **Fix:** Updated lambda to include all CORA compliance requirements
-- **Status:** ✅ FIXED
-
-### 4. Import Validator - org_common Module (FIXED)
-- **Problem:** When using `--input` option, core modules weren't created
-- **Fix:** Script now auto-enables `WITH_CORE_MODULES=true` when using `--input`
-- **Status:** ✅ FIXED
-
----
-
-## 🚀 New Features
-
-### Lambda Route Docstring Standard
-- **Document:** `docs/standards/standard_LAMBDA-ROUTE-DOCSTRING.md`
-- **Purpose:** Enables static analysis of Lambda routes without runtime inspection
-- **Format:**
-```python
-"""
-Module Name - Description
-
-Routes - Category:
-- GET /path - Description
-- POST /path/{id} - Description
-"""
-```
-
-### Config File Input Option
-- **Feature:** `--input` option for `create-cora-project.sh`
-- **Usage:** `./scripts/create-cora-project.sh --input setup.config.yaml`
-- **Reads:** project.name, project.folder_path, project.folder_name, project.organization
-- **Auto-enables:** Core modules (always required for CORA projects)
 
 ---
 
 ## 📋 Test Results
 
-### test-ws-12 Validation: ✅ SUCCESS - ZERO ERRORS
+### test-ws-12 Verification: ✅ ALL CHECKS PASSED
 
-```
-================================================================================
-                            CORA Validation Suite
-================================================================================
-Overall Status: ✓ PASSED
-Certification: SILVER
-Total Errors: 0
-Total Warnings: 173
-================================================================================
-
-Structure Validator: ✓ PASSED
-Portability Validator: ✓ PASSED (17 warnings)
-Accessibility Validator: ✓ PASSED (16 warnings)
-API Tracer: ✓ PASSED (70 warnings)
-Import Validator: ✓ PASSED
-Schema Validator: ✓ PASSED (60 warnings)
-CORA Compliance: ✓ PASSED (10 warnings)
-Frontend Compliance: ✓ PASSED
-```
+| Check | Status |
+|-------|--------|
+| Validation Suite | ✅ 0 errors, SILVER certification |
+| API URL in .env.local | ✅ `https://hk5bzq4kv3.execute-api.us-east-1.amazonaws.com` |
+| cora-modules.config.yaml | ✅ Contains all 4 module admin cards |
+| moduleRegistry.ts multi-path fix | ✅ Checks both config locations |
+| User Login | ✅ No "Loading your session..." hang |
+| Get Workspaces | ✅ Working |
+| Create Workspace | ✅ Working |
 
 ---
 
-## 📁 Files Modified
-
-### Standards & Documentation
-1. `docs/standards/standard_LAMBDA-ROUTE-DOCSTRING.md` - NEW: Lambda route documentation standard
-2. `.clinerules` - Updated to reference Lambda route docstring standard
-3. `templates/_module-template/README.md` - Added docstring requirement for Lambda functions
-
-### Validation Fixes
-4. `validation/api-tracer/lambda_parser.py` - Parse routes from docstrings
-5. `validation/api-tracer/gateway_parser.py` - Updated route parsing
-6. `validation/api-tracer/validator.py` - Improved validation logic
-7. `validation/cora-compliance-validator/validator.py` - Fixed compliance checks
+## 📁 Files Modified This Session
 
 ### Template Fixes
-8. `templates/_project-stack-template/apps/web/app/admin/org/page.tsx` - Added aria-labels
-9. `templates/_project-stack-template/apps/web/app/admin/platform/page.tsx` - Added aria-labels
-10. `templates/_modules-functional/module-ws/backend/lambdas/workspace/lambda_function.py` - Added route docstring
-11. `templates/_modules-functional/module-ws/infrastructure/outputs.tf` - Route definitions
-
-### Script Improvements
-12. `scripts/create-cora-project.sh` - Added `--input` option, auto-enable core modules
+1. `templates/_project-infra-template/scripts/deploy-all.sh` - Removed redundant Step 4
+2. `templates/_project-stack-template/apps/web/lib/moduleRegistry.ts` - Multi-path config lookup
 
 ---
 
-## 🔑 Key Findings
+## � Outstanding Issues (Prioritized)
 
-### 1. Config-as-Single-Source-of-Truth
-The `--input` option now reads project configuration from YAML:
-- project.name, folder_path, folder_name, organization
-- Core modules always enabled (required for all CORA projects)
+### Priority 1: Workspace Selection/Navigation
+- **Issue:** After workspace is created, user cannot select the workspace to navigate to the specific workspace page
+- **Impact:** Core functionality broken - users can't access their workspaces
+- **Location:** `module-ws/frontend/components/` or `/ws/page.tsx`
 
-### 2. Lambda Route Documentation Pattern
-Static analysis of Lambda routes is now possible through docstring parsing:
-- Validators can detect routes without runtime
-- AI agents can understand API structure
-- Documentation stays in sync with implementation
+### Priority 2: Workspace Delete UI Missing
+- **Issue:** No option in UI for deleting workspaces
+- **Impact:** Cannot test full stack delete functionality
+- **Location:** Workspace card or detail page needs delete button
 
----
+### Priority 3: Workspace Card Display Issues
+- **Issue:** Color and tags selected for the workspace do not display on the workspace card
+- **Impact:** Visual feedback missing - user doesn't see their customizations
+- **Location:** Workspace card component
 
-## 📊 Warnings Summary (173 total)
+### Priority 4: Workspace Favorites API Error
+- **Issue:** WS favorites API returns 400 error
+- **Impact:** Cannot mark workspaces as favorites
+- **Location:** `module-ws/backend/lambdas/workspace/lambda_function.py` - favorites endpoint
 
-| Category | Count | Type |
-|----------|-------|------|
-| Portability | 17 | Hardcoded AWS regions (expected in config files) |
-| Accessibility | 16 | Placeholder-not-label, form error accessibility |
-| API Tracer | 70 | Orphaned routes (intentional - internal APIs) |
-| Schema Validator | 60 | Query parsing warnings |
-| CORA Compliance | 10 | Batch operations (not needed for these lambdas) |
+### Priority 5: Platform Admin Workspace Page
+- **Issue:** No functionality available on platform admin page for workspaces
+- **Impact:** Platform admins cannot manage workspaces across all organizations
+- **Expected:** Should have functionality related to all orgs vs user-centric org context filtering
+- **Location:** `/admin/workspaces/page.tsx` and related components
 
 ---
 
 ## 📝 Session Summary
 
 ### Completed Work
-1. ✅ Fixed API Tracer to parse Lambda route docstrings
-2. ✅ Fixed accessibility errors in admin pages
-3. ✅ Created Lambda Route Docstring Standard document
-4. ✅ Added --input option to create-cora-project.sh
-5. ✅ Auto-enable core modules when using --input
-6. ✅ Verified test-ws-12 with 0 validation errors
+1. ✅ Identified root cause of "Loading your session..." (empty API URL)
+2. ✅ Fixed deploy-all.sh redundant update-env step
+3. ✅ Fixed moduleRegistry.ts multi-path config lookup
+4. ✅ Recreated test-ws-12 project with 0 validation errors
+5. ✅ Verified all config files properly populated
+6. ✅ User successfully logged in and created workspace
 
 ### Key Outcomes
-- **Validation:** ✅ **0 ERRORS** - SILVER Certification
-- **Project Creation:** ✅ Config file as single source of truth
-- **Documentation:** ✅ New Lambda route docstring standard
+- **Deploy Script:** ✅ No longer overwrites API URL with empty string
+- **Module Config:** ✅ Found regardless of working directory
+- **User Experience:** ✅ Login works, workspace creation works
 
 ---
 
 ## Previous Sessions Summary
+
+### Session 72: Validation Suite Zero Errors (COMPLETE)
+- Fixed API Tracer to parse Lambda route docstrings
+- Fixed accessibility errors in admin pages
+- Created Lambda Route Docstring Standard
+- Added --input option to create-cora-project.sh
+- **Result:** 0 validation errors, SILVER certification
 
 ### Session 71: API Gateway Route Fix (COMPLETE)
 - Fixed functional module API routes not being added to API Gateway
@@ -172,8 +124,8 @@ Static analysis of Lambda routes is now possible through docstring parsing:
 
 ---
 
-**Status:** ✅ **SESSION 72 COMPLETE**  
-**Validation Errors:** ✅ **0 ERRORS ACHIEVED**  
-**Certification Level:** SILVER  
-**Next Step:** Push changes, create PR  
-**Updated:** January 8, 2026, 10:00 AM EST
+**Status:** ✅ **SESSION 73 COMPLETE**  
+**Deploy Issues:** ✅ **FIXED**  
+**Outstanding:** 5 workspace-related issues (see prioritized list above)  
+**Next Step:** Push changes to GitHub, then address Priority 1 (workspace selection)  
+**Updated:** January 8, 2026, 10:55 AM EST
