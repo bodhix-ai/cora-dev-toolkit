@@ -16,8 +16,8 @@ Routes - Workspaces:
 Routes - Members:
 - GET /ws/{id}/members - List workspace members
 - POST /ws/{id}/members - Add member
-- PUT /ws/{wsId}/members/{memberId} - Update member role
-- DELETE /ws/{wsId}/members/{memberId} - Remove member
+- PUT /ws/{id}/members/{memberId} - Update member role
+- DELETE /ws/{id}/members/{memberId} - Remove member
 
 Routes - Favorites:
 - POST /ws/{id}/favorite - Toggle favorite
@@ -115,13 +115,13 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
             return handle_add_member(workspace_id, supabase_user_id, body)
         
         elif '/members/' in path and http_method == 'PUT':
-            workspace_id = path_parameters.get('wsId')
+            workspace_id = path_parameters.get('id')
             member_id = path_parameters.get('memberId')
             body = json.loads(event.get('body', '{}'))
             return handle_update_member(workspace_id, member_id, supabase_user_id, body)
         
         elif '/members/' in path and http_method == 'DELETE':
-            workspace_id = path_parameters.get('wsId')
+            workspace_id = path_parameters.get('id')
             member_id = path_parameters.get('memberId')
             return handle_remove_member(workspace_id, member_id, supabase_user_id)
         
@@ -170,40 +170,50 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
 # =============================================================================
 
 def _transform_workspace(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Transform database workspace record to API response format."""
+    """Transform database workspace record to API response format.
+    
+    Note: Returns snake_case to match frontend TypeScript types.
+    """
     return {
         'id': data.get('id'),
-        'orgId': data.get('org_id'),
+        'org_id': data.get('org_id'),
         'name': data.get('name'),
         'description': data.get('description'),
         'color': data.get('color'),
         'icon': data.get('icon'),
         'tags': data.get('tags', []),
         'status': data.get('status'),
-        'userRole': data.get('user_role'),
-        'isFavorited': data.get('is_favorited', False),
-        'favoritedAt': data.get('favorited_at'),
-        'memberCount': data.get('member_count'),
-        'createdAt': data.get('created_at'),
-        'updatedAt': data.get('updated_at'),
-        'createdBy': data.get('created_by'),
-        'updatedBy': data.get('updated_by'),
+        'user_role': data.get('user_role'),
+        'is_favorited': data.get('is_favorited', False),
+        'favorited_at': data.get('favorited_at'),
+        'member_count': data.get('member_count'),
+        'created_at': data.get('created_at'),
+        'updated_at': data.get('updated_at'),
+        'created_by': data.get('created_by'),
+        'updated_by': data.get('updated_by'),
+        'deleted_at': data.get('deleted_at'),
+        'retention_days': data.get('retention_days'),
     }
 
 
 def _transform_member(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Transform database member record to API response format."""
+    """Transform database member record to API response format.
+    
+    Note: Returns snake_case with nested profile to match frontend TypeScript types.
+    """
     return {
         'id': data.get('id'),
-        'wsId': data.get('ws_id'),
-        'userId': data.get('user_id'),
-        'wsRole': data.get('ws_role'),
-        'email': data.get('email'),
-        'displayName': data.get('display_name'),
-        'avatarUrl': data.get('avatar_url'),
-        'createdAt': data.get('created_at'),
-        'updatedAt': data.get('updated_at'),
-        'createdBy': data.get('created_by'),
+        'ws_id': data.get('ws_id'),
+        'user_id': data.get('user_id'),
+        'ws_role': data.get('ws_role'),
+        'profile': {
+            'email': data.get('email'),
+            'display_name': data.get('display_name'),
+            'avatar_url': data.get('avatar_url'),
+        },
+        'created_at': data.get('created_at'),
+        'updated_at': data.get('updated_at'),
+        'created_by': data.get('created_by'),
     }
 
 
@@ -941,9 +951,9 @@ def handle_toggle_favorite(
         
         logger.info(f"Toggled favorite for workspace {workspace_id}: {result.get('is_favorited')}")
         return common.success_response({
-            'workspaceId': result.get('workspace_id'),
-            'isFavorited': result.get('is_favorited'),
-            'favoritedAt': result.get('favorited_at')
+            'workspace_id': result.get('workspace_id'),
+            'is_favorited': result.get('is_favorited'),
+            'favorited_at': result.get('favorited_at')
         })
     
     except Exception as e:

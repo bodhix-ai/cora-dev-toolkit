@@ -7,8 +7,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
 import { createWorkspaceApiClient } from "../lib/api";
 import type { WorkspaceConfig } from "../types";
+
+export interface UseWorkspaceConfigOptions {
+  /** Organization ID (optional - falls back to context) */
+  orgId?: string;
+}
 
 export interface UseWorkspaceConfigReturn {
   /** Workspace configuration */
@@ -39,8 +45,13 @@ export interface UseWorkspaceConfigReturn {
   defaultColor: string;
 }
 
-export function useWorkspaceConfig(): UseWorkspaceConfigReturn {
+export function useWorkspaceConfig(options: UseWorkspaceConfigOptions = {}): UseWorkspaceConfigReturn {
+  const { orgId: providedOrgId } = options;
+  
   const { data: session } = useSession();
+  const { currentOrganization } = useOrganizationContext();
+  const orgId = providedOrgId || currentOrganization?.orgId || "";
+  
   const [config, setConfig] = useState<WorkspaceConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +59,7 @@ export function useWorkspaceConfig(): UseWorkspaceConfigReturn {
 
   // Fetch configuration
   const fetchConfig = useCallback(async () => {
-    if (!session?.accessToken) {
+    if (!session?.accessToken || !orgId) {
       setLoading(false);
       return;
     }
@@ -58,7 +69,7 @@ export function useWorkspaceConfig(): UseWorkspaceConfigReturn {
 
     try {
       const client = createWorkspaceApiClient(session.accessToken as string);
-      const cfg = await client.getConfig();
+      const cfg = await client.getConfig(orgId);
       setConfig(cfg);
     } catch (err) {
       console.error("Failed to fetch workspace config:", err);
@@ -66,7 +77,7 @@ export function useWorkspaceConfig(): UseWorkspaceConfigReturn {
     } finally {
       setLoading(false);
     }
-  }, [session?.accessToken]);
+  }, [session?.accessToken, orgId]);
 
   // Auto-fetch on mount
   useEffect(() => {
@@ -76,14 +87,14 @@ export function useWorkspaceConfig(): UseWorkspaceConfigReturn {
   // Update configuration
   const updateConfig = useCallback(
     async (data: Partial<WorkspaceConfig>): Promise<WorkspaceConfig | null> => {
-      if (!session?.accessToken) return null;
+      if (!session?.accessToken || !orgId) return null;
 
       setIsSaving(true);
       setError(null);
 
       try {
         const client = createWorkspaceApiClient(session.accessToken as string);
-        const updated = await client.updateConfig(data);
+        const updated = await client.updateConfig(data, orgId);
         setConfig(updated);
         return updated;
       } catch (err) {
@@ -94,7 +105,7 @@ export function useWorkspaceConfig(): UseWorkspaceConfigReturn {
         setIsSaving(false);
       }
     },
-    [session?.accessToken]
+    [session?.accessToken, orgId]
   );
 
   // Derived values with defaults

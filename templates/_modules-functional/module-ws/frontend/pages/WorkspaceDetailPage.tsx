@@ -41,6 +41,8 @@ import type { WorkspaceApiClient } from "../lib/api";
 export interface WorkspaceDetailPageProps {
   /** Workspace ID */
   workspaceId: string;
+  /** Organization ID */
+  orgId: string;
   /** Current user ID */
   userId?: string;
   /** API client for workspace operations */
@@ -53,6 +55,7 @@ export interface WorkspaceDetailPageProps {
 
 export function WorkspaceDetailPage({
   workspaceId,
+  orgId,
   userId,
   apiClient,
   onBack,
@@ -72,7 +75,7 @@ export function WorkspaceDetailPage({
     updateMember,
     removeMember,
     refetch,
-  } = useWorkspace(workspaceId, { autoFetch: true });
+  } = useWorkspace(workspaceId, { autoFetch: true, orgId });
 
   if (loading) {
     return (
@@ -149,7 +152,7 @@ export function WorkspaceDetailPage({
           Workspaces
         </Link>
         <Typography variant="body2" color="text.primary">
-          {workspace.name}
+          {workspace?.name || "Workspace"}
         </Typography>
       </Breadcrumbs>
 
@@ -162,7 +165,7 @@ export function WorkspaceDetailPage({
               width: 60,
               height: 60,
               borderRadius: 2,
-              backgroundColor: workspace.color,
+              backgroundColor: workspace?.color || "#666",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -171,17 +174,17 @@ export function WorkspaceDetailPage({
               fontWeight: 600,
             }}
           >
-            {workspace.name.charAt(0).toUpperCase()}
+            {workspace?.name?.charAt(0).toUpperCase() || "W"}
           </Box>
 
           {/* Title and meta */}
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-              <Typography variant="h4">{workspace.name}</Typography>
+              <Typography variant="h4">{workspace?.name || "Workspace"}</Typography>
               <Chip
-                label={STATUS_DISPLAY_NAMES[workspace.status]}
+                label={STATUS_DISPLAY_NAMES[workspace?.status || "active"]}
                 size="small"
-                color={workspace.status === "active" ? "success" : "warning"}
+                color={workspace?.status === "active" ? "success" : "warning"}
               />
               {userRole && (
                 <Chip
@@ -191,12 +194,12 @@ export function WorkspaceDetailPage({
                 />
               )}
             </Box>
-            {workspace.description && (
+            {workspace?.description && (
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 {workspace.description}
               </Typography>
             )}
-            {workspace.tags.length > 0 && (
+            {workspace?.tags && workspace.tags.length > 0 && (
               <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
                 {workspace.tags.map((tag) => (
                   <Chip key={tag} label={tag} size="small" variant="outlined" />
@@ -209,10 +212,10 @@ export function WorkspaceDetailPage({
           <Box sx={{ display: "flex", gap: 1 }}>
             <IconButton
               onClick={handleToggleFavorite}
-              color={workspace.is_favorited ? "warning" : "default"}
-              aria-label={workspace.is_favorited ? "Remove from favorites" : "Add to favorites"}
+              color={workspace?.is_favorited ? "warning" : "default"}
+              aria-label={workspace?.is_favorited ? "Remove from favorites" : "Add to favorites"}
             >
-              {workspace.is_favorited ? <Star /> : <StarBorder />}
+              {workspace?.is_favorited ? <Star /> : <StarBorder />}
             </IconButton>
             {canEdit && (
               <>
@@ -228,7 +231,7 @@ export function WorkspaceDetailPage({
                   startIcon={<Archive />}
                   onClick={handleArchiveClick}
                 >
-                  {workspace.status === "active" ? "Archive" : "Unarchive"}
+                  {workspace?.status === "active" ? "Archive" : "Unarchive"}
                 </Button>
               </>
             )}
@@ -249,7 +252,7 @@ export function WorkspaceDetailPage({
       {/* Members section */}
       <Paper sx={{ p: 3 }}>
         <MemberList
-          members={members}
+          members={members || []}
           currentUserRole={userRole}
           currentUserId={userId}
           onUpdateRole={handleUpdateMemberRole}
@@ -266,7 +269,7 @@ export function WorkspaceDetailPage({
         open={editDialogOpen}
         onClose={() => setEditDialogOpen(false)}
         workspace={workspace}
-        onUpdate={apiClient?.updateWorkspace}
+        onUpdate={apiClient ? async (wsId, values) => apiClient.updateWorkspace(wsId, values, orgId) : undefined}
         onUpdateSuccess={handleUpdateSuccess}
       />
     </Container>

@@ -1094,13 +1094,21 @@ if ! $DRY_RUN && [[ ${#ENABLED_MODULES[@]} -gt 0 ]]; then
         app_routes_dir="${STACK_DIR}/apps/web/app"
         log_info "  Copying routes from ${module}..."
 
-        # Copy each route directory
-        find "$routes_dir" -name "page.tsx" | while read -r route_file; do
+        # Copy each route directory (using -print0 to handle special chars like [id])
+        # Store results in array to avoid subshell issues
+        route_files=()
+        while IFS= read -r -d '' route_file; do
+          route_files+=("$route_file")
+        done < <(find "$routes_dir" -name "page.tsx" -print0)
+        
+        # Process each route file
+        for route_file in "${route_files[@]}"; do
           relative_path="${route_file#$routes_dir/}"
           target_dir="${app_routes_dir}/$(dirname "$relative_path")"
 
-          mkdir -p "$target_dir"
-          cp "$route_file" "$target_dir/"
+          # Use -- to prevent option parsing issues, quote paths for [id] bracket handling
+          mkdir -p -- "$target_dir"
+          cp -- "$route_file" "$target_dir/"
 
           # Replace placeholders in the copied route file
           target_file="${target_dir}/$(basename "$route_file")"
@@ -2267,3 +2275,4 @@ echo ""
 log_info "For AI/Cline assistance:"
 echo "  Review .clinerules in each repository for AI-actionable instructions."
 echo ""
+  echo "  Implement each module following CORA Module Definition of Done."

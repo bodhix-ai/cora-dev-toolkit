@@ -10,8 +10,16 @@
  * to automatically provide the orgId to WorkspaceListPage.
  */
 
+import { useRouter } from "next/navigation";
 import { WorkspaceListPage } from "@{{PROJECT_NAME}}/module-ws";
+import type { Workspace } from "@{{PROJECT_NAME}}/module-ws";
 
 export default function WorkspacesPage() {
-  return <WorkspaceListPage />;
+  const router = useRouter();
+
+  const handleWorkspaceClick = (workspace: Workspace) => {
+    router.push(`/ws/${workspace.id}`);
+  };
+
+  return <WorkspaceListPage onWorkspaceClick={handleWorkspaceClick} />;
 }

@@ -160,7 +160,7 @@ BEGIN
     
     -- Soft delete workspace
     UPDATE workspaces
-    SET deleted_at = NOW(), deleted_by = p_user_id
+    SET deleted_at = NOW(), deleted_by = p_user_id, status = 'deleted'
     WHERE id = p_workspace_id
     RETURNING * INTO v_workspace;
     
@@ -216,7 +216,7 @@ BEGIN
     
     -- Restore workspace
     UPDATE workspaces
-    SET deleted_at = NULL, deleted_by = NULL, updated_by = p_user_id, updated_at = NOW()
+    SET deleted_at = NULL, deleted_by = NULL, status = 'active', updated_by = p_user_id, updated_at = NOW()
     WHERE id = p_workspace_id
     RETURNING * INTO v_workspace;
     

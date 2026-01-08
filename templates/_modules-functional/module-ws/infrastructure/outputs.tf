@@ -104,28 +104,28 @@ output "api_routes" {
     # Workspace Members
     {
       method      = "GET"
-      path        = "/ws/{workspaceId}/members"
+      path        = "/ws/{id}/members"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "List workspace members"
       public      = false
     },
     {
       method      = "POST"
-      path        = "/ws/{workspaceId}/members"
+      path        = "/ws/{id}/members"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Add member to workspace"
       public      = false
     },
     {
       method      = "PUT"
-      path        = "/ws/{workspaceId}/members/{userId}"
+      path        = "/ws/{id}/members/{memberId}"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Update member role"
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/ws/{workspaceId}/members/{userId}"
+      path        = "/ws/{id}/members/{memberId}"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Remove member from workspace"
       public      = false

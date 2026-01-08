@@ -1,0 +1,40 @@
+"use client";
+
+/**
+ * Workspace Detail Page
+ *
+ * Route: /ws/[id]
+ * Renders the workspace detail page from module-ws.
+ * 
+ * Note: This page uses the organization context from module-access
+ * to automatically provide the orgId to WorkspaceDetailPage.
+ */
+
+import { useParams, useRouter } from "next/navigation";
+import { useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
+import { WorkspaceDetailPage } from "@{{PROJECT_NAME}}/module-ws";
+
+export default function WorkspaceDetailRoute() {
+  const params = useParams();
+  const router = useRouter();
+  const { currentOrganization } = useOrganizationContext();
+  const workspaceId = params.id as string;
+  const orgId = currentOrganization?.orgId || "";
+
+  const handleBack = () => {
+    router.push("/ws");
+  };
+
+  const handleDeleted = () => {
+    router.push("/ws");
+  };
+
+  return (
+    <WorkspaceDetailPage 
+      workspaceId={workspaceId} 
+      orgId={orgId}
+      onBack={handleBack}
+      onDeleted={handleDeleted}
+    />
+  );
+}
