@@ -1669,7 +1669,31 @@ org_id = user_info.get('org_id')  # This will be None!
 
 ### Infrastructure Gotchas
 
-#### 3. All Routes Need Authorizer
+#### 3. Lambda Code Change Detection (CRITICAL)
+
+**CRITICAL:** Lambda functions MUST use proper Terraform configuration to detect code changes.
+
+```hcl
+resource "aws_lambda_function" "my_lambda" {
+  filename         = var.lambda_zip
+  source_code_hash = filebase64sha256(var.lambda_zip)  # ✅ REQUIRED
+  runtime          = "python3.11"  # MUST match org-common layer
+  
+  lifecycle {
+    create_before_destroy = true  # ✅ Blue-green deployment
+  }
+  
+  # ❌ NEVER use ignore_changes on source_code_hash or filename
+}
+```
+
+**Symptom if wrong:** Lambda code doesn't update when rebuilt. Testing cycles fail with stale code, wasting 2-8 hours per module.
+
+**Why this matters:** During module-ws development, the template had `ignore_changes = [source_code_hash]` which prevented Terraform from detecting code changes entirely.
+
+**See:** [Lambda Deployment Standard](../../docs/standards/standard_LAMBDA-DEPLOYMENT.md) for complete documentation.
+
+#### 4. All Routes Need Authorizer
 
 Every API Gateway route must have an authorizer attached:
 
@@ -1683,7 +1707,7 @@ resource "aws_apigatewayv2_route" "my_route" {
 
 **Symptom if missing:** `401 Unauthorized` or requests bypass auth entirely.
 
-#### 4. Lambda Permission for API Gateway
+#### 5. Lambda Permission for API Gateway
 
 API Gateway needs explicit permission to invoke Lambda:
 
@@ -1700,7 +1724,7 @@ resource "aws_lambda_permission" "api_gateway" {
 
 ### Frontend/Config Gotchas
 
-#### 5. Module Config Must Be Merged
+#### 6. Module Config Must Be Merged
 
 When adding modules manually (not via `create-cora-project.sh`), ensure `cora-modules.config.yaml` is updated.
 
