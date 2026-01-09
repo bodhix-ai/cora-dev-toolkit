@@ -4,7 +4,7 @@
  * Detail page for a single workspace showing members, settings, and actions.
  */
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Box,
   Container,
@@ -31,11 +31,13 @@ import {
   ArrowBack,
   Settings,
 } from "@mui/icons-material";
+import { useSession } from "next-auth/react";
 import type { Workspace, WorkspaceRole } from "../types";
 import { ROLE_DISPLAY_NAMES, STATUS_DISPLAY_NAMES } from "../types";
 import { useWorkspace } from "../hooks/useWorkspace";
 import { MemberList } from "../components/MemberList";
 import { WorkspaceForm } from "../components/WorkspaceForm";
+import { createWorkspaceApiClient } from "../lib/api";
 import type { WorkspaceApiClient } from "../lib/api";
 
 export interface WorkspaceDetailPageProps {
@@ -57,11 +59,23 @@ export function WorkspaceDetailPage({
   workspaceId,
   orgId,
   userId,
-  apiClient,
+  apiClient: providedApiClient,
   onBack,
   onDeleted,
 }: WorkspaceDetailPageProps): React.ReactElement {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  
+  // Get session for API client creation
+  const { data: session } = useSession();
+  
+  // Create API client if not provided (same pattern as WorkspaceListPage)
+  const apiClient = useMemo(() => {
+    if (providedApiClient) return providedApiClient;
+    if (session?.accessToken) {
+      return createWorkspaceApiClient(session.accessToken as string);
+    }
+    return null;
+  }, [providedApiClient, session?.accessToken]);
 
   const {
     workspace,

@@ -659,10 +659,10 @@ def handle_list_members(
                 table='user_profiles',
                 filters={'user_id': member['user_id']}
             )
-            if profile:
-                member['email'] = profile.get('email')
-                member['display_name'] = profile.get('display_name')
-                member['avatar_url'] = profile.get('avatar_url')
+            # Always set profile fields, even if profile not found
+            member['email'] = profile.get('email') if profile else None
+            member['display_name'] = profile.get('display_name') if profile else None
+            member['avatar_url'] = profile.get('avatar_url') if profile else None
             enriched_members.append(member)
         
         result = {

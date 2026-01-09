@@ -438,6 +438,34 @@ git commit -m "Add executable build script"
 
 ---
 
+### ❌ Pitfall 6: Lambda code doesn't update after rebuild
+
+**Symptom:** 
+- Lambda code rebuilt and deployed
+- Terraform apply succeeds
+- But old code still runs (testing cycles fail with stale code)
+
+**Solution:** Ensure Lambda infrastructure uses correct Terraform configuration:
+
+```hcl
+resource "aws_lambda_function" "my_lambda" {
+  filename         = var.lambda_zip
+  source_code_hash = filebase64sha256(var.lambda_zip)  # ✅ REQUIRED
+  
+  lifecycle {
+    create_before_destroy = true  # ✅ Blue-green deployment
+  }
+  
+  # ❌ NEVER use ignore_changes on source_code_hash
+}
+```
+
+**See:** [Lambda Deployment Standard](../standards/standard_LAMBDA-DEPLOYMENT.md) for complete documentation.
+
+**Impact:** Wasting 2-8 hours per module debugging "functional" issues that are actually stale code.
+
+---
+
 ## Integration with Module Development Process
 
 This guide supplements `docs/guides/guide_CORA-MODULE-DEVELOPMENT-PROCESS.md`:
@@ -472,6 +500,7 @@ This guide supplements `docs/guides/guide_CORA-MODULE-DEVELOPMENT-PROCESS.md`:
 ## References
 
 - `docs/guides/guide_CORA-MODULE-DEVELOPMENT-PROCESS.md` - Overall development process
+- `docs/standards/standard_LAMBDA-DEPLOYMENT.md` - **Lambda deployment and code change detection** ⭐ NEW
 - `docs/standards/cora/DATABASE-NAMING-STANDARDS.md` - Database naming conventions
 - `templates/_modules-core/module-access/backend/build.sh` - Build script example with layers
 - `templates/_modules-functional/module-ws/backend/build.sh` - Build script example without layers

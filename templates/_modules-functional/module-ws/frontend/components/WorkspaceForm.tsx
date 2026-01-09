@@ -4,7 +4,7 @@
  * Form dialog for creating and editing workspaces.
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -61,6 +61,22 @@ export function WorkspaceForm({
 }: WorkspaceFormProps): React.ReactElement {
   const isEditMode = Boolean(workspace);
   
+  // Memoize initialValues to prevent unnecessary recalculations
+  // that would cause isDirty to produce unstable results
+  const initialFormValues = useMemo(
+    () =>
+      workspace
+        ? {
+            name: workspace.name,
+            description: workspace.description || "",
+            color: workspace.color,
+            icon: workspace.icon,
+            tags: workspace.tags,
+          }
+        : DEFAULT_WORKSPACE_FORM,
+    [workspace]
+  );
+
   const {
     values,
     errors,
@@ -69,15 +85,7 @@ export function WorkspaceForm({
     validateAll,
     reset,
   } = useWorkspaceForm({
-    initialValues: workspace
-      ? {
-          name: workspace.name,
-          description: workspace.description || "",
-          color: workspace.color,
-          icon: workspace.icon,
-          tags: workspace.tags,
-        }
-      : DEFAULT_WORKSPACE_FORM,
+    initialValues: initialFormValues,
   });
 
   const [submitError, setSubmitError] = React.useState<string | null>(null);
@@ -103,6 +111,7 @@ export function WorkspaceForm({
 
   const handleSubmit = async () => {
     if (!validateAll()) {
+      setSubmitError("Please fix the validation errors before saving");
       return;
     }
 

@@ -78,6 +78,40 @@ Where `{purpose}` is a **single word** describing the module's main responsibili
 - `module-dashboard` - Analytics dashboard
 - etc.
 
+## Module Route File Locations
+
+**CRITICAL:** CORA functional modules have routes at the **MODULE ROOT** level, NOT in `frontend/`.
+
+### The Correct Location:
+
+✅ **CORRECT:** `templates/_modules-functional/{module-name}/routes/`
+❌ **WRONG:** `templates/_modules-functional/{module-name}/frontend/routes/`
+
+### Why This Matters:
+
+The `scripts/create-cora-project.sh` script copies routes from `{module}/routes/`, **NOT** from `{module}/frontend/routes/`.
+
+**Example:**
+```bash
+# create-cora-project.sh looks here:
+routes_dir="${FUNCTIONAL_MODULE_TEMPLATE}/routes/"
+
+# NOT here:
+# routes_dir="${FUNCTIONAL_MODULE_TEMPLATE}/frontend/routes/"  ❌
+```
+
+### When Modifying Module Routes:
+
+1. **Always update routes in:** `templates/_modules-functional/{module}/routes/`
+2. **Never update routes in:** `templates/_modules-functional/{module}/frontend/routes/`
+3. The `routes/` directory at module root is the **source of truth** for project creation
+
+### Common Error:
+
+Placing routes in `frontend/routes/` means they won't be copied during project creation, causing the fix to not appear in newly created projects.
+
+**Impact:** Route fixes placed in wrong directory won't propagate to new projects, wasting time and causing confusion.
+
 ## Two-Repo Pattern
 
 Every CORA project uses two repositories:
@@ -107,6 +141,41 @@ Every CORA project uses two repositories:
 2. Make scripts executable (`chmod +x`)
 3. Include `--help` option
 4. Support `--dry-run` for destructive operations
+
+### When Creating Lambda Infrastructure
+
+**CRITICAL:** All Lambda functions MUST use proper Terraform configuration for code change detection.
+
+**Required Pattern:**
+```hcl
+resource "aws_lambda_function" "my_function" {
+  filename         = var.lambda_zip
+  source_code_hash = filebase64sha256(var.lambda_zip)  # ✅ REQUIRED
+  runtime          = "python3.11"  # MUST match org-common layer
+  
+  lifecycle {
+    create_before_destroy = true  # ✅ Blue-green deployment
+  }
+}
+```
+
+**NEVER use:**
+```hcl
+lifecycle {
+  ignore_changes = [source_code_hash]  # ❌ BLOCKS code change detection
+}
+```
+
+**Rules:**
+1. Always include `source_code_hash = filebase64sha256(var.lambda_zip)`
+2. Use `lifecycle { create_before_destroy = true }` for zero-downtime deployments
+3. NEVER use `ignore_changes` on `source_code_hash` or `filename`
+4. Lambda runtime MUST be `python3.11` (to match org-common layer)
+5. All Lambdas MUST have `layers = [var.org_common_layer_arn]`
+
+**See:** `docs/standards/standard_LAMBDA-DEPLOYMENT.md` for complete documentation.
+
+**Impact if wrong:** Lambda code doesn't update when rebuilt, wasting 2-8 hours per module debugging stale code issues.
 
 ### When Updating Validation
 

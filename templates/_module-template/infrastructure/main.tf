@@ -66,11 +66,12 @@ resource "aws_iam_role_policy" "secrets" {
 # =============================================================================
 
 resource "aws_lambda_function" "entity" {
-  function_name = "${local.name_prefix}-entity"
-  filename      = var.entity_lambda_zip
-  handler       = "lambda_function.lambda_handler"
-  runtime       = "python3.13"
-  role          = aws_iam_role.lambda.arn
+  function_name    = "${local.name_prefix}-entity"
+  filename         = var.entity_lambda_zip
+  source_code_hash = filebase64sha256(var.entity_lambda_zip)
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.13"
+  role             = aws_iam_role.lambda.arn
 
   layers = [var.org_common_layer_arn]
 
@@ -88,10 +89,7 @@ resource "aws_lambda_function" "entity" {
   tags = local.default_tags
 
   lifecycle {
-    ignore_changes = [
-      filename,
-      source_code_hash
-    ]
+    create_before_destroy = true
   }
 }
 
@@ -127,4 +125,5 @@ resource "aws_cloudwatch_metric_alarm" "entity_errors" {
   alarm_actions = [var.sns_topic_arn]
 
   tags = local.default_tags
+}
 }

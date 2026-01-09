@@ -57,9 +57,9 @@ export interface UseWorkspaceReturn {
   /** Add member */
   addMember: (data: AddMemberRequest) => Promise<WorkspaceMember | null>;
   /** Update member role */
-  updateMember: (userId: string, data: UpdateMemberRequest) => Promise<WorkspaceMember | null>;
+  updateMember: (memberId: string, data: UpdateMemberRequest) => Promise<WorkspaceMember | null>;
   /** Remove member */
-  removeMember: (userId: string) => Promise<boolean>;
+  removeMember: (memberId: string) => Promise<boolean>;
 }
 
 export function useWorkspace(
@@ -214,14 +214,14 @@ export function useWorkspace(
 
   // Update member role
   const updateMember = useCallback(
-    async (userId: string, data: UpdateMemberRequest): Promise<WorkspaceMember | null> => {
+    async (memberId: string, data: UpdateMemberRequest): Promise<WorkspaceMember | null> => {
       if (!session?.accessToken || !workspaceId || !orgId) return null;
 
       try {
         const client = createWorkspaceApiClient(session.accessToken as string);
-        const updated = await client.updateMember(workspaceId, userId, data, orgId);
+        const updated = await client.updateMember(workspaceId, memberId, data, orgId);
         setMembers((prev) =>
-          prev.map((m) => (m.user_id === userId ? updated : m))
+          prev.map((m) => (m.id === memberId ? updated : m))
         );
         return updated;
       } catch (err) {
@@ -234,13 +234,13 @@ export function useWorkspace(
 
   // Remove member
   const removeMember = useCallback(
-    async (userId: string): Promise<boolean> => {
+    async (memberId: string): Promise<boolean> => {
       if (!session?.accessToken || !workspaceId || !orgId) return false;
 
       try {
         const client = createWorkspaceApiClient(session.accessToken as string);
-        await client.removeMember(workspaceId, userId, orgId);
-        setMembers((prev) => prev.filter((m) => m.user_id !== userId));
+        await client.removeMember(workspaceId, memberId, orgId);
+        setMembers((prev) => prev.filter((m) => m.id !== memberId));
         return true;
       } catch (err) {
         console.error("Failed to remove member:", err);

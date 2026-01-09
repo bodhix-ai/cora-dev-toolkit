@@ -81,8 +81,8 @@ export class WorkspaceApiClient {
    */
   async getWorkspace(id: string, orgId: string): Promise<Workspace | null> {
     try {
-      const response = await this.client.get<ApiResponse<Workspace>>(`/ws/${id}?org_id=${orgId}`);
-      return response?.data || null;
+      const response = await this.client.get<ApiResponse<{ workspace: Workspace }>>(`/ws/${id}?org_id=${orgId}`);
+      return response?.data?.workspace || null;
     } catch (error) {
       console.error(`Failed to get workspace ${id}:`, error);
       return null;
@@ -165,10 +165,10 @@ export class WorkspaceApiClient {
    */
   async listMembers(workspaceId: string, orgId: string): Promise<WorkspaceMember[]> {
     try {
-      const response = await this.client.get<ApiResponse<WorkspaceMember[]>>(
+      const response = await this.client.get<ApiResponse<{ members: WorkspaceMember[]; totalCount: number }>>(
         `/ws/${workspaceId}/members?org_id=${orgId}`
       );
-      return response?.data || [];
+      return response?.data?.members || [];
     } catch (error) {
       console.error(`Failed to list members for workspace ${workspaceId}:`, error);
       return [];
@@ -199,13 +199,13 @@ export class WorkspaceApiClient {
    */
   async updateMember(
     workspaceId: string,
-    userId: string,
+    memberId: string,
     data: UpdateMemberRequest,
     orgId: string
   ): Promise<WorkspaceMember> {
     try {
       const response = await this.client.put<ApiResponse<WorkspaceMember>>(
-        `/ws/${workspaceId}/members/${userId}?org_id=${orgId}`,
+        `/ws/${workspaceId}/members/${memberId}?org_id=${orgId}`,
         data
       );
       if (!response?.data) {
@@ -213,7 +213,7 @@ export class WorkspaceApiClient {
       }
       return response.data;
     } catch (error) {
-      console.error(`Failed to update member ${userId} in workspace ${workspaceId}:`, error);
+      console.error(`Failed to update member ${memberId} in workspace ${workspaceId}:`, error);
       throw new Error("Failed to update member role");
     }
   }
@@ -221,11 +221,11 @@ export class WorkspaceApiClient {
   /**
    * Remove a member from a workspace
    */
-  async removeMember(workspaceId: string, userId: string, orgId: string): Promise<void> {
+  async removeMember(workspaceId: string, memberId: string, orgId: string): Promise<void> {
     try {
-      await this.client.delete(`/ws/${workspaceId}/members/${userId}?org_id=${orgId}`);
+      await this.client.delete(`/ws/${workspaceId}/members/${memberId}?org_id=${orgId}`);
     } catch (error) {
-      console.error(`Failed to remove member ${userId} from workspace ${workspaceId}:`, error);
+      console.error(`Failed to remove member ${memberId} from workspace ${workspaceId}:`, error);
       throw new Error("Failed to remove member");
     }
   }

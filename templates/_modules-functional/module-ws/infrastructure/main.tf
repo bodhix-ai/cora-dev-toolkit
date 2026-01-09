@@ -64,12 +64,13 @@ resource "aws_iam_role_policy" "secrets" {
 # =============================================================================
 
 resource "aws_lambda_function" "workspace" {
-  function_name = "${local.name_prefix}-workspace"
-  description   = "FUNC-WS: Workspace management handler for CRUD operations"
-  filename      = var.workspace_lambda_zip
-  handler       = "lambda_function.lambda_handler"
-  runtime       = "python3.11"
-  role          = aws_iam_role.lambda.arn
+  function_name    = "${local.name_prefix}-workspace"
+  description      = "FUNC-WS: Workspace management handler for CRUD operations"
+  filename         = var.workspace_lambda_zip
+  source_code_hash = filebase64sha256(var.workspace_lambda_zip)
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.11"
+  role             = aws_iam_role.lambda.arn
 
   layers = [var.org_common_layer_arn]
 
@@ -85,13 +86,6 @@ resource "aws_lambda_function" "workspace" {
   memory_size = var.lambda_memory_size
 
   tags = local.default_tags
-
-  lifecycle {
-    ignore_changes = [
-      filename,
-      source_code_hash
-    ]
-  }
 }
 
 # Lambda permission for API Gateway
@@ -109,12 +103,13 @@ resource "aws_lambda_permission" "workspace_apigw" {
 resource "aws_lambda_function" "cleanup" {
   count = var.enable_cleanup_job ? 1 : 0
 
-  function_name = "${local.name_prefix}-cleanup"
-  description   = "FUNC-WS: Automated cleanup job for workspace maintenance"
-  filename      = var.cleanup_lambda_zip
-  handler       = "lambda_function.lambda_handler"
-  runtime       = "python3.11"
-  role          = aws_iam_role.lambda.arn
+  function_name    = "${local.name_prefix}-cleanup"
+  description      = "FUNC-WS: Automated cleanup job for workspace maintenance"
+  filename         = var.cleanup_lambda_zip
+  source_code_hash = filebase64sha256(var.cleanup_lambda_zip)
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.11"
+  role             = aws_iam_role.lambda.arn
 
   layers = [var.org_common_layer_arn]
 
@@ -130,13 +125,6 @@ resource "aws_lambda_function" "cleanup" {
   memory_size = var.lambda_memory_size
 
   tags = local.default_tags
-
-  lifecycle {
-    ignore_changes = [
-      filename,
-      source_code_hash
-    ]
-  }
 }
 
 # =============================================================================
