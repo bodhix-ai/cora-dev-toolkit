@@ -2,9 +2,277 @@
 
 ## Current Focus
 
-**Session 78: Lambda Deployment Fix + Standards Update Plan** - ✅ **COMPLETE**
+**Session 80: Workspace Authentication & Route Location Fix** - ✅ **COMPLETE**
+
+## Session: January 9, 2026 (4:04 PM - 5:05 PM) - Session 80
+
+### 🎯 Focus: Fix Workspace Authentication & Document Route Locations
+
+**Context:** User reported workspace edit page was redirecting to home page after attempting to save. Investigation revealed authentication issues and discovered duplicate route directories causing confusion.
+
+**Status:** ✅ **COMPLETE** - Authentication fixed, routes consolidated, documentation updated
+
+---
+
+## 🐛 Issues Identified & Fixed
+
+### Issue 1: Workspace Edit Redirect to Home Page
+**Symptom:** When trying to save workspace edits, screen refreshed multiple times and ended up on home page
+**Root Cause:** Missing authentication token in route page - `createWorkspaceApiClient()` called without session token
+**Impact:** All API calls failed with auth errors, triggering redirect
+
+### Issue 2: Duplicate Route Directories
+**Symptom:** Route fixes applied to template didn't propagate to new test projects
+**Root Cause:** Module had TWO route directories:
+- `routes/` (at module root - used by create-cora-project.sh) ✅ CORRECT
+- `frontend/routes/` (inside frontend) ❌ WRONG LOCATION
+
+Fixes were being applied to wrong location, so new projects didn't get the fixes.
+
+### Issue 3: SessionProvider Context Error
+**Symptom:** `useSession` must be wrapped in a <SessionProvider /> error
+**Root Cause:** Route page using `useSession()` directly caused context issues
+**Solution:** Move authentication logic to page component level
+
+---
+
+## ✅ Fixes Applied
+
+### Fix 1: Remove Duplicate Route Directory
+
+**Deleted:** `templates/_modules-functional/module-ws/frontend/routes/`
+- Entire duplicate directory removed
+- Only `module-ws/routes/` at module root remains (correct location)
+
+### Fix 2: Simplify Route Page Authentication
+
+**Updated:** `templates/_modules-functional/module-ws/routes/ws/[id]/page.tsx`
+- Removed `useSession()` import and call
+- Removed `createWorkspaceApiClient()` creation
+- Removed `apiClient` prop from WorkspaceDetailPage
+- Route page now just passes data, no authentication logic
+
+### Fix 3: Self-Contained Page Component Authentication
+
+**Updated:** `templates/_modules-functional/module-ws/frontend/pages/WorkspaceDetailPage.tsx`
+- Added `useSession()` hook internally
+- Added `useMemo()` to create API client with session token
+- Falls back to provided `apiClient` prop if available
+- **Mirrors WorkspaceListPage pattern** (proven working)
+
+### Fix 4: Document Route Location Standard
+
+**Updated:** `.clinerules`
+- Added new section: "Module Route File Locations"
+- Documented correct location: `templates/_modules-functional/{module}/routes/`
+- Documented wrong location: `templates/_modules-functional/{module}/frontend/routes/`
+- Explained why this matters (create-cora-project.sh copies from root)
+- Added common error patterns and impact
+
+---
+
+## 📁 Files Modified This Session
+
+1. ✅ `templates/_modules-functional/module-ws/routes/ws/[id]/page.tsx`
+   - Simplified to remove authentication logic
+   - Route page now just passes props to page component
+
+2. ✅ `templates/_modules-functional/module-ws/frontend/pages/WorkspaceDetailPage.tsx`
+   - Added `useSession()` and `useMemo()` for internal API client creation
+   - Self-contained authentication handling
+
+3. ✅ `templates/_modules-functional/module-ws/frontend/routes/` (DELETED)
+   - Removed entire duplicate directory structure
+   - Eliminated source of confusion
+
+4. ✅ `.clinerules`
+   - Added comprehensive "Module Route File Locations" section
+   - Documents correct patterns for AI assistant guidance
+
+5. ✅ `memory-bank/activeContext.md`
+   - Updated with Session 80 summary
+
+---
+
+## 📊 Session Summary
+
+### What Was Accomplished
+- ✅ Fixed workspace authentication redirect issue
+- ✅ Removed duplicate route directory causing template propagation issues
+- ✅ Simplified route page authentication pattern
+- ✅ Made WorkspaceDetailPage self-contained (creates own API client)
+- ✅ Documented route location standards in .clinerules
+- ✅ Verified fixes work in test project
+- ✅ Followed Template-First Workflow throughout
+
+### Expected Behavior After Fix
+1. ✅ Workspace edit page loads without SessionProvider errors
+2. ✅ Save button works correctly (no redirects)
+3. ✅ Template fixes propagate to new projects (no duplicate routes)
+4. ✅ AI assistant guided to correct route locations
+
+### Time Impact
+- **~20 minutes** - Investigation and root cause analysis
+- **~15 minutes** - Apply authentication fixes to templates
+- **~10 minutes** - Remove duplicate directory
+- **~10 minutes** - Document standards in .clinerules
+- **~5 minutes** - Test and verify in test project
+- **Total: ~60 minutes**
+
+### Key Insights
+1. **Route Location Critical** - create-cora-project.sh copies from module root, not frontend/
+2. **Template Quality Compounds** - Duplicate directories cause confusion that wastes hours
+3. **Self-Contained Components Better** - Page components should handle own authentication
+4. **Documentation Prevents Recurrence** - .clinerules guidance ensures pattern is followed
+5. **Template-First Saves Time** - Fixing templates once benefits all future projects
+
+---
+
+## Session: January 9, 2026 (3:24 PM - 3:26 PM) - Session 79
+
+### 🎯 Focus: Fix Edit Workspace Save Button Issues
+
+**Context:** After completing Phase 2 standards updates, this session focused on fixing two critical UX issues with the Edit Workspace form's save button behavior.
+
+**Status:** ✅ **COMPLETE**
+
+---
+
+## 🐛 Issues Identified
+
+### Issue 1: Save Button Unresponsive After Adding Tags
+**Symptom:** Save button has no reaction when clicked after adding a new tag  
+**Root Cause:** `handleSubmit` returned silently when `validateAll()` failed - no user feedback provided
+
+### Issue 2: Save Button Enabled Before Changes
+**Symptom:** Save button is enabled before any changes are made (should be disabled until changes occur)  
+**Root Cause:** Unstable `initialValues` object reference causing `isDirty` calculation to produce unreliable results
+
+---
+
+## 🔍 Root Cause Analysis
+
+### The Problem: Unstable Dependencies
+
+**In WorkspaceForm.tsx:**
+```tsx
+useWorkspaceForm({
+  initialValues: workspace  // ← New object created on EVERY render!
+    ? { name: workspace.name, ... }
+    : DEFAULT_WORKSPACE_FORM,
+})
+```
+
+**In useWorkspaceForm.ts:**
+```tsx
+const defaultValues = useMemo(
+  () => ({ ...DEFAULT_VALUES, ...initialValues, ... }),
+  [initialValues, config]  // ← initialValues changes every render!
+);
+
+const isDirty = useMemo(() => {
+  return (
+    values.name !== defaultValues.name ||
+    // ... other comparisons
+    JSON.stringify(values.tags) !== JSON.stringify(defaultValues.tags)
+  );
+}, [values, defaultValues]);  // ← defaultValues recalculates constantly!
+```
+
+**The Chain Reaction:**
+1. `WorkspaceForm` re-renders (normal React behavior)
+2. `initialValues` object is recreated (new reference, same values)
+3. `defaultValues` recalculates due to dependency change
+4. `isDirty` recalculates, produces unstable/incorrect results
+5. Save button enable/disable state becomes unreliable
+
+---
+
+## ✅ Fixes Applied
+
+### Fix 1: Stabilize `initialValues` with `useMemo`
+
+**Added to WorkspaceForm.tsx:**
+```tsx
+// Memoize initialValues to prevent unnecessary recalculations
+// that would cause isDirty to produce unstable results
+const initialFormValues = useMemo(
+  () =>
+    workspace
+      ? {
+          name: workspace.name,
+          description: workspace.description || "",
+          color: workspace.color,
+          icon: workspace.icon,
+          tags: workspace.tags,
+        }
+      : DEFAULT_WORKSPACE_FORM,
+  [workspace]  // ← Only recalculate when workspace actually changes
+);
+
+const { ... } = useWorkspaceForm({ initialValues: initialFormValues });
+```
+
+**Impact:**
+- `initialValues` now has a stable reference between renders
+- `defaultValues` in hook only recalculates when workspace data actually changes
+- `isDirty` now reliably tracks whether the form has unsaved changes
+
+### Fix 2: Add Validation Error Feedback
+
+**Updated in WorkspaceForm.tsx:**
+```tsx
+const handleSubmit = async () => {
+  if (!validateAll()) {
+    setSubmitError("Please fix the validation errors before saving");  // ← User feedback!
+    return;
+  }
+  // ... rest unchanged
+}
+```
+
+**Impact:**
+- Users now see clear error message when validation fails
+- No more silent failures that make the button appear broken
+
+---
+
+## 📁 Files Modified This Session
+
+1. ✅ `templates/_modules-functional/module-ws/frontend/components/WorkspaceForm.tsx`
+   - Added `useMemo` import
+   - Wrapped `initialValues` in `useMemo` with `workspace` dependency
+   - Added validation error feedback in `handleSubmit`
+
+---
+
+## 📊 Session Summary
+
+### What Was Accomplished
+- ✅ Identified root cause: unstable object reference breaking `isDirty` calculation
+- ✅ Fixed `initialValues` stability with `useMemo`
+- ✅ Added validation error feedback for silent failures
+- ✅ Template-first workflow followed (fixed template, not test project)
+
+### Expected Behavior After Fix
+1. ✅ Save button disabled until actual changes are made
+2. ✅ Save button shows feedback when validation fails
+3. ✅ Form correctly tracks dirty state when tags or other fields change
+
+### Time Impact
+- **~2 minutes** - Code fixes applied
+- **Total: ~2 minutes**
+
+### Key Insights
+1. **Object Reference Stability Critical** - Inline object creation breaks memoization
+2. **Silent Failures Harm UX** - Always provide feedback when validation fails
+3. **Dependencies Matter** - `useMemo` dependencies must be carefully chosen
+4. **Template-First Prevents Rework** - Fixing templates ensures all projects benefit
+
+---
 
 ## Session: January 9, 2026 (9:43 AM - 10:37 AM) - Session 78
+## Session: January 9, 2026 (9:43 AM - 11:20 AM) - Session 78
 
 ### 🎯 Focus: Fix Lambda Code Change Detection Issue & Document Prevention Strategy
 
@@ -260,22 +528,35 @@ The `ignore_changes` pattern in module template caused significant development d
 - Lambda code change detection
 - Lambda permissions (terraform gotcha documented)
 
-### ⚠️ Known Issues (To Be Fixed Next Session)
-1. **Edit Workspace Save Button Issues:**
-   - Save button has no reaction when clicked after adding a new tag
-   - Save button is enabled before any changes are made (should be disabled until changes occur)
-
 ### ⏭️ Remaining Work
-1. **Phase 2: Standards/Guides Updates** (After workspace issues)
-2. **Fix Edit Workspace Save Button Issues** (NEXT SESSION - HIGH PRIORITY)
-3. **Priority 5: Platform Admin Page** (After Phase 2)
+1. **Priority 5: Platform Admin Page** (NEXT SESSION)
+   - Implement cross-org workspace management
+   - Platform admin page for workspaces
 
 ---
 
-**Status:** ✅ **PHASE 1 COMPLETE** | ✅ **PHASE 2 COMPLETE**  
-**Templates Updated:** ✅ **2 TEMPLATES (module-ws + module-template)**  
-**Core Modules:** ✅ **Already Correct**  
-**Standards Created:** ✅ **standard_LAMBDA-DEPLOYMENT.md**  
-**Guides Updated:** ✅ **3 GUIDES**  
-**Next Session:** 🎯 **Platform Admin Workspace Management (Priority 5)**  
-**Updated:** January 9, 2026, 11:20 AM EST
+## 📋 Recent Sessions Summary
+
+### Session 79 (This Session): Edit Workspace Save Button Fix ✅
+- Fixed unstable `initialValues` causing incorrect `isDirty` state
+- Added validation error feedback for silent failures
+- Template updated following template-first workflow
+
+### Session 78: Lambda Deployment Fix + Standards Update ✅
+- Fixed Lambda code change detection in module-ws
+- Created and implemented comprehensive standards/guides updates
+- Documented expected time savings per module
+
+### Session 77: Members List Fix - API Response Extraction ✅
+- Fixed API client response extraction
+- Members list now populates correctly
+- Validated in fresh test-ws-16 project
+
+---
+
+**Status:** ✅ **MODULE-WS COMPLETE**  
+**All Features:** ✅ **WORKING**  
+**Infrastructure:** ✅ **RESOLVED**  
+**Standards:** ✅ **UPDATED**  
+**Next Session:** 🎯 **Priority 5: Platform Admin Workspace Management**  
+**Updated:** January 9, 2026, 3:26 PM EST

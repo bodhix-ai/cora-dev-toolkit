@@ -17,9 +17,12 @@ import { WorkspaceDetailPage } from "@{{PROJECT_NAME}}/module-ws";
 export default function WorkspaceDetailRoute() {
   const params = useParams();
   const router = useRouter();
-  const { currentOrganization } = useOrganizationContext();
+  const { currentOrganization, userId } = useOrganizationContext();
   const workspaceId = params.id as string;
   const orgId = currentOrganization?.orgId || "";
+
+  // Note: apiClient is optional - WorkspaceDetailPage will create it internally
+  // using useSession() within the component where SessionProvider context is available
 
   const handleBack = () => {
     router.push("/ws");
@@ -33,6 +36,7 @@ export default function WorkspaceDetailRoute() {
     <WorkspaceDetailPage 
       workspaceId={workspaceId} 
       orgId={orgId}
+      userId={userId}
       onBack={handleBack}
       onDeleted={handleDeleted}
     />
