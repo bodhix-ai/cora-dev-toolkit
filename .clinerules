@@ -108,6 +108,41 @@ Every CORA project uses two repositories:
 3. Include `--help` option
 4. Support `--dry-run` for destructive operations
 
+### When Creating Lambda Infrastructure
+
+**CRITICAL:** All Lambda functions MUST use proper Terraform configuration for code change detection.
+
+**Required Pattern:**
+```hcl
+resource "aws_lambda_function" "my_function" {
+  filename         = var.lambda_zip
+  source_code_hash = filebase64sha256(var.lambda_zip)  # ✅ REQUIRED
+  runtime          = "python3.11"  # MUST match org-common layer
+  
+  lifecycle {
+    create_before_destroy = true  # ✅ Blue-green deployment
+  }
+}
+```
+
+**NEVER use:**
+```hcl
+lifecycle {
+  ignore_changes = [source_code_hash]  # ❌ BLOCKS code change detection
+}
+```
+
+**Rules:**
+1. Always include `source_code_hash = filebase64sha256(var.lambda_zip)`
+2. Use `lifecycle { create_before_destroy = true }` for zero-downtime deployments
+3. NEVER use `ignore_changes` on `source_code_hash` or `filename`
+4. Lambda runtime MUST be `python3.11` (to match org-common layer)
+5. All Lambdas MUST have `layers = [var.org_common_layer_arn]`
+
+**See:** `docs/standards/standard_LAMBDA-DEPLOYMENT.md` for complete documentation.
+
+**Impact if wrong:** Lambda code doesn't update when rebuilt, wasting 2-8 hours per module debugging stale code issues.
+
 ### When Updating Validation
 
 1. Validation scripts integrate with `pm-app-stack/scripts/validation/`
