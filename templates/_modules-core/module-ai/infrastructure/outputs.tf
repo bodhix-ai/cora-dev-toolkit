@@ -53,6 +53,14 @@ output "iam_role_name" {
 output "api_routes" {
   description = "API Gateway routes for this module (used by infra scripts)"
   value = [
+    # Organization AI Configuration
+    {
+      method      = "GET"
+      path        = "/orgs/{orgId}/ai/config"
+      integration = aws_lambda_alias.provider.invoke_arn
+      description = "Get organization AI configuration"
+      public      = false
+    },
     # Provider CRUD
     {
       method      = "GET"

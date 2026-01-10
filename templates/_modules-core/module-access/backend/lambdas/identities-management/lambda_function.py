@@ -41,10 +41,11 @@ def get_supabase_user_id_from_okta_uid(okta_uid: str) -> Optional[str]:
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
-    Handle identity provisioning operations
+    Handle identity provisioning and user management operations
     
-    Endpoints:
+    Routes - Identity Management:
     - POST /identities/provision - Provision Okta user to Supabase
+    - GET /admin/users - List all platform users (platform admin only)
     
     Args:
         event: API Gateway event
@@ -57,10 +58,13 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     print(json.dumps(event, default=str))
     
     try:
-        # Extract HTTP method
+        # Extract HTTP method and path
         http_method = event['requestContext']['http']['method']
+        path = event['requestContext']['http']['path']
         
-        if http_method == 'POST':
+        if http_method == 'GET' and '/admin/users' in path:
+            return handle_list_users(event)
+        elif http_method == 'POST':
             return handle_provision(event)
         elif http_method == 'OPTIONS':
             # Handle CORS preflight
@@ -81,6 +85,72 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         import traceback
         traceback.print_exc()
         return common.internal_error_response('Internal server error')
+
+
+def handle_list_users(event: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    List all platform users with their roles and organization memberships
+    
+    This endpoint is restricted to platform admins only.
+    
+    Returns:
+        List of users with profile and org membership information
+    """
+    # Verify user is platform admin
+    try:
+        user_info = common.get_user_from_event(event)
+        okta_uid = user_info['user_id']
+        
+        # Map Okta UID to Supabase user_id using standard org_common function
+        supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
+        
+        # Get user profile to check global_role
+        profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
+        if not profile:
+            raise common.UnauthorizedError('User profile not found')
+        
+        if profile.get('global_role') not in ['platform_admin', 'platform_owner']:
+            raise common.ForbiddenError('Platform admin access required')
+    except KeyError:
+        raise common.UnauthorizedError('Authentication required')
+    
+    # Use service role client to query all users
+    client = common.get_supabase_client()
+    
+    try:
+        # Query all user profiles
+        response = client.table('user_profiles').select(
+            'user_id, email, full_name, global_role, created_at, last_sign_in_at'
+        ).execute()
+        
+        users = response.data if response.data else []
+        
+        # For each user, fetch their org memberships
+        for user in users:
+            # Query org_members table for this user
+            membership_response = client.table('org_members').select(
+                'org_id, role, orgs(org_id, org_name)'
+            ).eq('user_id', user['user_id']).execute()
+            
+            # Format org memberships
+            org_memberships = []
+            if membership_response.data:
+                for membership in membership_response.data:
+                    org_data = membership.get('orgs')
+                    if org_data:
+                        org_memberships.append({
+                            'org_id': org_data['org_id'],
+                            'org_name': org_data['org_name'],
+                            'org_role': membership['role']
+                        })
+            
+            user['org_memberships'] = org_memberships
+        
+        return common.success_response(users)
+        
+    except Exception as e:
+        print(f"Error listing users: {str(e)}")
+        raise
 
 
 def handle_provision(event: Dict[str, Any]) -> Dict[str, Any]:

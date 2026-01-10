@@ -31,10 +31,16 @@ interface ModuleConfigAdminCard {
   context?: "platform" | "organization";
 }
 
+interface ModuleConfigAdminCards {
+  platform?: ModuleConfigAdminCard;
+  organization?: ModuleConfigAdminCard;
+}
+
 interface ModuleConfig {
   display_name?: string;
   navigation?: ModuleConfigNavigation;
-  admin_card?: ModuleConfigAdminCard;
+  admin_card?: ModuleConfigAdminCard;  // Old format (flat)
+  admin_cards?: ModuleConfigAdminCards;  // New format (nested)
 }
 
 interface MergedModuleConfig {
@@ -137,20 +143,30 @@ export function buildAdminCards(context: "platform" | "organization"): AdminCard
   const adminCards: AdminCardConfig[] = [];
   
   Object.entries(moduleConfig).forEach(([moduleName, config]) => {
-    const card = config.admin_card;
+    const moduleId = moduleName.replace("module_", "");
+    
+    // Handle both old format (admin_card) and new format (admin_cards)
+    let card: ModuleConfigAdminCard | undefined;
+    
+    // New format: admin_cards.platform / admin_cards.organization
+    if (config.admin_cards) {
+      card = context === "platform" ? config.admin_cards.platform : config.admin_cards.organization;
+    }
+    // Old format: admin_card (flat)
+    else if (config.admin_card) {
+      card = config.admin_card;
+      
+      // Check if card matches the requested context
+      // If no context specified in config, assume it's for both
+      if (card.context && card.context !== context) {
+        return;
+      }
+    }
     
     // Only include enabled cards
     if (!card || !card.enabled) {
       return;
     }
-    
-    // Check if card matches the requested context
-    // If no context specified in config, assume it's for both
-    if (card.context && card.context !== context) {
-      return;
-    }
-    
-    const moduleId = moduleName.replace("module_", "");
     
     adminCards.push({
       id: moduleId,

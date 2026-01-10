@@ -13,6 +13,7 @@ output "lambda_function_arns" {
     orgs                  = aws_lambda_function.orgs.arn
     members               = aws_lambda_function.members.arn
     org_email_domains     = aws_lambda_function.org_email_domains.arn
+    invites               = aws_lambda_function.invites.arn
   }
 }
 
@@ -25,6 +26,7 @@ output "lambda_function_names" {
     orgs                  = aws_lambda_function.orgs.function_name
     members               = aws_lambda_function.members.function_name
     org_email_domains     = aws_lambda_function.org_email_domains.function_name
+    invites               = aws_lambda_function.invites.function_name
   }
 }
 
@@ -37,6 +39,7 @@ output "lambda_invoke_arns" {
     orgs                  = aws_lambda_function.orgs.invoke_arn
     members               = aws_lambda_function.members.invoke_arn
     org_email_domains     = aws_lambda_function.org_email_domains.invoke_arn
+    invites               = aws_lambda_function.invites.invoke_arn
   }
 }
 
@@ -170,6 +173,13 @@ output "api_routes" {
       integration = aws_lambda_function.idp_config.invoke_arn
       public      = false
     },
+    # admin users endpoint
+    {
+      method      = "GET"
+      path        = "/admin/users"
+      integration = aws_lambda_function.identities_management.invoke_arn
+      public      = false
+    },
     {
       method      = "PUT"
       path        = "/admin/idp-config/{providerType}"
@@ -205,6 +215,25 @@ output "api_routes" {
       method      = "DELETE"
       path        = "/orgs/{orgId}/email-domains/{domainId}"
       integration = aws_lambda_function.org_email_domains.invoke_arn
+      public      = false
+    },
+    # invites endpoints
+    {
+      method      = "GET"
+      path        = "/orgs/{orgId}/invites"
+      integration = aws_lambda_function.invites.invoke_arn
+      public      = false
+    },
+    {
+      method      = "POST"
+      path        = "/orgs/{orgId}/invites"
+      integration = aws_lambda_function.invites.invoke_arn
+      public      = false
+    },
+    {
+      method      = "DELETE"
+      path        = "/orgs/{orgId}/invites/{inviteId}"
+      integration = aws_lambda_function.invites.invoke_arn
       public      = false
     }
   ]

@@ -65,6 +65,7 @@ class FullStackValidator:
         self._validate_parameters()
         self._validate_orphaned_routes()
         self._validate_path_parameter_naming()
+        self._validate_lambda_path_param_extraction()
         
         # Generate report
         report = self._generate_report()
@@ -513,6 +514,106 @@ class FullStackValidator:
         
         # Ultimate fallback
         return 'resourceId'
+    
+    def _validate_lambda_path_param_extraction(self):
+        """
+        Validate that Lambda code extracts path parameters matching Gateway route definitions.
+        
+        This catches bugs where:
+        - Lambda uses path_params.get('id') but route has {workspaceId}
+        - Lambda uses path_params.get('orgId') but route has {userId}
+        
+        This validation closes the gap between what the route defines and what the code extracts.
+        """
+        logger.info("Validating Lambda path parameter extraction...")
+        
+        # Build a mapping: Lambda file -> list of Gateway routes pointing to it
+        lambda_file_to_routes = {}
+        
+        for gateway_route in self.gateway_parser.routes:
+            # Find Lambda routes from the same file
+            matching_lambdas = [
+                lr for lr in self.lambda_parser.routes
+                if self._routes_match(gateway_route, lr)
+            ]
+            
+            for lambda_route in matching_lambdas:
+                if lambda_route.file not in lambda_file_to_routes:
+                    lambda_file_to_routes[lambda_route.file] = []
+                lambda_file_to_routes[lambda_route.file].append(gateway_route)
+        
+        # Check each Lambda file
+        for lambda_file, gateway_routes in lambda_file_to_routes.items():
+            # Get all Lambda routes from this file
+            file_lambda_routes = [lr for lr in self.lambda_parser.routes if lr.file == lambda_file]
+            
+            if not file_lambda_routes:
+                continue
+            
+            # Get extracted params (all routes in same file have same extracted params)
+            extracted_params = set(file_lambda_routes[0].extracted_path_params)
+            
+            if not extracted_params:
+                # No path param extractions found - skip validation for this file
+                continue
+            
+            # Get all unique params from Gateway routes
+            gateway_params = set()
+            for gr in gateway_routes:
+                # Extract params from Gateway route path
+                param_pattern = re.compile(r'\{([^}]+)\}')
+                params = param_pattern.findall(gr.path)
+                gateway_params.update(params)
+            
+            # Check for mismatches
+            for extracted in extracted_params:
+                if extracted not in gateway_params:
+                    # Lambda extracts a param that doesn't exist in any Gateway route
+                    # Find which Gateway routes this Lambda handles
+                    gateway_paths = [gr.path for gr in gateway_routes]
+                    
+                    # Suggest correct param based on Gateway routes
+                    if gateway_params:
+                        suggestion = f"Use {gateway_params} instead (from Gateway routes: {', '.join(gateway_paths)})"
+                    else:
+                        suggestion = f"No path parameters defined in Gateway routes: {', '.join(gateway_paths)}"
+                    
+                    self.mismatches.append(APIMismatch(
+                        severity='error',
+                        mismatch_type='lambda_path_param_extraction',
+                        lambda_file=lambda_file,
+                        lambda_line=1,  # Can't pinpoint exact line from extraction
+                        issue=f"Lambda extracts path parameter '{extracted}' but it's not defined in any Gateway route",
+                        suggestion=suggestion
+                    ))
+            
+            # Check for params in Gateway that Lambda never extracts
+            for gateway_param in gateway_params:
+                if gateway_param not in extracted_params:
+                    # Gateway defines a param but Lambda never extracts it
+                    gateway_paths = [gr.path for gr in gateway_routes if f'{{{gateway_param}}}' in gr.path]
+                    
+                    self.mismatches.append(APIMismatch(
+                        severity='warning',
+                        mismatch_type='lambda_path_param_extraction',
+                        lambda_file=lambda_file,
+                        lambda_line=1,
+                        issue=f"Gateway route defines path parameter '{gateway_param}' but Lambda never extracts it",
+                        suggestion=f"Add path_params.get('{gateway_param}') to Lambda code (routes: {', '.join(gateway_paths)})"
+                    ))
+    
+    def _routes_match(self, gateway_route: 'GatewayRoute', lambda_route: 'LambdaRoute') -> bool:
+        """Check if a Gateway route matches a Lambda route."""
+        # Normalize both paths for comparison
+        normalized_gateway = self.lambda_parser.normalize_path(gateway_route.path)
+        normalized_lambda = self.lambda_parser.normalize_path(lambda_route.path)
+        
+        # Methods must match
+        if gateway_route.method != lambda_route.method:
+            return False
+        
+        # Paths must match (normalized)
+        return normalized_gateway == normalized_lambda
     
     def _build_gateway_routes_index(self) -> Dict[str, List[GatewayRoute]]:
         """Build index of gateway routes by method + path."""

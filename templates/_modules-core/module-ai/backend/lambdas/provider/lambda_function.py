@@ -126,7 +126,11 @@ def get_supabase_user_id_from_okta_uid(okta_uid: str) -> Optional[str]:
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Handle ai_provider operations (platform-level, admin only)
-    Endpoints:
+    
+    Routes - AI Configuration:
+    - GET    /orgs/{orgId}/ai/config                 - Get organization AI configuration
+    
+    Routes - Provider Management:
     - GET    /providers                              - List all providers
     - GET    /providers/{providerId}                 - Get a single provider by ID
     - POST   /providers                              - Create a new provider
@@ -135,6 +139,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     - POST   /providers/{providerId}/discover        - Discover models for a provider
     - POST   /providers/{providerId}/validate-models - Start async model validation
     - GET    /providers/{providerId}/validation-status - Get validation progress
+    
+    Routes - Model Management:
     - GET    /models                                 - List all models (with providerId query param)
     - GET    /models/{modelId}                       - Get a single model by ID
     - POST   /models/{modelId}/test                  - Test a specific model
@@ -158,7 +164,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         path = event.get('requestContext', {}).get('http', {}).get('path') or event.get('path', '')
         
         # Route to appropriate handler based on path and method
-        if '/discover' in path and http_method == 'POST':
+        if '/orgs/' in path and '/ai/config' in path and http_method == 'GET':
+            if not path_params or not path_params.get('orgId'):
+                return common.bad_request_response('Organization ID is required')
+            return handle_get_org_ai_config(event, supabase_user_id, path_params['orgId'])
+        elif '/discover' in path and http_method == 'POST':
             if not path_params or not path_params.get('providerId'):
                 return common.bad_request_response('Provider ID is required')
             return handle_discover_models(event, supabase_user_id, path_params['providerId'])
@@ -211,6 +221,57 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         import traceback
         traceback.print_exc()
         return common.internal_error_response('Internal server error')
+
+def handle_get_org_ai_config(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[str, Any]:
+    """
+    Get organization AI configuration.
+    Returns list of available providers and models for this organization.
+    """
+    # Validate org_id
+    org_id = common.validate_uuid(org_id, 'org_id')
+    
+    # Verify user has access to this organization
+    membership = common.find_one('org_members', {'user_id': user_id, 'org_id': org_id})
+    if not membership:
+        raise common.ForbiddenError('You do not have access to this organization')
+    
+    try:
+        # Get all active providers
+        providers = common.find_many('ai_providers', {'is_active': True})
+        
+        # For each provider, get available models
+        config = {
+            'providers': [],
+            'total_models': 0
+        }
+        
+        for provider in providers:
+            # Get available models for this provider
+            models = common.find_many('ai_models', {
+                'provider_id': provider['id'],
+                'status': 'available'
+            })
+            
+            if models:
+                provider_config = {
+                    'id': provider['id'],
+                    'name': provider['name'],
+                    'display_name': provider.get('display_name'),
+                    'provider_type': provider['provider_type'],
+                    'model_count': len(models),
+                    'models': common.format_records(models)
+                }
+                config['providers'].append(provider_config)
+                config['total_models'] += len(models)
+        
+        return common.success_response(config)
+        
+    except Exception as e:
+        print(f'Error getting org AI config: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        return common.internal_error_response(f'Failed to get org AI config: {str(e)}')
+
 
 def handle_get_all(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """List all platform-level AI providers with model counts (admin only)"""

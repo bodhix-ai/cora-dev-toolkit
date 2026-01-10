@@ -364,6 +364,53 @@ resource "aws_cloudwatch_log_group" "org_email_domains" {
 }
 
 # =============================================================================
+# Lambda Function - invites
+# =============================================================================
+
+resource "aws_lambda_function" "invites" {
+  function_name = "${local.prefix}-invites"
+  description   = "CORE-ACCESS: Organization invitation management (GET/POST/DELETE /orgs/:id/invites)"
+  handler       = "lambda_function.lambda_handler"
+  runtime       = local.lambda_runtime
+  role          = aws_iam_role.lambda.arn
+  timeout       = local.lambda_timeout
+  memory_size   = local.lambda_memory_size
+  publish       = true
+
+  # Local zip-based deployment
+  filename         = "${local.build_dir}/invites.zip"
+  source_code_hash = filebase64sha256("${local.build_dir}/invites.zip")
+
+  layers = [aws_lambda_layer_version.org_common.arn]
+
+  environment {
+    variables = {
+      REGION              = var.aws_region
+      SUPABASE_SECRET_ARN = var.supabase_secret_arn
+      LOG_LEVEL           = var.log_level
+    }
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = local.tags
+}
+
+resource "aws_lambda_alias" "invites" {
+  name             = "live"
+  function_name    = aws_lambda_function.invites.function_name
+  function_version = aws_lambda_function.invites.version
+}
+
+resource "aws_cloudwatch_log_group" "invites" {
+  name              = "/aws/lambda/${aws_lambda_function.invites.function_name}"
+  retention_in_days = 14
+  tags              = local.tags
+}
+
+# =============================================================================
 # CloudWatch Alarms (Optional - only if SNS topic provided)
 # =============================================================================
 
@@ -499,6 +546,29 @@ resource "aws_cloudwatch_metric_alarm" "members_errors" {
 
   dimensions = {
     FunctionName = aws_lambda_function.members.function_name
+  }
+
+  alarm_actions = [var.sns_topic_arn]
+  tags          = local.tags
+}
+
+# Alarm for invites errors
+resource "aws_cloudwatch_metric_alarm" "invites_errors" {
+  count = var.sns_topic_arn != "" ? 1 : 0
+
+  alarm_name          = "${local.prefix}-invites-errors"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "Errors"
+  namespace           = "AWS/Lambda"
+  period              = 300
+  statistic           = "Sum"
+  threshold           = 5
+  alarm_description   = "Alert when invites Lambda has >5 errors in 5 minutes"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    FunctionName = aws_lambda_function.invites.function_name
   }
 
   alarm_actions = [var.sns_topic_arn]

@@ -3,7 +3,7 @@ Organization Members Lambda Function
 Handles CRUD operations for organization membership
 """
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import org_common as common
 
 
@@ -61,7 +61,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         path_params = event.get('pathParameters', {})
         
         # Organization ID is required
-        org_id = path_params.get('id')
+        org_id = path_params.get('orgId')
         if not org_id:
             return common.bad_request_response('Organization ID is required')
         

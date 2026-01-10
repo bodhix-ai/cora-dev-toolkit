@@ -333,12 +333,12 @@ def get_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, 
         Organization AI configuration with inherited platform defaults.
     """
     try:
-        # Get organization ID from path parameters (support both organizationId and orgId)
+        # Get organization ID from path parameters
         path_params = event.get("pathParameters", {})
-        organization_id = path_params.get("organizationId") or path_params.get("orgId")
+        organization_id = path_params.get("orgId")
         
         if not organization_id:
-            return common.bad_request_response("organizationId (or orgId) is required.")
+            return common.bad_request_response("orgId is required.")
         
         organization_id = common.validate_uuid(organization_id, 'organizationId')
         
@@ -499,14 +499,14 @@ def update_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[st
         Updated organization AI configuration.
     """
     try:
-        # Get organization ID from path parameters (support both organizationId and orgId)
+        # Get organization ID from path parameters
         path_params = event.get("pathParameters", {})
-        organization_id = path_params.get("organizationId") or path_params.get("orgId")
+        organization_id = path_params.get("orgId")
         
         if not organization_id:
-            return common.bad_request_response("organizationId (or orgId) is required.")
+            return common.bad_request_response("orgId is required.")
         
-        organization_id = common.validate_uuid(organization_id, 'organizationId')
+        organization_id = common.validate_uuid(organization_id, 'orgId')
         
         # Verify user is admin of the organization or platform admin
         is_platform_admin = _check_platform_admin(user_id)
