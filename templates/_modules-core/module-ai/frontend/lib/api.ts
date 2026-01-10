@@ -170,15 +170,15 @@ function transformProviderInput(
 export interface AIEnablementApiClient {
   // Provider endpoints (platform-level, no org_id needed)
   getProviders: () => Promise<ApiResponse<AIProvider[]>>;
-  getProvider: (id: string) => Promise<ApiResponse<AIProvider>>;
+  getProvider: (providerId: string) => Promise<ApiResponse<AIProvider>>;
   createProvider: (
     data: CreateProviderInput
   ) => Promise<ApiResponse<AIProvider>>;
   updateProvider: (
-    id: string,
+    providerId: string,
     data: UpdateProviderInput
   ) => Promise<ApiResponse<AIProvider>>;
-  deleteProvider: (id: string) => Promise<ApiResponse<void>>;
+  deleteProvider: (providerId: string) => Promise<ApiResponse<void>>;
 
   // Model discovery endpoints
   discoverModels: (
@@ -193,9 +193,9 @@ export interface AIEnablementApiClient {
 
   // Model endpoints
   getModels: (providerId?: string) => Promise<ApiResponse<AIModel[]>>;
-  getModel: (id: string) => Promise<ApiResponse<AIModel>>;
+  getModel: (modelId: string) => Promise<ApiResponse<AIModel>>;
   testModel: (
-    id: string,
+    modelId: string,
     data: TestModelInput
   ) => Promise<ApiResponse<TestModelResponse>>;
 }
@@ -238,8 +238,8 @@ export function createAIEnablementClient(
       }
     },
 
-    getProvider: async (id: string) => {
-      const response = await authenticatedClient.get<ProviderApiData>(`/providers/${id}`);
+    getProvider: async (providerId: string) => {
+      const response = await authenticatedClient.get<ProviderApiData>(`/providers/${providerId}`);
       if (response.success && response.data) {
         const transformed = transformProviderResponse(response.data);
         return { success: response.success, data: transformed };
@@ -257,11 +257,11 @@ export function createAIEnablementClient(
       return { success: false, data: {} as AIProvider, error: response.error };
     },
 
-    updateProvider: async (id: string, data: UpdateProviderInput) => {
+    updateProvider: async (providerId: string, data: UpdateProviderInput) => {
       try {
         const payload = transformProviderInput(data);
         const response = await authenticatedClient.put<ProviderApiData>(
-          `/providers/${id}`,
+          `/providers/${providerId}`,
           payload
         );
         if (response.success && response.data) {
@@ -281,16 +281,15 @@ export function createAIEnablementClient(
       }
     },
 
-    deleteProvider: async (id: string) => {
-      return authenticatedClient.delete(`/providers/${id}`);
+    deleteProvider: async (providerId: string) => {
+      return authenticatedClient.delete(`/providers/${providerId}`);
     },
 
     // Model discovery
-    // Note: Parameter named 'id' to match API Gateway path parameter {id}
-    discoverModels: async (id: string) => {
+    discoverModels: async (providerId: string) => {
       try {
         const response = await authenticatedClient.post<{ success: boolean; discoveredCount: number; models: ModelApiData[] }>(
-          `/providers/${id}/discover`
+          `/providers/${providerId}/discover`
         );
         if (response.success && response.data) {
           const transformedModels = response.data.models?.map(transformModelResponse) || [];
@@ -329,11 +328,10 @@ export function createAIEnablementClient(
     },
 
     // Model validation
-    // Note: Parameter named 'id' to match API Gateway path parameter {id}
-    validateModels: async (id: string) => {
+    validateModels: async (providerId: string) => {
       try {
         const response = await authenticatedClient.post<ValidateModelsResponse>(
-          `/providers/${id}/validate-models`
+          `/providers/${providerId}/validate-models`
         );
         if (response.success && response.data) {
           return { success: true, data: response.data };
@@ -368,11 +366,10 @@ export function createAIEnablementClient(
     },
 
     // Get validation status
-    // Note: Parameter named 'id' to match API Gateway path parameter {id}
-    getValidationStatus: async (id: string) => {
+    getValidationStatus: async (providerId: string) => {
       try {
         const response = await authenticatedClient.get<{ status: string; current_model_id?: string; validated?: number; total?: number; available?: number; unavailable?: number }>(
-          `/providers/${id}/validation-status`
+          `/providers/${providerId}/validation-status`
         );
         if (response.success && response.data) {
           return {
@@ -444,8 +441,8 @@ export function createAIEnablementClient(
       }
     },
 
-    getModel: async (id: string) => {
-      const response = await authenticatedClient.get<ModelApiData>(`/models/${id}`);
+    getModel: async (modelId: string) => {
+      const response = await authenticatedClient.get<ModelApiData>(`/models/${modelId}`);
       if (response.success && response.data) {
         const transformed = transformModelResponse(response.data);
         return { success: response.success, data: transformed };
@@ -453,8 +450,8 @@ export function createAIEnablementClient(
       return { success: false, data: {} as AIModel, error: response.error };
     },
 
-    testModel: async (id: string, data: TestModelInput) => {
-      return authenticatedClient.post(`/models/${id}/test`, data);
+    testModel: async (modelId: string, data: TestModelInput) => {
+      return authenticatedClient.post(`/models/${modelId}/test`, data);
     },
   };
 }

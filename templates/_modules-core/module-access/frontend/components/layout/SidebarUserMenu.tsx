@@ -315,12 +315,12 @@ export function SidebarUserMenu({ isExpanded }: SidebarUserMenuProps) {
             </MenuItem>
           )}
 
-          {/* Organization Settings - Only for org admins */}
+          {/* Organization Admin - Only for org admins */}
           {isOrgAdmin && (
             <MenuItem
               onClick={() => {
                 handleMenuClose();
-                window.location.href = "/organization/settings";
+                window.location.href = "/admin/org";
               }}
               sx={{ borderRadius: "6px", mx: 0.5, my: 0.5 }}
             >
@@ -328,7 +328,7 @@ export function SidebarUserMenu({ isExpanded }: SidebarUserMenuProps) {
                 <BusinessIcon fontSize="small" />
               </ListItemIcon>
               <ListItemText
-                primary="Organization Settings"
+                primary="Organization Admin"
                 primaryTypographyProps={{ fontSize: "0.875rem" }}
               />
             </MenuItem>

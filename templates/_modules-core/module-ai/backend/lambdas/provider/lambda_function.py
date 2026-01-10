@@ -127,17 +127,17 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Handle ai_provider operations (platform-level, admin only)
     Endpoints:
-    - GET    /providers                        - List all providers
-    - GET    /providers/{id}                   - Get a single provider by ID
-    - POST   /providers                        - Create a new provider
-    - PUT    /providers/{id}                   - Update a provider
-    - DELETE /providers/{id}                   - Delete a provider
-    - POST   /providers/{id}/discover          - Discover models for a provider
-    - POST   /providers/{id}/validate-models   - Start async model validation
-    - GET    /providers/{id}/validation-status - Get validation progress
-    - GET    /models                           - List all models (with providerId query param)
-    - GET    /models/{id}                      - Get a single model by ID
-    - POST   /models/{id}/test                 - Test a specific model
+    - GET    /providers                              - List all providers
+    - GET    /providers/{providerId}                 - Get a single provider by ID
+    - POST   /providers                              - Create a new provider
+    - PUT    /providers/{providerId}                 - Update a provider
+    - DELETE /providers/{providerId}                 - Delete a provider
+    - POST   /providers/{providerId}/discover        - Discover models for a provider
+    - POST   /providers/{providerId}/validate-models - Start async model validation
+    - GET    /providers/{providerId}/validation-status - Get validation progress
+    - GET    /models                                 - List all models (with providerId query param)
+    - GET    /models/{modelId}                       - Get a single model by ID
+    - POST   /models/{modelId}/test                  - Test a specific model
     """
     print(json.dumps(event, default=str))
     
@@ -159,38 +159,38 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         # Route to appropriate handler based on path and method
         if '/discover' in path and http_method == 'POST':
-            if not path_params or not path_params.get('id'):
+            if not path_params or not path_params.get('providerId'):
                 return common.bad_request_response('Provider ID is required')
-            return handle_discover_models(event, supabase_user_id, path_params['id'])
+            return handle_discover_models(event, supabase_user_id, path_params['providerId'])
         elif '/validate-models' in path and http_method == 'POST':
-            if not path_params or not path_params.get('id'):
+            if not path_params or not path_params.get('providerId'):
                 return common.bad_request_response('Provider ID is required')
-            return handle_validate_models(event, supabase_user_id, path_params['id'])
+            return handle_validate_models(event, supabase_user_id, path_params['providerId'])
         elif '/validation-status' in path and http_method == 'GET':
-            if not path_params or not path_params.get('id'):
+            if not path_params or not path_params.get('providerId'):
                 return common.bad_request_response('Provider ID is required')
-            return handle_get_validation_status(supabase_user_id, path_params['id'])
+            return handle_get_validation_status(supabase_user_id, path_params['providerId'])
         elif '/models/' in path and '/test' in path and http_method == 'POST':
-            if not path_params or not path_params.get('id'):
+            if not path_params or not path_params.get('modelId'):
                 return common.bad_request_response('Model ID is required')
-            return handle_test_model(event, supabase_user_id, path_params['id'])
+            return handle_test_model(event, supabase_user_id, path_params['modelId'])
         elif '/models' in path and http_method == 'GET':
             return handle_get_models(event, supabase_user_id)
         elif http_method == 'GET':
-            if path_params and path_params.get('id'):
-                return handle_get_one(supabase_user_id, path_params['id'])
+            if path_params and path_params.get('providerId'):
+                return handle_get_one(supabase_user_id, path_params['providerId'])
             else:
                 return handle_get_all(event, supabase_user_id)
         elif http_method == 'POST':
             return handle_create(event, supabase_user_id)
         elif http_method == 'PUT':
-            if not path_params or not path_params.get('id'):
+            if not path_params or not path_params.get('providerId'):
                 return common.bad_request_response('Provider ID is required')
-            return handle_update(event, supabase_user_id, path_params['id'])
+            return handle_update(event, supabase_user_id, path_params['providerId'])
         elif http_method == 'DELETE':
-            if not path_params or not path_params.get('id'):
+            if not path_params or not path_params.get('providerId'):
                 return common.bad_request_response('Provider ID is required')
-            return handle_delete(supabase_user_id, path_params['id'])
+            return handle_delete(supabase_user_id, path_params['providerId'])
         elif http_method == 'OPTIONS':
             return common.success_response({})
         else:

@@ -122,19 +122,19 @@ output "api_routes" {
     },
     {
       method      = "GET"
-      path        = "/orgs/{id}"
+      path        = "/orgs/{orgId}"
       integration = aws_lambda_function.orgs.invoke_arn
       public      = false
     },
     {
       method      = "PUT"
-      path        = "/orgs/{id}"
+      path        = "/orgs/{orgId}"
       integration = aws_lambda_function.orgs.invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/orgs/{id}"
+      path        = "/orgs/{orgId}"
       integration = aws_lambda_function.orgs.invoke_arn
       public      = false
     },
@@ -185,25 +185,25 @@ output "api_routes" {
     # org-email-domains endpoints
     {
       method      = "GET"
-      path        = "/orgs/{id}/email-domains"
+      path        = "/orgs/{orgId}/email-domains"
       integration = aws_lambda_function.org_email_domains.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/orgs/{id}/email-domains"
+      path        = "/orgs/{orgId}/email-domains"
       integration = aws_lambda_function.org_email_domains.invoke_arn
       public      = false
     },
     {
       method      = "PUT"
-      path        = "/orgs/{id}/email-domains/{domainId}"
+      path        = "/orgs/{orgId}/email-domains/{domainId}"
       integration = aws_lambda_function.org_email_domains.invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/orgs/{id}/email-domains/{domainId}"
+      path        = "/orgs/{orgId}/email-domains/{domainId}"
       integration = aws_lambda_function.org_email_domains.invoke_arn
       public      = false
     }

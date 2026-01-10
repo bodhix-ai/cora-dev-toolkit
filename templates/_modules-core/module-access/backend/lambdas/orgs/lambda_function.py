@@ -14,9 +14,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Endpoints:
     - GET    /orgs           - List user's organizations
     - POST   /orgs           - Create new organization
-    - GET    /orgs/:id       - Get organization details
-    - PUT    /orgs/:id       - Update organization
-    - DELETE /orgs/:id       - Delete organization
+    - GET    /orgs/:orgId    - Get organization details
+    - PUT    /orgs/:orgId    - Update organization
+    - DELETE /orgs/:orgId    - Delete organization
     
     Args:
         event: API Gateway event
@@ -45,20 +45,20 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         # Route to appropriate handler
         if http_method == 'GET':
-            if path_params and path_params.get('id'):
-                return handle_get_org(supabase_user_id, path_params['id'])
+            if path_params and path_params.get('orgId'):
+                return handle_get_org(supabase_user_id, path_params['orgId'])
             else:
                 return handle_list_orgs(event, supabase_user_id)
         elif http_method == 'POST':
             return handle_create_org(event, supabase_user_id)
         elif http_method == 'PUT':
-            if not path_params or not path_params.get('id'):
+            if not path_params or not path_params.get('orgId'):
                 return common.bad_request_response('Organization ID is required')
-            return handle_update_org(event, supabase_user_id, path_params['id'])
+            return handle_update_org(event, supabase_user_id, path_params['orgId'])
         elif http_method == 'DELETE':
-            if not path_params or not path_params.get('id'):
+            if not path_params or not path_params.get('orgId'):
                 return common.bad_request_response('Organization ID is required')
-            return handle_delete_org(supabase_user_id, path_params['id'])
+            return handle_delete_org(supabase_user_id, path_params['orgId'])
         elif http_method == 'OPTIONS':
             # Handle CORS preflight
             return common.success_response({})

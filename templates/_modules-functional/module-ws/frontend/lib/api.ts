@@ -79,12 +79,12 @@ export class WorkspaceApiClient {
   /**
    * Get a single workspace by ID
    */
-  async getWorkspace(id: string, orgId: string): Promise<Workspace | null> {
+  async getWorkspace(workspaceId: string, orgId: string): Promise<Workspace | null> {
     try {
-      const response = await this.client.get<ApiResponse<{ workspace: Workspace }>>(`/ws/${id}?org_id=${orgId}`);
+      const response = await this.client.get<ApiResponse<{ workspace: Workspace }>>(`/ws/${workspaceId}?org_id=${orgId}`);
       return response?.data?.workspace || null;
     } catch (error) {
-      console.error(`Failed to get workspace ${id}:`, error);
+      console.error(`Failed to get workspace ${workspaceId}:`, error);
       return null;
     }
   }
@@ -109,15 +109,15 @@ export class WorkspaceApiClient {
   /**
    * Update a workspace
    */
-  async updateWorkspace(id: string, data: WorkspaceUpdateRequest, orgId: string): Promise<Workspace> {
+  async updateWorkspace(workspaceId: string, data: WorkspaceUpdateRequest, orgId: string): Promise<Workspace> {
     try {
-      const response = await this.client.put<ApiResponse<Workspace>>(`/ws/${id}?org_id=${orgId}`, data);
+      const response = await this.client.put<ApiResponse<Workspace>>(`/ws/${workspaceId}?org_id=${orgId}`, data);
       if (!response?.data) {
         throw new Error(response?.error || "Failed to update workspace");
       }
       return response.data;
     } catch (error) {
-      console.error(`Failed to update workspace ${id}:`, error);
+      console.error(`Failed to update workspace ${workspaceId}:`, error);
       throw new Error("Failed to update workspace");
     }
   }
@@ -125,14 +125,14 @@ export class WorkspaceApiClient {
   /**
    * Delete a workspace (soft delete by default)
    */
-  async deleteWorkspace(id: string, orgId: string, permanent = false): Promise<DeleteWorkspaceResponse> {
+  async deleteWorkspace(workspaceId: string, orgId: string, permanent = false): Promise<DeleteWorkspaceResponse> {
     try {
       const params = new URLSearchParams({ org_id: orgId });
       if (permanent) params.set("permanent", "true");
-      const response = await this.client.delete<ApiResponse<DeleteWorkspaceResponse>>(`/ws/${id}?${params.toString()}`);
+      const response = await this.client.delete<ApiResponse<DeleteWorkspaceResponse>>(`/ws/${workspaceId}?${params.toString()}`);
       return response?.data || { success: true };
     } catch (error) {
-      console.error(`Failed to delete workspace ${id}:`, error);
+      console.error(`Failed to delete workspace ${workspaceId}:`, error);
       throw new Error("Failed to delete workspace");
     }
   }
@@ -140,10 +140,10 @@ export class WorkspaceApiClient {
   /**
    * Restore a soft-deleted workspace
    */
-  async restoreWorkspace(id: string, orgId: string): Promise<Workspace> {
+  async restoreWorkspace(workspaceId: string, orgId: string): Promise<Workspace> {
     try {
       const response = await this.client.post<ApiResponse<Workspace>>(
-        `/ws/${id}/restore?org_id=${orgId}`,
+        `/ws/${workspaceId}/restore?org_id=${orgId}`,
         {}
       );
       if (!response?.data) {
@@ -151,7 +151,7 @@ export class WorkspaceApiClient {
       }
       return response.data;
     } catch (error) {
-      console.error(`Failed to restore workspace ${id}:`, error);
+      console.error(`Failed to restore workspace ${workspaceId}:`, error);
       throw new Error("Failed to restore workspace");
     }
   }
@@ -373,10 +373,10 @@ export class WorkspaceApiClient {
   /**
    * Admin restore workspace (org owner only)
    */
-  async adminRestoreWorkspace(id: string, orgId: string): Promise<Workspace> {
+  async adminRestoreWorkspace(workspaceId: string, orgId: string): Promise<Workspace> {
     try {
       const response = await this.client.post<ApiResponse<Workspace>>(
-        `/ws/admin/workspaces/${id}/restore?org_id=${orgId}`,
+        `/ws/admin/workspaces/${workspaceId}/restore?org_id=${orgId}`,
         {}
       );
       if (!response?.data) {
@@ -384,7 +384,7 @@ export class WorkspaceApiClient {
       }
       return response.data;
     } catch (error) {
-      console.error(`Failed to admin restore workspace ${id}:`, error);
+      console.error(`Failed to admin restore workspace ${workspaceId}:`, error);
       throw new Error("Failed to restore workspace");
     }
   }
@@ -392,11 +392,11 @@ export class WorkspaceApiClient {
   /**
    * Admin force delete workspace (org owner only)
    */
-  async adminForceDelete(id: string, orgId: string): Promise<void> {
+  async adminForceDelete(workspaceId: string, orgId: string): Promise<void> {
     try {
-      await this.client.delete(`/ws/admin/workspaces/${id}?org_id=${orgId}&force=true`);
+      await this.client.delete(`/ws/admin/workspaces/${workspaceId}?org_id=${orgId}&force=true`);
     } catch (error) {
-      console.error(`Failed to force delete workspace ${id}:`, error);
+      console.error(`Failed to force delete workspace ${workspaceId}:`, error);
       throw new Error("Failed to delete workspace");
     }
   }

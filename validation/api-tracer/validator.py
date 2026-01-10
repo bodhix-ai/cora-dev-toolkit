@@ -5,6 +5,7 @@ Validates API contracts across all layers: Frontend → API Gateway → Lambda
 Detects route mismatches, parameter issues, and response format errors.
 """
 
+import re
 import logging
 from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass, field
@@ -63,6 +64,7 @@ class FullStackValidator:
         self._match_gateway_to_lambda()
         self._validate_parameters()
         self._validate_orphaned_routes()
+        self._validate_path_parameter_naming()
         
         # Generate report
         report = self._generate_report()
@@ -437,6 +439,80 @@ class FullStackValidator:
                     issue=f"Lambda handler for {route.method} {normalized} exists but no frontend calls found",
                     suggestion="This might be intentional (webhooks, internal APIs) or dead code to remove"
                 ))
+    
+    def _validate_path_parameter_naming(self):
+        """
+        Validate path parameters use descriptive names per CORA standard.
+        
+        Flags routes using generic {id} instead of resource-specific names:
+        - {orgId}, {workspaceId}, {providerId}, {modelId}, {memberId}, etc.
+        
+        Reference: docs/standards/standard_API-PATTERNS.md Part 3
+        """
+        logger.info("Validating path parameter naming conventions...")
+        
+        # Regex to extract path parameters
+        param_pattern = re.compile(r'\{([^}]+)\}')
+        
+        for route in self.gateway_parser.routes:
+            params = param_pattern.findall(route.path)
+            for param in params:
+                if param == 'id':
+                    # Suggest descriptive name based on path context
+                    suggestion = self._suggest_param_name(route.path)
+                    self.mismatches.append(APIMismatch(
+                        severity='error',
+                        mismatch_type='path_parameter_naming',
+                        gateway_file=route.file,
+                        endpoint=route.path,
+                        method=route.method,
+                        issue=f"Generic {{id}} used in path: {route.path}",
+                        suggestion=f"Use {{{suggestion}}} instead of {{id}} (see docs/standards/standard_API-PATTERNS.md)"
+                    ))
+    
+    def _suggest_param_name(self, path: str) -> str:
+        """
+        Suggest a descriptive parameter name based on path context.
+        
+        Examples:
+            /orgs/{id} -> orgId
+            /ws/{id} -> workspaceId
+            /providers/{id} -> providerId
+            /models/{id} -> modelId
+            /users/{id} -> userId
+        """
+        # Common path patterns and their suggested parameter names
+        patterns = [
+            (r'/orgs/{id}', 'orgId'),
+            (r'/organizations/{id}', 'orgId'),
+            (r'/ws/{id}', 'workspaceId'),
+            (r'/workspaces/{id}', 'workspaceId'),
+            (r'/providers/{id}', 'providerId'),
+            (r'/models/{id}', 'modelId'),
+            (r'/users/{id}', 'userId'),
+            (r'/members/{id}', 'memberId'),
+            (r'/projects/{id}', 'projectId'),
+            (r'/kb/{id}', 'kbId'),
+            (r'/knowledge-bases/{id}', 'kbId'),
+        ]
+        
+        # Check each pattern
+        for pattern, suggestion in patterns:
+            if pattern in path:
+                return suggestion
+        
+        # Fallback: Try to extract resource name from path
+        # e.g., /resources/{id} -> resourceId
+        match = re.search(r'/([a-z-]+)/{id}', path)
+        if match:
+            resource = match.group(1).replace('-', '_')
+            # Convert plural to singular (simple heuristic)
+            if resource.endswith('s') and not resource.endswith('ss'):
+                resource = resource[:-1]
+            return f"{resource}Id"
+        
+        # Ultimate fallback
+        return 'resourceId'
     
     def _build_gateway_routes_index(self) -> Dict[str, List[GatewayRoute]]:
         """Build index of gateway routes by method + path."""

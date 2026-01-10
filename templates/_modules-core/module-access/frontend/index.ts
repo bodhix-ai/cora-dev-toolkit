@@ -111,5 +111,5 @@ export { OrgMembersTab } from "./components/admin/OrgMembersTab";
 export { OrgInvitesTab } from "./components/admin/OrgInvitesTab";
 export { OrgAIConfigTab } from "./components/admin/OrgAIConfigTab";
 
-// Admin Card (for platform admin page)
-export { accessControlAdminCard } from "./adminCard";
+// Admin Cards
+export { accessControlAdminCard, organizationSettingsCard } from "./adminCard";
