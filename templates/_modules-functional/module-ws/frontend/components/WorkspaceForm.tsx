@@ -33,6 +33,10 @@ export interface WorkspaceFormProps {
   workspace?: Workspace | null;
   /** Organization ID for creating new workspace */
   orgId?: string;
+  /** Default color from workspace config (for create mode) */
+  defaultColor?: string;
+  /** Label for singular form (e.g., "Audit" instead of "Workspace") */
+  labelSingular?: string;
   /** Callback when workspace is created */
   onCreateSuccess?: (workspace: Workspace) => void;
   /** Callback when workspace is updated */
@@ -52,6 +56,8 @@ export function WorkspaceForm({
   onClose,
   workspace,
   orgId,
+  defaultColor,
+  labelSingular = "Workspace",
   onCreateSuccess,
   onUpdateSuccess,
   onCreate,
@@ -73,8 +79,11 @@ export function WorkspaceForm({
             icon: workspace.icon,
             tags: workspace.tags,
           }
-        : DEFAULT_WORKSPACE_FORM,
-    [workspace]
+        : {
+            ...DEFAULT_WORKSPACE_FORM,
+            color: defaultColor || DEFAULT_WORKSPACE_FORM.color,
+          },
+    [workspace, defaultColor]
   );
 
   const {
@@ -158,12 +167,12 @@ export function WorkspaceForm({
           {isEditMode ? (
             <>
               <Edit color="primary" />
-              <Typography variant="h6">Edit Workspace</Typography>
+              <Typography variant="h6">Edit {labelSingular}</Typography>
             </>
           ) : (
             <>
               <Add color="primary" />
-              <Typography variant="h6">Create Workspace</Typography>
+              <Typography variant="h6">Create {labelSingular}</Typography>
             </>
           )}
         </Box>
@@ -244,7 +253,7 @@ export function WorkspaceForm({
               : "Creating..."
             : isEditMode
             ? "Save Changes"
-            : "Create Workspace"}
+            : `Create ${labelSingular}`}
         </Button>
       </DialogActions>
     </Dialog>
