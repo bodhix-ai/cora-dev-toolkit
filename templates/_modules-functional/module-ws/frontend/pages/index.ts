@@ -15,3 +15,6 @@ export type { PlatformAdminConfigPageProps } from "./PlatformAdminConfigPage";
 
 export { OrgAdminManagementPage } from "./OrgAdminManagementPage";
 export type { OrgAdminManagementPageProps } from "./OrgAdminManagementPage";
+
+export { WorkspaceDetailAdminPage } from "./WorkspaceDetailAdminPage";
+export type { WorkspaceDetailAdminPageProps } from "./WorkspaceDetailAdminPage";
