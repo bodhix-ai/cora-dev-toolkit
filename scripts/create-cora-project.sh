@@ -1096,10 +1096,11 @@ if ! $DRY_RUN && [[ ${#ENABLED_MODULES[@]} -gt 0 ]]; then
 
         # Copy each route directory (using -print0 to handle special chars like [id])
         # Store results in array to avoid subshell issues
+        # Copy both page.tsx AND layout.tsx files
         route_files=()
         while IFS= read -r -d '' route_file; do
           route_files+=("$route_file")
-        done < <(find "$routes_dir" -name "page.tsx" -print0)
+        done < <(find "$routes_dir" \( -name "page.tsx" -o -name "layout.tsx" \) -print0)
         
         # Process each route file
         for route_file in "${route_files[@]}"; do
