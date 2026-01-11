@@ -362,7 +362,7 @@ export const WORKSPACE_ICONS = [
 /**
  * Role display names
  */
-export const ROLE_DISPLAY_NAMES: Record<WorkspaceRole, string> = {
+export const WORKSPACE_ROLE_DISPLAY_NAMES: Record<WorkspaceRole, string> = {
   ws_owner: 'Owner',
   ws_admin: 'Admin',
   ws_user: 'Member',
@@ -371,7 +371,7 @@ export const ROLE_DISPLAY_NAMES: Record<WorkspaceRole, string> = {
 /**
  * Role descriptions
  */
-export const ROLE_DESCRIPTIONS: Record<WorkspaceRole, string> = {
+export const WORKSPACE_ROLE_DESCRIPTIONS: Record<WorkspaceRole, string> = {
   ws_owner: 'Full control over workspace settings, members, and deletion',
   ws_admin: 'Can edit workspace settings but cannot manage members',
   ws_user: 'Can access workspace resources',

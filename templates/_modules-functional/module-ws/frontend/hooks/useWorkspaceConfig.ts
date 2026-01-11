@@ -59,7 +59,7 @@ export function useWorkspaceConfig(options: UseWorkspaceConfigOptions = {}): Use
 
   // Fetch configuration
   const fetchConfig = useCallback(async () => {
-    if (!session?.accessToken || !orgId) {
+    if (!session?.accessToken) {
       setLoading(false);
       return;
     }
@@ -69,7 +69,8 @@ export function useWorkspaceConfig(options: UseWorkspaceConfigOptions = {}): Use
 
     try {
       const client = createWorkspaceApiClient(session.accessToken as string);
-      const cfg = await client.getConfig(orgId);
+      // orgId is optional for /ws/config (SYS route - platform-level config)
+      const cfg = await client.getConfig(orgId || "");
       setConfig(cfg);
     } catch (err) {
       console.error("Failed to fetch workspace config:", err);
