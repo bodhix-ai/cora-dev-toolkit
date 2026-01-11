@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-**Session 83: Lambda Validation & Authorization Fixes** - ✅ **COMPLETE** - 100%
+**Session 84: Workspace Module Authorization & Frontend Errors** - 🔴 **IN PROGRESS** - 0%
 
 ## Session: January 10, 2026 (12:01 PM - 1:34 PM) - Session 83
 
@@ -262,6 +262,120 @@ cd ~/code/sts/test-ws-17/ai-sec-infra
 **Authorization:** Fixed  
 **Frontend:** Fixed  
 **Updated:** January 10, 2026, 1:34 PM EST
+
+---
+
+## Session: January 10, 2026 (1:42 PM - ) - Session 84
+
+### 🎯 Focus: Fix Workspace Module Authorization & Frontend Errors
+
+**Context:** After completing Session 83 fixes, discovered new errors in the workspace module. The workspace admin page is still showing SessionProvider error, and workspace configuration updates are returning 403 Forbidden despite user having platform_owner role.
+
+**Status:** 🔴 **IN PROGRESS** - 0%
+
+---
+
+## 🚨 Issues Discovered
+
+### Issue 1: SessionProvider Error (RECURRING)
+**Discovery:** Workspace admin page still throwing `useSession` must be wrapped in SessionProvider error.
+
+**Location:** `app/admin/platform/modules/workspace/page.tsx:68`
+
+**Error Message:**
+```
+Error: [next-auth]: `useSession` must be wrapped in a <SessionProvider />
+```
+
+**Impact:** Workspace admin page crashes on load.
+
+**Analysis:**
+- Session 83 created layout.tsx fix in templates
+- Error suggests fix either not deployed OR different workspace page path
+- Need to verify:
+  1. Was layout.tsx copied to test project?
+  2. Is there a different workspace page location?
+  3. Is the layout.tsx in the correct directory?
+
+**Status:** 🔴 NOT FIXED
+
+### Issue 2: Workspace Config Update Authorization (403 Forbidden)
+**Discovery:** Platform administrators cannot update workspace configuration despite having correct role.
+
+**Location:** Workspace config Lambda handler
+
+**Error Details:**
+```
+PUT https://hk5bzq4kv3.execute-api.us-east-1.amazonaws.com/ws/config?org_id=c4a1ecf7-e646-4196-a57d-7ebbf3ee8ced 403 (Forbidden)
+
+Error: Only platform administrators can update workspace configuration
+```
+
+**Call Stack:**
+1. Frontend: `PlatformAdminConfigPage.tsx:121` → `handleSave()`
+2. Hook: `useWorkspaceConfig.ts:97` → calls API
+3. API Client: `api.ts:297` → `updateConfig()`
+4. Backend: Workspace config Lambda returns 403
+
+**Impact:** Platform owners/admins cannot modify workspace settings from admin UI.
+
+**Analysis:**
+- Similar to Session 83 Issue 5 (Platform Admin Authorization)
+- Likely same root cause: Lambda not mapping Okta UID → Supabase user_id
+- Need to check workspace config Lambda for proper authorization pattern
+- Should use standard pattern:
+  ```python
+  user_info = common.get_user_from_event(event)
+  okta_uid = user_info['user_id']
+  supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
+  profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
+  if profile.get('global_role') not in ['platform_admin', 'platform_owner']:
+      raise common.ForbiddenError(...)
+  ```
+
+**Status:** 🔴 NOT FIXED
+
+---
+
+## 📋 Investigation Steps
+
+- [ ] Verify Session 83 layout.tsx fix was deployed to test project
+- [ ] Check if workspace page path differs from expected location
+- [ ] Locate workspace config Lambda handler
+- [ ] Review workspace config Lambda authorization logic
+- [ ] Apply Okta→Supabase mapping pattern if missing
+- [ ] Test workspace config updates after fix
+- [ ] Verify SessionProvider error resolved
+
+---
+
+## 💡 Hypothesis
+
+Both issues likely stem from incomplete deployment of Session 83 fixes:
+1. **SessionProvider:** layout.tsx may not have been copied to test project
+2. **403 Error:** Workspace config Lambda likely has same authorization bug as other Lambdas fixed in Session 83
+
+**Next Steps:**
+1. Find workspace config Lambda in templates
+2. Check for proper user ID mapping
+3. Apply standard authorization pattern
+4. Verify deployment of frontend layout.tsx fix
+
+---
+
+**Status:** 🔴 **IN PROGRESS** - 0%  
+**Started:** January 10, 2026, 1:42 PM EST  
+**Updated:** January 10, 2026, 1:42 PM EST
+
+---
+
+## Session: January 10, 2026 (12:01 PM - 1:34 PM) - Session 83
+
+### 🎯 Focus: Fix Validation Errors & Lambda Authorization Issues
+
+**Context:** Validation report showed 13 errors across 4 validators. Investigation revealed Lambda path parameter mismatches, schema errors, missing Okta→Supabase mappings, and authorization bugs preventing platform_owner users from accessing admin endpoints. Additionally, workspace admin page had SessionProvider error.
+
+**Status:** ✅ **100% COMPLETE** - All validation errors fixed, authorization working, frontend error resolved
 
 ---
 
