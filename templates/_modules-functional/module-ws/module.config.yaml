@@ -21,7 +21,7 @@ module_ws:
   admin_cards:
     platform:
       enabled: true
-      path: "/admin/platform/modules/workspace"
+      path: "/admin/sys/ws"
       title: "Workspace Configuration"
       description: "Configure workspace module behavior, navigation labels, and feature flags"
       icon: "SettingsIcon"
@@ -29,7 +29,7 @@ module_ws:
       context: "platform"
     organization:
       enabled: true
-      path: "/admin/workspaces"
+      path: "/admin/org/ws"
       title: "Workspace Management"
       description: "Manage organization workspaces, members, and analytics"
       icon: "WorkspaceIcon"
