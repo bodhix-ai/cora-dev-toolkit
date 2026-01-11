@@ -278,11 +278,15 @@ export class WorkspaceApiClient {
 
   /**
    * Get workspace module configuration
+   * 
+   * Note: orgId is optional - /ws/config is a SYS route (platform-level)
    */
-  async getConfig(orgId: string): Promise<WorkspaceConfig | null> {
+  async getConfig(orgId?: string): Promise<WorkspaceConfig | null> {
     try {
-      const response = await this.client.get<ApiResponse<WorkspaceConfig>>(`/ws/config?org_id=${orgId}`);
-      return response?.data || null;
+      // orgId is optional for platform-level config endpoint
+      const url = orgId ? `/ws/config?org_id=${orgId}` : `/ws/config`;
+      const response = await this.client.get<ApiResponse<{ config: WorkspaceConfig }>>(url);
+      return response?.data?.config || null;
     } catch (error) {
       console.error("Failed to get workspace config:", error);
       return null;
