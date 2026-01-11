@@ -1,7 +1,7 @@
 # CORA Standard: Lambda Authorization Patterns
 
 **Status:** Active  
-**Version:** 1.0  
+**Version:** 2.0  
 **Last Updated:** January 11, 2026  
 **Related Standards:** [API Patterns](./standard_API-PATTERNS.md), [CORA Frontend](./standard_CORA-FRONTEND.md)
 
@@ -10,6 +10,18 @@
 ## Overview
 
 This document defines the standard patterns for implementing authorization in CORA Lambda functions. Following these patterns ensures consistent, secure, and maintainable authorization across all modules.
+
+## Nomenclature
+
+CORA uses these abbreviations consistently:
+- **sys** - System-level (platform-wide)
+- **org** - Organization-level
+- **ws** - Workspace-level (or module-specific resource)
+
+**Roles:**
+- **System roles:** `platform_admin`, `platform_owner` (stored in `global_role`)
+- **Organization roles:** `org_admin`, `org_owner` (stored in `org_members.org_role`)
+- **Module roles:** `ws_owner`, `ws_admin`, `ws_user` (stored in module-specific tables)
 
 ## The Two-Tier Identity System
 
@@ -84,7 +96,188 @@ def handle_admin_function_WRONG(user_info: Dict[str, Any], body: Dict[str, Any])
 
 ---
 
+## Sys vs Org vs Ws Route Patterns
+
+CORA Lambda functions should categorize routes into **sys-level**, **org-level**, and **ws-level** to properly enforce org_id requirements and authorization.
+
+### Route Classification
+
+**Sys Routes (System-Level):**
+- **Prefix:** `/ws/sys/...` or global config routes like `/ws/config`
+- **org_id:** NOT required
+- **Authorization:** `global_role IN ['platform_admin', 'platform_owner']`
+- **Examples:** `/ws/sys/stats`, `/ws/sys/analytics`, `/ws/config`
+
+**Org Routes (Organization-Level):**
+- **Prefix:** `/ws/org/...` for org-wide admin operations
+- **org_id:** REQUIRED (query param or body)
+- **Authorization:** `org_role IN ['org_admin', 'org_owner']` OR sys admin
+- **Examples:** `/ws/org/settings`, `/ws/org/analytics`
+
+**Ws Routes (Workspace-Level):**
+- **Prefix:** `/ws/{id}/...` or `/ws` (workspace CRUD)
+- **org_id:** REQUIRED (query param or body)
+- **Authorization:** `ws_role IN ['ws_owner', 'ws_admin']` OR org admin OR sys admin
+- **Examples:** `/ws/{id}/members`, `/ws/{id}` (update), `DELETE /ws/{id}`
+
+### Implementation Pattern
+
+```python
+# Define route categories
+SYS_ROUTES = ['/ws/sys/stats', '/ws/sys/analytics', '/ws/config']
+
+def is_sys_route(path: str) -> bool:
+    """Check if route is system-level (no org_id required)."""
+    return any(path.startswith(route) for route in SYS_ROUTES)
+
+def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
+    """Main Lambda handler with route-aware org_id validation."""
+    try:
+        # Extract route information
+        http_method = event.get('httpMethod', '')
+        path = event.get('path', '')
+        
+        # Standard CORA auth extraction
+        user_info = common.get_user_from_event(event)
+        okta_uid = user_info['user_id']
+        supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
+        
+        # Route-aware org_id handling
+        org_id = None
+        if not is_sys_route(path):
+            # Org routes require org_id
+            query_params = event.get('queryStringParameters') or {}
+            org_id = query_params.get('org_id')
+            
+            # For POST/PUT, also check request body
+            if not org_id and http_method in ('POST', 'PUT'):
+                try:
+                    body = json.loads(event.get('body', '{}'))
+                    org_id = body.get('org_id')
+                except json.JSONDecodeError:
+                    pass
+            
+            if not org_id:
+                return common.bad_request_response('org_id is required for org routes')
+        
+        # Route dispatcher
+        # ... dispatch to handlers
+        
+    except Exception as e:
+        logger.exception(f'Internal error: {str(e)}')
+        return common.internal_error_response('Internal server error')
+```
+
+---
+
 ## Authorization Patterns by Use Case
+
+### 1. System Admin Authorization (Sys Routes)
+
+**Use Case:** System-wide administrative functions (cross-org stats, global config, etc.)
+
+**Roles Allowed:** `platform_admin`, `platform_owner`
+
+**Route Examples:** `/ws/sys/stats`, `/ws/sys/analytics`, `/ws/config`
+
+```python
+def handle_sys_stats(user_info: Dict[str, Any]) -> Dict[str, Any]:
+    """GET /ws/sys/stats - System admin only."""
+    # Map external UID → Supabase user_id
+    okta_uid = user_info['user_id']
+    supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
+    
+    # Query user profile for global_role
+    profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
+    if not profile or profile.get('global_role') not in ['platform_admin', 'platform_owner']:
+        raise common.ForbiddenError('System admin access required')
+    
+    # ... implementation
+```
+
+### 2. Organization Admin Authorization (Org Routes)
+
+**Use Case:** Organization-level administrative functions
+
+**Roles Allowed:** `org_admin`, `org_owner`, `platform_admin`, `platform_owner`
+
+**Route Examples:** `/ws/org/settings`, `/ws/org/analytics`
+
+```python
+def handle_org_settings(org_id: str, user_info: Dict[str, Any]) -> Dict[str, Any]:
+    """GET /ws/org/settings - Org admin or sys admin."""
+    okta_uid = user_info['user_id']
+    supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
+    
+    # Get user profile
+    profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
+    if not profile:
+        raise common.ForbiddenError('User profile not found')
+    
+    global_role = profile.get('global_role')
+    
+    # System admins have access to all orgs
+    if global_role in ['platform_admin', 'platform_owner']:
+        return  # Authorized
+    
+    # Check org membership and role
+    org_member = common.find_one('org_members', {
+        'org_id': org_id,
+        'user_id': supabase_user_id
+    })
+    
+    if not org_member or org_member.get('org_role') not in ['org_admin', 'org_owner']:
+        raise common.ForbiddenError('Organization admin access required')
+    
+    # ... implementation
+```
+
+### 3. Workspace-Level Authorization (Ws Routes)
+
+**Use Case:** Workspace-specific operations (update, delete, member management)
+
+**Roles Allowed:** `ws_owner`, `ws_admin`, `org_admin`, `org_owner`, `platform_admin`, `platform_owner`
+
+**Route Examples:** `/ws/{id}` (update/delete), `/ws/{id}/members`
+
+```python
+def handle_update_workspace(workspace_id: str, org_id: str, user_info: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    """PUT /ws/{id} - Workspace admin/owner, org admin, or sys admin."""
+    okta_uid = user_info['user_id']
+    supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
+    
+    # Get user profile
+    profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
+    if not profile:
+        raise common.ForbiddenError('User profile not found')
+    
+    global_role = profile.get('global_role')
+    
+    # System admins have access to all workspaces
+    if global_role in ['platform_admin', 'platform_owner']:
+        pass  # Authorized
+    
+    # Check org admin
+    elif global_role in ['org_admin', 'org_owner'] or (
+        org_member := common.find_one('org_members', {'org_id': org_id, 'user_id': supabase_user_id})
+    ) and org_member.get('org_role') in ['org_admin', 'org_owner']:
+        pass  # Authorized
+    
+    # Check workspace role
+    else:
+        is_ws_admin = common.rpc(
+            function_name='is_workspace_admin_or_owner',
+            params={'p_ws_id': workspace_id, 'p_user_id': supabase_user_id}
+        )
+        if not is_ws_admin:
+            raise common.ForbiddenError('Workspace admin access required')
+    
+    # ... implementation
+```
+
+---
+
+## Authorization Patterns by Use Case (Legacy Examples)
 
 ### 1. Platform Admin Authorization
 
