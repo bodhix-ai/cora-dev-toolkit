@@ -1081,8 +1081,9 @@ def handle_update_config(
         Updated configuration
     """
     # Check if user has platform admin role
-    user_role = user_info.get('role', '').lower()
-    if user_role not in ['platform_admin', 'platform_owner']:
+    # Must query database for global_role (not in JWT)
+    profile = common.find_one('user_profiles', {'user_id': user_id})
+    if not profile or profile.get('global_role') not in ['platform_admin', 'platform_owner']:
         raise common.ForbiddenError('Only platform administrators can update workspace configuration')
     
     # Allowed fields for update
@@ -1148,8 +1149,11 @@ def handle_admin_stats(user_info: Dict[str, Any]) -> Dict[str, Any]:
         Platform-wide workspace statistics
     """
     # Check if user has platform admin role
-    user_role = user_info.get('role', '').lower()
-    if user_role not in ['platform_admin', 'platform_owner']:
+    # Must query database for global_role (not in JWT)
+    okta_uid = user_info['user_id']
+    supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
+    profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
+    if not profile or profile.get('global_role') not in ['platform_admin', 'platform_owner']:
         raise common.ForbiddenError('Only platform administrators can access these statistics')
     
     try:
@@ -1205,8 +1209,11 @@ def handle_admin_analytics(org_id: str, user_info: Dict[str, Any]) -> Dict[str, 
         Organization workspace analytics
     """
     # Check if user has appropriate admin role
-    user_role = user_info.get('role', '').lower()
-    if user_role not in ['platform_admin', 'platform_owner', 'org_admin', 'org_owner']:
+    # Must query database for global_role (not in JWT)
+    okta_uid = user_info['user_id']
+    supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
+    profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
+    if not profile or profile.get('global_role') not in ['platform_admin', 'platform_owner', 'org_admin', 'org_owner']:
         raise common.ForbiddenError('Only administrators can access analytics')
     
     try:
