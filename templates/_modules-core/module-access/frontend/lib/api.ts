@@ -62,15 +62,15 @@ export interface OrgModuleApiClient {
 
   // Organization endpoints
   getOrganizations: () => Promise<ApiResponse<Organization[]>>;
-  getOrganization: (id: string) => Promise<ApiResponse<Organization>>;
+  getOrganization: (orgId: string) => Promise<ApiResponse<Organization>>;
   createOrganization: (
     data: CreateOrgInput
   ) => Promise<ApiResponse<Organization>>;
   updateOrganization: (
-    id: string,
+    orgId: string,
     data: Partial<Organization>
   ) => Promise<ApiResponse<Organization>>;
-  deleteOrganization: (id: string) => Promise<ApiResponse<void>>;
+  deleteOrganization: (orgId: string) => Promise<ApiResponse<void>>;
 
   // Member endpoints
   getMembers: (orgId: string) => Promise<ApiResponse<OrgMember[]>>;
@@ -119,11 +119,11 @@ export function createOrgModuleClient(
 
     // Organizations
     getOrganizations: () => authenticatedClient.get<Organization[]>("/orgs"),
-    getOrganization: (id) => authenticatedClient.get<Organization>(`/orgs/${id}`),
+    getOrganization: (orgId) => authenticatedClient.get<Organization>(`/orgs/${orgId}`),
     createOrganization: (data) => authenticatedClient.post<Organization>("/orgs", data),
-    updateOrganization: (id, data) =>
-      authenticatedClient.put<Organization>(`/orgs/${id}`, data),
-    deleteOrganization: (id) => authenticatedClient.delete<void>(`/orgs/${id}`),
+    updateOrganization: (orgId, data) =>
+      authenticatedClient.put<Organization>(`/orgs/${orgId}`, data),
+    deleteOrganization: (orgId) => authenticatedClient.delete<void>(`/orgs/${orgId}`),
 
     // Members
     getMembers: (orgId) => authenticatedClient.get<OrgMember[]>(`/orgs/${orgId}/members`),

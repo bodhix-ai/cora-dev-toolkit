@@ -63,19 +63,19 @@ with standard auth and role-based authorization.
 Routes - Workspaces:
 - GET /ws - List user's workspaces
 - POST /ws - Create new workspace
-- GET /ws/{id} - Get workspace details
-- PUT /ws/{id} - Update workspace
-- DELETE /ws/{id} - Soft delete workspace
-- POST /ws/{id}/restore - Restore deleted workspace
+- GET /ws/{workspaceId} - Get workspace details
+- PUT /ws/{workspaceId} - Update workspace
+- DELETE /ws/{workspaceId} - Soft delete workspace
+- POST /ws/{workspaceId}/restore - Restore deleted workspace
 
 Routes - Members:
-- GET /ws/{id}/members - List workspace members
-- POST /ws/{id}/members - Add member
-- PUT /ws/{wsId}/members/{memberId} - Update member role
-- DELETE /ws/{wsId}/members/{memberId} - Remove member
+- GET /ws/{workspaceId}/members - List workspace members
+- POST /ws/{workspaceId}/members - Add member
+- PUT /ws/{workspaceId}/members/{memberId} - Update member role
+- DELETE /ws/{workspaceId}/members/{memberId} - Remove member
 
 Routes - Favorites:
-- POST /ws/{id}/favorite - Toggle favorite
+- POST /ws/{workspaceId}/favorite - Toggle favorite
 - GET /ws/favorites - List user's favorites
 
 Routes - Config:
@@ -86,8 +86,8 @@ Routes - Admin:
 - GET /ws/admin/stats - Get workspace statistics
 - GET /ws/admin/analytics - Get workspace analytics
 - GET /ws/admin/workspaces - List all workspaces (admin)
-- POST /ws/admin/workspaces/{id}/restore - Restore deleted workspace (admin)
-- DELETE /ws/admin/workspaces/{id} - Delete workspace (admin)
+- POST /ws/admin/workspaces/{workspaceId}/restore - Restore deleted workspace (admin)
+- DELETE /ws/admin/workspaces/{workspaceId} - Delete workspace (admin)
 """
 
 import json
@@ -106,11 +106,13 @@ Routes are extracted and matched against API Gateway route definitions.
 
 ### Path Parameter Matching
 
-The validator normalizes path parameters for matching:
-- `/ws/{id}/members` matches `/ws/{workspaceId}/members`
-- `/users/{userId}` matches `/users/{id}`
+**IMPORTANT:** As of January 2026, path parameter names MUST match exactly between infrastructure and Lambda docstrings per the [API Patterns Standard](./standard_API-PATTERNS.md#part-3-path-parameter-naming-convention).
 
-This means your docstring and Gateway routes don't need identical parameter names.
+Use descriptive, resource-specific parameter names consistently:
+- ✅ `/ws/{workspaceId}/members/{memberId}` - Descriptive and consistent
+- ❌ `/ws/{id}/members/{id}` - Generic and ambiguous
+
+See the [Path Parameter Naming Convention](./standard_API-PATTERNS.md#part-3-path-parameter-naming-convention) for the complete standard.
 
 ## Enforcement
 
@@ -149,4 +151,5 @@ When adding routes to an existing Lambda:
 
 | Date | Author | Changes |
 |------|--------|---------|
+| 2026-01-10 | Session 82 | Updated examples to use descriptive path parameters ({workspaceId} instead of {id}) |
 | 2026-01-08 | Session 72 | Initial standard created |

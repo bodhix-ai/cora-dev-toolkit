@@ -15,7 +15,7 @@ export { WorkspaceApiClient, createWorkspaceApiClient } from "./lib/api";
 export * from "./hooks";
 
 // Admin Cards
-export { wsPlatformAdminCard, wsOrgAdminCard } from "./admin";
+export { workspacePlatformAdminCard, workspaceOrgAdminCard } from "./adminCard";
 
 // Pages (for app route integration)
 export * from "./pages";

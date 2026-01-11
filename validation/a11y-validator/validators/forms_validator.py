@@ -85,6 +85,12 @@ class FormsValidator:
         if 'label' in element['attributes']:
             return True
         
+        # Check for aria-label inside inputProps (MUI Switch pattern)
+        if 'inputProps' in element['attributes']:
+            input_props = element['attributes']['inputProps']
+            if isinstance(input_props, str) and 'aria-label' in input_props:
+                return True
+        
         # Check for id (could be associated with a <label> element)
         # Note: This requires context analysis of surrounding elements
         # For now, we'll flag as missing unless explicit ARIA or label prop

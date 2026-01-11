@@ -174,7 +174,72 @@ return {
 
 ---
 
-## Part 3: Response Patterns
+## Part 3: Path Parameter Naming Convention
+
+### Standard: Use Descriptive Resource-Specific Names
+
+Path parameters MUST use descriptive names that identify the resource type. This ensures consistency across infrastructure definitions, Lambda documentation, and frontend API clients.
+
+#### Standard Parameter Names by Resource
+
+| Resource | Parameter Name | Example Route |
+|----------|---------------|---------------|
+| Workspace | `{workspaceId}` | `/ws/{workspaceId}` |
+| Organization | `{orgId}` | `/orgs/{orgId}` |
+| User | `{userId}` | `/users/{userId}` |
+| Member | `{memberId}` | `/ws/{workspaceId}/members/{memberId}` |
+| Provider | `{providerId}` | `/providers/{providerId}` |
+| Configuration | `{configId}` | `/configs/{configId}` |
+
+#### Consistency Requirement
+
+The **same parameter names** MUST be used across all three layers:
+
+1. **Infrastructure** (`infrastructure/outputs.tf`)
+   ```hcl
+   {
+     method = "DELETE"
+     path = "/ws/{workspaceId}/members/{memberId}"
+     ...
+   }
+   ```
+
+2. **Lambda Documentation** (`backend/lambdas/.../lambda_function.py`)
+   ```python
+   """
+   Routes - Members:
+   - DELETE /ws/{workspaceId}/members/{memberId} - Remove member
+   """
+   ```
+
+3. **Frontend API Client** (`frontend/lib/api.ts`)
+   ```typescript
+   async removeMember(workspaceId: string, memberId: string, orgId: string) {
+     await this.client.delete(`/ws/${workspaceId}/members/${memberId}?org_id=${orgId}`);
+   }
+   ```
+
+#### Rationale
+
+- **Clarity** - Descriptive names make code self-documenting
+- **Consistency** - Same names across all layers reduce confusion
+- **Validation** - Static analysis tools can match patterns accurately
+- **Maintainability** - Easier to trace routes through the stack
+
+#### Anti-Pattern
+
+❌ **Don't use generic `{id}` for resource-specific identifiers:**
+```hcl
+# BAD - unclear which resource ID this is
+path = "/ws/{id}/members/{id}"
+
+# GOOD - clear and specific
+path = "/ws/{workspaceId}/members/{memberId}"
+```
+
+---
+
+## Part 4: Response Patterns
 
 ### Standard Response Format
 

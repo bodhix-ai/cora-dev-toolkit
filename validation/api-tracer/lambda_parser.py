@@ -38,6 +38,7 @@ class LambdaRoute:
     response_status: int = 200
     response_type: Optional[str] = None
     source_code: str = ""  # Original source code snippet
+    extracted_path_params: List[str] = field(default_factory=list)  # Params from path_params.get() calls
 
 
 class LambdaParser:
@@ -83,6 +84,7 @@ class LambdaParser:
         Parsing strategy:
         1. First, try to extract routes from module docstring (dispatcher pattern)
         2. If no docstring routes found, fall back to AST-based parsing
+        3. Extract path parameter usage from actual code (path_params.get() calls)
         
         Args:
             file_path: Path to the Python Lambda file
@@ -111,6 +113,9 @@ class LambdaParser:
                 # Strategy 2: Fall back to AST-based parsing
                 self._parse_route_handlers(tree, source)
                 logger.info(f"Parsed {file_path} (AST): found {len(self.routes)} route handlers")
+            
+            # Strategy 3: Extract path parameter usage from actual code
+            self._extract_path_param_usage(tree)
             
             return self.routes
             
@@ -245,6 +250,58 @@ class LambdaParser:
         """
         param_pattern = re.compile(r'\{([^}]+)\}')
         return param_pattern.findall(path)
+    
+    def _extract_path_param_usage(self, tree: ast.AST):
+        """
+        Extract path parameter get() calls from Lambda code.
+        
+        Looks for patterns like:
+        - path_params.get('id')
+        - path_params.get('orgId')
+        - event['pathParameters'].get('userId')
+        - pathParameters.get('workspaceId')
+        
+        This populates the extracted_path_params field for all routes.
+        Since dispatcher pattern Lambdas handle all routes in one file,
+        all routes get the same extracted params.
+        
+        Args:
+            tree: AST tree of the module
+        """
+        extracted_params = set()
+        
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                # Check for .get() method calls
+                if isinstance(node.func, ast.Attribute) and node.func.attr == 'get':
+                    # Check if called on path_params, pathParameters, or event['pathParameters']
+                    is_path_param_call = False
+                    
+                    # Pattern 1: path_params.get('id')
+                    if isinstance(node.func.value, ast.Name):
+                        if node.func.value.id in ['path_params', 'pathParameters', 'path_parameters']:
+                            is_path_param_call = True
+                    
+                    # Pattern 2: event['pathParameters'].get('id')
+                    elif isinstance(node.func.value, ast.Subscript):
+                        if isinstance(node.func.value.slice, ast.Constant):
+                            if node.func.value.slice.value == 'pathParameters':
+                                is_path_param_call = True
+                    
+                    if is_path_param_call and node.args:
+                        # Extract the parameter name (first argument to .get())
+                        if isinstance(node.args[0], ast.Constant):
+                            param_name = node.args[0].value
+                            extracted_params.add(param_name)
+                            logger.debug(f"Found path param extraction: {param_name}")
+        
+        # Apply extracted params to all routes in this file
+        extracted_params_list = sorted(list(extracted_params))
+        for route in self.routes:
+            route.extracted_path_params = extracted_params_list
+        
+        if extracted_params_list:
+            logger.info(f"Extracted {len(extracted_params_list)} path param usage(s) from {self.current_file}: {extracted_params_list}")
     
     def _parse_route_handlers(self, tree: ast.AST, source: str):
         """

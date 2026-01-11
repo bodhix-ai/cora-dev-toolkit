@@ -25,6 +25,7 @@ import {
   Person,
 } from "@mui/icons-material";
 import { CoraAuthAdapter, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
+import { InviteMemberDialog } from "../org/InviteMemberDialog";
 
 /**
  * Organization Member type
@@ -59,6 +60,7 @@ export function OrgMembersTab({ orgId, authAdapter }: OrgMembersTabProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchMembers();
@@ -156,10 +158,7 @@ export function OrgMembersTab({ orgId, authAdapter }: OrgMembersTabProps) {
         <Button
           variant="contained"
           startIcon={<PersonAdd />}
-          onClick={() => {
-            // TODO: Implement invite member dialog
-            alert("Invite member functionality coming soon");
-          }}
+          onClick={() => setInviteDialogOpen(true)}
         >
           Invite Member
         </Button>
@@ -256,6 +255,16 @@ export function OrgMembersTab({ orgId, authAdapter }: OrgMembersTabProps) {
           </Table>
         </TableContainer>
       )}
+
+      {/* Invite Member Dialog */}
+      <InviteMemberDialog
+        open={inviteDialogOpen}
+        onClose={() => {
+          setInviteDialogOpen(false);
+          fetchMembers(); // Refresh members list after invite
+        }}
+        orgId={orgId}
+      />
     </Box>
   );
 }

@@ -41,10 +41,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Handle org email domain operations
     
     Endpoints:
-    - GET    /orgs/:id/email-domains           - List org's email domains
-    - POST   /orgs/:id/email-domains           - Add email domain
-    - PUT    /orgs/:id/email-domains/:domainId - Update email domain
-    - DELETE /orgs/:id/email-domains/:domainId - Remove email domain
+    - GET    /orgs/:orgId/email-domains           - List org's email domains
+    - POST   /orgs/:orgId/email-domains           - Add email domain
+    - PUT    /orgs/:orgId/email-domains/:domainId - Update email domain
+    - DELETE /orgs/:orgId/email-domains/:domainId - Remove email domain
     
     Args:
         event: API Gateway event
@@ -69,7 +69,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         # Extract path parameters
         path_params = event.get('pathParameters', {})
-        org_id = path_params.get('id')
+        org_id = path_params.get('orgId')
         domain_id = path_params.get('domainId')
         
         if not org_id:

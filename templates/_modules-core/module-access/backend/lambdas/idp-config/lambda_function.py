@@ -91,13 +91,13 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if path.endswith('/active'):
             return get_active_idp()
         elif path.endswith('/activate'):
-            provider_type = path_parameters.get('provider_type')
+            provider_type = path_parameters.get('providerType')
             return activate_idp(provider_type, user_id)
-        elif http_method == 'GET' and 'provider_type' in path_parameters:
-            return get_idp_config(path_parameters['provider_type'])
-        elif http_method == 'PUT' and 'provider_type' in path_parameters:
+        elif http_method == 'GET' and 'providerType' in path_parameters:
+            return get_idp_config(path_parameters['providerType'])
+        elif http_method == 'PUT' and 'providerType' in path_parameters:
             body = json.loads(event.get('body', '{}'))
-            return update_idp_config(path_parameters['provider_type'], body, user_id)
+            return update_idp_config(path_parameters['providerType'], body, user_id)
         elif http_method == 'GET':
             return list_idp_configs()
         else:
@@ -118,19 +118,17 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         return common.internal_error_response(f"Internal server error: {str(e)}")
 
 
-def is_platform_admin(user_id: str) -> bool:
+def is_platform_admin(okta_uid: str) -> bool:
     """Check if user has platform admin role."""
     try:
-        client = get_supabase_client()
+        # Map Okta UID to Supabase user_id using standard org_common function
+        supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
         
-        result = client.table('user_profiles') \
-            .select('global_role') \
-            .eq('id', user_id) \
-            .single() \
-            .execute()
+        # Query user_profiles with correct column name
+        profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
         
-        if result.data:
-            return result.data.get('global_role') in PLATFORM_ADMIN_ROLES
+        if profile:
+            return profile.get('global_role') in PLATFORM_ADMIN_ROLES
         return False
         
     except Exception as e:

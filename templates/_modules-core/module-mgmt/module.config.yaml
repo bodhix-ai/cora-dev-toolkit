@@ -12,11 +12,12 @@ module_mgmt:
   # Admin Card Configuration
   admin_card:
     enabled: true
-    path: "/admin/platform"
+    path: "/admin/mgmt"
     title: "Platform Management"
     description: "Monitor system health, manage configurations, and view analytics"
     icon: "Settings"
     priority: 30  # Lower number = higher priority in admin dashboard
+    context: "platform"
   
   # Health Monitoring
   health:

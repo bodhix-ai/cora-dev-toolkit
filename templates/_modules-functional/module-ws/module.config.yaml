@@ -17,13 +17,24 @@ module_ws:
     nav_priority: 10  # Lower number = higher in navigation order
   
   # Admin Card Configuration
-  admin_card:
-    enabled: true
-    path: "/admin/workspaces"
-    title: "Workspace Management"
-    description: "Manage workspaces, members, and configurations"
-    icon: "WorkspaceIcon"
-    priority: 40  # Lower number = higher priority in admin dashboard
+  # Supports both platform-level and organization-level admin cards
+  admin_cards:
+    platform:
+      enabled: true
+      path: "/admin/platform/modules/workspace"
+      title: "Workspace Configuration"
+      description: "Configure workspace module behavior, navigation labels, and feature flags"
+      icon: "SettingsIcon"
+      priority: 40
+      context: "platform"
+    organization:
+      enabled: true
+      path: "/admin/workspaces"
+      title: "Workspace Management"
+      description: "Manage organization workspaces, members, and analytics"
+      icon: "WorkspaceIcon"
+      priority: 40
+      context: "organization"
   
   # Workspace Features
   features:
