@@ -2,8 +2,15 @@
 Workspace Module - Main Handler
 
 This Lambda function provides API endpoints for workspace management including
-CRUD operations, member management, and favorites. It follows CORA patterns
-with standard auth and role-based authorization.
+CRUD operations, member management, favorites, and admin features. It follows
+CORA patterns with standard auth and role-based authorization.
+
+Routes - Sys (System-Level, no org_id required):
+- GET /ws/sys/analytics - Get cross-organization statistics (platform admin only)
+
+Routes - Org (Organization-Level, org_id required):
+- GET /ws/org/settings - Get org workspace settings
+- PUT /ws/org/settings - Update org workspace settings
 
 Routes - Workspaces:
 - GET /ws - List user's workspaces
@@ -12,6 +19,8 @@ Routes - Workspaces:
 - PUT /ws/{workspaceId} - Update workspace
 - DELETE /ws/{workspaceId} - Soft delete workspace
 - POST /ws/{workspaceId}/restore - Restore deleted workspace
+- GET /ws/{workspaceId}/activity - Get workspace activity log
+- POST /ws/{workspaceId}/transfer - Transfer workspace ownership
 
 Routes - Members:
 - GET /ws/{workspaceId}/members - List workspace members
@@ -24,11 +33,11 @@ Routes - Favorites:
 - GET /ws/favorites - List user's favorites
 
 Routes - Config:
-- GET /ws/config - Get workspace config
-- PUT /ws/config - Update workspace config
+- GET /ws/config - Get workspace config (platform-level)
+- PUT /ws/config - Update workspace config (platform admin only)
 
-Routes - Admin:
-- GET /ws/admin/stats - Get workspace statistics
+Routes - Admin (Legacy, org-scoped):
+- GET /ws/admin/stats - Get workspace statistics (deprecated, use /ws/sys/analytics)
 - GET /ws/admin/analytics - Get workspace analytics
 - GET /ws/admin/workspaces - List all workspaces (admin)
 - POST /ws/admin/workspaces/{workspaceId}/restore - Restore deleted workspace (admin)
@@ -38,6 +47,7 @@ Routes - Admin:
 import json
 import logging
 import os
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import org_common as common
@@ -45,6 +55,14 @@ import org_common as common
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
+
+# System routes that don't require org_id
+SYS_ROUTES = ['/ws/sys/analytics', '/ws/sys/stats', '/ws/config']
+
+
+def is_sys_route(path: str) -> bool:
+    """Check if route is system-level (no org_id required)."""
+    return any(path.startswith(route) for route in SYS_ROUTES)
 
 
 def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
@@ -71,26 +89,44 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         okta_uid = user_info['user_id']
         supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
         
-        # Get org_id from query parameters OR request body (for POST/PUT)
-        query_params = event.get('queryStringParameters') or {}
-        org_id = query_params.get('org_id')
-        
-        # For POST/PUT requests, also check the request body for org_id
-        if not org_id and http_method in ('POST', 'PUT'):
-            try:
-                body = json.loads(event.get('body', '{}'))
-                org_id = body.get('org_id')
-            except json.JSONDecodeError:
-                pass
+        # Route-aware org_id extraction
+        # System routes don't require org_id
+        org_id = None
+        if not is_sys_route(path):
+            # Get org_id from query parameters OR request body (for POST/PUT)
+            query_params = event.get('queryStringParameters') or {}
+            org_id = query_params.get('org_id')
+            
+            # For POST/PUT requests, also check the request body for org_id
+            if not org_id and http_method in ('POST', 'PUT'):
+                try:
+                    body = json.loads(event.get('body', '{}'))
+                    org_id = body.get('org_id')
+                except json.JSONDecodeError:
+                    pass
 
-        if not org_id:
-            return common.bad_request_response('org_id is required (in query params or request body)')
+            if not org_id:
+                return common.bad_request_response('org_id is required (in query params or request body)')
+            
+            logger.info(f"Request from org_id: {org_id}, user_id: {supabase_user_id}")
+        else:
+            logger.info(f"System route - no org_id required, user_id: {supabase_user_id}")
         
-        logger.info(f"Request from org_id: {org_id}, user_id: {supabase_user_id}")
+        # Route dispatcher - System Routes (no org_id required)
+        if path == '/ws/sys/analytics' and http_method == 'GET':
+            return handle_sys_analytics(supabase_user_id, user_info)
+        
+        # Route dispatcher - Org Routes (org_id required)
+        elif path == '/ws/org/settings' and http_method == 'GET':
+            return handle_get_org_settings(org_id, supabase_user_id, user_info)
+        
+        elif path == '/ws/org/settings' and http_method == 'PUT':
+            body = json.loads(event.get('body', '{}'))
+            return handle_update_org_settings(org_id, supabase_user_id, user_info, body)
         
         # Route dispatcher - Workspaces
         # Note: path is /ws, /ws/{id}, /ws/{id}/members, etc.
-        if path == '/ws' and http_method == 'GET':
+        elif path == '/ws' and http_method == 'GET':
             return handle_list_workspaces(org_id, supabase_user_id, event)
         
         elif path == '/ws' and http_method == 'POST':
@@ -104,6 +140,15 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         elif path.endswith('/favorite') and http_method == 'POST':
             workspace_id = path_parameters.get('workspaceId')
             return handle_toggle_favorite(workspace_id, supabase_user_id)
+        
+        elif path.endswith('/activity') and http_method == 'GET':
+            workspace_id = path_parameters.get('workspaceId')
+            return handle_get_workspace_activity(workspace_id, supabase_user_id, user_info)
+        
+        elif path.endswith('/transfer') and http_method == 'POST':
+            workspace_id = path_parameters.get('workspaceId')
+            body = json.loads(event.get('body', '{}'))
+            return handle_transfer_ownership(workspace_id, supabase_user_id, user_info, body)
         
         elif path.endswith('/members') and http_method == 'GET':
             workspace_id = path_parameters.get('workspaceId')
@@ -136,7 +181,7 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
             body = json.loads(event.get('body', '{}'))
             return handle_update_config(supabase_user_id, user_info, body)
         
-        # Admin routes
+        # Admin routes (legacy)
         elif path == '/ws/admin/stats' and http_method == 'GET':
             return handle_admin_stats(user_info)
         
@@ -268,6 +313,278 @@ def _is_workspace_admin_or_owner(workspace_id: str, user_id: str) -> bool:
     return result is True
 
 
+def _is_platform_admin(user_id: str) -> bool:
+    """Check if user has platform admin role."""
+    profile = common.find_one('user_profiles', {'user_id': user_id})
+    return profile and profile.get('global_role') in ['platform_admin', 'platform_owner']
+
+
+def _is_org_admin(org_id: str, user_id: str) -> bool:
+    """Check if user is org admin or owner."""
+    org_member = common.find_one(
+        table='org_members',
+        filters={'org_id': org_id, 'user_id': user_id}
+    )
+    return org_member and org_member.get('org_role') in ['org_admin', 'org_owner']
+
+
+def _log_activity(ws_id: str, user_id: str, action: str, metadata: Optional[Dict[str, Any]] = None):
+    """Log workspace activity (if ws_activity_log table exists)."""
+    try:
+        common.insert_one(
+            table='ws_activity_log',
+            data={
+                'ws_id': ws_id,
+                'user_id': user_id,
+                'action': action,
+                'metadata': metadata or {}
+            }
+        )
+    except Exception as e:
+        # Don't fail the request if logging fails
+        logger.warning(f'Failed to log activity: {str(e)}')
+
+
+# =============================================================================
+# System-Level Handlers (no org_id required)
+# =============================================================================
+
+def handle_sys_analytics(user_id: str, user_info: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    GET /ws/sys/analytics
+    
+    Get enhanced cross-organization workspace statistics. Platform admin only.
+    
+    Args:
+        user_id: Supabase user ID
+        user_info: User information from auth token
+    
+    Returns:
+        Platform-wide workspace statistics with org breakdown
+    """
+    # Check if user has platform admin role
+    if not _is_platform_admin(user_id):
+        raise common.ForbiddenError('Only platform administrators can access system analytics')
+    
+    try:
+        # Get all workspaces across all organizations
+        all_workspaces = common.find_many(table='workspaces', filters={})
+        
+        # Calculate platform-wide metrics
+        total_count = len(all_workspaces)
+        active_count = len([w for w in all_workspaces if w.get('deleted_at') is None and w.get('status') == 'active'])
+        archived_count = len([w for w in all_workspaces if w.get('deleted_at') is None and w.get('status') == 'archived'])
+        
+        # Count workspaces created this month
+        now = datetime.now()
+        this_month_count = len([
+            w for w in all_workspaces
+            if w.get('created_at') and w.get('created_at').startswith(f"{now.year}-{now.month:02d}")
+        ])
+        
+        # Build org usage table
+        org_stats = {}
+        for workspace in all_workspaces:
+            if workspace.get('deleted_at') is not None:
+                continue  # Skip deleted workspaces
+            
+            org_id = workspace.get('org_id')
+            if org_id:
+                if org_id not in org_stats:
+                    org_stats[org_id] = {
+                        'org_id': org_id,
+                        'total': 0,
+                        'active': 0,
+                        'archived': 0,
+                    }
+                org_stats[org_id]['total'] += 1
+                if workspace.get('status') == 'active':
+                    org_stats[org_id]['active'] += 1
+                elif workspace.get('status') == 'archived':
+                    org_stats[org_id]['archived'] += 1
+        
+        # Get org member counts and calculate average
+        for org_id, stats in org_stats.items():
+            org_members = common.find_many(
+                table='org_members',
+                filters={'org_id': org_id}
+            )
+            member_count = len(org_members)
+            stats['avg_per_user'] = round(stats['total'] / member_count, 2) if member_count > 0 else 0
+        
+        # Calculate feature adoption
+        workspaces_with_favorites = len([
+            w for w in all_workspaces
+            if w.get('deleted_at') is None and common.find_one('ws_favorites', {'ws_id': w['id']}) is not None
+        ])
+        workspaces_with_tags = len([
+            w for w in all_workspaces
+            if w.get('deleted_at') is None and w.get('tags') and len(w.get('tags', [])) > 0
+        ])
+        workspaces_with_colors = len([
+            w for w in all_workspaces
+            if w.get('deleted_at') is None and w.get('color') is not None
+        ])
+        
+        active_and_archived = active_count + archived_count
+        feature_adoption = {
+            'favorites_pct': round((workspaces_with_favorites / active_and_archived * 100), 1) if active_and_archived > 0 else 0,
+            'tags_pct': round((workspaces_with_tags / active_and_archived * 100), 1) if active_and_archived > 0 else 0,
+            'colors_pct': round((workspaces_with_colors / active_and_archived * 100), 1) if active_and_archived > 0 else 0,
+        }
+        
+        analytics = {
+            'platform_wide': {
+                'total_workspaces': total_count,
+                'active_workspaces': active_count,
+                'archived_workspaces': archived_count,
+                'created_this_month': this_month_count,
+            },
+            'by_organization': list(org_stats.values()),
+            'feature_adoption': feature_adoption,
+        }
+        
+        logger.info("Retrieved system-wide analytics")
+        return common.success_response({'analytics': analytics})
+    
+    except Exception as e:
+        logger.exception(f'Error getting system analytics: {str(e)}')
+        raise
+
+
+# =============================================================================
+# Organization-Level Handlers (org_id required)
+# =============================================================================
+
+def handle_get_org_settings(
+    org_id: str,
+    user_id: str,
+    user_info: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    GET /ws/org/settings?org_id={uuid}
+    
+    Get organization-specific workspace settings. Org admin or platform admin can access.
+    
+    Args:
+        org_id: Organization ID
+        user_id: Supabase user ID
+        user_info: User information from auth token
+    
+    Returns:
+        Organization workspace settings
+    """
+    # Check authorization: org admin or platform admin
+    is_org_admin = _is_org_admin(org_id, user_id)
+    is_platform_admin = _is_platform_admin(user_id)
+    
+    if not is_org_admin and not is_platform_admin:
+        raise common.ForbiddenError('Only organization or platform administrators can access org settings')
+    
+    try:
+        # Get or create default settings
+        settings = common.find_one(
+            table='ws_org_settings',
+            filters={'org_id': org_id}
+        )
+        
+        if not settings:
+            # Return default settings (will be created on first PUT)
+            settings = {
+                'org_id': org_id,
+                'allow_user_creation': True,
+                'require_approval': False,
+                'max_workspaces_per_user': 10,
+            }
+        
+        logger.info(f"Retrieved org settings for org {org_id}")
+        return common.success_response({'settings': settings})
+    
+    except Exception as e:
+        logger.exception(f'Error getting org settings for {org_id}: {str(e)}')
+        raise
+
+
+def handle_update_org_settings(
+    org_id: str,
+    user_id: str,
+    user_info: Dict[str, Any],
+    body: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    PUT /ws/org/settings
+    
+    Update organization-specific workspace settings. Org admin or platform admin can update.
+    
+    Args:
+        org_id: Organization ID (from body)
+        user_id: Supabase user ID
+        user_info: User information from auth token
+        body: Request body with settings to update
+    
+    Returns:
+        Updated organization workspace settings
+    """
+    # Check authorization: org admin or platform admin
+    is_org_admin = _is_org_admin(org_id, user_id)
+    is_platform_admin = _is_platform_admin(user_id)
+    
+    if not is_org_admin and not is_platform_admin:
+        raise common.ForbiddenError('Only organization or platform administrators can update org settings')
+    
+    # Allowed fields for update
+    allowed_fields = ['allow_user_creation', 'require_approval', 'max_workspaces_per_user']
+    update_data = {k: v for k, v in body.items() if k in allowed_fields and v is not None}
+    
+    if not update_data:
+        raise common.ValidationError('No valid fields to update')
+    
+    # Validate max_workspaces_per_user
+    if 'max_workspaces_per_user' in update_data:
+        max_ws = update_data['max_workspaces_per_user']
+        if not isinstance(max_ws, int) or max_ws < 1 or max_ws > 100:
+            raise common.ValidationError('max_workspaces_per_user must be between 1 and 100')
+    
+    update_data['updated_by'] = user_id
+    
+    try:
+        # Check if settings exist
+        existing = common.find_one(
+            table='ws_org_settings',
+            filters={'org_id': org_id}
+        )
+        
+        if existing:
+            # Update existing settings
+            updated_settings = common.update_one(
+                table='ws_org_settings',
+                filters={'org_id': org_id},
+                data=update_data
+            )
+        else:
+            # Create new settings with defaults
+            settings_data = {
+                'org_id': org_id,
+                'allow_user_creation': True,
+                'require_approval': False,
+                'max_workspaces_per_user': 10,
+                'created_by': user_id,
+                'updated_by': user_id,
+            }
+            settings_data.update(update_data)
+            updated_settings = common.insert_one(
+                table='ws_org_settings',
+                data=settings_data
+            )
+        
+        logger.info(f"Updated org settings for org {org_id}")
+        return common.success_response({'settings': updated_settings})
+    
+    except Exception as e:
+        logger.exception(f'Error updating org settings for {org_id}: {str(e)}')
+        raise
+
+
 # =============================================================================
 # Workspace Handlers
 # =============================================================================
@@ -376,6 +693,9 @@ def handle_create_workspace(
         result['user_role'] = 'ws_owner'
         result['member_count'] = 1
         result['is_favorited'] = False
+        
+        # Log activity
+        _log_activity(result['id'], user_id, 'Workspace created')
         
         logger.info(f"Created workspace: {result.get('id')}")
         return common.success_response(
@@ -505,6 +825,9 @@ def handle_update_workspace(
         if not updated_workspace:
             raise common.NotFoundError('Workspace not found')
         
+        # Log activity
+        _log_activity(workspace_id, user_id, 'Workspace updated', {'fields': list(update_data.keys())})
+        
         # Add user info for response
         updated_workspace['user_role'] = _get_user_workspace_role(workspace_id, user_id)
         
@@ -559,6 +882,9 @@ def handle_delete_workspace(
             }
         )
         
+        # Log activity
+        _log_activity(workspace_id, user_id, 'Workspace deleted')
+        
         logger.info(f"Soft deleted workspace: {workspace_id}")
         return common.success_response({
             'message': 'Workspace deleted successfully',
@@ -604,6 +930,9 @@ def handle_restore_workspace(
             }
         )
         
+        # Log activity
+        _log_activity(workspace_id, user_id, 'Workspace restored')
+        
         # Add user info for response
         result['user_role'] = 'ws_owner'
         result['is_favorited'] = False
@@ -629,6 +958,221 @@ def handle_restore_workspace(
         if 'only previous owners' in error_msg:
             raise common.ForbiddenError('Only previous workspace owners can restore it')
         logger.exception(f'Error restoring workspace {workspace_id}: {str(e)}')
+        raise
+
+
+def handle_get_workspace_activity(
+    workspace_id: str,
+    user_id: str,
+    user_info: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    GET /ws/{id}/activity
+    
+    Get workspace activity log. User must be a member, or org/platform admin.
+    
+    Args:
+        workspace_id: Workspace UUID
+        user_id: Supabase user ID
+        user_info: User information from auth token
+    
+    Returns:
+        Workspace activity log
+    """
+    if not workspace_id:
+        raise common.ValidationError('Workspace ID is required')
+    
+    # Get workspace to check org_id
+    workspace = common.find_one(
+        table='workspaces',
+        filters={'id': workspace_id}
+    )
+    if not workspace:
+        raise common.NotFoundError('Workspace not found')
+    
+    # Check authorization: workspace member OR org admin OR platform admin
+    is_member = _is_workspace_member(workspace_id, user_id)
+    is_org_admin = _is_org_admin(workspace['org_id'], user_id)
+    is_platform_admin = _is_platform_admin(user_id)
+    
+    if not is_member and not is_org_admin and not is_platform_admin:
+        raise common.ForbiddenError('You do not have permission to view this workspace activity')
+    
+    try:
+        # Get activity log
+        activities = common.find_many(
+            table='ws_activity_log',
+            filters={'ws_id': workspace_id}
+        )
+        
+        # Enrich with user profile data
+        enriched_activities = []
+        for activity in activities:
+            profile = common.find_one(
+                table='user_profiles',
+                filters={'user_id': activity['user_id']}
+            )
+            enriched_activities.append({
+                'id': activity.get('id'),
+                'action': activity.get('action'),
+                'user_id': activity.get('user_id'),
+                'user_name': profile.get('display_name') if profile else 'Unknown User',
+                'metadata': activity.get('metadata', {}),
+                'created_at': activity.get('created_at'),
+            })
+        
+        # Sort by created_at descending
+        enriched_activities.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        
+        result = {
+            'activities': enriched_activities,
+            'totalCount': len(enriched_activities)
+        }
+        
+        logger.info(f"Retrieved {len(enriched_activities)} activities for workspace {workspace_id}")
+        return common.success_response(result)
+    
+    except Exception as e:
+        # If table doesn't exist yet, return empty array
+        if 'does not exist' in str(e).lower() or 'relation' in str(e).lower():
+            logger.warning(f'ws_activity_log table not found, returning empty activities')
+            return common.success_response({'activities': [], 'totalCount': 0})
+        logger.exception(f'Error getting workspace activity {workspace_id}: {str(e)}')
+        raise
+
+
+def handle_transfer_ownership(
+    workspace_id: str,
+    user_id: str,
+    user_info: Dict[str, Any],
+    body: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    POST /ws/{id}/transfer
+    
+    Transfer workspace ownership. Only org admin or platform admin can do this.
+    
+    Args:
+        workspace_id: Workspace UUID
+        user_id: Supabase user ID (requester)
+        user_info: User information from auth token
+        body: Request body with new_owner_id
+    
+    Returns:
+        Updated workspace
+    """
+    if not workspace_id:
+        raise common.ValidationError('Workspace ID is required')
+    
+    new_owner_id = body.get('new_owner_id') or body.get('newOwnerId')
+    if not new_owner_id:
+        raise common.ValidationError('new_owner_id is required')
+    
+    # Get workspace to check org_id
+    workspace = common.find_one(
+        table='workspaces',
+        filters={'id': workspace_id, 'deleted_at': None}
+    )
+    if not workspace:
+        raise common.NotFoundError('Workspace not found')
+    
+    # Check authorization: org admin OR platform admin (NOT just ws_owner)
+    is_org_admin = _is_org_admin(workspace['org_id'], user_id)
+    is_platform_admin = _is_platform_admin(user_id)
+    
+    if not is_org_admin and not is_platform_admin:
+        raise common.ForbiddenError('Only organization or platform administrators can transfer workspace ownership')
+    
+    # Validate new owner is in the organization
+    org_member = common.find_one(
+        table='org_members',
+        filters={'org_id': workspace['org_id'], 'user_id': new_owner_id}
+    )
+    if not org_member:
+        raise common.ValidationError('New owner must be a member of the organization')
+    
+    try:
+        # Check if there's an RPC function for this
+        try:
+            result = common.rpc(
+                function_name='transfer_workspace_ownership',
+                params={
+                    'p_ws_id': workspace_id,
+                    'p_new_owner_id': new_owner_id,
+                    'p_requester_id': user_id
+                }
+            )
+        except Exception as rpc_error:
+            # If RPC doesn't exist, do it manually
+            logger.warning(f'RPC function not found, transferring ownership manually: {str(rpc_error)}')
+            
+            # Get current owner(s)
+            current_owners = common.find_many(
+                table='ws_members',
+                filters={'ws_id': workspace_id, 'ws_role': 'ws_owner', 'deleted_at': None}
+            )
+            
+            # Check if new owner is already a member
+            new_owner_member = common.find_one(
+                table='ws_members',
+                filters={'ws_id': workspace_id, 'user_id': new_owner_id, 'deleted_at': None}
+            )
+            
+            if new_owner_member:
+                # Update existing member to owner
+                common.update_one(
+                    table='ws_members',
+                    filters={'id': new_owner_member['id']},
+                    data={'ws_role': 'ws_owner', 'updated_by': user_id}
+                )
+            else:
+                # Add new owner
+                common.insert_one(
+                    table='ws_members',
+                    data={
+                        'ws_id': workspace_id,
+                        'user_id': new_owner_id,
+                        'ws_role': 'ws_owner',
+                        'created_by': user_id
+                    }
+                )
+            
+            # Demote previous owners to admin
+            for owner in current_owners:
+                common.update_one(
+                    table='ws_members',
+                    filters={'id': owner['id']},
+                    data={'ws_role': 'ws_admin', 'updated_by': user_id}
+                )
+            
+            result = workspace
+        
+        # Log activity
+        _log_activity(workspace_id, user_id, 'Ownership transferred', {'new_owner_id': new_owner_id})
+        
+        # Get updated workspace
+        updated_workspace = common.find_one(
+            table='workspaces',
+            filters={'id': workspace_id}
+        )
+        
+        # Add user info
+        updated_workspace['user_role'] = _get_user_workspace_role(workspace_id, user_id)
+        
+        members = common.find_many(
+            table='ws_members',
+            filters={'ws_id': workspace_id, 'deleted_at': None}
+        )
+        updated_workspace['member_count'] = len(members)
+        
+        logger.info(f"Transferred ownership of workspace {workspace_id} to {new_owner_id}")
+        return common.success_response({
+            'message': 'Workspace ownership transferred successfully',
+            'workspace': _transform_workspace(updated_workspace)
+        })
+    
+    except Exception as e:
+        logger.exception(f'Error transferring ownership of workspace {workspace_id}: {str(e)}')
         raise
 
 
@@ -763,6 +1307,9 @@ def handle_add_member(
             }
         )
         
+        # Log activity
+        _log_activity(workspace_id, user_id, 'Member added', {'member_user_id': member_user_id, 'role': ws_role})
+        
         # Enrich with user profile
         profile = common.find_one(
             table='user_profiles',
@@ -843,6 +1390,9 @@ def handle_update_member(
             data={'ws_role': ws_role, 'updated_by': user_id}
         )
         
+        # Log activity
+        _log_activity(workspace_id, user_id, 'Member role updated', {'member_id': member_id, 'new_role': ws_role})
+        
         # Enrich with user profile
         profile = common.find_one(
             table='user_profiles',
@@ -919,6 +1469,9 @@ def handle_remove_member(
             table='ws_favorites',
             filters={'ws_id': workspace_id, 'user_id': member['user_id']}
         )
+        
+        # Log activity
+        _log_activity(workspace_id, user_id, 'Member removed', {'member_id': member_id})
         
         logger.info(f"Removed member {member_id} from workspace {workspace_id}")
         return common.success_response({
@@ -1081,9 +1634,7 @@ def handle_update_config(
         Updated configuration
     """
     # Check if user has platform admin role
-    # Must query database for global_role (not in JWT)
-    profile = common.find_one('user_profiles', {'user_id': user_id})
-    if not profile or profile.get('global_role') not in ['platform_admin', 'platform_owner']:
+    if not _is_platform_admin(user_id):
         raise common.ForbiddenError('Only platform administrators can update workspace configuration')
     
     # Allowed fields for update
@@ -1133,7 +1684,7 @@ def handle_update_config(
 
 
 # =============================================================================
-# Admin Handlers
+# Admin Handlers (Legacy)
 # =============================================================================
 
 def handle_admin_stats(user_info: Dict[str, Any]) -> Dict[str, Any]:
@@ -1141,6 +1692,7 @@ def handle_admin_stats(user_info: Dict[str, Any]) -> Dict[str, Any]:
     GET /api/ws/admin/stats
     
     Get workspace statistics across all organizations. Platform admin only.
+    DEPRECATED: Use /ws/sys/analytics instead.
     
     Args:
         user_info: User information from auth token
@@ -1151,9 +1703,9 @@ def handle_admin_stats(user_info: Dict[str, Any]) -> Dict[str, Any]:
     # Check if user has platform admin role
     # Must query database for global_role (not in JWT)
     okta_uid = user_info['user_id']
-    supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
-    profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
-    if not profile or profile.get('global_role') not in ['platform_admin', 'platform_owner']:
+    supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
+    
+    if not _is_platform_admin(supabase_user_id):
         raise common.ForbiddenError('Only platform administrators can access these statistics')
     
     try:
@@ -1209,11 +1761,13 @@ def handle_admin_analytics(org_id: str, user_info: Dict[str, Any]) -> Dict[str, 
         Organization workspace analytics
     """
     # Check if user has appropriate admin role
-    # Must query database for global_role (not in JWT)
     okta_uid = user_info['user_id']
-    supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
-    profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
-    if not profile or profile.get('global_role') not in ['platform_admin', 'platform_owner', 'org_admin', 'org_owner']:
+    supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
+    
+    is_org_admin = _is_org_admin(org_id, supabase_user_id)
+    is_platform_admin = _is_platform_admin(supabase_user_id)
+    
+    if not is_org_admin and not is_platform_admin:
         raise common.ForbiddenError('Only administrators can access analytics')
     
     try:
