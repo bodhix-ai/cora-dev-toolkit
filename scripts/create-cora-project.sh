@@ -976,7 +976,7 @@ if $WITH_CORE_MODULES && ! $DRY_RUN; then
       cp -r "$CORE_MODULE_TEMPLATE" "$MODULE_DIR"
       
       # Replace standardized placeholders ({{...}} format only)
-      find "$MODULE_DIR" -type f \( -name "*.py" -o -name "*.ts" -o -name "*.tsx" -o -name "*.json" -o -name "*.tf" -o -name "*.md" -o -name "*.sql" -o -name "*.mjs" ) | while read -r file; do
+      find "$MODULE_DIR" -type f \( -name "*.py" -o -name "*.ts" -o -name "*.tsx" -o -name "*.json" -o -name "*.tf" -o -name "*.md" -o -name "*.sql" -o -name "*.mjs" \) | while read -r file; do
         # Replace machine-readable project name
         sed -i '' "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file" 2>/dev/null || \
         sed -i "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file"
@@ -1077,7 +1077,7 @@ if ! $DRY_RUN && [[ ${#ENABLED_MODULES[@]} -gt 0 ]]; then
       cp -r "$FUNCTIONAL_MODULE_TEMPLATE" "$MODULE_DIR"
 
       # Replace standardized placeholders ({{...}} format only)
-      find "$MODULE_DIR" -type f \( -name "*.py" -o -name "*.ts" -o -name "*.tsx" -o -name "*.json" -o -name "*.tf" -o -name "*.md" -o -name "*.sql" -o -name "*.mjs" ) | while read -r file; do
+      find "$MODULE_DIR" -type f \( -name "*.py" -o -name "*.ts" -o -name "*.tsx" -o -name "*.json" -o -name "*.tf" -o -name "*.md" -o -name "*.sql" -o -name "*.mjs" \) | while read -r file; do
         # Replace machine-readable project name
         sed -i '' "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file" 2>/dev/null || \
         sed -i "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file"
