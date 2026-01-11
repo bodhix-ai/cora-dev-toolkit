@@ -551,13 +551,13 @@ class ReportFormatter:
         
         # Header
         lines.append("=" * 80)
-        lines.append(self._bold("CORA Validation Report"))
+        lines.append(self._bold("Validation Test Suite Report"))
         lines.append("=" * 80)
         lines.append("")
         
         # Individual validator results FIRST
         lines.append("-" * 80)
-        lines.append("Validator Results")
+        lines.append("Results - Individual Validator Tests")
         lines.append("-" * 80)
         
         for validator_key, result in report.results.items():
@@ -591,7 +591,7 @@ class ReportFormatter:
         # Summary at the END for easy visibility
         lines.append("")
         lines.append("=" * 80)
-        lines.append(self._bold("Summary"))
+        lines.append(self._bold("Results - Validation Test Suite Summary"))
         lines.append("=" * 80)
         lines.append("")
         
