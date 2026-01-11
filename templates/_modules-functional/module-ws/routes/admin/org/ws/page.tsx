@@ -88,7 +88,7 @@ export default function WorkspaceOrgManagementPage() {
       
       // Call org workspace list API
       const apiClient = createWorkspaceApiClient(token);
-      await apiClient.listWorkspaces(currentOrgId);
+      await apiClient.listWorkspaces({ org_id: currentOrgId });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load workspaces");
     } finally {
