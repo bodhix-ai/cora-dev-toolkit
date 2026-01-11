@@ -18,7 +18,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { useSession } from "next-auth/react";
-import { createWorkspaceApiClient } from "../../../../../packages/module-ws/frontend/lib/api";
+import { createWorkspaceApiClient } from "@{{PROJECT_NAME}}/module-ws";
 
 /**
  * Platform Admin - Workspace Configuration Page
