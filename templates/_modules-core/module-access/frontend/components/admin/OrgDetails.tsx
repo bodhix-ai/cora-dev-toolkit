@@ -15,6 +15,7 @@ import {
 import { NavigateNext } from "@mui/icons-material";
 import { CoraAuthAdapter, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import { useRouter } from "next/navigation";
+import { OrgDetailsTab } from "./OrgDetailsTab";
 import { OrgDomainsTab } from "./OrgDomainsTab";
 import { OrgMembersTab } from "./OrgMembersTab";
 import { OrgInvitesTab } from "./OrgInvitesTab";
@@ -178,35 +179,11 @@ export function OrgDetails({ orgId, authAdapter, isPlatformAdmin }: OrgDetailsPr
 
       {/* Tab Panels */}
       <TabPanel value={activeTab} index={0}>
-        <Box>
-          <Typography variant="h5" gutterBottom>
-            Organization Information
-          </Typography>
-          <Box sx={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 2, mt: 2 }}>
-            <Typography variant="body2" color="text.secondary">Name:</Typography>
-            <Typography variant="body2">{organization.name}</Typography>
-            
-            <Typography variant="body2" color="text.secondary">Slug:</Typography>
-            <Typography variant="body2" fontFamily="monospace">{organization.slug}</Typography>
-            
-            {organization.description && (
-              <>
-                <Typography variant="body2" color="text.secondary">Description:</Typography>
-                <Typography variant="body2">{organization.description}</Typography>
-              </>
-            )}
-            
-            <Typography variant="body2" color="text.secondary">Created:</Typography>
-            <Typography variant="body2">
-              {new Date(organization.created_at).toLocaleString()}
-            </Typography>
-            
-            <Typography variant="body2" color="text.secondary">Last Updated:</Typography>
-            <Typography variant="body2">
-              {new Date(organization.updated_at).toLocaleString()}
-            </Typography>
-          </Box>
-        </Box>
+        <OrgDetailsTab 
+          orgId={orgId} 
+          authAdapter={authAdapter}
+          onUpdate={fetchOrganization}
+        />
       </TabPanel>
 
       <TabPanel value={activeTab} index={1}>
