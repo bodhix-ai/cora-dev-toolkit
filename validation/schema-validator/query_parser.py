@@ -204,10 +204,18 @@ class QueryParser:
                     if isinstance(keyword.value, ast.Constant):
                         select_str = keyword.value.value
                         if isinstance(select_str, str):
-                            columns = [col.strip() for col in select_str.split(',')]
+                            # Skip wildcard, filter out * from comma-separated lists
+                            if select_str.strip() == '*':
+                                columns = []
+                            else:
+                                columns = [col.strip() for col in select_str.split(',') if col.strip() != '*']
                     elif isinstance(keyword.value, ast.Str):  # Python 3.7 compatibility
                         select_str = keyword.value.s
-                        columns = [col.strip() for col in select_str.split(',')]
+                        # Skip wildcard, filter out * from comma-separated lists
+                        if select_str.strip() == '*':
+                            columns = []
+                        else:
+                            columns = [col.strip() for col in select_str.split(',') if col.strip() != '*']
         
         # For insert_one/update_one, extract columns from 'data' parameter
         elif method_name in ['insert_one', 'update_one']:
@@ -219,6 +227,17 @@ class QueryParser:
                                 columns.append(key.value)
                             elif isinstance(key, ast.Str):  # Python 3.7 compatibility
                                 columns.append(key.s)
+        
+        # ENHANCEMENT: Extract columns from 'filters' parameter for ALL methods
+        # This catches column mismatches in WHERE clauses (e.g., invite_id vs id)
+        for keyword in node.keywords:
+            if keyword.arg == 'filters':
+                if isinstance(keyword.value, ast.Dict):
+                    for key in keyword.value.keys:
+                        if isinstance(key, ast.Constant):
+                            columns.append(key.value)
+                        elif isinstance(key, ast.Str):  # Python 3.7 compatibility
+                            columns.append(key.s)
         
         # Create query reference
         if table_name:
@@ -269,7 +288,7 @@ class QueryParser:
         Extract column names from .select() call.
         
         Examples:
-        - .select('*')  -> ['*']
+        - .select('*')  -> [] (wildcard, skip validation)
         - .select('id', 'name')  -> ['id', 'name']
         - .select('id, name')  -> ['id', 'name']
         """
@@ -285,8 +304,14 @@ class QueryParser:
             
             # Handle comma-separated columns in a single string
             if isinstance(value, str):
+                # Skip wildcard - it means "select all columns" and doesn't need validation
+                if value.strip() == '*':
+                    continue
+                    
                 if ',' in value:
-                    columns.extend([col.strip() for col in value.split(',')])
+                    # Filter out wildcard from comma-separated list
+                    cols = [col.strip() for col in value.split(',') if col.strip() != '*']
+                    columns.extend(cols)
                 else:
                     columns.append(value.strip())
         

@@ -178,6 +178,13 @@ class CoraValidator:
             "supports": ["project"],
             "cli_style": "click_env",  # --path /path --output json + requires .env
         },
+        "external_uid": {
+            "name": "External UID Validator",
+            "description": "Validates proper external UID to Supabase UUID conversion",
+            "module": "external-uid-validator",
+            "supports": ["project", "module"],
+            "cli_style": "argparse",  # path --format json
+        },
         "cora": {
             "name": "CORA Compliance",
             "description": "Checks backend compliance with CORA standards",
