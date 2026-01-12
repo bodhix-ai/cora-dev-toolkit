@@ -9,7 +9,7 @@
  * - Usage Summary Tab: Cross-organization workspace statistics
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Container,
@@ -34,12 +34,18 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
+  IconButton,
 } from "@mui/material";
-import { Save, Refresh, TrendingUp, TrendingDown } from "@mui/icons-material";
+import { Save, Refresh, TrendingUp, TrendingDown, NavigateNext } from "@mui/icons-material";
+import * as MuiIcons from "@mui/icons-material";
+import Link from "next/link";
 import { useWorkspaceConfig } from "../hooks/useWorkspaceConfig";
 import { ColorPicker } from "../components/ColorPicker";
 import { WORKSPACE_COLORS } from "../types";
 import type { WorkspaceConfig } from "../types";
+import { useSession } from "next-auth/react";
+import { createWorkspaceApiClient } from "../lib/api";
 
 export interface PlatformAdminConfigPageProps {
   /** Whether user has platform admin permissions */
@@ -101,24 +107,65 @@ export function PlatformAdminConfigPage({
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Mock platform-wide stats (TODO: Implement platform-wide analytics API)
-  const platformStats = {
-    totalWorkspaces: 1247,
-    activeWorkspaces: 892,
-    createdThisMonth: 156,
-    organizationStats: [
-      { org: "Acme Corp", total: 245, active: 180, avgPerUser: 3.2, trend: 12 },
-      { org: "Global Industries", total: 189, active: 145, avgPerUser: 2.8, trend: 8 },
-      { org: "TechStart Inc", total: 156, active: 134, avgPerUser: 4.1, trend: 15 },
-      { org: "Enterprise Ltd", total: 142, active: 98, avgPerUser: 2.1, trend: -3 },
-      { org: "StartupXYZ", total: 89, active: 72, avgPerUser: 5.2, trend: 22 },
-    ],
+  // Platform analytics state
+  const { data: session } = useSession();
+  const [platformStats, setPlatformStats] = useState<{
+    totalWorkspaces: number;
+    activeWorkspaces: number;
+    archivedWorkspaces: number;
+    createdThisMonth: number;
+    organizationStats: Array<{
+      org_id: string;
+      total: number;
+      active: number;
+      archived: number;
+      avg_per_user: number;
+    }>;
     featureAdoption: {
-      favorites: 78,
-      tags: 62,
-      colors: 54,
-    },
-  };
+      favorites_pct: number;
+      tags_pct: number;
+      colors_pct: number;
+    };
+  } | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
+  // Fetch platform analytics
+  const fetchAnalytics = useCallback(async () => {
+    if (!session?.accessToken) return;
+
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+
+    try {
+      const apiClient = createWorkspaceApiClient(session.accessToken as string);
+      const data = await apiClient.getSysAnalytics();
+      if (data) {
+        setPlatformStats(data);
+      } else {
+        setAnalyticsError("No analytics data available");
+      }
+    } catch (err) {
+      console.error("Failed to fetch analytics:", err);
+      setAnalyticsError("Failed to load platform analytics");
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [session?.accessToken]);
+
+  // Fetch analytics when tab changes to Usage Summary
+  useEffect(() => {
+    if (activeTab === 1 && !platformStats && !analyticsLoading) {
+      fetchAnalytics();
+    }
+  }, [activeTab, platformStats, analyticsLoading, fetchAnalytics]);
+
+  // Icon picker options - common workspace-related icons
+  const AVAILABLE_ICONS = [
+    "Workspaces", "Folder", "FolderOpen", "Dashboard", "Assessment",
+    "Business", "AccountTree", "Category", "ViewModule", "GridView",
+    "Layers", "Storage", "Inventory", "Archive", "CollectionsBookmark"
+  ];
 
   // Initialize form from config
   useEffect(() => {
@@ -226,6 +273,26 @@ export function PlatformAdminConfigPage({
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* Breadcrumbs */}
+      <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}>
+        <Link href="/admin/sys" style={{ textDecoration: "none" }} aria-label="Go to Platform Admin">
+          <Typography 
+            variant="body2" 
+            color="primary" 
+            sx={{ 
+              "&:hover": { textDecoration: "underline" },
+              cursor: "pointer"
+            }}
+          >
+            Platform Admin
+          </Typography>
+        </Link>
+        <NavigateNext fontSize="small" color="action" />
+        <Typography variant="body2" color="text.secondary">
+          Workspace Configuration
+        </Typography>
+      </Box>
+
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" gutterBottom>
@@ -310,14 +377,37 @@ export function PlatformAdminConfigPage({
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Navigation Icon"
-                    value={navIcon}
-                    onChange={(e) => setNavIcon(e.target.value)}
-                    helperText="Material-UI icon name (e.g., 'Workspaces', 'Folder')"
-                    disabled={isSaving}
-                  />
+                  <Box>
+                    <Typography variant="body2" gutterBottom>
+                      Navigation Icon
+                    </Typography>
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 1 }}>
+                      {AVAILABLE_ICONS.map((iconName) => {
+                        const IconComponent = (MuiIcons as Record<string, React.ComponentType<{ fontSize?: string }>>)[iconName];
+                        if (!IconComponent) return null;
+                        return (
+                          <Tooltip key={iconName} title={iconName}>
+                            <IconButton
+                              onClick={() => setNavIcon(iconName)}
+                              disabled={isSaving}
+                              aria-label={`Select ${iconName} icon`}
+                              sx={{
+                                border: navIcon === iconName ? 2 : 1,
+                                borderColor: navIcon === iconName ? "primary.main" : "divider",
+                                bgcolor: navIcon === iconName ? "primary.light" : "transparent",
+                                "&:hover": { bgcolor: "action.hover" },
+                              }}
+                            >
+                              <IconComponent fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        );
+                      })}
+                    </Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Selected: {navIcon || "None"}
+                    </Typography>
+                  </Box>
                 </Grid>
 
                 {/* Feature Flags */}
@@ -496,6 +586,26 @@ export function PlatformAdminConfigPage({
 
           {/* Usage Summary Tab */}
           <TabPanel value={activeTab} index={1}>
+            {analyticsLoading ? (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+                <CircularProgress />
+              </Box>
+            ) : analyticsError ? (
+              <Alert 
+                severity="error" 
+                action={
+                  <Button color="inherit" size="small" onClick={fetchAnalytics}>
+                    Retry
+                  </Button>
+                }
+              >
+                {analyticsError}
+              </Alert>
+            ) : !platformStats ? (
+              <Alert severity="info">
+                No analytics data available. Click the Usage Summary tab to load data.
+              </Alert>
+            ) : (
             <Grid container spacing={3}>
               {/* Stats Cards */}
               <Grid item xs={12} sm={6} md={4}>
@@ -520,7 +630,9 @@ export function PlatformAdminConfigPage({
                     </Typography>
                     <Typography variant="h4">{platformStats.activeWorkspaces.toLocaleString()}</Typography>
                     <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
-                      {Math.round((platformStats.activeWorkspaces / platformStats.totalWorkspaces) * 100)}% of total
+                      {platformStats.totalWorkspaces > 0 
+                        ? Math.round((platformStats.activeWorkspaces / platformStats.totalWorkspaces) * 100) 
+                        : 0}% of total
                     </Typography>
                   </CardContent>
                 </Card>
@@ -553,35 +665,23 @@ export function PlatformAdminConfigPage({
                     <Table>
                       <TableHead>
                         <TableRow>
-                          <TableCell>Organization</TableCell>
+                          <TableCell>Organization ID</TableCell>
                           <TableCell align="right">Total</TableCell>
                           <TableCell align="right">Active</TableCell>
+                          <TableCell align="right">Archived</TableCell>
                           <TableCell align="right">Avg/User</TableCell>
-                          <TableCell align="right">Trend</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {platformStats.organizationStats.map((org) => (
-                          <TableRow key={org.org}>
-                            <TableCell>{org.org}</TableCell>
+                          <TableRow key={org.org_id}>
+                            <TableCell sx={{ fontFamily: "monospace", fontSize: "0.85rem" }}>
+                              {org.org_id.substring(0, 8)}...
+                            </TableCell>
                             <TableCell align="right">{org.total}</TableCell>
                             <TableCell align="right">{org.active}</TableCell>
-                            <TableCell align="right">{org.avgPerUser.toFixed(1)}</TableCell>
-                            <TableCell align="right">
-                              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 0.5 }}>
-                                {org.trend > 0 ? (
-                                  <TrendingUp fontSize="small" color="success" />
-                                ) : (
-                                  <TrendingDown fontSize="small" color="error" />
-                                )}
-                                <Typography
-                                  variant="body2"
-                                  color={org.trend > 0 ? "success.main" : "error.main"}
-                                >
-                                  {org.trend > 0 ? "+" : ""}{org.trend}%
-                                </Typography>
-                              </Box>
-                            </TableCell>
+                            <TableCell align="right">{org.archived}</TableCell>
+                            <TableCell align="right">{org.avg_per_user.toFixed(1)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -601,13 +701,13 @@ export function PlatformAdminConfigPage({
                       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
                         <Typography variant="body2">Favorites</Typography>
                         <Typography variant="body2" fontWeight="medium">
-                          {platformStats.featureAdoption.favorites}%
+                          {platformStats.featureAdoption.favorites_pct}%
                         </Typography>
                       </Box>
                       <Box sx={{ width: "100%", bgcolor: "action.hover", borderRadius: 1, height: 8 }}>
                         <Box
                           sx={{
-                            width: `${platformStats.featureAdoption.favorites}%`,
+                            width: `${platformStats.featureAdoption.favorites_pct}%`,
                             bgcolor: "primary.main",
                             borderRadius: 1,
                             height: 8,
@@ -619,13 +719,13 @@ export function PlatformAdminConfigPage({
                       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
                         <Typography variant="body2">Tags</Typography>
                         <Typography variant="body2" fontWeight="medium">
-                          {platformStats.featureAdoption.tags}%
+                          {platformStats.featureAdoption.tags_pct}%
                         </Typography>
                       </Box>
                       <Box sx={{ width: "100%", bgcolor: "action.hover", borderRadius: 1, height: 8 }}>
                         <Box
                           sx={{
-                            width: `${platformStats.featureAdoption.tags}%`,
+                            width: `${platformStats.featureAdoption.tags_pct}%`,
                             bgcolor: "primary.main",
                             borderRadius: 1,
                             height: 8,
@@ -637,13 +737,13 @@ export function PlatformAdminConfigPage({
                       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
                         <Typography variant="body2">Colors</Typography>
                         <Typography variant="body2" fontWeight="medium">
-                          {platformStats.featureAdoption.colors}%
+                          {platformStats.featureAdoption.colors_pct}%
                         </Typography>
                       </Box>
                       <Box sx={{ width: "100%", bgcolor: "action.hover", borderRadius: 1, height: 8 }}>
                         <Box
                           sx={{
-                            width: `${platformStats.featureAdoption.colors}%`,
+                            width: `${platformStats.featureAdoption.colors_pct}%`,
                             bgcolor: "primary.main",
                             borderRadius: 1,
                             height: 8,
@@ -656,16 +756,25 @@ export function PlatformAdminConfigPage({
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <Alert severity="info">
-                  <Typography variant="body2" gutterBottom>
-                    <strong>Note:</strong> Platform-wide statistics are currently displaying mock data.
+                <Paper sx={{ p: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Refresh Data
                   </Typography>
-                  <Typography variant="caption">
-                    Implement platform-wide analytics API endpoint to display real cross-organization data.
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Platform analytics are fetched from cross-organization workspace data.
                   </Typography>
-                </Alert>
+                  <Button
+                    variant="outlined"
+                    startIcon={<Refresh />}
+                    onClick={fetchAnalytics}
+                    disabled={analyticsLoading}
+                  >
+                    {analyticsLoading ? "Loading..." : "Refresh Analytics"}
+                  </Button>
+                </Paper>
               </Grid>
             </Grid>
+            )}
           </TabPanel>
         </>
       )}
