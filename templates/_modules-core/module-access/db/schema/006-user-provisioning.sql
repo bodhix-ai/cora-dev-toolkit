@@ -385,7 +385,7 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS check_expired_invites ON public.user_invites;
 CREATE TRIGGER check_expired_invites
-    AFTER INSERT OR UPDATE ON public.user_invites
+    AFTER INSERT ON public.user_invites
     FOR EACH STATEMENT
     EXECUTE FUNCTION auto_expire_invites();
 

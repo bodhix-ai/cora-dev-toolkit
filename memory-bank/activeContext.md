@@ -377,3 +377,164 @@ Database error in insert on user_invites:
 **Total Code Issues:** 9 resolved out of 9 ✅  
 **Infrastructure Issues:** 1 found (database RLS policy needs review)  
 **Updated:** January 12, 2026, 12:30 PM EST
+
+---
+
+---
+
+## 🔧 SESSION 95 (12:40 PM - 1:00 PM) - TRIGGER RECURSION FIX
+
+### Issue: Database Stack Depth Exceeded
+
+**Problem:** After fixing all Lambda code, invitation creation still failed with:
+```
+Database error in insert on user_invites: 
+{
+  'message': 'stack depth limit exceeded', 
+  'code': '54001',
+  'hint': 'Increase the configuration parameter "max_stack_depth" (currently 2048kB)'
+}
+```
+
+### Root Cause Analysis ✅ IDENTIFIED
+
+**The issue was NOT in RLS policies**, but in the `auto_expire_invites` trigger.
+
+**Trigger Recursion Problem:**
+```sql
+-- Trigger fires on BOTH INSERT and UPDATE
+CREATE TRIGGER check_expired_invites
+    AFTER INSERT OR UPDATE ON public.user_invites
+    FOR EACH STATEMENT
+    EXECUTE FUNCTION auto_expire_invites();
+
+-- Function performs UPDATE on same table
+CREATE OR REPLACE FUNCTION auto_expire_invites()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE public.user_invites  -- ← Triggers itself!
+    SET status = 'expired'
+    WHERE status = 'pending'
+      AND expires_at IS NOT NULL
+      AND expires_at < NOW();
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Recursion Flow:**
+1. INSERT into `user_invites` → triggers `auto_expire_invites()`
+2. `auto_expire_invites()` runs UPDATE on `user_invites`
+3. UPDATE triggers `auto_expire_invites()` again (because trigger is `AFTER INSERT OR UPDATE`)
+4. Infinite loop until stack depth exceeded (error 54001)
+
+### Fix Applied ✅ COMPLETE
+
+**Solution:** Remove UPDATE from trigger definition
+
+```sql
+-- BEFORE (❌ Causes recursion):
+CREATE TRIGGER check_expired_invites
+    AFTER INSERT OR UPDATE ON public.user_invites
+
+-- AFTER (✅ Fixed):
+CREATE TRIGGER check_expired_invites
+    AFTER INSERT ON public.user_invites
+```
+
+**Rationale:** 
+- Auto-expire logic should only run when new invites are created (INSERT)
+- No need to check expired invites when updating existing records
+- Prevents infinite recursion while maintaining functionality
+
+### Files Updated
+
+1. **Template (Source of Truth):**
+   - `templates/_modules-core/module-access/db/schema/006-user-provisioning.sql`
+   - Changed trigger from `AFTER INSERT OR UPDATE` to `AFTER INSERT`
+
+2. **Migration Script (For Existing Projects):**
+   - `scripts/migrations/fix-invite-trigger-recursion.sql`
+   - Idempotent script to fix trigger without full schema rebuild
+   - Can be run on existing databases safely
+
+### Deployment Instructions
+
+**For New Projects:**
+- Template is already fixed
+- Next project creation will have correct trigger
+
+**For Existing Projects:**
+Run the migration script:
+```bash
+# Connect to database
+psql -h <host> -U <user> -d <database>
+
+# Run migration
+\i scripts/migrations/fix-invite-trigger-recursion.sql
+
+# Verify fix
+SELECT 
+    trigger_name, 
+    event_manipulation,
+    action_statement
+FROM information_schema.triggers
+WHERE trigger_name = 'check_expired_invites';
+
+# Expected: event_manipulation should show only 'INSERT', not 'UPDATE'
+```
+
+### RLS Policies Analysis
+
+**Reviewed all RLS policies** - no circular dependencies found:
+
+- **user_invites** checks `org_members` and `user_profiles`
+- **org_members** self-references (simple, not circular)
+- **user_profiles** only checks `auth.uid()` (no circular reference)
+
+**Conclusion:** RLS policies were correctly designed. The issue was purely the trigger recursion.
+
+### Validation ✅ TESTED AND CONFIRMED
+
+**Test Date:** January 12, 2026, 1:15 PM EST
+
+**Test Results:**
+- ✅ Invitations can be **created** successfully (no stack depth error)
+- ✅ Invitations can be **deleted/revoked** successfully
+- ✅ No infinite recursion or database errors
+- ✅ Fix confirmed working in production environment
+
+**Conclusion:** Trigger recursion fix is production-ready and fully validated.
+
+---
+
+## 📊 Final Summary of Template Changes
+
+| File | Changes | Impact |
+|------|---------|--------|
+| `module-access/.../identities-management/lambda_function.py` | Fixed column names, fetch from user_sessions | GET /admin/users works ✅ |
+| `module-access/.../profiles/lambda_function.py` | Added session creation for existing users | Sessions populate ✅ |
+| `module-access/.../invites/lambda_function.py` | Fixed: invite_id → id, role validation | GET /invites works, role validation fixed ✅ |
+| `module-access/frontend/lib/api.ts` | Fixed: inviteMember calls /invites endpoint | Frontend calls correct endpoint ✅ |
+| `module-ai/infrastructure/outputs.tf` | Added 10 missing API Gateway routes | All /admin/ai/* routes accessible ✅ |
+| `module-ai/frontend/lib/api.ts` | Fixed endpoint + deployments extraction | Models tab works ✅ |
+| `module-access/.../admin/OrgInvitesTab.tsx` | Added "Create Invitation" button + dialog | Invites button works ✅ |
+| `module-access/.../admin/OrgMembersTab.tsx` | Conditionally render dialog | Members redirect fixed ✅ |
+| `module-access/db/schema/006-user-provisioning.sql` | Fixed trigger recursion | Invitation creation works ✅ |
+
+**Templates Fixed:** 9 files  
+**Backend Issues Fixed:** 5 (admin users, ai config, invites endpoint, sessions, role validation)  
+**Frontend Issues Fixed:** 4 (AI models, invites button, members redirect, invites endpoint)  
+**Database Issues Fixed:** 1 (trigger recursion)
+**Total Issues Resolved:** 10 out of 10 ✅
+
+---
+
+**Status:** ✅ **ALL ISSUES RESOLVED**  
+**Templates Updated:** module-access (backend + frontend + database), module-ai  
+**Backend Fixes:** 5 resolved ✅  
+**Frontend Fixes:** 4 resolved ✅  
+**Database Fixes:** 1 resolved ✅  
+**Total Code Issues:** 10 resolved out of 10 ✅  
+**Migration Scripts Created:** 1 (fix-invite-trigger-recursion.sql)  
+**Updated:** January 12, 2026, 1:00 PM EST
