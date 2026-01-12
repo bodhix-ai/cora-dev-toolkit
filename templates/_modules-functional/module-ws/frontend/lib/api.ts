@@ -340,38 +340,40 @@ export class WorkspaceApiClient {
   } | null> {
     try {
       const response = await this.client.get<ApiResponse<{
-        total_workspaces: number;
-        active_workspaces: number;
-        archived_workspaces: number;
-        created_this_month: number;
-        organization_stats: Array<{
-          org_id: string;
-          total: number;
-          active: number;
-          archived: number;
-          avg_per_user: number;
-        }>;
-        feature_adoption: {
-          favorites_pct: number;
-          tags_pct: number;
-          colors_pct: number;
+        analytics: {
+          platform_wide: {
+            total_workspaces: number;
+            active_workspaces: number;
+            archived_workspaces: number;
+            created_this_month: number;
+          };
+          by_organization: Array<{
+            org_id: string;
+            total: number;
+            active: number;
+            archived: number;
+            avg_per_user: number;
+          }>;
+          feature_adoption: {
+            favorites_pct: number;
+            tags_pct: number;
+            colors_pct: number;
+          };
         };
       }>>('/ws/sys/analytics');
       
-      if (!response?.data) return null;
+      if (!response?.data?.analytics) return null;
+      
+      const { platform_wide, by_organization, feature_adoption } = response.data.analytics;
       
       // Map snake_case to camelCase for frontend
       return {
-        totalWorkspaces: response.data.total_workspaces,
-        activeWorkspaces: response.data.active_workspaces,
-        archivedWorkspaces: response.data.archived_workspaces,
-        createdThisMonth: response.data.created_this_month,
-        organizationStats: response.data.organization_stats,
-        featureAdoption: {
-          favorites_pct: response.data.feature_adoption.favorites_pct,
-          tags_pct: response.data.feature_adoption.tags_pct,
-          colors_pct: response.data.feature_adoption.colors_pct,
-        },
+        totalWorkspaces: platform_wide.total_workspaces,
+        activeWorkspaces: platform_wide.active_workspaces,
+        archivedWorkspaces: platform_wide.archived_workspaces,
+        createdThisMonth: platform_wide.created_this_month,
+        organizationStats: by_organization,
+        featureAdoption: feature_adoption,
       };
     } catch (error) {
       console.error("Failed to get system analytics:", error);

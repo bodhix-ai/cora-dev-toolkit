@@ -9,7 +9,7 @@
  * - Usage Summary Tab: Cross-organization workspace statistics
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Container,
@@ -129,6 +129,7 @@ export function PlatformAdminConfigPage({
   } | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const analyticsInitiated = useRef(false);
 
   // Fetch platform analytics
   const fetchAnalytics = useCallback(async () => {
@@ -153,12 +154,13 @@ export function PlatformAdminConfigPage({
     }
   }, [session?.accessToken]);
 
-  // Fetch analytics when tab changes to Usage Summary
+  // Fetch analytics when tab changes to Usage Summary (only once)
   useEffect(() => {
-    if (activeTab === 1 && !platformStats && !analyticsLoading) {
+    if (activeTab === 1 && !analyticsInitiated.current && session?.accessToken) {
+      analyticsInitiated.current = true;
       fetchAnalytics();
     }
-  }, [activeTab, platformStats, analyticsLoading, fetchAnalytics]);
+  }, [activeTab, session?.accessToken, fetchAnalytics]);
 
   // Icon picker options - common workspace-related icons
   const AVAILABLE_ICONS = [
