@@ -124,17 +124,17 @@ def handle_list_invites(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
 def handle_create_invite(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
     """
     Create new member invite
-    
+
     Request body:
     {
         "email": "user@example.com",
-        "role": "org_member" | "org_admin"
+        "role": "org_user" | "org_admin" | "org_owner"
     }
-    
+
     Args:
         event: API Gateway event
         org_id: Organization ID
-        
+
     Returns:
         Created invite
     """
@@ -154,9 +154,9 @@ def handle_create_invite(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
     role = common.validate_required(body.get('role'), 'role')
     
     # Validate role
-    if role not in ['org_member', 'org_admin']:
+    if role not in ['org_user', 'org_admin', 'org_owner']:
         return common.bad_request_response(
-            'Invalid role. Must be org_member or org_admin'
+            'Invalid role. Must be org_user, org_admin, or org_owner'
         )
     
     # Check if user is already a member
