@@ -128,7 +128,7 @@ export function createOrgModuleClient(
     // Members
     getMembers: (orgId) => authenticatedClient.get<OrgMember[]>(`/orgs/${orgId}/members`),
     inviteMember: (orgId, data) =>
-      authenticatedClient.post<OrgMember>(`/orgs/${orgId}/members`, data),
+      authenticatedClient.post<OrgMember>(`/orgs/${orgId}/invites`, data),
     updateMemberRole: (orgId, memberId, role) =>
       authenticatedClient.put<OrgMember>(`/orgs/${orgId}/members/${memberId}`, { role }),
     removeMember: (orgId, memberId) =>
