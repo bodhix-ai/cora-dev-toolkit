@@ -25,6 +25,8 @@ export interface Organization {
   description: string | null;
   websiteUrl: string | null;
   logoUrl: string | null;
+  appName: string | null;
+  appIcon: string | null;
   createdAt: string;
   updatedAt: string;
   createdBy: string;
@@ -51,6 +53,8 @@ export interface UserOrganization {
   isOwner: boolean;
   joinedAt: string;
   logoUrl: string | null;
+  appName: string | null;
+  appIcon: string | null;
 }
 
 // API Response Types
@@ -80,3 +84,17 @@ export interface InviteMemberInput {
   email: string;
   role: "org_user" | "org_admin" | "org_owner";
 }
+
+// Org Icon Options (AI-related MUI icons)
+export const ORG_ICON_OPTIONS = [
+  { value: "AutoAwesomeOutlined", label: "Sparkles", default: true },
+  { value: "PsychologyOutlined", label: "Brain" },
+  { value: "SmartToyOutlined", label: "Robot" },
+  { value: "AutoFixHighOutlined", label: "Magic Wand" },
+  { value: "BoltOutlined", label: "Lightning" },
+  { value: "HubOutlined", label: "Network" },
+  { value: "MemoryOutlined", label: "Memory" },
+  { value: "ModelTrainingOutlined", label: "Training" },
+] as const;
+
+export type OrgIconValue = typeof ORG_ICON_OPTIONS[number]["value"];
