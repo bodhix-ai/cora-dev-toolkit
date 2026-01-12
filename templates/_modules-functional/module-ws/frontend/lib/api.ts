@@ -313,6 +313,73 @@ export class WorkspaceApiClient {
   }
 
   // ===========================================================================
+  // Platform Admin Analytics
+  // ===========================================================================
+
+  /**
+   * Get platform-wide workspace analytics
+   * Platform admin only - cross-organization statistics
+   */
+  async getSysAnalytics(): Promise<{
+    totalWorkspaces: number;
+    activeWorkspaces: number;
+    archivedWorkspaces: number;
+    createdThisMonth: number;
+    organizationStats: Array<{
+      org_id: string;
+      total: number;
+      active: number;
+      archived: number;
+      avg_per_user: number;
+    }>;
+    featureAdoption: {
+      favorites_pct: number;
+      tags_pct: number;
+      colors_pct: number;
+    };
+  } | null> {
+    try {
+      const response = await this.client.get<ApiResponse<{
+        total_workspaces: number;
+        active_workspaces: number;
+        archived_workspaces: number;
+        created_this_month: number;
+        organization_stats: Array<{
+          org_id: string;
+          total: number;
+          active: number;
+          archived: number;
+          avg_per_user: number;
+        }>;
+        feature_adoption: {
+          favorites_pct: number;
+          tags_pct: number;
+          colors_pct: number;
+        };
+      }>>('/ws/sys/analytics');
+      
+      if (!response?.data) return null;
+      
+      // Map snake_case to camelCase for frontend
+      return {
+        totalWorkspaces: response.data.total_workspaces,
+        activeWorkspaces: response.data.active_workspaces,
+        archivedWorkspaces: response.data.archived_workspaces,
+        createdThisMonth: response.data.created_this_month,
+        organizationStats: response.data.organization_stats,
+        featureAdoption: {
+          favorites_pct: response.data.feature_adoption.favorites_pct,
+          tags_pct: response.data.feature_adoption.tags_pct,
+          colors_pct: response.data.feature_adoption.colors_pct,
+        },
+      };
+    } catch (error) {
+      console.error("Failed to get system analytics:", error);
+      return null;
+    }
+  }
+
+  // ===========================================================================
   // Organization Settings
   // ===========================================================================
 

@@ -50,7 +50,9 @@ import {
   Refresh,
   Warning,
   Add,
+  NavigateNext,
 } from "@mui/icons-material";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { createWorkspaceApiClient } from "../lib/api";
 import type {
@@ -378,6 +380,26 @@ export function OrgAdminManagementPage({
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
+      {/* Breadcrumbs */}
+      <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}>
+        <Link href="/admin/org" style={{ textDecoration: "none" }}>
+          <Typography 
+            variant="body2" 
+            color="primary" 
+            sx={{ 
+              "&:hover": { textDecoration: "underline" },
+              cursor: "pointer"
+            }}
+          >
+            Organization Admin
+          </Typography>
+        </Link>
+        <NavigateNext fontSize="small" color="action" />
+        <Typography variant="body2" color="text.secondary">
+          Workspace Management
+        </Typography>
+      </Box>
+
       {/* Header */}
       <Box
         sx={{
