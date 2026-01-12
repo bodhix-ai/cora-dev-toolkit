@@ -2,144 +2,102 @@
 
 ## Current Focus
 
-**Session 89: Dynamic Workspace Config Labels** - ✅ **ALL UI LABELS NOW DYNAMIC**
+**Session 90: Org Admin API Routes Fixed** - ✅ **INFRASTRUCTURE ROUTES ADDED**
 
-## Session: January 11, 2026 (5:55 PM - 6:20 PM) - Session 89
+## Session: January 11, 2026 (6:30 PM - 7:20 PM) - Session 90
 
-### 🎯 Status: ✅ Dynamic Labels Complete | 🚧 3 Outstanding Issues for Future Tasks
+### 🎯 Status: ✅ API Routes Fixed | 🧪 Awaiting New Project Test
 
-**Summary:** Made all workspace module UI labels dynamically configurable via Platform Admin. Left navigation, page title, subtitle, buttons, and form dialogs now all use database config values.
+**Summary:** Identified and fixed root cause of 404 errors on org admin Settings tab. Added missing API Gateway routes to infrastructure template.
 
 ---
 
-## ✅ SESSION 89 COMPLETED WORK
+## ✅ SESSION 90 COMPLETED WORK
 
-### Dynamic Config Labels - ALL IMPLEMENTED
+### Root Cause Analysis
 
-| UI Element | Status | Config Field Used | Component |
-|------------|--------|-------------------|-----------|
-| Left Navigation | ✅ Fixed | `nav_label_plural` | `Sidebar.tsx` |
-| Page Title | ✅ Fixed | `nav_label_plural` | `WorkspaceListPage.tsx` |
-| Page Subtitle | ✅ Fixed | `nav_label_plural` | `WorkspaceListPage.tsx` |
-| Create Button | ✅ Fixed | `nav_label_singular` | `WorkspaceListPage.tsx` |
-| Dialog Title | ✅ Fixed | `labelSingular` prop | `WorkspaceForm.tsx` |
-| Submit Button | ✅ Fixed | `labelSingular` prop | `WorkspaceForm.tsx` |
-| Default Color | ✅ Fixed | `default_color` | `WorkspaceForm.tsx` |
+**Problem:** PUT /ws/org/settings returning 404 Not Found
 
-### Files Modified This Session
+**Root Cause:** API Gateway routes were missing from `outputs.tf`
+- Lambda had handlers for `/ws/org/settings` (lines 120-125, 459, 508)
+- API Gateway didn't have routes configured
+- The `api_routes` output in `outputs.tf` is consumed by infra scripts to configure API Gateway
+- Routes weren't listed → Routes weren't deployed
 
-**Template Updates:**
-- `templates/_project-stack-template/apps/web/components/Sidebar.tsx` - Added dynamic label for /ws nav item
-- `templates/_modules-functional/module-ws/frontend/pages/WorkspaceListPage.tsx` - Added useWorkspaceConfig hook
-- `templates/_modules-functional/module-ws/frontend/components/WorkspaceForm.tsx` - Added defaultColor and labelSingular props
+### Fix Applied
+
+Added 3 new routes to `templates/_modules-functional/module-ws/infrastructure/outputs.tf`:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/ws/org/settings` | Get organization workspace settings |
+| PUT | `/ws/org/settings` | Update organization workspace settings |
+| GET | `/ws/sys/analytics` | Get platform-wide workspace analytics |
 
 ### Commits This Session
 
-1. **6fb1f57** - fix(module-ws): Use dynamic config for labels and default color in workspace UI
-2. **a2061da** - fix(template): Make sidebar navigation label dynamic for workspace module
+1. **f4ec353** - feat(module-ws): Add API routes for org settings and sys analytics
+
+### Files Modified
+
+- `templates/_modules-functional/module-ws/infrastructure/outputs.tf` - Added missing API routes
 
 ---
 
-## 🚧 OUTSTANDING ISSUES (Future Tasks)
+## � Lambda Handler Verification
 
-### Issue 1: Org Admin API Error - org_id Required
+The Lambda already has handlers ready:
 
-**Symptom:** 
-```json
-{
-    "success": false,
-    "error": "org_id is required (in query params or request body)"
-}
-```
-
-**Root Cause:** The org admin page API call is not properly passing org_id to the backend.
-
-**Status:** Deferred to future task
-
-**Required Fix:** Review `OrgAdminManagementPage.tsx` API client calls and ensure org_id is passed in all requests.
-
-### Issue 2: WS Config UX - Icon and Color Pickers Needed
-
-**Symptom:** Platform admin config page requires typing MUI icon names and color hex codes manually.
-
-**Desired UX:**
-- Icon selector: Visual picker showing available MUI icons
-- Color picker: Visual color palette or color picker component
-
-**Status:** Deferred to future task
-
-**Required Work:**
-- Create `IconPicker` component with visual grid of MUI icons
-- Use `ColorPicker` component (already exists in module-ws) or enhance it
-- Update Platform Admin Config page to use these components
-
-### Issue 3: Platform Admin Usage Summary Not Populating
-
-**Symptom:** Usage Summary tab shows mock data only
-
-**Root Cause:** Backend endpoint `GET /ws/sys/analytics` not yet implemented
-
-**Status:** Expected - backend not implemented
-
-**Required Backend Work:**
-- Implement `GET /ws/sys/analytics` endpoint
-- Returns platform-wide workspace statistics
-- No org_id required (system-level route)
+| Route | Handler Function | Line |
+|-------|------------------|------|
+| `GET /ws/org/settings` | `handle_get_org_settings()` | 459 |
+| `PUT /ws/org/settings` | `handle_update_org_settings()` | 508 |
+| `GET /ws/sys/analytics` | `handle_sys_analytics()` | 354 |
 
 ---
 
-## 📚 Session 87-89 Summary (Complete)
+## 🧪 NEXT STEPS (User Action)
+
+1. Create new test project (test-ws-20)
+2. Deploy infrastructure
+3. Test Settings tab on `/admin/org/ws`
+4. Verify 404 is resolved
+
+---
+
+## 📚 Session 89-90 Summary
+
+### Session 89 (5:55 PM - 6:20 PM)
+- ✅ Made all UI labels dynamically configurable
+- ✅ Sidebar, page titles, buttons use database config
+
+### Session 90 (6:30 PM - 7:20 PM)
+- ✅ Identified root cause of org admin 404 errors
+- ✅ Added missing API routes to infrastructure template
+- ✅ Lambda handlers verified present
 
 ### What's Working Now
-- ✅ Project creates, deploys, and builds without errors
-- ✅ All admin pages render and are accessible
-- ✅ All routing is correct (sys/org/ws convention followed)
-- ✅ Platform Admin Config page loads and saves config
-- ✅ **All UI labels now dynamically configurable** (Session 89)
-- ✅ Left navigation shows custom label (e.g., "Audits" instead of "Workspaces")
-- ✅ Default color from config used for new workspace creation
+- ✅ Dynamic UI labels (nav, titles, buttons)
+- ✅ Platform Admin Config page
+- ✅ API routes now in template (pending deploy test)
+- ✅ Lambda handlers for all routes
 
-### What Needs Future Work
-- 🔴 Org admin API calls need org_id fix
-- 🟡 Icon/color picker UX improvement
-- 🟡 Platform admin usage summary backend endpoint
-- 🟡 Org admin analytics/settings backend endpoints
-
-### Test Project
-- **Active:** ~/code/sts/test-ws-18/ai-sec-stack
-- **Previous:** ~/code/sts/test-ws-17/ai-sec-stack (deprecated)
+### Outstanding Issues
+- 🟡 Icon/color picker UX improvement (Future)
+- 🟡 Test new project to verify routes work
 
 ---
 
-## 📝 Branch & PR Info
+## � Branch & PR Info
 
 **Branch:** `fix/module-ws-authentication-and-routes`
 
-**PR Title:** feat(module-ws): Dynamic config labels for workspace module UI
+**PR:** #20 - feat(module-ws): Dynamic config labels for workspace module UI
 
-**PR Description:**
-Makes all workspace module UI labels dynamically configurable via Platform Admin → Workspace Configuration.
-
-### Changes:
-- Left navigation label now uses `nav_label_plural` from database
-- Page title and subtitle use dynamic config
-- Create button uses `nav_label_singular`
-- WorkspaceForm dialog title/buttons use dynamic labels
-- Default color for new workspaces uses `default_color` from config
-
-### How to Test:
-1. Go to Platform Admin → Workspace Configuration
-2. Change "Label (Singular)" to "Audit" and "Label (Plural)" to "Audits"
-3. Save configuration
-4. Refresh page - left nav, page title, and buttons should all show "Audits"
-
-### Outstanding Issues (Deferred):
-1. Org admin API calls need org_id parameter fix
-2. Icon/color picker UX improvement needed
-3. Usage summary backend not implemented
+**Latest Commit:** f4ec353 - feat(module-ws): Add API routes for org settings and sys analytics
 
 ---
 
-**Status:** ✅ **SESSION 89 COMPLETE - PR READY**  
-**Test Project:** ~/code/sts/test-ws-18/ai-sec-stack  
-**Updated:** January 11, 2026, 6:20 PM EST
+**Status:** ✅ **SESSION 90 COMPLETE - AWAITING TEST PROJECT**  
+**Next Test Project:** test-ws-20 (to be created by user)  
+**Updated:** January 11, 2026, 7:20 PM EST
