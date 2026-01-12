@@ -224,13 +224,25 @@ export interface FeatureAdoption {
 
 /**
  * Analytics data for workspace usage
+ * 
+ * Note: API returns flat structure with org_id context
  */
 export interface WorkspaceAnalytics {
-  stats: WorkspaceStats;
-  workspaces_over_time: TimeSeriesData[];
-  status_distribution: StatusDistribution;
-  most_active: WorkspaceActivity[];
-  inactive_workspaces: InactiveWorkspace[];
+  // API response format (flat structure from /ws/admin/analytics)
+  org_id?: string;
+  total_workspaces?: number;
+  active_workspaces?: number;
+  archived_workspaces?: number;
+  deleted_workspaces?: number;
+  total_members?: number;
+  avg_members_per_workspace?: number;
+  
+  // Legacy format (for backwards compatibility)
+  stats?: WorkspaceStats;
+  workspaces_over_time?: TimeSeriesData[];
+  status_distribution?: StatusDistribution;
+  most_active?: WorkspaceActivity[];
+  inactive_workspaces?: InactiveWorkspace[];
 }
 
 /**
