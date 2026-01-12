@@ -416,16 +416,25 @@ export function createAIEnablementClient(
     // Model operations
     getModels: async (providerId?: string) => {
       try {
-        const url = providerId ? `/models?providerId=${providerId}` : "/models";
-        const response = await authenticatedClient.get<ModelApiData[] | { data: ModelApiData[] }>(
+        const url = providerId ? `/models?providerId=${providerId}` : "/admin/ai/models";
+        const response = await authenticatedClient.get<ModelApiData[] | { data: ModelApiData[] } | { data: { deployments: ModelApiData[] } }>(
           url
         );
-        // Backend returns models in the response data array
-        const models = Array.isArray(response)
-          ? response
-          : Array.isArray(response?.data)
-          ? response.data
-          : [];
+        // Backend returns models in different structures:
+        // - /models?providerId=xxx returns array
+        // - /admin/ai/models returns {data: {deployments: [...]}}
+        let models: ModelApiData[] = [];
+        
+        if (Array.isArray(response)) {
+          models = response;
+        } else if (response && typeof response === 'object' && 'data' in response) {
+          const data = response.data;
+          if (Array.isArray(data)) {
+            models = data;
+          } else if (data && typeof data === 'object' && 'deployments' in data && Array.isArray(data.deployments)) {
+            models = data.deployments;
+          }
+        }
 
         return {
           success: true,
