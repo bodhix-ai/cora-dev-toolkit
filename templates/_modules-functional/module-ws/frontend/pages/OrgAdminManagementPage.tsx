@@ -112,6 +112,55 @@ export function OrgAdminManagementPage({
   const [allowUserCreation, setAllowUserCreation] = useState(true);
   const [requireApproval, setRequireApproval] = useState(false);
   const [maxWorkspacesPerUser, setMaxWorkspacesPerUser] = useState(10);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsSuccess, setSettingsSuccess] = useState<string | null>(null);
+
+  // Fetch org settings
+  const fetchOrgSettings = async () => {
+    if (!session?.accessToken) return;
+
+    setSettingsLoading(true);
+    try {
+      const client = createWorkspaceApiClient(session.accessToken as string);
+      const settings = await client.getOrgSettings(orgId);
+      if (settings) {
+        setAllowUserCreation(settings.allow_user_creation);
+        setRequireApproval(settings.require_approval);
+        setMaxWorkspacesPerUser(settings.max_workspaces_per_user);
+      }
+    } catch (err) {
+      console.error("Failed to fetch org settings:", err);
+      // Use defaults if fetch fails (settings may not exist yet)
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  // Save org settings
+  const handleSaveSettings = async () => {
+    if (!session?.accessToken) return;
+
+    setSettingsSaving(true);
+    setSettingsSuccess(null);
+    setError(null);
+
+    try {
+      const client = createWorkspaceApiClient(session.accessToken as string);
+      await client.updateOrgSettings(orgId, {
+        allow_user_creation: allowUserCreation,
+        require_approval: requireApproval,
+        max_workspaces_per_user: maxWorkspacesPerUser,
+      });
+      setSettingsSuccess("Settings saved successfully!");
+      setTimeout(() => setSettingsSuccess(null), 3000);
+    } catch (err) {
+      console.error("Failed to save org settings:", err);
+      setError(err instanceof Error ? err.message : "Failed to save settings");
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
 
   // Fetch analytics data
   const fetchAnalytics = async () => {
@@ -168,6 +217,7 @@ export function OrgAdminManagementPage({
   useEffect(() => {
     fetchAnalytics();
     fetchWorkspaces();
+    fetchOrgSettings();
   }, [session?.accessToken, orgId]);
 
   const handleRefresh = () => {
@@ -541,7 +591,7 @@ export function OrgAdminManagementPage({
 
           {/* Analytics Tab */}
           <TabPanel value={activeTab} index={1}>
-            {analytics && (
+            {analytics ? (
               <>
                 <Grid container spacing={3} sx={{ mb: 4 }}>
                   <Grid item xs={12} sm={6} md={3}>
@@ -550,10 +600,12 @@ export function OrgAdminManagementPage({
                         <Typography color="text.secondary" gutterBottom variant="body2">
                           Total Workspaces
                         </Typography>
-                        <Typography variant="h4">{analytics.stats.total}</Typography>
+                        <Typography variant="h4">
+                          {analytics.total_workspaces ?? analytics.stats?.total ?? 0}
+                        </Typography>
                         <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
                           <Typography variant="body2" color="text.secondary">
-                            {analytics.stats.active} active
+                            {analytics.active_workspaces ?? analytics.stats?.active ?? 0} active
                           </Typography>
                         </Box>
                       </CardContent>
@@ -566,12 +618,16 @@ export function OrgAdminManagementPage({
                         <Typography color="text.secondary" gutterBottom variant="body2">
                           Active Workspaces
                         </Typography>
-                        <Typography variant="h4">{analytics.stats.active}</Typography>
+                        <Typography variant="h4">
+                          {analytics.active_workspaces ?? analytics.stats?.active ?? 0}
+                        </Typography>
                         <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
                           <Typography variant="body2" color="success.main">
-                            {Math.round(
-                              (analytics.stats.active / analytics.stats.total) * 100
-                            )}
+                            {(() => {
+                              const total = analytics.total_workspaces ?? analytics.stats?.total ?? 0;
+                              const active = analytics.active_workspaces ?? analytics.stats?.active ?? 0;
+                              return total > 0 ? Math.round((active / total) * 100) : 0;
+                            })()}
                             % of total
                           </Typography>
                         </Box>
@@ -585,7 +641,9 @@ export function OrgAdminManagementPage({
                         <Typography color="text.secondary" gutterBottom variant="body2">
                           Archived
                         </Typography>
-                        <Typography variant="h4">{analytics.stats.archived}</Typography>
+                        <Typography variant="h4">
+                          {analytics.archived_workspaces ?? analytics.stats?.archived ?? 0}
+                        </Typography>
                         <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
                           <Typography variant="body2" color="text.secondary">
                             Available for restore
@@ -599,19 +657,14 @@ export function OrgAdminManagementPage({
                     <Card>
                       <CardContent>
                         <Typography color="text.secondary" gutterBottom variant="body2">
-                          Created This Month
+                          Total Members
                         </Typography>
                         <Typography variant="h4">
-                          {analytics.stats.created_this_month}
+                          {analytics.total_members ?? analytics.stats?.created_this_month ?? 0}
                         </Typography>
                         <Box sx={{ display: "flex", alignItems: "center", mt: 1, gap: 0.5 }}>
-                          {analytics.stats.created_this_month > 0 ? (
-                            <TrendingUp fontSize="small" color="success" />
-                          ) : (
-                            <TrendingDown fontSize="small" color="disabled" />
-                          )}
                           <Typography variant="body2" color="text.secondary">
-                            Growth
+                            Avg {analytics.avg_members_per_workspace?.toFixed(1) ?? "0"} per workspace
                           </Typography>
                         </Box>
                       </CardContent>
@@ -620,7 +673,7 @@ export function OrgAdminManagementPage({
                 </Grid>
 
                 {/* Inactive Workspaces Warning */}
-                {analytics.inactive_workspaces.length > 0 && (
+                {analytics.inactive_workspaces && analytics.inactive_workspaces.length > 0 && (
                   <Alert severity="warning" sx={{ mb: 3 }}>
                     <Typography variant="body2" gutterBottom>
                       <strong>Inactive Workspaces Detected:</strong> {analytics.inactive_workspaces.length} workspace(s) have been inactive for 90+ days
@@ -632,7 +685,7 @@ export function OrgAdminManagementPage({
                 )}
 
                 {/* Most Active Workspaces */}
-                {analytics.most_active.length > 0 && (
+                {analytics.most_active && analytics.most_active.length > 0 && (
                   <Paper sx={{ p: 3, mb: 3 }}>
                     <Typography variant="h5" gutterBottom>
                       Most Active Workspaces
@@ -659,6 +712,12 @@ export function OrgAdminManagementPage({
                   </Paper>
                 )}
               </>
+            ) : (
+              <Paper sx={{ p: 6, textAlign: "center" }}>
+                <Typography variant="body1" color="text.secondary">
+                  Analytics data is loading or not available.
+                </Typography>
+              </Paper>
             )}
           </TabPanel>
 
@@ -719,25 +778,29 @@ export function OrgAdminManagementPage({
                   />
                 </Grid>
 
-                <Grid item xs={12}>
-                  <Divider sx={{ my: 2 }} />
-                  <Alert severity="info">
-                    <Typography variant="body2">
-                      <strong>Note:</strong> Organization-level settings are currently displaying default values.
-                    </Typography>
-                    <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                      Implement org-level settings API endpoints to persist these configurations.
-                    </Typography>
-                  </Alert>
-                </Grid>
+                {settingsSuccess && (
+                  <Grid item xs={12}>
+                    <Alert severity="success" onClose={() => setSettingsSuccess(null)}>
+                      {settingsSuccess}
+                    </Alert>
+                  </Grid>
+                )}
 
                 <Grid item xs={12}>
                   <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>
-                    <Button variant="outlined">
-                      Cancel
+                    <Button 
+                      variant="outlined" 
+                      onClick={fetchOrgSettings}
+                      disabled={settingsLoading || settingsSaving}
+                    >
+                      Reset
                     </Button>
-                    <Button variant="contained">
-                      Save Settings
+                    <Button 
+                      variant="contained" 
+                      onClick={handleSaveSettings}
+                      disabled={settingsLoading || settingsSaving}
+                    >
+                      {settingsSaving ? "Saving..." : "Save Settings"}
                     </Button>
                   </Box>
                 </Grid>
