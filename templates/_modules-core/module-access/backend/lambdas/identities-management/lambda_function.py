@@ -120,16 +120,24 @@ def handle_list_users(event: Dict[str, Any]) -> Dict[str, Any]:
     try:
         # Query all user profiles
         response = client.table('user_profiles').select(
-            'user_id, email, full_name, global_role, created_at, last_sign_in_at'
+            'user_id, email, full_name, global_role, created_at'
         ).execute()
         
         users = response.data if response.data else []
         
-        # For each user, fetch their org memberships
+        # For each user, fetch their org memberships and last sign-in
         for user in users:
+            # Get most recent session for last sign-in time
+            session_response = client.table('user_sessions').select(
+                'started_at'
+            ).eq('user_id', user['user_id']).order('started_at', desc=True).limit(1).execute()
+            
+            # Add last_signin_at from most recent session
+            user['last_signin_at'] = session_response.data[0]['started_at'] if session_response.data else None
+            
             # Query org_members table for this user
             membership_response = client.table('org_members').select(
-                'org_id, role, orgs(org_id, org_name)'
+                'org_id, role, orgs(id, name)'
             ).eq('user_id', user['user_id']).execute()
             
             # Format org memberships
@@ -139,8 +147,8 @@ def handle_list_users(event: Dict[str, Any]) -> Dict[str, Any]:
                     org_data = membership.get('orgs')
                     if org_data:
                         org_memberships.append({
-                            'org_id': org_data['org_id'],
-                            'org_name': org_data['org_name'],
+                            'org_id': org_data['id'],
+                            'org_name': org_data['name'],
                             'org_role': membership['role']
                         })
             

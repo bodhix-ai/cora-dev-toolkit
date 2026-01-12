@@ -102,9 +102,13 @@ def handle_list_invites(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
     Returns:
         List of pending invites
     """
-    # Verify user has admin access to this organization
+    # Get user info and convert external UID to Supabase UUID
     user_info = common.get_user_from_event(event)
-    membership = common.find_one('org_members', {'user_id': user_info['user_id'], 'org_id': org_id})
+    external_uid = user_info['user_id']  # External UID (email from Okta)
+    user_id = common.get_supabase_user_id_from_external_uid(external_uid)
+    
+    # Verify user has admin access to this organization
+    membership = common.find_one('org_members', {'user_id': user_id, 'org_id': org_id})
     if not membership or membership.get('role') not in ['org_admin', 'org_owner']:
         raise common.ForbiddenError('Organization admin access required')
     
@@ -134,9 +138,13 @@ def handle_create_invite(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
     Returns:
         Created invite
     """
-    # Verify user has admin access to this organization
+    # Get user info and convert external UID to Supabase UUID
     user_info = common.get_user_from_event(event)
-    membership = common.find_one('org_members', {'user_id': user_info['user_id'], 'org_id': org_id})
+    external_uid = user_info['user_id']  # External UID (email from Okta)
+    user_id = common.get_supabase_user_id_from_external_uid(external_uid)
+    
+    # Verify user has admin access to this organization
+    membership = common.find_one('org_members', {'user_id': user_id, 'org_id': org_id})
     if not membership or membership.get('role') not in ['org_admin', 'org_owner']:
         raise common.ForbiddenError('Organization admin access required')
     
@@ -152,12 +160,20 @@ def handle_create_invite(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
         )
     
     # Check if user is already a member
-    existing_member = common.find_one(
-        table='org_members',
-        filters={'org_id': org_id, 'email': email}
+    # First, look up user by email in user_profiles
+    user_profile = common.find_one(
+        table='user_profiles',
+        filters={'email': email}
     )
-    if existing_member:
-        return common.bad_request_response('User is already a member of this organization')
+    
+    # If user exists, check if they're already a member
+    if user_profile:
+        existing_member = common.find_one(
+            table='org_members',
+            filters={'org_id': org_id, 'user_id': user_profile['user_id']}
+        )
+        if existing_member:
+            return common.bad_request_response('User is already a member of this organization')
     
     # Check if there's already a pending invite
     existing_invite = common.find_one(
@@ -174,7 +190,7 @@ def handle_create_invite(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
             'org_id': org_id,
             'email': email,
             'role': role,
-            'invited_by': user_info['user_id'],
+            'invited_by': user_id,  # Use converted Supabase UUID
             'status': 'pending'
         }
     )
@@ -196,16 +212,20 @@ def handle_delete_invite(event: Dict[str, Any], org_id: str, invite_id: str) -> 
     Returns:
         Success response
     """
-    # Verify user has admin access to this organization
+    # Get user info and convert external UID to Supabase UUID
     user_info = common.get_user_from_event(event)
-    membership = common.find_one('org_members', {'user_id': user_info['user_id'], 'org_id': org_id})
+    external_uid = user_info['user_id']  # External UID (email from Okta)
+    user_id = common.get_supabase_user_id_from_external_uid(external_uid)
+    
+    # Verify user has admin access to this organization
+    membership = common.find_one('org_members', {'user_id': user_id, 'org_id': org_id})
     if not membership or membership.get('role') not in ['org_admin', 'org_owner']:
         raise common.ForbiddenError('Organization admin access required')
     
     # Verify invite exists and belongs to this org
     invite = common.find_one(
         table='user_invites',
-        filters={'invite_id': invite_id, 'org_id': org_id}
+        filters={'id': invite_id, 'org_id': org_id}
     )
     
     if not invite:
@@ -214,7 +234,7 @@ def handle_delete_invite(event: Dict[str, Any], org_id: str, invite_id: str) -> 
     # Delete the invite
     common.delete_one(
         table='user_invites',
-        filters={'invite_id': invite_id}
+        filters={'id': invite_id}
     )
     
     return common.success_response({

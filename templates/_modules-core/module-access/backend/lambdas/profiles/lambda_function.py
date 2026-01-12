@@ -190,6 +190,23 @@ def handle_get_profile(user_id: str, user_info: Dict[str, Any], event: Dict[str,
             # Extract request context for session tracking
             request_context = extract_request_context(event)
             profile = auto_provision_user(user_info, request_context)
+        else:
+            # Existing user - create session on every GET /profiles/me call
+            request_context = extract_request_context(event)
+            try:
+                session_id = common.rpc('start_user_session', {
+                    'p_user_id': profile['user_id'],
+                    'p_org_id': profile.get('current_org_id'),
+                    'p_ip_address': request_context.get('ip_address'),
+                    'p_user_agent': request_context.get('user_agent'),
+                    'p_metadata': {
+                        'login_type': 'profile_fetch',
+                        'global_role': profile.get('global_role')
+                    }
+                })
+                logger.info(f"Started session {session_id} for existing user {profile['user_id']}")
+            except Exception as e:
+                logger.warning(f"Failed to start user session: {str(e)}")
         
         # Get user's organizations (using Supabase user_id)
         # Note: org_members.user_id references auth.users(id), not profiles(id)
