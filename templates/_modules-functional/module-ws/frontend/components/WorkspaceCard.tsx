@@ -30,7 +30,7 @@ import {
   Group,
 } from "@mui/icons-material";
 import type { Workspace, WorkspaceRole } from "../types";
-import { ROLE_DISPLAY_NAMES } from "../types";
+import { WORKSPACE_ROLE_DISPLAY_NAMES } from "../types";
 
 export interface WorkspaceCardProps {
   /** Workspace data */
@@ -329,7 +329,7 @@ export function WorkspaceCard({
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               {userRole && (
                 <Chip
-                  label={ROLE_DISPLAY_NAMES[userRole]}
+                  label={WORKSPACE_ROLE_DISPLAY_NAMES[userRole]}
                   size="small"
                   sx={{ height: 18, fontSize: "0.65rem" }}
                 />

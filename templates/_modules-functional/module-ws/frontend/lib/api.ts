@@ -278,11 +278,15 @@ export class WorkspaceApiClient {
 
   /**
    * Get workspace module configuration
+   * 
+   * Note: orgId is optional - /ws/config is a SYS route (platform-level)
    */
-  async getConfig(orgId: string): Promise<WorkspaceConfig | null> {
+  async getConfig(orgId?: string): Promise<WorkspaceConfig | null> {
     try {
-      const response = await this.client.get<ApiResponse<WorkspaceConfig>>(`/ws/config?org_id=${orgId}`);
-      return response?.data || null;
+      // orgId is optional for platform-level config endpoint
+      const url = orgId ? `/ws/config?org_id=${orgId}` : `/ws/config`;
+      const response = await this.client.get<ApiResponse<{ config: WorkspaceConfig }>>(url);
+      return response?.data?.config || null;
     } catch (error) {
       console.error("Failed to get workspace config:", error);
       return null;
@@ -305,6 +309,68 @@ export class WorkspaceApiClient {
     } catch (error) {
       console.error("Failed to update workspace config:", error);
       throw new Error("Failed to update configuration");
+    }
+  }
+
+  // ===========================================================================
+  // Organization Settings
+  // ===========================================================================
+
+  /**
+   * Get organization workspace settings
+   * Fetches from ws_org_settings table
+   */
+  async getOrgSettings(orgId: string): Promise<{
+    allow_user_creation: boolean;
+    require_approval: boolean;
+    max_workspaces_per_user: number;
+  } | null> {
+    try {
+      const response = await this.client.get<ApiResponse<{
+        settings: {
+          allow_user_creation: boolean;
+          require_approval: boolean;
+          max_workspaces_per_user: number;
+        };
+      }>>(`/ws/org/settings?org_id=${orgId}`);
+      return response?.data?.settings || null;
+    } catch (error) {
+      console.error("Failed to get org settings:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Update organization workspace settings
+   * Saves to ws_org_settings table
+   */
+  async updateOrgSettings(
+    orgId: string,
+    data: {
+      allow_user_creation?: boolean;
+      require_approval?: boolean;
+      max_workspaces_per_user?: number;
+    }
+  ): Promise<{
+    allow_user_creation: boolean;
+    require_approval: boolean;
+    max_workspaces_per_user: number;
+  }> {
+    try {
+      const response = await this.client.put<ApiResponse<{
+        settings: {
+          allow_user_creation: boolean;
+          require_approval: boolean;
+          max_workspaces_per_user: number;
+        };
+      }>>(`/ws/org/settings?org_id=${orgId}`, data);
+      if (!response?.data?.settings) {
+        throw new Error(response?.error || "Failed to update org settings");
+      }
+      return response.data.settings;
+    } catch (error) {
+      console.error("Failed to update org settings:", error);
+      throw new Error("Failed to update organization settings");
     }
   }
 
@@ -335,10 +401,11 @@ export class WorkspaceApiClient {
       const params = new URLSearchParams({ org_id: orgId });
       if (dateRange) params.set("date_range", dateRange);
 
-      const response = await this.client.get<ApiResponse<WorkspaceAnalytics>>(
+      const response = await this.client.get<ApiResponse<{ analytics: WorkspaceAnalytics }>>(
         `/ws/admin/analytics?${params.toString()}`
       );
-      return response?.data || null;
+      // API returns { success: true, data: { analytics: {...} } } - unwrap the nested analytics
+      return response?.data?.analytics || null;
     } catch (error) {
       console.error("Failed to get workspace analytics:", error);
       return null;

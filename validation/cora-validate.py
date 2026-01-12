@@ -551,37 +551,13 @@ class ReportFormatter:
         
         # Header
         lines.append("=" * 80)
-        lines.append(self._bold("CORA Validation Report"))
+        lines.append(self._bold("Validation Test Suite Report"))
         lines.append("=" * 80)
         lines.append("")
         
-        # Summary
-        lines.append(f"Target: {report.target_path}")
-        lines.append(f"Type: {report.validation_type}")
-        lines.append(f"Timestamp: {report.timestamp}")
-        lines.append(f"Duration: {report.duration_ms}ms")
-        lines.append("")
-        
-        # Overall status
-        status = self._green("✓ PASSED") if report.overall_passed else self._red("✗ FAILED")
-        lines.append(f"Overall Status: {status}")
-        
-        if report.certification_level:
-            cert_colors = {
-                "bronze": self._yellow,
-                "silver": lambda x: self._color(x, "37"),  # White/silver
-                "gold": self._yellow,
-            }
-            cert_fn = cert_colors.get(report.certification_level, str)
-            lines.append(f"Certification: {cert_fn(report.certification_level.upper())}")
-        
-        lines.append(f"Total Errors: {self._red(str(report.total_errors)) if report.total_errors else '0'}")
-        lines.append(f"Total Warnings: {self._yellow(str(report.total_warnings)) if report.total_warnings else '0'}")
-        lines.append("")
-        
-        # Individual validator results
+        # Individual validator results FIRST
         lines.append("-" * 80)
-        lines.append("Validator Results")
+        lines.append("Results - Individual Validator Tests")
         lines.append("-" * 80)
         
         for validator_key, result in report.results.items():
@@ -611,6 +587,35 @@ class ReportFormatter:
                     lines.append(f"    - {warning}")
                 if len(result.warnings) > 5:
                     lines.append(f"    ... and {len(result.warnings) - 5} more")
+        
+        # Summary at the END for easy visibility
+        lines.append("")
+        lines.append("=" * 80)
+        lines.append(self._bold("Results - Validation Test Suite Summary"))
+        lines.append("=" * 80)
+        lines.append("")
+        
+        lines.append(f"Target: {report.target_path}")
+        lines.append(f"Type: {report.validation_type}")
+        lines.append(f"Timestamp: {report.timestamp}")
+        lines.append(f"Duration: {report.duration_ms}ms")
+        lines.append("")
+        
+        # Overall status
+        status = self._green("✓ PASSED") if report.overall_passed else self._red("✗ FAILED")
+        lines.append(f"Overall Status: {status}")
+        
+        if report.certification_level:
+            cert_colors = {
+                "bronze": self._yellow,
+                "silver": lambda x: self._color(x, "37"),  # White/silver
+                "gold": self._yellow,
+            }
+            cert_fn = cert_colors.get(report.certification_level, str)
+            lines.append(f"Certification: {cert_fn(report.certification_level.upper())}")
+        
+        lines.append(f"Total Errors: {self._red(str(report.total_errors)) if report.total_errors else '0'}")
+        lines.append(f"Total Warnings: {self._yellow(str(report.total_warnings)) if report.total_warnings else '0'}")
         
         lines.append("")
         lines.append("=" * 80)

@@ -33,7 +33,7 @@ import {
 } from "@mui/icons-material";
 import { useSession } from "next-auth/react";
 import type { Workspace, WorkspaceRole } from "../types";
-import { ROLE_DISPLAY_NAMES, STATUS_DISPLAY_NAMES } from "../types";
+import { WORKSPACE_ROLE_DISPLAY_NAMES, STATUS_DISPLAY_NAMES } from "../types";
 import { useWorkspace } from "../hooks/useWorkspace";
 import { MemberList } from "../components/MemberList";
 import { WorkspaceForm } from "../components/WorkspaceForm";
@@ -202,7 +202,7 @@ export function WorkspaceDetailPage({
               />
               {userRole && (
                 <Chip
-                  label={ROLE_DISPLAY_NAMES[userRole]}
+                  label={WORKSPACE_ROLE_DISPLAY_NAMES[userRole]}
                   size="small"
                   variant="outlined"
                 />

@@ -224,13 +224,25 @@ export interface FeatureAdoption {
 
 /**
  * Analytics data for workspace usage
+ * 
+ * Note: API returns flat structure with org_id context
  */
 export interface WorkspaceAnalytics {
-  stats: WorkspaceStats;
-  workspaces_over_time: TimeSeriesData[];
-  status_distribution: StatusDistribution;
-  most_active: WorkspaceActivity[];
-  inactive_workspaces: InactiveWorkspace[];
+  // API response format (flat structure from /ws/admin/analytics)
+  org_id?: string;
+  total_workspaces?: number;
+  active_workspaces?: number;
+  archived_workspaces?: number;
+  deleted_workspaces?: number;
+  total_members?: number;
+  avg_members_per_workspace?: number;
+  
+  // Legacy format (for backwards compatibility)
+  stats?: WorkspaceStats;
+  workspaces_over_time?: TimeSeriesData[];
+  status_distribution?: StatusDistribution;
+  most_active?: WorkspaceActivity[];
+  inactive_workspaces?: InactiveWorkspace[];
 }
 
 /**
@@ -362,7 +374,7 @@ export const WORKSPACE_ICONS = [
 /**
  * Role display names
  */
-export const ROLE_DISPLAY_NAMES: Record<WorkspaceRole, string> = {
+export const WORKSPACE_ROLE_DISPLAY_NAMES: Record<WorkspaceRole, string> = {
   ws_owner: 'Owner',
   ws_admin: 'Admin',
   ws_user: 'Member',
@@ -371,7 +383,7 @@ export const ROLE_DISPLAY_NAMES: Record<WorkspaceRole, string> = {
 /**
  * Role descriptions
  */
-export const ROLE_DESCRIPTIONS: Record<WorkspaceRole, string> = {
+export const WORKSPACE_ROLE_DESCRIPTIONS: Record<WorkspaceRole, string> = {
   ws_owner: 'Full control over workspace settings, members, and deletion',
   ws_admin: 'Can edit workspace settings but cannot manage members',
   ws_user: 'Can access workspace resources',

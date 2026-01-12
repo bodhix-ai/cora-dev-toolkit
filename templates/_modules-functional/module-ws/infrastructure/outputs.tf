@@ -160,12 +160,35 @@ output "api_routes" {
       description = "Update workspace module configuration"
       public      = false
     },
-    # Admin Routes
+    # Org Admin Routes (sys/org pattern)
+    {
+      method      = "GET"
+      path        = "/ws/org/settings"
+      integration = aws_lambda_function.workspace.invoke_arn
+      description = "Get organization workspace settings"
+      public      = false
+    },
+    {
+      method      = "PUT"
+      path        = "/ws/org/settings"
+      integration = aws_lambda_function.workspace.invoke_arn
+      description = "Update organization workspace settings"
+      public      = false
+    },
+    # Platform Admin Routes (sys pattern)
+    {
+      method      = "GET"
+      path        = "/ws/sys/analytics"
+      integration = aws_lambda_function.workspace.invoke_arn
+      description = "Get platform-wide workspace analytics"
+      public      = false
+    },
+    # Legacy Admin Routes (deprecated - use sys/org pattern)
     {
       method      = "GET"
       path        = "/ws/admin/stats"
       integration = aws_lambda_function.workspace.invoke_arn
-      description = "Get workspace statistics (org admin)"
+      description = "Get workspace statistics (org admin) - DEPRECATED"
       public      = false
     },
     {

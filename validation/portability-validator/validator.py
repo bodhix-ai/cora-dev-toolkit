@@ -173,6 +173,7 @@ class PortabilityValidator:
     ):
         self.verbose = verbose
         self.patterns = {**self.DEFAULT_PATTERNS}
+        self.gitignore_patterns = []
         
         if custom_patterns:
             self.patterns.update(custom_patterns)
@@ -190,6 +191,79 @@ class PortabilityValidator:
         """Log if verbose mode enabled."""
         if self.verbose:
             print(f"[DEBUG] {message}")
+
+    def _load_gitignore(self, project_root: Path):
+        """Load and parse .gitignore file from project root."""
+        gitignore_path = project_root / ".gitignore"
+        
+        if not gitignore_path.exists():
+            self.log("No .gitignore file found")
+            return
+        
+        try:
+            with open(gitignore_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+            
+            for line in lines:
+                line = line.strip()
+                # Skip empty lines and comments
+                if not line or line.startswith("#"):
+                    continue
+                
+                # Simple gitignore pattern - convert to regex-like pattern
+                # This is a simplified implementation that handles common cases
+                self.gitignore_patterns.append(line)
+            
+            self.log(f"Loaded {len(self.gitignore_patterns)} patterns from .gitignore")
+        except Exception as e:
+            self.log(f"Error reading .gitignore: {e}")
+    
+    def _is_gitignored(self, file_path: Path, project_root: Path) -> bool:
+        """Check if a file matches any gitignore pattern."""
+        if not self.gitignore_patterns:
+            return False
+        
+        # Get relative path from project root
+        try:
+            rel_path = file_path.relative_to(project_root)
+        except ValueError:
+            # File is not under project root
+            return False
+        
+        rel_path_str = str(rel_path)
+        file_name = file_path.name
+        
+        for pattern in self.gitignore_patterns:
+            # Simple pattern matching
+            # Handle common gitignore patterns:
+            # - Exact filename match
+            # - Wildcard patterns (*.ext)
+            # - Directory patterns (dir/)
+            # - Path patterns (path/to/file)
+            
+            if pattern == rel_path_str or pattern == file_name:
+                return True
+            
+            # Wildcard patterns (e.g., *.env, setup.config.*.yaml)
+            if "*" in pattern:
+                import fnmatch
+                if fnmatch.fnmatch(file_name, pattern):
+                    return True
+                if fnmatch.fnmatch(rel_path_str, pattern):
+                    return True
+            
+            # Directory patterns (e.g., node_modules/)
+            if pattern.endswith("/"):
+                dir_pattern = pattern.rstrip("/")
+                if str(rel_path).startswith(dir_pattern + "/") or str(rel_path) == dir_pattern:
+                    return True
+            
+            # Path patterns (e.g., .env.local)
+            if "/" in pattern:
+                if rel_path_str.startswith(pattern) or rel_path_str == pattern:
+                    return True
+        
+        return False
 
     def validate_path(self, target_path: str) -> ValidationResult:
         """
@@ -216,15 +290,19 @@ class PortabilityValidator:
             ))
             return result
 
+        # Load gitignore if validating a directory (project root)
+        if path.is_dir():
+            self._load_gitignore(path)
+
         if path.is_file():
-            self._validate_file(path, result)
+            self._validate_file(path, result, path.parent if path.is_file() else path)
             result.files_scanned = 1
         else:
-            self._validate_directory(path, result)
+            self._validate_directory(path, result, path)
 
         return result
 
-    def _validate_directory(self, dir_path: Path, result: ValidationResult):
+    def _validate_directory(self, dir_path: Path, result: ValidationResult, project_root: Path):
         """Recursively validate all files in a directory."""
         for item in dir_path.iterdir():
             # Skip hidden files/directories
@@ -241,15 +319,25 @@ class PortabilityValidator:
                 self.log(f"Skipping file: {item}")
                 continue
             
+            # Skip gitignored files/directories
+            if self._is_gitignored(item, project_root):
+                self.log(f"Skipping gitignored: {item}")
+                continue
+            
             if item.is_dir():
-                self._validate_directory(item, result)
+                self._validate_directory(item, result, project_root)
             elif item.is_file():
-                self._validate_file(item, result)
+                self._validate_file(item, result, project_root)
 
-    def _validate_file(self, file_path: Path, result: ValidationResult):
+    def _validate_file(self, file_path: Path, result: ValidationResult, project_root: Path):
         """Validate a single file for portability issues."""
         # Check file extension
         if file_path.suffix not in self.SCANNABLE_EXTENSIONS:
+            return
+        
+        # Check if gitignored (skip validation for gitignored files)
+        if self._is_gitignored(file_path, project_root):
+            self.log(f"Skipping gitignored file: {file_path}")
             return
         
         # Check whitelist patterns

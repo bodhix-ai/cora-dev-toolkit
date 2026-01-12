@@ -35,7 +35,7 @@ import {
   PersonAdd,
 } from "@mui/icons-material";
 import type { WorkspaceMember, WorkspaceRole } from "../types";
-import { ROLE_DISPLAY_NAMES, ROLE_DESCRIPTIONS } from "../types";
+import { WORKSPACE_ROLE_DISPLAY_NAMES, WORKSPACE_ROLE_DESCRIPTIONS } from "../types";
 
 export interface MemberListProps {
   /** List of workspace members */
@@ -230,7 +230,7 @@ export function MemberList({
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
                       {getRoleIcon(member.ws_role)}
                       <Typography variant="caption" color="text.secondary">
-                        {ROLE_DISPLAY_NAMES[member.ws_role]}
+                        {WORKSPACE_ROLE_DISPLAY_NAMES[member.ws_role]}
                       </Typography>
                     </Box>
                   }
@@ -276,7 +276,7 @@ export function MemberList({
         </MenuItem>
         {canUpdateRoles && currentMenuMember?.ws_role !== "ws_admin" && (
           <MenuItem onClick={() => handleRoleChange("ws_admin")}>
-            <Tooltip title={ROLE_DESCRIPTIONS.ws_admin} placement="left">
+            <Tooltip title={WORKSPACE_ROLE_DESCRIPTIONS.ws_admin} placement="left">
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <AdminPanelSettings fontSize="small" />
                 <Typography variant="body2">Make Admin</Typography>
@@ -286,7 +286,7 @@ export function MemberList({
         )}
         {canUpdateRoles && currentMenuMember?.ws_role !== "ws_user" && (
           <MenuItem onClick={() => handleRoleChange("ws_user")}>
-            <Tooltip title={ROLE_DESCRIPTIONS.ws_user} placement="left">
+            <Tooltip title={WORKSPACE_ROLE_DESCRIPTIONS.ws_user} placement="left">
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <Person fontSize="small" />
                 <Typography variant="body2">Make Member</Typography>

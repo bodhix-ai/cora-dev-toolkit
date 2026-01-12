@@ -25,7 +25,7 @@ import {
 } from "@mui/material";
 import { PersonAdd } from "@mui/icons-material";
 import type { WorkspaceRole, UserProfile } from "../types";
-import { ROLE_DISPLAY_NAMES, ROLE_DESCRIPTIONS } from "../types";
+import { WORKSPACE_ROLE_DISPLAY_NAMES, WORKSPACE_ROLE_DESCRIPTIONS } from "../types";
 
 export interface AddMemberDialogProps {
   /** Whether dialog is open */
@@ -215,10 +215,10 @@ export function AddMemberDialog({
               <MenuItem key={role} value={role}>
                 <Box>
                   <Typography variant="body2">
-                    {ROLE_DISPLAY_NAMES[role]}
+                    {WORKSPACE_ROLE_DISPLAY_NAMES[role]}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {ROLE_DESCRIPTIONS[role]}
+                    {WORKSPACE_ROLE_DESCRIPTIONS[role]}
                   </Typography>
                 </Box>
               </MenuItem>

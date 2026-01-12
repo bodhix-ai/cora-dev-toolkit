@@ -21,6 +21,7 @@ import { useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
 import type { Workspace, WorkspaceFormValues, WorkspaceCreateRequest } from "../types";
 import { DEFAULT_FILTERS } from "../types";
 import { useWorkspaces } from "../hooks/useWorkspaces";
+import { useWorkspaceConfig } from "../hooks/useWorkspaceConfig";
 import { WorkspaceCard } from "../components/WorkspaceCard";
 import { FilterBar, ViewMode } from "../components/FilterBar";
 import { EmptyState } from "../components/EmptyState";
@@ -67,6 +68,9 @@ export function WorkspaceListPage({
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editWorkspace, setEditWorkspace] = useState<Workspace | null>(null);
+
+  // Get workspace module config for dynamic labels and defaults
+  const { config: wsConfig } = useWorkspaceConfig();
 
   const {
     workspaces,
@@ -190,10 +194,10 @@ export function WorkspaceListPage({
       >
         <Box>
           <Typography variant="h4" gutterBottom>
-            Workspaces
+            {wsConfig?.nav_label_plural || "Workspaces"}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Manage and organize your workspaces
+            Manage and organize your {(wsConfig?.nav_label_plural || "workspaces").toLowerCase()}
           </Typography>
         </Box>
         {canCreate && (
@@ -203,7 +207,7 @@ export function WorkspaceListPage({
             onClick={handleCreateClick}
             size="large"
           >
-            Create Workspace
+            Create {wsConfig?.nav_label_singular || "Workspace"}
           </Button>
         )}
       </Box>
@@ -284,6 +288,8 @@ export function WorkspaceListPage({
         orgId={orgId}
         onCreate={handleCreateWorkspace}
         onCreateSuccess={handleCreateSuccess}
+        defaultColor={wsConfig?.default_color}
+        labelSingular={wsConfig?.nav_label_singular || "Workspace"}
       />
 
       {/* Edit dialog */}
@@ -293,6 +299,7 @@ export function WorkspaceListPage({
         workspace={editWorkspace}
         onUpdate={apiClient ? async (wsId, values) => apiClient.updateWorkspace(wsId, values, orgId) : undefined}
         onUpdateSuccess={handleUpdateSuccess}
+        labelSingular={wsConfig?.nav_label_singular || "Workspace"}
       />
     </Container>
   );

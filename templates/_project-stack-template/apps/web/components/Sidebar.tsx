@@ -18,6 +18,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
+import { useWorkspaceConfig } from "@{{PROJECT_NAME}}/module-ws";
 
 /**
  * Sidebar Component - Following ADR-008 CORA Sidebar and Org Selector Standard
@@ -48,6 +49,18 @@ export function Sidebar({ navigation }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  
+  // Get workspace config for dynamic navigation label
+  const { config: wsConfig } = useWorkspaceConfig();
+  
+  // Helper function to get dynamic label for navigation items
+  const getNavLabel = (item: { href: string; label: string }) => {
+    // Override workspace label with config value if available
+    if (item.href === "/ws" && wsConfig?.nav_label_plural) {
+      return wsConfig.nav_label_plural;
+    }
+    return item.label;
+  };
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -92,7 +105,7 @@ export function Sidebar({ navigation }: SidebarProps) {
                 }}
               >
                 <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.label} />
+                <ListItemText primary={getNavLabel(item)} />
               </ListItemButton>
             </ListItem>
           ))

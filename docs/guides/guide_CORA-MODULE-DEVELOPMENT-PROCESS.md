@@ -631,6 +631,51 @@ def handle_get(event, user_id):
 # Implement handle_create, handle_update, handle_delete following template
 ```
 
+#### 3.2.1a: Authorization Patterns (CRITICAL)
+
+**⚠️ IMPORTANT:** All Lambda functions must implement proper authorization checks.
+
+**See:** [Lambda Authorization Standard](../../standards/standard_LAMBDA-AUTHORIZATION.md) for comprehensive patterns.
+
+**Common Authorization Bug to Avoid:**
+
+❌ **WRONG - Do NOT check role in JWT:**
+```python
+# This will FAIL - roles are not in JWT!
+user_role = user_info.get('role')  
+if user_role not in ['platform_admin']:
+    raise access.ForbiddenError()
+```
+
+✅ **CORRECT - Query database for role:**
+```python
+# Step 1: Get Okta UID from JWT
+okta_uid = user_info['user_id']
+
+# Step 2: Map to Supabase user_id
+supabase_user_id = access.get_supabase_user_id_from_external_uid(okta_uid)
+
+# Step 3: Query user profile for role
+profile = access.find_one('user_profiles', {'user_id': supabase_user_id})
+
+# Step 4: Check authorization
+if not profile or profile.get('global_role') not in ['platform_admin', 'platform_owner']:
+    raise access.ForbiddenError('Platform admin access required')
+```
+
+**Why this matters:** JWT tokens contain ONLY the external identity provider's user ID (Okta UID). Roles and permissions are stored in the **database** (user_profiles table), not in JWT tokens.
+
+**Authorization Checklist:**
+
+- [ ] Platform admin endpoints: Query `user_profiles.global_role`
+- [ ] Organization admin endpoints: Check both `global_role` and `org_members.org_role`
+- [ ] User ID mapping: Always use `get_supabase_user_id_from_external_uid()`
+- [ ] Never check `user_info.get('role')` - it doesn't exist!
+- [ ] Add authorization comments in code
+- [ ] Test with different user roles
+
+**See full patterns for:** Platform admin, org admin, org member, resource owner, and module-specific role authorization in the [Lambda Authorization Standard](../../standards/standard_LAMBDA-AUTHORIZATION.md).
+
 #### 3.2.2: Common Layer (Shared Methods)
 
 If module exports shared functionality for other modules:
