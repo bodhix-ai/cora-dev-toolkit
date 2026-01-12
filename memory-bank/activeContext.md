@@ -2,135 +2,178 @@
 
 ## Current Focus
 
-**Session 90: Org Admin API Routes Fixed** - ✅ **INFRASTRUCTURE ROUTES ADDED**
+**Session 91-92: Platform Admin API & Frontend Fixes** - ✅ **BACKEND COMPLETE** | 🔧 **FRONTEND PARTIAL**
 
-## Session: January 11, 2026 (6:30 PM - 7:20 PM) - Session 90
+## Session: January 12, 2026 (5:48 AM - 9:32 AM) - Sessions 91-92
 
-### 🎯 Status: ✅ VERIFIED WORKING
+### 🎯 Status: ✅ ALL BACKEND FIXED | 🔧 1 FRONTEND FIXED | ⚠️ 2 FRONTEND ISSUES REMAIN
 
-**Summary:** Identified and fixed root cause of 404 errors on org admin Settings tab. Added missing API Gateway routes to infrastructure template. **Verified working in test-ws-20.**
-
----
-
-## ✅ SESSION 90 COMPLETED WORK
-
-### Root Cause Analysis
-
-**Problem:** PUT /ws/org/settings returning 404 Not Found
-
-**Root Cause:** API Gateway routes were missing from `outputs.tf`
-- Lambda had handlers for `/ws/org/settings` (lines 120-125, 459, 508)
-- API Gateway didn't have routes configured
-- The `api_routes` output in `outputs.tf` is consumed by infra scripts to configure API Gateway
-- Routes weren't listed → Routes weren't deployed
-
-### Fix Applied
-
-Added 3 new routes to `templates/_modules-functional/module-ws/infrastructure/outputs.tf`:
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/ws/org/settings` | Get organization workspace settings |
-| PUT | `/ws/org/settings` | Update organization workspace settings |
-| GET | `/ws/sys/analytics` | Get platform-wide workspace analytics |
-
-### Commits This Session
-
-1. **f4ec353** - feat(module-ws): Add API routes for org settings and sys analytics
-
-### Files Modified
-
-- `templates/_modules-functional/module-ws/infrastructure/outputs.tf` - Added missing API routes
+**Summary:** Fixed ALL backend platform admin API errors. Fixed AI models frontend rendering bug. Two frontend issues remain: org members redirect and missing invites button.
 
 ---
 
-## � Lambda Handler Verification
+## ✅ SESSION 91-92 RESOLVED ISSUES
 
-The Lambda already has handlers ready:
+### Backend Fixes (Session 91)
 
-| Route | Handler Function | Line |
-|-------|------------------|------|
-| `GET /ws/org/settings` | `handle_get_org_settings()` | 459 |
-| `PUT /ws/org/settings` | `handle_update_org_settings()` | 508 |
-| `GET /ws/sys/analytics` | `handle_sys_analytics()` | 354 |
+1. **GET /admin/users** - 500 → 200 ✅
+2. **GET /admin/ai/config** - 404 → 200 ✅  
+3. **GET /orgs/{orgId}/invites** - 500 → 200 ✅
+4. **user_sessions table** - Now populating for existing users ✅
 
----
+### Frontend Fixes (Session 92)
 
-## ✅ VERIFICATION SUCCESSFUL
+5. **AI Models Tab Not Displaying** - ✅ FIXED
 
-**Test Result:** PUT /ws/org/settings now returns **200 OK**
+**Problem:** UI showed "No models found" despite API returning 110 models
+**Root Cause:** API client not extracting `response.data.deployments` correctly
+**Fix Applied:** Updated `module-ai/frontend/lib/api.ts` getModels() function
 
-```
-Request URL: https://hk5bzq4kv3.execute-api.us-east-1.amazonaws.com/ws/org/settings?org_id=c4a1ecf7-e646-4196-a57d-7ebbf3ee8ced
-Request Method: PUT
-Status Code: 200 OK
+```typescript
+// Backend returns: {success: true, data: {deployments: [...]}}
+// But client expected: {success: true, data: [...]}
+
+// BEFORE (❌ Wrong):
+const models = Array.isArray(response.data) ? response.data : [];
+
+// AFTER (✅ Fixed):
+let models: ModelApiData[] = [];
+if (Array.isArray(response)) {
+  models = response;
+} else if (response?.data) {
+  if (Array.isArray(response.data)) {
+    models = response.data;
+  } else if (response.data?.deployments && Array.isArray(response.data.deployments)) {
+    models = response.data.deployments;  // ← Extract nested deployments
+  }
+}
 ```
 
-The org admin Settings tab now saves correctly!
+**Result:** Platform Admin AI Models tab now displays all 110 models correctly
 
 ---
 
-## 📚 Session 89-90 Summary
+## ⚠️ REMAINING FRONTEND ISSUES
 
-### Session 89 (5:55 PM - 6:20 PM)
-- ✅ Made all UI labels dynamically configurable
-- ✅ Sidebar, page titles, buttons use database config
+### 1. Org Members Tab - Redirects to Home Page
 
-### Session 90 (6:30 PM - 7:20 PM)
-- ✅ Identified root cause of org admin 404 errors
-- ✅ Added missing API routes to infrastructure template
-- ✅ Lambda handlers verified present
+**Symptom:** API request appears briefly in network tab, then disappears and redirects
+**Evidence:** 
+- NO backend logs (request never reaches Lambda)
+- Request disappears from network tab
+- User redirected to home page
 
-### What's Working Now
-- ✅ Dynamic UI labels (nav, titles, buttons)
-- ✅ Platform Admin Config page
-- ✅ API routes now in template (pending deploy test)
-- ✅ Lambda handlers for all routes
-
-### Outstanding Issues
-- 🟡 Icon/color picker UX improvement (Future)
-- 🟡 Test new project to verify routes work
+**Root Cause:** Frontend canceling request - likely auth/routing guard issue
+**Not a backend issue** - The backend API works correctly
+**Next Steps:** Check browser console for JavaScript errors, verify role-based access control in frontend routing
 
 ---
 
-## � Branch & PR Info
+### 2. Org Invites Tab - Missing "Create Invitation" Button
 
-**Branch:** `fix/module-ws-authentication-and-routes`
-
-**PR:** #20 - feat(module-ws): Dynamic config labels for workspace module UI
-
-**Latest Commit:** f4ec353 - feat(module-ws): Add API routes for org settings and sys analytics
-
----
+**Symptom:** No action button visible to create new invitations
+**Root Cause:** UI component not rendered or hidden
+**Next Steps:** 
+- Check if button requires specific role/permission
+- Verify component exists in templates
 
 ---
 
-## ✅ SESSION 90 CONTINUED - Additional Features
+### 3. GET /models - 400 Bad Request (CLARIFIED - Not a Bug)
 
-### 7:26 PM - 7:51 PM
+**Status:** ⚠️ FRONTEND IMPLEMENTATION ISSUE (not backend bug)
+**What's happening:** Frontend calling `GET /models` without providerId parameter
+**Clarification:** This is the WRONG endpoint for platform admin
 
-**User Requested:**
-1. Platform Usage Summary not populating (shows mock data)
-2. Icon and color picker UX improvement
-3. Breadcrumb navigation for admin pages
+**Two Different Endpoints:**
+- `GET /models?providerId=xxx` (provider Lambda) - Models for specific provider
+- `GET /admin/ai/models` (ai-config-handler Lambda) - ALL models for platform admins ✅
 
-**Implemented:**
-
-| Feature | Status | Details |
-|---------|--------|---------|
-| getSysAnalytics() API | ✅ | New method calls /ws/sys/analytics endpoint |
-| Platform Usage Summary | ✅ | Now fetches real data from backend |
-| Icon Picker | ✅ | Visual grid of 15 MUI icons (replaces text input) |
-| Color Picker | ✅ | Already existed - used for default color |
-| Breadcrumbs - Platform Admin | ✅ | "Platform Admin > Workspace Configuration" |
-| Breadcrumbs - Org Admin | ✅ | "Organization Admin > Workspace Management" |
-
-### Commit
-
-**a203e89** - feat(module-ws): Add platform analytics API, icon picker, and breadcrumbs
+**Solution:** Frontend should call `/admin/ai/models` when fetching all models (already fixed in Session 91)
 
 ---
 
-**Status:** ✅ **SESSION 90 COMPLETE**  
-**Test Project:** test-ws-20 (verified)  
-**Updated:** January 11, 2026, 7:51 PM EST
+## 📊 Summary of All Template Changes
+
+| File | Changes | Impact |
+|------|---------|--------|
+| `module-access/.../identities-management/lambda_function.py` | Fixed column names, fetch from user_sessions | GET /admin/users works ✅ |
+| `module-access/.../profiles/lambda_function.py` | Added session creation for existing users | Sessions populate ✅ |
+| `module-access/.../invites/lambda_function.py` | Fixed: invite_id → id | GET /invites works ✅ |
+| `module-ai/infrastructure/outputs.tf` | Added 10 missing API Gateway routes | All /admin/ai/* routes accessible ✅ |
+| `module-ai/frontend/lib/api.ts` | Fixed endpoint + deployments extraction | Models tab works ✅ |
+
+**Templates Fixed:** 5 files  
+**Backend Issues Fixed:** 4  
+**Frontend Issues Fixed:** 1  
+**Frontend Issues Remaining:** 2 (members redirect, invites button)
+
+---
+
+## 🔍 New Validator Created
+
+**ExternalUIDConversionValidator** - Detects Cognito external_uid → Okta sub conversions
+- Location: `validation/external-uid-validator/`
+- Purpose: Catch hardcoded Cognito UUID patterns that need to be converted to Okta sub claims
+- Added to: `validation/cora-validate.py` orchestrator
+
+---
+
+## 📝 Deployment Instructions
+
+To apply these fixes to an existing project:
+
+1. **Copy updated templates:**
+   ```bash
+   # Copy module-ai frontend fix
+   cp templates/_modules-core/module-ai/frontend/lib/api.ts \\
+      {project}-stack/modules/module-ai/frontend/lib/api.ts
+   ```
+
+2. **Rebuild module-access Lambda:**
+   ```bash
+   cd {project}-stack/modules/module-access/backend
+   ./build.sh
+   ```
+
+3. **Rebuild module-ai Lambdas:**
+   ```bash
+   cd {project}-stack/modules/module-ai/backend
+   ./build.sh
+   ```
+
+4. **Deploy infrastructure:**
+   ```bash
+   cd {project}-infra
+   ./scripts/deploy-terraform.sh dev
+   ```
+
+5. **Rebuild frontend:**
+   ```bash
+   cd {project}-stack
+   npm run build
+   ```
+
+---
+
+## 🎯 Next Steps
+
+1. ✅ **Backend templates:** All fixed and complete
+2. ✅ **AI models frontend:** Fixed and complete
+3. ⚠️ **Org members redirect:** Frontend debugging needed (check auth guards)
+4. ⚠️ **Org invites button:** Frontend debugging needed (check component/permissions)
+5. 📋 **Validator improvement:** Add filters parameter column extraction (future)
+
+---
+
+## Previous Session Reference
+
+**Session 90:** Fixed Org Admin API routes, implemented visual pickers for Platform Admin, and fixed analytics data rendering.
+
+---
+
+**Status:** ✅ **BACKEND COMPLETE** | 🔧 **FRONTEND PARTIAL**  
+**Templates Updated:** module-access, module-ai  
+**Backend Fixes:** 4 resolved ✅  
+**Frontend Fixes:** 1 resolved ✅, 2 remaining ⚠️  
+**Updated:** January 12, 2026, 9:32 AM EST
