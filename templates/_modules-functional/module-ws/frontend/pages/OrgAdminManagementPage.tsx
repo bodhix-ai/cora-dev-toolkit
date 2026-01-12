@@ -382,7 +382,7 @@ export function OrgAdminManagementPage({
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {/* Breadcrumbs */}
       <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}>
-        <Link href="/admin/org" style={{ textDecoration: "none" }}>
+        <Link href="/admin/org" style={{ textDecoration: "none" }} aria-label="Go to Organization Admin">
           <Typography 
             variant="body2" 
             color="primary" 

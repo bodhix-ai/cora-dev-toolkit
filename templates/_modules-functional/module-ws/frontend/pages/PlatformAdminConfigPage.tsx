@@ -275,7 +275,7 @@ export function PlatformAdminConfigPage({
     <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* Breadcrumbs */}
       <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}>
-        <Link href="/admin/sys" style={{ textDecoration: "none" }}>
+        <Link href="/admin/sys" style={{ textDecoration: "none" }} aria-label="Go to Platform Admin">
           <Typography 
             variant="body2" 
             color="primary" 
@@ -390,6 +390,7 @@ export function PlatformAdminConfigPage({
                             <IconButton
                               onClick={() => setNavIcon(iconName)}
                               disabled={isSaving}
+                              aria-label={`Select ${iconName} icon`}
                               sx={{
                                 border: navIcon === iconName ? 2 : 1,
                                 borderColor: navIcon === iconName ? "primary.main" : "divider",
