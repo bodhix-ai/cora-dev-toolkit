@@ -113,22 +113,33 @@ def handle_list_members(user_id: str, org_id: str, event: Dict[str, Any]) -> Dic
     - limit: Number of results (default: 100)
     - offset: Pagination offset (default: 0)
     
-    User must be a member to view members
+    Platform admins can view any org's members.
+    Regular users must be members to view members.
     """
     query_params = event.get('queryStringParameters', {}) or {}
     
     try:
-        # Check if user is member
-        user_membership = common.find_one(
-            table='org_members',
-            filters={
-                'org_id': org_id,
-                'user_id': user_id
-            }
+        # Get user's profile to check platform role
+        profile = common.find_one(
+            table='user_profiles',
+            filters={'user_id': user_id}
         )
         
-        if not user_membership:
-            raise common.ForbiddenError('You do not have access to this organization')
+        is_platform_admin = profile and profile.get('global_role') in ['platform_owner', 'platform_admin']
+        
+        # Platform admins can view any org's members
+        if not is_platform_admin:
+            # Check if user is member
+            user_membership = common.find_one(
+                table='org_members',
+                filters={
+                    'org_id': org_id,
+                    'user_id': user_id
+                }
+            )
+            
+            if not user_membership:
+                raise common.ForbiddenError('You do not have access to this organization')
         
         # Build filters
         filters = {'org_id': org_id}

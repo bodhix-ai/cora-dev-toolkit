@@ -297,7 +297,7 @@ def handle_create_org(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             filters={'user_id': supabase_user_id}
         )
         
-        # Create organization
+        # Create organization (without domain fields - those go in org_email_domains)
         org_data = {
             'name': name,
             'slug': slug,
@@ -308,15 +308,24 @@ def handle_create_org(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             'created_by': supabase_user_id
         }
         
-        # Add domain configuration if provided
-        if allowed_domain:
-            org_data['allowed_domain'] = allowed_domain
-            org_data['domain_default_role'] = domain_default_role
-        
         org = common.insert_one(
             table='orgs',
             data=org_data
         )
+        
+        # Create domain configuration in org_email_domains if provided
+        if allowed_domain:
+            domain_data = {
+                'org_id': org['id'],
+                'domain': allowed_domain,
+                'is_verified': True,  # Auto-verify for org creation
+                'default_role': domain_default_role,
+                'created_by': supabase_user_id
+            }
+            common.insert_one(
+                table='org_email_domains',
+                data=domain_data
+            )
         
         # Add creator as org_owner using Supabase user_id
         # Note: org_members.user_id references auth.users(id), not profiles(id)
@@ -438,32 +447,72 @@ def handle_update_org(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
             else:
                 update_data['website_url'] = None
         
-        # Domain configuration (platform admin or org owner only)
+        # Handle domain configuration updates through org_email_domains table
+        domain_updates = {}
         if 'allowed_domain' in body:
-            allowed_domain = body.get('allowed_domain')
-            update_data['allowed_domain'] = allowed_domain if allowed_domain else None
+            domain_updates['domain'] = body.get('allowed_domain')
         
         if 'domain_default_role' in body:
             domain_default_role = body.get('domain_default_role')
             if domain_default_role:
                 if domain_default_role not in ['org_user', 'org_admin', 'org_owner']:
                     raise common.ValidationError('domain_default_role must be one of: org_user, org_admin, org_owner')
-                update_data['domain_default_role'] = domain_default_role
-            else:
-                update_data['domain_default_role'] = None
+                domain_updates['default_role'] = domain_default_role
         
-        if not update_data:
-            raise common.ValidationError('No valid fields to update')
+        # Update or create domain configuration if domain updates provided
+        if domain_updates:
+            if domain_updates.get('domain'):
+                # Check if domain already exists for this org
+                existing_domain = common.find_one(
+                    table='org_email_domains',
+                    filters={'org_id': org_id}
+                )
+                
+                if existing_domain:
+                    # Update existing domain
+                    domain_updates['updated_by'] = user_id
+                    common.update_one(
+                        table='org_email_domains',
+                        filters={'id': existing_domain['id']},
+                        data=domain_updates
+                    )
+                else:
+                    # Create new domain
+                    domain_updates['org_id'] = org_id
+                    domain_updates['is_verified'] = True
+                    domain_updates['created_by'] = user_id
+                    common.insert_one(
+                        table='org_email_domains',
+                        data=domain_updates
+                    )
+            elif 'domain' in domain_updates and not domain_updates['domain']:
+                # Remove domain if set to null/empty
+                existing_domain = common.find_one(
+                    table='org_email_domains',
+                    filters={'org_id': org_id}
+                )
+                if existing_domain:
+                    common.delete_one(
+                        table='org_email_domains',
+                        filters={'id': existing_domain['id']}
+                    )
         
-        # Add updated_by
-        update_data['updated_by'] = user_id
-        
-        # Update organization
-        updated_org = common.update_one(
-            table='orgs',
-            filters={'id': org_id},
-            data=update_data
-        )
+        # Update organization (only if there are org-level fields to update)
+        if update_data:
+            # Add updated_by
+            update_data['updated_by'] = user_id
+            
+            updated_org = common.update_one(
+                table='orgs',
+                filters={'id': org_id},
+                data=update_data
+            )
+        else:
+            # No org fields to update, just get current org
+            updated_org = common.find_one(
+                table='orgs',
+                filters={'id': org_id}
+            )
         
         result = common.format_record(updated_org)
         if membership:
