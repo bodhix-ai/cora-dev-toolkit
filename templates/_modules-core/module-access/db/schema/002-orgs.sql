@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS public.orgs (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     logo_url TEXT NULL,
     website_url TEXT NULL,
+    app_name TEXT NULL,
+    app_icon TEXT NULL,
     CONSTRAINT orgs_pkey PRIMARY KEY (id),
     CONSTRAINT orgs_slug_key UNIQUE (slug),
     CONSTRAINT orgs_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES auth.users (id),
@@ -47,6 +49,8 @@ COMMENT ON COLUMN public.orgs.owner_id IS 'Primary owner of the organization (re
 COMMENT ON COLUMN public.orgs.created_by IS 'User who created this organization';
 COMMENT ON COLUMN public.orgs.updated_by IS 'User who last updated this organization';
 COMMENT ON COLUMN public.orgs.logo_url IS 'URL to organization logo image';
+COMMENT ON COLUMN public.orgs.app_name IS 'Custom app name displayed in sidebar for this organization';
+COMMENT ON COLUMN public.orgs.app_icon IS 'MUI icon name for sidebar branding (default: AutoAwesomeOutlined)';
 
 -- =============================================
 -- ROW LEVEL SECURITY (RLS)
