@@ -207,7 +207,7 @@ export function OrgDomainsTab({ orgId, authAdapter }: OrgDomainsTabProps) {
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={domain.default_role.replace("org_", "")}
+                      label={domain.default_role?.replace("org_", "") || "user"}
                       size="small"
                       variant="outlined"
                     />

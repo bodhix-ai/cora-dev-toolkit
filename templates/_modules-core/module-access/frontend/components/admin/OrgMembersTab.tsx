@@ -256,15 +256,17 @@ export function OrgMembersTab({ orgId, authAdapter }: OrgMembersTabProps) {
         </TableContainer>
       )}
 
-      {/* Invite Member Dialog */}
-      <InviteMemberDialog
-        open={inviteDialogOpen}
-        onClose={() => {
-          setInviteDialogOpen(false);
-          fetchMembers(); // Refresh members list after invite
-        }}
-        orgId={orgId}
-      />
+      {/* Invite Member Dialog - Only render when open to prevent duplicate API calls */}
+      {inviteDialogOpen && (
+        <InviteMemberDialog
+          open={inviteDialogOpen}
+          onClose={() => {
+            setInviteDialogOpen(false);
+            fetchMembers(); // Refresh members list after invite
+          }}
+          orgId={orgId}
+        />
+      )}
     </Box>
   );
 }
