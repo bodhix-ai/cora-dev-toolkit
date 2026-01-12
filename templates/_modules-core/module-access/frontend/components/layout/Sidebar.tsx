@@ -7,6 +7,7 @@ import { useRole } from "../../hooks/useRole";
 import { NavLink } from "./NavLink";
 import { ResizeHandle } from "./ResizeHandle";
 import { SidebarUserMenu } from "./SidebarUserMenu";
+import { OrgIcon } from "../common/OrgIcon";
 import type { NavigationConfig } from "@{{PROJECT_NAME}}/shared-types";
 
 // MUI Icons
@@ -117,6 +118,28 @@ export function Sidebar({ navigation }: SidebarProps) {
           setIsResizing={setIsResizing}
         />
 
+        {/* App Branding Section */}
+        {isExpanded ? (
+          <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-200 dark:border-zinc-800">
+            <OrgIcon
+              iconName={currentOrganization?.appIcon}
+              className="text-blue-600 dark:text-blue-400"
+              fontSize="medium"
+            />
+            <span className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+              {currentOrganization?.appName || currentOrganization?.orgName || "CORA"}
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center px-4 py-4 border-b border-gray-200 dark:border-zinc-800">
+            <OrgIcon
+              iconName={currentOrganization?.appIcon}
+              className="text-blue-600 dark:text-blue-400"
+              fontSize="medium"
+            />
+          </div>
+        )}
+
         {/* Collapse/Expand Button */}
         <div className="flex items-center justify-end p-4">
           <button
@@ -166,9 +189,18 @@ export function Sidebar({ navigation }: SidebarProps) {
 
           {/* Sidebar */}
           <aside className="absolute left-0 top-0 bottom-0 w-64 bg-white dark:bg-zinc-900 shadow-xl flex flex-col">
-            {/* Close button */}
+            {/* App Branding + Close button */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-zinc-800">
-              <span className="text-sm font-semibold">Menu</span>
+              <div className="flex items-center gap-3">
+                <OrgIcon
+                  iconName={currentOrganization?.appIcon}
+                  className="text-blue-600 dark:text-blue-400"
+                  fontSize="medium"
+                />
+                <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {currentOrganization?.appName || currentOrganization?.orgName || "CORA"}
+                </span>
+              </div>
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-zinc-800"
