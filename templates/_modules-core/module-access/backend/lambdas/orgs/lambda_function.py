@@ -6,6 +6,18 @@ import json
 from typing import Dict, Any
 import org_common as common
 
+# Allowed MUI icons for org branding (AI-related)
+ALLOWED_ORG_ICONS = [
+    'AutoAwesomeOutlined',  # Default - sparkles/magic
+    'PsychologyOutlined',   # Brain - intelligence
+    'SmartToyOutlined',     # Robot - AI assistant
+    'AutoFixHighOutlined',  # Magic wand - auto-fix
+    'BoltOutlined',         # Lightning - speed/power
+    'HubOutlined',          # Network hub - connections
+    'MemoryOutlined',       # Memory chip - computing
+    'ModelTrainingOutlined' # Model training
+]
+
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
@@ -279,6 +291,18 @@ def handle_create_org(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     if website_url:
         website_url = common.validate_url(website_url, 'website_url')
     
+    # App branding (optional)
+    app_name = body.get('app_name', '')
+    if app_name:
+        app_name = common.validate_string_length(app_name, 'app_name', max_length=100)
+    
+    app_icon = body.get('app_icon', '')
+    if app_icon:
+        if app_icon not in ALLOWED_ORG_ICONS:
+            raise common.ValidationError(
+                f'app_icon must be one of: {", ".join(ALLOWED_ORG_ICONS)}'
+            )
+    
     # Domain configuration (platform admin only)
     allowed_domain = body.get('allowed_domain', '')
     domain_default_role = body.get('domain_default_role', 'org_user')
@@ -305,6 +329,8 @@ def handle_create_org(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             'description': description,
             'logo_url': logo_url or None,
             'website_url': website_url or None,
+            'app_name': app_name or None,
+            'app_icon': app_icon or None,
             'created_by': supabase_user_id
         }
         
@@ -446,6 +472,26 @@ def handle_update_org(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
                 update_data['website_url'] = common.validate_url(website_url, 'website_url')
             else:
                 update_data['website_url'] = None
+        
+        if 'app_name' in body:
+            app_name = body['app_name']
+            if app_name:
+                update_data['app_name'] = common.validate_string_length(
+                    app_name, 'app_name', max_length=100
+                )
+            else:
+                update_data['app_name'] = None
+        
+        if 'app_icon' in body:
+            app_icon = body['app_icon']
+            if app_icon:
+                if app_icon not in ALLOWED_ORG_ICONS:
+                    raise common.ValidationError(
+                        f'app_icon must be one of: {", ".join(ALLOWED_ORG_ICONS)}'
+                    )
+                update_data['app_icon'] = app_icon
+            else:
+                update_data['app_icon'] = None
         
         # Handle domain configuration updates through org_email_domains table
         domain_updates = {}
