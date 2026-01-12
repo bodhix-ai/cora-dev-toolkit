@@ -2,9 +2,120 @@
 
 ## Current Focus
 
-**Session 91-94: Platform Admin API & Frontend Fixes** - ✅ **CODE COMPLETE** | ⚠️ **DB CONFIG ISSUE**
+**Session 96: Org-Based App Branding Feature** - ✅ **COMPLETE** | 🧪 **USER TESTING IN PROGRESS**
 
-## Session: January 12, 2026 (5:48 AM - 12:30 PM) - Sessions 91-94
+## Session: January 12, 2026 (1:30 PM - 2:11 PM) - Session 96
+
+### 🎯 Status: ✅ FEATURE COMPLETE | 🧪 USER TESTING
+
+**Summary:** Implemented dynamic org-based app name and icon feature with comprehensive admin UI for editing organization metadata. Feature complete and validated. User creating test project for validation.
+
+---
+
+## ✅ SESSION 96 - ORG-BASED APP BRANDING FEATURE
+
+### Feature Overview
+
+Implemented configurable app branding system where each organization can customize:
+- **App Name**: Custom name displayed in sidebar (defaults to org name)
+- **App Icon**: Visual icon from curated AI-related icon set (8 options)
+
+### Implementation Complete ✅
+
+#### 1. Database Schema ✅
+- **File**: `templates/_modules-core/module-access/db/schema/002-orgs.sql`
+- Added `app_name TEXT NULL` column
+- Added `app_icon TEXT NULL` column
+- Migration script created: `scripts/migrations/add-org-app-branding.sql`
+- **Status**: Migration run and validated in database
+
+#### 2. Backend Lambda ✅
+- **File**: `templates/_modules-core/module-access/backend/lambdas/orgs/lambda_function.py`
+- Added `ALLOWED_ORG_ICONS` constant with 8 AI-related MUI icons
+- Create/Update operations support `app_name` and `app_icon` with validation
+- Icon validation ensures only approved icons are used
+
+#### 3. Frontend Types ✅
+- **File**: `templates/_modules-core/module-access/frontend/types/index.ts`
+- Added `appName: string | null` to Organization interface
+- Added `appIcon: string | null` to Organization interface
+- Added `ORG_ICON_OPTIONS` constant with icon picker options
+- Added `OrgIconValue` type for type safety
+
+#### 4. Dynamic Icon Component ✅
+- **File**: `templates/_modules-core/module-access/frontend/components/common/OrgIcon.tsx` (NEW)
+- Maps icon name strings to MUI icon components
+- Falls back to `AutoAwesomeOutlined` (sparkles) as default
+- Supports customizable size and className
+
+#### 5. Sidebar Display ✅
+- **File**: `templates/_modules-core/module-access/frontend/components/layout/Sidebar.tsx`
+- Desktop: Shows icon + app name (expanded) or icon only (collapsed)
+- Mobile: Shows icon + app name in menu header
+- Fallback logic: `appName` → `orgName` → "CORA"
+
+#### 6. Admin UI - OrgDetailsTab ✅
+- **File**: `templates/_modules-core/module-access/frontend/components/admin/OrgDetailsTab.tsx` (NEW)
+- Comprehensive editable form for all org metadata:
+  - Basic info: name, slug, description
+  - Branding: website URL, logo URL
+  - App branding: app name, **visual icon picker**
+- Read/edit modes with "Edit Organization" button
+- **Live sidebar preview** showing how branding will appear
+- System info: created/updated timestamps
+- **Validation**: All accessibility and frontend compliance errors resolved
+
+#### 7. Available Icons (AI-Related)
+- ✨ `AutoAwesomeOutlined` - Sparkles (default)
+- 🧠 `PsychologyOutlined` - Brain
+- 🤖 `SmartToyOutlined` - Robot
+- ✨ `AutoFixHighOutlined` - Magic Wand
+- ⚡ `BoltOutlined` - Lightning
+- 🔗 `HubOutlined` - Network Hub
+- 💾 `MemoryOutlined` - Memory Chip
+- 📊 `ModelTrainingOutlined` - Model Training
+
+### Files Modified (9 Total)
+
+| File | Status | Impact |
+|------|--------|--------|
+| `module-access/db/schema/002-orgs.sql` | ✅ Updated | Database columns added |
+| `scripts/migrations/add-org-app-branding.sql` | ✅ Created | Migration for existing DBs |
+| `module-access/backend/lambdas/orgs/lambda_function.py` | ✅ Updated | Backend CRUD + validation |
+| `module-access/frontend/types/index.ts` | ✅ Updated | TypeScript types |
+| `module-access/frontend/components/common/OrgIcon.tsx` | ✅ Created | Dynamic icon renderer |
+| `module-access/frontend/components/layout/Sidebar.tsx` | ✅ Updated | Display app branding |
+| `module-access/frontend/components/admin/OrgDetailsTab.tsx` | ✅ Created | Admin edit UI |
+| `module-access/frontend/components/admin/OrgDetails.tsx` | ✅ Updated | Uses OrgDetailsTab |
+
+### Validation Results ✅
+
+**Accessibility Validator**: ✅ PASSED (2 errors fixed)
+- Fixed: Link aria-labels for website and logo URLs
+
+**Frontend Compliance**: ✅ PASSED (2 errors fixed)
+- Fixed: Replaced `any` type with proper `Partial<>` type
+- Fixed: Proper error handling with `instanceof Error`
+
+### Current Status
+
+**Test Project**: 🧪 IN PROGRESS
+- User creating new test project with updated templates
+- Deploying infrastructure and building dev server
+- User testing will validate feature functionality
+
+**Next Steps**:
+- User will report any issues found during testing
+- Address any bugs or UX issues discovered
+- Template updates are complete and ready for production use
+
+---
+
+## Previous Sessions Summary
+
+### Session 91-94: Platform Admin API & Frontend Fixes
+
+### 🎯 Status: ✅ ALL BACKEND FIXED | ✅ ALL FRONTEND FIXED
 
 ### 🎯 Status: ✅ ALL BACKEND FIXED | ✅ ALL FRONTEND FIXED
 
