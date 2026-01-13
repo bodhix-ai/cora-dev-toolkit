@@ -28,7 +28,7 @@ export const platformMgmtAdminCard: AdminCardConfig = {
   context: "platform",
   color: "#9333ea", // Purple
   order: 30,
-  requiredRoles: ["platform_owner", "platform_admin"],
+  requiredRoles: ["sys_owner", "sys_admin"],
 };
 
 export default platformMgmtAdminCard;

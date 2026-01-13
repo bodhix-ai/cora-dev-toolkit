@@ -97,7 +97,7 @@ def _fetch_modules() -> list:
     
     try:
         response = (
-            supabase.table("platform_module_registry")
+            supabase.table("sys_module_registry")
             .select("module_name, is_enabled, is_installed, module_type, tier, dependencies")
             .is_("deleted_at", "null")
             .execute()
@@ -280,7 +280,7 @@ def _record_usage(
     try:
         # Get module ID
         module_response = (
-            supabase.table("platform_module_registry")
+            supabase.table("sys_module_registry")
             .select("id")
             .eq("module_name", module_name)
             .is_("deleted_at", "null")
@@ -314,7 +314,7 @@ def _record_usage(
             "error_message": error_info.get("error_message") if error_info else None,
         }
         
-        supabase.table("platform_module_usage").insert(usage_data).execute()
+        supabase.table("sys_module_usage").insert(usage_data).execute()
         
     except Exception as e:
         logger.error(f"Failed to record usage: {e}")

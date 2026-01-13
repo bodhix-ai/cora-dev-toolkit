@@ -17,7 +17,7 @@ export type ConfigValue =
   | { [key: string]: ConfigValue };
 
 /**
- * Platform Lambda configuration stored in platform_lambda_config table
+ * Platform Lambda configuration stored in sys_lambda_config table
  */
 export interface LambdaConfig {
   id: string;
