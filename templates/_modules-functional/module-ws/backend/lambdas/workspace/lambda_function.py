@@ -434,14 +434,14 @@ def handle_sys_analytics(user_id: str, user_info: Dict[str, Any]) -> Dict[str, A
         }
         
         analytics = {
-            'platform_wide': {
-                'total_workspaces': total_count,
-                'active_workspaces': active_count,
-                'archived_workspaces': archived_count,
-                'created_this_month': this_month_count,
+            'platformWide': {
+                'totalWorkspaces': total_count,
+                'activeWorkspaces': active_count,
+                'archivedWorkspaces': archived_count,
+                'createdThisMonth': this_month_count,
             },
-            'by_organization': list(org_stats.values()),
-            'feature_adoption': feature_adoption,
+            'byOrganization': list(org_stats.values()),
+            'featureAdoption': feature_adoption,
         }
         
         logger.info("Retrieved system-wide analytics")
@@ -492,9 +492,9 @@ def handle_get_org_settings(
             # Return default settings (will be created on first PUT)
             settings = {
                 'orgId': org_id,
-                'allow_user_creation': True,
-                'require_approval': False,
-                'max_workspaces_per_user': 10,
+                'allowUserCreation': True,
+                'requireApproval': False,
+                'maxWorkspacesPerUser': 10,
             }
         else:
             # Format database response to camelCase
@@ -1601,13 +1601,13 @@ def handle_get_config() -> Dict[str, Any]:
             # Return default config if not found
             config = {
                 'id': '00000000-0000-0000-0000-000000000001',
-                'nav_label_singular': 'Workspace',
-                'nav_label_plural': 'Workspaces',
-                'nav_icon': 'WorkspaceIcon',
-                'enable_favorites': True,
-                'enable_tags': True,
-                'enable_color_coding': True,
-                'default_color': '#1976d2',
+                'navLabelSingular': 'Workspace',
+                'navLabelPlural': 'Workspaces',
+                'navIcon': 'WorkspaceIcon',
+                'enableFavorites': True,
+                'enableTags': True,
+                'enableColorCoding': True,
+                'defaultColor': '#1976d2',
             }
         
         logger.info("Retrieved workspace config")
@@ -1734,12 +1734,12 @@ def handle_admin_stats(user_info: Dict[str, Any]) -> Dict[str, Any]:
                     org_stats[org_id]['archived'] += 1
         
         stats = {
-            'total_workspaces': len(all_workspaces),
-            'active_workspaces': len(active_workspaces),
-            'archived_workspaces': len(archived_workspaces),
-            'deleted_workspaces': len(deleted_workspaces),
-            'organizations_count': len(org_stats),
-            'by_organization': org_stats
+            'totalWorkspaces': len(all_workspaces),
+            'activeWorkspaces': len(active_workspaces),
+            'archivedWorkspaces': len(archived_workspaces),
+            'deletedWorkspaces': len(deleted_workspaces),
+            'organizationsCount': len(org_stats),
+            'byOrganization': org_stats
         }
         
         logger.info("Retrieved admin workspace stats")
@@ -1799,13 +1799,13 @@ def handle_admin_analytics(org_id: str, user_info: Dict[str, Any]) -> Dict[str, 
         avg_members = total_members / active_count if active_count > 0 else 0
         
         analytics = {
-            'org_id': org_id,
-            'total_workspaces': total_count,
-            'active_workspaces': active_count,
-            'archived_workspaces': archived_count,
-            'deleted_workspaces': deleted_count,
-            'total_members': total_members,
-            'avg_members_per_workspace': round(avg_members, 2)
+            'orgId': org_id,
+            'totalWorkspaces': total_count,
+            'activeWorkspaces': active_count,
+            'archivedWorkspaces': archived_count,
+            'deletedWorkspaces': deleted_count,
+            'totalMembers': total_members,
+            'avgMembersPerWorkspace': round(avg_members, 2)
         }
         
         logger.info(f"Retrieved analytics for org {org_id}")

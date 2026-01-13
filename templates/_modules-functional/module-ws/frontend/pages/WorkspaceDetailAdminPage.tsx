@@ -394,14 +394,14 @@ export function WorkspaceDetailAdminPage({
                       <Typography variant="body2" color="text.secondary">
                         Members
                       </Typography>
-                      <Typography variant="body1">{workspace.member_count || 0}</Typography>
+                      <Typography variant="body1">{workspace.memberCount || 0}</Typography>
                     </Grid>
                     <Grid item xs={12} sm={6}>
                       <Typography variant="body2" color="text.secondary">
                         Created
                       </Typography>
                       <Typography variant="body1">
-                        {new Date(workspace.created_at).toLocaleString()}
+                        {new Date(workspace.createdAt).toLocaleString()}
                       </Typography>
                     </Grid>
                     <Grid item xs={12} sm={6}>
@@ -409,7 +409,7 @@ export function WorkspaceDetailAdminPage({
                         Last Updated
                       </Typography>
                       <Typography variant="body1">
-                        {new Date(workspace.updated_at).toLocaleString()}
+                        {new Date(workspace.updatedAt).toLocaleString()}
                       </Typography>
                     </Grid>
                   </Grid>
@@ -427,7 +427,7 @@ export function WorkspaceDetailAdminPage({
                     <Grid item xs={6} sm={3}>
                       <Card variant="outlined">
                         <CardContent>
-                          <Typography variant="h4">{workspace.member_count || 0}</Typography>
+                          <Typography variant="h4">{workspace.memberCount || 0}</Typography>
                           <Typography variant="body2" color="text.secondary">
                             Members
                           </Typography>
@@ -504,20 +504,20 @@ export function WorkspaceDetailAdminPage({
                     </TableHead>
                     <TableBody>
                       {members.map((member) => (
-                        <TableRow key={member.user_id}>
+                        <TableRow key={member.userId}>
                           <TableCell>
-                            <Typography variant="body2">{member.user_id}</Typography>
+                            <Typography variant="body2">{member.userId}</Typography>
                           </TableCell>
                           <TableCell>
                             <Chip
-                              label={WORKSPACE_ROLE_DISPLAY_NAMES[member.ws_role]}
+                              label={WORKSPACE_ROLE_DISPLAY_NAMES[member.wsRole]}
                               size="small"
-                              color={member.ws_role === "ws_owner" ? "primary" : "default"}
+                              color={member.wsRole === "ws_owner" ? "primary" : "default"}
                             />
                           </TableCell>
                           <TableCell>
                             <Typography variant="body2" color="text.secondary">
-                              {new Date(member.created_at).toLocaleDateString()}
+                              {new Date(member.createdAt).toLocaleDateString()}
                             </Typography>
                           </TableCell>
                           <TableCell align="right">
@@ -734,10 +734,10 @@ export function WorkspaceDetailAdminPage({
               onChange={(e) => setNewOwnerId(e.target.value)}
             >
               {members
-                .filter((m) => m.ws_role !== "ws_owner")
+                .filter((m) => m.wsRole !== "ws_owner")
                 .map((member) => (
-                  <MenuItem key={member.user_id} value={member.user_id}>
-                    {member.user_id}
+                  <MenuItem key={member.userId} value={member.userId}>
+                    {member.userId}
                   </MenuItem>
                 ))}
             </Select>

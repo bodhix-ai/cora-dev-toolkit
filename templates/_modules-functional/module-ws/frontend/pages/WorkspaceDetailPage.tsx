@@ -332,7 +332,7 @@ export function WorkspaceDetailPage({
     );
   }
 
-  const userRole = workspace.user_role;
+  const userRole = workspace.userRole;
   const canEdit = userRole === "ws_owner" || userRole === "ws_admin";
   const canDelete = userRole === "ws_owner";
 
@@ -366,7 +366,7 @@ export function WorkspaceDetailPage({
 
   const handleUpdateMemberRole = async (memberId: string, newRole: WorkspaceRole) => {
     try {
-      await updateMember(memberId, { ws_role: newRole });
+      await updateMember(memberId, { wsRole: newRole });
     } catch (error) {
       console.error("Failed to update member role:", error);
     }
@@ -494,10 +494,10 @@ export function WorkspaceDetailPage({
           <Box sx={{ display: "flex", gap: 1 }}>
             <IconButton
               onClick={handleToggleFavorite}
-              color={workspace?.is_favorited ? "warning" : "default"}
-              aria-label={workspace?.is_favorited ? "Remove from favorites" : "Add to favorites"}
+              color={workspace?.isFavorited ? "warning" : "default"}
+              aria-label={workspace?.isFavorited ? "Remove from favorites" : "Add to favorites"}
             >
-              {workspace?.is_favorited ? <Star /> : <StarBorder />}
+              {workspace?.isFavorited ? <Star /> : <StarBorder />}
             </IconButton>
             {canEdit && (
               <>

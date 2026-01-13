@@ -143,8 +143,8 @@ export function WorkspaceCard({
   };
 
   const isArchived = workspace.status === "archived";
-  const isDeleted = Boolean(workspace.deleted_at);
-  const userRole = workspace.user_role;
+  const isDeleted = Boolean(workspace.deletedAt);
+  const userRole = workspace.userRole;
   const canEdit = userRole === "ws_owner" || userRole === "ws_admin";
   const canDelete = userRole === "ws_owner";
 
@@ -216,14 +216,14 @@ export function WorkspaceCard({
             {/* Actions */}
             <Box sx={{ display: "flex", ml: 1 }}>
               {showFavorite && !isDeleted && (
-                <Tooltip title={workspace.is_favorited ? "Remove from favorites" : "Add to favorites"}>
+                <Tooltip title={workspace.isFavorited ? "Remove from favorites" : "Add to favorites"}>
                   <IconButton
                     size="small"
                     onClick={handleFavoriteClick}
-                    aria-label={workspace.is_favorited ? "Remove from favorites" : "Add to favorites"}
-                    sx={{ color: workspace.is_favorited ? "warning.main" : "action.disabled" }}
+                    aria-label={workspace.isFavorited ? "Remove from favorites" : "Add to favorites"}
+                    sx={{ color: workspace.isFavorited ? "warning.main" : "action.disabled" }}
                   >
-                    {workspace.is_favorited ? <Star /> : <StarBorder />}
+                    {workspace.isFavorited ? <Star /> : <StarBorder />}
                   </IconButton>
                 </Tooltip>
               )}
@@ -321,7 +321,7 @@ export function WorkspaceCard({
             <Box sx={{ display: "flex", alignItems: "center", color: "text.secondary" }}>
               <Group fontSize="small" sx={{ mr: 0.5 }} />
               <Typography variant="caption">
-                {workspace.member_count ?? 0} {workspace.member_count === 1 ? "member" : "members"}
+                {workspace.memberCount ?? 0} {workspace.memberCount === 1 ? "member" : "members"}
               </Typography>
             </Box>
 
@@ -335,7 +335,7 @@ export function WorkspaceCard({
                 />
               )}
               <Typography variant="caption" color="text.secondary">
-                {formatRelativeTime(workspace.updated_at)}
+                {formatRelativeTime(workspace.updatedAt)}
               </Typography>
             </Box>
           </Box>

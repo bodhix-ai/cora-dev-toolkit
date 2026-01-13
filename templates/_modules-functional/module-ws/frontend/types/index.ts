@@ -109,7 +109,7 @@ export interface WorkspaceConfig {
  * Create workspace request
  */
 export interface WorkspaceCreateRequest {
-  org_id: string;
+  orgId: string;
   name: string;
   description?: string;
   color?: string;
@@ -133,27 +133,27 @@ export interface WorkspaceUpdateRequest {
  * Add member request
  */
 export interface AddMemberRequest {
-  user_id: string;
-  ws_role: WorkspaceRole;
+  userId: string;
+  wsRole: WorkspaceRole;
 }
 
 /**
  * Update member request
  */
 export interface UpdateMemberRequest {
-  ws_role: WorkspaceRole;
+  wsRole: WorkspaceRole;
 }
 
 /**
  * Workspace query parameters
  */
 export interface WorkspaceQueryParams {
-  org_id?: string;
+  orgId?: string;
   status?: WorkspaceStatus;
-  favorites_only?: boolean;
+  favoritesOnly?: boolean;
   search?: string;
   tags?: string[];
-  include_deleted?: boolean;
+  includeDeleted?: boolean;
   limit?: number;
   offset?: number;
 }

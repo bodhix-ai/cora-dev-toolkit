@@ -89,7 +89,7 @@ export function AddMemberDialog({
       const filtered = availableUsers.filter(
         (user) =>
           user.email.toLowerCase().includes(query.toLowerCase()) ||
-          user.display_name?.toLowerCase().includes(query.toLowerCase())
+          user.displayName?.toLowerCase().includes(query.toLowerCase())
       );
       setSearchResults(filtered);
     }
@@ -156,8 +156,8 @@ export function AddMemberDialog({
             onChange={(_, newValue) => setSelectedUser(newValue)}
             onInputChange={(_, newInputValue) => handleUserSearch(newInputValue)}
             getOptionLabel={(option) =>
-              option.display_name
-                ? `${option.display_name} (${option.email})`
+              option.displayName
+                ? `${option.displayName} (${option.email})`
                 : option.email
             }
             loading={isSearching || loadingUsers}
@@ -185,9 +185,9 @@ export function AddMemberDialog({
               <li {...props} key={option.id}>
                 <Box>
                   <Typography variant="body2">
-                    {option.display_name || option.email}
+                    {option.displayName || option.email}
                   </Typography>
-                  {option.display_name && (
+                  {option.displayName && (
                     <Typography variant="caption" color="text.secondary">
                       {option.email}
                     </Typography>

@@ -154,7 +154,7 @@ export function MemberList({
       ws_admin: 1,
       ws_user: 2,
     };
-    return roleOrder[a.ws_role] - roleOrder[b.ws_role];
+    return roleOrder[a.wsRole] - roleOrder[b.wsRole];
   });
 
   return (
@@ -187,10 +187,10 @@ export function MemberList({
       {/* Member list */}
       <List disablePadding>
         {sortedMembers.map((member, index) => {
-          const isCurrentUser = member.user_id === currentUserId;
-          const isOwner = member.ws_role === "ws_owner";
+          const isCurrentUser = member.userId === currentUserId;
+          const isOwner = member.wsRole === "ws_owner";
           const canModify = canManageMembers && !isOwner && !isCurrentUser;
-          const displayName = member.profile?.display_name || member.profile?.email || "Unknown User";
+          const displayName = member.profile?.displayName || member.profile?.email || "Unknown User";
 
           return (
             <React.Fragment key={member.id}>
@@ -203,10 +203,10 @@ export function MemberList({
               >
                 <ListItemAvatar>
                   <Avatar
-                    src={member.profile?.avatar_url}
+                    src={member.profile?.avatarUrl}
                     sx={{ width: 40, height: 40 }}
                   >
-                    {getInitials(member.profile?.display_name, member.profile?.email)}
+                    {getInitials(member.profile?.displayName, member.profile?.email)}
                   </Avatar>
                 </ListItemAvatar>
                 <ListItemText
@@ -228,9 +228,9 @@ export function MemberList({
                   }
                   secondary={
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
-                      {getRoleIcon(member.ws_role)}
+                      {getRoleIcon(member.wsRole)}
                       <Typography variant="caption" color="text.secondary">
-                        {WORKSPACE_ROLE_DISPLAY_NAMES[member.ws_role]}
+                        {WORKSPACE_ROLE_DISPLAY_NAMES[member.wsRole]}
                       </Typography>
                     </Box>
                   }
@@ -274,7 +274,7 @@ export function MemberList({
             Change Role
           </Typography>
         </MenuItem>
-        {canUpdateRoles && currentMenuMember?.ws_role !== "ws_admin" && (
+        {canUpdateRoles && currentMenuMember?.wsRole !== "ws_admin" && (
           <MenuItem onClick={() => handleRoleChange("ws_admin")}>
             <Tooltip title={WORKSPACE_ROLE_DESCRIPTIONS.ws_admin} placement="left">
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -284,7 +284,7 @@ export function MemberList({
             </Tooltip>
           </MenuItem>
         )}
-        {canUpdateRoles && currentMenuMember?.ws_role !== "ws_user" && (
+        {canUpdateRoles && currentMenuMember?.wsRole !== "ws_user" && (
           <MenuItem onClick={() => handleRoleChange("ws_user")}>
             <Tooltip title={WORKSPACE_ROLE_DESCRIPTIONS.ws_user} placement="left">
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -311,7 +311,7 @@ export function MemberList({
           <DialogContentText>
             Are you sure you want to remove{" "}
             <strong>
-              {removeDialogMember?.profile?.display_name ||
+              {removeDialogMember?.profile?.displayName ||
                 removeDialogMember?.profile?.email ||
                 "this member"}
             </strong>{" "}

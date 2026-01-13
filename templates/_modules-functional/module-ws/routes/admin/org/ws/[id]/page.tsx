@@ -20,7 +20,7 @@ export default function WorkspaceDetailAdminRoute() {
   const { data: session } = useSession();
   
   const workspaceId = params?.id as string;
-  const orgId = session?.user?.org_id as string;
+  const orgId = session?.user?.orgId as string;
 
   if (!workspaceId || !orgId) {
     return null;

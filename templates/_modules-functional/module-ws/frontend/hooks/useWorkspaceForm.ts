@@ -78,7 +78,7 @@ export function useWorkspaceForm(
     () => ({
       ...DEFAULT_VALUES,
       ...initialValues,
-      color: initialValues?.color || config?.default_color || DEFAULT_VALUES.color,
+      color: initialValues?.color || config?.defaultColor || DEFAULT_VALUES.color,
     }),
     [initialValues, config]
   );
@@ -125,8 +125,8 @@ export function useWorkspaceForm(
 
         case "tags":
           if (Array.isArray(value)) {
-            const maxTags = config?.max_tags_per_workspace || 20;
-            const maxTagLength = config?.max_tag_length || 50;
+            const maxTags = config?.maxTagsPerWorkspace || 20;
+            const maxTagLength = config?.maxTagLength || 50;
 
             if (value.length > maxTags) {
               return `Maximum ${maxTags} tags allowed`;
@@ -280,13 +280,13 @@ export function useWorkspaceForm(
         return; // Already exists
       }
 
-      const maxTags = config?.max_tags_per_workspace || 20;
+      const maxTags = config?.maxTagsPerWorkspace || 20;
       if (values.tags.length >= maxTags) {
         setErrors((prev) => ({ ...prev, tags: `Maximum ${maxTags} tags allowed` }));
         return;
       }
 
-      const maxTagLength = config?.max_tag_length || 50;
+      const maxTagLength = config?.maxTagLength || 50;
       if (trimmedTag.length > maxTagLength) {
         setErrors((prev) => ({
           ...prev,

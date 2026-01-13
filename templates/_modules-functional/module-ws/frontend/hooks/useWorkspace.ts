@@ -182,12 +182,12 @@ export function useWorkspace(
         prev
           ? {
               ...prev,
-              is_favorited: result.is_favorited,
-              favorited_at: result.favorited_at,
+              isFavorited: result.isFavorited,
+              favoritedAt: result.favoritedAt,
             }
           : null
       );
-      return result.is_favorited;
+      return result.isFavorited;
     } catch (err) {
       console.error("Failed to toggle favorite:", err);
       throw err;
@@ -251,7 +251,7 @@ export function useWorkspace(
   );
 
   // Derived values
-  const userRole = workspace?.user_role || null;
+  const userRole = workspace?.userRole || null;
   const isOwner = userRole === "ws_owner";
   const isAdmin = userRole === "ws_owner" || userRole === "ws_admin";
 

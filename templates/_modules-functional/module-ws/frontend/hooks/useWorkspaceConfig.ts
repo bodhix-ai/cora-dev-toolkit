@@ -110,13 +110,13 @@ export function useWorkspaceConfig(options: UseWorkspaceConfigOptions = {}): Use
   );
 
   // Derived values with defaults
-  const navLabelSingular = config?.nav_label_singular || "Workspace";
-  const navLabelPlural = config?.nav_label_plural || "Workspaces";
-  const navIcon = config?.nav_icon || "Workspaces";
-  const favoritesEnabled = config?.enable_favorites ?? true;
-  const tagsEnabled = config?.enable_tags ?? true;
-  const colorCodingEnabled = config?.enable_color_coding ?? true;
-  const defaultColor = config?.default_color || "#1976d2";
+  const navLabelSingular = config?.navLabelSingular || "Workspace";
+  const navLabelPlural = config?.navLabelPlural || "Workspaces";
+  const navIcon = config?.navIcon || "Workspaces";
+  const favoritesEnabled = config?.enableFavorites ?? true;
+  const tagsEnabled = config?.enableTags ?? true;
+  const colorCodingEnabled = config?.enableColorCoding ?? true;
+  const defaultColor = config?.defaultColor || "#1976d2";
 
   return {
     config,
