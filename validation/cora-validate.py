@@ -199,6 +199,20 @@ class CoraValidator:
             "supports": ["project", "module"],
             "cli_style": "argparse",
         },
+        "api_response": {
+            "name": "API Response Validator",
+            "description": "Validates API responses use camelCase keys",
+            "module": "api-response-validator",
+            "supports": ["project", "module"],
+            "cli_style": "argparse",
+        },
+        "role_naming": {
+            "name": "Role Naming Validator",
+            "description": "Validates role naming standards (sys_role, sys_admin, etc.)",
+            "module": "role-naming-validator",
+            "supports": ["project", "module"],
+            "cli_style": "argparse",
+        },
     }
 
     def __init__(self, verbose: bool = False):
