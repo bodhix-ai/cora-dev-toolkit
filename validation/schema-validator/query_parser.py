@@ -171,7 +171,7 @@ class QueryParser:
         Examples:
             common.find_one('profiles', {'user_id': user_id})
             common.find_many('ai_models', filters={'status': 'available'})
-            common.update_one(table='platform_rag', filters={...}, data={...})
+            common.update_one(table='sys_rag', filters={...}, data={...})
             common.insert_one(table='org_prompt_engineering', data={...})
             common.delete_one(table='profiles', filters={...})
         """

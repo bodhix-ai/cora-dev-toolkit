@@ -33,14 +33,14 @@ PROHIBITED_HOOKS = {
 # Anti-patterns: Accessing user data from NextAuth session instead of backend Profile
 # NextAuth session contains minimal auth info (tokens), NOT user profile data
 SESSION_ANTIPATTERNS = {
-    r'session.*\.global_role': {
-        'message': 'Accessing global_role from NextAuth session',
-        'suggestion': 'Use profile.globalRole from useUser() hook instead. NextAuth session does not contain user profile data.',
+    r'session.*\.sys_role': {
+        'message': 'Accessing sys_role from NextAuth session',
+        'suggestion': 'Use profile.sysRole from useUser() hook instead. NextAuth session does not contain user profile data.',
         'severity': 'error'
     },
-    r'session.*\.globalRole': {
-        'message': 'Accessing globalRole from NextAuth session',
-        'suggestion': 'Use profile.globalRole from useUser() hook instead. NextAuth session does not contain user profile data.',
+    r'session.*\.sysRole': {
+        'message': 'Accessing sysRole from NextAuth session',
+        'suggestion': 'Use profile.sysRole from useUser() hook instead. NextAuth session does not contain user profile data.',
         'severity': 'error'
     },
     r'session.*\.current_org_id': {
