@@ -29,7 +29,7 @@ export default function OrgDetailsPage({ params }: { params: { id: string } }) {
     <OrgDetails
       orgId={params.id}
       authAdapter={authAdapter}
-      isPlatformAdmin={isSysAdmin}
+      isSysAdmin={isSysAdmin}
     />
   );
 }

@@ -80,12 +80,12 @@ END $$;
 -- DROP ALL TABLES (CASCADE to handle FKs)
 -- =============================================
 
-DROP TABLE IF EXISTS public.platform_module_usage_daily CASCADE;
-DROP TABLE IF EXISTS public.platform_module_usage CASCADE;
-DROP TABLE IF EXISTS public.platform_module_registry CASCADE;
-DROP TABLE IF EXISTS public.platform_lambda_config CASCADE;
+DROP TABLE IF EXISTS public.sys_module_usage_daily CASCADE;
+DROP TABLE IF EXISTS public.sys_module_usage CASCADE;
+DROP TABLE IF EXISTS public.sys_module_registry CASCADE;
+DROP TABLE IF EXISTS public.sys_lambda_config CASCADE;
 DROP TABLE IF EXISTS public.org_prompt_engineering CASCADE;
-DROP TABLE IF EXISTS public.platform_rag CASCADE;
+DROP TABLE IF EXISTS public.sys_rag CASCADE;
 DROP TABLE IF EXISTS public.ai_model_validation_progress CASCADE;
 DROP TABLE IF EXISTS public.ai_model_validation_history CASCADE;
 DROP TABLE IF EXISTS public.ai_models CASCADE;
@@ -94,8 +94,8 @@ DROP TABLE IF EXISTS public.user_sessions CASCADE;
 DROP TABLE IF EXISTS public.user_auth_log CASCADE;
 DROP TABLE IF EXISTS public.user_invites CASCADE;
 DROP TABLE IF EXISTS public.org_email_domains CASCADE;
-DROP TABLE IF EXISTS public.platform_idp_audit_log CASCADE;
-DROP TABLE IF EXISTS public.platform_idp_config CASCADE;
+DROP TABLE IF EXISTS public.sys_idp_audit_log CASCADE;
+DROP TABLE IF EXISTS public.sys_idp_config CASCADE;
 DROP TABLE IF EXISTS public.org_members CASCADE;
 DROP TABLE IF EXISTS public.user_profiles CASCADE;
 DROP TABLE IF EXISTS public.orgs CASCADE;
@@ -105,7 +105,7 @@ DROP TABLE IF EXISTS public.user_auth_ext_ids CASCADE;
 -- DROP ALL FUNCTIONS
 -- =============================================
 
-DROP FUNCTION IF EXISTS update_platform_rag_updated_at() CASCADE;
+DROP FUNCTION IF EXISTS update_sys_rag_updated_at() CASCADE;
 DROP FUNCTION IF EXISTS update_org_prompt_engineering_updated_at() CASCADE;
 DROP FUNCTION IF EXISTS update_user_sessions_activity() CASCADE;
 DROP FUNCTION IF EXISTS ensure_single_active_idp() CASCADE;
