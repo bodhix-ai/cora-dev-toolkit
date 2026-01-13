@@ -8,8 +8,8 @@
 -- HELPER FUNCTIONS: Workspace Access Control
 -- =============================================
 
--- Function: is_workspace_member
-CREATE OR REPLACE FUNCTION is_workspace_member(
+-- Function: is_ws_member
+CREATE OR REPLACE FUNCTION is_ws_member(
     p_ws_id UUID,
     p_user_id UUID
 ) RETURNS BOOLEAN AS $$
@@ -23,11 +23,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-COMMENT ON FUNCTION is_workspace_member(UUID, UUID) IS 
+COMMENT ON FUNCTION is_ws_member(UUID, UUID) IS 
 'Checks if user is an active member of the specified workspace';
 
--- Function: is_workspace_owner
-CREATE OR REPLACE FUNCTION is_workspace_owner(
+-- Function: is_ws_owner
+CREATE OR REPLACE FUNCTION is_ws_owner(
     p_ws_id UUID,
     p_user_id UUID
 ) RETURNS BOOLEAN AS $$
@@ -42,11 +42,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-COMMENT ON FUNCTION is_workspace_owner(UUID, UUID) IS 
+COMMENT ON FUNCTION is_ws_owner(UUID, UUID) IS 
 'Checks if user is an owner of the specified workspace';
 
--- Function: is_workspace_admin_or_owner
-CREATE OR REPLACE FUNCTION is_workspace_admin_or_owner(
+-- Function: is_ws_admin_or_owner
+CREATE OR REPLACE FUNCTION is_ws_admin_or_owner(
     p_ws_id UUID,
     p_user_id UUID
 ) RETURNS BOOLEAN AS $$
@@ -61,11 +61,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-COMMENT ON FUNCTION is_workspace_admin_or_owner(UUID, UUID) IS 
+COMMENT ON FUNCTION is_ws_admin_or_owner(UUID, UUID) IS 
 'Checks if user is an admin or owner of the specified workspace';
 
--- Function: get_workspace_role
-CREATE OR REPLACE FUNCTION get_workspace_role(
+-- Function: get_ws_role
+CREATE OR REPLACE FUNCTION get_ws_role(
     p_ws_id UUID,
     p_user_id UUID
 ) RETURNS VARCHAR(50) AS $$
@@ -82,11 +82,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-COMMENT ON FUNCTION get_workspace_role(UUID, UUID) IS 
+COMMENT ON FUNCTION get_ws_role(UUID, UUID) IS 
 'Returns the role of a user in a workspace (ws_owner, ws_admin, ws_user) or NULL if not a member';
 
--- Function: count_workspace_owners
-CREATE OR REPLACE FUNCTION count_workspace_owners(
+-- Function: count_ws_owners
+CREATE OR REPLACE FUNCTION count_ws_owners(
     p_ws_id UUID
 ) RETURNS INTEGER AS $$
 DECLARE
@@ -102,15 +102,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-COMMENT ON FUNCTION count_workspace_owners(UUID) IS 
+COMMENT ON FUNCTION count_ws_owners(UUID) IS 
 'Returns the count of owners for a workspace (used to prevent removing last owner)';
 
 -- =============================================
 -- RPC FUNCTIONS: Workspace Operations
 -- =============================================
 
--- Function: create_workspace_with_owner
-CREATE OR REPLACE FUNCTION create_workspace_with_owner(
+-- Function: create_ws_with_owner
+CREATE OR REPLACE FUNCTION create_ws_with_owner(
     p_org_id UUID,
     p_name VARCHAR(255),
     p_description TEXT,
@@ -142,11 +142,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-COMMENT ON FUNCTION create_workspace_with_owner(UUID, VARCHAR, TEXT, VARCHAR, VARCHAR, TEXT[], UUID) IS 
+COMMENT ON FUNCTION create_ws_with_owner(UUID, VARCHAR, TEXT, VARCHAR, VARCHAR, TEXT[], UUID) IS 
 'Creates a new workspace and adds the creator as the owner in a single transaction';
 
--- Function: soft_delete_workspace
-CREATE OR REPLACE FUNCTION soft_delete_workspace(
+-- Function: soft_delete_ws
+CREATE OR REPLACE FUNCTION soft_delete_ws(
     p_workspace_id UUID,
     p_user_id UUID
 ) RETURNS JSON AS $$
@@ -154,7 +154,7 @@ DECLARE
     v_workspace workspaces%ROWTYPE;
 BEGIN
     -- Verify user is owner
-    IF NOT is_workspace_owner(p_workspace_id, p_user_id) THEN
+    IF NOT is_ws_owner(p_workspace_id, p_user_id) THEN
         RAISE EXCEPTION 'Only workspace owners can delete workspaces';
     END IF;
     
@@ -182,11 +182,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-COMMENT ON FUNCTION soft_delete_workspace(UUID, UUID) IS 
+COMMENT ON FUNCTION soft_delete_ws(UUID, UUID) IS 
 'Soft deletes a workspace, cascading to members and removing favorites';
 
--- Function: restore_workspace
-CREATE OR REPLACE FUNCTION restore_workspace(
+-- Function: restore_ws
+CREATE OR REPLACE FUNCTION restore_ws(
     p_workspace_id UUID,
     p_user_id UUID
 ) RETURNS JSON AS $$
@@ -229,11 +229,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-COMMENT ON FUNCTION restore_workspace(UUID, UUID) IS 
+COMMENT ON FUNCTION restore_ws(UUID, UUID) IS 
 'Restores a soft-deleted workspace and all its members';
 
--- Function: toggle_workspace_favorite
-CREATE OR REPLACE FUNCTION toggle_workspace_favorite(
+-- Function: toggle_ws_favorite
+CREATE OR REPLACE FUNCTION toggle_ws_favorite(
     p_workspace_id UUID,
     p_user_id UUID
 ) RETURNS JSON AS $$
@@ -242,7 +242,7 @@ DECLARE
     v_favorited_at TIMESTAMPTZ;
 BEGIN
     -- Verify user is workspace member
-    IF NOT is_workspace_member(p_workspace_id, p_user_id) THEN
+    IF NOT is_ws_member(p_workspace_id, p_user_id) THEN
         RAISE EXCEPTION 'User is not a member of this workspace';
     END IF;
     
@@ -277,11 +277,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-COMMENT ON FUNCTION toggle_workspace_favorite(UUID, UUID) IS 
+COMMENT ON FUNCTION toggle_ws_favorite(UUID, UUID) IS 
 'Toggles favorite status for a workspace. Returns new state with is_favorited and favorited_at';
 
--- Function: get_workspaces_with_member_info
-CREATE OR REPLACE FUNCTION get_workspaces_with_member_info(
+-- Function: get_ws_with_member_info
+CREATE OR REPLACE FUNCTION get_ws_with_member_info(
     p_org_id UUID,
     p_user_id UUID,
     p_favorites_only BOOLEAN DEFAULT FALSE,
@@ -339,15 +339,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-COMMENT ON FUNCTION get_workspaces_with_member_info(UUID, UUID, BOOLEAN, BOOLEAN, VARCHAR) IS 
+COMMENT ON FUNCTION get_ws_with_member_info(UUID, UUID, BOOLEAN, BOOLEAN, VARCHAR) IS 
 'Returns workspaces with member role, favorite status, and member count for the current user';
 
 -- =============================================
 -- CLEANUP FUNCTION: Permanent Deletion
 -- =============================================
 
--- Function: cleanup_expired_workspaces
-CREATE OR REPLACE FUNCTION cleanup_expired_workspaces()
+-- Function: cleanup_expired_ws
+CREATE OR REPLACE FUNCTION cleanup_expired_ws()
 RETURNS TABLE (
     deleted_count INTEGER,
     workspace_ids UUID[]
@@ -372,6 +372,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-COMMENT ON FUNCTION cleanup_expired_workspaces() IS 
+COMMENT ON FUNCTION cleanup_expired_ws() IS 
 'Permanently deletes soft-deleted workspaces that have exceeded their retention period. 
 Should be run daily via scheduled job (e.g., AWS EventBridge + Lambda).';

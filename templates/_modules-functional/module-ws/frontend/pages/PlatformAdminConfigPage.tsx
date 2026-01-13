@@ -48,8 +48,8 @@ import { useSession } from "next-auth/react";
 import { createWorkspaceApiClient } from "../lib/api";
 
 export interface PlatformAdminConfigPageProps {
-  /** Whether user has platform admin permissions */
-  isPlatformAdmin?: boolean;
+  /** Whether user has sys admin permissions */
+  isSysAdmin?: boolean;
   /** Callback when configuration is saved */
   onSaveSuccess?: (config: WorkspaceConfig) => void;
 }
@@ -77,7 +77,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export function PlatformAdminConfigPage({
-  isPlatformAdmin = true,
+  isSysAdmin = true,
   onSaveSuccess,
 }: PlatformAdminConfigPageProps): React.ReactElement {
   const {
@@ -263,7 +263,7 @@ export function PlatformAdminConfigPage({
     }
   };
 
-  if (!isPlatformAdmin) {
+  if (!isSysAdmin) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Alert severity="error">

@@ -5,10 +5,10 @@
 -- Source: Created for CORA toolkit Jan 2026
 
 -- =============================================
--- RPC FUNCTION: transfer_workspace_ownership
+-- RPC FUNCTION: transfer_ws_ownership
 -- =============================================
 
-CREATE OR REPLACE FUNCTION transfer_workspace_ownership(
+CREATE OR REPLACE FUNCTION transfer_ws_ownership(
     p_ws_id UUID,
     p_new_owner_id UUID,
     p_requester_id UUID
@@ -81,7 +81,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-COMMENT ON FUNCTION transfer_workspace_ownership(UUID, UUID, UUID) IS 
+COMMENT ON FUNCTION transfer_ws_ownership(UUID, UUID, UUID) IS 
 'Transfers workspace ownership to a new user. The new owner must be an org member. 
 All previous owners are demoted to ws_admin role. Can be called by org admins or platform admins.';
 
@@ -90,7 +90,7 @@ All previous owners are demoted to ws_admin role. Can be called by org admins or
 -- =============================================
 
 -- Transfer ownership of workspace to a new user:
--- SELECT transfer_workspace_ownership(
+-- SELECT transfer_ws_ownership(
 --     'workspace-uuid',
 --     'new-owner-user-uuid',
 --     'requester-user-uuid'

@@ -33,11 +33,11 @@ export default function WorkspaceOrgManagementRoute() {
     (org) => org.orgId === currentOrgId && ["org_owner", "org_admin"].includes(org.role)
   );
 
-  const isPlatformAdmin = ["platform_owner", "platform_admin"].includes(
-    profile?.globalRole || ""
+  const isSysAdmin = ["sys_owner", "sys_admin"].includes(
+    profile?.sysRole || ""
   );
 
-  const hasAccess = isOrgAdmin || isPlatformAdmin;
+  const hasAccess = isOrgAdmin || isSysAdmin;
 
   // Show loading state while user profile is being fetched
   if (userLoading) {

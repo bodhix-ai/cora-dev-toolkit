@@ -537,7 +537,7 @@ export function WorkspaceDetailPage({
           {/* Workflows Section */}
           <Box sx={{ mb: 4 }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-              <Typography variant="h6">📋 Workflows</Typography>
+              <Typography variant="h5">📋 Workflows</Typography>
               {canEdit && (
                 <Button variant="contained" startIcon={<Add />} size="small">
                   New Workflow
@@ -567,6 +567,7 @@ export function WorkspaceDetailPage({
               <TextField
                 size="small"
                 placeholder="Search workflows..."
+                aria-label="Search workflows"
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -696,6 +697,7 @@ export function WorkspaceDetailPage({
               <TextField
                 size="small"
                 placeholder="Search chats..."
+                aria-label="Search chats"
                 fullWidth
                 InputProps={{
                   startAdornment: (

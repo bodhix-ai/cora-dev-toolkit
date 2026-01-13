@@ -277,37 +277,37 @@ def _transform_member(data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _get_user_workspace_role(workspace_id: str, user_id: str) -> Optional[str]:
+def _get_user_ws_role(workspace_id: str, user_id: str) -> Optional[str]:
     """Get user's role in a workspace."""
     result = common.rpc(
-        function_name='get_workspace_role',
+        function_name='get_ws_role',
         params={'p_ws_id': workspace_id, 'p_user_id': user_id}
     )
     return result
 
 
-def _is_workspace_member(workspace_id: str, user_id: str) -> bool:
+def _is_ws_member(workspace_id: str, user_id: str) -> bool:
     """Check if user is a member of the workspace."""
     result = common.rpc(
-        function_name='is_workspace_member',
+        function_name='is_ws_member',
         params={'p_ws_id': workspace_id, 'p_user_id': user_id}
     )
     return result is True
 
 
-def _is_workspace_owner(workspace_id: str, user_id: str) -> bool:
+def _is_ws_owner(workspace_id: str, user_id: str) -> bool:
     """Check if user is an owner of the workspace."""
     result = common.rpc(
-        function_name='is_workspace_owner',
+        function_name='is_ws_owner',
         params={'p_ws_id': workspace_id, 'p_user_id': user_id}
     )
     return result is True
 
 
-def _is_workspace_admin_or_owner(workspace_id: str, user_id: str) -> bool:
+def _is_ws_admin_or_owner(workspace_id: str, user_id: str) -> bool:
     """Check if user is admin or owner of the workspace."""
     result = common.rpc(
-        function_name='is_workspace_admin_or_owner',
+        function_name='is_ws_admin_or_owner',
         params={'p_ws_id': workspace_id, 'p_user_id': user_id}
     )
     return result is True
@@ -618,7 +618,7 @@ def handle_list_workspaces(
         
         # Call RPC function
         workspaces = common.rpc(
-            function_name='get_workspaces_with_member_info',
+            function_name='get_ws_with_member_info',
             params={
                 'p_org_id': org_id,
                 'p_user_id': user_id,
@@ -733,7 +733,7 @@ def handle_get_workspace(
         raise common.ValidationError('Workspace ID is required')
     
     # Verify user is a member
-    if not _is_workspace_member(workspace_id, user_id):
+    if not _is_ws_member(workspace_id, user_id):
         raise common.ForbiddenError('You are not a member of this workspace')
     
     try:
@@ -747,7 +747,7 @@ def handle_get_workspace(
             raise common.NotFoundError('Workspace not found')
         
         # Get user's role
-        role = _get_user_workspace_role(workspace_id, user_id)
+        role = _get_user_ws_role(workspace_id, user_id)
         workspace['user_role'] = role
         
         # Check if favorited
@@ -795,7 +795,7 @@ def handle_update_workspace(
         raise common.ValidationError('Workspace ID is required')
     
     # Verify user is admin or owner
-    if not _is_workspace_admin_or_owner(workspace_id, user_id):
+    if not _is_ws_admin_or_owner(workspace_id, user_id):
         raise common.ForbiddenError('You must be a workspace admin or owner to update it')
     
     # Allowed fields for update
@@ -832,7 +832,7 @@ def handle_update_workspace(
         _log_activity(workspace_id, user_id, 'Workspace updated', {'fields': list(update_data.keys())})
         
         # Add user info for response
-        updated_workspace['user_role'] = _get_user_workspace_role(workspace_id, user_id)
+        updated_workspace['user_role'] = _get_user_ws_role(workspace_id, user_id)
         
         favorite = common.find_one(
             table='ws_favorites',
@@ -993,8 +993,8 @@ def handle_get_workspace_activity(
     if not workspace:
         raise common.NotFoundError('Workspace not found')
     
-    # Check authorization: workspace member OR org admin OR platform admin
-    is_member = _is_workspace_member(workspace_id, user_id)
+    # Check authorization: workspace member OR org admin OR sys admin
+    is_member = _is_ws_member(workspace_id, user_id)
     is_org_admin = _is_org_admin(workspace['org_id'], user_id)
     is_sys_admin = _is_sys_admin(user_id)
     
@@ -1098,7 +1098,7 @@ def handle_transfer_ownership(
         # Check if there's an RPC function for this
         try:
             result = common.rpc(
-                function_name='transfer_workspace_ownership',
+                function_name='transfer_ws_ownership',
                 params={
                     'p_ws_id': workspace_id,
                     'p_new_owner_id': new_owner_id,
@@ -1160,7 +1160,7 @@ def handle_transfer_ownership(
         )
         
         # Add user info
-        updated_workspace['user_role'] = _get_user_workspace_role(workspace_id, user_id)
+        updated_workspace['user_role'] = _get_user_ws_role(workspace_id, user_id)
         
         members = common.find_many(
             table='ws_members',
@@ -1203,7 +1203,7 @@ def handle_list_members(
         raise common.ValidationError('Workspace ID is required')
     
     # Verify user is a member
-    if not _is_workspace_member(workspace_id, user_id):
+    if not _is_ws_member(workspace_id, user_id):
         raise common.ForbiddenError('You are not a member of this workspace')
     
     try:
@@ -1262,7 +1262,7 @@ def handle_add_member(
         raise common.ValidationError('Workspace ID is required')
     
     # Verify user is owner
-    if not _is_workspace_owner(workspace_id, user_id):
+    if not _is_ws_owner(workspace_id, user_id):
         raise common.ForbiddenError('Only workspace owners can add members')
     
     # Validate required fields
@@ -1358,7 +1358,7 @@ def handle_update_member(
         raise common.ValidationError('Workspace ID and Member ID are required')
     
     # Verify user is owner
-    if not _is_workspace_owner(workspace_id, user_id):
+    if not _is_ws_owner(workspace_id, user_id):
         raise common.ForbiddenError('Only workspace owners can update member roles')
     
     # Validate role
@@ -1380,7 +1380,7 @@ def handle_update_member(
         # Prevent demoting the last owner
         if member['ws_role'] == 'ws_owner' and ws_role != 'ws_owner':
             owner_count = common.rpc(
-                function_name='count_workspace_owners',
+                function_name='count_ws_owners',
                 params={'p_ws_id': workspace_id}
             )
             if owner_count <= 1:
@@ -1445,7 +1445,7 @@ def handle_remove_member(
             raise common.NotFoundError('Member not found')
         
         # Check authorization: owner or self
-        is_owner = _is_workspace_owner(workspace_id, user_id)
+        is_owner = _is_ws_owner(workspace_id, user_id)
         is_self = member['user_id'] == user_id
         
         if not is_owner and not is_self:
@@ -1454,7 +1454,7 @@ def handle_remove_member(
         # Prevent removing the last owner
         if member['ws_role'] == 'ws_owner':
             owner_count = common.rpc(
-                function_name='count_workspace_owners',
+                function_name='count_ws_owners',
                 params={'p_ws_id': workspace_id}
             )
             if owner_count <= 1:
@@ -1513,7 +1513,7 @@ def handle_toggle_favorite(
     try:
         # Call RPC function (handles membership check internally)
         result = common.rpc(
-            function_name='toggle_workspace_favorite',
+            function_name='toggle_ws_favorite',
             params={
                 'p_workspace_id': workspace_id,
                 'p_user_id': user_id
@@ -1554,7 +1554,7 @@ def handle_list_favorites(
     try:
         # Use the list workspaces function with favorites_only=True
         workspaces = common.rpc(
-            function_name='get_workspaces_with_member_info',
+            function_name='get_ws_with_member_info',
             params={
                 'p_org_id': org_id,
                 'p_user_id': user_id,
@@ -1626,7 +1626,7 @@ def handle_update_config(
     """
     PUT /api/ws/config
     
-    Update workspace module configuration. Only platform_admin and platform_owner can update.
+    Update workspace module configuration. Only sys_admin and sys_owner can update.
     
     Args:
         user_id: Supabase user ID
@@ -1703,8 +1703,8 @@ def handle_admin_stats(user_info: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Platform-wide workspace statistics
     """
-    # Check if user has platform admin role
-    # Must query database for global_role (not in JWT)
+    # Check if user has sys admin role
+    # Must query database for sys_role (not in JWT)
     okta_uid = user_info['user_id']
     supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
     
