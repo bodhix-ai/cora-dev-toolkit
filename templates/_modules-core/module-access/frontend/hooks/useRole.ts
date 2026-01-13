@@ -3,7 +3,7 @@
 import { useContext } from "react";
 import { UserContext } from "../contexts/UserContext";
 import { OrgContext } from "../contexts/OrgContext";
-import { hasOrgAdminAccess, isGlobalAdmin } from "../lib/permissions";
+import { hasOrgAdminAccess, isSysAdmin } from "../lib/permissions";
 
 /**
  * Compatibility hook for role-based access control
@@ -27,8 +27,8 @@ export function useRole() {
   const hasPermission = (requiredRole: string): boolean => {
     if (!profile || !currentOrg) return false;
 
-    // Check global admin
-    if (isGlobalAdmin(profile)) return true;
+    // Check system admin
+    if (isSysAdmin(profile)) return true;
 
     // Check org-level permissions
     if (requiredRole === "administrator") {
@@ -42,7 +42,7 @@ export function useRole() {
   return {
     role,
     hasPermission,
-    isGlobalAdmin: profile ? isGlobalAdmin(profile) : false,
+    isSysAdmin: profile ? isSysAdmin(profile) : false,
     isOrgAdmin: currentOrg ? hasOrgAdminAccess(currentOrg) : false,
   };
 }

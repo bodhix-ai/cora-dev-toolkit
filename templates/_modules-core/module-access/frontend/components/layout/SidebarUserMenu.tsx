@@ -40,7 +40,7 @@ export function SidebarUserMenu({ isExpanded }: SidebarUserMenuProps) {
   const { profile, authAdapter } = useUser();
   const { organizations, currentOrganization, switchOrganization, isLoading } =
     useOrganizationContext();
-  const { role, hasPermission, isGlobalAdmin, isOrgAdmin } = useRole();
+  const { role, hasPermission, isSysAdmin, isOrgAdmin } = useRole();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
 
@@ -296,8 +296,8 @@ export function SidebarUserMenu({ isExpanded }: SidebarUserMenuProps) {
             />
           </MenuItem>
 
-          {/* System Admin - Only for global admins */}
-          {isGlobalAdmin && (
+          {/* System Admin - Only for system admins */}
+          {isSysAdmin && (
             <MenuItem
               onClick={() => {
                 handleMenuClose();

@@ -63,7 +63,7 @@ export {
   isOrgOwner,
   isOrgAdmin,
   hasOrgAdminAccess,
-  isGlobalAdmin,
+  isSysAdmin,
   getRoleDisplayName,
 } from "./lib/permissions";
 
