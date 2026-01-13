@@ -156,7 +156,7 @@ def handle_list_members(user_id: str, org_id: str, event: Dict[str, Any]) -> Dic
         # Optional filters        
         if 'role' in query_params:
             role = common.validate_org_role(query_params['role'])
-            filters['role'] = role
+            filters['org_role'] = role
         
         # Pagination
         limit = common.validate_integer(
@@ -240,7 +240,7 @@ def handle_add_member(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
         if not user_membership:
             raise common.ForbiddenError('You do not have access to this organization')
         
-        if user_membership['role'] != 'org_owner':
+        if user_membership['org_role'] != 'org_owner':
             raise common.ForbiddenError('Only org owners can manage membership')
         
         # Find user by email
@@ -272,7 +272,7 @@ def handle_add_member(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
             data={
                 'org_id': org_id,
                 'user_id': target_user_id,
-                'role': role,
+                'org_role': role,
                 'added_by': supabase_user_id
             }
         )
@@ -330,7 +330,7 @@ def handle_update_member(
         if not user_membership:
             raise common.ForbiddenError('You do not have access to this organization')
         
-        if user_membership['role'] != 'org_owner':
+        if user_membership['org_role'] != 'org_owner':
             raise common.ForbiddenError('Only org owners can manage membership')
         
         # Get target member
@@ -349,7 +349,7 @@ def handle_update_member(
                 table='org_members',
                 filters={
                     'org_id': org_id,
-                    'role': 'org_owner'
+                    'org_role': 'org_owner'
                 }
             )
             
@@ -362,7 +362,7 @@ def handle_update_member(
         updated_member = common.update_one(
             table='org_members',
             filters={'id': member_id},
-            data={'role': new_role}
+            data={'org_role': new_role}
         )
         
         # Get profile info
@@ -411,7 +411,7 @@ def handle_remove_member(user_id: str, org_id: str, member_id: str) -> Dict[str,
         if not user_membership:
             raise common.ForbiddenError('You do not have access to this organization')
         
-        if user_membership['role'] != 'org_owner':
+        if user_membership['org_role'] != 'org_owner':
             raise common.ForbiddenError('Only org owners can manage membership')
         
         # Get target member
@@ -424,12 +424,12 @@ def handle_remove_member(user_id: str, org_id: str, member_id: str) -> Dict[str,
             raise common.NotFoundError('Member not found')
         
         # Prevent removing last owner
-        if target_member['role'] == 'org_owner':
+        if target_member['org_role'] == 'org_owner':
             owners = common.find_many(
                 table='org_members',
                 filters={
                     'org_id': org_id,
-                    'role': 'org_owner'
+                    'org_role': 'org_owner'
                 }
             )
             

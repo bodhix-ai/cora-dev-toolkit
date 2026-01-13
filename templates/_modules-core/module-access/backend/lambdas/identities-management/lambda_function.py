@@ -104,7 +104,7 @@ def handle_list_users(event: Dict[str, Any]) -> Dict[str, Any]:
         # Map Okta UID to Supabase user_id using standard org_common function
         supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
         
-        # Get user profile to check global_role
+        # Get user profile to check sys_role
         profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
         if not profile:
             raise common.UnauthorizedError('User profile not found')
@@ -120,7 +120,7 @@ def handle_list_users(event: Dict[str, Any]) -> Dict[str, Any]:
     try:
         # Query all user profiles
         response = client.table('user_profiles').select(
-            'user_id, email, full_name, global_role, created_at'
+            'user_id, email, full_name, sys_role, created_at'
         ).execute()
         
         users = response.data if response.data else []

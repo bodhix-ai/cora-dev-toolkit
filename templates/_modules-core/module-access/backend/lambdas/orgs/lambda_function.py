@@ -161,7 +161,7 @@ def handle_list_orgs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             memberships = common.find_many(
                 table='org_members',
                 filters={'user_id': user_id},
-                select='org_id, role',
+                select='org_id, org_role',
                 order='created_at.desc',
                 limit=limit,
                 offset=offset
@@ -184,7 +184,7 @@ def handle_list_orgs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                 
                 if org:
                     org_data = common.format_record(org)
-                    org_data['user_role'] = membership['role']
+                    org_data['user_role'] = membership['org_role']
                     result.append(org_data)
             
             return common.success_response(result)
@@ -248,7 +248,7 @@ def handle_get_org(user_id: str, org_id: str) -> Dict[str, Any]:
             'updatedAt': org.get('updated_at'),
             'createdBy': org.get('created_by'),
             'updatedBy': org.get('updated_by'),
-            'userRole': membership['role'],
+            'userRole': membership['org_role'],
             'memberCount': member_count
         }
         
@@ -374,7 +374,7 @@ def handle_create_org(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             data={
                 'org_id': org['id'],
                 'user_id': supabase_user_id,  # Use Supabase UUID from auth.users
-                'role': 'org_owner',
+                'org_role': 'org_owner',
                 'added_by': supabase_user_id
             }
         )
@@ -444,7 +444,7 @@ def handle_update_org(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
             if not membership:
                 raise common.ForbiddenError('You do not have access to this organization')
             
-            if membership['role'] not in ['org_admin', 'org_owner']:
+            if membership['org_role'] not in ['org_admin', 'org_owner']:
                 raise common.ForbiddenError('Only org admins and owners can update organizations')
         
         # Build update data
@@ -576,7 +576,7 @@ def handle_update_org(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
         
         result = common.format_record(updated_org)
         if membership:
-            result['user_role'] = membership['role']
+            result['user_role'] = membership['org_role']
         
         return common.success_response(result)
         
@@ -608,7 +608,7 @@ def handle_delete_org(user_id: str, org_id: str) -> Dict[str, Any]:
         if not membership:
             raise common.ForbiddenError('You do not have access to this organization')
         
-        if membership['role'] != 'org_owner':
+        if membership['org_role'] != 'org_owner':
             raise common.ForbiddenError('Only org owners can delete organizations')
         
         # Delete organization (cascade will handle org_members)

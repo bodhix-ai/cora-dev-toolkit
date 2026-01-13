@@ -213,7 +213,7 @@ def handle_get_profile(user_id: str, user_info: Dict[str, Any], event: Dict[str,
         orgs = common.find_many(
             table='org_members',
             filters={'user_id': profile['user_id']},
-            select='org_id, role'
+            select='org_id, org_role'
         )
         
         # Format response
@@ -237,8 +237,8 @@ def handle_get_profile(user_id: str, user_info: Dict[str, Any], event: Dict[str,
                     'orgId': org_membership['org_id'],
                     'orgName': org_details.get('name', 'Unknown'),
                     'orgSlug': org_details.get('slug', ''),
-                    'role': org_membership['role'],
-                    'isOwner': org_membership['role'] == 'org_owner',
+                    'role': org_membership['org_role'],
+                    'isOwner': org_membership['org_role'] == 'org_owner',
                     'joinedAt': org_membership.get('joined_at', org_membership.get('created_at')),
                     'logoUrl': org_details.get('logo_url'),
                     'appName': org_details.get('app_name'),
@@ -344,7 +344,7 @@ def provision_with_invite(user_info: Dict[str, Any], invite: Dict[str, Any]) -> 
         data={
             'org_id': invite['org_id'],
             'user_id': profile['user_id'],
-            'role': invite['role'],
+            'org_role': invite['role'],
             'added_by': invite['invited_by']
         }
     )
@@ -402,7 +402,7 @@ def provision_with_domain(user_info: Dict[str, Any], domain_match: Dict[str, Any
         data={
             'org_id': domain_match['org_id'],
             'user_id': profile['user_id'],
-            'role': 'org_user',
+            'org_role': 'org_user',
             'added_by': None  # Auto-provisioned, no human added them
         }
     )
@@ -467,7 +467,7 @@ def create_sys_owner_with_org(user_info: Dict[str, Any]) -> Dict[str, Any]:
         data={
             'org_id': org['id'],
             'user_id': profile['user_id'],
-            'role': 'org_owner',
+            'org_role': 'org_owner',
             'added_by': profile['user_id']
         }
     )

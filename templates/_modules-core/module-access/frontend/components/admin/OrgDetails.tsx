@@ -57,7 +57,7 @@ interface Organization {
 interface OrgDetailsProps {
   orgId: string;
   authAdapter: CoraAuthAdapter;
-  isPlatformAdmin: boolean;
+  isSysAdmin: boolean;
 }
 
 /**
@@ -70,7 +70,7 @@ interface OrgDetailsProps {
  * - Invites: Pending invitations
  * - AI Config: AI configuration (platform admins only)
  */
-export function OrgDetails({ orgId, authAdapter, isPlatformAdmin }: OrgDetailsProps) {
+export function OrgDetails({ orgId, authAdapter, isSysAdmin }: OrgDetailsProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(0);
   const [organization, setOrganization] = useState<Organization | null>(null);
@@ -171,7 +171,7 @@ export function OrgDetails({ orgId, authAdapter, isPlatformAdmin }: OrgDetailsPr
           <Tab label="Domains" id="org-tab-1" aria-controls="org-tabpanel-1" />
           <Tab label="Members" id="org-tab-2" aria-controls="org-tabpanel-2" />
           <Tab label="Invites" id="org-tab-3" aria-controls="org-tabpanel-3" />
-          {isPlatformAdmin && (
+          {isSysAdmin && (
             <Tab label="AI Config" id="org-tab-4" aria-controls="org-tabpanel-4" />
           )}
         </Tabs>
@@ -198,7 +198,7 @@ export function OrgDetails({ orgId, authAdapter, isPlatformAdmin }: OrgDetailsPr
         <OrgInvitesTab orgId={orgId} authAdapter={authAdapter} />
       </TabPanel>
 
-      {isPlatformAdmin && (
+      {isSysAdmin && (
         <TabPanel value={activeTab} index={4}>
           <OrgAIConfigTab orgId={orgId} authAdapter={authAdapter} />
         </TabPanel>
