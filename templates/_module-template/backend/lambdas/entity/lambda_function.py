@@ -593,7 +593,7 @@ def handle_bulk_create(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         return common.created_response({
             'message': 'Entities created successfully',
             'count': len(created_entities),
-            'total_requested': total_count,
+            'totalRequested': total_count,
             'entities': [common.format_record(e) for e in created_entities]
         })
         
