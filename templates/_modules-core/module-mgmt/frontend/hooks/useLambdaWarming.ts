@@ -102,12 +102,12 @@ export function useLambdaWarming(
 
       if (response) {
         setRawConfig(response);
-        // Parse config_value - it's stored as a JSON string in the database
+        // Parse configValue - it's stored as a JSON string in the database
         let warmingConfig: LambdaWarmingConfig;
-        if (typeof response.config_value === 'string') {
-          warmingConfig = JSON.parse(response.config_value) as LambdaWarmingConfig;
+        if (typeof response.configValue === 'string') {
+          warmingConfig = JSON.parse(response.configValue) as LambdaWarmingConfig;
         } else {
-          warmingConfig = response.config_value as unknown as LambdaWarmingConfig;
+          warmingConfig = response.configValue as unknown as LambdaWarmingConfig;
         }
         setConfig(warmingConfig);
       } else {
@@ -147,12 +147,12 @@ export function useLambdaWarming(
 
         if (response) {
           setRawConfig(response);
-          // Parse config_value - it's stored as a JSON string in the database
+          // Parse configValue - it's stored as a JSON string in the database
           let warmingConfig: LambdaWarmingConfig;
-          if (typeof response.config_value === 'string') {
-            warmingConfig = JSON.parse(response.config_value) as LambdaWarmingConfig;
+          if (typeof response.configValue === 'string') {
+            warmingConfig = JSON.parse(response.configValue) as LambdaWarmingConfig;
           } else {
-            warmingConfig = response.config_value as unknown as LambdaWarmingConfig;
+            warmingConfig = response.configValue as unknown as LambdaWarmingConfig;
           }
           setConfig(warmingConfig);
           return true;

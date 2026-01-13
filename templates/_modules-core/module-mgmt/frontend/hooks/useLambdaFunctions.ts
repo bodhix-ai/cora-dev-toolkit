@@ -41,7 +41,7 @@ interface UseLambdaFunctionsReturn {
  *       {functions.map(fn => (
  *         <TableRow key={fn.arn}>
  *           <TableCell>{fn.name}</TableCell>
- *           <TableCell>{fn.memory_mb} MB</TableCell>
+ *           <TableCell>{fn.memoryMb} MB</TableCell>
  *         </TableRow>
  *       ))}
  *     </Table>

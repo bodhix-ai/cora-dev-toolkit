@@ -19,7 +19,7 @@ export interface CostEstimate {
     logs: number;
   };
   invocations: number;
-  hours_per_week: number;
+  hoursPerWeek: number;
 }
 
 /**
@@ -97,7 +97,7 @@ export function calculateMonthlyCost(
       logs: parseFloat(cloudWatchCost.toFixed(2)),
     },
     invocations: Math.round(monthlyInvocations),
-    hours_per_week: parseFloat(hoursPerWeek.toFixed(1)),
+    hoursPerWeek: parseFloat(hoursPerWeek.toFixed(1)),
   };
 }
 
@@ -214,7 +214,7 @@ export function getCostBreakdownDescription(estimate: CostEstimate): string {
 Monthly Breakdown:
 • Lambda Executions: ${formatCost(estimate.breakdown.lambda)}
   - ${formatInvocations(estimate.invocations)} invocations
-  - Running ${estimate.hours_per_week} hours/week
+  - Running ${estimate.hoursPerWeek} hours/week
 • CloudWatch Logs: ${formatCost(estimate.breakdown.logs)}
 • EventBridge: ${formatCost(estimate.breakdown.eventbridge)} (free tier)
 

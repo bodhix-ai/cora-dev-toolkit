@@ -77,8 +77,8 @@ export class LambdaMgmtApiClient {
         return null;
       }
 
-      // config_value is JSONB, should already be parsed
-      const warmingConfig = config.config_value as unknown as LambdaWarmingConfig;
+      // configValue is JSONB, should already be parsed
+      const warmingConfig = config.configValue as unknown as LambdaWarmingConfig;
       return warmingConfig;
     } catch (error) {
       console.error("Failed to get warming config:", error);
@@ -103,7 +103,7 @@ export class LambdaMgmtApiClient {
     try {
       const response = await this.client.put<{ data: LambdaConfig }>(
         `/platform/lambda-config/${configKey}`,
-        { config_value: value }
+        { configValue: value }
       );
       // CORA API returns { success: true, data: {...} } - unwrap it
       return response?.data || null;

@@ -21,14 +21,14 @@ export type ConfigValue =
  */
 export interface LambdaConfig {
   id: string;
-  config_key: string;
-  config_value: ConfigValue;
+  configKey: string;
+  configValue: ConfigValue;
   description?: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  created_by?: string;
-  updated_by?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 /**
@@ -37,9 +37,9 @@ export interface LambdaConfig {
 export interface LambdaWarmingConfig {
   enabled: boolean;
   timezone: string;
-  interval_minutes: number;
-  weekly_schedule: WeeklySchedule;
-  lambda_functions: string[];
+  intervalMinutes: number;
+  weeklySchedule: WeeklySchedule;
+  lambdaFunctions: string[];
   preset?: string; // Optional preset name (e.g., "business_hours", "24/7", "custom", "off")
 }
 
@@ -78,10 +78,10 @@ export interface TimeRange {
 export interface LambdaFunctionInfo {
   name: string;
   arn: string;
-  memory_mb: number;
-  timeout_seconds: number;
+  memoryMb: number;
+  timeoutSeconds: number;
   runtime: string;
-  last_modified: string;
+  lastModified: string;
   description?: string;
   handler: string;
   version?: string;
@@ -93,7 +93,7 @@ export interface LambdaFunctionInfo {
 export interface EventBridgeRule {
   name: string;
   state: "ENABLED" | "DISABLED";
-  schedule_expression: string;
+  scheduleExpression: string;
   description?: string;
   targets: EventBridgeTarget[];
 }
@@ -121,8 +121,8 @@ export interface EventBridgeSyncResult {
  * Sync error details
  */
 export interface SyncError {
-  rule_name: string;
-  error_message: string;
+  ruleName: string;
+  errorMessage: string;
 }
 
 /**
@@ -138,10 +138,10 @@ export interface ApiResponse<T> {
  * Lambda warming status
  */
 export interface WarmingStatus {
-  is_warming: boolean;
-  last_warmed_at?: string;
-  next_warm_at?: string;
-  active_rules_count: number;
+  isWarming: boolean;
+  lastWarmedAt?: string;
+  nextWarmAt?: string;
+  activeRulesCount: number;
 }
 
 /**
@@ -224,8 +224,8 @@ export type Timezone = (typeof AVAILABLE_TIMEZONES)[number];
 export const DEFAULT_WARMING_CONFIG: LambdaWarmingConfig = {
   enabled: false,
   timezone: "America/New_York",
-  interval_minutes: 5,
-  weekly_schedule: {
+  intervalMinutes: 5,
+  weeklySchedule: {
     monday: { enabled: true, ranges: [{ start: "09:00", end: "17:00" }] },
     tuesday: { enabled: true, ranges: [{ start: "09:00", end: "17:00" }] },
     wednesday: { enabled: true, ranges: [{ start: "09:00", end: "17:00" }] },
@@ -234,5 +234,5 @@ export const DEFAULT_WARMING_CONFIG: LambdaWarmingConfig = {
     saturday: { enabled: false, ranges: [] },
     sunday: { enabled: false, ranges: [] },
   },
-  lambda_functions: [],
+  lambdaFunctions: [],
 };

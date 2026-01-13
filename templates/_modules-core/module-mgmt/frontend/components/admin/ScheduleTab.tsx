@@ -55,13 +55,13 @@ export function ScheduleTab(): React.ReactElement {
 
   // Local state for schedule editing
   const [localSchedule, setLocalSchedule] = useState<WeeklySchedule>(
-    DEFAULT_WARMING_CONFIG.weekly_schedule
+    DEFAULT_WARMING_CONFIG.weeklySchedule
   );
   const [localTimezone, setLocalTimezone] = useState<string>(
     DEFAULT_WARMING_CONFIG.timezone
   );
   const [localIntervalMinutes, setLocalIntervalMinutes] = useState<number>(
-    DEFAULT_WARMING_CONFIG.interval_minutes
+    DEFAULT_WARMING_CONFIG.intervalMinutes
   );
 
   // Modal state for day editing
@@ -72,11 +72,11 @@ export function ScheduleTab(): React.ReactElement {
   useEffect(() => {
     if (config) {
       setLocalSchedule(
-        config.weekly_schedule || DEFAULT_WARMING_CONFIG.weekly_schedule
+        config.weeklySchedule || DEFAULT_WARMING_CONFIG.weeklySchedule
       );
       setLocalTimezone(config.timezone || DEFAULT_WARMING_CONFIG.timezone);
       setLocalIntervalMinutes(
-        config.interval_minutes || DEFAULT_WARMING_CONFIG.interval_minutes
+        config.intervalMinutes || DEFAULT_WARMING_CONFIG.intervalMinutes
       );
     }
   }, [config]);
@@ -90,11 +90,11 @@ export function ScheduleTab(): React.ReactElement {
     return (
       JSON.stringify(localSchedule) !==
         JSON.stringify(
-          config.weekly_schedule || DEFAULT_WARMING_CONFIG.weekly_schedule
+          config.weeklySchedule || DEFAULT_WARMING_CONFIG.weeklySchedule
         ) ||
       localTimezone !== (config.timezone || DEFAULT_WARMING_CONFIG.timezone) ||
       localIntervalMinutes !==
-        (config.interval_minutes || DEFAULT_WARMING_CONFIG.interval_minutes)
+        (config.intervalMinutes || DEFAULT_WARMING_CONFIG.intervalMinutes)
     );
   }, [config, localSchedule, localTimezone, localIntervalMinutes]);
 
@@ -144,9 +144,9 @@ export function ScheduleTab(): React.ReactElement {
 
     const newConfig: LambdaWarmingConfig = {
       ...config,
-      weekly_schedule: localSchedule,
+      weeklySchedule: localSchedule,
       timezone: localTimezone,
-      interval_minutes: localIntervalMinutes,
+      intervalMinutes: localIntervalMinutes,
       preset: currentPreset,
     };
 
@@ -260,15 +260,15 @@ export function ScheduleTab(): React.ReactElement {
                 onClick={() => {
                   if (config) {
                     setLocalSchedule(
-                      config.weekly_schedule ||
-                        DEFAULT_WARMING_CONFIG.weekly_schedule
+                      config.weeklySchedule ||
+                        DEFAULT_WARMING_CONFIG.weeklySchedule
                     );
                     setLocalTimezone(
                       config.timezone || DEFAULT_WARMING_CONFIG.timezone
                     );
                     setLocalIntervalMinutes(
-                      config.interval_minutes ||
-                        DEFAULT_WARMING_CONFIG.interval_minutes
+                      config.intervalMinutes ||
+                        DEFAULT_WARMING_CONFIG.intervalMinutes
                     );
                   }
                 }}
