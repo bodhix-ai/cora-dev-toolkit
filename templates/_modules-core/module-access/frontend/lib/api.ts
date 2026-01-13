@@ -15,14 +15,14 @@ import {
 interface ProfileApiData {
   id: string;
   email: string;
-  full_name?: string | null;
-  first_name?: string | null;
-  last_name?: string | null;
+  fullName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
   phone?: string | null;
-  sys_role?: "sys_user" | "sys_admin" | "sys_owner";
-  current_org_id?: string | null;
-  created_at: string;
-  updated_at: string;
+  sysRole?: "sys_user" | "sys_admin" | "sys_owner";
+  currentOrgId?: string | null;
+  createdAt: string;
+  updatedAt: string;
   organizations?: UserOrganization[];
 }
 
@@ -43,14 +43,14 @@ function transformProfileResponse(apiData: ProfileApiData): Profile {
   return {
     id: apiData.id,
     email: apiData.email,
-    name: apiData.full_name || null,
-    firstName: apiData.first_name || null,
-    lastName: apiData.last_name || null,
+    name: apiData.fullName || null,
+    firstName: apiData.firstName || null,
+    lastName: apiData.lastName || null,
     phone: apiData.phone || null,
-    sysRole: apiData.sys_role || "sys_user",
-    currentOrgId: apiData.current_org_id || null,
-    createdAt: apiData.created_at,
-    updatedAt: apiData.updated_at,
+    sysRole: apiData.sysRole || "sys_user",
+    currentOrgId: apiData.currentOrgId || null,
+    createdAt: apiData.createdAt,
+    updatedAt: apiData.updatedAt,
     organizations: apiData.organizations || [],
   };
 }

@@ -35,12 +35,12 @@ interface Invitation {
   email: string;
   role: "org_user" | "org_admin" | "org_owner";
   status: "pending" | "accepted" | "expired";
-  invited_by?: {
+  invitedBy?: {
     name?: string;
     email: string;
   };
-  created_at: string;
-  expires_at?: string;
+  createdAt: string;
+  expiresAt?: string;
 }
 
 interface OrgInvitesTabProps {
@@ -228,21 +228,21 @@ export function OrgInvitesTab({ orgId, authAdapter }: OrgInvitesTabProps) {
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">
-                      {invite.invited_by?.name || invite.invited_by?.email || "Unknown"}
+                      {invite.invitedBy?.name || invite.invitedBy?.email || "Unknown"}
                     </Typography>
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                       <Schedule fontSize="small" color="action" />
                       <Typography variant="body2">
-                        {new Date(invite.created_at).toLocaleDateString()}
+                        {new Date(invite.createdAt).toLocaleDateString()}
                       </Typography>
                     </Box>
                   </TableCell>
                   <TableCell>
-                    {invite.expires_at ? (
+                    {invite.expiresAt ? (
                       <Typography variant="body2">
-                        {new Date(invite.expires_at).toLocaleDateString()}
+                        {new Date(invite.expiresAt).toLocaleDateString()}
                       </Typography>
                     ) : (
                       <Typography variant="body2" color="text.secondary">

@@ -18,11 +18,11 @@ import { CoraAuthAdapter, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}
  * Org AI Configuration type
  */
 interface OrgAIConfig {
-  org_id: string;
-  custom_system_prompt?: string;
-  default_chat_model?: string;
-  default_embedding_model?: string;
-  updated_at?: string;
+  orgId: string;
+  customSystemPrompt?: string;
+  defaultChatModel?: string;
+  defaultEmbeddingModel?: string;
+  updatedAt?: string;
 }
 
 interface OrgAIConfigTabProps {
@@ -44,9 +44,9 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    custom_system_prompt: "",
-    default_chat_model: "",
-    default_embedding_model: "",
+    customSystemPrompt: "",
+    defaultChatModel: "",
+    defaultEmbeddingModel: "",
   });
 
   useEffect(() => {
@@ -68,9 +68,9 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
         const data = response.data || {};
         setConfig(data);
         setFormData({
-          custom_system_prompt: data.custom_system_prompt || "",
-          default_chat_model: data.default_chat_model || "",
-          default_embedding_model: data.default_embedding_model || "",
+          customSystemPrompt: data.customSystemPrompt || "",
+          defaultChatModel: data.defaultChatModel || "",
+          defaultEmbeddingModel: data.defaultEmbeddingModel || "",
         });
       } else {
         setError("Failed to load AI configuration");
@@ -97,9 +97,9 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
       }
       const apiClient = createCoraAuthenticatedClient(token);
       const response = await apiClient.put<{ success: boolean; data: OrgAIConfig }>(`/orgs/${orgId}/ai/config`, {
-        custom_system_prompt: formData.custom_system_prompt || null,
-        default_chat_model: formData.default_chat_model || null,
-        default_embedding_model: formData.default_embedding_model || null,
+        customSystemPrompt: formData.customSystemPrompt || null,
+        defaultChatModel: formData.defaultChatModel || null,
+        defaultEmbeddingModel: formData.defaultEmbeddingModel || null,
       });
 
       if (response.success) {
@@ -160,9 +160,9 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
           <TextField
             fullWidth
             label="Custom System Prompt"
-            value={formData.custom_system_prompt}
+            value={formData.customSystemPrompt}
             onChange={(e) =>
-              setFormData({ ...formData, custom_system_prompt: e.target.value })
+              setFormData({ ...formData, customSystemPrompt: e.target.value })
             }
             placeholder="Enter organization-specific system prompt..."
             multiline
@@ -173,9 +173,9 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
           <TextField
             fullWidth
             label="Default Chat Model"
-            value={formData.default_chat_model}
+            value={formData.defaultChatModel}
             onChange={(e) =>
-              setFormData({ ...formData, default_chat_model: e.target.value })
+              setFormData({ ...formData, defaultChatModel: e.target.value })
             }
             placeholder="e.g., gpt-4, claude-3-opus"
             helperText="Override the system default chat model for this organization"
@@ -184,11 +184,11 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
           <TextField
             fullWidth
             label="Default Embedding Model"
-            value={formData.default_embedding_model}
+            value={formData.defaultEmbeddingModel}
             onChange={(e) =>
               setFormData({
                 ...formData,
-                default_embedding_model: e.target.value,
+                defaultEmbeddingModel: e.target.value,
               })
             }
             placeholder="e.g., text-embedding-ada-002"
@@ -200,9 +200,9 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
               variant="outlined"
               onClick={() => {
                 setFormData({
-                  custom_system_prompt: config?.custom_system_prompt || "",
-                  default_chat_model: config?.default_chat_model || "",
-                  default_embedding_model: config?.default_embedding_model || "",
+                  customSystemPrompt: config?.customSystemPrompt || "",
+                  defaultChatModel: config?.defaultChatModel || "",
+                  defaultEmbeddingModel: config?.defaultEmbeddingModel || "",
                 });
                 setError(null);
                 setSuccessMessage(null);
@@ -223,10 +223,10 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
         </Box>
       </Paper>
 
-      {config?.updated_at && (
+      {config?.updatedAt && (
         <Box sx={{ mt: 2 }}>
           <Typography variant="body2" color="text.secondary">
-            Last updated: {new Date(config.updated_at).toLocaleString()}
+            Last updated: {new Date(config.updatedAt).toLocaleString()}
           </Typography>
         </Box>
       )}

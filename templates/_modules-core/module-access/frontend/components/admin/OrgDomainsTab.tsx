@@ -43,10 +43,10 @@ import { CoraAuthAdapter, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}
 interface EmailDomain {
   id: string;
   domain: string;
-  is_verified: boolean;
-  default_role: "org_user" | "org_admin" | "org_owner";
-  auto_provision: boolean;
-  created_at: string;
+  isVerified: boolean;
+  defaultRole: "org_user" | "org_admin" | "org_owner";
+  autoProvision: boolean;
+  createdAt: string;
 }
 
 interface OrgDomainsTabProps {
@@ -189,7 +189,7 @@ export function OrgDomainsTab({ orgId, authAdapter }: OrgDomainsTabProps) {
                     </Box>
                   </TableCell>
                   <TableCell>
-                    {domain.is_verified ? (
+                    {domain.isVerified ? (
                       <Chip
                         icon={<CheckCircle />}
                         label="Verified"
@@ -207,22 +207,22 @@ export function OrgDomainsTab({ orgId, authAdapter }: OrgDomainsTabProps) {
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={domain.default_role?.replace("org_", "") || "user"}
+                      label={domain.defaultRole?.replace("org_", "") || "user"}
                       size="small"
                       variant="outlined"
                     />
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={domain.auto_provision ? "Enabled" : "Disabled"}
+                      label={domain.autoProvision ? "Enabled" : "Disabled"}
                       size="small"
-                      color={domain.auto_provision ? "success" : "default"}
+                      color={domain.autoProvision ? "success" : "default"}
                       variant="outlined"
                     />
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">
-                      {new Date(domain.created_at).toLocaleDateString()}
+                      {new Date(domain.createdAt).toLocaleDateString()}
                     </Typography>
                   </TableCell>
                   <TableCell align="right">
@@ -272,8 +272,8 @@ function AddDomainDialog({
 }) {
   const [formData, setFormData] = useState({
     domain: "",
-    default_role: "org_user" as "org_user" | "org_admin" | "org_owner",
-    auto_provision: true,
+    defaultRole: "org_user" as "org_user" | "org_admin" | "org_owner",
+    autoProvision: true,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -338,11 +338,11 @@ function AddDomainDialog({
           <FormControl fullWidth>
             <InputLabel>Default Role</InputLabel>
             <Select
-              value={formData.default_role}
+              value={formData.defaultRole}
               onChange={(e) =>
                 setFormData({
                   ...formData,
-                  default_role: e.target.value as any,
+                  defaultRole: e.target.value as any,
                 })
               }
               label="Default Role"
@@ -360,11 +360,11 @@ function AddDomainDialog({
           <FormControl fullWidth>
             <InputLabel>Auto-Provision</InputLabel>
             <Select
-              value={formData.auto_provision ? "enabled" : "disabled"}
+              value={formData.autoProvision ? "enabled" : "disabled"}
               onChange={(e) =>
                 setFormData({
                   ...formData,
-                  auto_provision: e.target.value === "enabled",
+                  autoProvision: e.target.value === "enabled",
                 })
               }
               label="Auto-Provision"

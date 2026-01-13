@@ -32,14 +32,14 @@ import { InviteMemberDialog } from "../org/InviteMemberDialog";
  */
 interface OrgMember {
   id: string;
-  user_id: string;
-  org_id: string;
+  userId: string;
+  orgId: string;
   role: "org_user" | "org_admin" | "org_owner";
   user?: {
     email: string;
     name?: string;
   };
-  created_at: string;
+  createdAt: string;
 }
 
 interface OrgMembersTabProps {
@@ -228,7 +228,7 @@ export function OrgMembersTab({ orgId, authAdapter }: OrgMembersTabProps) {
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">
-                      {new Date(member.created_at).toLocaleDateString()}
+                      {new Date(member.createdAt).toLocaleDateString()}
                     </Typography>
                   </TableCell>
                   <TableCell align="right">

@@ -32,14 +32,14 @@ interface User {
   id: string;
   email: string;
   name?: string;
-  sys_role?: string;
-  org_memberships?: {
-    org_id: string;
-    org_name: string;
-    org_role: string;
+  sysRole?: string;
+  orgMemberships?: {
+    orgId: string;
+    orgName: string;
+    orgRole: string;
   }[];
-  created_at: string;
-  last_sign_in_at?: string;
+  createdAt: string;
+  lastSignInAt?: string;
 }
 
 interface UsersTabProps {
@@ -107,7 +107,7 @@ export function UsersTab({ authAdapter }: UsersTabProps) {
 
     // Filter by role
     if (roleFilter !== "all") {
-      filtered = filtered.filter((user) => user.sys_role === roleFilter);
+      filtered = filtered.filter((user) => user.sysRole === roleFilter);
     }
 
     setFilteredUsers(filtered);
@@ -214,11 +214,11 @@ export function UsersTab({ authAdapter }: UsersTabProps) {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    {user.sys_role ? (
+                    {user.sysRole ? (
                       <Chip
-                        label={user.sys_role.replace("_", " ")}
+                        label={user.sysRole.replace("_", " ")}
                         size="small"
-                        color={getRoleColor(user.sys_role)}
+                        color={getRoleColor(user.sysRole)}
                       />
                     ) : (
                       <Typography variant="body2" color="text.secondary">
@@ -227,15 +227,15 @@ export function UsersTab({ authAdapter }: UsersTabProps) {
                     )}
                   </TableCell>
                   <TableCell>
-                    {user.org_memberships && user.org_memberships.length > 0 ? (
+                    {user.orgMemberships && user.orgMemberships.length > 0 ? (
                       <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                        {user.org_memberships.map((membership, idx) => (
+                        {user.orgMemberships.map((membership, idx) => (
                           <Box key={idx} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                             <Typography variant="body2">
-                              {membership.org_name}
+                              {membership.orgName}
                             </Typography>
                             <Chip
-                              label={membership.org_role.replace("org_", "")}
+                              label={membership.orgRole.replace("org_", "")}
                               size="small"
                               variant="outlined"
                             />
@@ -249,9 +249,9 @@ export function UsersTab({ authAdapter }: UsersTabProps) {
                     )}
                   </TableCell>
                   <TableCell>
-                    {user.last_sign_in_at ? (
+                    {user.lastSignInAt ? (
                       <Typography variant="body2">
-                        {new Date(user.last_sign_in_at).toLocaleDateString()}
+                        {new Date(user.lastSignInAt).toLocaleDateString()}
                       </Typography>
                     ) : (
                       <Typography variant="body2" color="text.secondary">
@@ -261,7 +261,7 @@ export function UsersTab({ authAdapter }: UsersTabProps) {
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">
-                      {new Date(user.created_at).toLocaleDateString()}
+                      {new Date(user.createdAt).toLocaleDateString()}
                     </Typography>
                   </TableCell>
                 </TableRow>

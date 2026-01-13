@@ -48,10 +48,10 @@ interface Organization {
   name: string;
   slug: string;
   description?: string;
-  allowed_domain?: string;
-  domain_default_role?: string;
-  created_at: string;
-  updated_at: string;
+  allowedDomain?: string;
+  domain_defaultRole?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface OrgDetailsProps {
