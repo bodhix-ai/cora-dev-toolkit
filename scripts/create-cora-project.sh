@@ -1465,11 +1465,11 @@ consolidate_database_schemas() {
     return
   fi
   
-  # Find all schema files from modules (simpler approach)
+  # Find all schema files from modules (exclude archive directories)
   local schema_files=()
   while IFS= read -r schema_file; do
     [[ -n "$schema_file" ]] && schema_files+=("$schema_file")
-  done < <(find "${stack_dir}/packages" -path "*/db/schema/*.sql" -type f 2>/dev/null | sort)
+  done < <(find "${stack_dir}/packages" -path "*/db/schema/*.sql" -not -path "*/db/schema/archive/*" -type f 2>/dev/null | sort)
   
   if [[ ${#schema_files[@]} -eq 0 ]]; then
     log_warn "No database schema files found in modules"
@@ -1564,7 +1564,7 @@ seed_idp_config() {
 -- Idempotent: Safe to run multiple times
 
 -- Configure Okta provider (schema already seeds empty record)
-UPDATE platform_idp_config
+UPDATE sys_idp_config
 SET 
   config = jsonb_build_object(
     'client_id', '${OKTA_CLIENT_ID}',
@@ -1576,7 +1576,7 @@ SET
 WHERE provider_type = 'okta';
 
 -- Deactivate other providers (trigger handles this, but explicit is safer)
-UPDATE platform_idp_config
+UPDATE sys_idp_config
 SET is_active = false, updated_at = NOW()
 WHERE provider_type != 'okta';
 SQLEOF
@@ -1598,7 +1598,7 @@ SQLEOF
 -- Idempotent: Safe to run multiple times
 
 -- Configure Clerk provider (schema already seeds empty record)
-UPDATE platform_idp_config
+UPDATE sys_idp_config
 SET 
   config = jsonb_build_object(
     'publishable_key', '${CLERK_PUBLISHABLE_KEY}',
@@ -1610,7 +1610,7 @@ SET
 WHERE provider_type = 'clerk';
 
 -- Deactivate other providers (trigger handles this, but explicit is safer)
-UPDATE platform_idp_config
+UPDATE sys_idp_config
 SET is_active = false, updated_at = NOW()
 WHERE provider_type != 'clerk';
 SQLEOF
@@ -2214,8 +2214,15 @@ if ! $DRY_RUN && $WITH_CORE_MODULES; then
 fi
 
 # Look for setup.config.{project}.yaml in stack dir and generate .env files
+# IMPORTANT: When --input is provided, use that config file directly!
 if ! $DRY_RUN; then
-  CONFIG_FILE="${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml"
+  # Prefer INPUT_CONFIG (from --input parameter) over stack dir config
+  if [[ -n "$INPUT_CONFIG" ]]; then
+    CONFIG_FILE="$INPUT_CONFIG"
+    log_info "Using --input config file for credentials: $INPUT_CONFIG"
+  else
+    CONFIG_FILE="${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml"
+  fi
   if [[ -f "$CONFIG_FILE" ]]; then
     generate_env_files "$CONFIG_FILE" "$STACK_DIR"
     merge_module_configs "$CONFIG_FILE" "$STACK_DIR"
