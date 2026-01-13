@@ -254,7 +254,7 @@ ALTER TABLE public.user_sessions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS user_auth_log_select_admin ON public.user_auth_log;
 DROP POLICY IF EXISTS user_auth_log_select_own ON public.user_auth_log;
 
--- Platform admins can view all auth events
+-- Sys admins can view all auth events
 CREATE POLICY user_auth_log_select_admin ON public.user_auth_log
     FOR SELECT
     TO authenticated
@@ -262,7 +262,7 @@ CREATE POLICY user_auth_log_select_admin ON public.user_auth_log
         EXISTS (
             SELECT 1 FROM public.user_profiles p
             WHERE p.user_id = auth.uid()
-            AND p.global_role IN ('platform_owner', 'platform_admin')
+            AND p.sys_role IN ('sys_owner', 'sys_admin')
         )
     );
 
@@ -282,7 +282,7 @@ CREATE POLICY user_auth_log_select_own ON public.user_auth_log
 DROP POLICY IF EXISTS user_sessions_select_admin ON public.user_sessions;
 DROP POLICY IF EXISTS user_sessions_select_own ON public.user_sessions;
 
--- Platform admins can view all sessions
+-- Sys admins can view all sessions
 CREATE POLICY user_sessions_select_admin ON public.user_sessions
     FOR SELECT
     TO authenticated
@@ -290,7 +290,7 @@ CREATE POLICY user_sessions_select_admin ON public.user_sessions
         EXISTS (
             SELECT 1 FROM public.user_profiles p
             WHERE p.user_id = auth.uid()
-            AND p.global_role IN ('platform_owner', 'platform_admin')
+            AND p.sys_role IN ('sys_owner', 'sys_admin')
         )
     );
 
