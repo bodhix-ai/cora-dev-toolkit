@@ -2,25 +2,42 @@
 
 ## Current Focus
 
-**Session 112: Role Standardization - COMPLETE** - ✅ **PUSHED TO GITHUB**
+**Session 116: Template Role Naming Standardization** - ✅ **COMPLETE**
 
 ## Next Task Priority
+
+**READY: Commit All Fixes to Repository**
+
+**Action Required:**
+1. ✅ **ALL violations fixed** - 53 violations across 16 files (templates + validation scripts)
+2. ✅ **Validator confirms 0 errors** - Passed on 321 files
+3. ✅ **Test project validated** - test-ws-23 recreated with SILVER certification, 0 errors
+4. **NEXT: Commit all fixes** in logical groups and create PR
+
+**Completion Summary:**
+- ✅ Templates: 40 violations fixed across 13 files
+- ✅ Validation Scripts: 13 violations fixed across 3 files
+- ✅ Total: 53 violations fixed
+- ✅ Validator: 0 violations (321 files scanned)
+- ✅ Test Project: SILVER certification (0 errors)
+
+**Secondary Issues (Warnings) - Non-blocking:**
+- Portability: 9 hardcoded AWS region warnings (non-critical)
+- API Tracer: 80 orphaned routes (may be intentional - internal APIs)
+- Accessibility: 18 placeholder-not-label warnings (non-critical)
 
 **Phase A: Foundation Standards Implementation**
 
 **Completed:**
 1. ✅ **plan_sys-role-standardization.md** - COMPLETE - All phases executed
-2. ✅ **Phase 0: Analysis & Discovery** - COMPLETE - Impact assessment created
-3. ✅ **Phase 1: Database Schema Migration** - COMPLETE - All schema files updated
-4. ✅ **Phase 2: RLS Policy Updates** - COMPLETE - All 8 RLS files updated
-5. ✅ **Phase 3: Backend Lambda Updates** - COMPLETE - All Lambda files updated
-6. ✅ **Phase 4: Frontend Updates** - COMPLETE - All TypeScript/React components updated
-7. ✅ **Phase 5: Documentation Updates** - COMPLETE
-8. ✅ **Phase 6.5: Automated Validator** - COMPLETE - `validation/role-naming-validator/`
-9. ✅ **All Changes Committed & Pushed** - 9 commits to `fix/admin-functionality-improvements`
+2. ✅ **Phase 0-5, 6.5** - COMPLETE - All implementation phases
+3. ✅ **All Changes Committed & Pushed** - 9 commits to `fix/admin-functionality-improvements`
+4. ✅ **Script Bugs Fixed** - create-cora-project.sh archive exclusion, array syntax, table names
+5. ✅ **Project Creation Validated** - test-ws-23 created successfully with clean database
+6. ✅ **Template Validation Fixes** - Session 114 completed (5 files, 26+ changes)
 
 **Ready for Execution (Next Session):**
-1. **Create test project from scratch** - New Supabase DB with sys_ prefixes (validate templates)
+1. **Fix validation issues** - See critical fixes above (2-3 hours)
 2. **standard_SYS-VS-ORG-ADMIN-PATTERNS.md** - Create admin separation standard (2-3 hours)
 3. **plan_enforce-db-naming-standards-in-dev-guide.md** - Update module dev guide (5.75 hours)
 
@@ -33,6 +50,253 @@
 - plan_navigation-and-roles-implementation.md - Status: COMPLETE (in docs/plans/completed/)
 - plan_role-column-standardization.md - SUPERSEDED (in docs/plans/completed/)
 - plan_database-role-column-standardization.md - SUPERSEDED (in docs/plans/completed/)
+
+---
+
+## Session: January 13, 2026 (2:56 PM - 3:14 PM) - Session 116
+
+### 🎯 Status: ✅ COMPLETE - TEMPLATE ROLE NAMING STANDARDIZATION
+
+**Summary:** Systematically fixed all 40 role naming violations in templates (100% complete). Fixed violations across 6 modules and 13 files. Validator now reports 0 violations. Additional fix: Changed `super_admin` → `sys_admin` in clerk.d.ts type definitions.
+
+**Files Fixed in This Session:**
+
+| Module | Files | Violations Fixed |
+|--------|-------|------------------|
+| module-access | 2 files | 6 violations |
+| module-ai | 2 files | 8 violations |
+| module-mgmt | 3 files | 6 violations |
+| **Total** | **7 files** | **20 violations** |
+
+**Detailed Changes:**
+
+**module-access (6 violations fixed):**
+- `backend/lambdas/identities-management/lambda_function.py`: Fixed `global_role` → `sys_role` (2 occurrences)
+- `frontend/components/admin/OrgDetails.tsx`: Fixed `isPlatformAdmin` → `isSysAdmin` (4 occurrences)
+
+**module-ai (8 violations fixed):**
+- `backend/lambdas/ai-config-handler/lambda_function.py`: 
+  - Renamed functions: `get_platform_rag_config_handler` → `get_sys_rag_config_handler`
+  - Renamed functions: `update_platform_rag_config_handler` → `update_sys_rag_config_handler`
+  - Updated docstring and function call references (6 total changes)
+- `frontend/adminCard.tsx`: Fixed `platform_owner` → `sys_owner`, `platform_admin` → `sys_admin` (2 occurrences)
+
+**module-mgmt (6 violations fixed):**
+- `backend/middleware/module_middleware.py`: Fixed table names `platform_module_registry` → `sys_module_registry`, `platform_module_usage` → `sys_module_usage` (3 occurrences)
+- `frontend/adminCard.tsx`: Fixed `platform_owner` → `sys_owner`, `platform_admin` → `sys_admin` (2 occurrences)
+- `frontend/types/index.ts`: Fixed comment reference `platform_lambda_config` → `sys_lambda_config` (1 occurrence)
+
+**Validator Results:**
+- **Before Session 116:** 40 violations in 13 files
+- **After Session 116:** 20 violations in 6 files
+- **Progress:** 50% complete (20 fixed, 20 remaining)
+
+**All Files Fixed (40 violations across 13 files):**
+
+**Session 116 Part 1 (20 violations):**
+1. ✅ module-access/identities-management/lambda_function.py (2 violations)
+2. ✅ module-access/OrgDetails.tsx (4 violations)
+3. ✅ module-ai/ai-config-handler/lambda_function.py (6 violations)
+4. ✅ module-ai/adminCard.tsx (2 violations)
+5. ✅ module-mgmt/module_middleware.py (3 violations)
+6. ✅ module-mgmt/adminCard.tsx (2 violations)
+7. ✅ module-mgmt/types/index.ts (1 violation)
+
+**Session 116 Part 2 (20 violations):**
+8. ✅ module-ws/workspace/lambda_function.py (11 violations)
+9. ✅ module-ws/PlatformAdminConfigPage.tsx (3 violations)
+10. ✅ module-ws/routes/admin/org/ws/page.tsx (5 violations)
+11. ✅ module-ws/routes/admin/sys/ws/page.tsx (2 violations)
+12. ✅ project-stack-template/orgs/[id]/page.tsx (1 violation)
+13. ✅ project-stack-template/types/clerk.d.ts (2 violations: `global_role` + `super_admin`)
+
+**Validator Results:**
+```
+✅ PASSED: No violations found in 256 files (templates)
+✅ PASSED: No violations found in 321 files (entire toolkit)
+```
+
+**Test Project Validation (test-ws-23 recreated):**
+- ✅ Total Errors: 0
+- ✅ Certification: SILVER (upgraded from BRONZE)
+- ⚠️ Total Warnings: 183 (non-critical)
+- ✅ Role Naming Validator: PASSED
+- ✅ Schema Validator: PASSED
+- ✅ All other validators: PASSED
+
+**Next Steps:**
+1. Commit all template and validation script fixes
+2. Consider addressing remaining warnings (accessibility, portability)
+3. Templates are ready for production use
+
+**Impact:**
+- Fixed 53 violations across 16 files (13 templates + 3 validation scripts)
+- Test projects now achieve SILVER certification with 0 errors
+- Templates ready for production use
+
+**Updated:** January 13, 2026, 3:25 PM EST
+
+---
+
+## Session: January 13, 2026 (2:38 PM - 2:54 PM) - Session 115
+
+### 🎯 Status: ✅ COMPLETE - WORKSPACE FUNCTION NAMING STANDARDIZATION
+
+**Summary:** Resolved 99 Role Naming Validator errors by renaming all workspace functions to use the `ws_` prefix for consistency with CORA naming standards. Updated 5 template files with function name changes. Validator now shows 0 workspace-related violations.
+
+**Files Updated:**
+
+| File | Changes | Category |
+|------|---------|----------|
+| 007-workspace-rpc-functions.sql | 12 function renames | SQL Functions |
+| 008-transfer-ownership-rpc.sql | 1 function rename | SQL Functions |
+| workspace/lambda_function.py | 8 function calls updated | Python Backend |
+| module-ws/module.json | 12 function registry entries | Module Config |
+| standard_LAMBDA-AUTHORIZATION.md | 2 function references | Documentation |
+
+**Function Name Changes:**
+
+| Old Name | New Name |
+|----------|----------|
+| `is_workspace_member` | `is_ws_member` |
+| `is_workspace_owner` | `is_ws_owner` |
+| `is_workspace_admin_or_owner` | `is_ws_admin_or_owner` |
+| `get_workspace_role` | `get_ws_role` |
+| `count_workspace_owners` | `count_ws_owners` |
+| `create_workspace_with_owner` | `create_ws_with_owner` |
+| `soft_delete_workspace` | `soft_delete_ws` |
+| `restore_workspace` | `restore_ws` |
+| `toggle_workspace_favorite` | `toggle_ws_favorite` |
+| `get_workspaces_with_member_info` | `get_ws_with_member_info` |
+| `cleanup_expired_workspaces` | `cleanup_expired_ws` |
+| `transfer_workspace_ownership` | `transfer_ws_ownership` |
+
+**Validator Results:**
+- **Before:** 99+ workspace function naming violations
+- **After (templates):** 0 workspace violations ✅
+- **After (templates):** 40 remaining violations in other modules (module-access, module-ai, module-mgmt)
+- **Test project (test-ws-23):** 54 violations in validation scripts and other modules
+
+**Remaining Violations (Not Workspace-Related):**
+1. **module-access** (6 violations): `global_role` → `sys_role`, `isPlatformAdmin` → `isSysAdmin`
+2. **module-ai** (10 violations): `platform_rag` table references, `platform_owner/admin` role values
+3. **module-mgmt** (5 violations): `platform_module_registry`, `platform_module_usage` table names
+4. **validation scripts** (19 violations in test project): Scripts themselves contain old naming patterns
+
+**Next Steps:**
+1. Fix remaining 40 violations in other modules (separate task)
+2. Create new test project (test-ws-24) to validate all fixes
+3. Commit workspace function naming changes
+
+**Updated:** January 13, 2026, 2:54 PM EST
+
+---
+
+## Session: January 13, 2026 (2:10 PM - 2:33 PM) - Session 114
+
+### 🎯 Status: ✅ COMPLETE - TEMPLATE VALIDATION FIXES APPLIED
+
+**Summary:** Fixed all validation errors in TEMPLATE files based on test-ws-23 validation report. Updated 5 template files with 26+ changes across Schema Validator, Role Naming Validator, and Accessibility Validator issues. Templates are now ready to generate clean, validated projects.
+
+**Template Files Fixed:**
+
+| File | Changes | Category |
+|------|---------|----------|
+| orgs/lambda_function.py | 7 `role` → `org_role` | Schema Validator |
+| members/lambda_function.py | 8 `role` → `org_role` | Schema Validator |
+| profiles/lambda_function.py | 5 `role` → `org_role` | Schema Validator |
+| drop-all-schema-objects.sql | 8 `platform_*` → `sys_*` | Role Naming |
+| WorkspaceDetailPage.tsx | 3 accessibility fixes | Accessibility |
+
+**Validation Fixes Applied:**
+
+1. **Schema Validator (14 total fixes)** ✅ FIXED IN TEMPLATES
+   - Fixed `org_members.role` → `org_members.org_role` across 3 Lambda files
+   - Affects: INSERT, UPDATE, and SELECT statements
+   - Templates: module-access/backend/lambdas/{orgs,members,profiles}
+
+2. **Role Naming Validator (8 fixes)** ✅ FIXED IN TEMPLATES
+   - Fixed `platform_*` → `sys_*` table names in drop-all-schema-objects.sql
+   - Verified workspace schema files already use correct `ws_*` role names
+   - Templates: _project-stack-template/scripts/, module-ws/db/schema/
+
+3. **Accessibility Validator (3 fixes)** ✅ FIXED IN TEMPLATES
+   - Added `aria-label="Search workflows"` to TextField
+   - Added `aria-label="Search chats"` to TextField
+   - Fixed heading level skip: `h6` → `h5`
+   - Template: module-ws/frontend/pages/WorkspaceDetailPage.tsx
+
+**Important Finding:**
+- Test project (test-ws-23) was created from OLD templates (before fixes)
+- Remaining validation errors are in the OLD test project, NOT in templates
+- Templates have been verified and fixed
+- Next step: Create NEW test project to validate fixes
+
+**Next Steps:**
+1. Create new test project (test-ws-24) from updated templates
+2. Run validation suite on new project
+3. Verify Schema, Role Naming, and Accessibility validators pass
+4. Commit template fixes if validation passes
+
+**Updated:** January 13, 2026, 2:33 PM EST
+
+---
+
+## Session: January 13, 2026 (12:57 PM - 2:07 PM) - Session 113
+
+### 🎯 Status: ✅ COMPLETE - PROJECT CREATION SUCCESSFUL
+
+**Summary:** Fixed multiple bugs in create-cora-project.sh to properly exclude archived schema files and correctly reference new table names. Successfully created test-ws-23 project with clean Supabase database. All new `sys_*` tables created correctly without duplicates. Validation suite identified remaining issues to fix in templates.
+
+**Issues Fixed:**
+
+1. **Archive Files Being Included** ✅ FIXED
+   - Changed find pattern to `-not -path "*/db/schema/archive/*"`
+   - Specifically excludes only archived schema files in schema directory
+
+2. **Array Syntax Error** ✅ FIXED
+   - Fixed `schema_files+=(["$schema_file")` to `schema_files+=("$schema_file")`
+   - Removed erroneous `[` character that was being included in file paths
+
+3. **Table Name Mismatch in Seed Scripts** ✅ FIXED
+   - Updated Okta seed script: `platform_idp_config` → `sys_idp_config`
+   - Updated Clerk seed script: `platform_idp_config` → `sys_idp_config`
+
+**Test Project Creation Results:**
+
+| Step | Status | Details |
+|------|--------|---------|
+| Project Structure | ✅ SUCCESS | ai-sec-infra and ai-sec-stack created |
+| Schema Consolidation | ✅ SUCCESS | 28 schema files (no archives included) |
+| Database Creation | ✅ SUCCESS | 26 tables, 93 indexes, 49 functions, 82 policies |
+| IDP Seeding | ✅ SUCCESS | Okta configuration seeded to `sys_idp_config` |
+| AI Provider Seeding | ✅ SUCCESS | Provider credentials configured |
+| Validation Suite | ⚠️ PARTIAL | BRONZE certification, 121 errors, 183 warnings |
+
+**Validation Summary:**
+
+| Validator | Status | Errors | Warnings |
+|-----------|--------|--------|----------|
+| Structure | ✅ PASS | 0 | 0 |
+| Portability | ✅ PASS | 0 | 9 |
+| Accessibility | ❌ FAIL | 3 | 18 |
+| API Tracer | ✅ PASS | 0 | 80 |
+| Import | ✅ PASS | 0 | 0 |
+| Schema | ❌ FAIL | 10 | 65 |
+| External UID | ✅ PASS | 0 | 0 |
+| CORA Compliance | ✅ PASS | 0 | 11 |
+| Frontend | ✅ PASS | 0 | 0 |
+| API Response | ✅ PASS | 0 | 0 |
+| Role Naming | ❌ FAIL | 108 | 0 |
+
+**Next Steps:**
+1. Fix 10 schema validator errors (`org_members.role` → `org_members.org_role`)
+2. Fix 108 role naming validator errors (utility scripts with old table names)
+3. Fix 3 accessibility errors (form labels, heading hierarchy)
+4. Rerun validation to achieve higher certification level
+5. Merge `fix/admin-functionality-improvements` branch to main
+
+**Updated:** January 13, 2026, 2:07 PM EST
 
 ---
 
@@ -65,12 +329,6 @@
 - All old files archived, not deleted
 
 **Branch:** `fix/admin-functionality-improvements`
-
-**Next Steps:**
-1. **Create test project from scratch** - User has new clean Supabase DB ready
-2. This will create/seed all tables with updated sys_ prefixes (no migrations needed)
-3. Testing the new project will validate templates in an isolated environment
-4. Merge branch to main after successful test project validation
 
 **Updated:** January 13, 2026, 12:15 PM EST
 
@@ -106,306 +364,6 @@ python3 -m validation.role-naming-validator.cli templates/ --format text
 
 ---
 
-## Session: January 13, 2026 (11:30 AM - 11:40 AM) - Session 110
-
-### 🎯 Status: ✅ COMPLETE - PHASE 5 DOCUMENTATION UPDATES
-
-**Summary:** Completed Phase 5 of the role standardization plan. Updated all major documentation files to use the new role naming conventions (`sys_role` instead of `global_role`, `sys_admin/sys_owner` instead of `platform_admin/platform_owner`, and `org_role` instead of `role`).
-
-**Files Updated This Session:**
-
-| Location | File | Changes |
-|----------|------|---------|
-| docs/standards/ | `standard_LAMBDA-AUTHORIZATION.md` | Role column and value updates |
-| docs/standards/ | `standard_NAVIGATION-AND-ROLES.md` | System-level role table, visibility conditions |
-| docs/standards/ | `standard_MODULAR-ADMIN-ARCHITECTURE.md` | ~25 role references updated |
-| docs/standards/ | `standard_ADMIN-CARD-PATTERN.md` | Backend authorization pattern |
-| docs/standards/ | `standard_module-integration-spec.md` | Admin card roles, access control |
-| docs/standards/ | `navigation-and-roles-design.md` | Role tables, column names |
-
-**Pattern Changes Applied:**
-- `user_profiles.global_role` → `user_profiles.sys_role`
-- `org_members.role` → `org_members.org_role`
-- `platform_owner` → `sys_owner`
-- `platform_admin` → `sys_admin`
-- `platform_user` → `sys_user`
-- `globalRole` (TypeScript) → `sysRole`
-- `is_platform_admin()` → `is_sys_admin()`
-- `isPlatformAdmin` → `isSysAdmin`
-
-**Phase 5 Progress: ✅ 100% Complete**
-
-**Updated:** January 13, 2026, 11:40 AM EST
-
----
-
-## Session: January 13, 2026 (11:04 AM - 11:17 AM) - Session 109
-
-### 🎯 Status: ✅ COMPLETE - PHASE 4 FRONTEND UPDATES
-
-**Summary:** Completed Phase 4 execution - all frontend TypeScript/React components updated to use new role naming conventions (`sysRole` instead of `globalRole`, `sys_owner/sys_admin` instead of `platform_owner/platform_admin`, UI labels updated from "Platform Admin" to "System Admin").
-
-**Files Updated This Session:**
-
-| Location | File | Changes |
-|----------|------|---------|
-| **project-stack-template** | `components/AuthRouter.tsx` | `globalRole`→`sysRole`, `platform_owner`→`sys_owner` |
-| **project-stack-template** | `app/page.tsx` | `globalRole`→`sysRole` |
-| **project-stack-template** | `app/admin/access/page.tsx` | Comments, role checks, `isPlatformAdmin`→`isSysAdmin` |
-| **project-stack-template** | `app/admin/mgmt/page.tsx` | Comments, role checks, function renamed |
-| **project-stack-template** | `app/admin/platform/page.tsx` | Comments, UI title "System Administration" |
-| **project-stack-template** | `app/admin/ai/page.tsx` | Comments updated |
-| **project-stack-template** | `app/admin/organizations/page.tsx` | Comments updated |
-| **project-stack-template** | `app/admin/access/orgs/[id]/page.tsx` | Comments, role checks |
-| **project-stack-template** | `app/org/settings/page.tsx` | Comments, role checks |
-| **module-access/frontend** | `components/layout/SidebarUserMenu.tsx` | Menu label "Platform Admin" → "System Admin" |
-| **module-access/frontend** | `components/admin/OrgAIConfigTab.tsx` | Alert "Platform Admin Only" → "System Admin Only" |
-| **module-ws/frontend** | `pages/PlatformAdminConfigPage.tsx` | Breadcrumb, error message updated |
-| **module-ws/frontend** | `admin/platformAdminCard.tsx` | Comments updated |
-
-**Pattern Changes Applied:**
-- `profile?.globalRole` → `profile?.sysRole`
-- `platform_owner` → `sys_owner`
-- `platform_admin` → `sys_admin`
-- `isPlatformAdmin` → `isSysAdmin`
-- `requiredRoles: ["platform_owner", "platform_admin"]` → `requiredRoles: ["sys_owner", "sys_admin"]`
-- Comments: "Platform Admin" → "System Admin"
-- UI Labels: "Platform Administration" → "System Administration"
-- Menu Label: "Platform Admin" → "System Admin"
-
-**Phase 4 Progress: ✅ 100% Complete**
-
-**Updated:** January 13, 2026, 11:25 AM EST
-
----
-
-## Session: January 13, 2026 (10:37 AM - 11:02 AM) - Session 108
-
-### 🎯 Status: ✅ COMPLETE - PHASE 3 BACKEND LAMBDA UPDATES
-
-**Summary:** Executed Phase 3 of the role standardization plan. Updated all backend Lambda files across module-access, module-ws, module-ai, and module-mgmt to use the new naming conventions (`sys_role` instead of `global_role`, `sys_admin/sys_owner` instead of `platform_admin/platform_owner`, and `org_role` instead of `role`).
-
-**Files Updated:**
-
-| Module | File | Changes |
-|--------|------|---------|
-| **module-access/layers/org-common** | `__init__.py` | Added `is_sys_admin`, `validate_sys_role` exports |
-| **module-access/layers/org-common** | `auth.py` | `is_platform_admin`→`is_sys_admin`, section header updated |
-| **module-access/layers/org-common** | `validators.py` | Added `validate_sys_role`, updated `validate_org_role` |
-| **module-access/lambdas/profiles** | `lambda_function.py` | `global_role`→`sys_role`, role values updated |
-| **module-access/lambdas/members** | `lambda_function.py` | `is_platform_admin`→`is_sys_admin`, `global_role`→`sys_role` |
-| **module-access/lambdas/orgs** | `lambda_function.py` | Multiple admin checks updated |
-| **module-access/lambdas/identities-management** | `lambda_function.py` | Admin check and default role updated |
-| **module-access/lambdas/org-email-domains** | `lambda_function.py` | Admin check updated |
-| **module-access/lambdas/idp-config** | `lambda_function.py` | `PLATFORM_ADMIN_ROLES`→`SYS_ADMIN_ROLES`, function rename |
-| **module-ws/lambdas/workspace** | `lambda_function.py` | `_is_platform_admin`→`_is_sys_admin`, all 8 calls updated |
-
-**Pattern Changes Applied:**
-- `profile.get('global_role') in ['platform_owner', 'platform_admin']` → `profile.get('sys_role') in ['sys_owner', 'sys_admin']`
-- `_is_platform_admin(user_id)` → `_is_sys_admin(user_id)`
-- `PLATFORM_ADMIN_ROLES` → `SYS_ADMIN_ROLES`
-- Comments and error messages updated to reflect new terminology
-
-**Remaining Phase 3 Work:**
-- module-mgmt handlers (module_usage.py, module_registry.py, lambda-mgmt) - Need to verify if these exist and have references
-- module-ai lambdas (ai-config-handler, provider) - Need to verify if these exist and have references
-
-**Next Steps:**
-1. **Phase 4:** Frontend updates (2-3 hours) - TypeScript types, components, API clients
-2. **Phase 5:** Documentation updates (1 hour)
-3. **Phase 6:** Testing & validation (1-2 hours)
-
-**Updated:** January 13, 2026, 11:02 AM EST
-
----
-
-## Session: January 13, 2026 (9:58 AM - 10:12 AM) - Session 107
-
-### 🎯 Status: ✅ COMPLETE - PHASE 2 RLS POLICY UPDATES
-
-**Summary:** Executed Phase 2 of the role standardization plan. Updated all 8 RLS policy files to use the new naming conventions (`sys_role` instead of `global_role`, `org_role` instead of `role`, and role values `sys_owner`/`sys_admin` instead of `platform_owner`/`platform_admin`).
-
-**Files Updated:**
-
-| Module | File | Changes |
-|--------|------|---------|
-| module-ws | `009-apply-rls.sql` | `global_role`→`sys_role`, `platform_*`→`sys_*`, `org_members.role`→`org_role` |
-| module-ai | `001-ai-providers.sql` | `global_role`→`sys_role`, `platform_*`→`sys_*` |
-| module-ai | `002-ai-models.sql` | `global_role`→`sys_role`, `platform_*`→`sys_*` |
-| module-ai | `003-ai-validation-history.sql` | `global_role`→`sys_role`, `platform_*`→`sys_*` |
-| module-ai | `004-ai-validation-progress.sql` | `global_role`→`sys_role`, `platform_*`→`sys_*` |
-| module-ai | `007-org-prompt-engineering.sql` | `global_role`→`sys_role`, `platform_*`→`sys_*` |
-| module-access | `006-user-provisioning.sql` | `global_role`→`sys_role`, `platform_*`→`sys_*`, `org_members.role`→`org_role` |
-| module-access | `007-auth-events-sessions.sql` | `global_role`→`sys_role`, `platform_*`→`sys_*` |
-
-**Pattern Changes Applied:**
-- `user_profiles.global_role IN ('platform_owner', 'platform_admin')` → `user_profiles.sys_role IN ('sys_owner', 'sys_admin')`
-- `org_members.role IN ('org_owner', 'org_admin')` → `org_members.org_role IN ('org_owner', 'org_admin')`
-- Policy names updated: "Platform admins" → "Sys admins"
-- Comments updated to reflect new terminology
-
-**Next Steps:**
-1. **Phase 3:** Backend Lambda updates (2-3 hours)
-2. **Phase 4:** Frontend updates (2-3 hours)
-3. **Phase 5:** Documentation updates (1 hour)
-4. **Phase 6:** Testing & validation (1-2 hours)
-
-**Updated:** January 13, 2026, 10:12 AM EST
-
----
-
-## Session: January 13, 2026 (9:32 AM - 9:55 AM) - Session 106
-
-### 🎯 Status: ✅ COMPLETE - PHASE 1 DATABASE SCHEMA MIGRATION
-
-**Summary:** Executed Phase 1 of the role standardization plan. Created all migration scripts, updated all schema files to use new naming conventions (`sys_*` tables, `sys_role` and `org_role` columns), and archived legacy schema files to preserve history while enabling clean new project creation.
-
-**Deliverables:**
-
-**Migration Scripts Created:**
-| Location | Script | Purpose |
-|----------|--------|---------|
-| `templates/_modules-core/module-access/db/migrations/` | `20260113_sys_role_standardization.sql` | Comprehensive migration (all tables + columns) |
-| `scripts/migrations/` | `20260113_user_profiles_sys_role.sql` | Standalone: global_role → sys_role |
-| `scripts/migrations/` | `20260113_org_members_org_role.sql` | Standalone: role → org_role |
-| `scripts/migrations/` | `README-role-standardization-migrations.md` | Migration guide with execution order |
-
-**New Schema Files Created:**
-- `templates/_modules-core/module-mgmt/db/schema/001-sys-lambda-config.sql`
-- `templates/_modules-core/module-mgmt/db/schema/002-sys-module-registry.sql`
-- `templates/_modules-core/module-mgmt/db/schema/003-sys-module-usage.sql`
-- `templates/_modules-core/module-ai/db/schema/006-sys-rag.sql`
-- `templates/_modules-core/module-access/db/schema/005-sys-idp-config.sql`
-
-**Schema Files Updated:**
-- `003-profiles.sql`: `global_role` → `sys_role TEXT NOT NULL DEFAULT 'sys_user'`
-- `004-org-members.sql`: `role` → `org_role TEXT NOT NULL DEFAULT 'org_user'`
-
-**Legacy Files Archived:**
-All old `platform_*` schema files moved to `archive/` folders in each module:
-- `module-mgmt/db/schema/archive/`: 001, 002, 003-platform-*.sql
-- `module-ai/db/schema/archive/`: 006-platform-rag.sql
-- `module-access/db/schema/archive/`: 005-idp-config.sql
-
-**User Questions Answered:**
-1. **Migration Order:** Comprehensive script OR standalone scripts (see README)
-2. **Table Deletions:** No deletions needed - migrations use `ALTER TABLE RENAME`
-3. **Archive Strategy:** Old files moved to archive/ folders, not deleted
-
-**When to Run Migrations:**
-- **For EXISTING databases:** Run migration scripts AFTER all code changes (Phase 2-4) are complete
-- **For NEW projects:** No migrations needed - new schemas are already updated
-- **Recommended:** Complete Phases 2-4 (backend/frontend updates), then run migrations with deployment
-
-**Migration Execution Order (when ready):**
-```bash
-# Option A: Single comprehensive migration (RECOMMENDED)
-psql -f templates/_modules-core/module-access/db/migrations/20260113_sys_role_standardization.sql
-
-# Option B: Piece-by-piece
-psql -f scripts/migrations/20260113_user_profiles_sys_role.sql
-psql -f scripts/migrations/20260113_org_members_org_role.sql
-```
-
-**Next Steps:**
-1. **Phase 2:** Update RLS policies in other schema files (1-2 hours)
-2. **Phase 3:** Backend Lambda updates (2-3 hours)
-3. **Phase 4:** Frontend updates (2-3 hours)
-4. **Phase 5:** Documentation updates (1 hour)
-5. **Phase 6:** Testing & validation (1-2 hours)
-6. **THEN:** Run migrations on existing databases
-
-**Updated:** January 13, 2026, 9:55 AM EST
-
----
-
-## Session: January 13, 2026 (9:16 AM - 9:31 AM) - Session 105
-
-### 🎯 Status: ✅ COMPLETE - PHASE 0 ANALYSIS WITH TABLE RENAMING SCOPE
-
-**Summary:** Executed Phase 0 (Analysis & Discovery) of role standardization plan. User feedback identified missing scope for table renaming, which was added to the plan. Created comprehensive impact assessment documenting 285 references across 40-50 files. Discovered 7 tables with `platform_` prefix requiring rename to `sys_` prefix, increasing total effort from 6-8 hours to 8-11 hours.
-
-**Deliverables:**
-- **docs/analysis/role-standardization-impact-assessment.md** - 50-page comprehensive impact assessment
-- **Updated plan_sys-role-standardization.md** - Added table renaming scope with migration scripts
-- **/tmp/role-analysis.txt** - Automated discovery statistics
-
-**Discovery Results:**
-
-**Pattern Counts:**
-- `global_role`: 101 references
-- `platform_owner`: 99 references  
-- `platform_admin`: 145 references
-- `platform_user`: 5 references
-- `globalRole` (TypeScript): 14 references
-- `org_members.role`: 4 references
-- **Total: 285 unique references** across 368 pattern matches
-
-**Tables Requiring Rename (New Scope):**
-1. `platform_lambda_config` → `sys_lambda_config` (module-mgmt)
-2. `platform_module_registry` → `sys_module_registry` (module-mgmt)
-3. `platform_module_usage` → `sys_module_usage` (module-mgmt)
-4. `platform_module_usage_daily` → `sys_module_usage_daily` (module-mgmt)
-5. `platform_rag` → `sys_rag` (module-ai)
-6. `platform_idp_config` → `sys_idp_config` (module-access)
-7. `platform_idp_audit_log` → `sys_idp_audit_log` (module-access)
-
-**Updated:** January 13, 2026, 9:31 AM EST
-
----
-
-## Session: January 13, 2026 (8:09 AM - 9:15 AM) - Session 104
-
-### 🎯 Status: ✅ COMPLETE - ROLE STANDARDIZATION PLAN WITH AUTOMATED VALIDATION
-
-**Summary:** Created comprehensive role naming standardization plan that merges two duplicate plans into a single authoritative source. Plan standardizes all role naming to use "sys_" prefix (replacing "platform_", "global_") and includes automated validation to prevent regressions. Added Phase 0 discovery/analysis and Phase 6.5 automated validator based on user feedback.
-
-**Deliverable:**
-- **plan_sys-role-standardization.md** - Comprehensive 7-phase implementation plan (8-12 hours total)
-
-**Key Decisions:**
-1. **Naming Standard:** Use "sys_" prefix for system-level roles (NOT "platform_" or "global_")
-   - `user_profiles.global_role` → `user_profiles.sys_role`
-   - `org_members.role` → `org_members.org_role`
-   - `platform_admin` → `sys_admin`
-   - `platform_owner` → `sys_owner`
-   - `platform_user` → `sys_user`
-
-2. **Every User Has sys_role:** Column is NOT NULL with DEFAULT 'sys_user'
-
-3. **Automated Validation Recommended:** Phase 6.5 adds role naming validator
-
-**Updated:** January 13, 2026, 9:15 AM EST
-
----
-
-## Session: January 13, 2026 (7:27 AM - 8:00 AM) - Session 103
-
-### 🎯 Status: ✅ COMPLETE - MODULE-KB AND MODULE-CHAT IMPLEMENTATION PLANS
-
-**Summary:** Created comprehensive multi-phase implementation plans for module-kb and module-chat by analyzing legacy project features and adapting them to CORA standards.
-
-**Deliverables:**
-- **plan_module-kb-implementation.md** - 12 phases covering KB management with multi-scope hierarchy
-- **plan_module-chat-implementation.md** - 13 phases covering AI-powered chat with streaming and RAG integration
-
-**Updated:** January 13, 2026, 8:00 AM EST
-
----
-
-## Session: January 12, 2026 (8:18 PM - 9:02 PM) - Session 102
-
-### 🎯 Status: ✅ COMPLETE - WORKSPACE TAB NAVIGATION WITH MOCK DATA
-
-**Summary:** Implemented comprehensive tab navigation for workspace detail page with full CJIS IT Security Audit mock data.
-
-**Deliverable:**
-- **File:** `templates/_modules-functional/module-ws/frontend/pages/WorkspaceDetailPage.tsx`
-
-**Updated:** January 12, 2026, 9:02 PM EST
-
----
-
 ## Progress Tracking
 
 ### Role Standardization - Phase Progress
@@ -418,50 +376,38 @@ psql -f scripts/migrations/20260113_org_members_org_role.sql
 | Phase 3 | Backend Lambda Updates | ✅ COMPLETE | 2-3 |
 | Phase 4 | Frontend Updates | ✅ COMPLETE | 2-3 |
 | Phase 5 | Documentation Updates | ✅ COMPLETE | 1 |
-| Phase 6 | Testing & Validation | 📋 PENDING (run migrations on deploy) | 1-2 |
+| Phase 6 | Testing & Validation | ✅ COMPLETE (with issues to fix) | 1-2 |
 | Phase 6.5 | Automated Validator | ✅ COMPLETE | 2-4 |
 
-### Session 112 - Git Commits
+### Session 113 - Script Fixes Applied
 
-| Commit | Description | Files |
-|--------|-------------|-------|
-| f8f0fad | feat(db): Database schema changes | 25 |
-| 3cc9e21 | feat(backend): Lambda function updates | 16 |
-| 677b1d1 | feat(frontend): TypeScript/React updates | 32 |
-| bc35992 | docs: Standards and documentation | 32 |
-| fd954b9 | feat(validation): Role naming validator | 8 |
-| 691b513 | chore: Remove .build directory | 4 |
-| 189736d | docs: Update activeContext.md | 1 |
-| 33b5c6b | chore: Delete old platform_* files | 5 |
+| Fix | Description | Impact |
+|-----|-------------|--------|
+| Archive Exclusion | `-not -path "*/db/schema/archive/*"` | Only active schema files included |
+| Array Syntax | `schema_files+=("$schema_file")` | Proper array construction |
+| Okta Table Name | `UPDATE sys_idp_config` | Correct table reference |
+| Clerk Table Name | `UPDATE sys_idp_config` | Correct table reference |
 
-### Files Modified - Session 108
+### Session 113 - Validation Issues Identified (test-ws-23)
 
-| Location | Files |
-|----------|-------|
-| `templates/_modules-core/module-access/backend/layers/org-common/python/org_common/` | `__init__.py`, `auth.py`, `validators.py` |
-| `templates/_modules-core/module-access/backend/lambdas/profiles/` | `lambda_function.py` |
-| `templates/_modules-core/module-access/backend/lambdas/members/` | `lambda_function.py` |
-| `templates/_modules-core/module-access/backend/lambdas/orgs/` | `lambda_function.py` |
-| `templates/_modules-core/module-access/backend/lambdas/identities-management/` | `lambda_function.py` |
-| `templates/_modules-core/module-access/backend/lambdas/org-email-domains/` | `lambda_function.py` |
-| `templates/_modules-core/module-access/backend/lambdas/idp-config/` | `lambda_function.py` |
-| `templates/_modules-functional/module-ws/backend/lambdas/workspace/` | `lambda_function.py` |
+**Schema Validator (10 errors):**
+- ✅ FIXED IN SESSION 114 - `module-access/lambdas/orgs/lambda_function.py` 
+- ✅ FIXED IN SESSION 114 - `module-access/lambdas/members/lambda_function.py`
+- ✅ FIXED IN SESSION 114 - `module-access/lambdas/profiles/lambda_function.py`
 
-### Files Modified - Session 107
+**Role Naming Validator (108 errors):**
+- ✅ FIXED IN SESSION 114 - `scripts/drop-all-schema-objects.sql`
+- ✅ VERIFIED IN SESSION 114 - Workspace schema files already correct
 
-| Location | Files |
-|----------|-------|
-| `templates/_modules-functional/module-ws/db/schema/` | 009-apply-rls.sql |
-| `templates/_modules-core/module-ai/db/schema/` | 001-ai-providers.sql, 002-ai-models.sql, 003-ai-validation-history.sql, 004-ai-validation-progress.sql, 007-org-prompt-engineering.sql |
-| `templates/_modules-core/module-access/db/schema/` | 006-user-provisioning.sql, 007-auth-events-sessions.sql |
+**Accessibility Validator (3 errors):**
+- ✅ FIXED IN SESSION 114 - `module-ws/frontend/pages/WorkspaceDetailPage.tsx`
 
-### Files Modified - Session 106
+### Session 114 - Template Fixes Summary
 
-| Location | Files |
-|----------|-------|
-| `templates/_modules-core/module-mgmt/db/schema/` | 001-sys-lambda-config.sql, 002-sys-module-registry.sql, 003-sys-module-usage.sql |
-| `templates/_modules-core/module-ai/db/schema/` | 006-sys-rag.sql |
-| `templates/_modules-core/module-access/db/schema/` | 003-profiles.sql, 004-org-members.sql, 005-sys-idp-config.sql |
-| `templates/_modules-core/module-access/db/migrations/` | 20260113_sys_role_standardization.sql |
-| `scripts/migrations/` | 20260113_user_profiles_sys_role.sql, 20260113_org_members_org_role.sql, README-role-standardization-migrations.md |
-| `*/db/schema/archive/` | All old platform_* files |
+| Validator | Template Status | Test Project Status |
+|-----------|----------------|---------------------|
+| Schema | ✅ FIXED | ⚠️ Old project (needs recreation) |
+| Role Naming | ✅ FIXED | ⚠️ Old project (needs recreation) |
+| Accessibility | ✅ FIXED | ⚠️ Old project (needs recreation) |
+
+**Note:** test-ws-23 still shows errors because it was created from old templates. Create test-ws-24 to validate fixes.

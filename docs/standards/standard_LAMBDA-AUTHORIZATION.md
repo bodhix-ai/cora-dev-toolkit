@@ -266,7 +266,7 @@ def handle_update_workspace(workspace_id: str, org_id: str, user_info: Dict[str,
     # Check workspace role
     else:
         is_ws_admin = common.rpc(
-            function_name='is_workspace_admin_or_owner',
+            function_name='is_ws_admin_or_owner',
             params={'p_ws_id': workspace_id, 'p_user_id': supabase_user_id}
         )
         if not is_ws_admin:
@@ -393,7 +393,7 @@ def handle_workspace_action(workspace_id: str, user_info: Dict[str, Any]) -> Dic
     
     # Use RPC function for module-specific authorization
     is_authorized = common.rpc(
-        function_name='is_workspace_admin_or_owner',
+        function_name='is_ws_admin_or_owner',
         params={'p_ws_id': workspace_id, 'p_user_id': supabase_user_id}
     )
     
