@@ -594,7 +594,7 @@ def update_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[st
 # PLATFORM RAG CONFIGURATION (Super Admin Only)
 # ============================================================================
 
-def get_platform_rag_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+def get_sys_rag_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
     Get platform-level RAG configuration.
     Only accessible to system admin users.
@@ -635,7 +635,7 @@ def get_platform_rag_config_handler(event: Dict[str, Any], user_id: str) -> Dict
         return common.internal_error_response('Failed to get RAG configuration')
 
 
-def update_platform_rag_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+def update_sys_rag_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
     Update platform-level RAG configuration.
     Only accessible to system admin users.
@@ -926,8 +926,8 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         PUT  /orgs/{organizationId}/ai/config -> update_org_ai_config_handler
         
         # AI Provider Configuration
-        GET  /admin/ai/rag-config -> get_platform_rag_config_handler
-        PUT  /admin/ai/rag-config -> update_platform_rag_config_handler
+        GET  /admin/ai/rag-config -> get_sys_rag_config_handler
+        PUT  /admin/ai/rag-config -> update_sys_rag_config_handler
         GET  /admin/ai/providers -> list_rag_providers_handler
         POST /admin/ai/providers/test -> test_rag_provider_handler
         GET  /admin/ai/providers/models -> get_rag_provider_models_handler
@@ -972,9 +972,9 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         # AI Provider Configuration routes
         elif path == "/admin/ai/rag-config":
             if http_method == "GET":
-                return get_platform_rag_config_handler(event, supabase_user_id)
+                return get_sys_rag_config_handler(event, supabase_user_id)
             elif http_method == "PUT":
-                return update_platform_rag_config_handler(event, supabase_user_id)
+                return update_sys_rag_config_handler(event, supabase_user_id)
         
         elif path == "/admin/ai/providers":
             if http_method == "GET":
