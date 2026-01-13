@@ -16,7 +16,7 @@ from .auth import (
     is_org_member, is_org_admin, is_org_owner, is_org_colleague,
     is_project_member, is_project_owner, is_project_admin_or_owner,
     is_project_colleague, is_project_favorited,
-    is_platform_admin, is_provider_active
+    is_sys_admin, is_provider_active
 )
 from .responses import (
     success_response, error_response, created_response, no_content_response,
@@ -26,7 +26,7 @@ from .responses import (
 )
 from .errors import ValidationError, NotFoundError, UnauthorizedError, ForbiddenError
 from .validators import (
-    validate_uuid, validate_email, validate_org_role, validate_global_role,
+    validate_uuid, validate_email, validate_org_role, validate_sys_role,
     validate_string_length, validate_url, validate_required, validate_integer,
     validate_boolean, validate_choices
 )
@@ -162,7 +162,7 @@ __all__ = [
     'is_project_admin_or_owner',
     'is_project_colleague',
     'is_project_favorited',
-    'is_platform_admin',
+    'is_sys_admin',
     'is_provider_active',
     
     # Response builders
@@ -188,7 +188,7 @@ __all__ = [
     'validate_uuid',
     'validate_email',
     'validate_org_role',
-    'validate_global_role',
+    'validate_sys_role',
     'validate_string_length',
     'validate_url',
     'validate_required',

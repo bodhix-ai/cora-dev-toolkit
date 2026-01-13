@@ -34,8 +34,8 @@ from lambda_mgmt_common import EventBridgeManager
 logger = logging.getLogger()
 logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
 
-# Platform admin roles
-PLATFORM_ADMIN_ROLES = ['platform_owner', 'platform_admin']
+# System admin roles
+SYS_ADMIN_ROLES = ['sys_owner', 'sys_admin']
 
 
 def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
@@ -69,17 +69,17 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         if org_id:
             logger.info(f"Request from org_id: {org_id}")
         
-        # Verify platform admin role
+        # Verify sys admin role
         profile = common.find_one(
             table='user_profiles',
             filters={'user_id': supabase_user_id}
         )
         
-        if not profile or profile.get('global_role') not in PLATFORM_ADMIN_ROLES:
-            logger.warning(f"Access denied for user {supabase_user_id} - not platform admin")
-            return common.forbidden_response('Platform admin role required')
+        if not profile or profile.get('sys_role') not in SYS_ADMIN_ROLES:
+            logger.warning(f"Access denied for user {supabase_user_id} - not sys admin")
+            return common.forbidden_response('System admin role required')
         
-        logger.info(f"Platform admin access granted for user {supabase_user_id}")
+        logger.info(f"System admin access granted for user {supabase_user_id}")
         
         # Route dispatcher
         if path.endswith('/platform/lambda-config') and http_method == 'GET':
@@ -161,11 +161,11 @@ def handle_list_configs() -> Dict[str, Any]:
     """
     try:
         configs = common.find_many(
-            table='platform_lambda_config',
+            table='sys_lambda_config',
             filters={'is_active': True}
         )
         
-        logger.info(f"Retrieved {len(configs)} platform configurations")
+        logger.info(f"Retrieved {len(configs)} system configurations")
         return common.success_response(configs)
     
     except Exception as e:
@@ -190,7 +190,7 @@ def handle_get_config(config_key: str) -> Dict[str, Any]:
     
     try:
         config = common.find_one(
-            table='platform_lambda_config',
+            table='sys_lambda_config',
             filters={'config_key': config_key}
         )
         
@@ -234,7 +234,7 @@ def handle_update_config(
     try:
         # Update configuration in database
         updated_config = common.update_one(
-            table='platform_lambda_config',
+            table='sys_lambda_config',
             filters={'config_key': config_key},
             data={
                 'config_value': config_value,
@@ -324,7 +324,7 @@ def handle_sync_eventbridge(user_id: str) -> Dict[str, Any]:
     try:
         # Get current lambda_warming configuration
         config = common.find_one(
-            table='platform_lambda_config',
+            table='sys_lambda_config',
             filters={'config_key': 'lambda_warming'}
         )
         
@@ -404,7 +404,7 @@ def handle_list_modules(event: Dict[str, Any]) -> Dict[str, Any]:
             filters['is_enabled'] = enabled_filter.lower() == 'true'
         
         modules = common.find_many(
-            table='platform_module_registry',
+            table='sys_module_registry',
             filters=filters,
             order='tier,module_name'
         )
@@ -447,7 +447,7 @@ def handle_get_module(module_name: str) -> Dict[str, Any]:
     
     try:
         module = common.find_one(
-            table='platform_module_registry',
+            table='sys_module_registry',
             filters={'module_name': module_name, 'deleted_at': None}
         )
         
@@ -498,7 +498,7 @@ def handle_update_module(
     
     try:
         updated_module = common.update_one(
-            table='platform_module_registry',
+            table='sys_module_registry',
             filters={'module_name': module_name, 'deleted_at': None},
             data=update_data
         )
@@ -533,7 +533,7 @@ def handle_enable_module(module_name: str, user_id: str) -> Dict[str, Any]:
     try:
         # Get the module to check dependencies
         module = common.find_one(
-            table='platform_module_registry',
+            table='sys_module_registry',
             filters={'module_name': module_name, 'deleted_at': None}
         )
         
@@ -545,7 +545,7 @@ def handle_enable_module(module_name: str, user_id: str) -> Dict[str, Any]:
         # Check if all dependencies are enabled
         if dependencies:
             deps = common.find_many(
-                table='platform_module_registry',
+                table='sys_module_registry',
                 filters={'deleted_at': None}
             )
             
@@ -560,7 +560,7 @@ def handle_enable_module(module_name: str, user_id: str) -> Dict[str, Any]:
         
         # Enable the module
         updated_module = common.update_one(
-            table='platform_module_registry',
+            table='sys_module_registry',
             filters={'module_name': module_name},
             data={'is_enabled': True, 'updated_by': user_id}
         )
@@ -600,7 +600,7 @@ def handle_disable_module(
     try:
         # Get the module
         module = common.find_one(
-            table='platform_module_registry',
+            table='sys_module_registry',
             filters={'module_name': module_name, 'deleted_at': None}
         )
         
@@ -616,7 +616,7 @@ def handle_disable_module(
         # Check if other enabled modules depend on this one
         if not force:
             all_modules = common.find_many(
-                table='platform_module_registry',
+                table='sys_module_registry',
                 filters={'deleted_at': None, 'is_enabled': True}
             )
             
@@ -632,7 +632,7 @@ def handle_disable_module(
         
         # Disable the module
         updated_module = common.update_one(
-            table='platform_module_registry',
+            table='sys_module_registry',
             filters={'module_name': module_name},
             data={'is_enabled': False, 'updated_by': user_id}
         )
@@ -680,7 +680,7 @@ def handle_register_module(body: Dict[str, Any], user_id: str) -> Dict[str, Any]
     try:
         # Check if module already exists
         existing = common.find_one(
-            table='platform_module_registry',
+            table='sys_module_registry',
             filters={'module_name': module_name, 'deleted_at': None}
         )
         
@@ -715,7 +715,7 @@ def handle_register_module(body: Dict[str, Any], user_id: str) -> Dict[str, Any]
         
         # Insert module
         new_module = common.insert_one(
-            table='platform_module_registry',
+            table='sys_module_registry',
             data=insert_data
         )
         

@@ -81,12 +81,12 @@ def is_project_favorited(project_id: str, user_jwt: str = None) -> bool:
 
 
 # ============================================
-# PLATFORM AUTHORIZATION
+# SYSTEM AUTHORIZATION
 # ============================================
 
-def is_platform_admin(user_jwt: str = None) -> bool:
-    """Check if current user is a platform admin."""
-    return rpc('is_platform_admin', {}, user_jwt) is True
+def is_sys_admin(user_jwt: str = None) -> bool:
+    """Check if current user is a sys admin (sys_admin or sys_owner role)."""
+    return rpc('is_sys_admin', {}, user_jwt) is True
 
 
 def is_provider_active(provider_name: str, user_jwt: str = None) -> bool:

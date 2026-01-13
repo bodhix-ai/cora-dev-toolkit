@@ -134,10 +134,10 @@ def handle_list_members(user_id: str, org_id: str, event: Dict[str, Any]) -> Dic
             filters={'user_id': supabase_user_id}
         )
         
-        is_platform_admin = profile and profile.get('global_role') in ['platform_owner', 'platform_admin']
+        is_sys_admin = profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']
         
-        # Platform admins can view any org's members
-        if not is_platform_admin:
+        # Sys admins can view any org's members
+        if not is_sys_admin:
             # Check if user is member
             user_membership = common.find_one(
                 table='org_members',

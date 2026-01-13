@@ -84,9 +84,9 @@ def validate_org_role(role: str) -> str:
     return role
 
 
-def validate_global_role(role: str) -> str:
+def validate_sys_role(role: str) -> str:
     """
-    Validate global role
+    Validate system-level role
     
     Args:
         role: Role name to validate
@@ -97,14 +97,14 @@ def validate_global_role(role: str) -> str:
     Raises:
         ValidationError: If role is invalid
     """
-    valid_roles = ['global_user', 'global_admin', 'global_owner']
+    valid_roles = ['sys_user', 'sys_admin', 'sys_owner']
     
     if not role:
-        raise ValidationError("Global role is required")
+        raise ValidationError("Sys role is required")
     
     if role not in valid_roles:
         raise ValidationError(
-            f"Invalid global role. Must be one of: {', '.join(valid_roles)}"
+            f"Invalid sys role. Must be one of: {', '.join(valid_roles)}"
         )
     
     return role

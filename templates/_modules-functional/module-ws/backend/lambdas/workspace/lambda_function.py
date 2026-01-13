@@ -232,48 +232,48 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
 def _transform_workspace(data: Dict[str, Any]) -> Dict[str, Any]:
     """Transform database workspace record to API response format.
     
-    Note: Returns snake_case to match frontend TypeScript types.
+    Note: Returns camelCase to match CORA API standards and frontend TypeScript types.
     """
     return {
         'id': data.get('id'),
-        'org_id': data.get('org_id'),
+        'orgId': data.get('org_id'),
         'name': data.get('name'),
         'description': data.get('description'),
         'color': data.get('color'),
         'icon': data.get('icon'),
         'tags': data.get('tags', []),
         'status': data.get('status'),
-        'user_role': data.get('user_role'),
-        'is_favorited': data.get('is_favorited', False),
-        'favorited_at': data.get('favorited_at'),
-        'member_count': data.get('member_count'),
-        'created_at': data.get('created_at'),
-        'updated_at': data.get('updated_at'),
-        'created_by': data.get('created_by'),
-        'updated_by': data.get('updated_by'),
-        'deleted_at': data.get('deleted_at'),
-        'retention_days': data.get('retention_days'),
+        'userRole': data.get('user_role'),
+        'isFavorited': data.get('is_favorited', False),
+        'favoritedAt': data.get('favorited_at'),
+        'memberCount': data.get('member_count'),
+        'createdAt': data.get('created_at'),
+        'updatedAt': data.get('updated_at'),
+        'createdBy': data.get('created_by'),
+        'updatedBy': data.get('updated_by'),
+        'deletedAt': data.get('deleted_at'),
+        'retentionDays': data.get('retention_days'),
     }
 
 
 def _transform_member(data: Dict[str, Any]) -> Dict[str, Any]:
     """Transform database member record to API response format.
     
-    Note: Returns snake_case with nested profile to match frontend TypeScript types.
+    Note: Returns camelCase to match CORA API standards and frontend TypeScript types.
     """
     return {
         'id': data.get('id'),
-        'ws_id': data.get('ws_id'),
-        'user_id': data.get('user_id'),
-        'ws_role': data.get('ws_role'),
+        'wsId': data.get('ws_id'),
+        'userId': data.get('user_id'),
+        'wsRole': data.get('ws_role'),
         'profile': {
             'email': data.get('email'),
-            'display_name': data.get('display_name'),
-            'avatar_url': data.get('avatar_url'),
+            'displayName': data.get('display_name'),
+            'avatarUrl': data.get('avatar_url'),
         },
-        'created_at': data.get('created_at'),
-        'updated_at': data.get('updated_at'),
-        'created_by': data.get('created_by'),
+        'createdAt': data.get('created_at'),
+        'updatedAt': data.get('updated_at'),
+        'createdBy': data.get('created_by'),
     }
 
 
@@ -313,10 +313,10 @@ def _is_workspace_admin_or_owner(workspace_id: str, user_id: str) -> bool:
     return result is True
 
 
-def _is_platform_admin(user_id: str) -> bool:
-    """Check if user has platform admin role."""
+def _is_sys_admin(user_id: str) -> bool:
+    """Check if user has sys admin role."""
     profile = common.find_one('user_profiles', {'user_id': user_id})
-    return profile and profile.get('global_role') in ['platform_admin', 'platform_owner']
+    return profile and profile.get('sys_role') in ['sys_admin', 'sys_owner']
 
 
 def _is_org_admin(org_id: str, user_id: str) -> bool:
@@ -362,9 +362,9 @@ def handle_sys_analytics(user_id: str, user_info: Dict[str, Any]) -> Dict[str, A
     Returns:
         Platform-wide workspace statistics with org breakdown
     """
-    # Check if user has platform admin role
-    if not _is_platform_admin(user_id):
-        raise common.ForbiddenError('Only platform administrators can access system analytics')
+    # Check if user has sys admin role
+    if not _is_sys_admin(user_id):
+        raise common.ForbiddenError('Only sys administrators can access system analytics')
     
     try:
         # Get all workspaces across all organizations
@@ -392,7 +392,7 @@ def handle_sys_analytics(user_id: str, user_info: Dict[str, Any]) -> Dict[str, A
             if org_id:
                 if org_id not in org_stats:
                     org_stats[org_id] = {
-                        'org_id': org_id,
+                        'orgId': org_id,
                         'total': 0,
                         'active': 0,
                         'archived': 0,
@@ -476,10 +476,10 @@ def handle_get_org_settings(
     """
     # Check authorization: org admin or platform admin
     is_org_admin = _is_org_admin(org_id, user_id)
-    is_platform_admin = _is_platform_admin(user_id)
+    is_sys_admin = _is_sys_admin(user_id)
     
-    if not is_org_admin and not is_platform_admin:
-        raise common.ForbiddenError('Only organization or platform administrators can access org settings')
+    if not is_org_admin and not is_sys_admin:
+        raise common.ForbiddenError('Only organization or sys administrators can access org settings')
     
     try:
         # Get or create default settings
@@ -491,11 +491,14 @@ def handle_get_org_settings(
         if not settings:
             # Return default settings (will be created on first PUT)
             settings = {
-                'org_id': org_id,
+                'orgId': org_id,
                 'allow_user_creation': True,
                 'require_approval': False,
                 'max_workspaces_per_user': 10,
             }
+        else:
+            # Format database response to camelCase
+            settings = common.format_record(settings)
         
         logger.info(f"Retrieved org settings for org {org_id}")
         return common.success_response({'settings': settings})
@@ -527,10 +530,10 @@ def handle_update_org_settings(
     """
     # Check authorization: org admin or platform admin
     is_org_admin = _is_org_admin(org_id, user_id)
-    is_platform_admin = _is_platform_admin(user_id)
+    is_sys_admin = _is_sys_admin(user_id)
     
-    if not is_org_admin and not is_platform_admin:
-        raise common.ForbiddenError('Only organization or platform administrators can update org settings')
+    if not is_org_admin and not is_sys_admin:
+        raise common.ForbiddenError('Only organization or sys administrators can update org settings')
     
     # Allowed fields for update
     allowed_fields = ['allow_user_creation', 'require_approval', 'max_workspaces_per_user']
@@ -993,9 +996,9 @@ def handle_get_workspace_activity(
     # Check authorization: workspace member OR org admin OR platform admin
     is_member = _is_workspace_member(workspace_id, user_id)
     is_org_admin = _is_org_admin(workspace['org_id'], user_id)
-    is_platform_admin = _is_platform_admin(user_id)
+    is_sys_admin = _is_sys_admin(user_id)
     
-    if not is_member and not is_org_admin and not is_platform_admin:
+    if not is_member and not is_org_admin and not is_sys_admin:
         raise common.ForbiddenError('You do not have permission to view this workspace activity')
     
     try:
@@ -1078,10 +1081,10 @@ def handle_transfer_ownership(
     
     # Check authorization: org admin OR platform admin (NOT just ws_owner)
     is_org_admin = _is_org_admin(workspace['org_id'], user_id)
-    is_platform_admin = _is_platform_admin(user_id)
+    is_sys_admin = _is_sys_admin(user_id)
     
-    if not is_org_admin and not is_platform_admin:
-        raise common.ForbiddenError('Only organization or platform administrators can transfer workspace ownership')
+    if not is_org_admin and not is_sys_admin:
+        raise common.ForbiddenError('Only organization or sys administrators can transfer workspace ownership')
     
     # Validate new owner is in the organization
     org_member = common.find_one(
@@ -1519,9 +1522,9 @@ def handle_toggle_favorite(
         
         logger.info(f"Toggled favorite for workspace {workspace_id}: {result.get('is_favorited')}")
         return common.success_response({
-            'workspace_id': result.get('workspace_id'),
-            'is_favorited': result.get('is_favorited'),
-            'favorited_at': result.get('favorited_at')
+            'workspaceId': result.get('workspace_id'),
+            'isFavorited': result.get('is_favorited'),
+            'favoritedAt': result.get('favorited_at')
         })
     
     except Exception as e:
@@ -1634,8 +1637,8 @@ def handle_update_config(
         Updated configuration
     """
     # Check if user has platform admin role
-    if not _is_platform_admin(user_id):
-        raise common.ForbiddenError('Only platform administrators can update workspace configuration')
+    if not _is_sys_admin(user_id):
+        raise common.ForbiddenError('Only sys administrators can update workspace configuration')
     
     # Allowed fields for update
     allowed_fields = [
@@ -1705,8 +1708,8 @@ def handle_admin_stats(user_info: Dict[str, Any]) -> Dict[str, Any]:
     okta_uid = user_info['user_id']
     supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
     
-    if not _is_platform_admin(supabase_user_id):
-        raise common.ForbiddenError('Only platform administrators can access these statistics')
+    if not _is_sys_admin(supabase_user_id):
+        raise common.ForbiddenError('Only sys administrators can access these statistics')
     
     try:
         # Get total workspace counts
@@ -1765,9 +1768,9 @@ def handle_admin_analytics(org_id: str, user_info: Dict[str, Any]) -> Dict[str, 
     supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
     
     is_org_admin = _is_org_admin(org_id, supabase_user_id)
-    is_platform_admin = _is_platform_admin(supabase_user_id)
+    is_sys_admin = _is_sys_admin(supabase_user_id)
     
-    if not is_org_admin and not is_platform_admin:
+    if not is_org_admin and not is_sys_admin:
         raise common.ForbiddenError('Only administrators can access analytics')
     
     try:

@@ -239,5 +239,5 @@ def handle_delete_invite(event: Dict[str, Any], org_id: str, invite_id: str) -> 
     
     return common.success_response({
         'message': 'Invite revoked successfully',
-        'invite_id': invite_id
+        'inviteId': invite_id
     })

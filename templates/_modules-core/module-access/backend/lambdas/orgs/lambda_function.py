@@ -129,10 +129,10 @@ def handle_list_orgs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             filters={'user_id': user_id}
         )
         
-        is_platform_admin = profile and profile.get('global_role') in ['platform_owner', 'platform_admin']
+        is_sys_admin = profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']
         
-        if is_platform_admin:
-            # Platform admin: Return ALL organizations
+        if is_sys_admin:
+            # Sys admin: Return ALL organizations
             orgs = common.find_many(
                 table='orgs',
                 filters={},
@@ -233,10 +233,24 @@ def handle_get_org(user_id: str, org_id: str) -> Dict[str, Any]:
         )
         member_count = len(member_count_result)
         
-        # Format response
-        result = common.format_record(org)
-        result['user_role'] = membership['role']
-        result['member_count'] = member_count
+        # Format response in camelCase for frontend
+        result = {
+            'id': org['id'],
+            'name': org['name'],
+            'slug': org['slug'],
+            'ownerId': org.get('owner_id'),
+            'description': org.get('description'),
+            'websiteUrl': org.get('website_url'),
+            'logoUrl': org.get('logo_url'),
+            'appName': org.get('app_name'),
+            'appIcon': org.get('app_icon'),
+            'createdAt': org.get('created_at'),
+            'updatedAt': org.get('updated_at'),
+            'createdBy': org.get('created_by'),
+            'updatedBy': org.get('updated_by'),
+            'userRole': membership['role'],
+            'memberCount': member_count
+        }
         
         return common.success_response(result)
         
@@ -414,7 +428,7 @@ def handle_update_org(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
             filters={'user_id': user_id}
         )
         
-        is_platform_admin = profile and profile.get('global_role') in ['platform_owner', 'platform_admin']
+        is_sys_admin = profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']
         
         # Check if user has admin access (RLS enforces this via can_modify_org_data)
         membership = common.find_one(
@@ -425,8 +439,8 @@ def handle_update_org(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
             }
         )
         
-        # Platform admins can update any org, regular users must be org admin/owner
-        if not is_platform_admin:
+        # Sys admins can update any org, regular users must be org admin/owner
+        if not is_sys_admin:
             if not membership:
                 raise common.ForbiddenError('You do not have access to this organization')
             

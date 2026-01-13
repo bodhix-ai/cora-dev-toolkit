@@ -96,7 +96,7 @@ def _get_user_context(event: Dict) -> Dict:
     return {
         "user_id": authorizer.get("principalId"),
         "org_id": authorizer.get("org_id"),
-        "is_platform_admin": authorizer.get("is_platform_admin", False),
+        "is_sys_admin": authorizer.get("is_sys_admin", False),
         "is_org_admin": authorizer.get("is_org_admin", False),
     }
 
@@ -208,7 +208,7 @@ def track_usage_handler(event: Dict, context: Any) -> Dict:
         
         # Get module ID
         module_response = (
-            supabase.table("platform_module_registry")
+            supabase.table("sys_module_registry")
             .select("id")
             .eq("module_name", module_name)
             .is_("deleted_at", "null")
@@ -250,7 +250,7 @@ def track_usage_handler(event: Dict, context: Any) -> Dict:
         
         # Insert usage event
         response = (
-            supabase.table("platform_module_usage")
+            supabase.table("sys_module_usage")
             .insert(usage_data)
             .execute()
         )
@@ -303,8 +303,8 @@ def get_usage_stats_handler(event: Dict, context: Any) -> Dict:
         
         user_context = _get_user_context(event)
         
-        # Only org admins and platform admins can view usage stats
-        if not user_context.get("is_org_admin") and not user_context.get("is_platform_admin"):
+        # Only org admins and sys admins can view usage stats
+        if not user_context.get("is_org_admin") and not user_context.get("is_sys_admin"):
             return _error_response(
                 "Only administrators can view usage statistics",
                 status_code=403,
@@ -332,7 +332,7 @@ def get_usage_stats_handler(event: Dict, context: Any) -> Dict:
             )
         
         # Build query for daily stats
-        query = supabase.table("platform_module_usage_daily").select("*")
+        query = supabase.table("sys_module_usage_daily").select("*")
         
         # Filter by date range
         query = query.gte("usage_date", start_date).lte("usage_date", end_date)
@@ -341,7 +341,7 @@ def get_usage_stats_handler(event: Dict, context: Any) -> Dict:
         if module_name:
             # First verify module exists
             module_response = (
-                supabase.table("platform_module_registry")
+                supabase.table("sys_module_registry")
                 .select("id, module_name, display_name")
                 .eq("module_name", module_name)
                 .is_("deleted_at", "null")
@@ -358,8 +358,8 @@ def get_usage_stats_handler(event: Dict, context: Any) -> Dict:
             
             query = query.eq("module_name", module_name)
         
-        # Filter by org for non-platform admins
-        if not user_context.get("is_platform_admin"):
+        # Filter by org for non-sys admins
+        if not user_context.get("is_sys_admin"):
             query = query.eq("org_id", user_context.get("org_id"))
         
         # Filter by event type if specified

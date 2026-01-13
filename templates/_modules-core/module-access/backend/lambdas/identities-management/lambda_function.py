@@ -109,8 +109,8 @@ def handle_list_users(event: Dict[str, Any]) -> Dict[str, Any]:
         if not profile:
             raise common.UnauthorizedError('User profile not found')
         
-        if profile.get('global_role') not in ['platform_admin', 'platform_owner']:
-            raise common.ForbiddenError('Platform admin access required')
+        if profile.get('sys_role') not in ['sys_admin', 'sys_owner']:
+            raise common.ForbiddenError('Sys admin access required')
     except KeyError:
         raise common.UnauthorizedError('Authentication required')
     
@@ -268,7 +268,7 @@ def handle_provision(event: Dict[str, Any]) -> Dict[str, Any]:
             'user_id': user_id,
             'email': email,
             'full_name': name,
-            'global_role': 'global_user'  # Default role
+            'sys_role': 'sys_user'  # Default role
         }
         if org_id:
             profile_data['org_id'] = org_id
