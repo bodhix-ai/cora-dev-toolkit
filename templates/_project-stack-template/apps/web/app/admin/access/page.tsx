@@ -6,12 +6,12 @@ import { CircularProgress, Box, Alert } from "@mui/material";
 /**
  * Access Control Admin Page
  * 
- * Platform admin interface for managing:
+ * System admin interface for managing:
  * - Organizations
  * - Users
  * - Identity Provider Configuration
  * 
- * Only accessible to platform_owner and platform_admin roles.
+ * Only accessible to sys_owner and sys_admin roles.
  */
 export default function AccessControlPage() {
   const { profile, loading, isAuthenticated } = useUser();
@@ -43,16 +43,16 @@ export default function AccessControlPage() {
     );
   }
 
-  // Check if user has platform admin role
-  const isPlatformAdmin = ["platform_owner", "platform_admin"].includes(
-    profile.globalRole || ""
+  // Check if user has system admin role
+  const isSysAdmin = ["sys_owner", "sys_admin"].includes(
+    profile.sysRole || ""
   );
 
-  if (!isPlatformAdmin) {
+  if (!isSysAdmin) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">
-          Access denied. This page is only accessible to platform administrators.
+          Access denied. This page is only accessible to system administrators.
         </Alert>
       </Box>
     );

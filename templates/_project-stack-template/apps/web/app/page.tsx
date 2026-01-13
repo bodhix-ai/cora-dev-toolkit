@@ -214,7 +214,7 @@ function AuthenticatedHomePage({ profile }: { profile: Profile | null }) {
         // Prepare context
         const context = {
           org_name: currentOrganization?.orgName || "{{PROJECT_DISPLAY_NAME}}",
-          role: profile?.globalRole || "member",
+          role: profile?.sysRole || "member",
         };
 
         const messageToSend = message;

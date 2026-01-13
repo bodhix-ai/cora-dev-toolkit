@@ -4,22 +4,22 @@ import Link from "next/link";
 import { getPlatformAdminCards } from "@/lib/moduleRegistry";
 
 /**
- * Platform Administration Page
+ * System Administration Page
  *
- * Displays admin cards for platform-level administration.
- * Only accessible to platform_owner and platform_admin roles.
+ * Displays admin cards for system-level administration.
+ * Only accessible to sys_owner and sys_admin roles.
  */
-export default function PlatformAdminPage() {
+export default function SystemAdminPage() {
   // Load platform admin cards from module registry
   const adminCards = getPlatformAdminCards();
 
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
-        Platform Administration
+        System Administration
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Manage platform-level configuration and settings
+        Manage system-level configuration and settings
       </Typography>
 
       <Grid container spacing={3}>

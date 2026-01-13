@@ -28,7 +28,7 @@ export const workspacePlatformAdminCard: AdminCardConfig = {
   context: "platform",
   color: "#1976d2", // Blue
   order: 40,
-  requiredRoles: ["platform_owner", "platform_admin"],
+  requiredRoles: ["sys_owner", "sys_admin"],
 };
 
 /**
@@ -50,5 +50,5 @@ export const workspaceOrgAdminCard: AdminCardConfig = {
   context: "organization",
   color: "#1976d2", // Blue
   order: 40,
-  requiredRoles: ["platform_owner", "platform_admin", "org_owner", "org_admin"],
+  requiredRoles: ["sys_owner", "sys_admin", "org_owner", "org_admin"],
 };

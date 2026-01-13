@@ -15,57 +15,56 @@ type ApiResponse<T> = T | { success: boolean; data: T };
 
 /**
  * Raw deployment data from API before processing
+ * Backend now returns camelCase per CORA standard
  */
 interface RawDeploymentData {
   id: string;
-  provider_type: string;
-  model_id: string;
-  deployment_name: string;
-  deployment_status: "available" | "testing" | "configured";
-  created_at: string;
-  updated_at: string;
+  providerType: string;
+  modelId: string;
+  deploymentName: string;
+  deploymentStatus: "available" | "testing" | "configured";
+  createdAt: string;
+  updatedAt: string;
   description?: string;
-  display_name?: string;
+  displayName?: string;
   capabilities?: string | {
     chat: boolean;
     embedding: boolean;
     vision: boolean;
     streaming: boolean;
-    max_tokens: number;
-    embedding_dimensions: number;
+    maxTokens: number;
+    embeddingDimensions: number;
   };
   metadata?: {
-    provider_name?: string;
+    providerName?: string;
     [key: string]: unknown;
   };
-  supports_chat?: boolean;
-  supports_embeddings?: boolean;
+  supportsChat?: boolean;
+  supportsEmbeddings?: boolean;
 }
 
 export type DeploymentInfo = {
   id: string;
-  provider_type: string;
-  provider: string; // Alias for provider_type for easier access
-  model_id: string;
-  model_name: string; // Alias for model_id for easier access
-  deployment_name: string;
-  supports_chat: boolean;
-  supports_embeddings: boolean;
-  deployment_status: "available" | "testing" | "configured";
-  created_at: string;
-  updated_at: string;
+  providerType: string;
+  provider: string; // Alias for providerType for easier access
+  modelId: string;
+  modelName: string; // Alias for modelId for easier access
+  deploymentName: string;
+  supportsChat: boolean;
+  supportsEmbeddings: boolean;
+  deploymentStatus: "available" | "testing" | "configured";
+  createdAt: string;
+  updatedAt: string;
   description?: string;
   capabilities?: {
     chat?: boolean;
     embedding?: boolean;
     vision?: boolean;
     streaming?: boolean;
-    max_tokens?: number;
-    embedding_dimensions?: number;
-    supportsStreaming?: boolean;
-    supportsVision?: boolean;
     maxTokens?: number;
     embeddingDimensions?: number;
+    supportsStreaming?: boolean;
+    supportsVision?: boolean;
     [key: string]: unknown;
   };
 };
@@ -355,26 +354,26 @@ export function useDeployments(
               ? JSON.parse(d.capabilities)
               : d.capabilities;
 
-          // Transform capabilities to camelCase for compatibility with AIModel
+          // Backend now returns camelCase, normalize legacy snake_case if present
           const capabilities = rawCapabilities
             ? {
                 chat: rawCapabilities.chat,
                 embedding: rawCapabilities.embedding,
                 vision: rawCapabilities.vision,
-                supportsStreaming: rawCapabilities.streaming, // Map to camelCase
-                supportsVision: rawCapabilities.vision, // Map to camelCase
-                maxTokens: rawCapabilities.max_tokens, // Map to camelCase
-                embeddingDimensions: rawCapabilities.embedding_dimensions, // Map to camelCase
+                supportsStreaming: rawCapabilities.streaming || rawCapabilities.supportsStreaming,
+                supportsVision: rawCapabilities.vision || rawCapabilities.supportsVision,
+                maxTokens: rawCapabilities.maxTokens || rawCapabilities.max_tokens,
+                embeddingDimensions: rawCapabilities.embeddingDimensions || rawCapabilities.embedding_dimensions,
                 ...rawCapabilities,
               }
             : null;
 
-          const displayName = d.display_name || "";
+          const displayName = d.displayName || "";
           let provider = "Unknown";
 
           // Try to get provider from metadata first
-          if (d.metadata?.provider_name) {
-            provider = d.metadata.provider_name;
+          if (d.metadata?.providerName) {
+            provider = d.metadata.providerName;
           } else {
             // Fallback to regex on display name
             const providerMatch = displayName.match(/\(([^)]+)\)$/);
@@ -431,18 +430,18 @@ export function useDeployments(
           // Construct DeploymentInfo explicitly to avoid spread type issues
           const info: DeploymentInfo = {
             id: d.id,
-            provider_type: d.provider_type,
+            providerType: d.providerType,
             provider: provider,
-            model_id: d.model_id,
-            model_name: modelName,
-            deployment_name: d.deployment_name,
-            deployment_status: d.deployment_status,
-            created_at: d.created_at,
-            updated_at: d.updated_at,
+            modelId: d.modelId,
+            modelName: modelName,
+            deploymentName: d.deploymentName,
+            deploymentStatus: d.deploymentStatus,
+            createdAt: d.createdAt,
+            updatedAt: d.updatedAt,
             description: d.description,
             capabilities: capabilities ?? undefined,
-            supports_chat: !!capabilities?.chat,
-            supports_embeddings: !!capabilities?.embedding,
+            supportsChat: !!capabilities?.chat,
+            supportsEmbeddings: !!capabilities?.embedding,
           };
 
           return info;
@@ -450,18 +449,18 @@ export function useDeployments(
           console.error("Failed to parse model data:", d);
           const errorInfo: DeploymentInfo = {
             id: d.id,
-            provider_type: d.provider_type,
+            providerType: d.providerType,
             provider: "Unknown",
-            model_id: d.model_id,
-            model_name: "Invalid Model",
-            deployment_name: d.deployment_name,
-            deployment_status: d.deployment_status,
-            created_at: d.created_at,
-            updated_at: d.updated_at,
+            modelId: d.modelId,
+            modelName: "Invalid Model",
+            deploymentName: d.deploymentName,
+            deploymentStatus: d.deploymentStatus,
+            createdAt: d.createdAt,
+            updatedAt: d.updatedAt,
             description: d.description,
             capabilities: undefined,
-            supports_chat: false,
-            supports_embeddings: false,
+            supportsChat: false,
+            supportsEmbeddings: false,
           };
           return errorInfo;
         }

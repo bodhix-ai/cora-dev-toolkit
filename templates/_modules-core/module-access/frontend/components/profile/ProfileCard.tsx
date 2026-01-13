@@ -96,9 +96,9 @@ export function ProfileCard({
               </h2>
               {/* Role Badge */}
               <div className="inline-flex items-center px-3 py-1 mt-2 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-sm font-medium">
-                {profile.globalRole === "platform_owner" 
-                  ? "Platform Owner" 
-                  : getRoleDisplayName(profile.globalRole)}
+                {profile.sysRole === "sys_owner" 
+                  ? "System Owner" 
+                  : getRoleDisplayName(profile.sysRole)}
               </div>
             </div>
           </div>

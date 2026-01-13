@@ -1,13 +1,10 @@
 /**
  * IDP Configuration Admin Card
  *
- * Platform admin card for managing Identity Provider (IDP) configurations.
- * Only visible to users with platform admin roles:
- * - super_admin
- * - platform_owner
- * - platform_admin
- * - global_owner
- * - global_admin
+ * System admin card for managing Identity Provider (IDP) configurations.
+ * Only visible to users with system admin roles:
+ * - sys_owner
+ * - sys_admin
  */
 
 "use client";

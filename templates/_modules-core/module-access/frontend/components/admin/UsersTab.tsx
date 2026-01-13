@@ -32,7 +32,7 @@ interface User {
   id: string;
   email: string;
   name?: string;
-  global_role?: string;
+  sys_role?: string;
   org_memberships?: {
     org_id: string;
     org_name: string;
@@ -107,7 +107,7 @@ export function UsersTab({ authAdapter }: UsersTabProps) {
 
     // Filter by role
     if (roleFilter !== "all") {
-      filtered = filtered.filter((user) => user.global_role === roleFilter);
+      filtered = filtered.filter((user) => user.sys_role === roleFilter);
     }
 
     setFilteredUsers(filtered);
@@ -115,9 +115,9 @@ export function UsersTab({ authAdapter }: UsersTabProps) {
 
   const getRoleColor = (role?: string) => {
     switch (role) {
-      case "platform_owner":
+      case "sys_owner":
         return "error";
-      case "platform_admin":
+      case "sys_admin":
         return "warning";
       default:
         return "default";
@@ -161,9 +161,9 @@ export function UsersTab({ authAdapter }: UsersTabProps) {
               aria-label="Filter by role"
             >
               <MenuItem value="all">All Roles</MenuItem>
-              <MenuItem value="platform_owner">Platform Owner</MenuItem>
-              <MenuItem value="platform_admin">Platform Admin</MenuItem>
-              <MenuItem value="">No Platform Role</MenuItem>
+              <MenuItem value="sys_owner">System Owner</MenuItem>
+              <MenuItem value="sys_admin">System Admin</MenuItem>
+              <MenuItem value="">No System Role</MenuItem>
             </Select>
           </FormControl>
         </Box>
@@ -191,7 +191,7 @@ export function UsersTab({ authAdapter }: UsersTabProps) {
               <TableRow>
                 <TableCell>User</TableCell>
                 <TableCell>Email</TableCell>
-                <TableCell>Platform Role</TableCell>
+                <TableCell>System Role</TableCell>
                 <TableCell>Organizations</TableCell>
                 <TableCell>Last Sign In</TableCell>
                 <TableCell>Created</TableCell>
@@ -214,11 +214,11 @@ export function UsersTab({ authAdapter }: UsersTabProps) {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    {user.global_role ? (
+                    {user.sys_role ? (
                       <Chip
-                        label={user.global_role.replace("_", " ")}
+                        label={user.sys_role.replace("_", " ")}
                         size="small"
-                        color={getRoleColor(user.global_role)}
+                        color={getRoleColor(user.sys_role)}
                       />
                     ) : (
                       <Typography variant="body2" color="text.secondary">

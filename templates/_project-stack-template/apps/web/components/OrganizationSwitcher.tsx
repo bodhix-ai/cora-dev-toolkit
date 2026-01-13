@@ -196,16 +196,16 @@ export function OrganizationSwitcher() {
         )}
 
         {/* Admin Section (conditional visibility) */}
-        {(profile?.globalRole === "platform_owner" || profile?.globalRole === "platform_admin" ||
+        {(profile?.sysRole === "sys_owner" || profile?.sysRole === "sys_admin" ||
           currentOrganization?.role === "org_owner" || currentOrganization?.role === "org_admin") && (
           <>
-            {/* Platform Admin */}
-            {(profile?.globalRole === "platform_owner" || profile?.globalRole === "platform_admin") && (
+            {/* System Admin */}
+            {(profile?.sysRole === "sys_owner" || profile?.sysRole === "sys_admin") && (
               <MenuItem onClick={handlePlatformAdmin}>
                 <ListItemIcon>
                   <AdminPanelSettingsIcon fontSize="small" />
                 </ListItemIcon>
-                <Typography variant="body2">Platform Admin</Typography>
+                <Typography variant="body2">System Admin</Typography>
               </MenuItem>
             )}
 

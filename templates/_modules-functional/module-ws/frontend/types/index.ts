@@ -24,24 +24,24 @@ export type WorkspaceRole = 'ws_owner' | 'ws_admin' | 'ws_user';
  */
 export interface Workspace {
   id: string;
-  org_id: string;
+  orgId: string;
   name: string;
   description?: string;
   color: string;
   icon: string;
   tags: string[];
   status: WorkspaceStatus;
-  deleted_at?: string;
-  retention_days: number;
-  created_at: string;
-  updated_at: string;
-  created_by: string;
+  deletedAt?: string;
+  retentionDays: number;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
 
   // Computed fields from API
-  is_favorited?: boolean;
-  favorited_at?: string;
-  user_role?: WorkspaceRole;
-  member_count?: number;
+  isFavorited?: boolean;
+  favoritedAt?: string;
+  userRole?: WorkspaceRole;
+  memberCount?: number;
 }
 
 /**
@@ -49,11 +49,11 @@ export interface Workspace {
  */
 export interface WorkspaceMember {
   id: string;
-  ws_id: string;
-  user_id: string;
-  ws_role: WorkspaceRole;
-  created_at: string;
-  updated_at: string;
+  wsId: string;
+  userId: string;
+  wsRole: WorkspaceRole;
+  createdAt: string;
+  updatedAt: string;
   profile?: UserProfile;
 }
 
@@ -63,8 +63,8 @@ export interface WorkspaceMember {
 export interface UserProfile {
   id: string;
   email: string;
-  display_name?: string;
-  avatar_url?: string;
+  displayName?: string;
+  avatarUrl?: string;
 }
 
 /**
@@ -72,9 +72,9 @@ export interface UserProfile {
  */
 export interface WorkspaceFavorite {
   id: string;
-  ws_id: string;
-  user_id: string;
-  created_at: string;
+  wsId: string;
+  userId: string;
+  createdAt: string;
 }
 
 // =============================================================================
@@ -86,19 +86,19 @@ export interface WorkspaceFavorite {
  */
 export interface WorkspaceConfig {
   id: string;
-  nav_label_singular: string;
-  nav_label_plural: string;
-  nav_icon: string;
-  enable_favorites: boolean;
-  enable_tags: boolean;
-  enable_color_coding: boolean;
-  default_color: string;
-  default_retention_days: number;
-  max_tags_per_workspace: number;
-  max_tag_length: number;
-  created_at: string;
-  updated_at: string;
-  updated_by?: string;
+  navLabelSingular: string;
+  navLabelPlural: string;
+  navIcon: string;
+  enableFavorites: boolean;
+  enableTags: boolean;
+  enableColorCoding: boolean;
+  defaultColor: string;
+  defaultRetentionDays: number;
+  maxTagsPerWorkspace: number;
+  maxTagLength: number;
+  createdAt: string;
+  updatedAt: string;
+  updatedBy?: string;
 }
 
 // =============================================================================
@@ -172,8 +172,8 @@ export interface WorkspaceListResponse {
  * Favorite toggle response
  */
 export interface FavoriteToggleResponse {
-  is_favorited: boolean;
-  favorited_at?: string;
+  isFavorited: boolean;
+  favoritedAt?: string;
 }
 
 /**
@@ -181,8 +181,8 @@ export interface FavoriteToggleResponse {
  */
 export interface DeleteWorkspaceResponse {
   success: boolean;
-  deleted_at?: string;
-  retention_days?: number;
+  deletedAt?: string;
+  retentionDays?: number;
   permanent?: boolean;
 }
 
@@ -198,51 +198,51 @@ export interface WorkspaceStats {
   active: number;
   archived: number;
   deleted: number;
-  created_this_month: number;
+  createdThisMonth: number;
 }
 
 /**
  * Organization workspace summary (for platform admin)
  */
 export interface OrgWorkspaceSummary {
-  org_id: string;
-  org_name: string;
-  total_workspaces: number;
-  active_workspaces: number;
-  avg_per_user: number;
-  trend_percent: number;
+  orgId: string;
+  orgName: string;
+  totalWorkspaces: number;
+  activeWorkspaces: number;
+  avgPerUser: number;
+  trendPercent: number;
 }
 
 /**
  * Feature adoption metrics
  */
 export interface FeatureAdoption {
-  favorites_percent: number;
-  tags_percent: number;
-  colors_percent: number;
+  favoritesPercent: number;
+  tagsPercent: number;
+  colorsPercent: number;
 }
 
 /**
  * Analytics data for workspace usage
  * 
- * Note: API returns flat structure with org_id context
+ * Note: API returns flat structure with orgId context
  */
 export interface WorkspaceAnalytics {
   // API response format (flat structure from /ws/admin/analytics)
-  org_id?: string;
-  total_workspaces?: number;
-  active_workspaces?: number;
-  archived_workspaces?: number;
-  deleted_workspaces?: number;
-  total_members?: number;
-  avg_members_per_workspace?: number;
+  orgId?: string;
+  totalWorkspaces?: number;
+  activeWorkspaces?: number;
+  archivedWorkspaces?: number;
+  deletedWorkspaces?: number;
+  totalMembers?: number;
+  avgMembersPerWorkspace?: number;
   
   // Legacy format (for backwards compatibility)
   stats?: WorkspaceStats;
-  workspaces_over_time?: TimeSeriesData[];
-  status_distribution?: StatusDistribution;
-  most_active?: WorkspaceActivity[];
-  inactive_workspaces?: InactiveWorkspace[];
+  workspacesOverTime?: TimeSeriesData[];
+  statusDistribution?: StatusDistribution;
+  mostActive?: WorkspaceActivity[];
+  inactiveWorkspaces?: InactiveWorkspace[];
 }
 
 /**
@@ -266,18 +266,18 @@ export interface StatusDistribution {
  * Workspace activity for analytics
  */
 export interface WorkspaceActivity {
-  workspace_id: string;
-  workspace_name: string;
-  action_count: number;
+  workspaceId: string;
+  workspaceName: string;
+  actionCount: number;
 }
 
 /**
  * Inactive workspace for cleanup suggestions
  */
 export interface InactiveWorkspace {
-  workspace_id: string;
-  workspace_name: string;
-  days_inactive: number;
+  workspaceId: string;
+  workspaceName: string;
+  daysInactive: number;
   recommendation: 'archive' | 'delete' | 'review';
 }
 
@@ -322,7 +322,7 @@ export interface WorkspaceFilters {
 /**
  * Sort options for workspace list
  */
-export type WorkspaceSortField = 'name' | 'created_at' | 'updated_at' | 'member_count';
+export type WorkspaceSortField = 'name' | 'createdAt' | 'updatedAt' | 'memberCount';
 export type SortDirection = 'asc' | 'desc';
 
 export interface WorkspaceSortOptions {
@@ -422,6 +422,6 @@ export const DEFAULT_FILTERS: WorkspaceFilters = {
  * Default sort options
  */
 export const DEFAULT_SORT: WorkspaceSortOptions = {
-  field: 'updated_at',
+  field: 'updatedAt',
   direction: 'desc',
 };

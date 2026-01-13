@@ -6,7 +6,7 @@ export interface User {
   firstName: string | null;
   lastName: string | null;
   phone: string | null;
-  globalRole: "global_user" | "global_admin" | "global_owner" | "platform_owner";
+  sysRole: "sys_user" | "sys_admin" | "sys_owner";
   currentOrgId: string | null;
   requiresInvitation?: boolean; // Flag for denied access scenario
   createdAt: string;
@@ -21,40 +21,47 @@ export interface Profile extends User {
 export interface Organization {
   id: string;
   name: string;
-  slug: string;
-  description: string | null;
-  websiteUrl: string | null;
-  logoUrl: string | null;
-  appName: string | null;
-  appIcon: string | null;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-  updatedBy: string | null;
+  slug?: string;
+  ownerId: string;
+  description?: string;
+  websiteUrl?: string;
+  logoUrl?: string;
+  appName?: string;
+  appIcon?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-// Organization Membership Types
-export interface OrgMember {
-  id: string;
-  orgId: string;
-  personId: string;
-  roleName: "org_user" | "org_admin" | "org_owner";
-  joinedAt: string;
-  invitedBy: string | null;
-  user?: User;
-}
-
-// User Organization (for listing user's orgs)
 export interface UserOrganization {
   orgId: string;
   orgName: string;
-  orgSlug: string;
-  role: "org_user" | "org_admin" | "org_owner";
+  orgSlug?: string;
+  role: OrgRole;
   isOwner: boolean;
+  joinedAt?: string;
+  logoUrl?: string;
+  appName?: string | null;
+  appIcon?: string | null;
+}
+
+export type OrgRole = "org_user" | "org_admin" | "org_owner";
+
+// Organization Member Type (for org member management)
+export interface OrgMember {
+  id: string;
+  userId: string;
+  orgId: string;
+  role: OrgRole;
+  roleName: OrgRole; // Role for display (must be OrgRole for type safety)
   joinedAt: string;
-  logoUrl: string | null;
-  appName: string | null;
-  appIcon: string | null;
+  addedBy?: string;
+  // User info (joined from user_profiles)
+  user?: {
+    email: string;
+    name?: string;
+    fullName?: string;
+    avatarUrl?: string;
+  };
 }
 
 // API Response Types

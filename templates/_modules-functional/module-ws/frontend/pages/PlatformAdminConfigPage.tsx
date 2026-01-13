@@ -1,7 +1,7 @@
 /**
  * PlatformAdminConfigPage Component
  *
- * Platform admin page for managing workspace module configuration.
+ * System admin page for managing workspace module configuration.
  * Controls navigation labels, feature flags, and default settings.
  * 
  * Features:
@@ -267,7 +267,7 @@ export function PlatformAdminConfigPage({
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Alert severity="error">
-          You do not have permission to access this page. Platform admin role required.
+          You do not have permission to access this page. System admin role required.
         </Alert>
       </Container>
     );
@@ -277,7 +277,7 @@ export function PlatformAdminConfigPage({
     <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* Breadcrumbs */}
       <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}>
-        <Link href="/admin/sys" style={{ textDecoration: "none" }} aria-label="Go to Platform Admin">
+        <Link href="/admin/sys" style={{ textDecoration: "none" }} aria-label="Go to System Admin">
           <Typography 
             variant="body2" 
             color="primary" 
@@ -286,7 +286,7 @@ export function PlatformAdminConfigPage({
               cursor: "pointer"
             }}
           >
-            Platform Admin
+            System Admin
           </Typography>
         </Link>
         <NavigateNext fontSize="small" color="action" />

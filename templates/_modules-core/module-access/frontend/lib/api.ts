@@ -19,7 +19,7 @@ interface ProfileApiData {
   first_name?: string | null;
   last_name?: string | null;
   phone?: string | null;
-  global_role?: "global_user" | "global_admin" | "global_owner" | "platform_owner";
+  sys_role?: "sys_user" | "sys_admin" | "sys_owner";
   current_org_id?: string | null;
   created_at: string;
   updated_at: string;
@@ -47,7 +47,7 @@ function transformProfileResponse(apiData: ProfileApiData): Profile {
     firstName: apiData.first_name || null,
     lastName: apiData.last_name || null,
     phone: apiData.phone || null,
-    globalRole: apiData.global_role || "global_user",
+    sysRole: apiData.sys_role || "sys_user",
     currentOrgId: apiData.current_org_id || null,
     createdAt: apiData.created_at,
     updatedAt: apiData.updated_at,

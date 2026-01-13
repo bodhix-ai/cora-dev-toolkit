@@ -8,7 +8,7 @@
  * - Edit organization details and domain configuration
  * - Configure domain-based auto-provisioning
  *
- * Only accessible to platform_owner and platform_admin roles.
+ * Only accessible to sys_owner and sys_admin roles.
  */
 
 "use client";

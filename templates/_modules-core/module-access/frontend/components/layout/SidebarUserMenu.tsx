@@ -296,7 +296,7 @@ export function SidebarUserMenu({ isExpanded }: SidebarUserMenuProps) {
             />
           </MenuItem>
 
-          {/* Platform Admin - Only for global admins */}
+          {/* System Admin - Only for global admins */}
           {isGlobalAdmin && (
             <MenuItem
               onClick={() => {
@@ -309,7 +309,7 @@ export function SidebarUserMenu({ isExpanded }: SidebarUserMenuProps) {
                 <AdminPanelSettingsIcon fontSize="small" />
               </ListItemIcon>
               <ListItemText
-                primary="Platform Admin"
+                primary="System Admin"
                 primaryTypographyProps={{ fontSize: "0.875rem" }}
               />
             </MenuItem>

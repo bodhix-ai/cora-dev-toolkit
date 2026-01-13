@@ -33,8 +33,8 @@ interface OrgAIConfigTabProps {
 /**
  * Organization AI Configuration Tab
  * 
- * Manages organization-specific AI settings (platform admin only).
- * Allows platform admins to override default AI settings for an organization.
+ * Manages organization-specific AI settings (system admin only).
+ * Allows system admins to override default AI settings for an organization.
  */
 export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
   const [config, setConfig] = useState<OrgAIConfig | null>(null);
@@ -134,8 +134,8 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
       </Typography>
 
       <Alert severity="warning" sx={{ mb: 3 }}>
-        <AlertTitle>Platform Admin Only</AlertTitle>
-        This configuration is only accessible to platform administrators. Organization owners and admins cannot modify these settings.
+        <AlertTitle>System Admin Only</AlertTitle>
+        This configuration is only accessible to system administrators. Organization owners and admins cannot modify these settings.
       </Alert>
 
       {error && (
@@ -167,7 +167,7 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
             placeholder="Enter organization-specific system prompt..."
             multiline
             rows={6}
-            helperText="Override the platform default system prompt for this organization"
+            helperText="Override the system default system prompt for this organization"
           />
 
           <TextField
@@ -178,7 +178,7 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
               setFormData({ ...formData, default_chat_model: e.target.value })
             }
             placeholder="e.g., gpt-4, claude-3-opus"
-            helperText="Override the platform default chat model for this organization"
+            helperText="Override the system default chat model for this organization"
           />
 
           <TextField
@@ -192,7 +192,7 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
               })
             }
             placeholder="e.g., text-embedding-ada-002"
-            helperText="Override the platform default embedding model for this organization"
+            helperText="Override the system default embedding model for this organization"
           />
 
           <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>

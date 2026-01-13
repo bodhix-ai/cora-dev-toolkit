@@ -149,7 +149,7 @@ export interface ModelCounts {
   available: number;
   unavailable: number;
   deprecated?: number;
-  by_category?: Record<string, number>; // Breakdown by validation category
+  byCategory?: Record<string, number>; // Breakdown by validation category
 }
 
 /**

@@ -117,10 +117,9 @@ export function OrgProvider({ authAdapter, children }: OrgProviderProps) {
         const newOrg = userOrgs.find(
           (org) => org.orgId === profile.currentOrgId
         );
-        // Only update if the orgId has actually changed
+        // Always use fresh org data to ensure fields like appName/appIcon are current
         setCurrentOrgState((prevOrg) => {
           if (!newOrg) return prevOrg;
-          if (newOrg.orgId === prevOrg?.orgId) return prevOrg;
           return newOrg;
         });
       } else if (userOrgs.length > 0) {

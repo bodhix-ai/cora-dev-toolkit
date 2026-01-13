@@ -94,6 +94,9 @@ export { OrgSelector } from "./components/org/OrgSelector";
 export { OrgMembersList } from "./components/org/OrgMembersList";
 export { InviteMemberDialog } from "./components/org/InviteMemberDialog";
 
+// Components - Common
+export { OrgIcon } from "./components/common/OrgIcon";
+
 // Navigation
 export { orgNavigation, orgUtilityNavigation } from "./navigation";
 

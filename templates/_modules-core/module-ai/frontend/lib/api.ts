@@ -15,47 +15,47 @@ import {
 } from "../types";
 
 /**
- * API response interfaces (snake_case from backend)
+ * API response interfaces (camelCase from backend)
  */
 interface ProviderApiData {
   id: string;
   name: string;
-  display_name?: string | null;
-  provider_type: string;
-  auth_method?: string | null;
-  credentials_secret_path?: string | null;
-  is_active?: boolean;
-  created_at: string;
-  updated_at: string;
-  created_by?: string | null;
-  updated_by?: string | null;
-  model_counts?: {
+  displayName?: string | null;
+  providerType: string;
+  authMethod?: string | null;
+  credentialsSecretPath?: string | null;
+  isActive?: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  modelCounts?: {
     total?: number;
     discovered?: number;
     testing?: number;
     available?: number;
     unavailable?: number;
     deprecated?: number;
-    by_category?: Record<string, number>;
+    byCategory?: Record<string, number>;
   };
-  last_validated_at?: string | null;
+  lastValidatedAt?: string | null;
 }
 
 interface ModelApiData {
   id: string;
-  provider_id: string;
-  model_id: string;
-  display_name?: string | null;
+  providerId: string;
+  modelId: string;
+  displayName?: string | null;
   capabilities?: ModelCapabilities | null;
   status?: ModelStatus;
-  validation_category?: ValidationCategory | null;
-  cost_per_1k_tokens_input?: number | null;
-  cost_per_1k_tokens_output?: number | null;
-  last_discovered_at?: string | null;
-  created_at: string;
-  updated_at: string;
-  created_by?: string | null;
-  updated_by?: string | null;
+  validationCategory?: ValidationCategory | null;
+  costPer1kTokensInput?: number | null;
+  costPer1kTokensOutput?: number | null;
+  lastDiscoveredAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string | null;
+  updatedBy?: string | null;
 }
 
 interface ProviderInputApiData {
@@ -78,73 +78,63 @@ interface AuthenticatedClient {
 }
 
 /**
- * Transform snake_case API response to camelCase frontend types
- * Note: org_id removed as providers/models are now platform-level
+ * Transform API response to frontend types
+ * Backend now returns camelCase, so this is mostly a pass-through
  */
 function transformProviderResponse(apiData: ProviderApiData): AIProvider {
   return {
     id: apiData.id,
     name: apiData.name,
-    displayName: apiData.display_name || null,
-    providerType: apiData.provider_type,
-    authMethod: (apiData.auth_method as 'iam_role' | 'secrets_manager' | 'ssm_parameter') || 'secrets_manager',
-    credentialsSecretPath: apiData.credentials_secret_path || null,
-    isActive: apiData.is_active ?? true,
-    createdAt: apiData.created_at,
-    updatedAt: apiData.updated_at,
-    createdBy: apiData.created_by || null,
-    updatedBy: apiData.updated_by || null,
-    modelCounts: apiData.model_counts
+    displayName: apiData.displayName || null,
+    providerType: apiData.providerType,
+    authMethod: (apiData.authMethod as 'iam_role' | 'secrets_manager' | 'ssm_parameter') || 'secrets_manager',
+    credentialsSecretPath: apiData.credentialsSecretPath || null,
+    isActive: apiData.isActive ?? true,
+    createdAt: apiData.createdAt,
+    updatedAt: apiData.updatedAt,
+    createdBy: apiData.createdBy || null,
+    updatedBy: apiData.updatedBy || null,
+    modelCounts: apiData.modelCounts
       ? {
-          total: apiData.model_counts.total || 0,
-          discovered: apiData.model_counts.discovered || 0,
-          testing: apiData.model_counts.testing || 0,
-          available: apiData.model_counts.available || 0,
-          unavailable: apiData.model_counts.unavailable || 0,
-          deprecated: apiData.model_counts.deprecated || 0,
-          by_category: apiData.model_counts.by_category || undefined,
+          total: apiData.modelCounts.total || 0,
+          discovered: apiData.modelCounts.discovered || 0,
+          testing: apiData.modelCounts.testing || 0,
+          available: apiData.modelCounts.available || 0,
+          unavailable: apiData.modelCounts.unavailable || 0,
+          deprecated: apiData.modelCounts.deprecated || 0,
+          byCategory: apiData.modelCounts.byCategory || undefined,
         }
       : undefined,
-    lastValidatedAt: apiData.last_validated_at || null,
+    lastValidatedAt: apiData.lastValidatedAt || null,
   };
 }
 
 function transformModelResponse(apiData: ModelApiData): AIModel {
-  // Transform capabilities keys from snake_case (backend) to camelCase (frontend)
+  // Backend now returns camelCase, minimal transformation needed
   let capabilities: ModelCapabilities | null = null;
   if (apiData.capabilities) {
     // Handle stringified capabilities (legacy data) or object (new data)
-    const caps = typeof apiData.capabilities === 'string' 
+    capabilities = typeof apiData.capabilities === 'string' 
       ? JSON.parse(apiData.capabilities) 
-      : apiData.capabilities as any;
-      
-    capabilities = {
-      chat: caps.chat,
-      embedding: caps.embedding,
-      maxTokens: caps.max_tokens,
-      supportsStreaming: caps.streaming,
-      supportsVision: caps.vision,
-      embeddingDimensions: caps.embedding_dimensions,
-      ...caps, // Keep other properties
-    };
+      : apiData.capabilities;
   }
 
   return {
     id: apiData.id,
-    providerId: apiData.provider_id,
-    modelId: apiData.model_id,
-    displayName: apiData.display_name || null,
-    description: (apiData as any).description || null, // Ensure description is mapped
+    providerId: apiData.providerId,
+    modelId: apiData.modelId,
+    displayName: apiData.displayName || null,
+    description: (apiData as any).description || null,
     capabilities,
     status: apiData.status || "available",
-    validationCategory: apiData.validation_category || null,
-    costPer1kTokensInput: apiData.cost_per_1k_tokens_input || null,
-    costPer1kTokensOutput: apiData.cost_per_1k_tokens_output || null,
-    lastDiscoveredAt: apiData.last_discovered_at || null,
-    createdAt: apiData.created_at,
-    updatedAt: apiData.updated_at,
-    createdBy: apiData.created_by || null,
-    updatedBy: apiData.updated_by || null,
+    validationCategory: apiData.validationCategory || null,
+    costPer1kTokensInput: apiData.costPer1kTokensInput || null,
+    costPer1kTokensOutput: apiData.costPer1kTokensOutput || null,
+    lastDiscoveredAt: apiData.lastDiscoveredAt || null,
+    createdAt: apiData.createdAt,
+    updatedAt: apiData.updatedAt,
+    createdBy: apiData.createdBy || null,
+    updatedBy: apiData.updatedBy || null,
   };
 }
 
@@ -368,7 +358,7 @@ export function createAIEnablementClient(
     // Get validation status
     getValidationStatus: async (providerId: string) => {
       try {
-        const response = await authenticatedClient.get<{ status: string; current_model_id?: string; validated?: number; total?: number; available?: number; unavailable?: number }>(
+        const response = await authenticatedClient.get<{ status: string; currentModelId?: string; validated?: number; total?: number; available?: number; unavailable?: number }>(
           `/providers/${providerId}/validation-status`
         );
         if (response.success && response.data) {
@@ -376,7 +366,7 @@ export function createAIEnablementClient(
             success: true,
             data: {
               isValidating: response.data.status === "in_progress",
-              currentModel: response.data.current_model_id || undefined,
+              currentModel: response.data.currentModelId || undefined,
               validated: response.data.validated || 0,
               total: response.data.total || 0,
               available: response.data.available || 0,

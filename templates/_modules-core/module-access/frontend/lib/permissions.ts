@@ -39,11 +39,11 @@ export function hasOrgAdminAccess(org: UserOrganization): boolean {
 }
 
 /**
- * Check if user is global admin
+ * Check if user is system admin (sys_admin or sys_owner)
  */
-export function isGlobalAdmin(user: User): boolean {
+export function isSysAdmin(user: User): boolean {
   return (
-    user.globalRole === "global_admin" || user.globalRole === "global_owner"
+    user.sysRole === "sys_admin" || user.sysRole === "sys_owner"
   );
 }
 
@@ -55,17 +55,17 @@ export function getRoleDisplayName(
     | "org_user"
     | "org_admin"
     | "org_owner"
-    | "global_user"
-    | "global_admin"
-    | "global_owner",
+    | "sys_user"
+    | "sys_admin"
+    | "sys_owner",
 ): string {
-  const roleNames = {
+  const roleNames: Record<string, string> = {
     org_user: "Member",
     org_admin: "Admin",
     org_owner: "Owner",
-    global_user: "User",
-    global_admin: "Global Admin",
-    global_owner: "Global Owner",
+    sys_user: "User",
+    sys_admin: "System Admin",
+    sys_owner: "System Owner",
   };
   return roleNames[role] || role;
 }
