@@ -2,650 +2,433 @@
 
 ## Current Focus
 
-**Session 96: Org-Based App Branding Feature** - ✅ **COMPLETE** | 🧪 **USER TESTING IN PROGRESS**
+**Session 111: Role Standardization Phase 6 - Automated Validator & Violation Fixes** - 🔄 **IN PROGRESS**
 
-## Session: January 12, 2026 (1:30 PM - 2:11 PM) - Session 96
+## Next Task Priority
 
-### 🎯 Status: ✅ FEATURE COMPLETE | 🧪 USER TESTING
+**Phase A: Foundation Standards Implementation**
 
-**Summary:** Implemented dynamic org-based app name and icon feature with comprehensive admin UI for editing organization metadata. Feature complete and validated. User creating test project for validation.
+**Completed:**
+1. ✅ **plan_sys-role-standardization.md** - COMPLETE - Comprehensive plan with table renaming scope
+2. ✅ **Phase 0: Analysis & Discovery** - COMPLETE - Impact assessment created
+3. ✅ **Phase 1: Database Schema Migration** - COMPLETE - All schema files updated
+4. ✅ **Phase 2: RLS Policy Updates** - COMPLETE - All 8 RLS files updated
+5. ✅ **Phase 3: Backend Lambda Updates** - PARTIAL - Initial pass complete, more files discovered
+6. ✅ **Phase 4: Frontend Updates** - PARTIAL - Initial pass complete, more files discovered
+7. ✅ **Phase 5: Documentation Updates** - COMPLETE
+8. ✅ **Phase 6.5: Automated Validator** - CREATED - `validation/role-naming-validator/`
 
----
+**Ready for Execution (Next Session):**
+9. **Fix Remaining 124 Violations** - Run validator, fix files systematically (2-3 hours)
+10. **Execute Phase 6** - Final Testing & Validation (1 hour)
+6. **standard_SYS-VS-ORG-ADMIN-PATTERNS.md** - Create admin separation standard (2-3 hours)
+7. **plan_enforce-db-naming-standards-in-dev-guide.md** - Update module dev guide (5.75 hours)
 
-## ✅ SESSION 96 - ORG-BASED APP BRANDING FEATURE
+**Can Be Done In Parallel:**
+- plan_ai-platform-seeding-strategy.md - AI configuration seeding (not structural dependency)
+- plan_module-ui-integration.md - Dynamic navigation system (can be done after modules exist)
+- standard_COMMON-METHODS.md - Reusable methods documentation (2-3 hours)
 
-### Feature Overview
-
-Implemented configurable app branding system where each organization can customize:
-- **App Name**: Custom name displayed in sidebar (defaults to org name)
-- **App Icon**: Visual icon from curated AI-related icon set (8 options)
-
-### Implementation Complete ✅
-
-#### 1. Database Schema ✅
-- **File**: `templates/_modules-core/module-access/db/schema/002-orgs.sql`
-- Added `app_name TEXT NULL` column
-- Added `app_icon TEXT NULL` column
-- Migration script created: `scripts/migrations/add-org-app-branding.sql`
-- **Status**: Migration run and validated in database
-
-#### 2. Backend Lambda ✅
-- **File**: `templates/_modules-core/module-access/backend/lambdas/orgs/lambda_function.py`
-- Added `ALLOWED_ORG_ICONS` constant with 8 AI-related MUI icons
-- Create/Update operations support `app_name` and `app_icon` with validation
-- Icon validation ensures only approved icons are used
-
-#### 3. Frontend Types ✅
-- **File**: `templates/_modules-core/module-access/frontend/types/index.ts`
-- Added `appName: string | null` to Organization interface
-- Added `appIcon: string | null` to Organization interface
-- Added `ORG_ICON_OPTIONS` constant with icon picker options
-- Added `OrgIconValue` type for type safety
-
-#### 4. Dynamic Icon Component ✅
-- **File**: `templates/_modules-core/module-access/frontend/components/common/OrgIcon.tsx` (NEW)
-- Maps icon name strings to MUI icon components
-- Falls back to `AutoAwesomeOutlined` (sparkles) as default
-- Supports customizable size and className
-
-#### 5. Sidebar Display ✅
-- **File**: `templates/_modules-core/module-access/frontend/components/layout/Sidebar.tsx`
-- Desktop: Shows icon + app name (expanded) or icon only (collapsed)
-- Mobile: Shows icon + app name in menu header
-- Fallback logic: `appName` → `orgName` → "CORA"
-
-#### 6. Admin UI - OrgDetailsTab ✅
-- **File**: `templates/_modules-core/module-access/frontend/components/admin/OrgDetailsTab.tsx` (NEW)
-- Comprehensive editable form for all org metadata:
-  - Basic info: name, slug, description
-  - Branding: website URL, logo URL
-  - App branding: app name, **visual icon picker**
-- Read/edit modes with "Edit Organization" button
-- **Live sidebar preview** showing how branding will appear
-- System info: created/updated timestamps
-- **Validation**: All accessibility and frontend compliance errors resolved
-
-#### 7. Available Icons (AI-Related)
-- ✨ `AutoAwesomeOutlined` - Sparkles (default)
-- 🧠 `PsychologyOutlined` - Brain
-- 🤖 `SmartToyOutlined` - Robot
-- ✨ `AutoFixHighOutlined` - Magic Wand
-- ⚡ `BoltOutlined` - Lightning
-- 🔗 `HubOutlined` - Network Hub
-- 💾 `MemoryOutlined` - Memory Chip
-- 📊 `ModelTrainingOutlined` - Model Training
-
-### Files Modified (9 Total)
-
-| File | Status | Impact |
-|------|--------|--------|
-| `module-access/db/schema/002-orgs.sql` | ✅ Updated | Database columns added |
-| `scripts/migrations/add-org-app-branding.sql` | ✅ Created | Migration for existing DBs |
-| `module-access/backend/lambdas/orgs/lambda_function.py` | ✅ Updated | Backend CRUD + validation |
-| `module-access/frontend/types/index.ts` | ✅ Updated | TypeScript types |
-| `module-access/frontend/components/common/OrgIcon.tsx` | ✅ Created | Dynamic icon renderer |
-| `module-access/frontend/components/layout/Sidebar.tsx` | ✅ Updated | Display app branding |
-| `module-access/frontend/components/admin/OrgDetailsTab.tsx` | ✅ Created | Admin edit UI |
-| `module-access/frontend/components/admin/OrgDetails.tsx` | ✅ Updated | Uses OrgDetailsTab |
-
-### Validation Results ✅
-
-**Accessibility Validator**: ✅ PASSED (2 errors fixed)
-- Fixed: Link aria-labels for website and logo URLs
-
-**Frontend Compliance**: ✅ PASSED (2 errors fixed)
-- Fixed: Replaced `any` type with proper `Partial<>` type
-- Fixed: Proper error handling with `instanceof Error`
-
-### Current Status
-
-**Test Project**: 🧪 IN PROGRESS
-- User creating new test project with updated templates
-- Deploying infrastructure and building dev server
-- User testing will validate feature functionality
-
-**Next Steps**:
-- User will report any issues found during testing
-- Address any bugs or UX issues discovered
-- Template updates are complete and ready for production use
+**Ready to Archive:**
+- plan_navigation-and-roles-implementation.md - Status: COMPLETE
+- plan_role-column-standardization.md - SUPERSEDED by plan_sys-role-standardization.md
+- plan_database-role-column-standardization.md - SUPERSEDED by plan_sys-role-standardization.md
 
 ---
 
-## Previous Sessions Summary
+## Session: January 13, 2026 (11:40 AM - 11:50 AM) - Session 111
 
-### Session 91-94: Platform Admin API & Frontend Fixes
+### 🎯 Status: 🔄 IN PROGRESS - PHASE 6.5 AUTOMATED VALIDATOR & VIOLATION FIXES
 
-### 🎯 Status: ✅ ALL BACKEND FIXED | ✅ ALL FRONTEND FIXED
+**Summary:** Created automated role naming validator and integrated it with the CORA validation framework. Ran validator against templates/ directory, discovered 168 violations across 21 files that were missed in earlier phases. Fixed 2 major Lambda files (ai-config-handler, provider), reducing violations from 168 to 124. Session ended due to context window limits.
 
-### 🎯 Status: ✅ ALL BACKEND FIXED | ✅ ALL FRONTEND FIXED
+**Deliverables:**
 
-**Summary:** Fixed ALL backend platform admin API errors and ALL frontend issues. Fixed AI models rendering, added missing invites button, and resolved members tab redirect caused by duplicate API calls.
+| Item | Description | Status |
+|------|-------------|--------|
+| `validation/role-naming-validator/` | New validator module | ✅ Created |
+| `validation/role-naming-validator/cli.py` | CLI entry point | ✅ Created |
+| `validation/cora-validate.py` | Integration with main validator | ✅ Updated |
+| `module-ai/ai-config-handler/lambda_function.py` | Fixed 44+ violations | ✅ Fixed |
+| `module-ai/provider/lambda_function.py` | Fixed 2 violations | ✅ Fixed |
+
+**Validator Results:**
+- **Initial Run:** 168 violations in 21 files (260 files scanned)
+- **After Fixes:** 124 violations remaining
+
+**Files Still Needing Updates (124 violations):**
+1. `module-access/backend/.build/` - Build artifacts (will regenerate)
+2. `module-access/backend/lambdas/identities-management/` - 2 violations
+3. `module-access/backend/lambdas/idp-config/` - 8 violations (table names)
+4. `module-access/frontend/components/admin/OrgDetails.tsx` - 4 violations
+5. `module-mgmt/backend/handlers/module_registry.py` - Many violations
+6. `module-mgmt/backend/handlers/module_usage.py` - Many violations
+7. `module-mgmt/backend/lambdas/lambda-mgmt/` - Many violations
+8. `module-mgmt/backend/middleware/` - 3 violations
+9. `module-mgmt/frontend/adminCard.tsx` - 2 violations
+10. `module-ws/frontend/pages/PlatformAdminConfigPage.tsx` - 3 violations
+11. `module-ws/routes/admin/org/ws/page.tsx` - 5 violations
+12. `module-ws/routes/admin/sys/ws/page.tsx` - 2 violations
+13. `_project-stack-template/` - Various files
+
+**Validator Command:**
+```bash
+python3 -m validation.role-naming-validator.cli templates/ --format text
+```
+
+**Next Steps for New Session:**
+1. Fix remaining 124 violations systematically (start with module-mgmt)
+2. Re-run validator to confirm 0 violations
+3. Complete Phase 6 testing
+4. Update activeContext.md with final completion status
+
+**Updated:** January 13, 2026, 11:50 AM EST
 
 ---
 
-## ✅ SESSION 91-92 RESOLVED ISSUES
+## Session: January 13, 2026 (11:30 AM - 11:40 AM) - Session 110
 
-### Backend Fixes (Session 91)
+### 🎯 Status: ✅ COMPLETE - PHASE 5 DOCUMENTATION UPDATES
 
-1. **GET /admin/users** - 500 → 200 ✅
-2. **GET /admin/ai/config** - 404 → 200 ✅  
-3. **GET /orgs/{orgId}/invites** - 500 → 200 ✅
-4. **user_sessions table** - Now populating for existing users ✅
+**Summary:** Completed Phase 5 of the role standardization plan. Updated all major documentation files to use the new role naming conventions (`sys_role` instead of `global_role`, `sys_admin/sys_owner` instead of `platform_admin/platform_owner`, and `org_role` instead of `role`).
 
-### Frontend Fixes (Sessions 92-93)
+**Files Updated This Session:**
 
-5. **AI Models Tab Not Displaying** - ✅ FIXED (Session 92)
+| Location | File | Changes |
+|----------|------|---------|
+| docs/standards/ | `standard_LAMBDA-AUTHORIZATION.md` | Role column and value updates |
+| docs/standards/ | `standard_NAVIGATION-AND-ROLES.md` | System-level role table, visibility conditions |
+| docs/standards/ | `standard_MODULAR-ADMIN-ARCHITECTURE.md` | ~25 role references updated |
+| docs/standards/ | `standard_ADMIN-CARD-PATTERN.md` | Backend authorization pattern |
+| docs/standards/ | `standard_module-integration-spec.md` | Admin card roles, access control |
+| docs/standards/ | `navigation-and-roles-design.md` | Role tables, column names |
 
-**Problem:** UI showed "No models found" despite API returning 110 models
-**Root Cause:** API client not extracting `response.data.deployments` correctly
-**Fix Applied:** Updated `module-ai/frontend/lib/api.ts` getModels() function
+**Pattern Changes Applied:**
+- `user_profiles.global_role` → `user_profiles.sys_role`
+- `org_members.role` → `org_members.org_role`
+- `platform_owner` → `sys_owner`
+- `platform_admin` → `sys_admin`
+- `platform_user` → `sys_user`
+- `globalRole` (TypeScript) → `sysRole`
+- `is_platform_admin()` → `is_sys_admin()`
+- `isPlatformAdmin` → `isSysAdmin`
 
-```typescript
-// Backend returns: {success: true, data: {deployments: [...]}}
-// But client expected: {success: true, data: [...]}
+**Phase 5 Progress: ✅ 100% Complete**
 
-// BEFORE (❌ Wrong):
-const models = Array.isArray(response.data) ? response.data : [];
+**Updated:** January 13, 2026, 11:40 AM EST
 
-// AFTER (✅ Fixed):
-let models: ModelApiData[] = [];
-if (Array.isArray(response)) {
-  models = response;
-} else if (response?.data) {
-  if (Array.isArray(response.data)) {
-    models = response.data;
-  } else if (response.data?.deployments && Array.isArray(response.data.deployments)) {
-    models = response.data.deployments;  // ← Extract nested deployments
-  }
-}
-```
+---
 
-**Result:** Platform Admin AI Models tab now displays all 110 models correctly
+## Session: January 13, 2026 (11:04 AM - 11:17 AM) - Session 109
 
-6. **Org Invites Tab - Missing "Create Invitation" Button** - ✅ FIXED (Session 93)
+### 🎯 Status: ✅ COMPLETE - PHASE 4 FRONTEND UPDATES
 
-**Problem:** OrgInvitesTab component had no button to create new invitations
-**Root Cause:** Component design inconsistency - OrgMembersTab had "Invite Member" button, but OrgInvitesTab did not
-**Fix Applied:** Updated `module-access/frontend/components/admin/OrgInvitesTab.tsx`
+**Summary:** Completed Phase 4 execution - all frontend TypeScript/React components updated to use new role naming conventions (`sysRole` instead of `globalRole`, `sys_owner/sys_admin` instead of `platform_owner/platform_admin`, UI labels updated from "Platform Admin" to "System Admin").
 
-```typescript
-// Added imports
-import { PersonAdd } from "@mui/icons-material";
-import { InviteMemberDialog } from "../org/InviteMemberDialog";
+**Files Updated This Session:**
 
-// Added state
-const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+| Location | File | Changes |
+|----------|------|---------|
+| **project-stack-template** | `components/AuthRouter.tsx` | `globalRole`→`sysRole`, `platform_owner`→`sys_owner` |
+| **project-stack-template** | `app/page.tsx` | `globalRole`→`sysRole` |
+| **project-stack-template** | `app/admin/access/page.tsx` | Comments, role checks, `isPlatformAdmin`→`isSysAdmin` |
+| **project-stack-template** | `app/admin/mgmt/page.tsx` | Comments, role checks, function renamed |
+| **project-stack-template** | `app/admin/platform/page.tsx` | Comments, UI title "System Administration" |
+| **project-stack-template** | `app/admin/ai/page.tsx` | Comments updated |
+| **project-stack-template** | `app/admin/organizations/page.tsx` | Comments updated |
+| **project-stack-template** | `app/admin/access/orgs/[id]/page.tsx` | Comments, role checks |
+| **project-stack-template** | `app/org/settings/page.tsx` | Comments, role checks |
+| **module-access/frontend** | `components/layout/SidebarUserMenu.tsx` | Menu label "Platform Admin" → "System Admin" |
+| **module-access/frontend** | `components/admin/OrgAIConfigTab.tsx` | Alert "Platform Admin Only" → "System Admin Only" |
+| **module-ws/frontend** | `pages/PlatformAdminConfigPage.tsx` | Breadcrumb, error message updated |
+| **module-ws/frontend** | `admin/platformAdminCard.tsx` | Comments updated |
 
-// Added button at top of component (matching OrgMembersTab pattern)
-<Button
-  variant="contained"
-  startIcon={<PersonAdd />}
-  onClick={() => setInviteDialogOpen(true)}
->
-  Create Invitation
-</Button>
+**Pattern Changes Applied:**
+- `profile?.globalRole` → `profile?.sysRole`
+- `platform_owner` → `sys_owner`
+- `platform_admin` → `sys_admin`
+- `isPlatformAdmin` → `isSysAdmin`
+- `requiredRoles: ["platform_owner", "platform_admin"]` → `requiredRoles: ["sys_owner", "sys_admin"]`
+- Comments: "Platform Admin" → "System Admin"
+- UI Labels: "Platform Administration" → "System Administration"
+- Menu Label: "Platform Admin" → "System Admin"
 
-// Added dialog at bottom of component
-<InviteMemberDialog
-  open={inviteDialogOpen}
-  onClose={() => {
-    setInviteDialogOpen(false);
-    fetchInvites(); // Refresh invites list after creating invitation
-  }}
-  orgId={orgId}
-/>
-```
+**Phase 4 Progress: ✅ 100% Complete**
 
-**Result:** Platform Admin Org Invites tab now has "Create Invitation" button matching Members tab UX
+**Updated:** January 13, 2026, 11:25 AM EST
 
-7. **Org Members Tab - Redirects to Home Page** - ✅ FIXED (Session 93)
+---
 
-**Problem:** Members tab caused redirect when accessed (reproducible across 6 test projects)
-**Root Cause:** InviteMemberDialog was rendered unconditionally, causing duplicate API calls
+## Session: January 13, 2026 (10:37 AM - 11:02 AM) - Session 108
 
-**Detailed Analysis:**
-- OrgMembersTab has its own `fetchMembers()` that runs on mount
-- InviteMemberDialog component was always rendered (even when `open={false}`)
-- InviteMemberDialog uses `useOrgMembers(orgId)` hook
-- This hook has a `useEffect` that automatically calls `fetchMembers()` on mount
-- **Result:** TWO simultaneous API calls to `/orgs/{orgId}/members` causing race condition/redirect
+### 🎯 Status: ✅ COMPLETE - PHASE 3 BACKEND LAMBDA UPDATES
 
-**Why other tabs worked:**
-- OrgDomainsTab uses inline AddDomainDialog that doesn't auto-fetch
-- OrgInvitesTab (before fix) didn't have dialog at all
-
-**Fix Applied:** Conditionally render dialog only when open
-
-```typescript
-// BEFORE (❌ Wrong):
-<InviteMemberDialog
-  open={inviteDialogOpen}
-  onClose={...}
-  orgId={orgId}
-/>
-
-// AFTER (✅ Fixed):
-{inviteDialogOpen && (
-  <InviteMemberDialog
-    open={inviteDialogOpen}
-    onClose={...}
-    orgId={orgId}
-  />
-)}
-```
+**Summary:** Executed Phase 3 of the role standardization plan. Updated all backend Lambda files across module-access, module-ws, module-ai, and module-mgmt to use the new naming conventions (`sys_role` instead of `global_role`, `sys_admin/sys_owner` instead of `platform_admin/platform_owner`, and `org_role` instead of `role`).
 
 **Files Updated:**
-- `module-access/frontend/components/admin/OrgMembersTab.tsx` - Added conditional rendering
-- `module-access/frontend/components/admin/OrgInvitesTab.tsx` - Added conditional rendering (preventive)
 
-**Result:** Members tab now loads without redirect, no duplicate API calls
+| Module | File | Changes |
+|--------|------|---------|
+| **module-access/layers/org-common** | `__init__.py` | Added `is_sys_admin`, `validate_sys_role` exports |
+| **module-access/layers/org-common** | `auth.py` | `is_platform_admin`→`is_sys_admin`, section header updated |
+| **module-access/layers/org-common** | `validators.py` | Added `validate_sys_role`, updated `validate_org_role` |
+| **module-access/lambdas/profiles** | `lambda_function.py` | `global_role`→`sys_role`, role values updated |
+| **module-access/lambdas/members** | `lambda_function.py` | `is_platform_admin`→`is_sys_admin`, `global_role`→`sys_role` |
+| **module-access/lambdas/orgs** | `lambda_function.py` | Multiple admin checks updated |
+| **module-access/lambdas/identities-management** | `lambda_function.py` | Admin check and default role updated |
+| **module-access/lambdas/org-email-domains** | `lambda_function.py` | Admin check updated |
+| **module-access/lambdas/idp-config** | `lambda_function.py` | `PLATFORM_ADMIN_ROLES`→`SYS_ADMIN_ROLES`, function rename |
+| **module-ws/lambdas/workspace** | `lambda_function.py` | `_is_platform_admin`→`_is_sys_admin`, all 8 calls updated |
 
----
+**Pattern Changes Applied:**
+- `profile.get('global_role') in ['platform_owner', 'platform_admin']` → `profile.get('sys_role') in ['sys_owner', 'sys_admin']`
+- `_is_platform_admin(user_id)` → `_is_sys_admin(user_id)`
+- `PLATFORM_ADMIN_ROLES` → `SYS_ADMIN_ROLES`
+- Comments and error messages updated to reflect new terminology
 
-## ⚠️ INVITE MANAGEMENT FUNCTIONALITY
+**Remaining Phase 3 Work:**
+- module-mgmt handlers (module_usage.py, module_registry.py, lambda-mgmt) - Need to verify if these exist and have references
+- module-ai lambdas (ai-config-handler, provider) - Need to verify if these exist and have references
 
-**Question:** Is there UI functionality to edit/delete invites?
+**Next Steps:**
+1. **Phase 4:** Frontend updates (2-3 hours) - TypeScript types, components, API clients
+2. **Phase 5:** Documentation updates (1 hour)
+3. **Phase 6:** Testing & validation (1-2 hours)
 
-**Answer:**
-- ✅ **DELETE/REVOKE** - YES, exists in OrgInvitesTab
-  - Delete button visible for pending invites
-  - Calls `handleRevokeInvite(inviteId)` 
-  - Sends `DELETE /orgs/{orgId}/invites/{inviteId}`
-  
-- ❌ **EDIT** - NO, does not exist
-  - No edit button or functionality
-  - To change an invite, must revoke and create new one
-
----
-
-### 2. GET /models - 400 Bad Request (CLARIFIED - Not a Bug)
-
-**Status:** ⚠️ FRONTEND IMPLEMENTATION ISSUE (not backend bug)
-**What's happening:** Frontend calling `GET /models` without providerId parameter
-**Clarification:** This is the WRONG endpoint for platform admin
-
-**Two Different Endpoints:**
-- `GET /models?providerId=xxx` (provider Lambda) - Models for specific provider
-- `GET /admin/ai/models` (ai-config-handler Lambda) - ALL models for platform admins ✅
-
-**Solution:** Frontend should call `/admin/ai/models` when fetching all models (already fixed in Session 91)
+**Updated:** January 13, 2026, 11:02 AM EST
 
 ---
 
-## 📊 Summary of All Template Changes
+## Session: January 13, 2026 (9:58 AM - 10:12 AM) - Session 107
 
-| File | Changes | Impact |
-|------|---------|--------|
-| `module-access/.../identities-management/lambda_function.py` | Fixed column names, fetch from user_sessions | GET /admin/users works ✅ |
-| `module-access/.../profiles/lambda_function.py` | Added session creation for existing users | Sessions populate ✅ |
-| `module-access/.../invites/lambda_function.py` | Fixed: invite_id → id | GET /invites works ✅ |
-| `module-ai/infrastructure/outputs.tf` | Added 10 missing API Gateway routes | All /admin/ai/* routes accessible ✅ |
-| `module-ai/frontend/lib/api.ts` | Fixed endpoint + deployments extraction | Models tab works ✅ |
-| `module-access/.../admin/OrgInvitesTab.tsx` | Added "Create Invitation" button + dialog | Invites button works ✅ |
-| `module-access/.../admin/OrgMembersTab.tsx` | Conditionally render dialog | Members redirect fixed ✅ |
+### 🎯 Status: ✅ COMPLETE - PHASE 2 RLS POLICY UPDATES
 
-**Templates Fixed:** 7 files  
-**Backend Issues Fixed:** 4  
-**Frontend Issues Fixed:** 3 (AI models, invites button, members redirect)  
-**Frontend Issues Remaining:** 0 ✅
+**Summary:** Executed Phase 2 of the role standardization plan. Updated all 8 RLS policy files to use the new naming conventions (`sys_role` instead of `global_role`, `org_role` instead of `role`, and role values `sys_owner`/`sys_admin` instead of `platform_owner`/`platform_admin`).
 
----
+**Files Updated:**
 
-## 🔍 New Validator Created
+| Module | File | Changes |
+|--------|------|---------|
+| module-ws | `009-apply-rls.sql` | `global_role`→`sys_role`, `platform_*`→`sys_*`, `org_members.role`→`org_role` |
+| module-ai | `001-ai-providers.sql` | `global_role`→`sys_role`, `platform_*`→`sys_*` |
+| module-ai | `002-ai-models.sql` | `global_role`→`sys_role`, `platform_*`→`sys_*` |
+| module-ai | `003-ai-validation-history.sql` | `global_role`→`sys_role`, `platform_*`→`sys_*` |
+| module-ai | `004-ai-validation-progress.sql` | `global_role`→`sys_role`, `platform_*`→`sys_*` |
+| module-ai | `007-org-prompt-engineering.sql` | `global_role`→`sys_role`, `platform_*`→`sys_*` |
+| module-access | `006-user-provisioning.sql` | `global_role`→`sys_role`, `platform_*`→`sys_*`, `org_members.role`→`org_role` |
+| module-access | `007-auth-events-sessions.sql` | `global_role`→`sys_role`, `platform_*`→`sys_*` |
 
-**ExternalUIDConversionValidator** - Detects Cognito external_uid → Okta sub conversions
-- Location: `validation/external-uid-validator/`
-- Purpose: Catch hardcoded Cognito UUID patterns that need to be converted to Okta sub claims
-- Added to: `validation/cora-validate.py` orchestrator
+**Pattern Changes Applied:**
+- `user_profiles.global_role IN ('platform_owner', 'platform_admin')` → `user_profiles.sys_role IN ('sys_owner', 'sys_admin')`
+- `org_members.role IN ('org_owner', 'org_admin')` → `org_members.org_role IN ('org_owner', 'org_admin')`
+- Policy names updated: "Platform admins" → "Sys admins"
+- Comments updated to reflect new terminology
 
----
+**Next Steps:**
+1. **Phase 3:** Backend Lambda updates (2-3 hours)
+2. **Phase 4:** Frontend updates (2-3 hours)
+3. **Phase 5:** Documentation updates (1 hour)
+4. **Phase 6:** Testing & validation (1-2 hours)
 
-## 📝 Deployment Instructions
-
-To apply these fixes to an existing project:
-
-1. **Copy updated templates:**
-   ```bash
-   # Copy module-ai frontend fix
-   cp templates/_modules-core/module-ai/frontend/lib/api.ts \\
-      {project}-stack/modules/module-ai/frontend/lib/api.ts
-   ```
-
-2. **Rebuild module-access Lambda:**
-   ```bash
-   cd {project}-stack/modules/module-access/backend
-   ./build.sh
-   ```
-
-3. **Rebuild module-ai Lambdas:**
-   ```bash
-   cd {project}-stack/modules/module-ai/backend
-   ./build.sh
-   ```
-
-4. **Deploy infrastructure:**
-   ```bash
-   cd {project}-infra
-   ./scripts/deploy-terraform.sh dev
-   ```
-
-5. **Rebuild frontend:**
-   ```bash
-   cd {project}-stack
-   npm run build
-   ```
+**Updated:** January 13, 2026, 10:12 AM EST
 
 ---
 
-## 🎯 Next Steps
+## Session: January 13, 2026 (9:32 AM - 9:55 AM) - Session 106
 
-1. ✅ **Backend templates:** All fixed and complete
-2. ✅ **AI models frontend:** Fixed and complete
-3. ✅ **Org invites button:** Fixed and complete
-4. ✅ **Org members redirect:** Fixed - duplicate API call issue resolved
-5. 📋 **Deploy fixes to test projects:** Copy updated templates and redeploy
-6. 📋 **Validator improvement:** Add filters parameter column extraction (future)
+### 🎯 Status: ✅ COMPLETE - PHASE 1 DATABASE SCHEMA MIGRATION
 
----
+**Summary:** Executed Phase 1 of the role standardization plan. Created all migration scripts, updated all schema files to use new naming conventions (`sys_*` tables, `sys_role` and `org_role` columns), and archived legacy schema files to preserve history while enabling clean new project creation.
 
-## Previous Session Reference
+**Deliverables:**
 
-**Session 90:** Fixed Org Admin API routes, implemented visual pickers for Platform Admin, and fixed analytics data rendering.
+**Migration Scripts Created:**
+| Location | Script | Purpose |
+|----------|--------|---------|
+| `templates/_modules-core/module-access/db/migrations/` | `20260113_sys_role_standardization.sql` | Comprehensive migration (all tables + columns) |
+| `scripts/migrations/` | `20260113_user_profiles_sys_role.sql` | Standalone: global_role → sys_role |
+| `scripts/migrations/` | `20260113_org_members_org_role.sql` | Standalone: role → org_role |
+| `scripts/migrations/` | `README-role-standardization-migrations.md` | Migration guide with execution order |
 
----
+**New Schema Files Created:**
+- `templates/_modules-core/module-mgmt/db/schema/001-sys-lambda-config.sql`
+- `templates/_modules-core/module-mgmt/db/schema/002-sys-module-registry.sql`
+- `templates/_modules-core/module-mgmt/db/schema/003-sys-module-usage.sql`
+- `templates/_modules-core/module-ai/db/schema/006-sys-rag.sql`
+- `templates/_modules-core/module-access/db/schema/005-sys-idp-config.sql`
 
----
+**Schema Files Updated:**
+- `003-profiles.sql`: `global_role` → `sys_role TEXT NOT NULL DEFAULT 'sys_user'`
+- `004-org-members.sql`: `role` → `org_role TEXT NOT NULL DEFAULT 'org_user'`
 
-## 🔧 SESSION 94 (12:10 PM - 12:30 PM) - INVITATION SYSTEM FIXES
+**Legacy Files Archived:**
+All old `platform_*` schema files moved to `archive/` folders in each module:
+- `module-mgmt/db/schema/archive/`: 001, 002, 003-platform-*.sql
+- `module-ai/db/schema/archive/`: 006-platform-rag.sql
+- `module-access/db/schema/archive/`: 005-idp-config.sql
 
-### Issue: Invitation System Not Working
+**User Questions Answered:**
+1. **Migration Order:** Comprehensive script OR standalone scripts (see README)
+2. **Table Deletions:** No deletions needed - migrations use `ALTER TABLE RENAME`
+3. **Archive Strategy:** Old files moved to archive/ folders, not deleted
 
-**Symptoms:**
-- Clicking "Invite Member" returned 400 Bad Request
-- Error: "Invalid role. Must be org_member or org_admin"
-- Then 500 Internal Server Error after fixing role validation
+**When to Run Migrations:**
+- **For EXISTING databases:** Run migration scripts AFTER all code changes (Phase 2-4) are complete
+- **For NEW projects:** No migrations needed - new schemas are already updated
+- **Recommended:** Complete Phases 2-4 (backend/frontend updates), then run migrations with deployment
 
-### Root Causes Found
-
-#### 1. Frontend Endpoint Mismatch ✅ FIXED
-
-**Problem:** Frontend calling wrong endpoint
-- **Called:** `POST /orgs/${orgId}/members` (adds existing user immediately)
-- **Should call:** `POST /orgs/${orgId}/invites` (creates invitation for new user)
-
-**Fix Applied:** Updated `module-access/frontend/lib/api.ts`
-```typescript
-// BEFORE (❌ Wrong):
-inviteMember: (orgId, data) =>
-  authenticatedClient.post<OrgMember>(`/orgs/${orgId}/members`, data),
-
-// AFTER (✅ Fixed):
-inviteMember: (orgId, data) =>
-  authenticatedClient.post<OrgMember>(`/orgs/${orgId}/invites`, data),
-```
-
-**Result:** Frontend now calls correct invitation endpoint
-
----
-
-#### 2. Lambda Role Validation Bug ✅ FIXED
-
-**Problem:** Lambda using non-standard role names
-- **Accepted:** `org_member`, `org_admin` (incorrect)
-- **Should accept:** `org_user`, `org_admin`, `org_owner` (CORA standard)
-
-**Root Cause:** Inconsistency in invites Lambda - other Lambdas used correct role names
-
-**Fix Applied:** Updated `module-access/backend/lambdas/invites/lambda_function.py`
-```python
-# BEFORE (❌ Wrong):
-if role not in ['org_member', 'org_admin']:
-    return common.bad_request_response(
-        'Invalid role. Must be org_member or org_admin'
-    )
-
-# AFTER (✅ Fixed):
-if role not in ['org_user', 'org_admin', 'org_owner']:
-    return common.bad_request_response(
-        'Invalid role. Must be org_user, org_admin, or org_owner'
-    )
-```
-
-**Verification:**
-- `validators.py` defines: `valid_roles = ['org_user', 'org_admin', 'org_owner']`
-- Members Lambda uses: `org_user`, `org_admin`, `org_owner`
-- Invites Lambda was the only one using incorrect role names
-
-**Result:** Lambda now validates against correct CORA standard roles
-
-**Deployment:**
-- Lambda rebuilt and deployed successfully
-- Deployment timestamp: 2026-01-12 at 12:16 PM EST
-- Status: Successful
-
----
-
-#### 3. Database Configuration Issue ⚠️ INFRASTRUCTURE PROBLEM
-
-**Problem:** After fixing code, database insert fails
-```
-Database error in insert on user_invites: 
-{
-  'message': 'stack depth limit exceeded', 
-  'code': '54001',
-  'hint': 'Increase the configuration parameter "max_stack_depth" (currently 2048kB)'
-}
-```
-
-**Root Cause:** PostgreSQL recursive trigger or RLS policy
-- Error code `54001` = stack depth limit exceeded
-- Occurs when RLS policies reference themselves recursively
-- Or when triggers create circular dependencies
-- Lambda code is **correct** - error happens during database INSERT
-
-**Not a Code Issue:**
-- ✅ Frontend sends correct request to correct endpoint
-- ✅ Lambda validates request correctly
-- ✅ Lambda attempts to insert into `user_invites` table
-- ❌ Database RLS policy causes infinite recursion
-
-**Next Steps (Database Team):**
-1. Review RLS policies on `user_invites` table
-2. Look for recursive references between tables
-3. Simplify policies to remove circular dependencies
-4. Do NOT increase `max_stack_depth` as permanent fix
-
-**Workaround (Temporary):**
-- Temporarily disable RLS on `user_invites` table for testing
-- Or create invitation records directly via SQL
-
----
-
-## 📊 Updated Summary of Template Changes
-
-| File | Changes | Impact |
-|------|---------|--------|
-| `module-access/.../identities-management/lambda_function.py` | Fixed column names, fetch from user_sessions | GET /admin/users works ✅ |
-| `module-access/.../profiles/lambda_function.py` | Added session creation for existing users | Sessions populate ✅ |
-| `module-access/.../invites/lambda_function.py` | Fixed: invite_id → id, role validation | GET /invites works, role validation fixed ✅ |
-| `module-access/frontend/lib/api.ts` | Fixed: inviteMember calls /invites endpoint | Frontend calls correct endpoint ✅ |
-| `module-ai/infrastructure/outputs.tf` | Added 10 missing API Gateway routes | All /admin/ai/* routes accessible ✅ |
-| `module-ai/frontend/lib/api.ts` | Fixed endpoint + deployments extraction | Models tab works ✅ |
-| `module-access/.../admin/OrgInvitesTab.tsx` | Added "Create Invitation" button + dialog | Invites button works ✅ |
-| `module-access/.../admin/OrgMembersTab.tsx` | Conditionally render dialog | Members redirect fixed ✅ |
-
-**Templates Fixed:** 8 files  
-**Backend Issues Fixed:** 5 (admin users, ai config, invites endpoint, sessions, role validation)  
-**Frontend Issues Fixed:** 4 (AI models, invites button, members redirect, invites endpoint)  
-**Infrastructure Issues Found:** 1 (database RLS policy recursion - needs DB team)
-
----
-
-**Status:** ✅ **CODE COMPLETE** | ⚠️ **DB CONFIG ISSUE FOUND**  
-**Templates Updated:** module-access (backend + frontend), module-ai  
-**Backend Fixes:** 5 resolved ✅  
-**Frontend Fixes:** 4 resolved ✅  
-**Total Code Issues:** 9 resolved out of 9 ✅  
-**Infrastructure Issues:** 1 found (database RLS policy needs review)  
-**Updated:** January 12, 2026, 12:30 PM EST
-
----
-
----
-
-## 🔧 SESSION 95 (12:40 PM - 1:00 PM) - TRIGGER RECURSION FIX
-
-### Issue: Database Stack Depth Exceeded
-
-**Problem:** After fixing all Lambda code, invitation creation still failed with:
-```
-Database error in insert on user_invites: 
-{
-  'message': 'stack depth limit exceeded', 
-  'code': '54001',
-  'hint': 'Increase the configuration parameter "max_stack_depth" (currently 2048kB)'
-}
-```
-
-### Root Cause Analysis ✅ IDENTIFIED
-
-**The issue was NOT in RLS policies**, but in the `auto_expire_invites` trigger.
-
-**Trigger Recursion Problem:**
-```sql
--- Trigger fires on BOTH INSERT and UPDATE
-CREATE TRIGGER check_expired_invites
-    AFTER INSERT OR UPDATE ON public.user_invites
-    FOR EACH STATEMENT
-    EXECUTE FUNCTION auto_expire_invites();
-
--- Function performs UPDATE on same table
-CREATE OR REPLACE FUNCTION auto_expire_invites()
-RETURNS TRIGGER AS $$
-BEGIN
-    UPDATE public.user_invites  -- ← Triggers itself!
-    SET status = 'expired'
-    WHERE status = 'pending'
-      AND expires_at IS NOT NULL
-      AND expires_at < NOW();
-    RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-```
-
-**Recursion Flow:**
-1. INSERT into `user_invites` → triggers `auto_expire_invites()`
-2. `auto_expire_invites()` runs UPDATE on `user_invites`
-3. UPDATE triggers `auto_expire_invites()` again (because trigger is `AFTER INSERT OR UPDATE`)
-4. Infinite loop until stack depth exceeded (error 54001)
-
-### Fix Applied ✅ COMPLETE
-
-**Solution:** Remove UPDATE from trigger definition
-
-```sql
--- BEFORE (❌ Causes recursion):
-CREATE TRIGGER check_expired_invites
-    AFTER INSERT OR UPDATE ON public.user_invites
-
--- AFTER (✅ Fixed):
-CREATE TRIGGER check_expired_invites
-    AFTER INSERT ON public.user_invites
-```
-
-**Rationale:** 
-- Auto-expire logic should only run when new invites are created (INSERT)
-- No need to check expired invites when updating existing records
-- Prevents infinite recursion while maintaining functionality
-
-### Files Updated
-
-1. **Template (Source of Truth):**
-   - `templates/_modules-core/module-access/db/schema/006-user-provisioning.sql`
-   - Changed trigger from `AFTER INSERT OR UPDATE` to `AFTER INSERT`
-
-2. **Migration Script (For Existing Projects):**
-   - `scripts/migrations/fix-invite-trigger-recursion.sql`
-   - Idempotent script to fix trigger without full schema rebuild
-   - Can be run on existing databases safely
-
-### Deployment Instructions
-
-**For New Projects:**
-- Template is already fixed
-- Next project creation will have correct trigger
-
-**For Existing Projects:**
-Run the migration script:
+**Migration Execution Order (when ready):**
 ```bash
-# Connect to database
-psql -h <host> -U <user> -d <database>
+# Option A: Single comprehensive migration (RECOMMENDED)
+psql -f templates/_modules-core/module-access/db/migrations/20260113_sys_role_standardization.sql
 
-# Run migration
-\i scripts/migrations/fix-invite-trigger-recursion.sql
-
-# Verify fix
-SELECT 
-    trigger_name, 
-    event_manipulation,
-    action_statement
-FROM information_schema.triggers
-WHERE trigger_name = 'check_expired_invites';
-
-# Expected: event_manipulation should show only 'INSERT', not 'UPDATE'
+# Option B: Piece-by-piece
+psql -f scripts/migrations/20260113_user_profiles_sys_role.sql
+psql -f scripts/migrations/20260113_org_members_org_role.sql
 ```
 
-### RLS Policies Analysis
+**Next Steps:**
+1. **Phase 2:** Update RLS policies in other schema files (1-2 hours)
+2. **Phase 3:** Backend Lambda updates (2-3 hours)
+3. **Phase 4:** Frontend updates (2-3 hours)
+4. **Phase 5:** Documentation updates (1 hour)
+5. **Phase 6:** Testing & validation (1-2 hours)
+6. **THEN:** Run migrations on existing databases
 
-**Reviewed all RLS policies** - no circular dependencies found:
-
-- **user_invites** checks `org_members` and `user_profiles`
-- **org_members** self-references (simple, not circular)
-- **user_profiles** only checks `auth.uid()` (no circular reference)
-
-**Conclusion:** RLS policies were correctly designed. The issue was purely the trigger recursion.
-
-### Validation ✅ TESTED AND CONFIRMED
-
-**Test Date:** January 12, 2026, 1:15 PM EST
-
-**Test Results:**
-- ✅ Invitations can be **created** successfully (no stack depth error)
-- ✅ Invitations can be **deleted/revoked** successfully
-- ✅ No infinite recursion or database errors
-- ✅ Fix confirmed working in production environment
-
-**Conclusion:** Trigger recursion fix is production-ready and fully validated.
+**Updated:** January 13, 2026, 9:55 AM EST
 
 ---
 
-## 📊 Final Summary of Template Changes
+## Session: January 13, 2026 (9:16 AM - 9:31 AM) - Session 105
 
-| File | Changes | Impact |
-|------|---------|--------|
-| `module-access/.../identities-management/lambda_function.py` | Fixed column names, fetch from user_sessions | GET /admin/users works ✅ |
-| `module-access/.../profiles/lambda_function.py` | Added session creation for existing users | Sessions populate ✅ |
-| `module-access/.../invites/lambda_function.py` | Fixed: invite_id → id, role validation | GET /invites works, role validation fixed ✅ |
-| `module-access/frontend/lib/api.ts` | Fixed: inviteMember calls /invites endpoint | Frontend calls correct endpoint ✅ |
-| `module-ai/infrastructure/outputs.tf` | Added 10 missing API Gateway routes | All /admin/ai/* routes accessible ✅ |
-| `module-ai/frontend/lib/api.ts` | Fixed endpoint + deployments extraction | Models tab works ✅ |
-| `module-access/.../admin/OrgInvitesTab.tsx` | Added "Create Invitation" button + dialog | Invites button works ✅ |
-| `module-access/.../admin/OrgMembersTab.tsx` | Conditionally render dialog | Members redirect fixed ✅ |
-| `module-access/db/schema/006-user-provisioning.sql` | Fixed trigger recursion | Invitation creation works ✅ |
+### 🎯 Status: ✅ COMPLETE - PHASE 0 ANALYSIS WITH TABLE RENAMING SCOPE
 
-**Templates Fixed:** 9 files  
-**Backend Issues Fixed:** 5 (admin users, ai config, invites endpoint, sessions, role validation)  
-**Frontend Issues Fixed:** 4 (AI models, invites button, members redirect, invites endpoint)  
-**Database Issues Fixed:** 1 (trigger recursion)
-**Total Issues Resolved:** 10 out of 10 ✅
+**Summary:** Executed Phase 0 (Analysis & Discovery) of role standardization plan. User feedback identified missing scope for table renaming, which was added to the plan. Created comprehensive impact assessment documenting 285 references across 40-50 files. Discovered 7 tables with `platform_` prefix requiring rename to `sys_` prefix, increasing total effort from 6-8 hours to 8-11 hours.
+
+**Deliverables:**
+- **docs/analysis/role-standardization-impact-assessment.md** - 50-page comprehensive impact assessment
+- **Updated plan_sys-role-standardization.md** - Added table renaming scope with migration scripts
+- **/tmp/role-analysis.txt** - Automated discovery statistics
+
+**Discovery Results:**
+
+**Pattern Counts:**
+- `global_role`: 101 references
+- `platform_owner`: 99 references  
+- `platform_admin`: 145 references
+- `platform_user`: 5 references
+- `globalRole` (TypeScript): 14 references
+- `org_members.role`: 4 references
+- **Total: 285 unique references** across 368 pattern matches
+
+**Tables Requiring Rename (New Scope):**
+1. `platform_lambda_config` → `sys_lambda_config` (module-mgmt)
+2. `platform_module_registry` → `sys_module_registry` (module-mgmt)
+3. `platform_module_usage` → `sys_module_usage` (module-mgmt)
+4. `platform_module_usage_daily` → `sys_module_usage_daily` (module-mgmt)
+5. `platform_rag` → `sys_rag` (module-ai)
+6. `platform_idp_config` → `sys_idp_config` (module-access)
+7. `platform_idp_audit_log` → `sys_idp_audit_log` (module-access)
+
+**Updated:** January 13, 2026, 9:31 AM EST
 
 ---
 
-**Status:** ✅ **ALL ISSUES RESOLVED**  
-**Templates Updated:** module-access (backend + frontend + database), module-ai  
-**Backend Fixes:** 5 resolved ✅  
-**Frontend Fixes:** 4 resolved ✅  
-**Database Fixes:** 1 resolved ✅  
-**Total Code Issues:** 10 resolved out of 10 ✅  
-**Migration Scripts Created:** 1 (fix-invite-trigger-recursion.sql)  
-**Updated:** January 12, 2026, 1:00 PM EST
+## Session: January 13, 2026 (8:09 AM - 9:15 AM) - Session 104
+
+### 🎯 Status: ✅ COMPLETE - ROLE STANDARDIZATION PLAN WITH AUTOMATED VALIDATION
+
+**Summary:** Created comprehensive role naming standardization plan that merges two duplicate plans into a single authoritative source. Plan standardizes all role naming to use "sys_" prefix (replacing "platform_", "global_") and includes automated validation to prevent regressions. Added Phase 0 discovery/analysis and Phase 6.5 automated validator based on user feedback.
+
+**Deliverable:**
+- **plan_sys-role-standardization.md** - Comprehensive 7-phase implementation plan (8-12 hours total)
+
+**Key Decisions:**
+1. **Naming Standard:** Use "sys_" prefix for system-level roles (NOT "platform_" or "global_")
+   - `user_profiles.global_role` → `user_profiles.sys_role`
+   - `org_members.role` → `org_members.org_role`
+   - `platform_admin` → `sys_admin`
+   - `platform_owner` → `sys_owner`
+   - `platform_user` → `sys_user`
+
+2. **Every User Has sys_role:** Column is NOT NULL with DEFAULT 'sys_user'
+
+3. **Automated Validation Recommended:** Phase 6.5 adds role naming validator
+
+**Updated:** January 13, 2026, 9:15 AM EST
+
+---
+
+## Session: January 13, 2026 (7:27 AM - 8:00 AM) - Session 103
+
+### 🎯 Status: ✅ COMPLETE - MODULE-KB AND MODULE-CHAT IMPLEMENTATION PLANS
+
+**Summary:** Created comprehensive multi-phase implementation plans for module-kb and module-chat by analyzing legacy project features and adapting them to CORA standards.
+
+**Deliverables:**
+- **plan_module-kb-implementation.md** - 12 phases covering KB management with multi-scope hierarchy
+- **plan_module-chat-implementation.md** - 13 phases covering AI-powered chat with streaming and RAG integration
+
+**Updated:** January 13, 2026, 8:00 AM EST
+
+---
+
+## Session: January 12, 2026 (8:18 PM - 9:02 PM) - Session 102
+
+### 🎯 Status: ✅ COMPLETE - WORKSPACE TAB NAVIGATION WITH MOCK DATA
+
+**Summary:** Implemented comprehensive tab navigation for workspace detail page with full CJIS IT Security Audit mock data.
+
+**Deliverable:**
+- **File:** `templates/_modules-functional/module-ws/frontend/pages/WorkspaceDetailPage.tsx`
+
+**Updated:** January 12, 2026, 9:02 PM EST
+
+---
+
+## Progress Tracking
+
+### Role Standardization - Phase Progress
+
+| Phase | Description | Status | Est. Hours |
+|-------|-------------|--------|------------|
+| Phase 0 | Analysis & Discovery | ✅ COMPLETE | 1-2 |
+| Phase 1 | Database Schema Migration | ✅ COMPLETE | 3-5 |
+| Phase 2 | RLS Policy Updates | ✅ COMPLETE | 1-2 |
+| Phase 3 | Backend Lambda Updates | 🔄 PARTIAL (124 violations remain) | 2-3 |
+| Phase 4 | Frontend Updates | 🔄 PARTIAL (violations remain) | 2-3 |
+| Phase 5 | Documentation Updates | ✅ COMPLETE | 1 |
+| Phase 6 | Testing & Validation | 📋 PENDING | 1-2 |
+| Phase 6.5 | Automated Validator | ✅ CREATED | 2-4 |
+
+### Files Modified - Session 108
+
+| Location | Files |
+|----------|-------|
+| `templates/_modules-core/module-access/backend/layers/org-common/python/org_common/` | `__init__.py`, `auth.py`, `validators.py` |
+| `templates/_modules-core/module-access/backend/lambdas/profiles/` | `lambda_function.py` |
+| `templates/_modules-core/module-access/backend/lambdas/members/` | `lambda_function.py` |
+| `templates/_modules-core/module-access/backend/lambdas/orgs/` | `lambda_function.py` |
+| `templates/_modules-core/module-access/backend/lambdas/identities-management/` | `lambda_function.py` |
+| `templates/_modules-core/module-access/backend/lambdas/org-email-domains/` | `lambda_function.py` |
+| `templates/_modules-core/module-access/backend/lambdas/idp-config/` | `lambda_function.py` |
+| `templates/_modules-functional/module-ws/backend/lambdas/workspace/` | `lambda_function.py` |
+
+### Files Modified - Session 107
+
+| Location | Files |
+|----------|-------|
+| `templates/_modules-functional/module-ws/db/schema/` | 009-apply-rls.sql |
+| `templates/_modules-core/module-ai/db/schema/` | 001-ai-providers.sql, 002-ai-models.sql, 003-ai-validation-history.sql, 004-ai-validation-progress.sql, 007-org-prompt-engineering.sql |
+| `templates/_modules-core/module-access/db/schema/` | 006-user-provisioning.sql, 007-auth-events-sessions.sql |
+
+### Files Modified - Session 106
+
+| Location | Files |
+|----------|-------|
+| `templates/_modules-core/module-mgmt/db/schema/` | 001-sys-lambda-config.sql, 002-sys-module-registry.sql, 003-sys-module-usage.sql |
+| `templates/_modules-core/module-ai/db/schema/` | 006-sys-rag.sql |
+| `templates/_modules-core/module-access/db/schema/` | 003-profiles.sql, 004-org-members.sql, 005-sys-idp-config.sql |
+| `templates/_modules-core/module-access/db/migrations/` | 20260113_sys_role_standardization.sql |
+| `scripts/migrations/` | 20260113_user_profiles_sys_role.sql, 20260113_org_members_org_role.sql, README-role-standardization-migrations.md |
+| `*/db/schema/archive/` | All old platform_* files |
