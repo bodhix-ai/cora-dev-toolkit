@@ -242,7 +242,7 @@ def handle_get_org_ai_config(event: Dict[str, Any], user_id: str, org_id: str) -
         # For each provider, get available models
         config = {
             'providers': [],
-            'total_models': 0
+            'totalModels': 0
         }
         
         for provider in providers:
@@ -378,9 +378,9 @@ def handle_create(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     data = {
         'name': name,
         'provider_type': provider_type,
-        'display_name': body.get('display_name'),
-        'credentials_secret_path': body.get('credentials_secret_path'),
-        'is_active': body.get('is_active', True),
+        'display_name': body.get('display_name') or body.get('displayName'),
+        'credentials_secret_path': body.get('credentials_secret_path') or body.get('credentialsSecretPath'),
+        'is_active': body.get('is_active', True) if 'is_active' in body else body.get('isActive', True),
         'created_by': user_id
     }
     

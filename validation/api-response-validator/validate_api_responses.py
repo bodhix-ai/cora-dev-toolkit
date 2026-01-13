@@ -340,6 +340,14 @@ FRONTEND_FILE_PATTERNS = ['*.ts', '*.tsx', '*.js', '*.jsx']
 # Directories to skip
 SKIP_DIRS = {'node_modules', '.next', 'dist', 'build', '.git', '__pycache__'}
 
+# Files to skip (external API integrations that use snake_case from libraries we don't control)
+SKIP_FILES = {
+    'okta.ts',      # OAuth provider - NextAuth uses snake_case (access_token, id_token, etc.)
+    'cognito.ts',   # OAuth provider
+    'auth0.ts',     # OAuth provider
+    'google.ts',    # OAuth provider
+}
+
 # Pattern to detect snake_case properties in TypeScript interface/type definitions
 # Matches: property_name: type  OR  property_name?: type
 INTERFACE_PROPERTY_PATTERN = re.compile(r'^\s+([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\s*\??\s*:', re.MULTILINE)
@@ -551,6 +559,14 @@ def validate_frontend_files(project_path: Path) -> Dict[str, Any]:
                 
                 # Skip type definition files (*.d.ts) as they define expected shape
                 if ts_file.name.endswith('.d.ts'):
+                    continue
+                
+                # Skip external OAuth provider files (they use snake_case from NextAuth/OAuth)
+                if ts_file.name in SKIP_FILES:
+                    continue
+                
+                # Skip providers directory entirely (OAuth integrations)
+                if 'providers' in ts_file.parts:
                     continue
                 
                 frontend_files.append(ts_file)

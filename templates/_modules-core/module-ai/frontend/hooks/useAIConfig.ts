@@ -70,24 +70,24 @@ export type DeploymentInfo = {
 };
 
 export type PlatformAIConfig = {
-  default_embedding_model_id: string | null;
-  default_chat_model_id: string | null;
-  system_prompt: string;
-  embedding_deployment?: DeploymentInfo;
-  chat_deployment?: DeploymentInfo;
+  defaultEmbeddingModelId: string | null;
+  defaultChatModelId: string | null;
+  systemPrompt: string;
+  embeddingDeployment?: DeploymentInfo;
+  chatDeployment?: DeploymentInfo;
 };
 
 export type OrgAIConfig = {
-  org_id: string;
-  org_system_prompt: string | null;
-  platform_config: {
-    system_prompt: string;
-    default_chat_deployment_id: string;
-    default_embedding_deployment_id: string;
-    chat_deployment?: DeploymentInfo;
-    embedding_deployment?: DeploymentInfo;
+  orgId: string;
+  orgSystemPrompt: string | null;
+  platformConfig: {
+    systemPrompt: string;
+    defaultChatDeploymentId: string;
+    defaultEmbeddingDeploymentId: string;
+    chatDeployment?: DeploymentInfo;
+    embeddingDeployment?: DeploymentInfo;
   };
-  combined_prompt: string;
+  combinedPrompt: string;
 };
 
 /**
@@ -147,9 +147,9 @@ export function usePlatformAIConfig(authAdapter: CoraAuthAdapter) {
 
   const updateConfig = useCallback(
     async (updates: {
-      default_embedding_model_id?: string;
-      default_chat_model_id?: string;
-      system_prompt?: string;
+      defaultEmbeddingModelId?: string;
+      defaultChatModelId?: string;
+      systemPrompt?: string;
     }) => {
       setError(null);
       try {
@@ -160,20 +160,20 @@ export function usePlatformAIConfig(authAdapter: CoraAuthAdapter) {
 
         // Only send the fields the backend expects
         const payload: {
-          default_embedding_model_id?: string;
-          default_chat_model_id?: string;
-          system_prompt?: string;
+          defaultEmbeddingModelId?: string;
+          defaultChatModelId?: string;
+          systemPrompt?: string;
         } = {};
 
-        if (updates.default_embedding_model_id !== undefined) {
-          payload.default_embedding_model_id =
-            updates.default_embedding_model_id;
+        if (updates.defaultEmbeddingModelId !== undefined) {
+          payload.defaultEmbeddingModelId =
+            updates.defaultEmbeddingModelId;
         }
-        if (updates.default_chat_model_id !== undefined) {
-          payload.default_chat_model_id = updates.default_chat_model_id;
+        if (updates.defaultChatModelId !== undefined) {
+          payload.defaultChatModelId = updates.defaultChatModelId;
         }
-        if (updates.system_prompt !== undefined) {
-          payload.system_prompt = updates.system_prompt;
+        if (updates.systemPrompt !== undefined) {
+          payload.systemPrompt = updates.systemPrompt;
         }
 
         const client = createCoraAuthenticatedClient(token);
@@ -251,7 +251,7 @@ export function useOrgAIConfig(authAdapter: CoraAuthAdapter, orgId: string) {
   }, [authAdapter, orgId]);
 
   const updateConfig = useCallback(
-    async (updates: { org_system_prompt: string | null }) => {
+    async (updates: { orgSystemPrompt: string | null }) => {
       if (!orgId) throw new Error("Organization ID is required");
 
       setError(null);

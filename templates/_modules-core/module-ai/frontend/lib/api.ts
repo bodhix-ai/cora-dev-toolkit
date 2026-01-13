@@ -60,11 +60,11 @@ interface ModelApiData {
 
 interface ProviderInputApiData {
   name?: string;
-  display_name?: string;
-  provider_type?: string;
-  auth_method?: string;
-  credentials_secret_path?: string;
-  is_active?: boolean;
+  displayName?: string;
+  providerType?: string;
+  authMethod?: string;
+  credentialsSecretPath?: string;
+  isActive?: boolean;
 }
 
 /**
@@ -147,18 +147,18 @@ function transformProviderInput(
   const result: ProviderInputApiData = {};
 
   if ("name" in input) result.name = input.name;
-  if ("displayName" in input) result.display_name = input.displayName;
-  if ("providerType" in input) result.provider_type = input.providerType;
-  if ("authMethod" in input) result.auth_method = input.authMethod;
+  if ("displayName" in input) result.displayName = input.displayName;
+  if ("providerType" in input) result.providerType = input.providerType;
+  if ("authMethod" in input) result.authMethod = input.authMethod;
   if ("credentialsSecretPath" in input)
-    result.credentials_secret_path = input.credentialsSecretPath;
-  if ("isActive" in input) result.is_active = input.isActive;
+    result.credentialsSecretPath = input.credentialsSecretPath;
+  if ("isActive" in input) result.isActive = input.isActive;
 
   return result;
 }
 
 export interface AIEnablementApiClient {
-  // Provider endpoints (platform-level, no org_id needed)
+  // Provider endpoints (platform-level, no orgId needed)
   getProviders: () => Promise<ApiResponse<AIProvider[]>>;
   getProvider: (providerId: string) => Promise<ApiResponse<AIProvider>>;
   createProvider: (

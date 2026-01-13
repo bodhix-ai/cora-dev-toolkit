@@ -1,6 +1,6 @@
 /**
  * AI Provider types based on ai_providers table schema
- * Platform-level configuration - no org_id
+ * Platform-level configuration - no orgId
  */
 export interface AIProvider {
   id: string;
@@ -20,7 +20,7 @@ export interface AIProvider {
 
 /**
  * AI Model types based on ai_models table schema
- * Platform-level catalog - no org_id
+ * Platform-level catalog - no orgId
  */
 export interface AIModel {
   id: string;
@@ -132,10 +132,10 @@ export interface ValidateModelsResponse {
   available: number;
   unavailable: number;
   results: Array<{
-    model_id: string;
+    modelId: string;
     status: string;
     error?: string;
-    latency_ms?: number;
+    latencyMs?: number;
   }>;
 }
 

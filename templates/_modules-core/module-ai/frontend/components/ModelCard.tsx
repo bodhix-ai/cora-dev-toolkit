@@ -52,7 +52,7 @@ export function ModelCard({ model, onSelect }: ModelCardProps) {
                   color="text.secondary"
                   sx={{ display: "block" }}
                 >
-                  {model.model_id}
+                  {model.modelId}
                 </Typography>
               </Box>
             </Box>
