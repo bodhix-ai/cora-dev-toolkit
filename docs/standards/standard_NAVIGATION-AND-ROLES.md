@@ -14,15 +14,15 @@ This document defines the permanent standards for navigation patterns and role n
 
 ## 1. Role Standardization
 
-### 1.1 Platform-Level Roles (user_profiles.global_role)
+### 1.1 System-Level Roles (user_profiles.sys_role)
 
 | Role | Usage | Set During |
 |------|-------|------------|
-| `platform_owner` | First user (bootstrap) - full platform control | Scenario 4: Bootstrap |
-| `platform_admin` | Platform administrators | Manual assignment |
-| `platform_user` | Standard users | Scenarios 1, 2, 3, 5 |
+| `sys_owner` | First user (bootstrap) - full platform control | Scenario 4: Bootstrap |
+| `sys_admin` | System administrators | Manual assignment |
+| `sys_user` | Standard users | Scenarios 1, 2, 3, 5 |
 
-### 1.2 Organization-Level Roles (org_members.role)
+### 1.2 Organization-Level Roles (org_members.org_role)
 
 | Role | Usage | Set During |
 |------|-------|------------|
@@ -95,7 +95,7 @@ const appNavigation: NavigationConfig = [
 |---------|------|------|-------|------------|
 | **User Info** | Avatar, Name, Email | - | - | Always |
 | **Organization** | Org list with switcher | `BusinessIcon` | - | Always |
-| **Admin** | Platform Admin | `AdminPanelSettingsIcon` | `/admin/platform` | `platform_owner` OR `platform_admin` |
+| **Admin** | System Admin | `AdminPanelSettingsIcon` | `/admin/platform` | `sys_owner` OR `sys_admin` |
 | **Admin** | Org Admin | `BusinessIcon` | `/admin/org` | `org_owner` OR `org_admin` (in current org) |
 | **User** | Profile | `PersonIcon` | `/profile` | Always |
 | **User** | Settings | `SettingsIcon` | `/settings` | Always |
@@ -134,7 +134,7 @@ export const moduleNameAdminCard: AdminCardConfig = {
   color: "primary.main",
   order: 50,
   context: "platform", // NEW: "platform" or "organization"
-  requiredRoles: ["platform_owner", "platform_admin"], // NEW: replaces superAdminOnly
+  requiredRoles: ["sys_owner", "sys_admin"], // NEW: replaces superAdminOnly
 };
 ```
 
@@ -246,14 +246,14 @@ All CORA projects must support these 5 login scenarios:
 - `org_members.role` set to org_user
 
 ### Scenario 4: Bootstrap (First User)
-- "Platform Admin" org created automatically
-- `user_profiles.global_role` set to `platform_owner`
-- `org_members.role` set to `org_owner`
-- User menu shows BOTH Platform Admin and Org Admin options
+- "System Admin" org created automatically
+- `user_profiles.sys_role` set to `sys_owner`
+- `org_members.org_role` set to `org_owner`
+- User menu shows BOTH System Admin and Org Admin options
 
 ### Scenario 5: Denied Access
 - User logs in but has no invite/domain match
-- `user_profiles.global_role` set to `platform_user`
+- `user_profiles.sys_role` set to `sys_user`
 - `user_profiles.requires_invitation` set to TRUE
 - "Contact Admin" message displayed
 

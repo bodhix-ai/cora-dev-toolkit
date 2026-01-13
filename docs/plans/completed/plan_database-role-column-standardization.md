@@ -2,7 +2,7 @@
 
 **Version:** 1.0  
 **Date:** January 11, 2026  
-**Status:** Planned - Tech Debt  
+**Status:** SUPERSEDED by plan_sys-role-standardization.md 
 **Priority:** Medium  
 **Estimated Effort:** 6-8 hours
 

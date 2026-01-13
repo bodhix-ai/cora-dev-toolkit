@@ -14,15 +14,15 @@ This document defines the standard navigation patterns and role naming conventio
 
 ## 1. Role Standardization
 
-### 1.1 Platform-Level Roles (user_profiles.global_role)
+### 1.1 System-Level Roles (user_profiles.sys_role)
 
 | Role | Usage | Set During |
 |------|-------|------------|
-| `platform_owner` | First user (bootstrap) - full platform control | Scenario 4: Bootstrap |
-| `platform_admin` | Platform administrators | Manual assignment (future) |
-| `platform_user` | Standard users | Scenarios 1, 2, 3, 5 |
+| `sys_owner` | First user (bootstrap) - full platform control | Scenario 4: Bootstrap |
+| `sys_admin` | System administrators | Manual assignment (future) |
+| `sys_user` | Standard users | Scenarios 1, 2, 3, 5 |
 
-### 1.2 Organization-Level Roles (org_members.role)
+### 1.2 Organization-Level Roles (org_members.org_role)
 
 | Role | Usage | Set During |
 |------|-------|------------|
@@ -33,13 +33,12 @@ This document defines the standard navigation patterns and role naming conventio
 ### 1.3 Current Issues to Fix
 
 **Profiles Lambda (`lambda_function.py`):**
-- ❌ Uses `global_user` → Should be `platform_user`
-- ❌ References `global_admin` → Should be `platform_admin`
-- ❌ References `global_owner` → Should be `platform_owner`
+- ✅ UPDATED: Uses `sys_user` for default role
+- ✅ UPDATED: References `sys_admin` for admin checks
+- ✅ UPDATED: References `sys_owner` for owner checks
 
 **Schema Comments (`003-profiles.sql`):**
-- ❌ Documents `global_user, global_admin, global_owner, super_admin`
-- ✅ Should document `platform_user, platform_admin, platform_owner`
+- ✅ UPDATED: Documents `sys_user, sys_admin, sys_owner`
 
 **Validators (`org_common/validators.py`):**
 - Check if validator needs updating for new role names
@@ -109,7 +108,7 @@ const appNavigation: NavigationConfig = [
 |---------|------|------|-------|------------|
 | **User Info** | Avatar, Name, Email | - | - | Always |
 | **Organization** | Org list with switcher | `BusinessIcon` | - | Always |
-| **Admin** | Platform Admin | `AdminPanelSettingsIcon` | `/admin/platform` | `platform_owner` OR `platform_admin` |
+| **Admin** | System Admin | `AdminPanelSettingsIcon` | `/admin/platform` | `sys_owner` OR `sys_admin` |
 | **Admin** | Org Admin | `BusinessIcon` | `/admin/org` | `org_owner` OR `org_admin` (in current org) |
 | **User** | Profile | `PersonIcon` | `/profile` | Always |
 | **User** | Settings | `SettingsIcon` | `/settings` | Always |

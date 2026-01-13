@@ -1,7 +1,11 @@
 # Module-Access Merge Plan: Auth Adapters & Okta Integration
 
 **Date:** December 11, 2025  
+**Completed:** December 22, 2025  
+**Status:** ✅ **COMPLETED**
 **Author:** Claude (Cline Agent)  
+**Related ADR:** ADR-007-CORA-AUTH-SHELL-STANDARD 
+**Related Design:** user-authentication-and-provisioning.md
 **Purpose:** Plan for adding Okta adapter to module-access and automating auth setup
 
 ---

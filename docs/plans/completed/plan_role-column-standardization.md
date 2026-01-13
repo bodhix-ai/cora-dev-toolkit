@@ -1,6 +1,6 @@
 # Plan: Role Column Name Standardization
 
-**Status:** 📋 Planned  
+**Status:** SUPERSEDED by plan_sys-role-standardization.md
 **Priority:** Medium  
 **Estimated Effort:** 4-6 hours  
 **Prerequisites:** Phase A+B (Role Value Standardization) must be complete

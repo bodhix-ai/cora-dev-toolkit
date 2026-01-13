@@ -19,7 +19,7 @@ The Platform Admin Card pattern allows modules to "plug in" administration inter
 - **One Card Per Module**: Each module exports exactly ONE admin card for platform administration.
 - **Unified Discovery**: All module admin tools are discoverable from a single dashboard.
 - **Consistent UX**: All admin cards and pages follow the same design patterns.
-- **Role-Based Access**: Restricted to `platform_owner` and `platform_admin`.
+- **Role-Based Access**: Restricted to `sys_owner` and `sys_admin`.
 - **No Main Menu**: Core modules (module-access, module-ai, module-mgmt) do NOT have main menu items.
 
 ---
@@ -224,7 +224,7 @@ export default function MyModuleAdminPage() {
 
 ### 4.1 Authorization
 
-Platform admin endpoints MUST strictly enforce role checks. Only users with `platform_owner` or `platform_admin` roles should access these endpoints.
+System admin endpoints MUST strictly enforce role checks. Only users with `sys_owner` or `sys_admin` roles should access these endpoints.
 
 **Python Lambda Pattern:**
 
@@ -233,9 +233,9 @@ def handle_admin_action(event, user_id):
     # Get user profile
     profile = common.find_one('user_profiles', {'user_id': user_id})
     
-    # Check platform role
-    if profile.get('global_role') not in ['platform_owner', 'platform_admin']:
-        return common.forbidden_response("Platform admin access required")
+    # Check sys role
+    if profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
+        return common.forbidden_response("System admin access required")
         
     # Proceed with admin action
     # ...
@@ -257,7 +257,7 @@ When adding a new admin card:
 - [ ] Export both from module `index.ts`.
 - [ ] Create route page in `apps/web/app/admin/[slug]/page.tsx`.
 - [ ] Import and add card to `apps/web/app/admin/platform/page.tsx`.
-- [ ] Verify backend endpoints enforce `platform_admin` role.
+- [ ] Verify backend endpoints enforce `sys_admin` role.
 - [ ] Verify ordering of the card on the dashboard.
 
 ---
