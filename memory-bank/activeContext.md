@@ -2,7 +2,7 @@
 
 ## Current Focus
 
-**Session 122: Multiple Fixes Applied** - 🟡 **AWAITING VALIDATION**
+**Session 123: Build Error Fixes + Standards Cleanup** - 🟡 **IN PROGRESS**
 
 ---
 
@@ -25,98 +25,116 @@
 
 ---
 
-## 🟡 Fixes Applied - Require Redeployment
+## ✅ Session 123 Fixes Applied to Templates
 
-All fixes have been applied to **TEMPLATES** (following template-first workflow). To deploy:
+### Build Error Fixes (TypeScript/Frontend)
 
-```bash
-# 1. Rebuild affected Lambdas
-cd {project}-infra/lambdas/workspace && ./build.sh
-cd {project}-infra/lambdas/identities-management && ./build.sh
+#### 1. OrgMembersList.tsx - Field name alignment
+- **File:** `templates/_modules-core/module-access/frontend/components/org/OrgMembersList.tsx`
+- **Fixes:**
+  - `member.roleName` → `member.orgRole` (required field)
+  - `member.user` → `member.profile` (current API structure)
+  - `member.joinedAt` → `member.joinedAt || member.createdAt` (handles undefined)
 
-# 2. Deploy
-./scripts/deploy-terraform.sh dev
+#### 2. Workspace admin route - Session type
+- **File:** `templates/_modules-functional/module-ws/routes/admin/org/ws/[id]/page.tsx`
+- **Fix:** Changed from `useSession` with `session?.user?.orgId` to `useUser()` hook with `profile?.currentOrgId`
 
-# 3. Rebuild frontend
-cd {project}-stack && npm run build
-```
+#### 3. Workspace detail route - userId access
+- **File:** `templates/_modules-functional/module-ws/routes/ws/[id]/page.tsx`
+- **Fix:** Added `useUser()` hook to get userId instead of `useOrganizationContext()` (which doesn't provide userId)
+
+#### 4. Sidebar.tsx - Multiple fixes
+- **File:** `templates/_project-stack-template/apps/web/components/Sidebar.tsx`
+- **Fixes:**
+  - `wsConfig?.nav_label_plural` → `wsConfig?.navLabelPlural` (camelCase)
+  - Wrapped OrgIcon in Box to apply sx props (OrgIcon doesn't accept sx directly)
+
+#### 5. ModelCard.tsx - snake_case to camelCase
+- **File:** `templates/_modules-core/module-ai/frontend/components/ModelCard.tsx`
+- **Fixes:**
+  - `model.model_name` → `model.modelName`
+  - `model.deployment_status` → `model.deploymentStatus`
+  - `model.supports_chat` → `model.supportsChat`
+  - `model.supports_embeddings` → `model.supportsEmbeddings`
+  - `model.capabilities?.embedding_dimensions` → `model.capabilities?.embeddingDimensions`
+
+#### 6. ViewModelsModal.tsx - Type key access
+- **File:** `templates/_modules-core/module-ai/frontend/components/models/ViewModelsModal.tsx`
+- **Fixes:**
+  - `categoryCounts.requiresInferenceProfile` → `categoryCounts.requires_inference_profile`
+  - `categoryCounts.invalidRequestFormat` → `categoryCounts.invalid_request_format`
+  - (Note: These use snake_case because ValidationCategory type uses snake_case enum values)
+
+#### 7. ModelSelectionModal.tsx - snake_case to camelCase
+- **File:** `templates/_modules-core/module-ai/frontend/components/ModelSelectionModal.tsx`
+- **Fix:** `model.model_name` → `model.modelName`
+
+#### 8. ProviderCard.tsx - snake_case to camelCase
+- **File:** `templates/_modules-core/module-ai/frontend/components/providers/ProviderCard.tsx`
+- **Fix:** `modelCounts.by_category` → `modelCounts.byCategory`
+
+### Standards Cleanup
+
+#### 9. Deleted superseded standard
+- **Deleted:** `docs/standards/standard_api-response.md`
+- **Reason:** Superseded by `docs/standards/standard_API-PATTERNS.md` which is more comprehensive (covers requests + responses)
+
+### Script Improvements
+
+#### 10. create-cora-project.sh - Module dependency registration
+- **File:** `scripts/create-cora-project.sh`
+- **Enhancement:** Now automatically adds functional modules as dependencies to `apps/web/package.json`
+- **Works with:** module-ws, module-chat, module-kb (any functional module)
 
 ---
 
-## ✅ Fixes Applied to Templates (Session 122)
+## 🔄 Known Remaining Issue
+
+### useWorkspace.ts - Session type augmentation
+- **File:** `templates/_modules-functional/module-ws/frontend/hooks/useWorkspace.ts`
+- **Issue:** `session?.accessToken` not resolving despite type augmentation existing
+- **Cause:** Module's TypeScript compilation doesn't pick up apps/web type augmentation
+- **Status:** Needs investigation - may require tsconfig adjustment or type re-export
+
+---
+
+## Build Error Warnings (Non-Issues)
+
+### Lambda Authorizer pip warnings
+The following pip dependency warnings during `./build.sh` are **NOT issues**:
+- PyJWT 2.8.0 vs 2.9.0/2.10.1 - OK, Lambda runs in isolated environment
+- cryptography 46.0.3 vs <46.0.0 - OK, Lambda has its own dependencies
+- urllib3 version mismatch - OK, for Python <3.10 only
+
+Build succeeds with `✅ Built: build/authorizer.zip` - warnings are about local vs Lambda package conflicts.
+
+---
+
+## 🟡 Session 122 Fixes (Previously Applied)
 
 ### Backend Fixes
-
-#### 1. Fixed GET /orgs/{id}/invites - 403 Forbidden
-- **File:** `templates/_modules-core/module-access/backend/lambdas/invites/lambda_function.py`
-- **Fix:** Changed `membership.get('role')` → `membership.get('org_role')` in all 3 authorization checks
-
-#### 2. Fixed PUT /ws/config - 400 Bad Request  
-- **File:** `templates/_modules-functional/module-ws/backend/lambdas/workspace/lambda_function.py`
-- **Fix:** Added field_mapping to accept both camelCase and snake_case input fields
-
-#### 3. Fixed GET /ws/config - UI not displaying saved data
-- **File:** `templates/_modules-functional/module-ws/backend/lambdas/workspace/lambda_function.py`
-- **Fix:** Added `_transform_config()` to transform snake_case DB response to camelCase API response
-
-#### 4. Fixed GET /admin/users - User listing showing "No name", "None", etc.
-- **File:** `templates/_modules-core/module-access/backend/lambdas/identities-management/lambda_function.py`
-- **Fix:** Added `_transform_user()` function to convert snake_case DB fields to camelCase API response
+1. **GET /orgs/{id}/invites - 403** - Fixed `role` → `org_role` in authorization checks
+2. **PUT /ws/config - 400** - Added field_mapping for camelCase/snake_case
+3. **GET /ws/config - UI display** - Added `_transform_config()` for DB→API response
+4. **GET /admin/users - "No name"** - Added `_transform_user()` function
 
 ### Frontend Fixes
+5. **Edit Workspace popup** - Added useEffect to sync form values
+6. **Org Members display** - Updated interface to match API (`profile` vs `user`)
+7. **OrgMember type** - Updated interface structure
+8. **AI Config models** - Fixed `supports_chat` → `supportsChat` filters
 
-#### 5. Fixed Edit Workspace popup not populating data
-- **File:** `templates/_modules-functional/module-ws/frontend/hooks/useWorkspaceForm.ts`
-- **Fix:** Added `useEffect` to sync form values when `defaultValues` changes
-
-#### 6. Fixed Organization Members display - "Unknown User", "No email"
-- **File:** `templates/_modules-core/module-access/frontend/components/admin/OrgMembersTab.tsx`
-- **Fix:** Updated interface to match API response (`profile` vs `user`, `fullName` vs `name`, `orgRole` vs `role`)
-
-#### 7. Fixed OrgMember type definition
-- **File:** `templates/_modules-core/module-access/frontend/types/index.ts`
-- **Fix:** Updated `OrgMember` interface to match API response structure
-
-#### 8. Fixed AI Config - Model selection showing no models
-- **File:** `templates/_modules-core/module-ai/frontend/components/PlatformAIConfigPanel.tsx`
-- **Root Cause:** Filter used `d.supports_chat` (snake_case) but DeploymentInfo has `supportsChat` (camelCase)
-- **Fix:** Changed filter to use `d.supportsChat` and `d.supportsEmbeddings`
-- **Also Fixed:** `model_name` → `modelName` in display text
-
-### Tooling Improvements
-
-#### 9. Enhanced API Response Validator
-- **File:** `validation/api-response-validator/validate_api_responses.py`
-- **Enhancement:** Added `check_untransformed_db_data()` function
-- **Detection:** Tracks variables assigned from DB operations and flags if passed to `success_response()` without transformation
+### Tooling
+9. **API Response Validator** - Added `check_untransformed_db_data()` detection
 
 ---
 
----
-
-## Issues NOT Bugs
-
-### GET /admin/sys - 404 Not Found
-- **Finding:** Route `/admin/sys` does NOT exist in stack template
-- **Resolution:** Not a bug - use `/admin/platform` or `/admin/mgmt` instead
-
----
-
-## 🛠️ New Shared Utilities Added
+## 🛠️ Shared Utilities Available
 
 ### org_common Transform Utilities
-Added generic snake_case ↔ camelCase transformation utilities to the `org_common` Lambda layer:
-
 **File:** `templates/_modules-core/module-access/backend/layers/org-common/python/org_common/transform.py`
 
-**Available Functions:**
-- `snake_to_camel(key)` - Convert single key
-- `camel_to_snake(key)` - Convert single key (reverse)
-- `transform_record(data)` - Recursively transform dict keys
-- `transform_records(list)` - Transform list of dicts
-- `transform_input(data)` - camelCase→snake_case for DB input
-
-**Usage in Lambdas:**
 ```python
 import org_common as common
 
@@ -129,4 +147,4 @@ api_list = common.transform_records(db_records)
 
 ---
 
-**Updated:** January 13, 2026, 10:41 PM EST
+**Updated:** January 14, 2026, 8:47 AM EST
