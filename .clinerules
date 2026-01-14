@@ -272,7 +272,58 @@ When working on this toolkit:
 8. **Test changes** - Validate scripts work
 9. **Document patterns** - Update docs with new patterns
 
-## 🚨 CRITICAL: Use Standard Deployment Scripts
+## � Fast Iteration Testing Workflow (AI-Assisted)
+
+**When user reports a bug or test failure, follow this workflow to minimize their effort:**
+
+### Step 1: Fix the Template
+Make the fix in the template file (ALWAYS templates first, never test projects).
+
+### Step 2: Sync Fix to Test Project
+After fixing template, automatically sync to user's test project:
+
+```bash
+# Frontend fix
+./scripts/sync-fix-to-project.sh ~/code/bodhix/testing/test-ws-23/ai-sec-stack <filename> --dry-run
+# If dry-run looks good, run without --dry-run
+
+# Backend Lambda fix  
+./scripts/sync-fix-to-project.sh ~/code/bodhix/testing/test-ws-23/ai-sec-infra "<lambda>/lambda_function.py" --dry-run
+```
+
+### Step 3: Deploy if Backend Change
+For Lambda changes, also deploy:
+```bash
+cd ~/code/bodhix/testing/test-ws-23/ai-sec-infra
+./scripts/deploy-lambda.sh module-access/<lambda-name>
+```
+
+### Step 4: Notify User
+Tell the user:
+- "✅ Fix applied to template and synced to test project"
+- "Frontend: Restart dev server (`./scripts/start-dev.sh`) and retest"
+- "Backend: Lambda deployed, retest the API"
+
+### Script Reference
+
+| Script | When to Use |
+|--------|-------------|
+| `./scripts/sync-fix-to-project.sh <stack-path> <file>` | After any template fix |
+| `./scripts/deploy-lambda.sh <module>/<lambda>` | After backend Lambda fix |
+
+### Path Patterns for sync-fix-to-project.sh
+
+- **Filename only**: `InviteMemberDialog.tsx` (works if unique)
+- **With parent dir**: `"orgs/lambda_function.py"` (for Lambdas)
+- **Module path**: `"module-access/invites"` (narrows search)
+
+### User's Test Project Paths
+
+**IMPORTANT:** Test project paths are configured in `memory-bank/activeContext.md` under the "Current Test Environment" section. Check that file for the current paths before syncing.
+
+**Goal:** User only needs to TEST. AI handles fix + sync + deploy.
+
+## �🚨 CRITICAL: Use Standard Deployment Scripts
 
 **ALL deployments MUST use the standard scripts in {project}-infra/scripts/**
 

@@ -17,6 +17,7 @@ import { useTheme } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import SettingsIcon from "@mui/icons-material/Settings";
+import * as MuiIcons from "@mui/icons-material";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 import { useWorkspaceConfig } from "@{{PROJECT_NAME}}/module-ws";
 import { useOrganizationContext, OrgIcon } from "@{{PROJECT_NAME}}/module-access";
@@ -60,10 +61,22 @@ export function Sidebar({ navigation }: SidebarProps) {
   // Helper function to get dynamic label for navigation items
   const getNavLabel = (item: { href: string; label: string }) => {
     // Override workspace label with config value if available
-    if (item.href === "/ws" && wsConfig?.nav_label_plural) {
-      return wsConfig.nav_label_plural;
+    if (item.href === "/ws" && wsConfig?.navLabelPlural) {
+      return wsConfig.navLabelPlural;
     }
     return item.label;
+  };
+
+  // Helper function to get dynamic icon for navigation items
+  const getNavIcon = (item: { href: string; icon: React.ReactNode }) => {
+    // Override workspace icon with config value if available
+    if (item.href === "/ws" && wsConfig?.navIcon) {
+      const IconComponent = (MuiIcons as Record<string, React.ComponentType<any>>)[wsConfig.navIcon];
+      if (IconComponent) {
+        return <IconComponent />;
+      }
+    }
+    return item.icon;
   };
 
   const handleDrawerToggle = () => {
@@ -81,10 +94,9 @@ export function Sidebar({ navigation }: SidebarProps) {
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {/* Logo/Header - Dynamic App Branding from Organization Settings */}
       <Box sx={{ p: 3, borderBottom: 1, borderColor: "divider", display: "flex", alignItems: "center", gap: 1.5 }}>
-        <OrgIcon 
-          iconName={currentOrganization?.appIcon} 
-          sx={{ color: "primary.main", fontSize: 28 }}
-        />
+        <Box sx={{ color: "primary.main", fontSize: 28, display: "flex" }}>
+          <OrgIcon iconName={currentOrganization?.appIcon} />
+        </Box>
         <Typography variant="h6" fontWeight={600}>
           {currentOrganization?.appName || currentOrganization?.orgName || "CORA"}
         </Typography>
@@ -112,7 +124,7 @@ export function Sidebar({ navigation }: SidebarProps) {
                   },
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+                <ListItemIcon sx={{ minWidth: 40 }}>{getNavIcon(item)}</ListItemIcon>
                 <ListItemText primary={getNavLabel(item)} />
               </ListItemButton>
             </ListItem>

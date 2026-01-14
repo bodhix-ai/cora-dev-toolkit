@@ -1,18 +1,23 @@
 # Plan: Enforce Database Naming Standards in Module Development Guide
 
-**Status:** Planning  
+**Status:** ✅ COMPLETE  
 **Priority:** High  
 **Created:** January 1, 2026  
+**Updated:** January 14, 2026  
+**Completed:** January 14, 2026  
 **Owner:** Engineering Team
 
 ---
 
 ## Overview
 
-This plan outlines the updates needed to the CORA Module Development Guide to enforce compliance with the new database naming standards (Rules 6 & 7 added to DATABASE-NAMING-STANDARDS.md).
+This plan outlines the updates needed to the CORA Module Development Guide to enforce compliance with the new database naming standards (Rules 6 & 8 added to DATABASE-NAMING-STANDARDS.md).
+
+**Note:** Rule 8 was initially created for configuration tables via ADR-011, then expanded to cover all specialized table types (config, log, history, usage, state, queue) using infix patterns.
 
 **Related Documents:**
-- `docs/standards/cora/DATABASE-NAMING-STANDARDS.md` - The standards being enforced
+- `docs/standards/cora/standard_DATABASE-NAMING.md` - The standards being enforced
+- `docs/arch decisions/ADR-011-TABLE-NAMING-STANDARDS.md` - Specialized table naming conventions
 - `docs/guides/guide_CORA-MODULE-DEVELOPMENT-PROCESS.md` - The guide being updated
 
 ---
@@ -23,9 +28,11 @@ The CORA Module Development Guide currently does not enforce the database naming
 - **Rule 1**: Single-word tables must be plural
 - **Rule 2**: Prefixed/compound tables must have plural main noun
 - **Rule 6**: Entity-relational prefix abbreviations (ws_, wf_, cert_, org_)
-- **Rule 7**: Namespace/scope prefixes (platform_, system_, app_)
+- **Rule 8**: Specialized table patterns (config, log, history, usage, state, queue)
 
 Without explicit enforcement in the guide, AI agents and developers will create modules with inconsistent and non-compliant database schemas.
+
+**Update:** Rule 7 was deprecated in favor of Rule 8, which was initially created for configuration tables via ADR-011, then expanded to cover all specialized table types using infix patterns (`_cfg_`, `_log_`, `_hist_`, `_usage_`, `_state_`, `_queue_`).
 
 ---
 
@@ -52,13 +59,21 @@ Insert new subsection after "Tools & Templates":
 ```markdown
 ### Database Standards
 
-- [ ] Review `docs/standards/cora/DATABASE-NAMING-STANDARDS.md`
+- [ ] Review `docs/standards/cora/standard_DATABASE-NAMING.md`
 - [ ] Understand table naming conventions (plural forms)
 - [ ] Understand prefix abbreviation rules (ws_, wf_, cert_, org_)
-- [ ] Understand namespace prefix patterns (platform_, system_, app_)
+- [ ] Understand specialized table patterns (Rule 8):
+  - Config: `{module}_cfg_{scope}_{purpose?}`
+  - Log: `{module}_log_{purpose}`
+  - History: `{module}_hist_{entity}`
+  - Usage: `{module}_usage_{entity}`
+  - State: `{module}_state_{process}`
+  - Queue: `{module}_queue_{purpose}`
 ```
 
 **Deliverable:** Standards review is now a prerequisite
+
+**✅ COMPLETE:** Updated in Session 125
 
 ---
 
@@ -100,6 +115,8 @@ Insert new subsection after "Tools & Templates":
 
 **Deliverable:** Clear plural/singular distinction with examples
 
+**✅ COMPLETE:** Updated in Session 125
+
 ---
 
 ### Phase 3: Add Standards Compliance Checkpoint (30 minutes)
@@ -116,7 +133,7 @@ Insert at the very beginning of Step 3.3:
 
 **⚠️ CRITICAL: Database Naming Standards Compliance**
 
-All database objects MUST comply with `docs/standards/cora/DATABASE-NAMING-STANDARDS.md`.
+All database objects MUST comply with `docs/standards/cora/standard_DATABASE-NAMING.md`.
 
 **Pre-Implementation Checklist:**
 
@@ -126,19 +143,24 @@ All database objects MUST comply with `docs/standards/cora/DATABASE-NAMING-STAND
   - `wf_` for workflow-related tables
   - `cert_` for certification-related tables
   - `org_` for organization-related tables
-- [ ] **Namespace Prefixes**: Use for configuration tables (Rule 7):
-  - `platform_*` for platform-wide settings
-  - `system_*` for system-level internals
-  - `app_*` for application settings
+- [ ] **Specialized Tables**: Use infix patterns (Rule 8):
+  - Config: `{module}_cfg_sys`, `{module}_cfg_org`, `{module}_cfg_ws`
+  - Log: `{module}_log_auth`, `{module}_log_activity`, `{module}_log_audit`
+  - History: `{module}_hist_{entity}` (e.g., `ai_hist_model_validation`)
+  - Usage: `{module}_usage_{entity}` (e.g., `sys_usage_module`)
+  - State: `{module}_state_{process}` (e.g., `ai_state_validation`)
+  - Queue: `{module}_queue_{purpose}` (e.g., `ai_queue_validation`)
 - [ ] **Column Names**: snake_case throughout
 - [ ] **Foreign Keys**: `{table_singular}_id` pattern
 - [ ] **Indexes**: `idx_{table}_{column(s)}` pattern
 - [ ] **Constraints**: Standard naming patterns (see standards doc)
 
-**Reference:** `docs/standards/cora/DATABASE-NAMING-STANDARDS.md`
+**Reference:** `docs/standards/cora/standard_DATABASE-NAMING.md`
 ```
 
 **Deliverable:** Mandatory checkpoint before schema implementation
+
+**✅ COMPLETE:** Updated in Session 125
 
 ---
 
@@ -199,30 +221,92 @@ CREATE TABLE IF NOT EXISTS public.ws_favorites (
 - `ws` is industry-standard abbreviation
 - Documented in DATABASE-NAMING-STANDARDS.md
 
-#### Example: Platform Configuration with Namespace Prefix
+#### Example: Specialized Tables with Infix Patterns
 
-Following Rule 7 (Namespace/Scope Prefixes):
+Following Rule 8 (Specialized Table Patterns - ADR-011):
 
-\`\`\`sql
--- Platform namespace (no "platforms" table exists or needed)
-CREATE TABLE IF NOT EXISTS public.platform_idp_config (
+\\`\\`\\`sql
+-- Configuration tables (_cfg_ infix)
+CREATE TABLE IF NOT EXISTS public.sys_cfg_idp (
     id UUID PRIMARY KEY,
-    provider VARCHAR(50) NOT NULL
+    provider VARCHAR(50) NOT NULL,
+    ...
 );
 
-CREATE TABLE IF NOT EXISTS public.platform_module_registry (
+CREATE TABLE IF NOT EXISTS public.ws_cfg_sys (
     id UUID PRIMARY KEY,
-    module_name VARCHAR(100) NOT NULL
+    nav_label_singular VARCHAR(50) DEFAULT 'Workspace',
+    enable_favorites BOOLEAN DEFAULT true,
+    ...
 );
-\`\`\`
 
-**Why `platform_` prefix?**
-- Indicates platform-wide scope (Rule 7)
-- No parent `platforms` table needed
-- Configuration/registry tables, not entity-relational
+-- Log tables (_log_ infix)
+CREATE TABLE IF NOT EXISTS public.user_log_auth (
+    id UUID PRIMARY KEY,
+    event_type VARCHAR(50) NOT NULL,
+    user_email TEXT,
+    occurred_at TIMESTAMPTZ DEFAULT NOW(),
+    ...
+);
+
+CREATE TABLE IF NOT EXISTS public.ws_log_activity (
+    id UUID PRIMARY KEY,
+    ws_id UUID NOT NULL REFERENCES public.workspaces(id),
+    action VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    ...
+);
+
+-- History tables (_hist_ infix)
+CREATE TABLE IF NOT EXISTS public.ai_hist_model_validation (
+    id UUID PRIMARY KEY,
+    model_id UUID REFERENCES public.ai_models(id),
+    status TEXT NOT NULL,
+    validated_at TIMESTAMPTZ DEFAULT NOW(),
+    ...
+);
+
+-- State tables (_state_ infix)
+CREATE TABLE IF NOT EXISTS public.ai_state_validation (
+    id UUID PRIMARY KEY,
+    provider_id UUID NOT NULL,
+    total_models INTEGER,
+    validated_count INTEGER DEFAULT 0,
+    status VARCHAR(50),
+    ...
+);
+
+-- Usage tables (_usage_ infix)
+CREATE TABLE IF NOT EXISTS public.sys_usage_module (
+    id UUID PRIMARY KEY,
+    module_name VARCHAR(100) NOT NULL,
+    org_id UUID REFERENCES public.orgs(id),
+    action_count INTEGER DEFAULT 0,
+    ...
+);
+
+-- Queue tables (_queue_ infix)
+CREATE TABLE IF NOT EXISTS public.ai_queue_validation (
+    id UUID PRIMARY KEY,
+    model_id UUID NOT NULL,
+    priority INTEGER DEFAULT 5,
+    status VARCHAR(50) DEFAULT 'pending',
+    ...
+);
+\\`\\`\\`
+
+**Why infix patterns?**
+- Immediately identifiable: `grep \"_cfg_\"`, `grep \"_log_\"`, etc. finds all tables of that type
+- No redundancy: Works with all module prefixes including `sys_`
+- Module-first: Always know which module owns the table
+- Flexible: Supports all specialized table types consistently
+
+**Reference:** ADR-011: Specialized Table Naming Conventions
 ```
 
 **Deliverable:** Template and examples enforce standards
+
+**✅ COMPLETE:** Updated in Session 125
 
 ---
 
@@ -233,7 +317,14 @@ CREATE TABLE IF NOT EXISTS public.platform_module_registry (
 **Purpose:** Automated validation of database naming standards compliance
 
 **Features:**
-- Check all tables use plural form
+- Check all tables use plural form (entity tables)
+- Detect and validate specialized table patterns:
+  - `_cfg_` configuration tables
+  - `_log_` audit/activity logs
+  - `_hist_` history tables
+  - `_usage_` usage tracking tables
+  - `_state_` state/progress tables
+  - `_queue_` job/task queues
 - Verify prefix abbreviations are documented
 - Validate column names are snake_case
 - Check foreign keys follow `{table_singular}_id` pattern
@@ -253,6 +344,8 @@ CREATE TABLE IF NOT EXISTS public.platform_module_registry (
 ```
 
 **Deliverable:** Automated enforcement tool
+
+**✅ COMPLETE:** Created in Session 125 (`scripts/validate-db-naming.py`)
 
 ---
 
@@ -297,6 +390,8 @@ Add after "Please:":
 
 **Deliverable:** AI agents follow standards automatically
 
+**✅ COMPLETE:** Updated in Session 125
+
 ---
 
 ### Phase 7: Update Related Documentation (15 minutes)
@@ -312,6 +407,8 @@ Add to list:
 ```
 
 **Deliverable:** Standards easily discoverable
+
+**✅ COMPLETE:** Updated in Session 125
 
 ---
 
@@ -399,20 +496,26 @@ Add to list:
 
 ## Checklist for Implementation
 
-- [ ] Phase 1: Update prerequisites section
-- [ ] Phase 2: Update entity identification section
-- [ ] Phase 3: Add compliance checkpoint
-- [ ] Phase 4: Update schema template with examples
-- [ ] Phase 5: Create validation script
-- [ ] Phase 6: Update AI prompting templates
-- [ ] Phase 7: Add documentation link
-- [ ] Test validation script
-- [ ] Create test module following updated guide
-- [ ] Document any issues found
-- [ ] Get team review and approval
-- [ ] Merge changes to main
+- [x] Phase 1: Update prerequisites section ✅ Session 125
+- [x] Phase 2: Update entity identification section ✅ Session 125
+- [x] Phase 3: Add compliance checkpoint ✅ Session 125
+- [x] Phase 4: Update schema template with examples ✅ Session 125
+- [x] Phase 5: Create validation script ✅ Session 125
+- [x] Phase 6: Update AI prompting templates ✅ Session 125
+- [x] Phase 7: Add documentation link ✅ Session 125
+- [x] ADR-011: Specialized Table Naming Conventions ✅ Session 125 (expanded)
+- [x] Rule 8: Specialized Table Patterns (config, log, history, usage, state, queue) ✅ Session 125 (expanded)
+- [x] Validator: Python 3.9 compatibility ✅ Session 125
+- [x] Validator: All specialized table pattern detection ✅ Session 125
+- [ ] Test validation script (pending)
+- [ ] Create test module following updated guide (pending)
+- [ ] Get team review and approval (pending)
+- [ ] Merge changes to main (pending)
 
 ---
 
-**Status:** Ready for implementation after module-ws troubleshooting complete  
-**Next Step:** Complete module-ws schema fixes, then implement this plan
+**Status:** ✅ ALL PHASES COMPLETE + STANDARDS EXPANDED  
+**Implementation Date:** January 14, 2026  
+**Total Time:** ~10 hours (including ADR-011 creation + expansion to all specialized tables)  
+**Standards Coverage:** Config, Log, History, Usage, State, Queue tables  
+**Next Steps:** Test validator against all modules, team review, migration planning (see plan_db-naming-migration.md)

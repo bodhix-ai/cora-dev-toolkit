@@ -12,28 +12,30 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { WorkspaceDetailAdminPage } from "@{{PROJECT_NAME}}/module-ws";
 
 export default function WorkspaceDetailAdminRoute() {
   const params = useParams();
-  const { data: session } = useSession();
+  const { profile } = useUser();
   
   const workspaceId = params?.id as string;
-  const orgId = session?.user?.orgId as string;
+  const currentOrgId = profile?.currentOrgId;
 
-  if (!workspaceId || !orgId) {
+  // Check if user has org admin role for current org
+  const isOrgAdmin = profile?.organizations?.some(
+    (org) => org.orgId === currentOrgId && ["org_owner", "org_admin"].includes(org.role)
+  );
+
+  if (!workspaceId || !currentOrgId) {
     return null;
   }
 
   return (
     <WorkspaceDetailAdminPage
       workspaceId={workspaceId}
-      orgId={orgId}
-      isOrgAdmin={
-        session?.user?.role === "org_admin" || 
-        session?.user?.role === "org_owner"
-      }
+      orgId={currentOrgId}
+      isOrgAdmin={isOrgAdmin ?? false}
     />
   );
 }

@@ -11,15 +11,17 @@
  */
 
 import { useParams, useRouter } from "next/navigation";
-import { useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
+import { useOrganizationContext, useUser } from "@{{PROJECT_NAME}}/module-access";
 import { WorkspaceDetailPage } from "@{{PROJECT_NAME}}/module-ws";
 
 export default function WorkspaceDetailRoute() {
   const params = useParams();
   const router = useRouter();
-  const { currentOrganization, userId } = useOrganizationContext();
+  const { currentOrganization } = useOrganizationContext();
+  const { profile } = useUser();
   const workspaceId = params.id as string;
   const orgId = currentOrganization?.orgId || "";
+  const userId = profile?.id || "";
 
   // Note: apiClient is optional - WorkspaceDetailPage will create it internally
   // using useSession() within the component where SessionProvider context is available

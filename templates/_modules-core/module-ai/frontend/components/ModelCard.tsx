@@ -43,7 +43,7 @@ export function ModelCard({ model, onSelect }: ModelCardProps) {
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               <MemoryIcon color="primary" />
               <Box>
-                <Typography variant="h6">{model.model_name}</Typography>
+                <Typography variant="h6">{model.modelName}</Typography>
                 <Typography variant="caption" color="text.secondary">
                   {model.provider}
                 </Typography>
@@ -59,28 +59,27 @@ export function ModelCard({ model, onSelect }: ModelCardProps) {
 
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Chip
-                label={model.deployment_status}
-                color={getStatusColor(model.deployment_status)}
+                label={model.deploymentStatus}
+                color={getStatusColor(model.deploymentStatus)}
                 size="small"
               />
             </Box>
           </Box>
 
           <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
-            {model.supports_chat && (
+            {model.supportsChat && (
               <Chip label="Chat" size="small" variant="outlined" />
             )}
-            {model.supports_embeddings && (
+            {model.supportsEmbeddings && (
               <Chip label="Embedding" size="small" variant="outlined" />
             )}
-            {model.supports_embeddings &&
-              model.capabilities?.embedding_dimensions && (
-                <Chip
-                  label={`${model.capabilities.embedding_dimensions} dims`}
-                  size="small"
-                  variant="outlined"
-                />
-              )}
+            {model.supportsEmbeddings && model.capabilities?.embeddingDimensions ? (
+              <Chip
+                label={`${model.capabilities.embeddingDimensions} dims`}
+                size="small"
+                variant="outlined"
+              />
+            ) : null}
           </Stack>
 
           <Button

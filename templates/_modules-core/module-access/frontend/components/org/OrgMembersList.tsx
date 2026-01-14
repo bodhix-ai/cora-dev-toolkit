@@ -184,28 +184,28 @@ export function OrgMembersList({ orgId }: OrgMembersListProps) {
                       }}
                     >
                       {getUserInitials(
-                        member.user?.email || "Unknown",
-                        member.user?.name
+                        member.profile?.email || "Unknown",
+                        member.profile?.fullName
                       )}
                     </Avatar>
                     <div>
                       <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        {member.user?.name || "Unknown User"}
+                        {member.profile?.fullName || "Unknown User"}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {member.user?.email || "No email"}
+                        {member.profile?.email || "No email"}
                       </div>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>
                   <Chip
-                    label={getRoleDisplayName(member.roleName)}
+                    label={getRoleDisplayName(member.orgRole)}
                     size="small"
                     color={
-                      member.roleName === "org_owner"
+                      member.orgRole === "org_owner"
                         ? "primary"
-                        : member.roleName === "org_admin"
+                        : member.orgRole === "org_admin"
                         ? "secondary"
                         : "default"
                     }
@@ -214,18 +214,18 @@ export function OrgMembersList({ orgId }: OrgMembersListProps) {
                 </TableCell>
                 <TableCell>
                   <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {formatDate(member.joinedAt)}
+                    {formatDate(member.joinedAt || member.createdAt)}
                   </span>
                 </TableCell>
                 {canManage && (
                   <TableCell align="right">
-                    {member.roleName !== "org_owner" && (
+                    {member.orgRole !== "org_owner" && (
                       <IconButton
                         size="small"
                         color="error"
                         onClick={() => handleRemoveMember(member.id)}
                         disabled={removingMemberId === member.id}
-                        aria-label={`Remove ${member.user?.email}`}
+                        aria-label={`Remove ${member.profile?.email || "member"}`}
                       >
                         {removingMemberId === member.id ? (
                           <CircularProgress size={20} />

@@ -145,6 +145,13 @@ This guide defines the **AI-driven, human-supported process** for developing COR
 - [ ] `templates/_module-template/` exists
 - [ ] `docs/standards/` documentation reviewed
 
+### Database Standards
+
+- [ ] Review `docs/standards/cora/DATABASE-NAMING-STANDARDS.md`
+- [ ] Understand table naming conventions (plural forms)
+- [ ] Understand prefix abbreviation rules (ws_, wf_, cert_, org_)
+- [ ] Understand namespace prefix patterns (sys_, app_)
+
 ---
 
 ## Phase 1: Discovery & Analysis
@@ -201,29 +208,52 @@ read_file: user-stories/epic-123.md
 **AI Entity Analysis:**
 
 For each identified entity, determine:
-- **Entity Name** (singular, lowercase)
+- **Entity Name** (plural for table, singular for API/types)
 - **Primary Fields** (id, name, description, etc.)
 - **Relationships** (belongs_to, has_many)
 - **Business Rules** (validation, state transitions)
 - **Multi-tenancy** (org_id required?)
+
+#### Entity Naming Standards
+
+**Table Names (Database):**
+- Use **plural form**: `workspaces`, `members`, `favorites`
+- For prefixed tables, use documented abbreviations:
+  - `workspaces` → related tables: `ws_members`, `ws_config`, `ws_favorites`
+  - `workflows` → related tables: `wf_steps`, `wf_triggers`
+  - Reference: Rule 6 in DATABASE-NAMING-STANDARDS.md
+
+**API/Type Names (Code):**
+- Use **singular form**: `Workspace`, `Member`, `Favorite`
+- Transformation: DB `workspaces` → API `Workspace` → Type `Workspace`
+
+**Examples:**
+
+| Database Table | Prefix | API Endpoint | TypeScript Type |
+|----------------|--------|--------------|-----------------|
+| `workspaces` | ws_ | `/api/ws/workspaces` | `Workspace` |
+| `ws_members` | ws_ | `/api/ws/members` | `WsMember` |
+| `ws_favorites` | ws_ | `/api/ws/favorites` | `WsFavorite` |
 
 **Example Output:**
 
 ```markdown
 ## Identified Entities
 
-### 1. kb_base (Knowledge Base)
+### 1. kb_bases (Knowledge Base) - PLURAL!
 - **Purpose**: Container for documents in a knowledge base
+- **Database Table**: `kb_bases` (plural)
+- **API Type**: `KbBase` (singular)
 - **Fields**:
   - id (UUID, primary key)
-  - org_id (UUID, foreign key to org)
+  - org_id (UUID, foreign key to orgs)
   - name (VARCHAR, required)
   - description (TEXT, optional)
   - embedding_model (VARCHAR, AI config)
   - status (VARCHAR, enum: active/archived)
 - **Relationships**:
-  - belongs_to: org
-  - has_many: kb_document
+  - belongs_to: orgs
+  - has_many: kb_documents
 - **Business Rules**:
   - Unique name per organization
   - Cannot delete if has documents
@@ -760,6 +790,31 @@ if chat.get('kb_base_id'):
 
 ### Step 3.3: Database Implementation
 
+**⚠️ CRITICAL: Database Naming Standards Compliance**
+
+All database objects MUST comply with `docs/standards/cora/DATABASE-NAMING-STANDARDS.md`.
+
+**Pre-Implementation Checklist:**
+
+- [ ] **Table Names**: All tables use plural form (`workspaces`, not `workspace`)
+- [ ] **Core Table Prefixes**: All modules leverage these foundation tables:
+  - `sys_*` - System-level configuration (sys_lambda_config, sys_module_registry)
+  - `ai_*` - AI provider enablement
+  - `org_*` - Organization foundation (orgs, org_members)
+  - `user_*` - User foundation (user_profiles)
+- [ ] **Functional Module Prefixes**: Use documented abbreviations (Rule 6):
+  - `ws_` for workspace-related tables (existing)
+  - `kb_` for knowledge base tables (planned)
+  - `chat_` for chat-related tables (planned)
+  - `wf_` for workflow tables (planned)
+  - Add new prefixes to DATABASE-NAMING-STANDARDS.md as modules are created
+- [ ] **Column Names**: snake_case throughout
+- [ ] **Foreign Keys**: `{table_singular}_id` pattern
+- [ ] **Indexes**: `idx_{table}_{column(s)}` pattern
+- [ ] **Constraints**: Standard naming patterns (see standards doc)
+
+**Reference:** `docs/standards/cora/DATABASE-NAMING-STANDARDS.md`
+
 **AI Implementation Sequence:**
 
 #### 3.3.1: Schema File Pattern
@@ -810,6 +865,8 @@ db/schema/
 
 #### 3.3.2: Complete Schema File Template
 
+**⚠️ IMPORTANT: Use PLURAL table names per DATABASE-NAMING-STANDARDS.md Rule 1**
+
 ```sql
 -- =============================================
 -- MODULE-{MODULE}: {Entity} Table
@@ -818,12 +875,12 @@ db/schema/
 -- Source: Created for CORA toolkit {Date}
 
 -- =============================================
--- {ENTITY} TABLE
+-- {ENTITY} TABLE (PLURAL!)
 -- =============================================
 
-CREATE TABLE IF NOT EXISTS public.{entity} (
+CREATE TABLE IF NOT EXISTS public.{entities} (  -- PLURAL!
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    org_id UUID NOT NULL REFERENCES public.org(id) ON DELETE CASCADE,
+    org_id UUID NOT NULL REFERENCES public.orgs(id) ON DELETE CASCADE,  -- Plural!
     name VARCHAR(255) NOT NULL,
     description TEXT,
     status VARCHAR(50) DEFAULT 'active',
@@ -1608,8 +1665,13 @@ I need to analyze [legacy code / use cases] to create a CORA module.
 
 Source: [path to code or description]
 
+**CRITICAL: All database objects MUST comply with DATABASE-NAMING-STANDARDS.md**
+
 Please:
 1. Identify all entities (database tables, data structures)
+   - Use PLURAL table names (workspaces, members, favorites)
+   - Apply prefix abbreviations if needed (ws_, wf_, cert_, org_)
+   - Reference: docs/standards/cora/DATABASE-NAMING-STANDARDS.md Rules 1, 2, 6, 7
 2. Map API endpoints (REST operations)
 3. Extract business logic and validation rules
 4. Identify dependencies on other modules
@@ -1625,6 +1687,7 @@ Generate these specifications using the templates:
 4. MODULE-{MODULE_NAME}-ADMIN-UX-SPEC.md - Use templates/MODULE-SPEC-ADMIN-UX-TEMPLATE.md
 
 Follow the guidelines in:
+- docs/standards/cora/DATABASE-NAMING-STANDARDS.md - **REQUIRED**
 - docs/standards/standard_MODULE-DEPENDENCIES.md
 - docs/standards/standard_module-integration-spec.md
 - docs/standards/standard_CORA-FRONTEND.md
@@ -1636,14 +1699,24 @@ Follow the guidelines in:
 I need to implement the module based on this approved specification:
 [paste specification or reference file]
 
+**CRITICAL: Database Naming Standards Compliance Required**
+
 Please:
 1. Generate module scaffolding using create-cora-module.sh
 2. Implement backend Lambda handlers following guide_AI-MODULE-DEVELOPMENT.md
-3. Implement database schema with RLS policies
+3. Implement database schema following DATABASE-NAMING-STANDARDS.md:
+   - All tables PLURAL: workspaces (not workspace)
+   - Prefix abbreviations: ws_members, ws_config, ws_favorites
+   - Column names: snake_case
+   - Foreign keys: {table_singular}_id pattern
+   - Indexes: idx_{table}_{column} pattern
+   - Constraints: documented patterns
 4. Implement frontend components using NextAuth pattern
 5. Integrate with core modules (access, ai, mgmt)
 6. Integrate with functional dependencies: [list]
 7. Generate module documentation
+
+**Validation:** Before completing, verify all table names against DATABASE-NAMING-STANDARDS.md
 
 Ensure 100% CORA compliance. Run compliance checks as you implement.
 ```
@@ -1790,6 +1863,7 @@ Before deploying any new functional module, verify:
 
 ## Related Documentation
 
+- [DATABASE-NAMING-STANDARDS.md](../standards/cora/DATABASE-NAMING-STANDARDS.md) - **REQUIRED** - Database object naming conventions
 - [standard_MODULE-REGISTRATION.md](../standards/standard_MODULE-REGISTRATION.md) - Module import and configuration
 - [standard_MODULE-DEPENDENCIES.md](../standards/standard_MODULE-DEPENDENCIES.md) - Dependency management
 - [guide_AI-MODULE-DEVELOPMENT.md](./guide_AI-MODULE-DEVELOPMENT.md) - AI-specific development patterns

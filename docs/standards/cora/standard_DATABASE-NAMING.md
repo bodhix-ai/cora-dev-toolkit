@@ -159,48 +159,213 @@ CREATE TABLE wrk_members (...);        -- Unclear abbreviation
 - Once chosen for a module, the abbreviation cannot change
 - Abbreviations should be 2-4 characters + underscore
 
-### Rule 7: Namespace/Scope Prefixes
+### Rule 7: Namespace/Scope Prefixes (DEPRECATED - See Rule 8)
 
-For tables that represent **configuration, settings, or scope** rather than entity relationships, use a namespace prefix WITHOUT requiring a corresponding main entity table.
+**⚠️ DEPRECATED:** This rule has been superseded by Rule 8 (Configuration Table Pattern). Use the `_cfg_` infix pattern for all configuration tables.
 
-**Pattern:** `{namespace}_{descriptive_name}`
+**Historical Context:**
+Previously, namespace prefixes like `sys_`, `app_`, `platform_` were used to indicate configuration scope. This approach has been replaced by the more explicit `_cfg_` infix pattern which clearly identifies configuration tables while maintaining module ownership.
 
-**Common Namespace Prefixes:**
+**Migration Required:**
+- `sys_idp_config` → `sys_cfg_idp` (See ADR-011)
+- `sys_lambda_config` → `sys_cfg_lambda` (See ADR-011)
 
-| Prefix | Meaning | Use Case | Example Tables |
-|--------|---------|----------|----------------|
-| platform_ | Platform-wide settings | Configuration, registry, system tables | platform_idp_config, platform_module_registry, platform_lambda_config |
-| system_ | System-level internals | Background processes, health checks | system_audit_log, system_health_check, system_migrations |
-| app_ | Application settings | Feature flags, app config | app_config, app_feature_flags, app_settings |
+See Rule 8 for the current configuration table naming standard.
 
-**When to Use Namespace Prefixes:**
-- Configuration/settings tables (often singletons)
-- Audit and logging tables
-- System metadata tables
-- Registry/catalog tables
-- Tables that don't "belong" to a user-facing entity
+---
 
-**Key Difference:**
-- `org_members` → relates to `orgs` table (entity-relational prefix from Rule 6)
-- `platform_idp_config` → no `platforms` table needed (namespace prefix)
+### Rule 8: Specialized Table Patterns (Config, Log, History, Usage, State, Queue)
+
+**Approved:** January 14, 2026 (ADR-011 - Expanded)
+
+Specialized tables (non-entity tables) MUST use infix patterns to clearly identify their purpose while maintaining module ownership.
+
+**General Pattern:** `{module}_{type}_{scope_or_purpose}`
+
+Where `{type}` is one of: `cfg`, `log`, `hist`, `usage`, `state`, `queue`
+
+---
+
+#### 8.1: Configuration Tables (`_cfg_`)
+
+**Pattern:** `{module}_cfg_{scope}_{purpose?}`
+
+Where:
+- **{module}** = module abbreviation (`ws_`, `ai_`, `sys_`, `org_`, `user_`, `kb_`, `chat_`, `wf_`)
+- **_cfg_** = configuration table indicator (fixed infix)
+- **{scope}** = configuration scope level (`sys`, `org`, `ws`, `user`)
+- **{purpose}** = optional descriptive name for specific config types
+
+**Scope Definitions:**
+
+| Scope | Meaning | Typical Columns | Row Count |
+|-------|---------|-----------------|--------------|
+| `sys` | Platform-wide, applies to all orgs | No `org_id` | Singleton or key-value |
+| `org` | Organization-scoped | Has `org_id` column | One per org |
+| `ws` | Workspace-scoped | Has `ws_id` column | One per workspace |
+| `user` | User-scoped preferences | Has `user_id` column | One per user |
 
 **✅ Correct:**
 ```sql
--- Platform namespace (no "platforms" table exists or needed)
-CREATE TABLE platform_idp_config (...);
-CREATE TABLE platform_module_registry (...);
-CREATE TABLE platform_lambda_config (...);
-
--- System namespace
-CREATE TABLE system_audit_log (...);
-CREATE TABLE system_health_check (...);
+CREATE TABLE ws_cfg_sys (...);           -- Platform-wide workspace settings
+CREATE TABLE ws_cfg_org (...);           -- Org-level workspace overrides
+CREATE TABLE ai_cfg_sys (...);           -- Platform-wide AI defaults
+CREATE TABLE ai_cfg_org_prompts (...);   -- Org-level AI prompt config
+CREATE TABLE sys_cfg_lambda (...);       -- Lambda warming configuration
+CREATE TABLE sys_cfg_idp (...);          -- IDP configuration
 ```
 
 **❌ Incorrect:**
 ```sql
--- Don't use namespace prefixes for entity relationships
-CREATE TABLE platform_members (...);  -- Should be: ws_members, org_members, etc.
+CREATE TABLE ws_configs (...);           -- Should be: ws_cfg_sys
+CREATE TABLE sys_lambda_config (...);    -- Should be: sys_cfg_lambda
+CREATE TABLE org_prompt_engineering (...); -- Should be: ai_cfg_org_prompts
 ```
+
+---
+
+#### 8.2: Log Tables (`_log_`)
+
+**Pattern:** `{module}_log_{purpose}`
+
+Where:
+- **{module}** = module abbreviation
+- **_log_** = log table indicator (fixed infix)
+- **{purpose}** = type of events logged (`auth`, `activity`, `audit`, `access`, `error`)
+
+**✅ Correct:**
+```sql
+CREATE TABLE user_log_auth (...);        -- User authentication events
+CREATE TABLE ws_log_activity (...);      -- Workspace activity log
+CREATE TABLE sys_log_idp_audit (...);    -- IDP configuration audit log
+CREATE TABLE ai_log_validation (...);    -- AI validation event log
+```
+
+**❌ Incorrect:**
+```sql
+CREATE TABLE user_auth_log (...);        -- Should be: user_log_auth
+CREATE TABLE ws_activity_log (...);      -- Should be: ws_log_activity
+CREATE TABLE sys_idp_audit_log (...);    -- Should be: sys_log_idp_audit
+```
+
+---
+
+#### 8.3: History Tables (`_hist_`)
+
+**Pattern:** `{module}_hist_{entity}_{detail?}`
+
+Where:
+- **{module}** = module abbreviation
+- **_hist_** = history table indicator (fixed infix)
+- **{entity}** = entity being tracked
+- **{detail}** = optional detail (e.g., `validation`, `changes`)
+
+**✅ Correct:**
+```sql
+CREATE TABLE ai_hist_model_validation (...);  -- AI model validation history
+CREATE TABLE ws_hist_changes (...);           -- Workspace change history
+CREATE TABLE org_hist_membership (...);       -- Organization membership history
+```
+
+**❌ Incorrect:**
+```sql
+CREATE TABLE ai_model_validation_history (...);  -- Should be: ai_hist_model_validation
+```
+
+---
+
+#### 8.4: Usage Tracking Tables (`_usage_`)
+
+**Pattern:** `{module}_usage_{entity}_{granularity?}`
+
+Where:
+- **{module}** = module abbreviation
+- **_usage_** = usage tracking indicator (fixed infix)
+- **{entity}** = what is being tracked
+- **{granularity}** = optional time granularity (`daily`, `hourly`, `monthly`)
+
+**✅ Correct:**
+```sql
+CREATE TABLE sys_usage_module (...);        -- Module usage tracking
+CREATE TABLE sys_usage_module_daily (...);  -- Daily module usage rollup
+CREATE TABLE ai_usage_model (...);          -- AI model usage tracking
+```
+
+**❌ Incorrect:**
+```sql
+CREATE TABLE sys_module_usage (...);        -- Should be: sys_usage_module
+CREATE TABLE sys_module_usage_daily (...);  -- Should be: sys_usage_module_daily
+```
+
+---
+
+#### 8.5: State/Progress Tables (`_state_`)
+
+**Pattern:** `{module}_state_{process}`
+
+Where:
+- **{module}** = module abbreviation
+- **_state_** = state/progress indicator (fixed infix)
+- **{process}** = process being tracked
+
+**✅ Correct:**
+```sql
+CREATE TABLE ai_state_validation (...);    -- AI validation progress state
+CREATE TABLE wf_state_execution (...);     -- Workflow execution state
+CREATE TABLE kb_state_indexing (...);      -- Knowledge base indexing progress
+```
+
+**❌ Incorrect:**
+```sql
+CREATE TABLE ai_validation_progress (...);       -- Should be: ai_state_validation
+CREATE TABLE ai_model_validation_progress (...); -- Should be: ai_state_validation
+```
+
+---
+
+#### 8.6: Queue Tables (`_queue_`)
+
+**Pattern:** `{module}_queue_{purpose}`
+
+Where:
+- **{module}** = module abbreviation
+- **_queue_** = queue indicator (fixed infix)
+- **{purpose}** = queue purpose
+
+**✅ Correct:**
+```sql
+CREATE TABLE ai_queue_validation (...);   -- AI validation job queue
+CREATE TABLE kb_queue_indexing (...);     -- Knowledge base indexing queue
+CREATE TABLE wf_queue_execution (...);    -- Workflow execution queue
+```
+
+---
+
+#### Grep-Friendly Patterns
+
+All specialized table types can be found with simple grep commands:
+
+```bash
+# Find all configuration tables
+grep "_cfg_" *.sql
+
+# Find all log tables
+grep "_log_" *.sql
+
+# Find all history tables
+grep "_hist_" *.sql
+
+# Find all usage tracking tables
+grep "_usage_" *.sql
+
+# Find all state/progress tables
+grep "_state_" *.sql
+
+# Find all queue tables
+grep "_queue_" *.sql
+```
+
+**Reference:** [ADR-011: Specialized Table Naming Conventions](../../arch%20decisions/ADR-011-CONFIG-TABLE-NAMING.md)
 
 ---
 
