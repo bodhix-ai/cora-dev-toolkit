@@ -19,7 +19,7 @@ CORA uses these abbreviations consistently:
 - **ws** - Workspace-level (or module-specific resource)
 
 **Roles:**
-- **System roles:** `platform_admin`, `platform_owner` (stored in `global_role`)
+- **System roles:** `sys_admin`, `sys_owner` (stored in `sys_role`)
 - **Organization roles:** `org_admin`, `org_owner` (stored in `org_members.org_role`)
 - **Module roles:** `ws_owner`, `ws_admin`, `ws_user` (stored in module-specific tables)
 
@@ -39,7 +39,7 @@ CORA uses a **two-tier user identity architecture** that is critical to understa
 │                                                              │
 │  Tier 2: Internal Identity (Supabase)                       │
 │  ├─ Database stores: user_id (Supabase auth.users ID)       │
-│  ├─ user_profiles table contains: global_role, org roles    │
+│  ├─ user_profiles table contains: sys_role, org roles       │
 │  └─ Must query database to get authorization data           │
 │                                                              │
 └─────────────────────────────────────────────────────────────┘
@@ -61,7 +61,7 @@ CORA uses a **two-tier user identity architecture** that is critical to understa
 ```python
 def handle_admin_function(user_info: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Admin-only endpoint. Only platform_admin and platform_owner can access.
+    Admin-only endpoint. Only sys_admin and sys_owner can access.
     """
     # Step 1: Extract external UID from JWT
     okta_uid = user_info['user_id']  # This is the Okta user ID
@@ -73,8 +73,8 @@ def handle_admin_function(user_info: Dict[str, Any], body: Dict[str, Any]) -> Di
     profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
     
     # Step 4: Check authorization
-    if not profile or profile.get('global_role') not in ['platform_admin', 'platform_owner']:
-        raise common.ForbiddenError('Only platform administrators can access this resource')
+    if not profile or profile.get('sys_role') not in ['sys_admin', 'sys_owner']:
+        raise common.ForbiddenError('Only system administrators can access this resource')
     
     # ... rest of function logic
 ```
@@ -88,8 +88,8 @@ def handle_admin_function_WRONG(user_info: Dict[str, Any], body: Dict[str, Any])
     """
     # Anti-pattern: Trying to get role from JWT
     user_role = user_info.get('role', '').lower()  # ❌ role is not in JWT!
-    if user_role not in ['platform_admin', 'platform_owner']:
-        raise common.ForbiddenError('Only platform administrators can access this resource')
+    if user_role not in ['sys_admin', 'sys_owner']:
+        raise common.ForbiddenError('Only system administrators can access this resource')
     
     # This code will ALWAYS fail because 'role' is not in user_info
 ```
@@ -105,7 +105,7 @@ CORA Lambda functions should categorize routes into **sys-level**, **org-level**
 **Sys Routes (System-Level):**
 - **Prefix:** `/ws/sys/...` or global config routes like `/ws/config`
 - **org_id:** NOT required
-- **Authorization:** `global_role IN ['platform_admin', 'platform_owner']`
+- **Authorization:** `sys_role IN ['sys_admin', 'sys_owner']`
 - **Examples:** `/ws/sys/stats`, `/ws/sys/analytics`, `/ws/config`
 
 **Org Routes (Organization-Level):**
@@ -176,7 +176,7 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
 
 **Use Case:** System-wide administrative functions (cross-org stats, global config, etc.)
 
-**Roles Allowed:** `platform_admin`, `platform_owner`
+**Roles Allowed:** `sys_admin`, `sys_owner`
 
 **Route Examples:** `/ws/sys/stats`, `/ws/sys/analytics`, `/ws/config`
 
@@ -187,9 +187,9 @@ def handle_sys_stats(user_info: Dict[str, Any]) -> Dict[str, Any]:
     okta_uid = user_info['user_id']
     supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
     
-    # Query user profile for global_role
+    # Query user profile for sys_role
     profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
-    if not profile or profile.get('global_role') not in ['platform_admin', 'platform_owner']:
+    if not profile or profile.get('sys_role') not in ['sys_admin', 'sys_owner']:
         raise common.ForbiddenError('System admin access required')
     
     # ... implementation
@@ -199,7 +199,7 @@ def handle_sys_stats(user_info: Dict[str, Any]) -> Dict[str, Any]:
 
 **Use Case:** Organization-level administrative functions
 
-**Roles Allowed:** `org_admin`, `org_owner`, `platform_admin`, `platform_owner`
+**Roles Allowed:** `org_admin`, `org_owner`, `sys_admin`, `sys_owner`
 
 **Route Examples:** `/ws/org/settings`, `/ws/org/analytics`
 
@@ -214,10 +214,10 @@ def handle_org_settings(org_id: str, user_info: Dict[str, Any]) -> Dict[str, Any
     if not profile:
         raise common.ForbiddenError('User profile not found')
     
-    global_role = profile.get('global_role')
+    sys_role = profile.get('sys_role')
     
     # System admins have access to all orgs
-    if global_role in ['platform_admin', 'platform_owner']:
+    if sys_role in ['sys_admin', 'sys_owner']:
         return  # Authorized
     
     # Check org membership and role
@@ -236,7 +236,7 @@ def handle_org_settings(org_id: str, user_info: Dict[str, Any]) -> Dict[str, Any
 
 **Use Case:** Workspace-specific operations (update, delete, member management)
 
-**Roles Allowed:** `ws_owner`, `ws_admin`, `org_admin`, `org_owner`, `platform_admin`, `platform_owner`
+**Roles Allowed:** `ws_owner`, `ws_admin`, `org_admin`, `org_owner`, `sys_admin`, `sys_owner`
 
 **Route Examples:** `/ws/{id}` (update/delete), `/ws/{id}/members`
 
@@ -251,14 +251,14 @@ def handle_update_workspace(workspace_id: str, org_id: str, user_info: Dict[str,
     if not profile:
         raise common.ForbiddenError('User profile not found')
     
-    global_role = profile.get('global_role')
+    sys_role = profile.get('sys_role')
     
     # System admins have access to all workspaces
-    if global_role in ['platform_admin', 'platform_owner']:
+    if sys_role in ['sys_admin', 'sys_owner']:
         pass  # Authorized
     
     # Check org admin
-    elif global_role in ['org_admin', 'org_owner'] or (
+    elif (
         org_member := common.find_one('org_members', {'org_id': org_id, 'user_id': supabase_user_id})
     ) and org_member.get('org_role') in ['org_admin', 'org_owner']:
         pass  # Authorized
@@ -266,7 +266,7 @@ def handle_update_workspace(workspace_id: str, org_id: str, user_info: Dict[str,
     # Check workspace role
     else:
         is_ws_admin = common.rpc(
-            function_name='is_workspace_admin_or_owner',
+            function_name='is_ws_admin_or_owner',
             params={'p_ws_id': workspace_id, 'p_user_id': supabase_user_id}
         )
         if not is_ws_admin:
@@ -279,23 +279,23 @@ def handle_update_workspace(workspace_id: str, org_id: str, user_info: Dict[str,
 
 ## Authorization Patterns by Use Case (Legacy Examples)
 
-### 1. Platform Admin Authorization
+### 1. System Admin Authorization
 
-**Use Case:** Platform-wide administrative functions (stats, system config, etc.)
+**Use Case:** System-wide administrative functions (stats, system config, etc.)
 
-**Roles Allowed:** `platform_admin`, `platform_owner`
+**Roles Allowed:** `sys_admin`, `sys_owner`
 
 ```python
-def handle_platform_admin_action(user_info: Dict[str, Any]) -> Dict[str, Any]:
-    """Platform admin only."""
+def handle_sys_admin_action(user_info: Dict[str, Any]) -> Dict[str, Any]:
+    """System admin only."""
     # Map external UID → Supabase user_id
     okta_uid = user_info['user_id']
     supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
     
-    # Query user profile for global_role
+    # Query user profile for sys_role
     profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
-    if not profile or profile.get('global_role') not in ['platform_admin', 'platform_owner']:
-        raise common.ForbiddenError('Platform admin access required')
+    if not profile or profile.get('sys_role') not in ['sys_admin', 'sys_owner']:
+        raise common.ForbiddenError('System admin access required')
     
     # ... implementation
 ```
@@ -304,11 +304,11 @@ def handle_platform_admin_action(user_info: Dict[str, Any]) -> Dict[str, Any]:
 
 **Use Case:** Organization-level administrative functions
 
-**Roles Allowed:** `org_admin`, `org_owner`, `platform_admin`, `platform_owner`
+**Roles Allowed:** `org_admin`, `org_owner`, `sys_admin`, `sys_owner`
 
 ```python
 def handle_org_admin_action(org_id: str, user_info: Dict[str, Any]) -> Dict[str, Any]:
-    """Org admin or platform admin."""
+    """Org admin or sys admin."""
     okta_uid = user_info['user_id']
     supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
     
@@ -317,10 +317,10 @@ def handle_org_admin_action(org_id: str, user_info: Dict[str, Any]) -> Dict[str,
     if not profile:
         raise common.ForbiddenError('User profile not found')
     
-    global_role = profile.get('global_role')
+    sys_role = profile.get('sys_role')
     
-    # Platform admins have access to all orgs
-    if global_role in ['platform_admin', 'platform_owner']:
+    # System admins have access to all orgs
+    if sys_role in ['sys_admin', 'sys_owner']:
         return  # Authorized
     
     # Check org membership and role
@@ -393,7 +393,7 @@ def handle_workspace_action(workspace_id: str, user_info: Dict[str, Any]) -> Dic
     
     # Use RPC function for module-specific authorization
     is_authorized = common.rpc(
-        function_name='is_workspace_admin_or_owner',
+        function_name='is_ws_admin_or_owner',
         params={'p_ws_id': workspace_id, 'p_user_id': supabase_user_id}
     )
     
@@ -424,24 +424,24 @@ def get_supabase_user_id(user_info: Dict[str, Any]) -> str:
     return common.get_supabase_user_id_from_external_uid(okta_uid)
 ```
 
-### Checking Platform Admin
+### Checking System Admin
 
 ```python
-def is_platform_admin(user_info: Dict[str, Any]) -> bool:
+def is_sys_admin(user_info: Dict[str, Any]) -> bool:
     """
-    Check if user is a platform administrator.
+    Check if user is a system administrator.
     
     Args:
         user_info: User info from JWT
     
     Returns:
-        True if platform admin, False otherwise
+        True if sys admin, False otherwise
     """
     okta_uid = user_info['user_id']
     supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
     
     profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
-    return profile and profile.get('global_role') in ['platform_admin', 'platform_owner']
+    return profile and profile.get('sys_role') in ['sys_admin', 'sys_owner']
 ```
 
 ---
@@ -459,7 +459,7 @@ if user_role != 'admin':
 
 **Why it fails:** The JWT token from Okta/Clerk does NOT contain role information.
 
-**Fix:** Query the database for the user's profile and check the `global_role` field.
+**Fix:** Query the database for the user's profile and check the `sys_role` field.
 
 ### Mistake 2: Using Okta UID to Query user_profiles
 
@@ -571,10 +571,10 @@ def handle_create_resource(
     
     Create a new resource. Admin only.
     """
-    # Authorization: Platform admin only
+    # Authorization: System admin only
     profile = common.find_one('user_profiles', {'user_id': user_id})
-    if not profile or profile.get('global_role') not in ['platform_admin', 'platform_owner']:
-        raise common.ForbiddenError('Platform admin access required')
+    if not profile or profile.get('sys_role') not in ['sys_admin', 'sys_owner']:
+        raise common.ForbiddenError('System admin access required')
     
     # Validation
     name = body.get('name')
@@ -608,7 +608,7 @@ def test_admin_authorization():
     # Mock the database to return a non-admin profile
     mock_profile = {
         'user_id': 'supabase_user_123',
-        'global_role': 'org_member'  # Not admin
+        'sys_role': 'sys_user'  # Not admin
     }
     
     # Attempt to call admin function
@@ -616,7 +616,7 @@ def test_admin_authorization():
         handle_admin_function(user_info)
     
     # Verify the error message
-    assert "Platform admin access required" in str(excinfo.value)
+    assert "System admin access required" in str(excinfo.value)
 ```
 
 ---
@@ -642,14 +642,14 @@ When implementing a new Lambda function, verify:
 
 1. **JWT tokens do NOT contain roles** - roles are in the database
 2. **Always map external UID to Supabase user_id** before authorization checks
-3. **Query user_profiles table** to get the user's `global_role`
+3. **Query user_profiles table** to get the user's `sys_role`
 4. **Use standard org_common functions** for consistency
 5. **Document required roles** in function docstrings
 6. **Test authorization** with different user roles
 
 **The pattern is:**
 ```
-JWT (external_uid) → map → Supabase user_id → query → user_profiles → check global_role
+JWT (external_uid) → map → Supabase user_id → query → user_profiles → check sys_role
 ```
 
 Following these patterns prevents 403 errors and ensures secure, maintainable authorization across all CORA modules.

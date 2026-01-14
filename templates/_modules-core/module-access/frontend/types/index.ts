@@ -6,7 +6,7 @@ export interface User {
   firstName: string | null;
   lastName: string | null;
   phone: string | null;
-  globalRole: "global_user" | "global_admin" | "global_owner" | "platform_owner";
+  sysRole: "sys_user" | "sys_admin" | "sys_owner";
   currentOrgId: string | null;
   requiresInvitation?: boolean; // Flag for denied access scenario
   createdAt: string;
@@ -21,36 +21,58 @@ export interface Profile extends User {
 export interface Organization {
   id: string;
   name: string;
-  slug: string;
-  description: string | null;
-  websiteUrl: string | null;
-  logoUrl: string | null;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-  updatedBy: string | null;
+  slug?: string;
+  ownerId: string;
+  description?: string;
+  websiteUrl?: string;
+  logoUrl?: string;
+  appName?: string;
+  appIcon?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-// Organization Membership Types
-export interface OrgMember {
-  id: string;
-  orgId: string;
-  personId: string;
-  roleName: "org_user" | "org_admin" | "org_owner";
-  joinedAt: string;
-  invitedBy: string | null;
-  user?: User;
-}
-
-// User Organization (for listing user's orgs)
 export interface UserOrganization {
   orgId: string;
   orgName: string;
-  orgSlug: string;
-  role: "org_user" | "org_admin" | "org_owner";
+  orgSlug?: string;
+  role: OrgRole;
   isOwner: boolean;
-  joinedAt: string;
-  logoUrl: string | null;
+  joinedAt?: string;
+  logoUrl?: string;
+  appName?: string | null;
+  appIcon?: string | null;
+}
+
+export type OrgRole = "org_user" | "org_admin" | "org_owner";
+
+// Organization Member Type (for org member management)
+// Matches API response from GET /orgs/{id}/members
+export interface OrgMember {
+  id: string;
+  userId: string;
+  orgId: string;
+  orgRole: OrgRole;
+  role?: OrgRole; // Deprecated: use orgRole
+  roleName?: OrgRole; // Deprecated: use orgRole
+  createdAt: string;
+  updatedAt?: string;
+  joinedAt?: string; // Alias for createdAt (backwards compatibility)
+  addedBy?: string;
+  // User profile info (joined from user_profiles)
+  profile?: {
+    userId: string;
+    email: string;
+    fullName?: string;
+    avatarUrl?: string;
+  };
+  // Deprecated: use profile instead
+  user?: {
+    email: string;
+    name?: string;
+    fullName?: string;
+    avatarUrl?: string;
+  };
 }
 
 // API Response Types
@@ -80,3 +102,17 @@ export interface InviteMemberInput {
   email: string;
   role: "org_user" | "org_admin" | "org_owner";
 }
+
+// Org Icon Options (AI-related MUI icons)
+export const ORG_ICON_OPTIONS = [
+  { value: "AutoAwesomeOutlined", label: "Sparkles", default: true },
+  { value: "PsychologyOutlined", label: "Brain" },
+  { value: "SmartToyOutlined", label: "Robot" },
+  { value: "AutoFixHighOutlined", label: "Magic Wand" },
+  { value: "BoltOutlined", label: "Lightning" },
+  { value: "HubOutlined", label: "Network" },
+  { value: "MemoryOutlined", label: "Memory" },
+  { value: "ModelTrainingOutlined", label: "Training" },
+] as const;
+
+export type OrgIconValue = typeof ORG_ICON_OPTIONS[number]["value"];

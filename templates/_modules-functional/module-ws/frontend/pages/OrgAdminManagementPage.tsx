@@ -127,9 +127,9 @@ export function OrgAdminManagementPage({
       const client = createWorkspaceApiClient(session.accessToken as string);
       const settings = await client.getOrgSettings(orgId);
       if (settings) {
-        setAllowUserCreation(settings.allow_user_creation);
-        setRequireApproval(settings.require_approval);
-        setMaxWorkspacesPerUser(settings.max_workspaces_per_user);
+        setAllowUserCreation(settings.allowUserCreation);
+        setRequireApproval(settings.requireApproval);
+        setMaxWorkspacesPerUser(settings.maxWorkspacesPerUser);
       }
     } catch (err) {
       console.error("Failed to fetch org settings:", err);
@@ -150,9 +150,9 @@ export function OrgAdminManagementPage({
     try {
       const client = createWorkspaceApiClient(session.accessToken as string);
       await client.updateOrgSettings(orgId, {
-        allow_user_creation: allowUserCreation,
-        require_approval: requireApproval,
-        max_workspaces_per_user: maxWorkspacesPerUser,
+        allowUserCreation: allowUserCreation,
+        requireApproval: requireApproval,
+        maxWorkspacesPerUser: maxWorkspacesPerUser,
       });
       setSettingsSuccess("Settings saved successfully!");
       setTimeout(() => setSettingsSuccess(null), 3000);
@@ -198,7 +198,7 @@ export function OrgAdminManagementPage({
     try {
       const client = createWorkspaceApiClient(session.accessToken as string);
       const result = await client.listWorkspaces({
-        org_id: orgId,
+        orgId: orgId,
         status: undefined, // Get all statuses
         limit: 1000,
       });
@@ -573,15 +573,15 @@ export function OrgAdminManagementPage({
                               )}
                             </Box>
                           </TableCell>
-                          <TableCell>{workspace.member_count || 0}</TableCell>
+                          <TableCell>{workspace.memberCount || 0}</TableCell>
                           <TableCell>
                             <Typography variant="body2" color="text.secondary">
-                              {new Date(workspace.created_at).toLocaleDateString()}
+                              {new Date(workspace.createdAt).toLocaleDateString()}
                             </Typography>
                           </TableCell>
                           <TableCell>
                             <Typography variant="body2" color="text.secondary">
-                              {new Date(workspace.updated_at).toLocaleDateString()}
+                              {new Date(workspace.updatedAt).toLocaleDateString()}
                             </Typography>
                           </TableCell>
                           <TableCell align="right">
@@ -623,11 +623,11 @@ export function OrgAdminManagementPage({
                           Total Workspaces
                         </Typography>
                         <Typography variant="h4">
-                          {analytics.total_workspaces ?? analytics.stats?.total ?? 0}
+                          {analytics.totalWorkspaces ?? analytics.stats?.total ?? 0}
                         </Typography>
                         <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
                           <Typography variant="body2" color="text.secondary">
-                            {analytics.active_workspaces ?? analytics.stats?.active ?? 0} active
+                            {analytics.activeWorkspaces ?? analytics.stats?.active ?? 0} active
                           </Typography>
                         </Box>
                       </CardContent>
@@ -641,13 +641,13 @@ export function OrgAdminManagementPage({
                           Active Workspaces
                         </Typography>
                         <Typography variant="h4">
-                          {analytics.active_workspaces ?? analytics.stats?.active ?? 0}
+                          {analytics.activeWorkspaces ?? analytics.stats?.active ?? 0}
                         </Typography>
                         <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
                           <Typography variant="body2" color="success.main">
                             {(() => {
-                              const total = analytics.total_workspaces ?? analytics.stats?.total ?? 0;
-                              const active = analytics.active_workspaces ?? analytics.stats?.active ?? 0;
+                              const total = analytics.totalWorkspaces ?? analytics.stats?.total ?? 0;
+                              const active = analytics.activeWorkspaces ?? analytics.stats?.active ?? 0;
                               return total > 0 ? Math.round((active / total) * 100) : 0;
                             })()}
                             % of total
@@ -664,7 +664,7 @@ export function OrgAdminManagementPage({
                           Archived
                         </Typography>
                         <Typography variant="h4">
-                          {analytics.archived_workspaces ?? analytics.stats?.archived ?? 0}
+                          {analytics.archivedWorkspaces ?? analytics.stats?.archived ?? 0}
                         </Typography>
                         <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
                           <Typography variant="body2" color="text.secondary">
@@ -682,11 +682,11 @@ export function OrgAdminManagementPage({
                           Total Members
                         </Typography>
                         <Typography variant="h4">
-                          {analytics.total_members ?? analytics.stats?.created_this_month ?? 0}
+                          {analytics.totalMembers ?? analytics.stats?.createdThisMonth ?? 0}
                         </Typography>
                         <Box sx={{ display: "flex", alignItems: "center", mt: 1, gap: 0.5 }}>
                           <Typography variant="body2" color="text.secondary">
-                            Avg {analytics.avg_members_per_workspace?.toFixed(1) ?? "0"} per workspace
+                            Avg {analytics.avgMembersPerWorkspace?.toFixed(1) ?? "0"} per workspace
                           </Typography>
                         </Box>
                       </CardContent>
@@ -695,10 +695,10 @@ export function OrgAdminManagementPage({
                 </Grid>
 
                 {/* Inactive Workspaces Warning */}
-                {analytics.inactive_workspaces && analytics.inactive_workspaces.length > 0 && (
+                {analytics.inactiveWorkspaces && analytics.inactiveWorkspaces.length > 0 && (
                   <Alert severity="warning" sx={{ mb: 3 }}>
                     <Typography variant="body2" gutterBottom>
-                      <strong>Inactive Workspaces Detected:</strong> {analytics.inactive_workspaces.length} workspace(s) have been inactive for 90+ days
+                      <strong>Inactive Workspaces Detected:</strong> {analytics.inactiveWorkspaces.length} workspace(s) have been inactive for 90+ days
                     </Typography>
                     <Typography variant="caption" display="block">
                       Consider archiving or reviewing these workspaces to free up resources
@@ -707,21 +707,21 @@ export function OrgAdminManagementPage({
                 )}
 
                 {/* Most Active Workspaces */}
-                {analytics.most_active && analytics.most_active.length > 0 && (
+                {analytics.mostActive && analytics.mostActive.length > 0 && (
                   <Paper sx={{ p: 3, mb: 3 }}>
                     <Typography variant="h5" gutterBottom>
                       Most Active Workspaces
                     </Typography>
                     <Grid container spacing={2}>
-                      {analytics.most_active.slice(0, 5).map((ws) => (
-                        <Grid item xs={12} sm={6} md={4} key={ws.workspace_id}>
+                      {analytics.mostActive.slice(0, 5).map((ws: { workspaceId: string; workspaceName: string; actionCount: number }) => (
+                        <Grid item xs={12} sm={6} md={4} key={ws.workspaceId}>
                           <Card variant="outlined">
                             <CardContent>
                               <Typography variant="body1" gutterBottom>
-                                {ws.workspace_name}
+                                {ws.workspaceName}
                               </Typography>
                               <Typography variant="h6" color="primary">
-                                {ws.action_count}
+                                {ws.actionCount}
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
                                 actions this month

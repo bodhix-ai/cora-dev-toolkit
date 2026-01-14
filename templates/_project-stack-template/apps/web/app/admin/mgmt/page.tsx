@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * Platform Management Admin Page
+ * System Management Admin Page
  *
- * Platform-level management page for Lambda warming, performance monitoring,
+ * System-level management page for Lambda warming, performance monitoring,
  * storage management, and cost tracking.
  *
- * Access: Platform admins only (platform_owner, platform_admin)
+ * Access: System admins only (sys_owner, sys_admin)
  *
  * @example
  * Route: /admin/mgmt
@@ -18,17 +18,17 @@ import { PlatformMgmtAdmin } from "@{{PROJECT_NAME}}/module-mgmt";
 import { CircularProgress, Box, Alert } from "@mui/material";
 
 /**
- * Platform Management Admin Page Component
+ * System Management Admin Page Component
  *
- * Renders the Platform Management admin interface with tabs for:
+ * Renders the System Management admin interface with tabs for:
  * - Lambda warming schedule management
  * - Performance monitoring (planned)
  * - Storage management (planned)
  * - Cost tracking (planned)
  *
- * Requires platform admin role (platform_owner or platform_admin).
+ * Requires system admin role (sys_owner or sys_admin).
  */
-export default function PlatformManagementPage() {
+export default function SystemManagementPage() {
   const { profile, loading, isAuthenticated } = useUser();
 
   // Show loading state while user profile is being fetched
@@ -58,16 +58,16 @@ export default function PlatformManagementPage() {
     );
   }
 
-  // Check if user has platform admin role
-  const isPlatformAdmin = ["platform_owner", "platform_admin"].includes(
-    profile.globalRole || ""
+  // Check if user has system admin role
+  const isSysAdmin = ["sys_owner", "sys_admin"].includes(
+    profile.sysRole || ""
   );
 
-  if (!isPlatformAdmin) {
+  if (!isSysAdmin) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">
-          Access denied. This page is only accessible to platform administrators.
+          Access denied. This page is only accessible to system administrators.
         </Alert>
       </Box>
     );

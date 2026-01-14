@@ -2,135 +2,131 @@
 
 ## Current Focus
 
-**Session 90: Org Admin API Routes Fixed** - ✅ **INFRASTRUCTURE ROUTES ADDED**
-
-## Session: January 11, 2026 (6:30 PM - 7:20 PM) - Session 90
-
-### 🎯 Status: ✅ VERIFIED WORKING
-
-**Summary:** Identified and fixed root cause of 404 errors on org admin Settings tab. Added missing API Gateway routes to infrastructure template. **Verified working in test-ws-20.**
+**Session 122: Multiple Fixes Applied** - 🟡 **AWAITING VALIDATION**
 
 ---
 
-## ✅ SESSION 90 COMPLETED WORK
+## ⏳ Outstanding User Testing Validations
 
-### Root Cause Analysis
+**Status:** User must recreate project from templates to validate these fixes.
 
-**Problem:** PUT /ws/org/settings returning 404 Not Found
+| # | Issue | API/Component | Expected Result | Status |
+|---|-------|---------------|-----------------|--------|
+| 1 | GET /orgs/{id}/invites returns 403 | Invites API | Invites load for org admins | ⏳ Pending |
+| 2 | PUT /ws/config returns 400 | Workspace Config API | Config saves successfully (200) | ⏳ Pending |
+| 3 | GET /ws/config data not displayed | Workspace Config UI | Saved config displays in UI after refresh | ⏳ Pending |
+| 4 | GET /admin/users shows "No name" | Users API | User names display correctly | ⏳ Pending |
+| 5 | Edit Workspace popup empty | Workspace Edit Modal | Existing values populate form | ⏳ Pending |
+| 6 | Org Members shows "Unknown User" | Org Members Tab | Member names/emails display | ⏳ Pending |
+| 7 | AI Config shows no models | AI Config Panel | Chat/embedding models appear in dropdowns | ⏳ Pending |
+| 8 | Lambda Warming toggle not working | Platform Mgmt | Toggle state displays correctly, saves | ⏳ Pending |
 
-**Root Cause:** API Gateway routes were missing from `outputs.tf`
-- Lambda had handlers for `/ws/org/settings` (lines 120-125, 459, 508)
-- API Gateway didn't have routes configured
-- The `api_routes` output in `outputs.tf` is consumed by infra scripts to configure API Gateway
-- Routes weren't listed → Routes weren't deployed
-
-### Fix Applied
-
-Added 3 new routes to `templates/_modules-functional/module-ws/infrastructure/outputs.tf`:
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/ws/org/settings` | Get organization workspace settings |
-| PUT | `/ws/org/settings` | Update organization workspace settings |
-| GET | `/ws/sys/analytics` | Get platform-wide workspace analytics |
-
-### Commits This Session
-
-1. **f4ec353** - feat(module-ws): Add API routes for org settings and sys analytics
-
-### Files Modified
-
-- `templates/_modules-functional/module-ws/infrastructure/outputs.tf` - Added missing API routes
+**To validate:** Recreate project from templates, deploy, and test each item.
 
 ---
 
-## � Lambda Handler Verification
+## 🟡 Fixes Applied - Require Redeployment
 
-The Lambda already has handlers ready:
+All fixes have been applied to **TEMPLATES** (following template-first workflow). To deploy:
 
-| Route | Handler Function | Line |
-|-------|------------------|------|
-| `GET /ws/org/settings` | `handle_get_org_settings()` | 459 |
-| `PUT /ws/org/settings` | `handle_update_org_settings()` | 508 |
-| `GET /ws/sys/analytics` | `handle_sys_analytics()` | 354 |
+```bash
+# 1. Rebuild affected Lambdas
+cd {project}-infra/lambdas/workspace && ./build.sh
+cd {project}-infra/lambdas/identities-management && ./build.sh
 
----
+# 2. Deploy
+./scripts/deploy-terraform.sh dev
 
-## ✅ VERIFICATION SUCCESSFUL
-
-**Test Result:** PUT /ws/org/settings now returns **200 OK**
-
-```
-Request URL: https://hk5bzq4kv3.execute-api.us-east-1.amazonaws.com/ws/org/settings?org_id=c4a1ecf7-e646-4196-a57d-7ebbf3ee8ced
-Request Method: PUT
-Status Code: 200 OK
+# 3. Rebuild frontend
+cd {project}-stack && npm run build
 ```
 
-The org admin Settings tab now saves correctly!
+---
+
+## ✅ Fixes Applied to Templates (Session 122)
+
+### Backend Fixes
+
+#### 1. Fixed GET /orgs/{id}/invites - 403 Forbidden
+- **File:** `templates/_modules-core/module-access/backend/lambdas/invites/lambda_function.py`
+- **Fix:** Changed `membership.get('role')` → `membership.get('org_role')` in all 3 authorization checks
+
+#### 2. Fixed PUT /ws/config - 400 Bad Request  
+- **File:** `templates/_modules-functional/module-ws/backend/lambdas/workspace/lambda_function.py`
+- **Fix:** Added field_mapping to accept both camelCase and snake_case input fields
+
+#### 3. Fixed GET /ws/config - UI not displaying saved data
+- **File:** `templates/_modules-functional/module-ws/backend/lambdas/workspace/lambda_function.py`
+- **Fix:** Added `_transform_config()` to transform snake_case DB response to camelCase API response
+
+#### 4. Fixed GET /admin/users - User listing showing "No name", "None", etc.
+- **File:** `templates/_modules-core/module-access/backend/lambdas/identities-management/lambda_function.py`
+- **Fix:** Added `_transform_user()` function to convert snake_case DB fields to camelCase API response
+
+### Frontend Fixes
+
+#### 5. Fixed Edit Workspace popup not populating data
+- **File:** `templates/_modules-functional/module-ws/frontend/hooks/useWorkspaceForm.ts`
+- **Fix:** Added `useEffect` to sync form values when `defaultValues` changes
+
+#### 6. Fixed Organization Members display - "Unknown User", "No email"
+- **File:** `templates/_modules-core/module-access/frontend/components/admin/OrgMembersTab.tsx`
+- **Fix:** Updated interface to match API response (`profile` vs `user`, `fullName` vs `name`, `orgRole` vs `role`)
+
+#### 7. Fixed OrgMember type definition
+- **File:** `templates/_modules-core/module-access/frontend/types/index.ts`
+- **Fix:** Updated `OrgMember` interface to match API response structure
+
+#### 8. Fixed AI Config - Model selection showing no models
+- **File:** `templates/_modules-core/module-ai/frontend/components/PlatformAIConfigPanel.tsx`
+- **Root Cause:** Filter used `d.supports_chat` (snake_case) but DeploymentInfo has `supportsChat` (camelCase)
+- **Fix:** Changed filter to use `d.supportsChat` and `d.supportsEmbeddings`
+- **Also Fixed:** `model_name` → `modelName` in display text
+
+### Tooling Improvements
+
+#### 9. Enhanced API Response Validator
+- **File:** `validation/api-response-validator/validate_api_responses.py`
+- **Enhancement:** Added `check_untransformed_db_data()` function
+- **Detection:** Tracks variables assigned from DB operations and flags if passed to `success_response()` without transformation
 
 ---
 
-## 📚 Session 89-90 Summary
+---
 
-### Session 89 (5:55 PM - 6:20 PM)
-- ✅ Made all UI labels dynamically configurable
-- ✅ Sidebar, page titles, buttons use database config
+## Issues NOT Bugs
 
-### Session 90 (6:30 PM - 7:20 PM)
-- ✅ Identified root cause of org admin 404 errors
-- ✅ Added missing API routes to infrastructure template
-- ✅ Lambda handlers verified present
-
-### What's Working Now
-- ✅ Dynamic UI labels (nav, titles, buttons)
-- ✅ Platform Admin Config page
-- ✅ API routes now in template (pending deploy test)
-- ✅ Lambda handlers for all routes
-
-### Outstanding Issues
-- 🟡 Icon/color picker UX improvement (Future)
-- 🟡 Test new project to verify routes work
+### GET /admin/sys - 404 Not Found
+- **Finding:** Route `/admin/sys` does NOT exist in stack template
+- **Resolution:** Not a bug - use `/admin/platform` or `/admin/mgmt` instead
 
 ---
 
-## � Branch & PR Info
+## 🛠️ New Shared Utilities Added
 
-**Branch:** `fix/module-ws-authentication-and-routes`
+### org_common Transform Utilities
+Added generic snake_case ↔ camelCase transformation utilities to the `org_common` Lambda layer:
 
-**PR:** #20 - feat(module-ws): Dynamic config labels for workspace module UI
+**File:** `templates/_modules-core/module-access/backend/layers/org-common/python/org_common/transform.py`
 
-**Latest Commit:** f4ec353 - feat(module-ws): Add API routes for org settings and sys analytics
+**Available Functions:**
+- `snake_to_camel(key)` - Convert single key
+- `camel_to_snake(key)` - Convert single key (reverse)
+- `transform_record(data)` - Recursively transform dict keys
+- `transform_records(list)` - Transform list of dicts
+- `transform_input(data)` - camelCase→snake_case for DB input
 
----
+**Usage in Lambdas:**
+```python
+import org_common as common
 
----
+# Transform DB record to API response
+api_response = common.transform_record(db_record)
 
-## ✅ SESSION 90 CONTINUED - Additional Features
-
-### 7:26 PM - 7:51 PM
-
-**User Requested:**
-1. Platform Usage Summary not populating (shows mock data)
-2. Icon and color picker UX improvement
-3. Breadcrumb navigation for admin pages
-
-**Implemented:**
-
-| Feature | Status | Details |
-|---------|--------|---------|
-| getSysAnalytics() API | ✅ | New method calls /ws/sys/analytics endpoint |
-| Platform Usage Summary | ✅ | Now fetches real data from backend |
-| Icon Picker | ✅ | Visual grid of 15 MUI icons (replaces text input) |
-| Color Picker | ✅ | Already existed - used for default color |
-| Breadcrumbs - Platform Admin | ✅ | "Platform Admin > Workspace Configuration" |
-| Breadcrumbs - Org Admin | ✅ | "Organization Admin > Workspace Management" |
-
-### Commit
-
-**a203e89** - feat(module-ws): Add platform analytics API, icon picker, and breadcrumbs
+# Transform list of records
+api_list = common.transform_records(db_records)
+```
 
 ---
 
-**Status:** ✅ **SESSION 90 COMPLETE**  
-**Test Project:** test-ws-20 (verified)  
-**Updated:** January 11, 2026, 7:51 PM EST
+**Updated:** January 13, 2026, 10:41 PM EST

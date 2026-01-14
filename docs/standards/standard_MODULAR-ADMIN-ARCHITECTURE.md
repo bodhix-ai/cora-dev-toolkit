@@ -19,7 +19,7 @@ The Modular Administration Architecture enables CORA modules to automatically ex
 1. **Module Ownership**: Modules own their admin interfaces
 2. **Automatic Discovery**: Admin features are discovered automatically via exports
 3. **Clear Separation**: Platform Admin and Org Admin are distinct contexts
-4. **Role-Based Access**: Strict enforcement of platform_owner, platform_admin, org_owner, org_admin roles
+4. **Role-Based Access**: Strict enforcement of sys_owner, sys_admin, org_owner, org_admin roles
 5. **Consistent UX**: All admin interfaces follow the same patterns
 6. **One Card Per Module**: Each module exports exactly ONE admin card per context
 7. **Tabbed Admin Pages**: Use MUI Tabs to consolidate features within each admin page
@@ -34,7 +34,7 @@ The Modular Administration Architecture enables CORA modules to automatically ex
 │  📊 Profile                                                  │
 │  ─────────────────────────────────────────────────────────  │
 │  🏢 Organization Admin  ← Visible to org_admin, org_owner   │
-│  🌐 Platform Admin      ← Visible to platform_admin, owner  │
+│  🌐 System Admin        ← Visible to sys_admin, sys_owner   │
 │  ─────────────────────────────────────────────────────────  │
 │  🚪 Sign Out                                                │
 └─────────────────────────────────────────────────────────────┘
@@ -58,8 +58,8 @@ Platform Admin (/admin/platform)          Org Admin (/admin/org)
 **Purpose:** System-wide configuration affecting all organizations
 
 **Access Roles:**
-- `platform_owner` - Full platform control
-- `platform_admin` - Platform configuration access
+- `sys_owner` - Full platform control
+- `sys_admin` - Platform configuration access
 
 **Typical Features:**
 - AI provider management (platform-wide)
@@ -87,8 +87,8 @@ Platform Admin (/admin/platform)          Org Admin (/admin/org)
 **Access Roles:**
 - `org_owner` - Full organization control
 - `org_admin` - Organization configuration access
-- `platform_owner` - Can access any organization (elevated privilege)
-- `platform_admin` - Can access any organization (elevated privilege)
+- `sys_owner` - Can access any organization (elevated privilege)
+- `sys_admin` - Can access any organization (elevated privilege)
 
 **Typical Features:**
 - Organization settings (name, slug, description)
@@ -168,7 +168,7 @@ export interface AdminCardConfig {
   context: "platform" | "organization";
   
   /** Required roles to see this card */
-  requiredRoles: ("platform_owner" | "platform_admin" | "org_owner" | "org_admin")[];
+  requiredRoles: ("sys_owner" | "sys_admin" | "org_owner" | "org_admin")[];
   
   /** Optional badge text (e.g., "NEW", "BETA") */
   badge?: string;
@@ -204,7 +204,7 @@ export const accessControlAdminCard: AdminCardConfig = {
   color: "primary.main",
   order: 10,
   context: "platform",
-  requiredRoles: ["platform_owner", "platform_admin"],
+  requiredRoles: ["sys_owner", "sys_admin"],
 };
 
 /**
@@ -220,7 +220,7 @@ export const aiEnablementAdminCard: AdminCardConfig = {
   color: "secondary.main",
   order: 20,
   context: "platform",
-  requiredRoles: ["platform_owner", "platform_admin"],
+  requiredRoles: ["sys_owner", "sys_admin"],
 };
 
 /**
@@ -236,7 +236,7 @@ export const organizationSettingsCard: AdminCardConfig = {
   color: "primary.main",
   order: 10,
   context: "organization",
-  requiredRoles: ["platform_owner", "platform_admin", "org_owner", "org_admin"],
+  requiredRoles: ["sys_owner", "sys_admin", "org_owner", "org_admin"],
 };
 ```
 
@@ -293,7 +293,7 @@ export default function PlatformAdminPage() {
   const platformCards = useMemo(() => {
     if (!session?.user) return [];
 
-    const userRole = session.user.global_role;
+    const userRole = session.user.sys_role;
     
     return allCards
       .filter(card => card.context === "platform")
@@ -306,8 +306,8 @@ export default function PlatformAdminPage() {
     if (status === "unauthenticated") {
       router.push("/api/auth/signin");
     } else if (status === "authenticated") {
-      const globalRole = session?.user?.global_role;
-      if (!["platform_owner", "platform_admin"].includes(globalRole || "")) {
+      const sysRole = session?.user?.sys_role;
+      if (!["sys_owner", "sys_admin"].includes(sysRole || "")) {
         router.push("/");
       }
     }
@@ -417,8 +417,8 @@ export default function OrgAdminPage() {
   const orgCards = useMemo(() => {
     if (!session?.user || !userRole) return [];
 
-    const isPlatformAdmin = ["platform_owner", "platform_admin"].includes(
-      session.user.global_role || ""
+    const isSysAdmin = ["sys_owner", "sys_admin"].includes(
+      session.user.sys_role || ""
     );
     const isOrgAdmin = ["org_owner", "org_admin"].includes(userRole);
 
@@ -431,8 +431,8 @@ export default function OrgAdminPage() {
         if (isPlatformAdmin) return true;
         // Org admins see cards they have permission for
         return card.requiredRoles.some(role => 
-          role === userRole || 
-          (isPlatformAdmin && ["platform_owner", "platform_admin"].includes(role))
+          role === userRole ||
+          (isSysAdmin && ["sys_owner", "sys_admin"].includes(role))
         );
       })
       .sort((a, b) => a.order - b.order);
@@ -443,11 +443,11 @@ export default function OrgAdminPage() {
     if (status === "unauthenticated") {
       router.push("/api/auth/signin");
     } else if (status === "authenticated") {
-      const globalRole = session?.user?.global_role;
-      const isPlatformAdmin = ["platform_owner", "platform_admin"].includes(globalRole || "");
+      const sysRole = session?.user?.sys_role;
+      const isSysAdmin = ["sys_owner", "sys_admin"].includes(sysRole || "");
       const isOrgAdmin = ["org_owner", "org_admin"].includes(userRole || "");
       
-      if (!isPlatformAdmin && !isOrgAdmin) {
+      if (!isSysAdmin && !isOrgAdmin) {
         router.push("/");
       }
     }
@@ -599,9 +599,9 @@ export default function OrgDetailsPage() {
 
   const orgId = params.id as string;
 
-  // Check if user is platform admin
-  const isPlatformAdmin = ["platform_owner", "platform_admin"].includes(
-    session?.user?.global_role || ""
+  // Check if user is sys admin
+  const isSysAdmin = ["sys_owner", "sys_admin"].includes(
+    session?.user?.sys_role || ""
   );
 
   return (
@@ -636,14 +636,14 @@ export default function OrgDetailsPage() {
         <Tab label="Domains" />
         <Tab label="Members" />
         <Tab label="Invites" />
-        {isPlatformAdmin && <Tab label="AI Config" />}
+        {isSysAdmin && <Tab label="AI Config" />}
       </Tabs>
 
       {activeTab === 0 && <OrgOverviewTab orgId={orgId} />}
       {activeTab === 1 && <OrgDomainsTab orgId={orgId} />}
       {activeTab === 2 && <OrgMembersTab orgId={orgId} />}
       {activeTab === 3 && <OrgInvitesTab orgId={orgId} />}
-      {activeTab === 4 && isPlatformAdmin && <OrgAIConfigTab orgId={orgId} />}
+      {activeTab === 4 && isSysAdmin && <OrgAIConfigTab orgId={orgId} />}
     </Box>
   );
 }
@@ -671,8 +671,8 @@ export function SidebarUserMenu() {
   const { data: session } = useSession();
   const { userRole } = useOrganizationContext();
   
-  const globalRole = session?.user?.global_role;
-  const isPlatformAdmin = ["platform_owner", "platform_admin"].includes(globalRole || "");
+  const sysRole = session?.user?.sys_role;
+  const isSysAdmin = ["sys_owner", "sys_admin"].includes(sysRole || "");
   const isOrgAdmin = ["org_owner", "org_admin"].includes(userRole || "");
 
   return (
@@ -697,14 +697,14 @@ export function SidebarUserMenu() {
         </MenuItem>
       )}
       
-      {isPlatformAdmin && (
+      {isSysAdmin && (
         <MenuItem onClick={() => router.push("/admin/platform")}>
           <ListItemIcon><AdminPanelSettingsIcon /></ListItemIcon>
           <ListItemText>Platform Admin</ListItemText>
         </MenuItem>
       )}
 
-      {(isPlatformAdmin || isOrgAdmin) && <Divider />}
+      {(isSysAdmin || isOrgAdmin) && <Divider />}
 
       {/* Sign Out */}
       <MenuItem onClick={() => signOut()}>
@@ -735,7 +735,7 @@ export const aiEnablementAdminCard: AdminCardConfig = {
   color: "secondary.main",
   order: 20,
   context: "platform",
-  requiredRoles: ["platform_owner", "platform_admin"],
+  requiredRoles: ["sys_owner", "sys_admin"],
 };
 ```
 
@@ -912,17 +912,17 @@ export function OrgDomainsTab({ orgId }: { orgId: string }) {
 ### 8.1 Platform Admin Endpoint
 
 ```python
-def handle_platform_admin_request(event, user_id):
-    """Platform admin endpoints - strict role checking"""
+def handle_sys_admin_request(event, user_id):
+    """System admin endpoints - strict role checking"""
     profile = common.find_one('user_profiles', {'user_id': user_id})
     
     if not profile:
         return common.forbidden_response("User profile not found")
     
-    global_role = profile.get('global_role')
-    if global_role not in ['platform_owner', 'platform_admin']:
+    sys_role = profile.get('sys_role')
+    if sys_role not in ['sys_owner', 'sys_admin']:
         return common.forbidden_response(
-            "Platform admin access required. Current role: {}".format(global_role)
+            "System admin access required. Current role: {}".format(sys_role)
         )
     
     # Proceed with platform admin operation
@@ -939,11 +939,11 @@ def handle_org_details_request(event, user_id, org_id, tab):
     if not profile:
         return common.forbidden_response("User profile not found")
     
-    global_role = profile.get('global_role')
-    is_platform_admin = global_role in ['platform_owner', 'platform_admin']
+    sys_role = profile.get('sys_role')
+    is_sys_admin = sys_role in ['sys_owner', 'sys_admin']
     
-    # Platform admins can access all tabs
-    if is_platform_admin:
+    # System admins can access all tabs
+    if is_sys_admin:
         return True
     
     # For non-platform admins, check org membership
@@ -982,7 +982,7 @@ When adding a new module with admin features:
 ### Platform Admin Features
 - [ ] Create `adminCard.tsx` with ONE platform admin card
 - [ ] Set `context: "platform"`
-- [ ] Set `requiredRoles: ["platform_owner", "platform_admin"]`
+- [ ] Set `requiredRoles: ["sys_owner", "sys_admin"]`
 - [ ] Use descriptive functional name (e.g., "Access Control", "AI Enablement")
 - [ ] Create tabbed admin component in `frontend/components/admin/`
 - [ ] Create tab components for each feature area
@@ -990,8 +990,8 @@ When adding a new module with admin features:
 - [ ] Create route page in `apps/web/app/admin/[feature]/page.tsx`
 - [ ] Use single-word or acronym route (e.g., `/admin/access`, `/admin/ai`)
 - [ ] Import card in `apps/web/app/admin/platform/page.tsx`
-- [ ] Add backend authorization checks for platform roles
-- [ ] Test with platform_admin and platform_owner roles
+- [ ] Add backend authorization checks for system roles
+- [ ] Test with sys_admin and sys_owner roles
 
 ### Organization Admin Features
 - [ ] Create `adminCard.tsx` with ONE org admin card
@@ -1094,7 +1094,7 @@ For each admin feature:
 describe("Admin Card Discovery", () => {
   it("should filter platform cards for platform admin", () => {
     const cards = [platformCard, orgCard];
-    const filtered = filterCardsByRole(cards, "platform_admin", "platform");
+    const filtered = filterCardsByRole(cards, "sys_admin", "platform");
     expect(filtered).toContain(platformCard);
     expect(filtered).not.toContain(orgCard);
   });
@@ -1106,8 +1106,8 @@ describe("Admin Card Discovery", () => {
     expect(filtered).not.toContain(platformCard);
   });
 
-  it("should show AI Config tab only to platform admins", () => {
-    const tabs = getOrgDetailsTabs("platform_admin");
+  it("should show AI Config tab only to sys admins", () => {
+    const tabs = getOrgDetailsTabs("sys_admin");
     expect(tabs).toContain("AI Config");
 
     const orgAdminTabs = getOrgDetailsTabs("org_admin");

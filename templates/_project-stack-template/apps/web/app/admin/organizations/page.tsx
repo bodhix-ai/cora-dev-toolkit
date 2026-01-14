@@ -8,8 +8,8 @@ import { useSession } from "next-auth/react";
 /**
  * Organization Management Admin Page
  * 
- * Platform admin interface for managing organizations.
- * Accessible only to platform_owner and platform_admin roles.
+ * System admin interface for managing organizations.
+ * Accessible only to sys_owner and sys_admin roles.
  * 
  * Features:
  * - List all organizations with member counts

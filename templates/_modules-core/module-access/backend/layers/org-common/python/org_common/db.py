@@ -149,25 +149,41 @@ def execute_query(
         raise
 
 
+def _snake_to_camel(snake_str: str) -> str:
+    """Convert snake_case to camelCase for API response keys"""
+    if not snake_str or '_' not in snake_str:
+        return snake_str
+    components = snake_str.split('_')
+    return components[0] + ''.join(x.title() for x in components[1:])
+
+
 def format_record(record: Dict[str, Any]) -> Dict[str, Any]:
     """
     Format a single database record for JSON response
     
+    Transforms:
+    - snake_case keys to camelCase (for JavaScript clients)
+    - datetime objects to ISO strings
+    
     Args:
-        record: Database record
+        record: Database record (snake_case keys from database)
         
     Returns:
-        Formatted record with datetime objects converted to ISO strings
+        Formatted record with camelCase keys and ISO string dates
     """
     if not record:
         return {}
     
     formatted = {}
     for key, value in record.items():
+        # Transform snake_case key to camelCase
+        camel_key = _snake_to_camel(key)
+        
+        # Convert datetime to ISO string
         if isinstance(value, datetime):
-            formatted[key] = value.isoformat()
+            formatted[camel_key] = value.isoformat()
         else:
-            formatted[key] = value
+            formatted[camel_key] = value
     
     return formatted
 

@@ -50,7 +50,7 @@ COMMENT ON COLUMN public.ai_model_validation_history.validation_category IS 'Cat
 
 ALTER TABLE public.ai_model_validation_history ENABLE ROW LEVEL SECURITY;
 
--- Admin-only access (platform_owner, platform_admin)
+-- Admin-only access (sys_owner, sys_admin)
 DROP POLICY IF EXISTS "ai_model_validation_history_admin_access" ON public.ai_model_validation_history;
 CREATE POLICY "ai_model_validation_history_admin_access" ON public.ai_model_validation_history
     FOR ALL
@@ -58,7 +58,7 @@ CREATE POLICY "ai_model_validation_history_admin_access" ON public.ai_model_vali
         EXISTS (
             SELECT 1 FROM public.user_profiles
             WHERE user_profiles.user_id = auth.uid()
-            AND user_profiles.global_role IN ('platform_owner', 'platform_admin')
+            AND user_profiles.sys_role IN ('sys_owner', 'sys_admin')
         )
     );
 

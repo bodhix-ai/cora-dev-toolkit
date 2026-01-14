@@ -50,11 +50,6 @@ export function InviteMemberDialog({
     setEmail(value);
     setEmailError(null);
     setError(null);
-
-    // Validate email on blur
-    if (value && !validateEmail(value)) {
-      setEmailError("Please enter a valid email address");
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -66,8 +61,9 @@ export function InviteMemberDialog({
       return;
     }
 
-    if (!validateEmail(email)) {
-      setEmailError("Please enter a valid email address");
+    const emailError = validateEmail(email);
+    if (emailError) {
+      setEmailError(emailError);
       return;
     }
 
@@ -139,8 +135,11 @@ export function InviteMemberDialog({
               value={email}
               onChange={handleEmailChange}
               onBlur={() => {
-                if (email && !validateEmail(email)) {
-                  setEmailError("Please enter a valid email address");
+                if (email) {
+                  const error = validateEmail(email);
+                  if (error) {
+                    setEmailError(error);
+                  }
                 }
               }}
               error={!!emailError}

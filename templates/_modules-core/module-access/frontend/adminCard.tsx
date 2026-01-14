@@ -18,7 +18,7 @@ export const accessControlAdminCard: AdminCardConfig = {
   context: "platform",
   color: "primary.main",
   order: 10, // Core platform feature - should appear first
-  requiredRoles: ["platform_owner", "platform_admin"],
+  requiredRoles: ["sys_owner", "sys_admin"],
 };
 
 /**
@@ -36,5 +36,5 @@ export const organizationSettingsCard: AdminCardConfig = {
   context: "organization",
   color: "primary.main",
   order: 10,
-  requiredRoles: ["platform_owner", "platform_admin", "org_owner", "org_admin"],
+  requiredRoles: ["sys_owner", "sys_admin", "org_owner", "org_admin"],
 };

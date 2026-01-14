@@ -12,7 +12,7 @@ export type Profile =
   paths["/profile"]["patch"]["responses"]["200"]["content"]["application/json"] & {
     organizations?: { id: string; name: string }[];
     org_members?: Member[];
-    global_role?: string;
+    sys_role?: string;
     current_org_id?: string | null;
   };
 

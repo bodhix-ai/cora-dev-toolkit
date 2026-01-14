@@ -161,7 +161,7 @@ export function WorkspaceListPage({
     const request: WorkspaceCreateRequest = {
       name: values.name,
       description: values.description,
-      org_id: orgId,
+      orgId: orgId,
       color: values.color,
       icon: values.icon,
       tags: values.tags,
@@ -194,10 +194,10 @@ export function WorkspaceListPage({
       >
         <Box>
           <Typography variant="h4" gutterBottom>
-            {wsConfig?.nav_label_plural || "Workspaces"}
+            {wsConfig?.navLabelPlural || "Workspaces"}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Manage and organize your {(wsConfig?.nav_label_plural || "workspaces").toLowerCase()}
+            Manage and organize your {(wsConfig?.navLabelPlural || "workspaces").toLowerCase()}
           </Typography>
         </Box>
         {canCreate && (
@@ -207,7 +207,7 @@ export function WorkspaceListPage({
             onClick={handleCreateClick}
             size="large"
           >
-            Create {wsConfig?.nav_label_singular || "Workspace"}
+            Create {wsConfig?.navLabelSingular || "Workspace"}
           </Button>
         )}
       </Box>
@@ -288,8 +288,8 @@ export function WorkspaceListPage({
         orgId={orgId}
         onCreate={handleCreateWorkspace}
         onCreateSuccess={handleCreateSuccess}
-        defaultColor={wsConfig?.default_color}
-        labelSingular={wsConfig?.nav_label_singular || "Workspace"}
+        defaultColor={wsConfig?.defaultColor}
+        labelSingular={wsConfig?.navLabelSingular || "Workspace"}
       />
 
       {/* Edit dialog */}
@@ -299,7 +299,7 @@ export function WorkspaceListPage({
         workspace={editWorkspace}
         onUpdate={apiClient ? async (wsId, values) => apiClient.updateWorkspace(wsId, values, orgId) : undefined}
         onUpdateSuccess={handleUpdateSuccess}
-        labelSingular={wsConfig?.nav_label_singular || "Workspace"}
+        labelSingular={wsConfig?.navLabelSingular || "Workspace"}
       />
     </Container>
   );

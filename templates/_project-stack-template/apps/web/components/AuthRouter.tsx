@@ -23,7 +23,7 @@ import { Box, CircularProgress, Typography } from "@mui/material";
  * 1. Standard Authorization - Returning users (normal flow)
  * 2. Invited User - Auto-assigned to org (normal flow)
  * 3. Domain User - Auto-assigned via email domain (normal flow)
- * 4. Bootstrap - Platform owner redirected to /admin/organization
+ * 4. Bootstrap - System owner redirected to /admin/organization
  * 5. Denied Access - Redirected to /access-denied
  */
 export function AuthRouter({ children }: { children: ReactNode }) {
@@ -88,8 +88,8 @@ export function AuthRouter({ children }: { children: ReactNode }) {
     redirect("/access-denied");
   }
 
-  // SCENARIO 4: Bootstrap - platform owner on home page should go to org settings
-  if (profile.globalRole === "platform_owner") {
+  // SCENARIO 4: Bootstrap - system owner on home page should go to org settings
+  if (profile.sysRole === "sys_owner") {
     // Only redirect from root path, not from admin pages
     if (pathname === "/" && !pathname.startsWith("/admin")) {
       redirect("/admin/organization");

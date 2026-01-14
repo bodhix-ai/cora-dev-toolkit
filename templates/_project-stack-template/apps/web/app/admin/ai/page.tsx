@@ -7,15 +7,15 @@ import { useUser } from "@{{PROJECT_NAME}}/module-access";
 /**
  * AI Enablement Admin Page
  * 
- * Platform admin interface for managing AI providers, models, and configuration.
- * Accessible only to platform_owner and platform_admin roles.
+ * System admin interface for managing AI providers, models, and configuration.
+ * Accessible only to sys_owner and sys_admin roles.
  * 
  * Features:
  * - Manage AI providers (OpenAI, Anthropic, Azure OpenAI, etc.)
  * - Test provider connections and credentials
  * - Discover and validate AI models
  * - View model availability and capabilities
- * - Configure platform-wide AI defaults (chat model, embedding model, system prompt)
+ * - Configure system-wide AI defaults (chat model, embedding model, system prompt)
  */
 export default function AIAdminPage() {
   const { authAdapter, loading } = useUser();

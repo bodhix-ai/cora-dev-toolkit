@@ -37,16 +37,18 @@
       "adminCards": ["wsAdminCard", "wsOrgAdminCard"]
     },
     "functions": [
-      "is_workspace_member",
-      "is_workspace_owner",
-      "is_workspace_admin_or_owner",
-      "get_workspace_role",
-      "create_workspace_with_owner",
-      "soft_delete_workspace",
-      "restore_workspace",
-      "toggle_workspace_favorite",
-      "get_workspaces_with_member_info",
-      "cleanup_expired_workspaces"
+      "is_ws_member",
+      "is_ws_owner",
+      "is_ws_admin_or_owner",
+      "get_ws_role",
+      "count_ws_owners",
+      "create_ws_with_owner",
+      "soft_delete_ws",
+      "restore_ws",
+      "toggle_ws_favorite",
+      "get_ws_with_member_info",
+      "cleanup_expired_ws",
+      "transfer_ws_ownership"
     ]
   },
   "configuration": {

@@ -45,11 +45,11 @@ interface Organization {
   name: string;
   slug: string;
   description?: string;
-  allowed_domain?: string;
-  domain_default_role?: "org_user" | "org_admin" | "org_owner";
-  member_count?: number;
-  created_at: string;
-  updated_at: string;
+  allowedDomain?: string;
+  domainDefaultRole?: "org_user" | "org_admin" | "org_owner";
+  memberCount?: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface OrgsTabProps {
@@ -63,8 +63,8 @@ interface CreateOrganizationPayload {
   name: string;
   slug: string;
   description?: string;
-  allowed_domain?: string;
-  domain_default_role?: "org_user" | "org_admin" | "org_owner";
+  allowedDomain?: string;
+  domainDefaultRole?: "org_user" | "org_admin" | "org_owner";
 }
 
 /**
@@ -191,13 +191,13 @@ export function OrgsTab({ authAdapter }: OrgsTabProps) {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    {org.allowed_domain ? (
+                    {org.allowedDomain ? (
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                         <Language fontSize="small" color="primary" />
                         <Box>
-                          <Typography variant="body2">{org.allowed_domain}</Typography>
+                          <Typography variant="body2">{org.allowedDomain}</Typography>
                           <Chip
-                            label={org.domain_default_role || "org_user"}
+                            label={org.domainDefaultRole || "org_user"}
                             size="small"
                             variant="outlined"
                             sx={{ mt: 0.5 }}
@@ -213,12 +213,12 @@ export function OrgsTab({ authAdapter }: OrgsTabProps) {
                   <TableCell align="center">
                     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5 }}>
                       <People fontSize="small" color="action" />
-                      <Typography variant="body2">{org.member_count || 0}</Typography>
+                      <Typography variant="body2">{org.memberCount || 0}</Typography>
                     </Box>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">
-                      {new Date(org.created_at).toLocaleDateString()}
+                      {new Date(org.createdAt).toLocaleDateString()}
                     </Typography>
                   </TableCell>
                   <TableCell align="right">
@@ -269,8 +269,8 @@ function CreateOrganizationDialog({
     name: "",
     slug: "",
     description: "",
-    allowed_domain: "",
-    domain_default_role: "org_user" as "org_user" | "org_admin" | "org_owner",
+    allowedDomain: "",
+    domainDefaultRole: "org_user" as "org_user" | "org_admin" | "org_owner",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -297,9 +297,9 @@ function CreateOrganizationDialog({
       };
 
       // Only include domain config if domain is set
-      if (formData.allowed_domain) {
-        payload.allowed_domain = formData.allowed_domain;
-        payload.domain_default_role = formData.domain_default_role;
+      if (formData.allowedDomain) {
+        payload.allowedDomain = formData.allowedDomain;
+        payload.domainDefaultRole = formData.domainDefaultRole;
       }
 
       const token = await authAdapter.getToken();
@@ -375,21 +375,21 @@ function CreateOrganizationDialog({
             fullWidth
             label="Allowed Domain (optional)"
             aria-label="Allowed Domain for auto-provisioning"
-            value={formData.allowed_domain}
-            onChange={(e) => setFormData({ ...formData, allowed_domain: e.target.value })}
+            value={formData.allowedDomain}
+            onChange={(e) => setFormData({ ...formData, allowedDomain: e.target.value })}
             placeholder="example.com"
             helperText="Users with this email domain will be auto-provisioned"
           />
 
-          {formData.allowed_domain && (
+          {formData.allowedDomain && (
             <FormControl fullWidth>
               <InputLabel>Default Role for Domain Users</InputLabel>
               <Select
-                value={formData.domain_default_role}
+                value={formData.domainDefaultRole}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    domain_default_role: e.target.value as "org_user" | "org_admin" | "org_owner",
+                    domainDefaultRole: e.target.value as "org_user" | "org_admin" | "org_owner",
                   })
                 }
                 label="Default Role for Domain Users"

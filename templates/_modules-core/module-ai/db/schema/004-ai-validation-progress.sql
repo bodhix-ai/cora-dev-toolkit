@@ -53,7 +53,7 @@ COMMENT ON COLUMN public.ai_model_validation_progress.status IS 'Job status: pen
 
 ALTER TABLE public.ai_model_validation_progress ENABLE ROW LEVEL SECURITY;
 
--- Admin-only access (platform_owner, platform_admin)
+-- Admin-only access (sys_owner, sys_admin)
 DROP POLICY IF EXISTS "ai_model_validation_progress_admin_access" ON public.ai_model_validation_progress;
 CREATE POLICY "ai_model_validation_progress_admin_access" ON public.ai_model_validation_progress
     FOR ALL
@@ -61,7 +61,7 @@ CREATE POLICY "ai_model_validation_progress_admin_access" ON public.ai_model_val
         EXISTS (
             SELECT 1 FROM public.user_profiles
             WHERE user_profiles.user_id = auth.uid()
-            AND user_profiles.global_role IN ('platform_owner', 'platform_admin')
+            AND user_profiles.sys_role IN ('sys_owner', 'sys_admin')
         )
     );
 

@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
     avatar_url TEXT,
     avatar BYTEA,
     current_org_id UUID,
-    global_role TEXT,
+    sys_role TEXT NOT NULL DEFAULT 'sys_user',
     requires_invitation BOOLEAN DEFAULT FALSE,
     created_by UUID,
     updated_by UUID,
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
 
 CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON public.user_profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_email ON public.user_profiles(email);
-CREATE INDEX IF NOT EXISTS idx_user_profiles_global_role ON public.user_profiles(global_role);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_sys_role ON public.user_profiles(sys_role);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_current_org_id ON public.user_profiles(current_org_id);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_requires_invitation ON public.user_profiles(requires_invitation) 
   WHERE requires_invitation = TRUE;
@@ -52,7 +52,7 @@ COMMENT ON COLUMN public.user_profiles.user_id IS 'Foreign key to auth.users.id 
 COMMENT ON COLUMN public.user_profiles.email IS 'User email (duplicated from auth.users for convenience)';
 COMMENT ON COLUMN public.user_profiles.full_name IS 'Full name of user';
 COMMENT ON COLUMN public.user_profiles.current_org_id IS 'Persists the user''s currently selected organization across sessions';
-COMMENT ON COLUMN public.user_profiles.global_role IS 'Global role: platform_user, platform_admin, platform_owner';
+COMMENT ON COLUMN public.user_profiles.sys_role IS 'System role: sys_user (default), sys_admin, sys_owner';
 COMMENT ON COLUMN public.user_profiles.requires_invitation IS 'TRUE if user was denied auto-provisioning and requires explicit invitation';
 COMMENT ON COLUMN public.user_profiles.avatar_url IS 'URL to avatar image (external storage)';
 COMMENT ON COLUMN public.user_profiles.avatar IS 'Binary storage for avatar image';

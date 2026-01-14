@@ -15,6 +15,32 @@ from typing import Dict, Any, Optional
 import org_common as common
 
 
+def _transform_user(user: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Transform database user record to API response format (camelCase).
+    
+    Converts snake_case fields from database to camelCase for frontend.
+    """
+    # Transform org_memberships to camelCase
+    org_memberships = []
+    for membership in user.get('org_memberships', []):
+        org_memberships.append({
+            'orgId': membership.get('org_id'),
+            'orgName': membership.get('org_name'),
+            'orgRole': membership.get('org_role'),
+        })
+    
+    return {
+        'id': user.get('user_id'),
+        'email': user.get('email'),
+        'name': user.get('full_name'),
+        'sysRole': user.get('sys_role'),
+        'createdAt': user.get('created_at'),
+        'lastSignInAt': user.get('last_signin_at'),
+        'orgMemberships': org_memberships,
+    }
+
+
 def get_supabase_user_id_from_okta_uid(okta_uid: str) -> Optional[str]:
     """
     Get Supabase user_id from Okta user ID
@@ -104,13 +130,13 @@ def handle_list_users(event: Dict[str, Any]) -> Dict[str, Any]:
         # Map Okta UID to Supabase user_id using standard org_common function
         supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
         
-        # Get user profile to check global_role
+        # Get user profile to check sys_role
         profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
         if not profile:
             raise common.UnauthorizedError('User profile not found')
         
-        if profile.get('global_role') not in ['platform_admin', 'platform_owner']:
-            raise common.ForbiddenError('Platform admin access required')
+        if profile.get('sys_role') not in ['sys_admin', 'sys_owner']:
+            raise common.ForbiddenError('Sys admin access required')
     except KeyError:
         raise common.UnauthorizedError('Authentication required')
     
@@ -120,16 +146,24 @@ def handle_list_users(event: Dict[str, Any]) -> Dict[str, Any]:
     try:
         # Query all user profiles
         response = client.table('user_profiles').select(
-            'user_id, email, full_name, global_role, created_at, last_sign_in_at'
+            'user_id, email, full_name, sys_role, created_at'
         ).execute()
         
         users = response.data if response.data else []
         
-        # For each user, fetch their org memberships
+        # For each user, fetch their org memberships and last sign-in
         for user in users:
+            # Get most recent session for last sign-in time
+            session_response = client.table('user_sessions').select(
+                'started_at'
+            ).eq('user_id', user['user_id']).order('started_at', desc=True).limit(1).execute()
+            
+            # Add last_signin_at from most recent session
+            user['last_signin_at'] = session_response.data[0]['started_at'] if session_response.data else None
+            
             # Query org_members table for this user
             membership_response = client.table('org_members').select(
-                'org_id, role, orgs(org_id, org_name)'
+                'org_id, org_role, orgs(id, name)'
             ).eq('user_id', user['user_id']).execute()
             
             # Format org memberships
@@ -139,14 +173,17 @@ def handle_list_users(event: Dict[str, Any]) -> Dict[str, Any]:
                     org_data = membership.get('orgs')
                     if org_data:
                         org_memberships.append({
-                            'org_id': org_data['org_id'],
-                            'org_name': org_data['org_name'],
-                            'org_role': membership['role']
+                            'org_id': org_data['id'],
+                            'org_name': org_data['name'],
+                            'org_role': membership['org_role']
                         })
             
             user['org_memberships'] = org_memberships
         
-        return common.success_response(users)
+        # Transform all users to camelCase for frontend
+        transformed_users = [_transform_user(user) for user in users]
+        
+        return common.success_response(transformed_users)
         
     except Exception as e:
         print(f"Error listing users: {str(e)}")
@@ -260,7 +297,7 @@ def handle_provision(event: Dict[str, Any]) -> Dict[str, Any]:
             'user_id': user_id,
             'email': email,
             'full_name': name,
-            'global_role': 'global_user'  # Default role
+            'sys_role': 'sys_user'  # Default role
         }
         if org_id:
             profile_data['org_id'] = org_id

@@ -6,6 +6,18 @@ import json
 from typing import Dict, Any
 import org_common as common
 
+# Allowed MUI icons for org branding (AI-related)
+ALLOWED_ORG_ICONS = [
+    'AutoAwesomeOutlined',  # Default - sparkles/magic
+    'PsychologyOutlined',   # Brain - intelligence
+    'SmartToyOutlined',     # Robot - AI assistant
+    'AutoFixHighOutlined',  # Magic wand - auto-fix
+    'BoltOutlined',         # Lightning - speed/power
+    'HubOutlined',          # Network hub - connections
+    'MemoryOutlined',       # Memory chip - computing
+    'ModelTrainingOutlined' # Model training
+]
+
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
@@ -117,10 +129,10 @@ def handle_list_orgs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             filters={'user_id': user_id}
         )
         
-        is_platform_admin = profile and profile.get('global_role') in ['platform_owner', 'platform_admin']
+        is_sys_admin = profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']
         
-        if is_platform_admin:
-            # Platform admin: Return ALL organizations
+        if is_sys_admin:
+            # Sys admin: Return ALL organizations
             orgs = common.find_many(
                 table='orgs',
                 filters={},
@@ -149,7 +161,7 @@ def handle_list_orgs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             memberships = common.find_many(
                 table='org_members',
                 filters={'user_id': user_id},
-                select='org_id, role',
+                select='org_id, org_role',
                 order='created_at.desc',
                 limit=limit,
                 offset=offset
@@ -172,7 +184,7 @@ def handle_list_orgs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                 
                 if org:
                     org_data = common.format_record(org)
-                    org_data['user_role'] = membership['role']
+                    org_data['user_role'] = membership['org_role']
                     result.append(org_data)
             
             return common.success_response(result)
@@ -221,10 +233,24 @@ def handle_get_org(user_id: str, org_id: str) -> Dict[str, Any]:
         )
         member_count = len(member_count_result)
         
-        # Format response
-        result = common.format_record(org)
-        result['user_role'] = membership['role']
-        result['member_count'] = member_count
+        # Format response in camelCase for frontend
+        result = {
+            'id': org['id'],
+            'name': org['name'],
+            'slug': org['slug'],
+            'ownerId': org.get('owner_id'),
+            'description': org.get('description'),
+            'websiteUrl': org.get('website_url'),
+            'logoUrl': org.get('logo_url'),
+            'appName': org.get('app_name'),
+            'appIcon': org.get('app_icon'),
+            'createdAt': org.get('created_at'),
+            'updatedAt': org.get('updated_at'),
+            'createdBy': org.get('created_by'),
+            'updatedBy': org.get('updated_by'),
+            'userRole': membership['org_role'],
+            'memberCount': member_count
+        }
         
         return common.success_response(result)
         
@@ -279,6 +305,18 @@ def handle_create_org(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     if website_url:
         website_url = common.validate_url(website_url, 'website_url')
     
+    # App branding (optional)
+    app_name = body.get('app_name', '')
+    if app_name:
+        app_name = common.validate_string_length(app_name, 'app_name', max_length=100)
+    
+    app_icon = body.get('app_icon', '')
+    if app_icon:
+        if app_icon not in ALLOWED_ORG_ICONS:
+            raise common.ValidationError(
+                f'app_icon must be one of: {", ".join(ALLOWED_ORG_ICONS)}'
+            )
+    
     # Domain configuration (platform admin only)
     allowed_domain = body.get('allowed_domain', '')
     domain_default_role = body.get('domain_default_role', 'org_user')
@@ -297,7 +335,7 @@ def handle_create_org(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             filters={'user_id': supabase_user_id}
         )
         
-        # Create organization
+        # Create organization (without domain fields - those go in org_email_domains)
         org_data = {
             'name': name,
             'slug': slug,
@@ -305,18 +343,29 @@ def handle_create_org(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             'description': description,
             'logo_url': logo_url or None,
             'website_url': website_url or None,
+            'app_name': app_name or None,
+            'app_icon': app_icon or None,
             'created_by': supabase_user_id
         }
-        
-        # Add domain configuration if provided
-        if allowed_domain:
-            org_data['allowed_domain'] = allowed_domain
-            org_data['domain_default_role'] = domain_default_role
         
         org = common.insert_one(
             table='orgs',
             data=org_data
         )
+        
+        # Create domain configuration in org_email_domains if provided
+        if allowed_domain:
+            domain_data = {
+                'org_id': org['id'],
+                'domain': allowed_domain,
+                'is_verified': True,  # Auto-verify for org creation
+                'default_role': domain_default_role,
+                'created_by': supabase_user_id
+            }
+            common.insert_one(
+                table='org_email_domains',
+                data=domain_data
+            )
         
         # Add creator as org_owner using Supabase user_id
         # Note: org_members.user_id references auth.users(id), not profiles(id)
@@ -325,7 +374,7 @@ def handle_create_org(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             data={
                 'org_id': org['id'],
                 'user_id': supabase_user_id,  # Use Supabase UUID from auth.users
-                'role': 'org_owner',
+                'org_role': 'org_owner',
                 'added_by': supabase_user_id
             }
         )
@@ -379,7 +428,7 @@ def handle_update_org(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
             filters={'user_id': user_id}
         )
         
-        is_platform_admin = profile and profile.get('global_role') in ['platform_owner', 'platform_admin']
+        is_sys_admin = profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']
         
         # Check if user has admin access (RLS enforces this via can_modify_org_data)
         membership = common.find_one(
@@ -390,12 +439,12 @@ def handle_update_org(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
             }
         )
         
-        # Platform admins can update any org, regular users must be org admin/owner
-        if not is_platform_admin:
+        # Sys admins can update any org, regular users must be org admin/owner
+        if not is_sys_admin:
             if not membership:
                 raise common.ForbiddenError('You do not have access to this organization')
             
-            if membership['role'] not in ['org_admin', 'org_owner']:
+            if membership['org_role'] not in ['org_admin', 'org_owner']:
                 raise common.ForbiddenError('Only org admins and owners can update organizations')
         
         # Build update data
@@ -438,36 +487,96 @@ def handle_update_org(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
             else:
                 update_data['website_url'] = None
         
-        # Domain configuration (platform admin or org owner only)
+        if 'app_name' in body:
+            app_name = body['app_name']
+            if app_name:
+                update_data['app_name'] = common.validate_string_length(
+                    app_name, 'app_name', max_length=100
+                )
+            else:
+                update_data['app_name'] = None
+        
+        if 'app_icon' in body:
+            app_icon = body['app_icon']
+            if app_icon:
+                if app_icon not in ALLOWED_ORG_ICONS:
+                    raise common.ValidationError(
+                        f'app_icon must be one of: {", ".join(ALLOWED_ORG_ICONS)}'
+                    )
+                update_data['app_icon'] = app_icon
+            else:
+                update_data['app_icon'] = None
+        
+        # Handle domain configuration updates through org_email_domains table
+        domain_updates = {}
         if 'allowed_domain' in body:
-            allowed_domain = body.get('allowed_domain')
-            update_data['allowed_domain'] = allowed_domain if allowed_domain else None
+            domain_updates['domain'] = body.get('allowed_domain')
         
         if 'domain_default_role' in body:
             domain_default_role = body.get('domain_default_role')
             if domain_default_role:
                 if domain_default_role not in ['org_user', 'org_admin', 'org_owner']:
                     raise common.ValidationError('domain_default_role must be one of: org_user, org_admin, org_owner')
-                update_data['domain_default_role'] = domain_default_role
-            else:
-                update_data['domain_default_role'] = None
+                domain_updates['default_role'] = domain_default_role
         
-        if not update_data:
-            raise common.ValidationError('No valid fields to update')
+        # Update or create domain configuration if domain updates provided
+        if domain_updates:
+            if domain_updates.get('domain'):
+                # Check if domain already exists for this org
+                existing_domain = common.find_one(
+                    table='org_email_domains',
+                    filters={'org_id': org_id}
+                )
+                
+                if existing_domain:
+                    # Update existing domain
+                    domain_updates['updated_by'] = user_id
+                    common.update_one(
+                        table='org_email_domains',
+                        filters={'id': existing_domain['id']},
+                        data=domain_updates
+                    )
+                else:
+                    # Create new domain
+                    domain_updates['org_id'] = org_id
+                    domain_updates['is_verified'] = True
+                    domain_updates['created_by'] = user_id
+                    common.insert_one(
+                        table='org_email_domains',
+                        data=domain_updates
+                    )
+            elif 'domain' in domain_updates and not domain_updates['domain']:
+                # Remove domain if set to null/empty
+                existing_domain = common.find_one(
+                    table='org_email_domains',
+                    filters={'org_id': org_id}
+                )
+                if existing_domain:
+                    common.delete_one(
+                        table='org_email_domains',
+                        filters={'id': existing_domain['id']}
+                    )
         
-        # Add updated_by
-        update_data['updated_by'] = user_id
-        
-        # Update organization
-        updated_org = common.update_one(
-            table='orgs',
-            filters={'id': org_id},
-            data=update_data
-        )
+        # Update organization (only if there are org-level fields to update)
+        if update_data:
+            # Add updated_by
+            update_data['updated_by'] = user_id
+            
+            updated_org = common.update_one(
+                table='orgs',
+                filters={'id': org_id},
+                data=update_data
+            )
+        else:
+            # No org fields to update, just get current org
+            updated_org = common.find_one(
+                table='orgs',
+                filters={'id': org_id}
+            )
         
         result = common.format_record(updated_org)
         if membership:
-            result['user_role'] = membership['role']
+            result['user_role'] = membership['org_role']
         
         return common.success_response(result)
         
@@ -499,7 +608,7 @@ def handle_delete_org(user_id: str, org_id: str) -> Dict[str, Any]:
         if not membership:
             raise common.ForbiddenError('You do not have access to this organization')
         
-        if membership['role'] != 'org_owner':
+        if membership['org_role'] != 'org_owner':
             raise common.ForbiddenError('Only org owners can delete organizations')
         
         # Delete organization (cascade will handle org_members)

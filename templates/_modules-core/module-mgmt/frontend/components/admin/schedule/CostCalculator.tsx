@@ -69,7 +69,7 @@ export default function CostCalculator({
   }
 
   // If no hours scheduled, show zero cost
-  if (estimate.hours_per_week === 0) {
+  if (estimate.hoursPerWeek === 0) {
     return (
       <Alert severity="info" sx={{ mt: 2 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -186,7 +186,7 @@ export default function CostCalculator({
               Hours per Week:
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {estimate.hours_per_week.toFixed(1)} hours
+              {estimate.hoursPerWeek.toFixed(1)} hours
             </Typography>
 
             <Typography variant="caption" color="text.secondary">

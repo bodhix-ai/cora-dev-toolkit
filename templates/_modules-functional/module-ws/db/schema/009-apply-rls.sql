@@ -197,23 +197,23 @@ FOR SELECT
 TO authenticated
 USING (true);
 
--- Only platform admins/owners can update
-DROP POLICY IF EXISTS "Platform admins can update ws_configs" ON public.ws_configs;
-CREATE POLICY "Platform admins can update ws_configs" ON public.ws_configs
+-- Only sys admins/owners can update
+DROP POLICY IF EXISTS "Sys admins can update ws_configs" ON public.ws_configs;
+CREATE POLICY "Sys admins can update ws_configs" ON public.ws_configs
 FOR UPDATE
 TO authenticated
 USING (
     EXISTS (
         SELECT 1 FROM public.user_profiles
         WHERE user_profiles.user_id = auth.uid()
-        AND user_profiles.global_role IN ('platform_owner', 'platform_admin')
+        AND user_profiles.sys_role IN ('sys_owner', 'sys_admin')
     )
 )
 WITH CHECK (
     EXISTS (
         SELECT 1 FROM public.user_profiles
         WHERE user_profiles.user_id = auth.uid()
-        AND user_profiles.global_role IN ('platform_owner', 'platform_admin')
+        AND user_profiles.sys_role IN ('sys_owner', 'sys_admin')
     )
 );
 
@@ -227,7 +227,7 @@ USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_rol
 GRANT SELECT, UPDATE ON public.ws_configs TO authenticated;
 
 COMMENT ON POLICY "Everyone can view ws_configs" ON public.ws_configs IS 'All authenticated users can read workspace configuration';
-COMMENT ON POLICY "Platform admins can update ws_configs" ON public.ws_configs IS 'Only platform_owner and platform_admin can modify configuration';
+COMMENT ON POLICY "Sys admins can update ws_configs" ON public.ws_configs IS 'Only sys_owner and sys_admin can modify configuration';
 
 -- =============================================
 -- WS_FAVORITES TABLE RLS
@@ -296,17 +296,17 @@ USING (
     )
 );
 
--- Org admins and platform admins can create settings
-DROP POLICY IF EXISTS "Org and platform admins can create settings" ON public.ws_org_settings;
-CREATE POLICY "Org and platform admins can create settings" ON public.ws_org_settings
+-- Org admins and sys admins can create settings
+DROP POLICY IF EXISTS "Org and sys admins can create settings" ON public.ws_org_settings;
+CREATE POLICY "Org and sys admins can create settings" ON public.ws_org_settings
 FOR INSERT
 TO authenticated
 WITH CHECK (
-    -- User is platform admin
+    -- User is sys admin
     EXISTS (
         SELECT 1 FROM public.user_profiles
         WHERE user_profiles.user_id = auth.uid()
-        AND user_profiles.global_role IN ('platform_owner', 'platform_admin')
+        AND user_profiles.sys_role IN ('sys_owner', 'sys_admin')
     )
     OR
     -- User is org admin/owner
@@ -314,21 +314,21 @@ WITH CHECK (
         SELECT 1 FROM public.org_members
         WHERE org_members.org_id = ws_org_settings.org_id
         AND org_members.user_id = auth.uid()
-        AND org_members.role IN ('org_owner', 'org_admin')
+        AND org_members.org_role IN ('org_owner', 'org_admin')
     )
 );
 
--- Org admins and platform admins can update settings
-DROP POLICY IF EXISTS "Org and platform admins can update settings" ON public.ws_org_settings;
-CREATE POLICY "Org and platform admins can update settings" ON public.ws_org_settings
+-- Org admins and sys admins can update settings
+DROP POLICY IF EXISTS "Org and sys admins can update settings" ON public.ws_org_settings;
+CREATE POLICY "Org and sys admins can update settings" ON public.ws_org_settings
 FOR UPDATE
 TO authenticated
 USING (
-    -- User is platform admin
+    -- User is sys admin
     EXISTS (
         SELECT 1 FROM public.user_profiles
         WHERE user_profiles.user_id = auth.uid()
-        AND user_profiles.global_role IN ('platform_owner', 'platform_admin')
+        AND user_profiles.sys_role IN ('sys_owner', 'sys_admin')
     )
     OR
     -- User is org admin/owner
@@ -336,15 +336,15 @@ USING (
         SELECT 1 FROM public.org_members
         WHERE org_members.org_id = ws_org_settings.org_id
         AND org_members.user_id = auth.uid()
-        AND org_members.role IN ('org_owner', 'org_admin')
+        AND org_members.org_role IN ('org_owner', 'org_admin')
     )
 )
 WITH CHECK (
-    -- User is platform admin
+    -- User is sys admin
     EXISTS (
         SELECT 1 FROM public.user_profiles
         WHERE user_profiles.user_id = auth.uid()
-        AND user_profiles.global_role IN ('platform_owner', 'platform_admin')
+        AND user_profiles.sys_role IN ('sys_owner', 'sys_admin')
     )
     OR
     -- User is org admin/owner
@@ -352,7 +352,7 @@ WITH CHECK (
         SELECT 1 FROM public.org_members
         WHERE org_members.org_id = ws_org_settings.org_id
         AND org_members.user_id = auth.uid()
-        AND org_members.role IN ('org_owner', 'org_admin')
+        AND org_members.org_role IN ('org_owner', 'org_admin')
     )
 );
 
@@ -366,8 +366,8 @@ USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_rol
 GRANT SELECT, INSERT, UPDATE ON public.ws_org_settings TO authenticated;
 
 COMMENT ON POLICY "Org members can view org settings" ON public.ws_org_settings IS 'All org members can view their organization workspace settings';
-COMMENT ON POLICY "Org and platform admins can create settings" ON public.ws_org_settings IS 'Only org admins/owners and platform admins can create org settings';
-COMMENT ON POLICY "Org and platform admins can update settings" ON public.ws_org_settings IS 'Only org admins/owners and platform admins can update org settings';
+COMMENT ON POLICY "Org and sys admins can create settings" ON public.ws_org_settings IS 'Only org admins/owners and sys admins can create org settings';
+COMMENT ON POLICY "Org and sys admins can update settings" ON public.ws_org_settings IS 'Only org admins/owners and sys admins can update org settings';
 
 -- =============================================
 -- WS_ACTIVITY_LOG TABLE RLS

@@ -140,8 +140,8 @@ def authorize_domain_management(user_id: str, org_id: str) -> bool:
         filters={'user_id': user_id}
     )
     
-    if profile and profile.get('global_role') in ['platform_owner', 'platform_admin']:
-        logger.info(f"Platform admin {user_id} authorized for org {org_id}")
+    if profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']:
+        logger.info(f"Sys admin {user_id} authorized for org {org_id}")
         return True
     
     # Check org-level access

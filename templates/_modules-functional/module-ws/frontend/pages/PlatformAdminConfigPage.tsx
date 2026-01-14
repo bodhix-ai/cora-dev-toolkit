@@ -1,7 +1,7 @@
 /**
  * PlatformAdminConfigPage Component
  *
- * Platform admin page for managing workspace module configuration.
+ * System admin page for managing workspace module configuration.
  * Controls navigation labels, feature flags, and default settings.
  * 
  * Features:
@@ -48,8 +48,8 @@ import { useSession } from "next-auth/react";
 import { createWorkspaceApiClient } from "../lib/api";
 
 export interface PlatformAdminConfigPageProps {
-  /** Whether user has platform admin permissions */
-  isPlatformAdmin?: boolean;
+  /** Whether user has sys admin permissions */
+  isSysAdmin?: boolean;
   /** Callback when configuration is saved */
   onSaveSuccess?: (config: WorkspaceConfig) => void;
 }
@@ -77,7 +77,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export function PlatformAdminConfigPage({
-  isPlatformAdmin = true,
+  isSysAdmin = true,
   onSaveSuccess,
 }: PlatformAdminConfigPageProps): React.ReactElement {
   const {
@@ -115,16 +115,16 @@ export function PlatformAdminConfigPage({
     archivedWorkspaces: number;
     createdThisMonth: number;
     organizationStats: Array<{
-      org_id: string;
+      orgId: string;
       total: number;
       active: number;
       archived: number;
-      avg_per_user: number;
+      avgPerUser: number;
     }>;
     featureAdoption: {
-      favorites_pct: number;
-      tags_pct: number;
-      colors_pct: number;
+      favoritesPct: number;
+      tagsPct: number;
+      colorsPct: number;
     };
   } | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
@@ -172,16 +172,16 @@ export function PlatformAdminConfigPage({
   // Initialize form from config
   useEffect(() => {
     if (config) {
-      setNavLabelSingular(config.nav_label_singular);
-      setNavLabelPlural(config.nav_label_plural);
-      setNavIcon(config.nav_icon);
-      setEnableFavorites(config.enable_favorites);
-      setEnableTags(config.enable_tags);
-      setEnableColorCoding(config.enable_color_coding);
-      setDefaultColor(config.default_color);
-      setDefaultRetentionDays(config.default_retention_days);
-      setMaxTagsPerWorkspace(config.max_tags_per_workspace);
-      setMaxTagLength(config.max_tag_length);
+      setNavLabelSingular(config.navLabelSingular);
+      setNavLabelPlural(config.navLabelPlural);
+      setNavIcon(config.navIcon);
+      setEnableFavorites(config.enableFavorites);
+      setEnableTags(config.enableTags);
+      setEnableColorCoding(config.enableColorCoding);
+      setDefaultColor(config.defaultColor);
+      setDefaultRetentionDays(config.defaultRetentionDays);
+      setMaxTagsPerWorkspace(config.maxTagsPerWorkspace);
+      setMaxTagLength(config.maxTagLength);
     }
   }, [config]);
 
@@ -193,16 +193,16 @@ export function PlatformAdminConfigPage({
     }
 
     const changed =
-      navLabelSingular !== config.nav_label_singular ||
-      navLabelPlural !== config.nav_label_plural ||
-      navIcon !== config.nav_icon ||
-      enableFavorites !== config.enable_favorites ||
-      enableTags !== config.enable_tags ||
-      enableColorCoding !== config.enable_color_coding ||
-      defaultColor !== config.default_color ||
-      defaultRetentionDays !== config.default_retention_days ||
-      maxTagsPerWorkspace !== config.max_tags_per_workspace ||
-      maxTagLength !== config.max_tag_length;
+      navLabelSingular !== config.navLabelSingular ||
+      navLabelPlural !== config.navLabelPlural ||
+      navIcon !== config.navIcon ||
+      enableFavorites !== config.enableFavorites ||
+      enableTags !== config.enableTags ||
+      enableColorCoding !== config.enableColorCoding ||
+      defaultColor !== config.defaultColor ||
+      defaultRetentionDays !== config.defaultRetentionDays ||
+      maxTagsPerWorkspace !== config.maxTagsPerWorkspace ||
+      maxTagLength !== config.maxTagLength;
 
     setHasChanges(changed);
   }, [
@@ -226,16 +226,16 @@ export function PlatformAdminConfigPage({
 
     try {
       const updated = await updateConfig({
-        nav_label_singular: navLabelSingular,
-        nav_label_plural: navLabelPlural,
-        nav_icon: navIcon,
-        enable_favorites: enableFavorites,
-        enable_tags: enableTags,
-        enable_color_coding: enableColorCoding,
-        default_color: defaultColor,
-        default_retention_days: defaultRetentionDays,
-        max_tags_per_workspace: maxTagsPerWorkspace,
-        max_tag_length: maxTagLength,
+        navLabelSingular,
+        navLabelPlural,
+        navIcon,
+        enableFavorites,
+        enableTags,
+        enableColorCoding,
+        defaultColor,
+        defaultRetentionDays,
+        maxTagsPerWorkspace,
+        maxTagLength,
       });
 
       if (updated) {
@@ -250,24 +250,24 @@ export function PlatformAdminConfigPage({
 
   const handleReset = () => {
     if (config) {
-      setNavLabelSingular(config.nav_label_singular);
-      setNavLabelPlural(config.nav_label_plural);
-      setNavIcon(config.nav_icon);
-      setEnableFavorites(config.enable_favorites);
-      setEnableTags(config.enable_tags);
-      setEnableColorCoding(config.enable_color_coding);
-      setDefaultColor(config.default_color);
-      setDefaultRetentionDays(config.default_retention_days);
-      setMaxTagsPerWorkspace(config.max_tags_per_workspace);
-      setMaxTagLength(config.max_tag_length);
+      setNavLabelSingular(config.navLabelSingular);
+      setNavLabelPlural(config.navLabelPlural);
+      setNavIcon(config.navIcon);
+      setEnableFavorites(config.enableFavorites);
+      setEnableTags(config.enableTags);
+      setEnableColorCoding(config.enableColorCoding);
+      setDefaultColor(config.defaultColor);
+      setDefaultRetentionDays(config.defaultRetentionDays);
+      setMaxTagsPerWorkspace(config.maxTagsPerWorkspace);
+      setMaxTagLength(config.maxTagLength);
     }
   };
 
-  if (!isPlatformAdmin) {
+  if (!isSysAdmin) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Alert severity="error">
-          You do not have permission to access this page. Platform admin role required.
+          You do not have permission to access this page. System admin role required.
         </Alert>
       </Container>
     );
@@ -277,7 +277,7 @@ export function PlatformAdminConfigPage({
     <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* Breadcrumbs */}
       <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}>
-        <Link href="/admin/sys" style={{ textDecoration: "none" }} aria-label="Go to Platform Admin">
+        <Link href="/admin/sys" style={{ textDecoration: "none" }} aria-label="Go to System Admin">
           <Typography 
             variant="body2" 
             color="primary" 
@@ -286,7 +286,7 @@ export function PlatformAdminConfigPage({
               cursor: "pointer"
             }}
           >
-            Platform Admin
+            System Admin
           </Typography>
         </Link>
         <NavigateNext fontSize="small" color="action" />
@@ -676,14 +676,14 @@ export function PlatformAdminConfigPage({
                       </TableHead>
                       <TableBody>
                         {platformStats.organizationStats.map((org) => (
-                          <TableRow key={org.org_id}>
+                          <TableRow key={org.orgId}>
                             <TableCell sx={{ fontFamily: "monospace", fontSize: "0.85rem" }}>
-                              {org.org_id.substring(0, 8)}...
+                              {org.orgId.substring(0, 8)}...
                             </TableCell>
                             <TableCell align="right">{org.total}</TableCell>
                             <TableCell align="right">{org.active}</TableCell>
                             <TableCell align="right">{org.archived}</TableCell>
-                            <TableCell align="right">{org.avg_per_user.toFixed(1)}</TableCell>
+                            <TableCell align="right">{org.avgPerUser.toFixed(1)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -703,13 +703,13 @@ export function PlatformAdminConfigPage({
                       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
                         <Typography variant="body2">Favorites</Typography>
                         <Typography variant="body2" fontWeight="medium">
-                          {platformStats.featureAdoption.favorites_pct}%
+                          {platformStats.featureAdoption.favoritesPct}%
                         </Typography>
                       </Box>
                       <Box sx={{ width: "100%", bgcolor: "action.hover", borderRadius: 1, height: 8 }}>
                         <Box
                           sx={{
-                            width: `${platformStats.featureAdoption.favorites_pct}%`,
+                            width: `${platformStats.featureAdoption.favoritesPct}%`,
                             bgcolor: "primary.main",
                             borderRadius: 1,
                             height: 8,
@@ -721,13 +721,13 @@ export function PlatformAdminConfigPage({
                       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
                         <Typography variant="body2">Tags</Typography>
                         <Typography variant="body2" fontWeight="medium">
-                          {platformStats.featureAdoption.tags_pct}%
+                          {platformStats.featureAdoption.tagsPct}%
                         </Typography>
                       </Box>
                       <Box sx={{ width: "100%", bgcolor: "action.hover", borderRadius: 1, height: 8 }}>
                         <Box
                           sx={{
-                            width: `${platformStats.featureAdoption.tags_pct}%`,
+                            width: `${platformStats.featureAdoption.tagsPct}%`,
                             bgcolor: "primary.main",
                             borderRadius: 1,
                             height: 8,
@@ -739,13 +739,13 @@ export function PlatformAdminConfigPage({
                       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
                         <Typography variant="body2">Colors</Typography>
                         <Typography variant="body2" fontWeight="medium">
-                          {platformStats.featureAdoption.colors_pct}%
+                          {platformStats.featureAdoption.colorsPct}%
                         </Typography>
                       </Box>
                       <Box sx={{ width: "100%", bgcolor: "action.hover", borderRadius: 1, height: 8 }}>
                         <Box
                           sx={{
-                            width: `${platformStats.featureAdoption.colors_pct}%`,
+                            width: `${platformStats.featureAdoption.colorsPct}%`,
                             bgcolor: "primary.main",
                             borderRadius: 1,
                             height: 8,

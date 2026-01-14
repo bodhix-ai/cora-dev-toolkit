@@ -10,19 +10,26 @@ import {
 } from "../types";
 
 /**
- * API response interface (snake_case from backend)
+ * API response interface for profile data
+ * 
+ * Under CORA Option B (strict camelCase standard):
+ * - Backend transforms snake_case → camelCase at the API boundary
+ * - Frontend interfaces use pure camelCase
+ * 
+ * The transformProfileResponse() function maps API response to frontend Profile type.
  */
 interface ProfileApiData {
-  id: string;
+  id: string | number;
+  userId?: string;
   email: string;
-  full_name?: string | null;
-  first_name?: string | null;
-  last_name?: string | null;
+  fullName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
   phone?: string | null;
-  global_role?: "global_user" | "global_admin" | "global_owner" | "platform_owner";
-  current_org_id?: string | null;
-  created_at: string;
-  updated_at: string;
+  sysRole?: "sys_user" | "sys_admin" | "sys_owner";
+  currentOrgId?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
   organizations?: UserOrganization[];
 }
 
@@ -37,20 +44,22 @@ interface AuthenticatedClient {
 }
 
 /**
- * Transform snake_case API response to camelCase frontend types
+ * Transform API response to frontend Profile type
+ * 
+ * Under CORA Option B, backend returns camelCase, so this is a straightforward mapping.
  */
 function transformProfileResponse(apiData: ProfileApiData): Profile {
   return {
-    id: apiData.id,
+    id: apiData.userId || String(apiData.id),
     email: apiData.email,
-    name: apiData.full_name || null,
-    firstName: apiData.first_name || null,
-    lastName: apiData.last_name || null,
+    name: apiData.fullName || null,
+    firstName: apiData.firstName || null,
+    lastName: apiData.lastName || null,
     phone: apiData.phone || null,
-    globalRole: apiData.global_role || "global_user",
-    currentOrgId: apiData.current_org_id || null,
-    createdAt: apiData.created_at,
-    updatedAt: apiData.updated_at,
+    sysRole: apiData.sysRole || "sys_user",
+    currentOrgId: apiData.currentOrgId || null,
+    createdAt: apiData.createdAt || "",
+    updatedAt: apiData.updatedAt || "",
     organizations: apiData.organizations || [],
   };
 }
@@ -128,7 +137,7 @@ export function createOrgModuleClient(
     // Members
     getMembers: (orgId) => authenticatedClient.get<OrgMember[]>(`/orgs/${orgId}/members`),
     inviteMember: (orgId, data) =>
-      authenticatedClient.post<OrgMember>(`/orgs/${orgId}/members`, data),
+      authenticatedClient.post<OrgMember>(`/orgs/${orgId}/invites`, data),
     updateMemberRole: (orgId, memberId, role) =>
       authenticatedClient.put<OrgMember>(`/orgs/${orgId}/members/${memberId}`, { role }),
     removeMember: (orgId, memberId) =>

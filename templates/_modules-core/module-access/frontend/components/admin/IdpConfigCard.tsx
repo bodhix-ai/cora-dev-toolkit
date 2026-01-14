@@ -1,13 +1,10 @@
 /**
  * IDP Configuration Admin Card
  *
- * Platform admin card for managing Identity Provider (IDP) configurations.
- * Only visible to users with platform admin roles:
- * - super_admin
- * - platform_owner
- * - platform_admin
- * - global_owner
- * - global_admin
+ * System admin card for managing Identity Provider (IDP) configurations.
+ * Only visible to users with system admin roles:
+ * - sys_owner
+ * - sys_admin
  */
 
 "use client";
@@ -50,17 +47,17 @@ import {
  */
 interface IdpConfig {
   id: string;
-  provider_type: "okta";
-  display_name: string;
+  providerType: "okta";
+  displayName: string;
   config: {
-    client_id?: string;
+    clientId?: string;
     issuer?: string;
-    jwks_uri?: string;
+    jwksUri?: string;
   };
-  is_active: boolean;
-  is_configured: boolean;
-  created_at: string;
-  updated_at: string;
+  isActive: boolean;
+  isConfigured: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /**
@@ -197,7 +194,7 @@ export function IdpConfigCard({ apiClient, onIdpChanged }: IdpConfigCardProps) {
               key={config.id}
               config={config}
               onEdit={() => setEditingConfig(config)}
-              onActivate={() => handleActivate(config.provider_type)}
+              onActivate={() => handleActivate(config.providerType)}
               saving={saving}
             />
           ))}
@@ -251,12 +248,12 @@ function IdpProviderRow({
             alignItems: "center",
             justifyContent: "center",
             bgcolor:
-              config.provider_type === "okta"
+              config.providerType === "okta"
                 ? "primary.light"
                 : "secondary.light",
           }}
         >
-          {config.provider_type === "okta" ? (
+          {config.providerType === "okta" ? (
             <VpnKey color="primary" />
           ) : (
             <Shield color="secondary" />
@@ -266,12 +263,12 @@ function IdpProviderRow({
         <Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
             <Typography variant="subtitle1" fontWeight="medium">
-              {config.display_name}
+              {config.displayName}
             </Typography>
-            {config.is_active && (
+            {config.isActive && (
               <Chip label="Active" color="success" size="small" />
             )}
-            {config.is_configured ? (
+            {config.isConfigured ? (
               <Chip
                 icon={<CheckCircle />}
                 label="Configured"
@@ -305,7 +302,7 @@ function IdpProviderRow({
         >
           Configure
         </Button>
-        {config.is_configured && !config.is_active && (
+        {config.isConfigured && !config.isActive && (
           <Button
             variant="contained"
             size="small"
@@ -341,12 +338,12 @@ function IdpEditDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(config.provider_type, formData);
+    onSave(config.providerType, formData);
   };
 
   return (
     <Dialog open={true} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Configure {config.display_name}</DialogTitle>
+      <DialogTitle>Configure {config.displayName}</DialogTitle>
       <DialogContent>
         <DialogContentText sx={{ mb: 2 }}>
           Enter your Okta OIDC credentials. Client secrets are stored securely in AWS Secrets Manager.
@@ -387,9 +384,9 @@ function OktaConfigFields({
         fullWidth
         label="Client ID"
         aria-label="Okta Client ID"
-        value={formData.client_id || ""}
+        value={formData.clientId || ""}
         onChange={(e) =>
-          setFormData({ ...formData, client_id: e.target.value })
+          setFormData({ ...formData, clientId: e.target.value })
         }
         placeholder="0oax0eaf3bgW5NP73697"
         required
@@ -410,8 +407,8 @@ function OktaConfigFields({
         fullWidth
         label="JWKS URI (optional)"
         aria-label="JWKS URI"
-        value={formData.jwks_uri || ""}
-        onChange={(e) => setFormData({ ...formData, jwks_uri: e.target.value })}
+        value={formData.jwksUri || ""}
+        onChange={(e) => setFormData({ ...formData, jwksUri: e.target.value })}
         placeholder="https://your-domain.okta.com/oauth2/default/v1/keys"
         helperText="Auto-derived from issuer if not provided"
       />

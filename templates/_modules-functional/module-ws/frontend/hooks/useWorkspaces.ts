@@ -72,7 +72,7 @@ export function useWorkspaces(options: UseWorkspacesOptions = {}): UseWorkspaces
       tags: [],
     },
     initialSort = {
-      field: "updated_at",
+      field: "updatedAt",
       direction: "desc",
     },
     pageSize = DEFAULT_PAGE_SIZE,
@@ -112,10 +112,10 @@ export function useWorkspaces(options: UseWorkspacesOptions = {}): UseWorkspaces
       const client = createWorkspaceApiClient(session.accessToken as string);
 
       const params: WorkspaceQueryParams = {
-        org_id: orgId,
+        orgId: orgId,
         limit: pageSize,
         offset: page * pageSize,
-        include_deleted: includeDeleted,
+        includeDeleted: includeDeleted,
       };
 
       // Apply filters
@@ -123,7 +123,7 @@ export function useWorkspaces(options: UseWorkspacesOptions = {}): UseWorkspaces
         params.status = filters.status;
       }
       if (filters.favoritesOnly) {
-        params.favorites_only = true;
+        params.favoritesOnly = true;
       }
       if (filters.search) {
         params.search = filters.search;
@@ -140,8 +140,8 @@ export function useWorkspaces(options: UseWorkspacesOptions = {}): UseWorkspaces
       // Sort favorites first if enabled
       if (filters.favoritesOnly) {
         sorted = sorted.sort((a, b) => {
-          if (a.is_favorited && !b.is_favorited) return -1;
-          if (!a.is_favorited && b.is_favorited) return 1;
+          if (a.isFavorited && !b.isFavorited) return -1;
+          if (!a.isFavorited && b.isFavorited) return 1;
           return 0;
         });
       }

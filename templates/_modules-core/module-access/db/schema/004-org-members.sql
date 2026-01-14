@@ -4,6 +4,7 @@
 -- Purpose: Track organization membership and roles
 -- Source: Extracted from pm-app-stack production database Dec 2025
 -- Updated: December 20, 2025 - Updated FK reference profiles → user_profiles
+-- Updated: January 13, 2026 - Renamed role → org_role
 
 -- =============================================
 -- ORG_MEMBERS TABLE
@@ -13,7 +14,7 @@ CREATE TABLE IF NOT EXISTS public.org_members (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id UUID NOT NULL REFERENCES public.orgs(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES public.user_profiles(user_id) ON DELETE CASCADE,
-    role TEXT NOT NULL,
+    org_role TEXT NOT NULL DEFAULT 'org_user',
     added_by UUID,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -28,8 +29,8 @@ CREATE TABLE IF NOT EXISTS public.org_members (
 
 CREATE INDEX IF NOT EXISTS idx_org_members_org_id ON public.org_members(org_id);
 CREATE INDEX IF NOT EXISTS idx_org_members_user_id ON public.org_members(user_id);
-CREATE INDEX IF NOT EXISTS idx_org_members_role ON public.org_members(role);
-CREATE INDEX IF NOT EXISTS idx_org_members_org_role ON public.org_members(org_id, role);
+CREATE INDEX IF NOT EXISTS idx_org_members_org_role ON public.org_members(org_role);
+CREATE INDEX IF NOT EXISTS idx_org_members_org_org_role ON public.org_members(org_id, org_role);
 
 -- =============================================
 -- COMMENTS
@@ -38,7 +39,7 @@ CREATE INDEX IF NOT EXISTS idx_org_members_org_role ON public.org_members(org_id
 COMMENT ON TABLE public.org_members IS 'Organization membership with roles';
 COMMENT ON COLUMN public.org_members.org_id IS 'Foreign key to orgs table';
 COMMENT ON COLUMN public.org_members.user_id IS 'Foreign key to user_profiles.user_id';
-COMMENT ON COLUMN public.org_members.role IS 'Organization-specific role: org_owner, org_admin, org_user';
+COMMENT ON COLUMN public.org_members.org_role IS 'Organization-specific role: org_owner, org_admin, org_user';
 COMMENT ON COLUMN public.org_members.added_by IS 'User who added this member';
 
 -- =============================================
@@ -70,7 +71,7 @@ CREATE POLICY "Org owners can add members" ON public.org_members
             SELECT om.org_id 
             FROM public.org_members om
             WHERE om.user_id = auth.uid()
-              AND om.role = 'org_owner'
+              AND om.org_role = 'org_owner'
         )
     );
 
@@ -84,7 +85,7 @@ CREATE POLICY "Org owners can update members" ON public.org_members
             SELECT om.org_id 
             FROM public.org_members om
             WHERE om.user_id = auth.uid()
-              AND om.role = 'org_owner'
+              AND om.org_role = 'org_owner'
         )
     )
     WITH CHECK (
@@ -92,7 +93,7 @@ CREATE POLICY "Org owners can update members" ON public.org_members
             SELECT om.org_id 
             FROM public.org_members om
             WHERE om.user_id = auth.uid()
-              AND om.role = 'org_owner'
+              AND om.org_role = 'org_owner'
         )
     );
 
@@ -106,7 +107,7 @@ CREATE POLICY "Org owners can remove members" ON public.org_members
             SELECT om.org_id 
             FROM public.org_members om
             WHERE om.user_id = auth.uid()
-              AND om.role = 'org_owner'
+              AND om.org_role = 'org_owner'
         )
     );
 

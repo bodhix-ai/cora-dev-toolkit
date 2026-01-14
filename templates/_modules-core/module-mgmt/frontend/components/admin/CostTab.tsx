@@ -61,8 +61,8 @@ export function CostTab(): React.ReactElement {
       {/* Cost Calculator */}
       {!loading && !error && config && (
         <CostCalculator
-          schedule={config.weekly_schedule}
-          intervalMinutes={config.interval_minutes}
+          schedule={config.weeklySchedule}
+          intervalMinutes={config.intervalMinutes}
           enabled={config.enabled}
         />
       )}

@@ -57,7 +57,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         user_id = user_info['user_id']
         
         # Extract HTTP method and path parameters
-        http_method = event['httpMethod']
+        # Support both API Gateway v1 and v2 formats
+        http_method = event.get('httpMethod') or event.get('requestContext', {}).get('http', {}).get('method')
+        if not http_method:
+            return common.bad_request_response('HTTP method not found in event')
+        
         path_params = event.get('pathParameters', {})
         
         # Organization ID is required
@@ -113,22 +117,38 @@ def handle_list_members(user_id: str, org_id: str, event: Dict[str, Any]) -> Dic
     - limit: Number of results (default: 100)
     - offset: Pagination offset (default: 0)
     
-    User must be a member to view members
+    Platform admins can view any org's members.
+    Regular users must be members to view members.
     """
     query_params = event.get('queryStringParameters', {}) or {}
     
     try:
-        # Check if user is member
-        user_membership = common.find_one(
-            table='org_members',
-            filters={
-                'org_id': org_id,
-                'user_id': user_id
-            }
+        # Convert Okta user_id to Supabase user_id
+        supabase_user_id = get_supabase_user_id_from_okta_uid(user_id)
+        if not supabase_user_id:
+            raise common.UnauthorizedError('User not found in system')
+        
+        # Get user's profile to check platform role
+        profile = common.find_one(
+            table='user_profiles',
+            filters={'user_id': supabase_user_id}
         )
         
-        if not user_membership:
-            raise common.ForbiddenError('You do not have access to this organization')
+        is_sys_admin = profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']
+        
+        # Sys admins can view any org's members
+        if not is_sys_admin:
+            # Check if user is member
+            user_membership = common.find_one(
+                table='org_members',
+                filters={
+                    'org_id': org_id,
+                    'user_id': supabase_user_id
+                }
+            )
+            
+            if not user_membership:
+                raise common.ForbiddenError('You do not have access to this organization')
         
         # Build filters
         filters = {'org_id': org_id}
@@ -136,7 +156,7 @@ def handle_list_members(user_id: str, org_id: str, event: Dict[str, Any]) -> Dic
         # Optional filters        
         if 'role' in query_params:
             role = common.validate_org_role(query_params['role'])
-            filters['role'] = role
+            filters['org_role'] = role
         
         # Pagination
         limit = common.validate_integer(
@@ -203,19 +223,24 @@ def handle_add_member(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
     role = common.validate_org_role(body.get('role', 'org_user'))
     
     try:
+        # Convert Okta user_id to Supabase user_id
+        supabase_user_id = get_supabase_user_id_from_okta_uid(user_id)
+        if not supabase_user_id:
+            raise common.UnauthorizedError('User not found in system')
+        
         # Check if user is org_owner (required for membership management)
         user_membership = common.find_one(
             table='org_members',
             filters={
                 'org_id': org_id,
-                'user_id': user_id
+                'user_id': supabase_user_id
             }
         )
         
         if not user_membership:
             raise common.ForbiddenError('You do not have access to this organization')
         
-        if user_membership['role'] != 'org_owner':
+        if user_membership['org_role'] != 'org_owner':
             raise common.ForbiddenError('Only org owners can manage membership')
         
         # Find user by email
@@ -247,8 +272,8 @@ def handle_add_member(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
             data={
                 'org_id': org_id,
                 'user_id': target_user_id,
-                'role': role,
-                'added_by': user_id
+                'org_role': role,
+                'added_by': supabase_user_id
             }
         )
         
@@ -288,19 +313,24 @@ def handle_update_member(
     new_role = common.validate_org_role(body.get('role'))
     
     try:
+        # Convert Okta user_id to Supabase user_id
+        supabase_user_id = get_supabase_user_id_from_okta_uid(user_id)
+        if not supabase_user_id:
+            raise common.UnauthorizedError('User not found in system')
+        
         # Check if user is org_owner
         user_membership = common.find_one(
             table='org_members',
             filters={
                 'org_id': org_id,
-                'user_id': user_id
+                'user_id': supabase_user_id
             }
         )
         
         if not user_membership:
             raise common.ForbiddenError('You do not have access to this organization')
         
-        if user_membership['role'] != 'org_owner':
+        if user_membership['org_role'] != 'org_owner':
             raise common.ForbiddenError('Only org owners can manage membership')
         
         # Get target member
@@ -313,13 +343,13 @@ def handle_update_member(
             raise common.NotFoundError('Member not found')
         
         # Prevent self-demotion if last owner
-        if target_member['user_id'] == user_id and new_role != 'org_owner':
+        if target_member['user_id'] == supabase_user_id and new_role != 'org_owner':
             # Check if there are other owners
             owners = common.find_many(
                 table='org_members',
                 filters={
                     'org_id': org_id,
-                    'role': 'org_owner'
+                    'org_role': 'org_owner'
                 }
             )
             
@@ -332,7 +362,7 @@ def handle_update_member(
         updated_member = common.update_one(
             table='org_members',
             filters={'id': member_id},
-            data={'role': new_role}
+            data={'org_role': new_role}
         )
         
         # Get profile info
@@ -364,19 +394,24 @@ def handle_remove_member(user_id: str, org_id: str, member_id: str) -> Dict[str,
     member_id = common.validate_uuid(member_id, 'member_id')
     
     try:
+        # Convert Okta user_id to Supabase user_id
+        supabase_user_id = get_supabase_user_id_from_okta_uid(user_id)
+        if not supabase_user_id:
+            raise common.UnauthorizedError('User not found in system')
+        
         # Check if user is org_owner
         user_membership = common.find_one(
             table='org_members',
             filters={
                 'org_id': org_id,
-                'user_id': user_id
+                'user_id': supabase_user_id
             }
         )
         
         if not user_membership:
             raise common.ForbiddenError('You do not have access to this organization')
         
-        if user_membership['role'] != 'org_owner':
+        if user_membership['org_role'] != 'org_owner':
             raise common.ForbiddenError('Only org owners can manage membership')
         
         # Get target member
@@ -389,12 +424,12 @@ def handle_remove_member(user_id: str, org_id: str, member_id: str) -> Dict[str,
             raise common.NotFoundError('Member not found')
         
         # Prevent removing last owner
-        if target_member['role'] == 'org_owner':
+        if target_member['org_role'] == 'org_owner':
             owners = common.find_many(
                 table='org_members',
                 filters={
                     'org_id': org_id,
-                    'role': 'org_owner'
+                    'org_role': 'org_owner'
                 }
             )
             

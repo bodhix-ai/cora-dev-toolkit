@@ -206,7 +206,7 @@ Modules MUST use these standard helper functions from org-module:
 
 - `auth.current_user_id()` - Current user UUID
 - `auth.current_email()` - Current user email
-- `auth.current_global_role()` - Current user's global role
+- `auth.current_sys_role()` - Current user's sys role
 - `auth.current_org_id()` - Current user's active organization
 
 #### 5. Audit Triggers
@@ -866,7 +866,7 @@ export const accessControlAdminCard: AdminCardConfig = {
   color: "primary.main",
   order: 10,
   context: "platform",
-  requiredRoles: ["platform_owner", "platform_admin"],
+  requiredRoles: ["sys_owner", "sys_admin"],
 };
 ```
 
@@ -938,11 +938,11 @@ export default function AccessControlPage() {
 Admin features must enforce role-based access control:
 
 **Platform Admin:**
-- Required roles: `platform_owner`, `platform_admin`
+- Required roles: `sys_owner`, `sys_admin`
 - Access to: All platform-wide configuration
 
 **Organization Admin:**
-- Required roles: `platform_owner`, `platform_admin`, `org_owner`, `org_admin`
+- Required roles: `sys_owner`, `sys_admin`, `org_owner`, `org_admin`
 - Access to: Organization-specific settings
 
 **Special Cases:**
@@ -956,7 +956,7 @@ When adding admin features to a module:
 **Platform Admin:**
 - [ ] Create `adminCard.tsx` with ONE platform admin card
 - [ ] Set `context: "platform"`
-- [ ] Set `requiredRoles: ["platform_owner", "platform_admin"]`
+- [ ] Set `requiredRoles: ["sys_owner", "sys_admin"]`
 - [ ] Use descriptive functional name (e.g., "Access Control", "AI Enablement")
 - [ ] Create tabbed admin component in `frontend/components/admin/`
 - [ ] Create tab components for each feature area

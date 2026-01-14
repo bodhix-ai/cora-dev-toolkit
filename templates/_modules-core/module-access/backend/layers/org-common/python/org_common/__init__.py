@@ -16,7 +16,7 @@ from .auth import (
     is_org_member, is_org_admin, is_org_owner, is_org_colleague,
     is_project_member, is_project_owner, is_project_admin_or_owner,
     is_project_colleague, is_project_favorited,
-    is_platform_admin, is_provider_active
+    is_sys_admin, is_provider_active
 )
 from .responses import (
     success_response, error_response, created_response, no_content_response,
@@ -26,9 +26,14 @@ from .responses import (
 )
 from .errors import ValidationError, NotFoundError, UnauthorizedError, ForbiddenError
 from .validators import (
-    validate_uuid, validate_email, validate_org_role, validate_global_role,
+    validate_uuid, validate_email, validate_org_role, validate_sys_role,
     validate_string_length, validate_url, validate_required, validate_integer,
     validate_boolean, validate_choices
+)
+from .transform import (
+    snake_to_camel, camel_to_snake,
+    transform_record, transform_records, transform_input,
+    USER_PROFILE_FIELDS, ORG_MEMBER_FIELDS, WORKSPACE_CONFIG_FIELDS, LAMBDA_CONFIG_FIELDS
 )
 
 # Utility function to extract user from event
@@ -162,7 +167,7 @@ __all__ = [
     'is_project_admin_or_owner',
     'is_project_colleague',
     'is_project_favorited',
-    'is_platform_admin',
+    'is_sys_admin',
     'is_provider_active',
     
     # Response builders
@@ -188,7 +193,7 @@ __all__ = [
     'validate_uuid',
     'validate_email',
     'validate_org_role',
-    'validate_global_role',
+    'validate_sys_role',
     'validate_string_length',
     'validate_url',
     'validate_required',
@@ -202,4 +207,15 @@ __all__ = [
     'get_user_from_event',
     'get_supabase_user_id_from_external_uid',
     'get_supabase_user_id_from_okta_uid',  # Deprecated alias
+    
+    # Transform utilities (snake_case <-> camelCase)
+    'snake_to_camel',
+    'camel_to_snake',
+    'transform_record',
+    'transform_records',
+    'transform_input',
+    'USER_PROFILE_FIELDS',
+    'ORG_MEMBER_FIELDS',
+    'WORKSPACE_CONFIG_FIELDS',
+    'LAMBDA_CONFIG_FIELDS',
 ]

@@ -19,6 +19,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 import { useWorkspaceConfig } from "@{{PROJECT_NAME}}/module-ws";
+import { useOrganizationContext, OrgIcon } from "@{{PROJECT_NAME}}/module-access";
 
 /**
  * Sidebar Component - Following ADR-008 CORA Sidebar and Org Selector Standard
@@ -53,6 +54,9 @@ export function Sidebar({ navigation }: SidebarProps) {
   // Get workspace config for dynamic navigation label
   const { config: wsConfig } = useWorkspaceConfig();
   
+  // Get current organization for app branding
+  const { currentOrganization } = useOrganizationContext();
+  
   // Helper function to get dynamic label for navigation items
   const getNavLabel = (item: { href: string; label: string }) => {
     // Override workspace label with config value if available
@@ -75,10 +79,14 @@ export function Sidebar({ navigation }: SidebarProps) {
 
   const drawerContent = (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      {/* Logo/Header */}
-      <Box sx={{ p: 3, borderBottom: 1, borderColor: "divider" }}>
+      {/* Logo/Header - Dynamic App Branding from Organization Settings */}
+      <Box sx={{ p: 3, borderBottom: 1, borderColor: "divider", display: "flex", alignItems: "center", gap: 1.5 }}>
+        <OrgIcon 
+          iconName={currentOrganization?.appIcon} 
+          sx={{ color: "primary.main", fontSize: 28 }}
+        />
         <Typography variant="h6" fontWeight={600}>
-          CORA App
+          {currentOrganization?.appName || currentOrganization?.orgName || "CORA"}
         </Typography>
       </Box>
 

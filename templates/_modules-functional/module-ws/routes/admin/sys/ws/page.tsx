@@ -12,7 +12,7 @@
  * - Configuration: Navigation labels, visual icon picker, color picker, feature flags
  * - Usage Summary: Real API calls to /ws/sys/analytics for cross-org statistics
  * 
- * Access: Platform admins only (platform_owner, platform_admin)
+ * Access: Platform admins only (sys_owner, sys_admin)
  */
 
 import { PlatformAdminConfigPage } from "@{{PROJECT_NAME}}/module-ws";

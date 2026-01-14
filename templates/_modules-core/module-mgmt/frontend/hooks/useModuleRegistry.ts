@@ -317,7 +317,7 @@ export function useModuleRegistry(
         method: "POST",
         body: JSON.stringify({
           module_name: module.moduleName,
-          display_name: module.displayName,
+          displayName: module.displayName,
           description: module.description,
           module_type: module.moduleType,
           tier: module.tier,

@@ -460,7 +460,7 @@ def validate_tables_exist(
     expected_tables = {
         "module-access": ["organizations", "profiles", "organization_memberships"],
         "module-ai": ["ai_providers", "ai_models", "ai_model_validation_history", "ai_model_validation_progress"],
-        "module-mgmt": ["platform_lambda_config", "platform_module_registry", "platform_module_usage", "platform_module_usage_daily"],
+        "module-mgmt": ["sys_lambda_config", "sys_module_registry", "sys_module_usage", "sys_module_usage_daily"],
     }
     
     tables = expected_tables.get(module, [])

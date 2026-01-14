@@ -15,8 +15,8 @@ import org_common as common
 # Get Lambda function name from environment
 LAMBDA_FUNCTION_NAME = os.environ.get('AWS_LAMBDA_FUNCTION_NAME', 'ai-provider-function')
 
-# Platform admin roles
-PLATFORM_ADMIN_ROLES = ['platform_owner', 'platform_admin']
+# System admin roles
+SYS_ADMIN_ROLES = ['sys_owner', 'sys_admin']
 
 # Error categorization patterns
 ERROR_CATEGORIES = {
@@ -78,7 +78,7 @@ def _categorize_error(error_message: str) -> str:
 
 def _check_admin_access(user_id: str) -> bool:
     """
-    Check if user has platform admin access.
+    Check if user has system admin access.
     Returns True if user has access, False otherwise.
     """
     try:
@@ -86,18 +86,18 @@ def _check_admin_access(user_id: str) -> bool:
         if not profile:
             return False
         
-        global_role = profile.get('global_role')
-        return global_role in PLATFORM_ADMIN_ROLES
+        sys_role = profile.get('sys_role')
+        return sys_role in SYS_ADMIN_ROLES
     except Exception as e:
         print(f'Error checking admin access: {str(e)}')
         return False
 
 def _require_admin_access(user_id: str):
     """
-    Require platform admin access, raise ForbiddenError if user doesn't have it.
+    Require system admin access, raise ForbiddenError if user doesn't have it.
     """
     if not _check_admin_access(user_id):
-        raise common.ForbiddenError('Access denied. Platform admin role required.')
+        raise common.ForbiddenError('Access denied. System admin role required.')
 
 
 def get_supabase_user_id_from_okta_uid(okta_uid: str) -> Optional[str]:
@@ -242,7 +242,7 @@ def handle_get_org_ai_config(event: Dict[str, Any], user_id: str, org_id: str) -
         # For each provider, get available models
         config = {
             'providers': [],
-            'total_models': 0
+            'totalModels': 0
         }
         
         for provider in providers:
@@ -256,13 +256,13 @@ def handle_get_org_ai_config(event: Dict[str, Any], user_id: str, org_id: str) -
                 provider_config = {
                     'id': provider['id'],
                     'name': provider['name'],
-                    'display_name': provider.get('display_name'),
-                    'provider_type': provider['provider_type'],
-                    'model_count': len(models),
+                    'displayName': provider.get('display_name'),
+                    'providerType': provider['provider_type'],
+                    'modelCount': len(models),
                     'models': common.format_records(models)
                 }
                 config['providers'].append(provider_config)
-                config['total_models'] += len(models)
+                config['totalModels'] += len(models)
         
         return common.success_response(config)
         
@@ -327,25 +327,25 @@ def handle_get_all(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             provider_with_counts = {
                 'id': provider['id'],
                 'name': provider['name'],
-                'display_name': provider.get('display_name'),
-                'provider_type': provider['provider_type'],
-                'auth_method': provider.get('auth_method', 'secrets_manager'),
-                'credentials_secret_path': provider.get('credentials_secret_path'),
-                'is_active': provider.get('is_active', True),
-                'created_at': provider.get('created_at'),
-                'updated_at': provider.get('updated_at'),
-                'created_by': provider.get('created_by'),
-                'updated_by': provider.get('updated_by'),
-                'model_counts': {
+                'displayName': provider.get('display_name'),
+                'providerType': provider['provider_type'],
+                'authMethod': provider.get('auth_method', 'secrets_manager'),
+                'credentialsSecretPath': provider.get('credentials_secret_path'),
+                'isActive': provider.get('is_active', True),
+                'createdAt': provider.get('created_at'),
+                'updatedAt': provider.get('updated_at'),
+                'createdBy': provider.get('created_by'),
+                'updatedBy': provider.get('updated_by'),
+                'modelCounts': {
                     'total': total,
                     'discovered': discovered,
                     'testing': testing,
                     'available': available,
                     'unavailable': unavailable,
                     'deprecated': deprecated,
-                    'by_category': category_counts
+                    'byCategory': category_counts
                 },
-                'last_validated_at': last_validated_at
+                'lastValidatedAt': last_validated_at
             }
             providers_with_counts.append(provider_with_counts)
         
@@ -378,9 +378,9 @@ def handle_create(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     data = {
         'name': name,
         'provider_type': provider_type,
-        'display_name': body.get('display_name'),
-        'credentials_secret_path': body.get('credentials_secret_path'),
-        'is_active': body.get('is_active', True),
+        'display_name': body.get('display_name') or body.get('displayName'),
+        'credentials_secret_path': body.get('credentials_secret_path') or body.get('credentialsSecretPath'),
+        'is_active': body.get('is_active', True) if 'is_active' in body else body.get('isActive', True),
         'created_by': user_id
     }
     
@@ -711,7 +711,7 @@ def _process_validation_async(
     
     def validate_single_model(model: Dict[str, Any]) -> Dict[str, Any]:
         """Validate a single model and return results."""
-        model_id = model['id']
+        model_db_id = model['id']
         bedrock_model_id = model['model_id']
         
         try:
@@ -731,13 +731,13 @@ def _process_validation_async(
                 test_result = {
                     'success': False,
                     'error': f'Test function raised exception: {str(test_error)}',
-                    'latency_ms': 0
+                    'latencyMs': 0
                 }
             
             # Determine new status and category
             if test_result.get('success'):
                 new_status = 'available'
-                fallback_used = test_result.get('fallback_used', '')
+                fallback_used = test_result.get('fallbackUsed', '')
                 if 'inference profile' in fallback_used.lower():
                     validation_category = 'requires_inference_profile'
                 else:
@@ -750,7 +750,7 @@ def _process_validation_async(
             if not test_result['success']:
                 print(f"  ❌ FAILED: {bedrock_model_id} - Category: {validation_category} - Error: {test_result.get('error')}")
             else:
-                fallback_note = test_result.get('fallback_used', '')
+                fallback_note = test_result.get('fallbackUsed', '')
                 if fallback_note:
                     print(f"  ✅ SUCCESS: {bedrock_model_id} ({fallback_note})")
                 else:
@@ -760,7 +760,7 @@ def _process_validation_async(
             try:
                 safe_db_operation(lambda: common.update_one(
                     table='ai_models',
-                    filters={'id': model_id},
+                    filters={'id': model_db_id},
                     data={
                         'status': new_status, 
                         'validation_category': validation_category,
@@ -776,11 +776,11 @@ def _process_validation_async(
                     table='ai_model_validation_history',
                     data={
                         'provider_id': provider_id,
-                        'model_id': model_id,
+                        'model_id': model_db_id,
                         'status': new_status,
                         'validation_category': validation_category,
                         'error_message': test_result.get('error'),
-                        'latency_ms': test_result.get('latency_ms'),
+                        'latency_ms': test_result.get('latencyMs'),
                         'validated_by': user_id
                     }
                 ))
@@ -789,8 +789,8 @@ def _process_validation_async(
             
             # Return result for thread-safe counter updates
             return {
-                'model_id': model_id,
-                'bedrock_model_id': bedrock_model_id,
+                'modelId': model_db_id,
+                'bedrockModelId': bedrock_model_id,
                 'success': test_result['success'],
                 'status': new_status,
                 'category': validation_category
@@ -808,7 +808,7 @@ def _process_validation_async(
             try:
                 common.update_one(
                     table='ai_models',
-                    filters={'id': model_id},
+                    filters={'id': model_db_id},
                     data={
                         'status': 'unavailable',
                         'validation_category': error_category,
@@ -819,7 +819,7 @@ def _process_validation_async(
                     table='ai_model_validation_history',
                     data={
                         'provider_id': provider_id,
-                        'model_id': model_id,
+                        'model_id': model_db_id,
                         'status': 'unavailable',
                         'validation_category': error_category,
                         'error_message': f'Critical error: {str(model_error)}',
@@ -831,8 +831,8 @@ def _process_validation_async(
             
             # Return failure result
             return {
-                'model_id': model_id,
-                'bedrock_model_id': bedrock_model_id,
+                'modelId': model_db_id,
+                'bedrockModelId': bedrock_model_id,
                 'success': False,
                 'status': 'unavailable',
                 'category': error_category
@@ -877,7 +877,7 @@ def _process_validation_async(
                                         'validated_count': validated_count,
                                         'available_count': available_count,
                                         'unavailable_count': unavailable_count,
-                                        'current_model_id': result.get('bedrock_model_id'),
+                                        'current_model_id': result.get('bedrockModelId'),
                                         'last_updated_at': datetime.utcnow().isoformat()
                                     }
                                 ))
@@ -948,7 +948,7 @@ def handle_get_validation_status(user_id: str, provider_id: str) -> Dict[str, An
                 'validated': 0,
                 'available': 0,
                 'unavailable': 0,
-                'current_model_id': None
+                'currentModelId': None
             })
         
         # Sort by started_at descending to get most recent
@@ -966,11 +966,11 @@ def handle_get_validation_status(user_id: str, provider_id: str) -> Dict[str, An
             'validated': latest_progress.get('validated_count', 0),
             'available': latest_progress.get('available_count', 0),
             'unavailable': latest_progress.get('unavailable_count', 0),
-            'current_model_id': latest_progress.get('current_model_id'),
-            'error_message': latest_progress.get('error_message'),
-            'started_at': latest_progress.get('started_at'),
-            'completed_at': latest_progress.get('completed_at'),
-            'last_updated_at': latest_progress.get('last_updated_at')
+            'currentModelId': latest_progress.get('current_model_id'),
+            'errorMessage': latest_progress.get('error_message'),
+            'startedAt': latest_progress.get('started_at'),
+            'completedAt': latest_progress.get('completed_at'),
+            'lastUpdatedAt': latest_progress.get('last_updated_at')
         })
         
     except Exception as e:
@@ -1027,10 +1027,10 @@ def handle_test_model(event: Dict[str, Any], user_id: str, model_id: str) -> Dic
         
         return common.success_response({
             'success': test_result['success'],
-            'model_id': model['model_id'],
-            'test_prompt': test_prompt,
+            'modelId': model['model_id'],
+            'testPrompt': test_prompt,
             'response': test_result.get('response'),
-            'latency_ms': test_result.get('latency_ms'),
+            'latencyMs': test_result.get('latencyMs'),
             'error': test_result.get('error')
         })
         
@@ -1054,7 +1054,7 @@ def _get_provider_credentials(provider: Dict[str, Any]) -> Dict[str, Any]:
         if not region:
             raise ValueError('AWS_REGION environment variable is not set. This should be automatically provided by AWS Lambda.')
         return {
-            'use_iam_role': True,
+            'useIamRole': True,
             'region': region
         }
     
@@ -1067,7 +1067,7 @@ def _get_provider_credentials(provider: Dict[str, Any]) -> Dict[str, Any]:
         if not region:
             raise ValueError('AWS_REGION environment variable is not set. This should be automatically provided by AWS Lambda.')
         return {
-            'use_iam_role': True,
+            'useIamRole': True,
             'region': region
         }
     
@@ -1121,7 +1121,7 @@ def _discover_bedrock_models(credentials: Dict[str, Any]) -> List[Dict[str, Any]
     Includes both foundation models and inference profiles.
     """
     region = credentials.get('region', 'us-east-1')
-    use_iam_role = credentials.get('use_iam_role', True)
+    use_iam_role = credentials.get('useIamRole', True)
     
     # Initialize Bedrock client
     if use_iam_role:
@@ -1226,8 +1226,8 @@ def _parse_bedrock_inference_profile(profile_summary: Dict[str, Any], region: st
             'embedding': supports_embeddings,
             'vision': supports_vision,
             'streaming': True,  # Inference profiles support streaming
-            'max_tokens': max_tokens,
-            'embedding_dimensions': 0
+            'maxTokens': max_tokens,
+            'embeddingDimensions': 0
         },
         'cost_per_1k_tokens': cost_per_1k_tokens,
         'metadata': {
@@ -1295,8 +1295,8 @@ def _parse_bedrock_model(model_summary: Dict[str, Any], region: str) -> Optional
             'embedding': supports_embeddings,
             'vision': supports_vision,
             'streaming': 'STREAMING' in model_summary.get('inferenceTypesSupported', []),
-            'max_tokens': max_tokens,
-            'embedding_dimensions': embedding_dimensions
+            'maxTokens': max_tokens,
+            'embeddingDimensions': embedding_dimensions
         },
         'cost_per_1k_tokens': cost_per_1k_tokens,
         'metadata': {
@@ -1452,7 +1452,7 @@ def _test_bedrock_model_with_fallback(model_id: str, credentials: Dict[str, Any]
         print(f"    → Detected embedding model: {model_id}")
         result = _test_bedrock_embedding_model(model_id, credentials, prompt)
         if result['success']:
-            result['fallback_used'] = 'embedding format'
+            result['fallbackUsed'] = 'embedding format'
         return result
     
     # STEP 2: Detect and route image/video generation models
@@ -1462,8 +1462,8 @@ def _test_bedrock_model_with_fallback(model_id: str, credentials: Dict[str, Any]
         return {
             'success': True,
             'response': 'Image/video generation model - validated via discovery',
-            'latency_ms': 0,
-            'fallback_used': 'image generation model'
+            'latencyMs': 0,
+            'fallbackUsed': 'image generation model'
         }
     
     # STEP 2b: Detect and route audio models (Nova Sonic, etc.)
@@ -1473,8 +1473,8 @@ def _test_bedrock_model_with_fallback(model_id: str, credentials: Dict[str, Any]
         return {
             'success': True,
             'response': 'Audio model - validated via discovery',
-            'latency_ms': 0,
-            'fallback_used': 'audio model'
+            'latencyMs': 0,
+            'fallbackUsed': 'audio model'
         }
     
     # STEP 3: Detect model family and use appropriate format
@@ -1484,7 +1484,7 @@ def _test_bedrock_model_with_fallback(model_id: str, credentials: Dict[str, Any]
         print(f"    → Detected Nova model: {model_id}, using Converse API")
         result = _test_bedrock_model_converse_api(model_id, credentials, prompt)
         if result['success']:
-            result['fallback_used'] = 'Converse API (Nova)'
+            result['fallbackUsed'] = 'Converse API (Nova)'
             return result
         # If Converse fails, fall through to other strategies
     
@@ -1493,7 +1493,7 @@ def _test_bedrock_model_with_fallback(model_id: str, credentials: Dict[str, Any]
         print(f"    → Detected Titan text model: {model_id}, using Titan format")
         result = _test_bedrock_titan_text_model(model_id, credentials, prompt)
         if result['success']:
-            result['fallback_used'] = 'Titan text format'
+            result['fallbackUsed'] = 'Titan text format'
             return result
         # If Titan format fails, fall through to other strategies
     
@@ -1502,7 +1502,7 @@ def _test_bedrock_model_with_fallback(model_id: str, credentials: Dict[str, Any]
         print(f"    → Detected Llama model: {model_id}, using Llama format")
         result = _test_bedrock_llama_model(model_id, credentials, prompt)
         if result['success']:
-            result['fallback_used'] = 'Llama format'
+            result['fallbackUsed'] = 'Llama format'
             return result
         # If Llama format fails, fall through to other strategies
     
@@ -1511,7 +1511,7 @@ def _test_bedrock_model_with_fallback(model_id: str, credentials: Dict[str, Any]
         print(f"    → Detected Mistral model: {model_id}, using Mistral format")
         result = _test_bedrock_mistral_model(model_id, credentials, prompt)
         if result['success']:
-            result['fallback_used'] = 'Mistral format'
+            result['fallbackUsed'] = 'Mistral format'
             return result
         # If Mistral format fails, fall through to other strategies
     
@@ -1519,7 +1519,7 @@ def _test_bedrock_model_with_fallback(model_id: str, credentials: Dict[str, Any]
     result = _test_bedrock_model_messages_format(model_id, credentials, prompt)
     
     if result['success']:
-        result['fallback_used'] = 'messages format'
+        result['fallbackUsed'] = 'messages format'
         return result
     
     # STEP 5: Check error patterns for special cases
@@ -1532,8 +1532,8 @@ def _test_bedrock_model_with_fallback(model_id: str, credentials: Dict[str, Any]
         return {
             'success': True,
             'response': 'Available via inference profile routing',
-            'latency_ms': 0,
-            'fallback_used': 'inference profile required'
+            'latencyMs': 0,
+            'fallbackUsed': 'inference profile required'
         }
     
     # Marketplace subscription required
@@ -1548,7 +1548,7 @@ def _test_bedrock_model_with_fallback(model_id: str, credentials: Dict[str, Any]
         print(f"    → Retrying {model_id} with foundation model format...")
         result = _test_bedrock_model(model_id, credentials, prompt)
         if result['success']:
-            result['fallback_used'] = 'foundation format'
+            result['fallbackUsed'] = 'foundation format'
         return result
     
     # No strategy worked - return original error
@@ -1563,7 +1563,7 @@ def _test_bedrock_model_converse_api(model_id: str, credentials: Dict[str, Any],
     from botocore.config import Config
     
     region = credentials.get('region', 'us-east-1')
-    use_iam_role = credentials.get('use_iam_role', True)
+    use_iam_role = credentials.get('useIamRole', True)
     
     boto_config = Config(
         read_timeout=30,
@@ -1618,7 +1618,7 @@ def _test_bedrock_model_converse_api(model_id: str, credentials: Dict[str, Any],
         return {
             'success': True,
             'response': response_text,
-            'latency_ms': latency_ms
+            'latencyMs': latency_ms
         }
         
     except Exception as e:
@@ -1626,7 +1626,7 @@ def _test_bedrock_model_converse_api(model_id: str, credentials: Dict[str, Any],
         return {
             'success': False,
             'error': str(e),
-            'latency_ms': latency_ms
+            'latencyMs': latency_ms
         }
 
 def _test_bedrock_titan_text_model(model_id: str, credentials: Dict[str, Any], prompt: str) -> Dict[str, Any]:
@@ -1637,7 +1637,7 @@ def _test_bedrock_titan_text_model(model_id: str, credentials: Dict[str, Any], p
     from botocore.config import Config
     
     region = credentials.get('region', 'us-east-1')
-    use_iam_role = credentials.get('use_iam_role', True)
+    use_iam_role = credentials.get('useIamRole', True)
     
     boto_config = Config(
         read_timeout=30,
@@ -1694,7 +1694,7 @@ def _test_bedrock_titan_text_model(model_id: str, credentials: Dict[str, Any], p
         return {
             'success': True,
             'response': response_text,
-            'latency_ms': latency_ms
+            'latencyMs': latency_ms
         }
         
     except Exception as e:
@@ -1702,7 +1702,7 @@ def _test_bedrock_titan_text_model(model_id: str, credentials: Dict[str, Any], p
         return {
             'success': False,
             'error': str(e),
-            'latency_ms': latency_ms
+            'latencyMs': latency_ms
         }
 
 def _test_bedrock_llama_model(model_id: str, credentials: Dict[str, Any], prompt: str) -> Dict[str, Any]:
@@ -1713,7 +1713,7 @@ def _test_bedrock_llama_model(model_id: str, credentials: Dict[str, Any], prompt
     from botocore.config import Config
     
     region = credentials.get('region', 'us-east-1')
-    use_iam_role = credentials.get('use_iam_role', True)
+    use_iam_role = credentials.get('useIamRole', True)
     
     boto_config = Config(
         read_timeout=30,
@@ -1764,7 +1764,7 @@ def _test_bedrock_llama_model(model_id: str, credentials: Dict[str, Any], prompt
         return {
             'success': True,
             'response': response_text,
-            'latency_ms': latency_ms
+            'latencyMs': latency_ms
         }
         
     except Exception as e:
@@ -1772,7 +1772,7 @@ def _test_bedrock_llama_model(model_id: str, credentials: Dict[str, Any], prompt
         return {
             'success': False,
             'error': str(e),
-            'latency_ms': latency_ms
+            'latencyMs': latency_ms
         }
 
 def _test_bedrock_mistral_model(model_id: str, credentials: Dict[str, Any], prompt: str) -> Dict[str, Any]:
@@ -1783,7 +1783,7 @@ def _test_bedrock_mistral_model(model_id: str, credentials: Dict[str, Any], prom
     from botocore.config import Config
     
     region = credentials.get('region', 'us-east-1')
-    use_iam_role = credentials.get('use_iam_role', True)
+    use_iam_role = credentials.get('useIamRole', True)
     
     boto_config = Config(
         read_timeout=30,
@@ -1834,7 +1834,7 @@ def _test_bedrock_mistral_model(model_id: str, credentials: Dict[str, Any], prom
         return {
             'success': True,
             'response': response_text,
-            'latency_ms': latency_ms
+            'latencyMs': latency_ms
         }
         
     except Exception as e:
@@ -1842,7 +1842,7 @@ def _test_bedrock_mistral_model(model_id: str, credentials: Dict[str, Any], prom
         return {
             'success': False,
             'error': str(e),
-            'latency_ms': latency_ms
+            'latencyMs': latency_ms
         }
 
 def _test_bedrock_embedding_model(model_id: str, credentials: Dict[str, Any], prompt: str) -> Dict[str, Any]:
@@ -1854,7 +1854,7 @@ def _test_bedrock_embedding_model(model_id: str, credentials: Dict[str, Any], pr
     from botocore.config import Config
     
     region = credentials.get('region', 'us-east-1')
-    use_iam_role = credentials.get('use_iam_role', True)
+    use_iam_role = credentials.get('useIamRole', True)
     
     # Configure timeout - 30 seconds per model test to prevent hanging
     boto_config = Config(
@@ -1921,7 +1921,7 @@ def _test_bedrock_embedding_model(model_id: str, credentials: Dict[str, Any], pr
         return {
             'success': True,
             'response': response_text,
-            'latency_ms': latency_ms
+            'latencyMs': latency_ms
         }
         
     except Exception as e:
@@ -1929,7 +1929,7 @@ def _test_bedrock_embedding_model(model_id: str, credentials: Dict[str, Any], pr
         return {
             'success': False,
             'error': str(e),
-            'latency_ms': latency_ms
+            'latencyMs': latency_ms
         }
 
 def _test_bedrock_model_messages_format(model_id: str, credentials: Dict[str, Any], prompt: str) -> Dict[str, Any]:
@@ -1941,7 +1941,7 @@ def _test_bedrock_model_messages_format(model_id: str, credentials: Dict[str, An
     from botocore.config import Config
     
     region = credentials.get('region', 'us-east-1')
-    use_iam_role = credentials.get('use_iam_role', True)
+    use_iam_role = credentials.get('useIamRole', True)
     
     # Configure timeout - 30 seconds per model test to prevent hanging
     boto_config = Config(
@@ -2009,7 +2009,7 @@ def _test_bedrock_model_messages_format(model_id: str, credentials: Dict[str, An
         return {
             'success': True,
             'response': response_text,
-            'latency_ms': latency_ms
+            'latencyMs': latency_ms
         }
         
     except Exception as e:
@@ -2017,7 +2017,7 @@ def _test_bedrock_model_messages_format(model_id: str, credentials: Dict[str, An
         return {
             'success': False,
             'error': str(e),
-            'latency_ms': latency_ms
+            'latencyMs': latency_ms
         }
 
 def _test_bedrock_model(model_id: str, credentials: Dict[str, Any], prompt: str) -> Dict[str, Any]:
@@ -2029,7 +2029,7 @@ def _test_bedrock_model(model_id: str, credentials: Dict[str, Any], prompt: str)
     from botocore.config import Config
     
     region = credentials.get('region', 'us-east-1')
-    use_iam_role = credentials.get('use_iam_role', True)
+    use_iam_role = credentials.get('useIamRole', True)
     
     # Configure timeout - 30 seconds per model test to prevent hanging
     boto_config = Config(
@@ -2123,7 +2123,7 @@ def _test_bedrock_model(model_id: str, credentials: Dict[str, Any], prompt: str)
         return {
             'success': True,
             'response': response_text,
-            'latency_ms': latency_ms
+            'latencyMs': latency_ms
         }
         
     except Exception as e:
@@ -2131,5 +2131,5 @@ def _test_bedrock_model(model_id: str, credentials: Dict[str, Any], prompt: str)
         return {
             'success': False,
             'error': str(e),
-            'latency_ms': latency_ms
+            'latencyMs': latency_ms
         }

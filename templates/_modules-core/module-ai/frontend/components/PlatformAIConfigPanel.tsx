@@ -66,10 +66,10 @@ export const PlatformAIConfigPanel: React.FC<PlatformAIConfigPanelProps> = ({
     try {
       // Filter out null values to match expected type
       const configToSave = {
-        default_embedding_model_id:
-          localConfig.default_embedding_model_id || undefined,
-        default_chat_model_id: localConfig.default_chat_model_id || undefined,
-        system_prompt: localConfig.system_prompt || undefined,
+        defaultEmbeddingModelId:
+          localConfig.defaultEmbeddingModelId || undefined,
+        defaultChatModelId: localConfig.defaultChatModelId || undefined,
+        systemPrompt: localConfig.systemPrompt || undefined,
       };
       await updateConfig(configToSave);
       setSuccess(true);
@@ -103,15 +103,15 @@ export const PlatformAIConfigPanel: React.FC<PlatformAIConfigPanelProps> = ({
     return <Alert severity="error">{error}</Alert>;
   }
 
-  const chatModels = deployments?.filter((d) => d.supports_chat) || [];
+  const chatModels = deployments?.filter((d) => d.supportsChat) || [];
   const embeddingModels =
-    deployments?.filter((d) => d.supports_embeddings) || [];
+    deployments?.filter((d) => d.supportsEmbeddings) || [];
 
   const selectedChatModel = chatModels.find(
-    (m) => m.id === localConfig?.default_chat_model_id
+    (m) => m.id === localConfig?.defaultChatModelId
   );
   const selectedEmbeddingModel = embeddingModels.find(
-    (m) => m.id === localConfig?.default_embedding_model_id
+    (m) => m.id === localConfig?.defaultEmbeddingModelId
   );
 
   return (
@@ -134,7 +134,7 @@ export const PlatformAIConfigPanel: React.FC<PlatformAIConfigPanelProps> = ({
               </Button>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                 {selectedChatModel
-                  ? `${selectedChatModel.model_name} (${selectedChatModel.provider})`
+                  ? `${selectedChatModel.modelName} (${selectedChatModel.provider})`
                   : "None selected"}
               </Typography>
             </Box>
@@ -148,18 +148,18 @@ export const PlatformAIConfigPanel: React.FC<PlatformAIConfigPanelProps> = ({
               </Button>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                 {selectedEmbeddingModel
-                  ? `${selectedEmbeddingModel.model_name} (${selectedEmbeddingModel.provider})`
+                  ? `${selectedEmbeddingModel.modelName} (${selectedEmbeddingModel.provider})`
                   : "None selected"}
               </Typography>
             </Box>
 
             <TextField
-              id="system_prompt"
-              name="system_prompt"
+              id="systemPrompt"
+              name="systemPrompt"
               label="System Prompt"
               multiline
               rows={4}
-              value={localConfig?.system_prompt || ""}
+              value={localConfig?.systemPrompt || ""}
               onChange={handleChange}
               variant="outlined"
               fullWidth
@@ -191,7 +191,7 @@ export const PlatformAIConfigPanel: React.FC<PlatformAIConfigPanelProps> = ({
         models={chatModels}
         onSelectModel={(modelId) => {
           if (localConfig) {
-            setLocalConfig({ ...localConfig, default_chat_model_id: modelId });
+            setLocalConfig({ ...localConfig, defaultChatModelId: modelId });
           }
           setChatModalOpen(false);
         }}
@@ -205,7 +205,7 @@ export const PlatformAIConfigPanel: React.FC<PlatformAIConfigPanelProps> = ({
           if (localConfig) {
             setLocalConfig({
               ...localConfig,
-              default_embedding_model_id: modelId,
+              defaultEmbeddingModelId: modelId,
             });
           }
           setEmbeddingModalOpen(false);

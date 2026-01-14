@@ -178,6 +178,13 @@ class CoraValidator:
             "supports": ["project"],
             "cli_style": "click_env",  # --path /path --output json + requires .env
         },
+        "external_uid": {
+            "name": "External UID Validator",
+            "description": "Validates proper external UID to Supabase UUID conversion",
+            "module": "external-uid-validator",
+            "supports": ["project", "module"],
+            "cli_style": "argparse",  # path --format json
+        },
         "cora": {
             "name": "CORA Compliance",
             "description": "Checks backend compliance with CORA standards",
@@ -189,6 +196,27 @@ class CoraValidator:
             "name": "Frontend Compliance",
             "description": "Checks frontend compliance with CORA standards",
             "module": "frontend-compliance-validator",
+            "supports": ["project", "module"],
+            "cli_style": "argparse",
+        },
+        "api_response": {
+            "name": "API Response Validator",
+            "description": "Validates API responses use camelCase keys",
+            "module": "api-response-validator",
+            "supports": ["project", "module"],
+            "cli_style": "argparse",
+        },
+        "role_naming": {
+            "name": "Role Naming Validator",
+            "description": "Validates role naming standards (sys_role, sys_admin, etc.)",
+            "module": "role-naming-validator",
+            "supports": ["project", "module"],
+            "cli_style": "argparse",
+        },
+        "rpc_function": {
+            "name": "RPC Function Validator",
+            "description": "Validates Lambda RPC calls match database function definitions",
+            "module": "rpc-function-validator",
             "supports": ["project", "module"],
             "cli_style": "argparse",
         },

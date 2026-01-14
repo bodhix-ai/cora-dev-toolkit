@@ -19,7 +19,10 @@ CREATE TABLE IF NOT EXISTS public.org_email_domains (
     org_id UUID NOT NULL REFERENCES public.orgs(id) ON DELETE CASCADE,
     domain VARCHAR(255) NOT NULL,
     auto_provision BOOLEAN DEFAULT true,
+    default_role VARCHAR(50) DEFAULT 'org_user',
+    is_verified BOOLEAN DEFAULT false,
     created_by UUID REFERENCES auth.users(id),
+    updated_by UUID REFERENCES auth.users(id),
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     
@@ -63,6 +66,10 @@ CREATE INDEX IF NOT EXISTS idx_org_email_domains_domain
 CREATE INDEX IF NOT EXISTS idx_org_email_domains_org_id 
     ON public.org_email_domains(org_id);
 
+-- Fast lookup for default role during provisioning
+CREATE INDEX IF NOT EXISTS idx_org_email_domains_default_role 
+    ON public.org_email_domains(default_role);
+
 -- Fast lookup during user provisioning (invite checking)
 CREATE INDEX IF NOT EXISTS idx_user_invites_email_status 
     ON public.user_invites(email, status) 
@@ -90,7 +97,7 @@ DROP POLICY IF EXISTS "org_email_domains_update" ON public.org_email_domains;
 DROP POLICY IF EXISTS "org_email_domains_delete" ON public.org_email_domains;
 
 -- Org members can view their org's email domains
--- Platform admins can view all email domains
+-- Sys admins can view all email domains
 DROP POLICY IF EXISTS "org_email_domains_select" ON public.org_email_domains;
 CREATE POLICY "org_email_domains_select" ON public.org_email_domains
     FOR SELECT 
@@ -103,17 +110,17 @@ CREATE POLICY "org_email_domains_select" ON public.org_email_domains
             WHERE user_id = auth.uid()
         )
         OR
-        -- Platform admins can see all domains
+        -- Sys admins can see all domains
         EXISTS (
             SELECT 1
             FROM public.user_profiles
             WHERE user_id = auth.uid()
-            AND global_role IN ('platform_owner', 'platform_admin')
+            AND sys_role IN ('sys_owner', 'sys_admin')
         )
     );
 
 -- Org owners/admins can insert email domains for their org
--- Platform admins can insert email domains for any org
+-- Sys admins can insert email domains for any org
 DROP POLICY IF EXISTS "org_email_domains_insert" ON public.org_email_domains;
 CREATE POLICY "org_email_domains_insert" ON public.org_email_domains
     FOR INSERT 
@@ -124,20 +131,20 @@ CREATE POLICY "org_email_domains_insert" ON public.org_email_domains
             SELECT org_id 
             FROM public.org_members 
             WHERE user_id = auth.uid() 
-            AND role IN ('org_owner', 'org_admin')
+            AND org_role IN ('org_owner', 'org_admin')
         )
         OR
-        -- Platform admins can add domains to any org
+        -- Sys admins can add domains to any org
         EXISTS (
             SELECT 1 
             FROM public.user_profiles 
             WHERE user_id = auth.uid() 
-            AND global_role IN ('platform_owner', 'platform_admin')
+            AND sys_role IN ('sys_owner', 'sys_admin')
         )
     );
 
 -- Org owners/admins can update email domains for their org
--- Platform admins can update email domains for any org
+-- Sys admins can update email domains for any org
 DROP POLICY IF EXISTS "org_email_domains_update" ON public.org_email_domains;
 CREATE POLICY "org_email_domains_update" ON public.org_email_domains
     FOR UPDATE 
@@ -148,15 +155,15 @@ CREATE POLICY "org_email_domains_update" ON public.org_email_domains
             SELECT org_id 
             FROM public.org_members 
             WHERE user_id = auth.uid() 
-            AND role IN ('org_owner', 'org_admin')
+            AND org_role IN ('org_owner', 'org_admin')
         )
         OR
-        -- Platform admins can update any org's domains
+        -- Sys admins can update any org's domains
         EXISTS (
             SELECT 1 
             FROM public.user_profiles 
             WHERE user_id = auth.uid() 
-            AND global_role IN ('platform_owner', 'platform_admin')
+            AND sys_role IN ('sys_owner', 'sys_admin')
         )
     )
     WITH CHECK (
@@ -165,19 +172,19 @@ CREATE POLICY "org_email_domains_update" ON public.org_email_domains
             SELECT org_id 
             FROM public.org_members 
             WHERE user_id = auth.uid() 
-            AND role IN ('org_owner', 'org_admin')
+            AND org_role IN ('org_owner', 'org_admin')
         )
         OR
         EXISTS (
             SELECT 1 
             FROM public.user_profiles 
             WHERE user_id = auth.uid() 
-            AND global_role IN ('platform_owner', 'platform_admin')
+            AND sys_role IN ('sys_owner', 'sys_admin')
         )
     );
 
 -- Org owners/admins can delete email domains for their org
--- Platform admins can delete email domains for any org
+-- Sys admins can delete email domains for any org
 DROP POLICY IF EXISTS "org_email_domains_delete" ON public.org_email_domains;
 CREATE POLICY "org_email_domains_delete" ON public.org_email_domains
     FOR DELETE 
@@ -188,15 +195,15 @@ CREATE POLICY "org_email_domains_delete" ON public.org_email_domains
             SELECT org_id 
             FROM public.org_members 
             WHERE user_id = auth.uid() 
-            AND role IN ('org_owner', 'org_admin')
+            AND org_role IN ('org_owner', 'org_admin')
         )
         OR
-        -- Platform admins can delete any org's domains
+        -- Sys admins can delete any org's domains
         EXISTS (
             SELECT 1 
             FROM public.user_profiles 
             WHERE user_id = auth.uid() 
-            AND global_role IN ('platform_owner', 'platform_admin')
+            AND sys_role IN ('sys_owner', 'sys_admin')
         )
     );
 
@@ -213,7 +220,7 @@ DROP POLICY IF EXISTS "user_invites_update" ON public.user_invites;
 DROP POLICY IF EXISTS "user_invites_delete" ON public.user_invites;
 
 -- Org members can view invites for their orgs
--- Platform admins can view all invites
+-- Sys admins can view all invites
 -- Users can view invites addressed to them
 DROP POLICY IF EXISTS "user_invites_select" ON public.user_invites;
 CREATE POLICY "user_invites_select" ON public.user_invites
@@ -227,12 +234,12 @@ CREATE POLICY "user_invites_select" ON public.user_invites
             WHERE user_id = auth.uid()
         )
         OR
-        -- Platform admins can see all invites
+        -- Sys admins can see all invites
         EXISTS (
             SELECT 1 
             FROM public.user_profiles 
             WHERE user_id = auth.uid() 
-            AND global_role IN ('platform_owner', 'platform_admin')
+            AND sys_role IN ('sys_owner', 'sys_admin')
         )
         OR
         -- Users can see invites addressed to them
@@ -244,7 +251,7 @@ CREATE POLICY "user_invites_select" ON public.user_invites
     );
 
 -- Org owners/admins can create invites for their org
--- Platform admins can create invites for any org
+-- Sys admins can create invites for any org
 DROP POLICY IF EXISTS "user_invites_insert" ON public.user_invites;
 CREATE POLICY "user_invites_insert" ON public.user_invites
     FOR INSERT 
@@ -255,20 +262,20 @@ CREATE POLICY "user_invites_insert" ON public.user_invites
             SELECT org_id 
             FROM public.org_members 
             WHERE user_id = auth.uid() 
-            AND role IN ('org_owner', 'org_admin')
+            AND org_role IN ('org_owner', 'org_admin')
         )
         OR
-        -- Platform admins can invite to any org
+        -- Sys admins can invite to any org
         EXISTS (
             SELECT 1 
             FROM public.user_profiles 
             WHERE user_id = auth.uid() 
-            AND global_role IN ('platform_owner', 'platform_admin')
+            AND sys_role IN ('sys_owner', 'sys_admin')
         )
     );
 
 -- Org owners/admins can update invites for their org
--- Platform admins can update any invite
+-- Sys admins can update any invite
 DROP POLICY IF EXISTS "user_invites_update" ON public.user_invites;
 CREATE POLICY "user_invites_update" ON public.user_invites
     FOR UPDATE 
@@ -279,15 +286,15 @@ CREATE POLICY "user_invites_update" ON public.user_invites
             SELECT org_id 
             FROM public.org_members 
             WHERE user_id = auth.uid() 
-            AND role IN ('org_owner', 'org_admin')
+            AND org_role IN ('org_owner', 'org_admin')
         )
         OR
-        -- Platform admins can update any invite
+        -- Sys admins can update any invite
         EXISTS (
             SELECT 1 
             FROM public.user_profiles 
             WHERE user_id = auth.uid() 
-            AND global_role IN ('platform_owner', 'platform_admin')
+            AND sys_role IN ('sys_owner', 'sys_admin')
         )
     )
     WITH CHECK (
@@ -296,19 +303,19 @@ CREATE POLICY "user_invites_update" ON public.user_invites
             SELECT org_id 
             FROM public.org_members 
             WHERE user_id = auth.uid() 
-            AND role IN ('org_owner', 'org_admin')
+            AND org_role IN ('org_owner', 'org_admin')
         )
         OR
         EXISTS (
             SELECT 1 
             FROM public.user_profiles 
             WHERE user_id = auth.uid() 
-            AND global_role IN ('platform_owner', 'platform_admin')
+            AND sys_role IN ('sys_owner', 'sys_admin')
         )
     );
 
 -- Org owners/admins can delete invites for their org
--- Platform admins can delete any invite
+-- Sys admins can delete any invite
 DROP POLICY IF EXISTS "user_invites_delete" ON public.user_invites;
 CREATE POLICY "user_invites_delete" ON public.user_invites
     FOR DELETE 
@@ -319,15 +326,15 @@ CREATE POLICY "user_invites_delete" ON public.user_invites
             SELECT org_id 
             FROM public.org_members 
             WHERE user_id = auth.uid() 
-            AND role IN ('org_owner', 'org_admin')
+            AND org_role IN ('org_owner', 'org_admin')
         )
         OR
-        -- Platform admins can delete any invite
+        -- Sys admins can delete any invite
         EXISTS (
             SELECT 1 
             FROM public.user_profiles 
             WHERE user_id = auth.uid() 
-            AND global_role IN ('platform_owner', 'platform_admin')
+            AND sys_role IN ('sys_owner', 'sys_admin')
         )
     );
 
@@ -385,7 +392,7 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS check_expired_invites ON public.user_invites;
 CREATE TRIGGER check_expired_invites
-    AFTER INSERT OR UPDATE ON public.user_invites
+    AFTER INSERT ON public.user_invites
     FOR EACH STATEMENT
     EXECUTE FUNCTION auto_expire_invites();
 
@@ -396,6 +403,9 @@ CREATE TRIGGER check_expired_invites
 COMMENT ON TABLE public.org_email_domains IS 'Email domains that can auto-join organizations during user provisioning';
 COMMENT ON COLUMN public.org_email_domains.domain IS 'Email domain (e.g., acme.com)';
 COMMENT ON COLUMN public.org_email_domains.auto_provision IS 'Whether users with this domain are auto-provisioned into org';
+COMMENT ON COLUMN public.org_email_domains.default_role IS 'Role assigned to users who auto-provision via this domain (org_user, org_admin, org_owner)';
+COMMENT ON COLUMN public.org_email_domains.is_verified IS 'Whether the domain ownership has been verified';
+COMMENT ON COLUMN public.org_email_domains.updated_by IS 'User who last updated this domain configuration';
 
 COMMENT ON TABLE public.user_invites IS 'Pending invitations for users to join organizations';
 COMMENT ON COLUMN public.user_invites.email IS 'Email address of invited user';

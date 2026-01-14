@@ -138,20 +138,20 @@ def extract_request_context(event: Dict[str, Any]) -> Dict[str, str]:
         event: API Gateway event
         
     Returns:
-        Dict with ip_address and user_agent
+        Dict with ipAddress and userAgent
     """
     try:
         ip_address = event.get('requestContext', {}).get('http', {}).get('sourceIp', None)
         user_agent = event.get('requestContext', {}).get('http', {}).get('userAgent', None)
         return {
-            'ip_address': ip_address,
-            'user_agent': user_agent
+            'ipAddress': ip_address,
+            'userAgent': user_agent
         }
     except Exception as e:
         logger.warning(f"Failed to extract request context: {str(e)}")
         return {
-            'ip_address': None,
-            'user_agent': None
+            'ipAddress': None,
+            'userAgent': None
         }
 
 
@@ -190,13 +190,30 @@ def handle_get_profile(user_id: str, user_info: Dict[str, Any], event: Dict[str,
             # Extract request context for session tracking
             request_context = extract_request_context(event)
             profile = auto_provision_user(user_info, request_context)
+        else:
+            # Existing user - create session on every GET /profiles/me call
+            request_context = extract_request_context(event)
+            try:
+                session_id = common.rpc('start_user_session', {
+                    'p_user_id': profile['user_id'],
+                    'p_org_id': profile.get('current_org_id'),
+                    'p_ip_address': request_context.get('ipAddress'),
+                    'p_user_agent': request_context.get('userAgent'),
+                    'p_metadata': {
+                        'login_type': 'profile_fetch',
+                        'sys_role': profile.get('sys_role')
+                    }
+                })
+                logger.info(f"Started session {session_id} for existing user {profile['user_id']}")
+            except Exception as e:
+                logger.warning(f"Failed to start user session: {str(e)}")
         
         # Get user's organizations (using Supabase user_id)
         # Note: org_members.user_id references auth.users(id), not profiles(id)
         orgs = common.find_many(
             table='org_members',
             filters={'user_id': profile['user_id']},
-            select='org_id, role'
+            select='org_id, org_role'
         )
         
         # Format response
@@ -212,7 +229,7 @@ def handle_get_profile(user_id: str, user_info: Dict[str, Any], event: Dict[str,
             org_details = common.find_one(
                 table='orgs',
                 filters={'id': org_membership['org_id']},
-                select='id, name, logo_url'
+                select='id, name, slug, logo_url, app_name, app_icon'
             )
             
             if org_details:
@@ -220,10 +237,12 @@ def handle_get_profile(user_id: str, user_info: Dict[str, Any], event: Dict[str,
                     'orgId': org_membership['org_id'],
                     'orgName': org_details.get('name', 'Unknown'),
                     'orgSlug': org_details.get('slug', ''),
-                    'role': org_membership['role'],
-                    'isOwner': org_membership['role'] == 'org_owner',
+                    'role': org_membership['org_role'],
+                    'isOwner': org_membership['org_role'] == 'org_owner',
                     'joinedAt': org_membership.get('joined_at', org_membership.get('created_at')),
-                    'logoUrl': org_details.get('logo_url')
+                    'logoUrl': org_details.get('logo_url'),
+                    'appName': org_details.get('app_name'),
+                    'appIcon': org_details.get('app_icon')
                 })
         
         result['organizations'] = organizations
@@ -287,20 +306,20 @@ def evaluate_new_user_provisioning(user_info: Dict[str, Any]) -> Dict[str, Any]:
         logger.info(f"No email domain match found for {domain}")
     
     # 3. Rare fallback: First user ever (only runs once)
-    # Check for existing platform_owner instead of counting user_profiles
-    platform_owner = common.find_one(
+    # Check for existing sys_owner instead of counting user_profiles
+    sys_owner = common.find_one(
         table='user_profiles',
-        filters={'global_role': 'platform_owner'}
+        filters={'sys_role': 'sys_owner'}
     )
-    if not platform_owner:
-        logger.info(f"No platform_owner exists - bootstrap condition met for {redacted_email}")
-        return create_platform_owner_with_org(user_info)
+    if not sys_owner:
+        logger.info(f"No sys_owner exists - bootstrap condition met for {redacted_email}")
+        return create_sys_owner_with_org(user_info)
     else:
-        logger.info(f"Platform already initialized (platform_owner exists)")
+        logger.info(f"Platform already initialized (sys_owner exists)")
     
     # 4. No valid path - create profile with requires_invitation flag
     logger.warning(f"Provisioning denied for {redacted_email}: no invite, no domain match, platform already initialized")
-    return create_user_profile(user_info, global_role='platform_user', requires_invitation=True)
+    return create_user_profile(user_info, sys_role='sys_user', requires_invitation=True)
 
 
 def provision_with_invite(user_info: Dict[str, Any], invite: Dict[str, Any]) -> Dict[str, Any]:
@@ -317,7 +336,7 @@ def provision_with_invite(user_info: Dict[str, Any], invite: Dict[str, Any]) -> 
     logger.info(f"Provisioning user with invite: {invite['id']}")
     
     # Create user profile
-    profile = create_user_profile(user_info, global_role='platform_user')
+    profile = create_user_profile(user_info, sys_role='sys_user')
     
     # Add user to invited org with specified role
     common.insert_one(
@@ -325,7 +344,7 @@ def provision_with_invite(user_info: Dict[str, Any], invite: Dict[str, Any]) -> 
         data={
             'org_id': invite['org_id'],
             'user_id': profile['user_id'],
-            'role': invite['role'],
+            'org_role': invite['role'],
             'added_by': invite['invited_by']
         }
     )
@@ -375,7 +394,7 @@ def provision_with_domain(user_info: Dict[str, Any], domain_match: Dict[str, Any
     logger.info(f"Provisioning user with domain match: {domain_match['domain']}")
     
     # Create user profile
-    profile = create_user_profile(user_info, global_role='platform_user')
+    profile = create_user_profile(user_info, sys_role='sys_user')
     
     # Add user to matched org with default role
     common.insert_one(
@@ -383,7 +402,7 @@ def provision_with_domain(user_info: Dict[str, Any], domain_match: Dict[str, Any
         data={
             'org_id': domain_match['org_id'],
             'user_id': profile['user_id'],
-            'role': 'org_user',
+            'org_role': 'org_user',
             'added_by': None  # Auto-provisioned, no human added them
         }
     )
@@ -412,9 +431,9 @@ def provision_with_domain(user_info: Dict[str, Any], domain_match: Dict[str, Any
     return profile
 
 
-def create_platform_owner_with_org(user_info: Dict[str, Any]) -> Dict[str, Any]:
+def create_sys_owner_with_org(user_info: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Create platform owner (first user ever) with Platform Admin organization
+    Create sys owner (first user ever) with Platform Admin organization
     
     This function only runs ONCE when the platform is first initialized.
     Creates the "Platform Admin" organization for platform administration.
@@ -425,10 +444,10 @@ def create_platform_owner_with_org(user_info: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Created profile record
     """
-    logger.info("Creating platform owner (first user - bootstrap)")
+    logger.info("Creating sys owner (first user - bootstrap)")
     
-    # Create user profile with platform_owner role
-    profile = create_user_profile(user_info, global_role='platform_owner')
+    # Create user profile with sys_owner role
+    profile = create_user_profile(user_info, sys_role='sys_owner')
     
     # Create Platform Admin organization (required for UI org context)
     org = common.insert_one(
@@ -448,7 +467,7 @@ def create_platform_owner_with_org(user_info: Dict[str, Any]) -> Dict[str, Any]:
         data={
             'org_id': org['id'],
             'user_id': profile['user_id'],
-            'role': 'org_owner',
+            'org_role': 'org_owner',
             'added_by': profile['user_id']
         }
     )
@@ -460,7 +479,7 @@ def create_platform_owner_with_org(user_info: Dict[str, Any]) -> Dict[str, Any]:
         data={'current_org_id': org['id']}
     )
     
-    logger.info(f"Bootstrap complete: Platform owner created with Platform Admin org {org['id']}")
+    logger.info(f"Bootstrap complete: Sys owner created with Platform Admin org {org['id']}")
     
     # Log auth event
     try:
@@ -477,7 +496,7 @@ def create_platform_owner_with_org(user_info: Dict[str, Any]) -> Dict[str, Any]:
     return profile
 
 
-def create_user_profile(user_info: Dict[str, Any], global_role: str = 'platform_user', requires_invitation: bool = False) -> Dict[str, Any]:
+def create_user_profile(user_info: Dict[str, Any], sys_role: str = 'sys_user', requires_invitation: bool = False) -> Dict[str, Any]:
     """
     Create user in auth.users, user_auth_ext_ids, and user_profiles
     
@@ -485,7 +504,7 @@ def create_user_profile(user_info: Dict[str, Any], global_role: str = 'platform_
     
     Args:
         user_info: User info from JWT (user_id, email, name, etc.)
-        global_role: Global role to assign (default: 'global_user')
+        sys_role: System-level role to assign (default: 'sys_user')
         requires_invitation: Set to True if user was denied auto-provisioning
         
     Returns:
@@ -616,7 +635,7 @@ def create_user_profile(user_info: Dict[str, Any], global_role: str = 'platform_
             'user_id': auth_user_id,
             'email': email,
             'full_name': full_name or email.split('@')[0],  # Use full name from JWT or email prefix
-            'global_role': global_role,  # Use provided global_role parameter
+            'sys_role': sys_role,  # Use provided sys_role parameter
             'requires_invitation': requires_invitation,  # Flag for denied access users
             # Explicitly set audit fields since service role bypasses auth.uid()
             'created_by': auth_user_id,
@@ -634,7 +653,7 @@ def create_user_profile(user_info: Dict[str, Any], global_role: str = 'platform_
         # Partial redaction for debugging
         redacted_email = f"{email[:3]}***@{email.split('@')[-1]}" if email else "***"
         redacted_name = f"{full_name[:3]}***" if full_name else "***"
-        logger.info(f"Created profile for {redacted_email} with name: {redacted_name}, role: {global_role}, requires_invitation: {requires_invitation}")
+        logger.info(f"Created profile for {redacted_email} with name: {redacted_name}, role: {sys_role}, requires_invitation: {requires_invitation}")
         
         # Log auth event for denied access
         if requires_invitation:
@@ -700,11 +719,11 @@ def auto_provision_user(user_info: Dict[str, Any], request_context: Dict[str, st
         session_id = common.rpc('start_user_session', {
             'p_user_id': profile['user_id'],
             'p_org_id': profile.get('current_org_id'),
-            'p_ip_address': request_context.get('ip_address'),
-            'p_user_agent': request_context.get('user_agent'),
+            'p_ip_address': request_context.get('ipAddress'),
+            'p_user_agent': request_context.get('userAgent'),
             'p_metadata': {
                 'provisioning_type': 'auto_provision',
-                'global_role': profile.get('global_role')
+                'sys_role': profile.get('sys_role')
             }
         })
         logger.info(f"Started session {session_id} for user {profile['user_id']}")
@@ -750,11 +769,11 @@ def handle_login(user_id: str, event: Dict[str, Any]) -> Dict[str, Any]:
             session_id = common.rpc('start_user_session', {
                 'p_user_id': supabase_user_id,
                 'p_org_id': profile.get('current_org_id'),
-                'p_ip_address': request_context.get('ip_address'),
-                'p_user_agent': request_context.get('user_agent'),
+                'p_ip_address': request_context.get('ipAddress'),
+                'p_user_agent': request_context.get('userAgent'),
                 'p_metadata': {
                     'login_type': 'manual',
-                    'global_role': profile.get('global_role')
+                    'sys_role': profile.get('sys_role')
                 }
             })
             logger.info(f"Started session {session_id} for user {supabase_user_id}")
@@ -768,16 +787,16 @@ def handle_login(user_id: str, event: Dict[str, Any]) -> Dict[str, Any]:
                 'p_user_email': profile.get('email'),
                 'p_user_id': supabase_user_id,
                 'p_org_id': profile.get('current_org_id'),
-                'p_ip_address': request_context.get('ip_address'),
-                'p_user_agent': request_context.get('user_agent')
+                'p_ip_address': request_context.get('ipAddress'),
+                'p_user_agent': request_context.get('userAgent')
             })
         except Exception as e:
             logger.warning(f"Failed to log login event: {str(e)}")
         
         return common.success_response({
             'message': 'Login successful',
-            'session_id': session_id,
-            'user_id': supabase_user_id
+            'sessionId': session_id,
+            'userId': supabase_user_id
         })
         
     except Exception as e:
@@ -837,7 +856,7 @@ def handle_logout(user_id: str) -> Dict[str, Any]:
         
         return common.success_response({
             'message': 'Logout successful',
-            'sessions_ended': ended_count
+            'sessionsEnded': ended_count
         })
         
     except Exception as e:
@@ -856,7 +875,7 @@ def handle_update_profile(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
         "current_org_id": "uuid"
     }
     
-    Note: global_role can only be updated by global_admin or global_owner
+    Note: sys_role can only be updated by sys_admin or sys_owner
     """
     # Parse request body
     body = json.loads(event.get('body', '{}'))
@@ -900,16 +919,16 @@ def handle_update_profile(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
             current_org_id = common.validate_uuid(current_org_id, 'current_org_id')
         update_data['current_org_id'] = current_org_id  # None clears selection
     
-    # Check if user is trying to update global_role (accept both camelCase and snake_case)
-    if 'globalRole' in body or 'global_role' in body:
-        global_role_value = body.get('globalRole') or body.get('global_role')
-        # Only platform_admin or platform_owner can update global_role
-        if current_profile['global_role'] not in ['platform_admin', 'platform_owner']:
-            raise common.ForbiddenError('Only platform admins can update global role')
+    # Check if user is trying to update sys_role (accept both camelCase and snake_case)
+    if 'sysRole' in body or 'sys_role' in body:
+        sys_role_value = body.get('sysRole') or body.get('sys_role')
+        # Only sys_admin or sys_owner can update sys_role
+        if current_profile['sys_role'] not in ['sys_admin', 'sys_owner']:
+            raise common.ForbiddenError('Only sys admins can update sys role')
         
         # Validate new role
-        new_role = common.validate_global_role(global_role_value)
-        update_data['global_role'] = new_role
+        new_role = common.validate_sys_role(sys_role_value)
+        update_data['sys_role'] = new_role
     
     # If there's nothing to update, just return the current profile
     if not update_data:

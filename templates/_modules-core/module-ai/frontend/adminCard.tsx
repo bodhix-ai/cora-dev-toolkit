@@ -9,6 +9,6 @@ export const aiEnablementAdminCard: AdminCardConfig = {
   icon: <SmartToyIcon />,
   href: "/admin/ai",
   context: "platform",
-  requiredRoles: ["platform_owner", "platform_admin"],
+  requiredRoles: ["sys_owner", "sys_admin"],
   order: 20,
 };

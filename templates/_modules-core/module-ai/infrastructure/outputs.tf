@@ -53,12 +53,76 @@ output "iam_role_name" {
 output "api_routes" {
   description = "API Gateway routes for this module (used by infra scripts)"
   value = [
-    # Organization AI Configuration
+    # Platform AI Configuration (ai-config-handler)
+    {
+      method      = "GET"
+      path        = "/admin/ai/config"
+      integration = aws_lambda_alias.ai_config_handler.invoke_arn
+      description = "Get platform AI configuration"
+      public      = false
+    },
+    {
+      method      = "PUT"
+      path        = "/admin/ai/config"
+      integration = aws_lambda_alias.ai_config_handler.invoke_arn
+      description = "Update platform AI configuration"
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/ai/models"
+      integration = aws_lambda_alias.ai_config_handler.invoke_arn
+      description = "List all AI models"
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/ai/rag-config"
+      integration = aws_lambda_alias.ai_config_handler.invoke_arn
+      description = "Get platform RAG configuration"
+      public      = false
+    },
+    {
+      method      = "PUT"
+      path        = "/admin/ai/rag-config"
+      integration = aws_lambda_alias.ai_config_handler.invoke_arn
+      description = "Update platform RAG configuration"
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/ai/providers"
+      integration = aws_lambda_alias.ai_config_handler.invoke_arn
+      description = "List all AI providers"
+      public      = false
+    },
+    {
+      method      = "POST"
+      path        = "/admin/ai/providers/test"
+      integration = aws_lambda_alias.ai_config_handler.invoke_arn
+      description = "Test AI provider connection"
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/ai/providers/models"
+      integration = aws_lambda_alias.ai_config_handler.invoke_arn
+      description = "Get models for AI providers"
+      public      = false
+    },
+    # Organization AI Configuration (ai-config-handler)
     {
       method      = "GET"
       path        = "/orgs/{orgId}/ai/config"
-      integration = aws_lambda_alias.provider.invoke_arn
+      integration = aws_lambda_alias.ai_config_handler.invoke_arn
       description = "Get organization AI configuration"
+      public      = false
+    },
+    {
+      method      = "PUT"
+      path        = "/orgs/{orgId}/ai/config"
+      integration = aws_lambda_alias.ai_config_handler.invoke_arn
+      description = "Update organization AI configuration"
       public      = false
     },
     # Provider CRUD

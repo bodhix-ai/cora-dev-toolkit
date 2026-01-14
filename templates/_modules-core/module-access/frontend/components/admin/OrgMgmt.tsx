@@ -8,7 +8,7 @@
  * - Edit organization details and domain configuration
  * - Configure domain-based auto-provisioning
  *
- * Only accessible to platform_owner and platform_admin roles.
+ * Only accessible to sys_owner and sys_admin roles.
  */
 
 "use client";
@@ -61,11 +61,11 @@ interface Organization {
   name: string;
   slug: string;
   description?: string;
-  allowed_domain?: string;
-  domain_default_role?: "org_user" | "org_admin" | "org_owner";
-  member_count?: number;
-  created_at: string;
-  updated_at: string;
+  allowedDomain?: string;
+  domainDefaultRole?: "org_user" | "org_admin" | "org_owner";
+  memberCount?: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /**
@@ -75,16 +75,16 @@ interface CreateOrganizationPayload {
   name: string;
   slug: string;
   description?: string;
-  allowed_domain?: string;
-  domain_default_role?: "org_user" | "org_admin" | "org_owner";
+  allowedDomain?: string;
+  domainDefaultRole?: "org_user" | "org_admin" | "org_owner";
 }
 
 interface UpdateOrganizationPayload {
   name: string;
   slug: string;
   description?: string;
-  allowed_domain?: string;
-  domain_default_role?: "org_user" | "org_admin" | "org_owner";
+  allowedDomain?: string;
+  domainDefaultRole?: "org_user" | "org_admin" | "org_owner";
 }
 
 /**
@@ -287,13 +287,13 @@ function OrganizationList({
                 </Typography>
               </TableCell>
               <TableCell>
-                {org.allowed_domain ? (
+                {org.allowedDomain ? (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Language fontSize="small" color="primary" />
                     <Box>
-                      <Typography variant="body2">{org.allowed_domain}</Typography>
+                      <Typography variant="body2">{org.allowedDomain}</Typography>
                       <Chip
-                        label={org.domain_default_role || "org_user"}
+                        label={org.domainDefaultRole || "org_user"}
                         size="small"
                         variant="outlined"
                         sx={{ mt: 0.5 }}
@@ -309,12 +309,12 @@ function OrganizationList({
               <TableCell align="center">
                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5 }}>
                   <People fontSize="small" color="action" />
-                  <Typography variant="body2">{org.member_count || 0}</Typography>
+                  <Typography variant="body2">{org.memberCount || 0}</Typography>
                 </Box>
               </TableCell>
               <TableCell>
                 <Typography variant="body2">
-                  {new Date(org.created_at).toLocaleDateString()}
+                  {new Date(org.createdAt).toLocaleDateString()}
                 </Typography>
               </TableCell>
               <TableCell align="right">
@@ -362,8 +362,8 @@ function CreateOrganizationDialog({
     name: "",
     slug: "",
     description: "",
-    allowed_domain: "",
-    domain_default_role: "org_user" as "org_user" | "org_admin" | "org_owner",
+    allowedDomain: "",
+    domainDefaultRole: "org_user" as "org_user" | "org_admin" | "org_owner",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -390,9 +390,9 @@ function CreateOrganizationDialog({
       };
 
       // Only include domain config if domain is set
-      if (formData.allowed_domain) {
-        payload.allowed_domain = formData.allowed_domain;
-        payload.domain_default_role = formData.domain_default_role;
+      if (formData.allowedDomain) {
+        payload.allowedDomain = formData.allowedDomain;
+        payload.domainDefaultRole = formData.domainDefaultRole;
       }
 
       const response = await apiClient.post<Organization>("/orgs", payload);
@@ -462,21 +462,21 @@ function CreateOrganizationDialog({
             fullWidth
             label="Allowed Domain (optional)"
             aria-label="Allowed Domain for auto-provisioning"
-            value={formData.allowed_domain}
-            onChange={(e) => setFormData({ ...formData, allowed_domain: e.target.value })}
+            value={formData.allowedDomain}
+            onChange={(e) => setFormData({ ...formData, allowedDomain: e.target.value })}
             placeholder="example.com"
             helperText="Users with this email domain will be auto-provisioned"
           />
 
-          {formData.allowed_domain && (
+          {formData.allowedDomain && (
             <FormControl fullWidth>
               <InputLabel>Default Role for Domain Users</InputLabel>
               <Select
-                value={formData.domain_default_role}
+                value={formData.domainDefaultRole}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    domain_default_role: e.target.value as "org_user" | "org_admin" | "org_owner",
+                    domainDefaultRole: e.target.value as "org_user" | "org_admin" | "org_owner",
                   })
                 }
                 label="Default Role for Domain Users"
@@ -522,9 +522,9 @@ function EditOrganizationDialog({
     name: organization.name,
     slug: organization.slug,
     description: organization.description || "",
-    allowed_domain: organization.allowed_domain || "",
-    domain_default_role:
-      organization.domain_default_role || ("org_user" as "org_user" | "org_admin" | "org_owner"),
+    allowedDomain: organization.allowedDomain || "",
+    domainDefaultRole:
+      organization.domainDefaultRole || ("org_user" as "org_user" | "org_admin" | "org_owner"),
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -539,9 +539,9 @@ function EditOrganizationDialog({
         name: formData.name,
         slug: formData.slug,
         description: formData.description || undefined,
-        allowed_domain: formData.allowed_domain || undefined,
-        domain_default_role: formData.allowed_domain
-          ? formData.domain_default_role
+        allowedDomain: formData.allowedDomain || undefined,
+        domainDefaultRole: formData.allowedDomain
+          ? formData.domainDefaultRole
           : undefined,
       };
 
@@ -609,21 +609,21 @@ function EditOrganizationDialog({
             fullWidth
             label="Allowed Domain (optional)"
             aria-label="Allowed Domain for auto-provisioning"
-            value={formData.allowed_domain}
-            onChange={(e) => setFormData({ ...formData, allowed_domain: e.target.value })}
+            value={formData.allowedDomain}
+            onChange={(e) => setFormData({ ...formData, allowedDomain: e.target.value })}
             placeholder="example.com"
             helperText="Users with this email domain will be auto-provisioned"
           />
 
-          {formData.allowed_domain && (
+          {formData.allowedDomain && (
             <FormControl fullWidth>
               <InputLabel>Default Role for Domain Users</InputLabel>
               <Select
-                value={formData.domain_default_role}
+                value={formData.domainDefaultRole}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    domain_default_role: e.target.value as "org_user" | "org_admin" | "org_owner",
+                    domainDefaultRole: e.target.value as "org_user" | "org_admin" | "org_owner",
                   })
                 }
                 label="Default Role for Domain Users"

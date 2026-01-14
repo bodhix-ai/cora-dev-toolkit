@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
+  Button,
   Table,
   TableBody,
   TableCell,
@@ -21,8 +22,10 @@ import {
   Delete,
   Mail,
   Schedule,
+  PersonAdd,
 } from "@mui/icons-material";
 import { CoraAuthAdapter, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
+import { InviteMemberDialog } from "../org/InviteMemberDialog";
 
 /**
  * Invitation type
@@ -32,12 +35,12 @@ interface Invitation {
   email: string;
   role: "org_user" | "org_admin" | "org_owner";
   status: "pending" | "accepted" | "expired";
-  invited_by?: {
+  invitedBy?: {
     name?: string;
     email: string;
   };
-  created_at: string;
-  expires_at?: string;
+  createdAt: string;
+  expiresAt?: string;
 }
 
 interface OrgInvitesTabProps {
@@ -58,6 +61,7 @@ export function OrgInvitesTab({ orgId, authAdapter }: OrgInvitesTabProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [revokingInviteId, setRevokingInviteId] = useState<string | null>(null);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchInvites();
@@ -148,12 +152,23 @@ export function OrgInvitesTab({ orgId, authAdapter }: OrgInvitesTabProps) {
 
   return (
     <Box>
-      <Typography variant="h6" gutterBottom>
-        Pending Invitations
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Manage pending invitations to this organization.
-      </Typography>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            Pending Invitations
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Manage pending invitations to this organization.
+          </Typography>
+        </Box>
+        <Button
+          variant="contained"
+          startIcon={<PersonAdd />}
+          onClick={() => setInviteDialogOpen(true)}
+        >
+          Create Invitation
+        </Button>
+      </Box>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -213,21 +228,21 @@ export function OrgInvitesTab({ orgId, authAdapter }: OrgInvitesTabProps) {
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">
-                      {invite.invited_by?.name || invite.invited_by?.email || "Unknown"}
+                      {invite.invitedBy?.name || invite.invitedBy?.email || "Unknown"}
                     </Typography>
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                       <Schedule fontSize="small" color="action" />
                       <Typography variant="body2">
-                        {new Date(invite.created_at).toLocaleDateString()}
+                        {new Date(invite.createdAt).toLocaleDateString()}
                       </Typography>
                     </Box>
                   </TableCell>
                   <TableCell>
-                    {invite.expires_at ? (
+                    {invite.expiresAt ? (
                       <Typography variant="body2">
-                        {new Date(invite.expires_at).toLocaleDateString()}
+                        {new Date(invite.expiresAt).toLocaleDateString()}
                       </Typography>
                     ) : (
                       <Typography variant="body2" color="text.secondary">
@@ -265,6 +280,18 @@ export function OrgInvitesTab({ orgId, authAdapter }: OrgInvitesTabProps) {
           Showing {invites.length} invitation{invites.length !== 1 ? "s" : ""}
         </Typography>
       </Box>
+
+      {/* Invite Member Dialog - Only render when open to prevent duplicate API calls */}
+      {inviteDialogOpen && (
+        <InviteMemberDialog
+          open={inviteDialogOpen}
+          onClose={() => {
+            setInviteDialogOpen(false);
+            fetchInvites(); // Refresh invites list after creating invitation
+          }}
+          orgId={orgId}
+        />
+      )}
     </Box>
   );
 }

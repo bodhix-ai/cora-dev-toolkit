@@ -43,7 +43,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_models_validation_category ON public.ai_models
 -- COMMENTS
 -- =============================================
 
-COMMENT ON TABLE public.ai_models IS 'Platform-level catalog of AI models discovered from configured providers. Only accessible by platform_owner and platform_admin.';
+COMMENT ON TABLE public.ai_models IS 'Platform-level catalog of AI models discovered from configured providers. Only accessible by sys_owner and sys_admin.';
 COMMENT ON COLUMN public.ai_models.model_id IS 'The unique identifier for the model as defined by the provider.';
 COMMENT ON COLUMN public.ai_models.description IS 'Human-readable description of the model and its use cases';
 COMMENT ON COLUMN public.ai_models.capabilities IS 'JSON object describing model capabilities (chat, embedding, max_tokens, etc.)';
@@ -56,7 +56,7 @@ COMMENT ON COLUMN public.ai_models.validation_category IS 'Categorizes validatio
 
 ALTER TABLE public.ai_models ENABLE ROW LEVEL SECURITY;
 
--- Admin-only access (platform_owner, platform_admin)
+-- Admin-only access (sys_owner, sys_admin)
 DROP POLICY IF EXISTS "ai_models_admin_access" ON public.ai_models;
 CREATE POLICY "ai_models_admin_access" ON public.ai_models
     FOR ALL
@@ -64,7 +64,7 @@ CREATE POLICY "ai_models_admin_access" ON public.ai_models
         EXISTS (
             SELECT 1 FROM public.user_profiles
             WHERE user_profiles.user_id = auth.uid()
-            AND user_profiles.global_role IN ('platform_owner', 'platform_admin')
+            AND user_profiles.sys_role IN ('sys_owner', 'sys_admin')
         )
     );
 

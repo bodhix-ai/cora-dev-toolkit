@@ -15,6 +15,7 @@ import {
 import { NavigateNext } from "@mui/icons-material";
 import { CoraAuthAdapter, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import { useRouter } from "next/navigation";
+import { OrgDetailsTab } from "./OrgDetailsTab";
 import { OrgDomainsTab } from "./OrgDomainsTab";
 import { OrgMembersTab } from "./OrgMembersTab";
 import { OrgInvitesTab } from "./OrgInvitesTab";
@@ -47,16 +48,16 @@ interface Organization {
   name: string;
   slug: string;
   description?: string;
-  allowed_domain?: string;
-  domain_default_role?: string;
-  created_at: string;
-  updated_at: string;
+  allowedDomain?: string;
+  domain_defaultRole?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface OrgDetailsProps {
   orgId: string;
   authAdapter: CoraAuthAdapter;
-  isPlatformAdmin: boolean;
+  isSysAdmin: boolean;
 }
 
 /**
@@ -69,7 +70,7 @@ interface OrgDetailsProps {
  * - Invites: Pending invitations
  * - AI Config: AI configuration (platform admins only)
  */
-export function OrgDetails({ orgId, authAdapter, isPlatformAdmin }: OrgDetailsProps) {
+export function OrgDetails({ orgId, authAdapter, isSysAdmin }: OrgDetailsProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(0);
   const [organization, setOrganization] = useState<Organization | null>(null);
@@ -170,7 +171,7 @@ export function OrgDetails({ orgId, authAdapter, isPlatformAdmin }: OrgDetailsPr
           <Tab label="Domains" id="org-tab-1" aria-controls="org-tabpanel-1" />
           <Tab label="Members" id="org-tab-2" aria-controls="org-tabpanel-2" />
           <Tab label="Invites" id="org-tab-3" aria-controls="org-tabpanel-3" />
-          {isPlatformAdmin && (
+          {isSysAdmin && (
             <Tab label="AI Config" id="org-tab-4" aria-controls="org-tabpanel-4" />
           )}
         </Tabs>
@@ -178,35 +179,11 @@ export function OrgDetails({ orgId, authAdapter, isPlatformAdmin }: OrgDetailsPr
 
       {/* Tab Panels */}
       <TabPanel value={activeTab} index={0}>
-        <Box>
-          <Typography variant="h5" gutterBottom>
-            Organization Information
-          </Typography>
-          <Box sx={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 2, mt: 2 }}>
-            <Typography variant="body2" color="text.secondary">Name:</Typography>
-            <Typography variant="body2">{organization.name}</Typography>
-            
-            <Typography variant="body2" color="text.secondary">Slug:</Typography>
-            <Typography variant="body2" fontFamily="monospace">{organization.slug}</Typography>
-            
-            {organization.description && (
-              <>
-                <Typography variant="body2" color="text.secondary">Description:</Typography>
-                <Typography variant="body2">{organization.description}</Typography>
-              </>
-            )}
-            
-            <Typography variant="body2" color="text.secondary">Created:</Typography>
-            <Typography variant="body2">
-              {new Date(organization.created_at).toLocaleString()}
-            </Typography>
-            
-            <Typography variant="body2" color="text.secondary">Last Updated:</Typography>
-            <Typography variant="body2">
-              {new Date(organization.updated_at).toLocaleString()}
-            </Typography>
-          </Box>
-        </Box>
+        <OrgDetailsTab 
+          orgId={orgId} 
+          authAdapter={authAdapter}
+          onUpdate={fetchOrganization}
+        />
       </TabPanel>
 
       <TabPanel value={activeTab} index={1}>
@@ -221,7 +198,7 @@ export function OrgDetails({ orgId, authAdapter, isPlatformAdmin }: OrgDetailsPr
         <OrgInvitesTab orgId={orgId} authAdapter={authAdapter} />
       </TabPanel>
 
-      {isPlatformAdmin && (
+      {isSysAdmin && (
         <TabPanel value={activeTab} index={4}>
           <OrgAIConfigTab orgId={orgId} authAdapter={authAdapter} />
         </TabPanel>

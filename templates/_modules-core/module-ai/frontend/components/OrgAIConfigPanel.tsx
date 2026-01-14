@@ -52,7 +52,7 @@ export default function OrgAIConfigPanel({
   // Initialize form when config loads
   useEffect(() => {
     if (config) {
-      setOrgSystemPrompt(config.org_system_prompt || "");
+      setOrgSystemPrompt(config.orgSystemPrompt || "");
     }
   }, [config]);
 
@@ -60,7 +60,7 @@ export default function OrgAIConfigPanel({
   useEffect(() => {
     if (!config) return;
 
-    const changed = orgSystemPrompt !== (config.org_system_prompt || "");
+    const changed = orgSystemPrompt !== (config.orgSystemPrompt || "");
     setHasChanges(changed);
   }, [config, orgSystemPrompt]);
 
@@ -71,7 +71,7 @@ export default function OrgAIConfigPanel({
       setIsSaving(true);
 
       await updateConfig({
-        org_system_prompt: orgSystemPrompt.trim() || null,
+        org_systemPrompt: orgSystemPrompt.trim() || null,
       });
 
       setNotification({
@@ -147,9 +147,9 @@ export default function OrgAIConfigPanel({
               Chat Model
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {config.platform_config.chat_deployment
-                ? `${config.platform_config.chat_deployment.provider} - ${config.platform_config.chat_deployment.model_name} (${config.platform_config.chat_deployment.deployment_name})`
-                : config.platform_config.default_chat_deployment_id}
+              {config.platformConfig.chatDeployment
+                ? `${config.platformConfig.chatDeployment.provider} - ${config.platformConfig.chatDeployment.model_name} (${config.platformConfig.chatDeployment.deployment_name})`
+                : config.platformConfig.defaultChatDeploymentId}
             </Typography>
           </Box>
 
@@ -158,9 +158,9 @@ export default function OrgAIConfigPanel({
               Embedding Model
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {config.platform_config.embedding_deployment
-                ? `${config.platform_config.embedding_deployment.provider} - ${config.platform_config.embedding_deployment.model_name} (${config.platform_config.embedding_deployment.deployment_name})`
-                : config.platform_config.default_embedding_deployment_id}
+              {config.platformConfig.embeddingDeployment
+                ? `${config.platformConfig.embeddingDeployment.provider} - ${config.platformConfig.embeddingDeployment.model_name} (${config.platformConfig.embeddingDeployment.deployment_name})`
+                : config.platformConfig.defaultEmbeddingDeploymentId}
             </Typography>
           </Box>
 
@@ -180,7 +180,7 @@ export default function OrgAIConfigPanel({
                     fontSize: "0.875rem",
                   }}
                 >
-                  {config.platform_config.system_prompt}
+                  {config.platformConfig.systemPrompt}
                 </Typography>
               </CardContent>
             </Card>
@@ -232,7 +232,7 @@ export default function OrgAIConfigPanel({
       </Card>
 
       {/* Combined Prompt Preview */}
-      {config.combined_prompt && (
+      {config.combinedPrompt && (
         <Accordion sx={{ mb: 3 }}>
           <AccordionSummary
             expandIcon={<ExpandMoreIcon />}
@@ -255,7 +255,7 @@ export default function OrgAIConfigPanel({
                     fontSize: "0.875rem",
                   }}
                 >
-                  {config.combined_prompt}
+                  {config.combinedPrompt}
                 </Typography>
               </CardContent>
             </Card>
@@ -270,7 +270,7 @@ export default function OrgAIConfigPanel({
             variant="outlined"
             onClick={() => {
               if (config) {
-                setOrgSystemPrompt(config.org_system_prompt || "");
+                setOrgSystemPrompt(config.orgSystemPrompt || "");
               }
             }}
             disabled={isSaving}

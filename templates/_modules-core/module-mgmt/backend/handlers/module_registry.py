@@ -98,7 +98,7 @@ def _get_user_context(event: Dict) -> Dict:
     return {
         "user_id": authorizer.get("principalId"),
         "org_id": authorizer.get("org_id"),
-        "is_platform_admin": authorizer.get("is_platform_admin", False),
+        "is_sys_admin": authorizer.get("is_sys_admin", False),
         "is_org_admin": authorizer.get("is_org_admin", False),
     }
 
@@ -173,7 +173,7 @@ def list_modules_handler(event: Dict, context: Any) -> Dict:
             )
         
         # Build query
-        query = supabase.table("platform_module_registry").select("*")
+        query = supabase.table("sys_module_registry").select("*")
         
         # Apply soft delete filter
         query = query.is_("deleted_at", "null")
@@ -184,7 +184,7 @@ def list_modules_handler(event: Dict, context: Any) -> Dict:
         
         # Filter by enabled status
         # Non-admins can only see enabled modules
-        if not user_context.get("is_platform_admin"):
+        if not user_context.get("is_sys_admin"):
             query = query.eq("is_enabled", True)
         elif enabled_filter:
             query = query.eq("is_enabled", enabled_filter.lower() == "true")
@@ -266,7 +266,7 @@ def get_module_handler(event: Dict, context: Any) -> Dict:
         
         # Query module
         response = (
-            supabase.table("platform_module_registry")
+            supabase.table("sys_module_registry")
             .select("*")
             .eq("module_name", module_name)
             .is_("deleted_at", "null")
@@ -336,10 +336,10 @@ def update_module_handler(event: Dict, context: Any) -> Dict:
         
         user_context = _get_user_context(event)
         
-        # Only platform admins can update modules
-        if not user_context.get("is_platform_admin"):
+        # Only sys admins can update modules
+        if not user_context.get("is_sys_admin"):
             return _error_response(
-                "Only platform administrators can update modules",
+                "Only system administrators can update modules",
                 status_code=403,
                 error_code="FORBIDDEN"
             )
@@ -389,7 +389,7 @@ def update_module_handler(event: Dict, context: Any) -> Dict:
         
         # Execute update
         response = (
-            supabase.table("platform_module_registry")
+            supabase.table("sys_module_registry")
             .update(update_data)
             .eq("module_name", module_name)
             .is_("deleted_at", "null")
@@ -448,10 +448,10 @@ def enable_module_handler(event: Dict, context: Any) -> Dict:
         
         user_context = _get_user_context(event)
         
-        # Only platform admins can enable modules
-        if not user_context.get("is_platform_admin"):
+        # Only sys admins can enable modules
+        if not user_context.get("is_sys_admin"):
             return _error_response(
-                "Only platform administrators can enable modules",
+                "Only system administrators can enable modules",
                 status_code=403,
                 error_code="FORBIDDEN"
             )
@@ -469,7 +469,7 @@ def enable_module_handler(event: Dict, context: Any) -> Dict:
         
         # Get the module to check dependencies
         module_response = (
-            supabase.table("platform_module_registry")
+            supabase.table("sys_module_registry")
             .select("*")
             .eq("module_name", module_name)
             .is_("deleted_at", "null")
@@ -490,7 +490,7 @@ def enable_module_handler(event: Dict, context: Any) -> Dict:
         # Check if all dependencies are enabled
         if dependencies:
             deps_response = (
-                supabase.table("platform_module_registry")
+                supabase.table("sys_module_registry")
                 .select("module_name, is_enabled")
                 .in_("module_name", dependencies)
                 .is_("deleted_at", "null")
@@ -512,7 +512,7 @@ def enable_module_handler(event: Dict, context: Any) -> Dict:
         
         # Enable the module
         update_response = (
-            supabase.table("platform_module_registry")
+            supabase.table("sys_module_registry")
             .update({
                 "is_enabled": True,
                 "updated_by": user_context.get("user_id"),
@@ -573,10 +573,10 @@ def disable_module_handler(event: Dict, context: Any) -> Dict:
         
         user_context = _get_user_context(event)
         
-        # Only platform admins can disable modules
-        if not user_context.get("is_platform_admin"):
+        # Only sys admins can disable modules
+        if not user_context.get("is_sys_admin"):
             return _error_response(
-                "Only platform administrators can disable modules",
+                "Only system administrators can disable modules",
                 status_code=403,
                 error_code="FORBIDDEN"
             )
@@ -594,7 +594,7 @@ def disable_module_handler(event: Dict, context: Any) -> Dict:
         
         # Get the module
         module_response = (
-            supabase.table("platform_module_registry")
+            supabase.table("sys_module_registry")
             .select("*")
             .eq("module_name", module_name)
             .is_("deleted_at", "null")
@@ -622,7 +622,7 @@ def disable_module_handler(event: Dict, context: Any) -> Dict:
         # Check if other enabled modules depend on this one
         if not force:
             deps_response = (
-                supabase.table("platform_module_registry")
+                supabase.table("sys_module_registry")
                 .select("module_name, dependencies")
                 .is_("deleted_at", "null")
                 .eq("is_enabled", True)
@@ -644,7 +644,7 @@ def disable_module_handler(event: Dict, context: Any) -> Dict:
         
         # Disable the module
         update_response = (
-            supabase.table("platform_module_registry")
+            supabase.table("sys_module_registry")
             .update({
                 "is_enabled": False,
                 "updated_by": user_context.get("user_id"),
@@ -701,10 +701,10 @@ def register_module_handler(event: Dict, context: Any) -> Dict:
     try:
         user_context = _get_user_context(event)
         
-        # Only platform admins can register modules
-        if not user_context.get("is_platform_admin"):
+        # Only sys admins can register modules
+        if not user_context.get("is_sys_admin"):
             return _error_response(
-                "Only platform administrators can register modules",
+                "Only system administrators can register modules",
                 status_code=403,
                 error_code="FORBIDDEN"
             )
@@ -754,7 +754,7 @@ def register_module_handler(event: Dict, context: Any) -> Dict:
         
         # Check if module already exists
         existing = (
-            supabase.table("platform_module_registry")
+            supabase.table("sys_module_registry")
             .select("id")
             .eq("module_name", module_name)
             .is_("deleted_at", "null")
@@ -796,7 +796,7 @@ def register_module_handler(event: Dict, context: Any) -> Dict:
         
         # Insert module
         response = (
-            supabase.table("platform_module_registry")
+            supabase.table("sys_module_registry")
             .insert(insert_data)
             .execute()
         )

@@ -94,14 +94,15 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         org_id = None
         if not is_sys_route(path):
             # Get org_id from query parameters OR request body (for POST/PUT)
+            # Accept both snake_case (org_id) and camelCase (orgId) for flexibility
             query_params = event.get('queryStringParameters') or {}
-            org_id = query_params.get('org_id')
+            org_id = query_params.get('org_id') or query_params.get('orgId')
             
             # For POST/PUT requests, also check the request body for org_id
             if not org_id and http_method in ('POST', 'PUT'):
                 try:
                     body = json.loads(event.get('body', '{}'))
-                    org_id = body.get('org_id')
+                    org_id = body.get('org_id') or body.get('orgId')
                 except json.JSONDecodeError:
                     pass
 
@@ -232,91 +233,114 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
 def _transform_workspace(data: Dict[str, Any]) -> Dict[str, Any]:
     """Transform database workspace record to API response format.
     
-    Note: Returns snake_case to match frontend TypeScript types.
+    Note: Returns camelCase to match CORA API standards and frontend TypeScript types.
     """
     return {
         'id': data.get('id'),
-        'org_id': data.get('org_id'),
+        'orgId': data.get('org_id'),
         'name': data.get('name'),
         'description': data.get('description'),
         'color': data.get('color'),
         'icon': data.get('icon'),
         'tags': data.get('tags', []),
         'status': data.get('status'),
-        'user_role': data.get('user_role'),
-        'is_favorited': data.get('is_favorited', False),
-        'favorited_at': data.get('favorited_at'),
-        'member_count': data.get('member_count'),
-        'created_at': data.get('created_at'),
-        'updated_at': data.get('updated_at'),
-        'created_by': data.get('created_by'),
-        'updated_by': data.get('updated_by'),
-        'deleted_at': data.get('deleted_at'),
-        'retention_days': data.get('retention_days'),
+        'userRole': data.get('user_role'),
+        'isFavorited': data.get('is_favorited', False),
+        'favoritedAt': data.get('favorited_at'),
+        'memberCount': data.get('member_count'),
+        'createdAt': data.get('created_at'),
+        'updatedAt': data.get('updated_at'),
+        'createdBy': data.get('created_by'),
+        'updatedBy': data.get('updated_by'),
+        'deletedAt': data.get('deleted_at'),
+        'retentionDays': data.get('retention_days'),
     }
 
 
 def _transform_member(data: Dict[str, Any]) -> Dict[str, Any]:
     """Transform database member record to API response format.
     
-    Note: Returns snake_case with nested profile to match frontend TypeScript types.
+    Note: Returns camelCase to match CORA API standards and frontend TypeScript types.
     """
     return {
         'id': data.get('id'),
-        'ws_id': data.get('ws_id'),
-        'user_id': data.get('user_id'),
-        'ws_role': data.get('ws_role'),
+        'wsId': data.get('ws_id'),
+        'userId': data.get('user_id'),
+        'wsRole': data.get('ws_role'),
         'profile': {
             'email': data.get('email'),
-            'display_name': data.get('display_name'),
-            'avatar_url': data.get('avatar_url'),
+            'displayName': data.get('display_name'),
+            'avatarUrl': data.get('avatar_url'),
         },
-        'created_at': data.get('created_at'),
-        'updated_at': data.get('updated_at'),
-        'created_by': data.get('created_by'),
+        'createdAt': data.get('created_at'),
+        'updatedAt': data.get('updated_at'),
+        'createdBy': data.get('created_by'),
     }
 
 
-def _get_user_workspace_role(workspace_id: str, user_id: str) -> Optional[str]:
+def _transform_config(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Transform database config record to API response format.
+    
+    Note: Returns camelCase to match CORA API standards and frontend TypeScript types.
+    """
+    return {
+        'id': data.get('id'),
+        'navLabelSingular': data.get('nav_label_singular'),
+        'navLabelPlural': data.get('nav_label_plural'),
+        'navIcon': data.get('nav_icon'),
+        'enableFavorites': data.get('enable_favorites'),
+        'enableTags': data.get('enable_tags'),
+        'enableColorCoding': data.get('enable_color_coding'),
+        'defaultColor': data.get('default_color'),
+        'defaultRetentionDays': data.get('default_retention_days'),
+        'maxTagsPerWorkspace': data.get('max_tags_per_workspace'),
+        'maxTagLength': data.get('max_tag_length'),
+        'createdAt': data.get('created_at'),
+        'updatedAt': data.get('updated_at'),
+        'updatedBy': data.get('updated_by'),
+    }
+
+
+def _get_user_ws_role(workspace_id: str, user_id: str) -> Optional[str]:
     """Get user's role in a workspace."""
     result = common.rpc(
-        function_name='get_workspace_role',
+        function_name='get_ws_role',
         params={'p_ws_id': workspace_id, 'p_user_id': user_id}
     )
     return result
 
 
-def _is_workspace_member(workspace_id: str, user_id: str) -> bool:
+def _is_ws_member(workspace_id: str, user_id: str) -> bool:
     """Check if user is a member of the workspace."""
     result = common.rpc(
-        function_name='is_workspace_member',
+        function_name='is_ws_member',
         params={'p_ws_id': workspace_id, 'p_user_id': user_id}
     )
     return result is True
 
 
-def _is_workspace_owner(workspace_id: str, user_id: str) -> bool:
+def _is_ws_owner(workspace_id: str, user_id: str) -> bool:
     """Check if user is an owner of the workspace."""
     result = common.rpc(
-        function_name='is_workspace_owner',
+        function_name='is_ws_owner',
         params={'p_ws_id': workspace_id, 'p_user_id': user_id}
     )
     return result is True
 
 
-def _is_workspace_admin_or_owner(workspace_id: str, user_id: str) -> bool:
+def _is_ws_admin_or_owner(workspace_id: str, user_id: str) -> bool:
     """Check if user is admin or owner of the workspace."""
     result = common.rpc(
-        function_name='is_workspace_admin_or_owner',
+        function_name='is_ws_admin_or_owner',
         params={'p_ws_id': workspace_id, 'p_user_id': user_id}
     )
     return result is True
 
 
-def _is_platform_admin(user_id: str) -> bool:
-    """Check if user has platform admin role."""
+def _is_sys_admin(user_id: str) -> bool:
+    """Check if user has sys admin role."""
     profile = common.find_one('user_profiles', {'user_id': user_id})
-    return profile and profile.get('global_role') in ['platform_admin', 'platform_owner']
+    return profile and profile.get('sys_role') in ['sys_admin', 'sys_owner']
 
 
 def _is_org_admin(org_id: str, user_id: str) -> bool:
@@ -362,9 +386,9 @@ def handle_sys_analytics(user_id: str, user_info: Dict[str, Any]) -> Dict[str, A
     Returns:
         Platform-wide workspace statistics with org breakdown
     """
-    # Check if user has platform admin role
-    if not _is_platform_admin(user_id):
-        raise common.ForbiddenError('Only platform administrators can access system analytics')
+    # Check if user has sys admin role
+    if not _is_sys_admin(user_id):
+        raise common.ForbiddenError('Only sys administrators can access system analytics')
     
     try:
         # Get all workspaces across all organizations
@@ -392,7 +416,7 @@ def handle_sys_analytics(user_id: str, user_info: Dict[str, Any]) -> Dict[str, A
             if org_id:
                 if org_id not in org_stats:
                     org_stats[org_id] = {
-                        'org_id': org_id,
+                        'orgId': org_id,
                         'total': 0,
                         'active': 0,
                         'archived': 0,
@@ -434,14 +458,14 @@ def handle_sys_analytics(user_id: str, user_info: Dict[str, Any]) -> Dict[str, A
         }
         
         analytics = {
-            'platform_wide': {
-                'total_workspaces': total_count,
-                'active_workspaces': active_count,
-                'archived_workspaces': archived_count,
-                'created_this_month': this_month_count,
+            'platformWide': {
+                'totalWorkspaces': total_count,
+                'activeWorkspaces': active_count,
+                'archivedWorkspaces': archived_count,
+                'createdThisMonth': this_month_count,
             },
-            'by_organization': list(org_stats.values()),
-            'feature_adoption': feature_adoption,
+            'byOrganization': list(org_stats.values()),
+            'featureAdoption': feature_adoption,
         }
         
         logger.info("Retrieved system-wide analytics")
@@ -476,10 +500,10 @@ def handle_get_org_settings(
     """
     # Check authorization: org admin or platform admin
     is_org_admin = _is_org_admin(org_id, user_id)
-    is_platform_admin = _is_platform_admin(user_id)
+    is_sys_admin = _is_sys_admin(user_id)
     
-    if not is_org_admin and not is_platform_admin:
-        raise common.ForbiddenError('Only organization or platform administrators can access org settings')
+    if not is_org_admin and not is_sys_admin:
+        raise common.ForbiddenError('Only organization or sys administrators can access org settings')
     
     try:
         # Get or create default settings
@@ -491,11 +515,14 @@ def handle_get_org_settings(
         if not settings:
             # Return default settings (will be created on first PUT)
             settings = {
-                'org_id': org_id,
-                'allow_user_creation': True,
-                'require_approval': False,
-                'max_workspaces_per_user': 10,
+                'orgId': org_id,
+                'allowUserCreation': True,
+                'requireApproval': False,
+                'maxWorkspacesPerUser': 10,
             }
+        else:
+            # Format database response to camelCase
+            settings = common.format_record(settings)
         
         logger.info(f"Retrieved org settings for org {org_id}")
         return common.success_response({'settings': settings})
@@ -527,10 +554,10 @@ def handle_update_org_settings(
     """
     # Check authorization: org admin or platform admin
     is_org_admin = _is_org_admin(org_id, user_id)
-    is_platform_admin = _is_platform_admin(user_id)
+    is_sys_admin = _is_sys_admin(user_id)
     
-    if not is_org_admin and not is_platform_admin:
-        raise common.ForbiddenError('Only organization or platform administrators can update org settings')
+    if not is_org_admin and not is_sys_admin:
+        raise common.ForbiddenError('Only organization or sys administrators can update org settings')
     
     # Allowed fields for update
     allowed_fields = ['allow_user_creation', 'require_approval', 'max_workspaces_per_user']
@@ -615,7 +642,7 @@ def handle_list_workspaces(
         
         # Call RPC function
         workspaces = common.rpc(
-            function_name='get_workspaces_with_member_info',
+            function_name='get_ws_with_member_info',
             params={
                 'p_org_id': org_id,
                 'p_user_id': user_id,
@@ -677,7 +704,7 @@ def handle_create_workspace(
     try:
         # Call RPC function to create workspace with owner
         result = common.rpc(
-            function_name='create_workspace_with_owner',
+            function_name='create_ws_with_owner',
             params={
                 'p_org_id': org_id,
                 'p_name': name,
@@ -730,7 +757,7 @@ def handle_get_workspace(
         raise common.ValidationError('Workspace ID is required')
     
     # Verify user is a member
-    if not _is_workspace_member(workspace_id, user_id):
+    if not _is_ws_member(workspace_id, user_id):
         raise common.ForbiddenError('You are not a member of this workspace')
     
     try:
@@ -744,7 +771,7 @@ def handle_get_workspace(
             raise common.NotFoundError('Workspace not found')
         
         # Get user's role
-        role = _get_user_workspace_role(workspace_id, user_id)
+        role = _get_user_ws_role(workspace_id, user_id)
         workspace['user_role'] = role
         
         # Check if favorited
@@ -792,7 +819,7 @@ def handle_update_workspace(
         raise common.ValidationError('Workspace ID is required')
     
     # Verify user is admin or owner
-    if not _is_workspace_admin_or_owner(workspace_id, user_id):
+    if not _is_ws_admin_or_owner(workspace_id, user_id):
         raise common.ForbiddenError('You must be a workspace admin or owner to update it')
     
     # Allowed fields for update
@@ -829,7 +856,7 @@ def handle_update_workspace(
         _log_activity(workspace_id, user_id, 'Workspace updated', {'fields': list(update_data.keys())})
         
         # Add user info for response
-        updated_workspace['user_role'] = _get_user_workspace_role(workspace_id, user_id)
+        updated_workspace['user_role'] = _get_user_ws_role(workspace_id, user_id)
         
         favorite = common.find_one(
             table='ws_favorites',
@@ -875,7 +902,7 @@ def handle_delete_workspace(
     try:
         # Call RPC function (handles authorization check internally)
         result = common.rpc(
-            function_name='soft_delete_workspace',
+            function_name='soft_delete_ws',
             params={
                 'p_workspace_id': workspace_id,
                 'p_user_id': user_id
@@ -923,7 +950,7 @@ def handle_restore_workspace(
     try:
         # Call RPC function (handles authorization check internally)
         result = common.rpc(
-            function_name='restore_workspace',
+            function_name='restore_ws',
             params={
                 'p_workspace_id': workspace_id,
                 'p_user_id': user_id
@@ -990,12 +1017,12 @@ def handle_get_workspace_activity(
     if not workspace:
         raise common.NotFoundError('Workspace not found')
     
-    # Check authorization: workspace member OR org admin OR platform admin
-    is_member = _is_workspace_member(workspace_id, user_id)
+    # Check authorization: workspace member OR org admin OR sys admin
+    is_member = _is_ws_member(workspace_id, user_id)
     is_org_admin = _is_org_admin(workspace['org_id'], user_id)
-    is_platform_admin = _is_platform_admin(user_id)
+    is_sys_admin = _is_sys_admin(user_id)
     
-    if not is_member and not is_org_admin and not is_platform_admin:
+    if not is_member and not is_org_admin and not is_sys_admin:
         raise common.ForbiddenError('You do not have permission to view this workspace activity')
     
     try:
@@ -1078,10 +1105,10 @@ def handle_transfer_ownership(
     
     # Check authorization: org admin OR platform admin (NOT just ws_owner)
     is_org_admin = _is_org_admin(workspace['org_id'], user_id)
-    is_platform_admin = _is_platform_admin(user_id)
+    is_sys_admin = _is_sys_admin(user_id)
     
-    if not is_org_admin and not is_platform_admin:
-        raise common.ForbiddenError('Only organization or platform administrators can transfer workspace ownership')
+    if not is_org_admin and not is_sys_admin:
+        raise common.ForbiddenError('Only organization or sys administrators can transfer workspace ownership')
     
     # Validate new owner is in the organization
     org_member = common.find_one(
@@ -1095,7 +1122,7 @@ def handle_transfer_ownership(
         # Check if there's an RPC function for this
         try:
             result = common.rpc(
-                function_name='transfer_workspace_ownership',
+                function_name='transfer_ws_ownership',
                 params={
                     'p_ws_id': workspace_id,
                     'p_new_owner_id': new_owner_id,
@@ -1157,7 +1184,7 @@ def handle_transfer_ownership(
         )
         
         # Add user info
-        updated_workspace['user_role'] = _get_user_workspace_role(workspace_id, user_id)
+        updated_workspace['user_role'] = _get_user_ws_role(workspace_id, user_id)
         
         members = common.find_many(
             table='ws_members',
@@ -1200,7 +1227,7 @@ def handle_list_members(
         raise common.ValidationError('Workspace ID is required')
     
     # Verify user is a member
-    if not _is_workspace_member(workspace_id, user_id):
+    if not _is_ws_member(workspace_id, user_id):
         raise common.ForbiddenError('You are not a member of this workspace')
     
     try:
@@ -1259,7 +1286,7 @@ def handle_add_member(
         raise common.ValidationError('Workspace ID is required')
     
     # Verify user is owner
-    if not _is_workspace_owner(workspace_id, user_id):
+    if not _is_ws_owner(workspace_id, user_id):
         raise common.ForbiddenError('Only workspace owners can add members')
     
     # Validate required fields
@@ -1355,7 +1382,7 @@ def handle_update_member(
         raise common.ValidationError('Workspace ID and Member ID are required')
     
     # Verify user is owner
-    if not _is_workspace_owner(workspace_id, user_id):
+    if not _is_ws_owner(workspace_id, user_id):
         raise common.ForbiddenError('Only workspace owners can update member roles')
     
     # Validate role
@@ -1377,7 +1404,7 @@ def handle_update_member(
         # Prevent demoting the last owner
         if member['ws_role'] == 'ws_owner' and ws_role != 'ws_owner':
             owner_count = common.rpc(
-                function_name='count_workspace_owners',
+                function_name='count_ws_owners',
                 params={'p_ws_id': workspace_id}
             )
             if owner_count <= 1:
@@ -1442,7 +1469,7 @@ def handle_remove_member(
             raise common.NotFoundError('Member not found')
         
         # Check authorization: owner or self
-        is_owner = _is_workspace_owner(workspace_id, user_id)
+        is_owner = _is_ws_owner(workspace_id, user_id)
         is_self = member['user_id'] == user_id
         
         if not is_owner and not is_self:
@@ -1451,7 +1478,7 @@ def handle_remove_member(
         # Prevent removing the last owner
         if member['ws_role'] == 'ws_owner':
             owner_count = common.rpc(
-                function_name='count_workspace_owners',
+                function_name='count_ws_owners',
                 params={'p_ws_id': workspace_id}
             )
             if owner_count <= 1:
@@ -1510,7 +1537,7 @@ def handle_toggle_favorite(
     try:
         # Call RPC function (handles membership check internally)
         result = common.rpc(
-            function_name='toggle_workspace_favorite',
+            function_name='toggle_ws_favorite',
             params={
                 'p_workspace_id': workspace_id,
                 'p_user_id': user_id
@@ -1519,9 +1546,9 @@ def handle_toggle_favorite(
         
         logger.info(f"Toggled favorite for workspace {workspace_id}: {result.get('is_favorited')}")
         return common.success_response({
-            'workspace_id': result.get('workspace_id'),
-            'is_favorited': result.get('is_favorited'),
-            'favorited_at': result.get('favorited_at')
+            'workspaceId': result.get('workspace_id'),
+            'isFavorited': result.get('is_favorited'),
+            'favoritedAt': result.get('favorited_at')
         })
     
     except Exception as e:
@@ -1551,7 +1578,7 @@ def handle_list_favorites(
     try:
         # Use the list workspaces function with favorites_only=True
         workspaces = common.rpc(
-            function_name='get_workspaces_with_member_info',
+            function_name='get_ws_with_member_info',
             params={
                 'p_org_id': org_id,
                 'p_user_id': user_id,
@@ -1585,7 +1612,7 @@ def handle_get_config() -> Dict[str, Any]:
     Get workspace module configuration. Available to all authenticated users.
     
     Returns:
-        Configuration object with navigation labels, icons, feature flags
+        Configuration object with navigation labels, icons, feature flags (camelCase)
     """
     try:
         # Get singleton config record
@@ -1595,17 +1622,20 @@ def handle_get_config() -> Dict[str, Any]:
         )
         
         if not config:
-            # Return default config if not found
+            # Return default config if not found (already camelCase)
             config = {
                 'id': '00000000-0000-0000-0000-000000000001',
-                'nav_label_singular': 'Workspace',
-                'nav_label_plural': 'Workspaces',
-                'nav_icon': 'WorkspaceIcon',
-                'enable_favorites': True,
-                'enable_tags': True,
-                'enable_color_coding': True,
-                'default_color': '#1976d2',
+                'navLabelSingular': 'Workspace',
+                'navLabelPlural': 'Workspaces',
+                'navIcon': 'WorkspaceIcon',
+                'enableFavorites': True,
+                'enableTags': True,
+                'enableColorCoding': True,
+                'defaultColor': '#1976d2',
             }
+        else:
+            # Transform DB record (snake_case) to API format (camelCase)
+            config = _transform_config(config)
         
         logger.info("Retrieved workspace config")
         return common.success_response({'config': config})
@@ -1623,26 +1653,45 @@ def handle_update_config(
     """
     PUT /api/ws/config
     
-    Update workspace module configuration. Only platform_admin and platform_owner can update.
+    Update workspace module configuration. Only sys_admin and sys_owner can update.
     
     Args:
         user_id: Supabase user ID
         user_info: User information from auth token
-        body: Request body with config fields to update
+        body: Request body with config fields to update (accepts both camelCase and snake_case)
     
     Returns:
         Updated configuration
     """
     # Check if user has platform admin role
-    if not _is_platform_admin(user_id):
-        raise common.ForbiddenError('Only platform administrators can update workspace configuration')
+    if not _is_sys_admin(user_id):
+        raise common.ForbiddenError('Only sys administrators can update workspace configuration')
     
-    # Allowed fields for update
-    allowed_fields = [
-        'nav_label_singular', 'nav_label_plural', 'nav_icon',
-        'enable_favorites', 'enable_tags', 'enable_color_coding', 'default_color'
-    ]
-    update_data = {k: v for k, v in body.items() if k in allowed_fields and v is not None}
+    # Map camelCase to snake_case for field names
+    # Accept both formats for flexibility (frontend sends camelCase, DB uses snake_case)
+    field_mapping = {
+        'navLabelSingular': 'nav_label_singular',
+        'navLabelPlural': 'nav_label_plural',
+        'navIcon': 'nav_icon',
+        'enableFavorites': 'enable_favorites',
+        'enableTags': 'enable_tags',
+        'enableColorCoding': 'enable_color_coding',
+        'defaultColor': 'default_color',
+        # Also allow snake_case input
+        'nav_label_singular': 'nav_label_singular',
+        'nav_label_plural': 'nav_label_plural',
+        'nav_icon': 'nav_icon',
+        'enable_favorites': 'enable_favorites',
+        'enable_tags': 'enable_tags',
+        'enable_color_coding': 'enable_color_coding',
+        'default_color': 'default_color',
+    }
+    
+    # Normalize input to snake_case
+    update_data = {}
+    for key, value in body.items():
+        if key in field_mapping and value is not None:
+            update_data[field_mapping[key]] = value
     
     if not update_data:
         raise common.ValidationError('No valid fields to update')
@@ -1676,7 +1725,8 @@ def handle_update_config(
             raise common.NotFoundError('Configuration not found')
         
         logger.info(f"Updated workspace config by user {user_id}")
-        return common.success_response({'config': updated_config})
+        # Transform DB record (snake_case) to API format (camelCase)
+        return common.success_response({'config': _transform_config(updated_config)})
     
     except Exception as e:
         logger.exception(f'Error updating config: {str(e)}')
@@ -1700,13 +1750,13 @@ def handle_admin_stats(user_info: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Platform-wide workspace statistics
     """
-    # Check if user has platform admin role
-    # Must query database for global_role (not in JWT)
+    # Check if user has sys admin role
+    # Must query database for sys_role (not in JWT)
     okta_uid = user_info['user_id']
     supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
     
-    if not _is_platform_admin(supabase_user_id):
-        raise common.ForbiddenError('Only platform administrators can access these statistics')
+    if not _is_sys_admin(supabase_user_id):
+        raise common.ForbiddenError('Only sys administrators can access these statistics')
     
     try:
         # Get total workspace counts
@@ -1731,12 +1781,12 @@ def handle_admin_stats(user_info: Dict[str, Any]) -> Dict[str, Any]:
                     org_stats[org_id]['archived'] += 1
         
         stats = {
-            'total_workspaces': len(all_workspaces),
-            'active_workspaces': len(active_workspaces),
-            'archived_workspaces': len(archived_workspaces),
-            'deleted_workspaces': len(deleted_workspaces),
-            'organizations_count': len(org_stats),
-            'by_organization': org_stats
+            'totalWorkspaces': len(all_workspaces),
+            'activeWorkspaces': len(active_workspaces),
+            'archivedWorkspaces': len(archived_workspaces),
+            'deletedWorkspaces': len(deleted_workspaces),
+            'organizationsCount': len(org_stats),
+            'byOrganization': org_stats
         }
         
         logger.info("Retrieved admin workspace stats")
@@ -1765,9 +1815,9 @@ def handle_admin_analytics(org_id: str, user_info: Dict[str, Any]) -> Dict[str, 
     supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
     
     is_org_admin = _is_org_admin(org_id, supabase_user_id)
-    is_platform_admin = _is_platform_admin(supabase_user_id)
+    is_sys_admin = _is_sys_admin(supabase_user_id)
     
-    if not is_org_admin and not is_platform_admin:
+    if not is_org_admin and not is_sys_admin:
         raise common.ForbiddenError('Only administrators can access analytics')
     
     try:
@@ -1796,13 +1846,13 @@ def handle_admin_analytics(org_id: str, user_info: Dict[str, Any]) -> Dict[str, 
         avg_members = total_members / active_count if active_count > 0 else 0
         
         analytics = {
-            'org_id': org_id,
-            'total_workspaces': total_count,
-            'active_workspaces': active_count,
-            'archived_workspaces': archived_count,
-            'deleted_workspaces': deleted_count,
-            'total_members': total_members,
-            'avg_members_per_workspace': round(avg_members, 2)
+            'orgId': org_id,
+            'totalWorkspaces': total_count,
+            'activeWorkspaces': active_count,
+            'archivedWorkspaces': archived_count,
+            'deletedWorkspaces': deleted_count,
+            'totalMembers': total_members,
+            'avgMembersPerWorkspace': round(avg_members, 2)
         }
         
         logger.info(f"Retrieved analytics for org {org_id}")

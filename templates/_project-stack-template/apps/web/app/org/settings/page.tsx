@@ -19,7 +19,7 @@ import {
  * - Members: Manage organization members
  * - Invites: View and manage pending invitations
  *
- * Access: org_owner, org_admin, platform_owner, platform_admin
+ * Access: org_owner, org_admin, sys_owner, sys_admin
  */
 export default function OrgSettingsPage() {
   const { profile, loading: userLoading, isAuthenticated } = useUser();
@@ -65,14 +65,14 @@ export default function OrgSettingsPage() {
   }
 
   // Check if user has admin access
-  const isPlatformAdmin = ["platform_owner", "platform_admin"].includes(
-    profile.globalRole || ""
+  const isSysAdmin = ["sys_owner", "sys_admin"].includes(
+    profile.sysRole || ""
   );
   const isOrgAdmin = ["org_owner", "org_admin"].includes(
     currentOrg.role || ""
   );
 
-  if (!isPlatformAdmin && !isOrgAdmin) {
+  if (!isSysAdmin && !isOrgAdmin) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">

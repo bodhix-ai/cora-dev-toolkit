@@ -177,14 +177,14 @@ export function PerformanceTab(): React.ReactElement {
                     {/* Memory */}
                     <TableCell align="right">
                       <Typography variant="body2">
-                        {fn.memory_mb} MB
+                        {fn.memoryMb} MB
                       </Typography>
                     </TableCell>
 
                     {/* Timeout */}
                     <TableCell align="right">
                       <Typography variant="body2">
-                        {fn.timeout_seconds}s
+                        {fn.timeoutSeconds}s
                       </Typography>
                     </TableCell>
 
@@ -210,7 +210,7 @@ export function PerformanceTab(): React.ReactElement {
                     {/* Last Modified */}
                     <TableCell>
                       <Typography variant="body2" color="text.secondary">
-                        {formatDate(fn.last_modified)}
+                        {formatDate(fn.lastModified)}
                       </Typography>
                     </TableCell>
 
@@ -243,7 +243,7 @@ export function PerformanceTab(): React.ReactElement {
               <strong>Total Functions:</strong> {functions.length}
               {" • "}
               <strong>Total Memory:</strong>{" "}
-              {functions.reduce((sum, fn) => sum + fn.memory_mb, 0)} MB
+              {functions.reduce((sum, fn) => sum + fn.memoryMb, 0)} MB
               {" • "}
               <strong>Runtimes:</strong>{" "}
               {Array.from(new Set(functions.map((fn) => fn.runtime))).join(

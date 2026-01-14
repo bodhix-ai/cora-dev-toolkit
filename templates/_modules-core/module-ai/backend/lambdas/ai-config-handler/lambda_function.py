@@ -28,47 +28,47 @@ from ai_common import (
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# Platform admin roles
-PLATFORM_ADMIN_ROLES = ['platform_owner', 'platform_admin']
+# System admin roles
+SYS_ADMIN_ROLES = ['sys_owner', 'sys_admin']
 
 # Organization admin roles
 ORG_ADMIN_ROLES = ['org_owner', 'org_admin']
 
 
-def _check_platform_admin(user_id: str) -> bool:
+def _is_sys_admin(user_id: str) -> bool:
     """
-    Verify that the user has platform admin role.
+    Verify that the user has system admin role.
     
     Args:
         user_id: Supabase user ID
         
     Returns:
-        True if user has platform admin role, False otherwise
+        True if user has system admin role, False otherwise
     """
     try:
         profile = common.find_one('user_profiles', {'user_id': user_id})
         if not profile:
             return False
         
-        global_role = profile.get('global_role')
-        return global_role in PLATFORM_ADMIN_ROLES
+        sys_role = profile.get('sys_role')
+        return sys_role in SYS_ADMIN_ROLES
     except Exception as e:
-        logger.error(f"Error checking platform admin role: {e}")
+        logger.error(f"Error checking system admin role: {e}")
         return False
 
 
-def _require_platform_admin(user_id: str):
+def _require_sys_admin(user_id: str):
     """
-    Require platform admin access, raise ForbiddenError if user doesn't have it.
+    Require system admin access, raise ForbiddenError if user doesn't have it.
     
     Args:
         user_id: Supabase user ID
         
     Raises:
-        ForbiddenError: If user doesn't have platform admin role
+        ForbiddenError: If user doesn't have system admin role
     """
-    if not _check_platform_admin(user_id):
-        raise common.ForbiddenError('Access denied. Platform admin role required.')
+    if not _is_sys_admin(user_id):
+        raise common.ForbiddenError('Access denied. System admin role required.')
 
 
 def _check_org_admin(user_id: str, organization_id: str) -> bool:
@@ -112,9 +112,9 @@ def list_models_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         List of available models with their capabilities.
     """
     try:
-        _require_platform_admin(user_id)
+        _require_sys_admin(user_id)
         
-        logger.info(f"Platform admin access granted for user {user_id}")
+        logger.info(f"System admin access granted for user {user_id}")
         
         # Get capability filter from query parameters
         query_params = event.get("queryStringParameters") or {}
@@ -164,12 +164,12 @@ def get_platform_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[
         Platform AI configuration including default models and system prompt.
     """
     try:
-        _require_platform_admin(user_id)
+        _require_sys_admin(user_id)
         
-        logger.info(f"Platform admin access granted for user {user_id}")
+        logger.info(f"System admin access granted for user {user_id}")
         
         # Get platform AI configuration
-        config = common.find_one('platform_rag', {})
+        config = common.find_one('sys_rag', {})
         
         if not config:
             return common.not_found_response("Platform AI configuration not found.")
@@ -218,9 +218,9 @@ def update_platform_ai_config_handler(event: Dict[str, Any], user_id: str) -> Di
         Updated platform AI configuration.
     """
     try:
-        _require_platform_admin(user_id)
+        _require_sys_admin(user_id)
         
-        logger.info(f"Platform admin access granted for user {user_id}")
+        logger.info(f"System admin access granted for user {user_id}")
         
         # Parse request body
         try:
@@ -264,8 +264,8 @@ def update_platform_ai_config_handler(event: Dict[str, Any], user_id: str) -> Di
         if "system_prompt" in body:
             update_data["system_prompt"] = body["system_prompt"]
         
-        # Get the platform_rag record
-        platform_record = common.find_one('platform_rag', {})
+        # Get the sys_rag record
+        platform_record = common.find_one('sys_rag', {})
         
         if not platform_record:
             return common.not_found_response("Platform RAG configuration not found.")
@@ -276,7 +276,7 @@ def update_platform_ai_config_handler(event: Dict[str, Any], user_id: str) -> Di
         logger.info(f"Updating platform AI configuration (id={config_id})")
         
         updated_config = common.update_one(
-            table='platform_rag',
+            table='sys_rag',
             filters={'id': config_id},
             data=update_data
         )
@@ -342,11 +342,11 @@ def get_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, 
         
         organization_id = common.validate_uuid(organization_id, 'organizationId')
         
-        # Verify user is admin of the organization or platform admin
-        is_platform_admin = _check_platform_admin(user_id)
+        # Verify user is admin of the organization or system admin
+        is_sys_admin = _is_sys_admin(user_id)
         is_org_admin = _check_org_admin(user_id, organization_id)
         
-        if not is_platform_admin and not is_org_admin:
+        if not is_sys_admin and not is_org_admin:
             logger.warning(
                 f"Access denied for user {user_id} - "
                 f"not admin of organization {organization_id}"
@@ -362,7 +362,7 @@ def get_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, 
         org_config = common.find_one('org_prompt_engineering', {'org_id': organization_id})
         
         # Get platform defaults
-        platform_config = common.find_one('platform_rag', {})
+        platform_config = common.find_one('sys_rag', {})
         
         if not platform_config:
             return common.not_found_response("Platform AI configuration not found.")
@@ -394,26 +394,26 @@ def get_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, 
                 
                 platform_settings["embedding_deployment"] = {
                     "id": model_record.get('id'),
-                    "provider_type": model_record.get('provider_id'), # Ideally join with provider table, but simple ID for now
+                    "providerType": model_record.get('providerId'), # Ideally join with provider table, but simple ID for now
                     "provider": "Unknown", # We'd need to join with ai_providers to get name
-                    "model_id": model_record.get('model_id'),
-                    "model_name": model_record.get('display_name', model_record.get('model_id')),
-                    "deployment_name": "Default",
-                    "supports_chat": capabilities.get('chat', False),
-                    "supports_embeddings": capabilities.get('embedding', False),
-                    "deployment_status": model_record.get('status'),
-                    "created_at": model_record.get('created_at'),
-                    "updated_at": model_record.get('updated_at'),
+                    "modelId": model_record.get('modelId'),
+                    "modelName": model_record.get('displayName', model_record.get('modelId')),
+                    "deploymentName": "Default",
+                    "supportsChat": capabilities.get('chat', False),
+                    "supportsEmbeddings": capabilities.get('embedding', False),
+                    "deploymentStatus": model_record.get('status'),
+                    "createdAt": model_record.get('createdAt'),
+                    "updatedAt": model_record.get('updatedAt'),
                     "description": model_record.get('description'),
                     "capabilities": capabilities
                 }
                 
                 # Try to get provider name
-                if model_record.get('provider_id'):
-                    provider = common.find_one('ai_providers', {'id': model_record.get('provider_id')})
+                if model_record.get('providerId'):
+                    provider = common.find_one('ai_providers', {'id': model_record.get('providerId')})
                     if provider:
-                        platform_settings["embedding_deployment"]["provider"] = provider.get('display_name') or provider.get('name')
-                        platform_settings["embedding_deployment"]["provider_type"] = provider.get('provider_type')
+                        platform_settings["embedding_deployment"]["provider"] = provider.get('displayName') or provider.get('name')
+                        platform_settings["embedding_deployment"]["providerType"] = provider.get('providerType')
         
         if platform_settings.get("default_chat_deployment_id"):
             chat_model = common.find_one(
@@ -434,26 +434,26 @@ def get_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, 
                         
                 platform_settings["chat_deployment"] = {
                     "id": model_record.get('id'),
-                    "provider_type": model_record.get('provider_id'),
+                    "providerType": model_record.get('providerId'),
                     "provider": "Unknown",
-                    "model_id": model_record.get('model_id'),
-                    "model_name": model_record.get('display_name', model_record.get('model_id')),
-                    "deployment_name": "Default",
-                    "supports_chat": capabilities.get('chat', False),
-                    "supports_embeddings": capabilities.get('embedding', False),
-                    "deployment_status": model_record.get('status'),
-                    "created_at": model_record.get('created_at'),
-                    "updated_at": model_record.get('updated_at'),
+                    "modelId": model_record.get('modelId'),
+                    "modelName": model_record.get('displayName', model_record.get('modelId')),
+                    "deploymentName": "Default",
+                    "supportsChat": capabilities.get('chat', False),
+                    "supportsEmbeddings": capabilities.get('embedding', False),
+                    "deploymentStatus": model_record.get('status'),
+                    "createdAt": model_record.get('createdAt'),
+                    "updatedAt": model_record.get('updatedAt'),
                     "description": model_record.get('description'),
                     "capabilities": capabilities
                 }
                 
                 # Try to get provider name
-                if model_record.get('provider_id'):
-                    provider = common.find_one('ai_providers', {'id': model_record.get('provider_id')})
+                if model_record.get('providerId'):
+                    provider = common.find_one('ai_providers', {'id': model_record.get('providerId')})
                     if provider:
-                        platform_settings["chat_deployment"]["provider"] = provider.get('display_name') or provider.get('name')
-                        platform_settings["chat_deployment"]["provider_type"] = provider.get('provider_type')
+                        platform_settings["chat_deployment"]["provider"] = provider.get('displayName') or provider.get('name')
+                        platform_settings["chat_deployment"]["providerType"] = provider.get('providerType')
 
         # Combine prompt
         org_system_prompt = org_config.get("org_system_prompt") if org_config else None
@@ -508,11 +508,11 @@ def update_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[st
         
         organization_id = common.validate_uuid(organization_id, 'orgId')
         
-        # Verify user is admin of the organization or platform admin
-        is_platform_admin = _check_platform_admin(user_id)
+        # Verify user is admin of the organization or system admin
+        is_sys_admin = _is_sys_admin(user_id)
         is_org_admin = _check_org_admin(user_id, organization_id)
         
-        if not is_platform_admin and not is_org_admin:
+        if not is_sys_admin and not is_org_admin:
             logger.warning(
                 f"Access denied for user {user_id} - "
                 f"not admin of organization {organization_id}"
@@ -570,7 +570,7 @@ def update_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[st
             return common.internal_error_response("Failed to update organization AI configuration.")
         
         # Get platform defaults for complete response
-        platform_config = common.find_one('platform_rag', {})
+        platform_config = common.find_one('sys_rag', {})
         
         if platform_config:
             updated_config["default_embedding_model_id"] = platform_config.get("default_embedding_model_id")
@@ -594,22 +594,22 @@ def update_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[st
 # PLATFORM RAG CONFIGURATION (Super Admin Only)
 # ============================================================================
 
-def get_platform_rag_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+def get_sys_rag_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
     Get platform-level RAG configuration.
-    Only accessible to platform admin users.
+    Only accessible to system admin users.
     
     Returns:
         Platform RAG configuration including provider settings.
     """
     try:
-        _require_platform_admin(user_id)
+        _require_sys_admin(user_id)
         
-        logger.info(f"Platform admin access granted for user {user_id}")
+        logger.info(f"System admin access granted for user {user_id}")
         
         # Get platform RAG configuration
         rag_config = common.find_one(
-            table='platform_rag',
+            table='sys_rag',
             filters={},
             select='*'
         )
@@ -635,10 +635,10 @@ def get_platform_rag_config_handler(event: Dict[str, Any], user_id: str) -> Dict
         return common.internal_error_response('Failed to get RAG configuration')
 
 
-def update_platform_rag_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+def update_sys_rag_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
     Update platform-level RAG configuration.
-    Only accessible to platform admin users.
+    Only accessible to system admin users.
     
     Request body:
         {
@@ -653,9 +653,9 @@ def update_platform_rag_config_handler(event: Dict[str, Any], user_id: str) -> D
         Updated platform RAG configuration.
     """
     try:
-        _require_platform_admin(user_id)
+        _require_sys_admin(user_id)
         
-        logger.info(f"Platform admin access granted for user {user_id}")
+        logger.info(f"System admin access granted for user {user_id}")
         
         # Parse request body
         try:
@@ -667,7 +667,7 @@ def update_platform_rag_config_handler(event: Dict[str, Any], user_id: str) -> D
             return common.bad_request_response('Request body is required.')
         
         # Fetch existing configuration to preserve sanitized API keys
-        existing_config = common.find_one(table='platform_rag', filters={}, select='*')
+        existing_config = common.find_one(table='sys_rag', filters={}, select='*')
         
         if not existing_config:
             return common.not_found_response('Platform RAG configuration not found.')
@@ -699,7 +699,7 @@ def update_platform_rag_config_handler(event: Dict[str, Any], user_id: str) -> D
         logger.info(f"Updating platform RAG configuration (id={config_id})")
         
         updated_config = common.update_one(
-            table='platform_rag',
+            table='sys_rag',
             filters={'id': config_id},
             data=update_data
         )
@@ -733,15 +733,15 @@ def update_platform_rag_config_handler(event: Dict[str, Any], user_id: str) -> D
 def list_rag_providers_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
     List all available AI providers.
-    Only accessible to platform admin users.
+    Only accessible to system admin users.
     
     Returns:
         List of AI providers with their status and capabilities.
     """
     try:
-        _require_platform_admin(user_id)
+        _require_sys_admin(user_id)
         
-        logger.info(f"Platform admin access granted for user {user_id}")
+        logger.info(f"System admin access granted for user {user_id}")
         
         # Get all AI providers
         providers = common.find_many(
@@ -766,7 +766,7 @@ def list_rag_providers_handler(event: Dict[str, Any], user_id: str) -> Dict[str,
 def test_rag_provider_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
     Test connection to a specific AI provider.
-    Only accessible to platform admin users.
+    Only accessible to system admin users.
     
     Request body:
         {
@@ -778,9 +778,9 @@ def test_rag_provider_handler(event: Dict[str, Any], user_id: str) -> Dict[str, 
         Connection test results.
     """
     try:
-        _require_platform_admin(user_id)
+        _require_sys_admin(user_id)
         
-        logger.info(f"Platform admin access granted for user {user_id}")
+        logger.info(f"System admin access granted for user {user_id}")
         
         # Parse request body
         try:
@@ -812,9 +812,9 @@ def test_rag_provider_handler(event: Dict[str, Any], user_id: str) -> Dict[str, 
         
         test_result = {
             'success': True,
-            'provider_id': provider_id,
-            'provider_name': provider.get('name'),
-            'provider_type': provider.get('type'),
+            'providerId': provider_id,
+            'providerName': provider.get('name'),
+            'providerType': provider.get('type'),
             'message': f"Provider {provider.get('name')} configuration validated"
         }
         
@@ -837,7 +837,7 @@ def test_rag_provider_handler(event: Dict[str, Any], user_id: str) -> Dict[str, 
 def get_rag_provider_models_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
     Get available models for AI providers.
-    Only accessible to platform admin users.
+    Only accessible to system admin users.
     
     Query parameters:
         provider_id: Optional provider UUID to filter by
@@ -846,9 +846,9 @@ def get_rag_provider_models_handler(event: Dict[str, Any], user_id: str) -> Dict
         List of AI models with their capabilities.
     """
     try:
-        _require_platform_admin(user_id)
+        _require_sys_admin(user_id)
         
-        logger.info(f"Platform admin access granted for user {user_id}")
+        logger.info(f"System admin access granted for user {user_id}")
         
         # Get query parameters
         query_params = event.get('queryStringParameters') or {}
@@ -926,8 +926,8 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         PUT  /orgs/{organizationId}/ai/config -> update_org_ai_config_handler
         
         # AI Provider Configuration
-        GET  /admin/ai/rag-config -> get_platform_rag_config_handler
-        PUT  /admin/ai/rag-config -> update_platform_rag_config_handler
+        GET  /admin/ai/rag-config -> get_sys_rag_config_handler
+        PUT  /admin/ai/rag-config -> update_sys_rag_config_handler
         GET  /admin/ai/providers -> list_rag_providers_handler
         POST /admin/ai/providers/test -> test_rag_provider_handler
         GET  /admin/ai/providers/models -> get_rag_provider_models_handler
@@ -972,9 +972,9 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         # AI Provider Configuration routes
         elif path == "/admin/ai/rag-config":
             if http_method == "GET":
-                return get_platform_rag_config_handler(event, supabase_user_id)
+                return get_sys_rag_config_handler(event, supabase_user_id)
             elif http_method == "PUT":
-                return update_platform_rag_config_handler(event, supabase_user_id)
+                return update_sys_rag_config_handler(event, supabase_user_id)
         
         elif path == "/admin/ai/providers":
             if http_method == "GET":
