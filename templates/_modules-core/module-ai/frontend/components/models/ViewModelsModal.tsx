@@ -374,9 +374,9 @@ export function ViewModelsModal({
                   Direct ({categoryCounts.direct_invocation})
                 </MenuItem>
               )}
-              {categoryCounts.requires_inference_profile && (
+              {categoryCounts.requiresInferenceProfile && (
                 <MenuItem value="requires_inference_profile">
-                  Inference Profile ({categoryCounts.requires_inference_profile}
+                  Inference Profile ({categoryCounts.requiresInferenceProfile}
                   )
                 </MenuItem>
               )}
@@ -390,9 +390,9 @@ export function ViewModelsModal({
                   Deprecated ({categoryCounts.deprecated})
                 </MenuItem>
               )}
-              {categoryCounts.invalid_request_format && (
+              {categoryCounts.invalidRequestFormat && (
                 <MenuItem value="invalid_request_format">
-                  Format Issue ({categoryCounts.invalid_request_format})
+                  Format Issue ({categoryCounts.invalidRequestFormat})
                 </MenuItem>
               )}
               {categoryCounts.unknown_error && (
