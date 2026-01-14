@@ -6,26 +6,58 @@
 
 ---
 
+## Current Test Environment
+
+**Project:** ai-sec (test-ws-23)
+
+| Repo | Path |
+|------|------|
+| Stack | `~/code/bodhix/testing/test-ws-23/ai-sec-stack` |
+| Infra | `~/code/bodhix/testing/test-ws-23/ai-sec-infra` |
+
+**Note:** Update these paths when creating new test environments.
+
+---
+
 ## ⏳ Outstanding User Testing Validations
 
-**Status:** User must recreate project from templates to validate these fixes.
+**Status:** User must recreate project from templates, deploy, and test each item.
 
-| # | Issue | API/Component | Expected Result | Status |
-|---|-------|---------------|-----------------|--------|
-| 1 | GET /orgs/{id}/invites returns 403 | Invites API | Invites load for org admins | ⏳ Pending |
-| 2 | PUT /ws/config returns 400 | Workspace Config API | Config saves successfully (200) | ⏳ Pending |
-| 3 | GET /ws/config data not displayed | Workspace Config UI | Saved config displays in UI after refresh | ⏳ Pending |
-| 4 | GET /admin/users shows "No name" | Users API | User names display correctly | ⏳ Pending |
-| 5 | Edit Workspace popup empty | Workspace Edit Modal | Existing values populate form | ⏳ Pending |
-| 6 | Org Members shows "Unknown User" | Org Members Tab | Member names/emails display | ⏳ Pending |
-| 7 | AI Config shows no models | AI Config Panel | Chat/embedding models appear in dropdowns | ⏳ Pending |
-| 8 | Lambda Warming toggle not working | Platform Mgmt | Toggle state displays correctly, saves | ⏳ Pending |
+| # | Issue | API/Component | Expected Result | Code Verified | User Tested |
+|---|-------|---------------|-----------------|---------------|-------------|
+| 1 | GET /orgs/{id}/invites returns 403 | Invites API | Invites load for org admins | ✅ | ✅ Working - found #9, #10 |
+| 2 | PUT /ws/config returns 400 | Workspace Config API | Config saves successfully (200) | ✅ | ⏳ Pending |
+| 3 | GET /ws/config data not displayed | Workspace Config UI | Saved config displays in UI after refresh | ✅ | ⏳ Pending |
+| 4 | GET /admin/users shows "No name" | Users API | User names display correctly | ✅ | ⏳ Pending |
+| 5 | Edit Workspace popup empty | Workspace Edit Modal | Existing values populate form | ✅ | ⏳ Pending |
+| 6 | Org Members shows "Unknown User" | Org Members Tab | Member names/emails display | ✅ | ⏳ Pending |
+| 7 | AI Config shows no models | AI Config Panel | Chat/embedding models appear in dropdowns | ✅ | ⏳ Pending |
+| 8 | Lambda Warming toggle not working | Platform Mgmt | Toggle state displays correctly, saves | ⏳ | ⏳ Pending |
+| 9 | Invites "Invited By" shows "Unknown" | Invites Tab | Shows inviter name/email | ✅ **FIXED** | ✅ **WORKING** |
+| 10 | Create Invitation missing expiration | Invite Dialog | Date picker with 7-day default | ✅ **FIXED** | ✅ **WORKING** |
 
-**To validate:** Recreate project from templates, deploy, and test each item.
+**Note:** Each user-tested issue may discover additional sub-issues requiring fixes (as seen with #1 → #9, #10).
 
 ---
 
 ## ✅ Session 123 Fixes Applied to Templates
+
+### New Fixes (Session 123 - January 14, 2026)
+
+#### 9. Invites "Invited By" shows "Unknown"
+- **File:** `templates/_modules-core/module-access/backend/lambdas/invites/lambda_function.py`
+- **Issue:** API returned `invitedBy` as UUID, frontend expected `{ name, email }` object
+- **Fix:** Modified `handle_list_invites()` to enrich each invite with inviter profile data
+
+#### 10. Create Invitation missing expiration date picker
+- **Files:**
+  - `templates/_modules-core/module-access/backend/lambdas/invites/lambda_function.py`
+  - `templates/_modules-core/module-access/frontend/types/index.ts`
+  - `templates/_modules-core/module-access/frontend/components/org/InviteMemberDialog.tsx`
+- **Fix:** 
+  - Backend: Accept `expiresAt` field (camelCase per API-PATTERNS standard)
+  - Frontend type: Added `expiresAt?: string` to `InviteMemberInput`
+  - Frontend dialog: Added date picker with 7 calendar day default
 
 ### Build Error Fixes (TypeScript/Frontend)
 
@@ -147,4 +179,34 @@ api_list = common.transform_records(db_records)
 
 ---
 
-**Updated:** January 14, 2026, 8:47 AM EST
+---
+
+## 🚀 Fast Iteration Testing Tooling (Session 123)
+
+**Created:** Scripts and documentation for AI-assisted testing workflow
+
+### Scripts
+1. **`scripts/sync-fix-to-project.sh`** - Syncs template fixes to existing projects
+   - Intelligently detects stack vs infra repos
+   - Maps core module backend Lambdas to correct location (stack repo)
+   - Supports dry-run mode for preview
+   
+2. **`templates/_project-infra-template/scripts/deploy-lambda.sh`** - Deploys single Lambda
+   - Skips full deploy-all.sh pipeline
+   - Reduces deployment time from 5-7 min to 2-3 min
+
+### Documentation
+- **`docs/guides/guide_FAST-ITERATION-TESTING.md`** - Complete usage guide
+- **`.clinerules`** - Updated with AI workflow instructions
+
+### Workflow Benefits
+| Change Type | Old Time | New Time | Savings |
+|-------------|----------|----------|---------|
+| Frontend fix | ~5-7 min | ~30 sec | 90%+ |
+| Backend Lambda | ~5-7 min | ~2-3 min | 60%+ |
+
+**Goal:** User focuses on testing, AI handles fix → sync → deploy.
+
+---
+
+**Updated:** January 14, 2026, 10:55 AM EST

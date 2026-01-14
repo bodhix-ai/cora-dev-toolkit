@@ -100,7 +100,7 @@ def handle_list_invites(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
         org_id: Organization ID
         
     Returns:
-        List of pending invites
+        List of pending invites with enriched inviter profile data
     """
     # Get user info and convert external UID to Supabase UUID
     user_info = common.get_user_from_event(event)
@@ -118,7 +118,30 @@ def handle_list_invites(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
         filters={'org_id': org_id, 'status': 'pending'}
     )
     
-    return common.success_response(common.format_records(invites))
+    # Enrich invites with inviter profile data
+    enriched_invites = []
+    for invite in invites:
+        invite_data = common.format_record(invite)
+        
+        # Look up inviter's profile to get name/email
+        if invite.get('invited_by'):
+            inviter_profile = common.find_one(
+                table='user_profiles',
+                filters={'user_id': invite['invited_by']}
+            )
+            if inviter_profile:
+                invite_data['invitedBy'] = {
+                    'name': inviter_profile.get('full_name'),
+                    'email': inviter_profile.get('email')
+                }
+            else:
+                invite_data['invitedBy'] = None
+        else:
+            invite_data['invitedBy'] = None
+        
+        enriched_invites.append(invite_data)
+    
+    return common.success_response(enriched_invites)
 
 
 def handle_create_invite(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
@@ -128,7 +151,8 @@ def handle_create_invite(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
     Request body:
     {
         "email": "user@example.com",
-        "role": "org_user" | "org_admin" | "org_owner"
+        "role": "org_user" | "org_admin" | "org_owner",
+        "expiresAt": "2026-01-21T00:00:00Z" (optional, ISO 8601 format)
     }
 
     Args:
@@ -152,6 +176,9 @@ def handle_create_invite(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
     body = json.loads(event.get('body', '{}'))
     email = common.validate_email(body.get('email'))
     role = common.validate_required(body.get('role'), 'role')
+    
+    # Optional: expiresAt (camelCase per API-PATTERNS standard)
+    expires_at = body.get('expiresAt')
     
     # Validate role
     if role not in ['org_user', 'org_admin', 'org_owner']:
@@ -183,16 +210,23 @@ def handle_create_invite(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
     if existing_invite:
         return common.bad_request_response('Pending invite already exists for this email')
     
+    # Build invite data
+    invite_data = {
+        'org_id': org_id,
+        'email': email,
+        'role': role,
+        'invited_by': user_id,  # Use converted Supabase UUID
+        'status': 'pending'
+    }
+    
+    # Add expires_at if provided
+    if expires_at:
+        invite_data['expires_at'] = expires_at
+    
     # Create invite
     invite = common.insert_one(
         table='user_invites',
-        data={
-            'org_id': org_id,
-            'email': email,
-            'role': role,
-            'invited_by': user_id,  # Use converted Supabase UUID
-            'status': 'pending'
-        }
+        data=invite_data
     )
     
     # TODO: Send invitation email (integrate with email service)

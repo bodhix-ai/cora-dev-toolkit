@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -16,6 +16,16 @@ import Alert from "@mui/material/Alert";
 import { useOrgMembers } from "../../hooks/useOrgMembers";
 import { validateEmail } from "../../lib/validation";
 import { getRoleDisplayName } from "../../lib/permissions";
+
+/**
+ * Get a date 7 days in the future (default expiration)
+ */
+function getDefaultExpirationDate(): string {
+  const date = new Date();
+  date.setDate(date.getDate() + 7);
+  // Format as YYYY-MM-DD for input[type="date"]
+  return date.toISOString().split("T")[0];
+}
 
 interface InviteMemberDialogProps {
   open: boolean;
@@ -41,9 +51,15 @@ export function InviteMemberDialog({
   const [role, setRole] = useState<"org_user" | "org_admin" | "org_owner">(
     "org_user"
   );
+  const [expiresAt, setExpiresAt] = useState(getDefaultExpirationDate());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+
+  // Calculate minimum date (today) for the date picker
+  const minDate = useMemo(() => {
+    return new Date().toISOString().split("T")[0];
+  }, []);
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -71,10 +87,16 @@ export function InviteMemberDialog({
     setError(null);
 
     try {
-      await inviteMember({ email, role });
+      // Convert date to ISO 8601 format with end-of-day time
+      const expiresAtISO = expiresAt
+        ? new Date(expiresAt + "T23:59:59").toISOString()
+        : undefined;
+
+      await inviteMember({ email, role, expiresAt: expiresAtISO });
       // Success - reset form and close
       setEmail("");
       setRole("org_user");
+      setExpiresAt(getDefaultExpirationDate());
       setEmailError(null);
       onClose();
     } catch (err) {
@@ -88,6 +110,7 @@ export function InviteMemberDialog({
     if (!submitting) {
       setEmail("");
       setRole("org_user");
+      setExpiresAt(getDefaultExpirationDate());
       setEmailError(null);
       setError(null);
       onClose();
@@ -190,6 +213,28 @@ export function InviteMemberDialog({
                 ))}
               </Select>
             </FormControl>
+
+            {/* Expiration Date */}
+            <TextField
+              label="Invitation Expires"
+              type="date"
+              value={expiresAt}
+              onChange={(e) => setExpiresAt(e.target.value)}
+              fullWidth
+              disabled={submitting}
+              InputLabelProps={{
+                shrink: true,
+              }}
+              inputProps={{
+                min: minDate,
+              }}
+              helperText="Invitation will expire at end of day (default: 7 days)"
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "8px",
+                },
+              }}
+            />
 
             {/* Info Box */}
             <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3">

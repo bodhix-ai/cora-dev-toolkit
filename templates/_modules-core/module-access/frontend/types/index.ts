@@ -101,6 +101,7 @@ export interface UpdateProfileInput {
 export interface InviteMemberInput {
   email: string;
   role: "org_user" | "org_admin" | "org_owner";
+  expiresAt?: string; // ISO 8601 format, e.g., "2026-01-21T00:00:00Z"
 }
 
 // Org Icon Options (AI-related MUI icons)
