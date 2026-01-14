@@ -169,7 +169,7 @@ def get_platform_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[
         logger.info(f"System admin access granted for user {user_id}")
         
         # Get platform AI configuration
-        config = common.find_one('sys_rag', {})
+        config = common.find_one('ai_cfg_sys_rag', {})
         
         if not config:
             return common.not_found_response("Platform AI configuration not found.")
@@ -272,8 +272,8 @@ def update_platform_ai_config_handler(event: Dict[str, Any], user_id: str) -> Di
         if "system_prompt" in body:
             update_data["system_prompt"] = body["system_prompt"]
         
-        # Get the sys_rag record
-        platform_record = common.find_one('sys_rag', {})
+        # Get the ai_cfg_sys_rag record
+        platform_record = common.find_one('ai_cfg_sys_rag', {})
         
         if not platform_record:
             return common.not_found_response("Platform RAG configuration not found.")
@@ -284,7 +284,7 @@ def update_platform_ai_config_handler(event: Dict[str, Any], user_id: str) -> Di
         logger.info(f"Updating platform AI configuration (id={config_id})")
         
         updated_config = common.update_one(
-            table='sys_rag',
+            table='ai_cfg_sys_rag',
             filters={'id': config_id},
             data=update_data
         )
@@ -367,10 +367,10 @@ def get_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, 
         )
         
         # Get organization AI configuration
-        org_config = common.find_one('org_prompt_engineering', {'org_id': organization_id})
+        org_config = common.find_one('ai_cfg_org_prompts', {'org_id': organization_id})
         
         # Get platform defaults
-        platform_config = common.find_one('sys_rag', {})
+        platform_config = common.find_one('ai_cfg_sys_rag', {})
         
         if not platform_config:
             return common.not_found_response("Platform AI configuration not found.")
@@ -550,15 +550,15 @@ def update_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[st
         if not update_data:
             return common.bad_request_response("No valid fields to update.")
         
-        # Check if org_prompt_engineering record exists
-        existing = common.find_one('org_prompt_engineering', {'org_id': organization_id})
+        # Check if ai_cfg_org_prompts record exists
+        existing = common.find_one('ai_cfg_org_prompts', {'org_id': organization_id})
         
         if existing:
             # Update existing record
             logger.info(f"Updating org AI configuration for organization {organization_id}")
             
             updated_config = common.update_one(
-                table='org_prompt_engineering',
+                table='ai_cfg_org_prompts',
                 filters={'org_id': organization_id},
                 data=update_data
             )
@@ -571,14 +571,14 @@ def update_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[st
                 **update_data
             }
             
-            updated_config = common.insert_one(table='org_prompt_engineering', data=insert_data)
+            updated_config = common.insert_one(table='ai_cfg_org_prompts', data=insert_data)
         
         if not updated_config:
             logger.error("Update/insert failed - no record returned")
             return common.internal_error_response("Failed to update organization AI configuration.")
         
         # Get platform defaults for complete response
-        platform_config = common.find_one('sys_rag', {})
+        platform_config = common.find_one('ai_cfg_sys_rag', {})
         
         if platform_config:
             updated_config["default_embedding_model_id"] = platform_config.get("default_embedding_model_id")
@@ -617,7 +617,7 @@ def get_sys_rag_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str,
         
         # Get platform RAG configuration
         rag_config = common.find_one(
-            table='sys_rag',
+            table='ai_cfg_sys_rag',
             filters={},
             select='*'
         )
@@ -675,7 +675,7 @@ def update_sys_rag_config_handler(event: Dict[str, Any], user_id: str) -> Dict[s
             return common.bad_request_response('Request body is required.')
         
         # Fetch existing configuration to preserve sanitized API keys
-        existing_config = common.find_one(table='sys_rag', filters={}, select='*')
+        existing_config = common.find_one(table='ai_cfg_sys_rag', filters={}, select='*')
         
         if not existing_config:
             return common.not_found_response('Platform RAG configuration not found.')
@@ -707,7 +707,7 @@ def update_sys_rag_config_handler(event: Dict[str, Any], user_id: str) -> Dict[s
         logger.info(f"Updating platform RAG configuration (id={config_id})")
         
         updated_config = common.update_one(
-            table='sys_rag',
+            table='ai_cfg_sys_rag',
             filters={'id': config_id},
             data=update_data
         )
