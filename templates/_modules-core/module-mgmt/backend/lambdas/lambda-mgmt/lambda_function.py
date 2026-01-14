@@ -262,6 +262,10 @@ def handle_update_config(
     if not config_key:
         raise common.ValidationError('Configuration key is required')
     
+    # Map camelCase to snake_case (API-PATTERNS standard)
+    if 'configValue' in body:
+        body['config_value'] = body.pop('configValue')
+    
     if 'config_value' not in body:
         raise common.ValidationError('config_value is required in request body')
     

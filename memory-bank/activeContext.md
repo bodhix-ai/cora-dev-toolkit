@@ -28,15 +28,19 @@
 | 1 | GET /orgs/{id}/invites returns 403 | Invites API | Invites load for org admins | ✅ | ✅ Working - found #9, #10 |
 | 2 | PUT /ws/config returns 400 | Workspace Config API | Config saves successfully (200) | ✅ **FIXED** | ✅ **WORKING** |
 | 3 | GET /ws/config data not displayed | Workspace Config UI | Saved config displays in UI after refresh | ✅ **FIXED** | ✅ **WORKING** (requires refresh) |
-| 4 | GET /admin/users shows "No name" | Users API | User names display correctly | ✅ | ⏳ Pending |
-| 5 | Edit Workspace popup empty | Workspace Edit Modal | Existing values populate form | ✅ | ⏳ Pending |
-| 6 | Org Members shows "Unknown User" | Org Members Tab | Member names/emails display | ✅ | ⏳ Pending |
-| 7 | AI Config shows no models | AI Config Panel | Chat/embedding models appear in dropdowns | ✅ | ⏳ Pending |
-| 8 | Lambda Warming toggle not working | Platform Mgmt | Toggle state displays correctly, saves | ⏳ | ⏳ Pending |
+| 4 | GET /admin/users shows "No name" | Users API | User names display correctly | ✅ **FIXED** | ✅ **WORKING** |
+| 5 | Edit Workspace popup empty | Workspace Edit Modal | Existing values populate form | ✅ **FIXED** | ✅ **WORKING** |
+| 6 | Org Members shows "Unknown User" | Org Members Tab | Member names/emails display | ✅ **FIXED** | ✅ **WORKING** |
+| 7 | AI Config shows no models | AI Config Panel | Chat/embedding models appear in dropdowns | ✅ **FIXED** | ✅ **WORKING** |
+| 8 | Lambda Warming toggle not working | Platform Mgmt | Toggle state displays correctly, saves | ✅ **FIXED** (Session 123) | ✅ **WORKING** |
 | 9 | Invites "Invited By" shows "Unknown" | Invites Tab | Shows inviter name/email | ✅ **FIXED** | ✅ **WORKING** |
 | 10 | Create Invitation missing expiration | Invite Dialog | Date picker with 7-day default | ✅ **FIXED** | ✅ **WORKING** |
+| 11 | Embedding dimension warning inverted | AI Config Panel | Warning only for non-1024 dimensions | ✅ **FIXED** (Session 123) | ✅ **WORKING** |
+| 12 | Org members missing action buttons | Org Members Tab | Edit/delete buttons for org_owner | 🔍 **INVESTIGATING** | ⏳ Pending |
+| 13 | AI config save returns 400 | AI Config API | Saves with camelCase field names | ✅ **FIXED** (Session 123) | ✅ **WORKING** (requires refresh) |
+| 14 | Lambda warming config errors | Platform Mgmt | Custom schedule + camelCase field names | ✅ **FIXED** (Session 123) | ✅ **WORKING** (custom schedule pending) |
 
-**Note:** Each user-tested issue may discover additional sub-issues requiring fixes (as seen with #1 → #9, #10).
+**Note:** Each user-tested issue may discover additional sub-issues requiring fixes (as seen with #1 → #9, #10, and #8 → #11, #12, #13, #14).
 
 ---
 
@@ -81,6 +85,37 @@
 - **Fix:** Updated Sidebar to use `wsConfig.navIcon` (data saves correctly)
 - **Known Limitation:** Icon updates require browser refresh (each hook has independent state)
 - **Future Enhancement:** Implement shared state management (Context/React Query) for real-time updates
+
+### Newly Discovered Issues (Session 123 - January 14, 2026)
+
+#### 14. Embedding Dimension Warning Logic Inverted ✅ FIXED
+- **Issue:** Warning shows when selecting 1024 dimensions (the default), should only show for non-1024
+- **Root Cause:** `RECOMMENDED_DIMENSIONS` constant set to 1536 instead of 1024
+- **Fix:** Changed `RECOMMENDED_DIMENSIONS` from 1536 → 1024 in `ModelSelectionModal.tsx`
+- **Status:** ✅ Working - tested by user
+
+#### 15. Org Members Missing Action Buttons
+- **Issue:** No edit/delete buttons in org members list, even for org_owner
+- **Expected Behavior:** org_owner should see action buttons to edit member roles and remove members from org
+- **Note:** Delete should remove from org, not delete from system
+- **Status:** Pending fix
+
+#### 16. AI Config Save Returns 400 Error ✅ FIXED
+- **Issue:** PUT /admin/ai/config returns 400 "Both default_embedding_model_id and default_chat_model_id are required"
+- **Root Cause:** API expects snake_case but receives camelCase from frontend
+- **Fix:** Added field_mapping to `ai-config-handler/lambda_function.py`
+- **Status:** ✅ Working - saves successfully
+- **Known Limitation:** Frontend doesn't refresh state after save (requires browser refresh to see saved values)
+- **Future Enhancement:** Update frontend to refresh local state after successful PUT request
+
+#### 17. Lambda Warming Config Issues ✅ PARTIALLY FIXED
+- **Issues:**
+  1. ✅ Toggle save works - Fixed with field_mapping in `lambda-mgmt/lambda_function.py`
+  2. ⏳ Custom schedule option not selectable (under investigation)
+- **Root Cause (Toggle):** API expects snake_case but receives camelCase from frontend
+- **Fix:** Added field_mapping to `lambda-mgmt/lambda_function.py`
+- **Status:** Toggle working, custom schedule needs frontend investigation
+- **Next Steps:** Check browser console for errors when selecting custom schedule
 
 #### 13. Template Placeholder Issue - sync-fix-to-project.sh
 - **Files:**
@@ -241,4 +276,4 @@ api_list = common.transform_records(db_records)
 
 ---
 
-**Updated:** January 14, 2026, 1:07 PM EST
+**Updated:** January 14, 2026, 1:30 PM EST

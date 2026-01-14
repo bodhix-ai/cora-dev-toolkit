@@ -20,7 +20,7 @@ import { Warning as WarningIcon } from "@mui/icons-material";
 import { DeploymentInfo } from "../hooks/useAIConfig";
 import { ModelCard } from "./ModelCard";
 
-const RECOMMENDED_DIMENSIONS = 1536;
+const RECOMMENDED_DIMENSIONS = 1024;
 
 interface ModelSelectionModalProps {
   open: boolean;

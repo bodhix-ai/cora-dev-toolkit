@@ -231,6 +231,14 @@ def update_platform_ai_config_handler(event: Dict[str, Any], user_id: str) -> Di
         if not body:
             return common.bad_request_response("Request body is required.")
         
+        # Map camelCase to snake_case (API-PATTERNS standard)
+        field_mapping = {
+            'defaultEmbeddingModelId': 'default_embedding_model_id',
+            'defaultChatModelId': 'default_chat_model_id',
+            'systemPrompt': 'system_prompt'
+        }
+        body = {field_mapping.get(k, k): v for k, v in body.items()}
+        
         # Validate required fields
         embedding_model_id = body.get("default_embedding_model_id")
         chat_model_id = body.get("default_chat_model_id")

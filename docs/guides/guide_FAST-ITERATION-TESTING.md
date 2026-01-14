@@ -144,25 +144,58 @@ cd ~/code/bodhix/testing/test-ws-23/ai-sec-stack
 # 4. Test in browser
 ```
 
-### Backend Lambda Fix (~2-3 minutes)
+### Backend Module Lambda Fix (~2-3 minutes)
 
-When fixing a Lambda handler:
+**CRITICAL:** Module Lambdas live in the STACK repo and require module build + Terraform deploy.
+
+When fixing a module Lambda handler:
 
 ```bash
 # 1. Make fix in template
 vim templates/_modules-core/module-access/backend/lambdas/invites/lambda_function.py
 
-# 2. Sync to test project
-./scripts/sync-fix-to-project.sh ~/code/bodhix/testing/test-ws-23/ai-sec-infra "invites/lambda_function.py"
+# 2. Sync to STACK repo (NOT infra!)
+./scripts/sync-fix-to-project.sh ~/code/bodhix/testing/test-ws-23/ai-sec-stack "invites/lambda_function.py"
 
-# 3. Build and deploy Lambda
+# 3. Build the module (creates Lambda zips in .build directory)
+cd ~/code/bodhix/testing/test-ws-23/ai-sec-stack/packages/module-access/backend
+bash build.sh
+
+# 4. Deploy via Terraform (picks up new Lambda zips)
 cd ~/code/bodhix/testing/test-ws-23/ai-sec-infra
-./scripts/deploy-lambda.sh module-access/invites
+./scripts/deploy-terraform.sh dev
 
-# 4. Test API endpoint
+# 5. Test API endpoint
 ```
 
-### Multiple Files (Same Module)
+**Why this workflow:**
+- Module Lambdas are in `{project}-stack/packages/module-{name}/backend/lambdas/`
+- Each module has a `build.sh` that creates all Lambda zips for that module
+- Terraform deployment reads the zips from `packages/module-{name}/backend/.build/`
+- The `deploy-lambda.sh` script is for infrastructure-only Lambdas (like authorizer)
+
+### Multiple Lambda Fixes (Different Modules)
+
+When fixing Lambdas across multiple modules:
+
+```bash
+# 1. Sync all fixes to STACK repo
+./scripts/sync-fix-to-project.sh ~/code/bodhix/testing/test-ws-23/ai-sec-stack "ai-config-handler/lambda_function.py"
+./scripts/sync-fix-to-project.sh ~/code/bodhix/testing/test-ws-23/ai-sec-stack "lambda-mgmt/lambda_function.py"
+
+# 2. Build each affected module
+cd ~/code/bodhix/testing/test-ws-23/ai-sec-stack
+bash packages/module-ai/backend/build.sh
+bash packages/module-mgmt/backend/build.sh
+
+# 3. Deploy ALL via Terraform (once)
+cd ~/code/bodhix/testing/test-ws-23/ai-sec-infra
+./scripts/deploy-terraform.sh dev
+
+# 4. Test all affected endpoints
+```
+
+### Multiple Frontend Files (Same Module)
 
 ```bash
 # Sync multiple files from same module
@@ -171,6 +204,7 @@ cd ~/code/bodhix/testing/test-ws-23/ai-sec-infra
 ./scripts/sync-fix-to-project.sh ~/path/to/stack "module-access/types"
 
 # Restart dev server once
+cd ~/path/to/stack
 ./scripts/start-dev.sh
 ```
 
