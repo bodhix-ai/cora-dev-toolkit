@@ -38,6 +38,40 @@ logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
 SYS_ADMIN_ROLES = ['sys_owner', 'sys_admin']
 
 
+def _transform_lambda_config(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Transform database Lambda config record to camelCase API response.
+    
+    Transforms both the outer record fields AND nested config_value fields.
+    """
+    config_value = data.get('config_value', {})
+    
+    # Transform nested config_value for lambda_warming
+    if isinstance(config_value, dict):
+        transformed_value = {
+            'enabled': config_value.get('enabled', False),
+            'timezone': config_value.get('timezone', 'America/New_York'),
+            'intervalMinutes': config_value.get('interval_minutes', config_value.get('intervalMinutes', 5)),
+            'weeklySchedule': config_value.get('weekly_schedule', config_value.get('weeklySchedule', {})),
+            'lambdaFunctions': config_value.get('lambda_functions', config_value.get('lambdaFunctions', [])),
+            'preset': config_value.get('preset'),
+        }
+    else:
+        transformed_value = config_value
+    
+    return {
+        'id': data.get('id'),
+        'configKey': data.get('config_key'),
+        'configValue': transformed_value,
+        'description': data.get('description'),
+        'isActive': data.get('is_active'),
+        'createdAt': data.get('created_at'),
+        'updatedAt': data.get('updated_at'),
+        'createdBy': data.get('created_by'),
+        'updatedBy': data.get('updated_by'),
+    }
+
+
 def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
     """
     Main Lambda handler with route dispatcher.
@@ -157,7 +191,7 @@ def handle_list_configs() -> Dict[str, Any]:
     List all platform Lambda configurations.
     
     Returns:
-        List of configuration objects
+        List of configuration objects (camelCase)
     """
     try:
         configs = common.find_many(
@@ -165,8 +199,10 @@ def handle_list_configs() -> Dict[str, Any]:
             filters={'is_active': True}
         )
         
+        transformed = [_transform_lambda_config(c) for c in configs]
+        
         logger.info(f"Retrieved {len(configs)} system configurations")
-        return common.success_response(configs)
+        return common.success_response(transformed)
     
     except Exception as e:
         logger.exception(f'Error listing configs: {str(e)}')
@@ -183,7 +219,7 @@ def handle_get_config(config_key: str) -> Dict[str, Any]:
         config_key: Configuration key (e.g., "lambda_warming")
     
     Returns:
-        Configuration object
+        Configuration object (camelCase)
     """
     if not config_key:
         raise common.ValidationError('Configuration key is required')
@@ -198,7 +234,7 @@ def handle_get_config(config_key: str) -> Dict[str, Any]:
             raise common.NotFoundError(f'Configuration not found: {config_key}')
         
         logger.info(f"Retrieved configuration: {config_key}")
-        return common.success_response(config)
+        return common.success_response(_transform_lambda_config(config))
     
     except Exception as e:
         logger.exception(f'Error getting config {config_key}: {str(e)}')
@@ -278,7 +314,7 @@ def handle_update_config(
                 logger.exception(f"Error managing EventBridge rules: {eb_error}")
                 updated_config['eventbridge_error'] = str(eb_error)
         
-        return common.success_response(updated_config)
+        return common.success_response(_transform_lambda_config(updated_config))
     
     except Exception as e:
         logger.exception(f'Error updating config {config_key}: {str(e)}')
