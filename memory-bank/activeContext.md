@@ -2,7 +2,232 @@
 
 ## Current Focus
 
-**Session 123: Build Error Fixes + Standards Cleanup** - 🟡 **IN PROGRESS**
+**Session 126: Module-KB Planning & DB Migration Integration** - ✅ **COMPLETE** (January 14, 2026)
+
+---
+
+## ✅ Session 126: Module-KB Planning & DB Migration Integration - **COMPLETE** (January 14, 2026)
+
+**Goal:** Review module-kb and module-chat implementation plans, assess risks of implementing before legacy DB migration, and integrate AI config table migration into module-kb Phase 0.
+
+**Status:** Complete - Strategic planning and plan updates finalized
+
+### Context
+
+User expressed urgency to implement module-kb and module-chat despite legacy tables not yet aligned with new naming standards. Analysis needed to assess risks vs benefits of proceeding.
+
+### Completed Work
+
+#### 1. Risk/Benefit Assessment (2 hours)
+- **Reviewed Plans:**
+  - `plan_module-kb-implementation.md` - 12 phases, ~33-48 hours
+  - `plan_module-chat-implementation.md` - 13 phases, ~30-45 hours
+  - `plan_db-naming-migration.md` - 6 phases, 13 legacy tables
+
+- **Key Finding:** NEW module tables (kb_*, chat_*) use correct naming from inception. Risk is primarily in references to LEGACY tables via API calls.
+
+- **Risk Analysis:**
+  - ✅ LOW: New modules use APIs, not direct SQL to legacy tables (abstraction layer)
+  - ✅ LOW: Core entity tables (orgs, workspaces, users) not being renamed
+  - 🟡 MEDIUM: Technical debt from two "vintages" of naming (manageable)
+  - ❌ HIGH (mitigated): Would need to update ai-config-handler Lambda twice if migrating sys_rag separately
+
+- **Recommendation:** Proceed with module-kb first, BUT migrate BOTH AI config tables (sys_rag + org_prompt_engineering) in Phase 0 to avoid touching same Lambda twice.
+
+#### 2. Module-KB Phase 0 Enhancement (1.5 hours)
+- **File:** `docs/plans/plan_module-kb-implementation.md`
+- **Changes:**
+  - Renamed Phase 0 from "RAG Table Migration" to "AI Config Table Migration"
+  - Added `org_prompt_engineering` → `ai_cfg_org_prompts` to migration scope
+  - Duration: Increased from 2-3 hours to 3-4 hours (both tables)
+  - **Rationale:** Both tables used by same Lambda (`ai-config-handler`) - follows "touch each Lambda only once" principle
+
+- **Migration SQL Updated:**
+  - Single migration file: `20260114_ai_config_tables_migration.sql`
+  - Migrates both `sys_rag` and `org_prompt_engineering` together
+  - Includes RLS policies for both tables
+  - Creates backward-compatible views for both tables
+
+- **Testing Expanded:**
+  - Added org prompt API testing
+  - Added RLS testing for org-level prompts (org admins can edit, org members can read)
+
+#### 3. DB Migration Plan Integration (1 hour)
+- **File:** `docs/plans/plan_db-naming-migration.md`
+- **Changes:**
+  - Phase 4 marked as "✅ HANDLED BY MODULE-KB PHASE 0"
+  - Both AI config tables now migrated via module-kb
+  - Updated "New Module Development Gate" section
+  - Updated Lambda Grouping Summary
+  - Added cross-references between plans
+
+- **Strategic Impact:**
+  - Phase 4 no longer standalone - integrated into module-kb workflow
+  - Reduces total migration phases from 6 to 5 (Phase 4 = module-kb Phase 0)
+  - Eliminates future migration debt for module-kb
+
+#### 4. Cross-Plan Coordination
+- **Links Added:**
+  - module-kb plan → DB migration plan Phase 4
+  - DB migration plan → module-kb Phase 0
+  - Both plans reference each other for complete context
+
+- **Decision Matrix Documented:**
+  - If implementing module-kb first: Phase 4 automatic, then Phases 1-3 as needed
+  - If migrating existing modules first: Complete Phases 1-3, skip Phase 4 (handled by module-kb)
+
+### Key Decisions
+
+1. **Proceed with module-kb implementation now** - Business urgency outweighs technical debt risk
+2. **Migrate BOTH AI config tables in Phase 0** - Avoids touching ai-config-handler Lambda twice
+3. **Keep legacy table migrations (Phases 1-3) as optional** - Can be done before, during, or after module-kb
+4. **Phase 4 = module-kb Phase 0** - Fully integrated, not separate migration
+
+### Strategic Benefits
+
+✅ **Business Value:** Module-kb and module-chat functionality delivered faster  
+✅ **Technical Efficiency:** Touch ai-config-handler Lambda only once  
+✅ **Migration Debt:** Eliminated for new modules (kb_*, chat_* tables correct from start)  
+✅ **Flexibility:** Legacy migrations (Phases 1-3) can proceed independently  
+✅ **Standards:** New modules serve as reference implementations
+
+### Files Modified
+
+1. `docs/plans/plan_module-kb-implementation.md` - Phase 0 expanded to both AI config tables
+2. `docs/plans/plan_db-naming-migration.md` - Phase 4 integrated into module-kb Phase 0
+
+### Artifacts Created
+
+- Comprehensive risk/benefit assessment (documented in plan mode conversation)
+- Cross-referenced migration strategy across two plans
+- Updated session notes (this section)
+
+**Progress:** 100% complete  
+**Total Time:** ~4.5 hours  
+**Impact:** Module-kb can proceed with clean slate - all referenced tables will have correct naming before main implementation begins.
+
+### Next Steps
+
+1. Execute module-kb Phase 0 (AI config table migration) - 3-4 hours
+2. Proceed with module-kb Phases 1-12 - ~30-42 hours remaining
+3. Optionally: Complete DB migration Phases 1-3 (auth, system, workspace tables)
+4. Proceed with module-chat implementation using module-kb
+
+---
+
+## ✅ Session 125: Database Naming Standards Enforcement - **COMPLETE** (January 14, 2026)
+
+## ✅ Session 125: Database Naming Standards Enforcement - **COMPLETE** (January 14, 2026)
+
+**Goal:** Enforce database naming standards in Module Development Guide to unblock module-kb development.
+
+**Status:** All 7 Phases Complete + Standards Expanded to All Specialized Tables
+
+### ✅ Completed Phases
+
+#### Phase 1: Update Prerequisites Section (30 min) ✅
+- Added "Database Standards" subsection to Phase 0 
+- Checklist requires review of DATABASE-NAMING-STANDARDS.md
+- Understanding of plural forms, prefix abbreviations, config table patterns
+
+#### Phase 2: Update Entity Identification Section (45 min) ✅
+- Updated entity specification: "plural for table, singular for API/types"
+- Added comprehensive "Entity Naming Standards" subsection
+- Added examples table: DB → API → Type transformations
+- Included prefix abbreviation guidance (ws_, wf_, cert_, org_)
+
+#### Phase 3: Add Compliance Checkpoint (30 min) ✅
+- Critical warning box at Step 3.3 (Database Implementation)
+- Pre-implementation checklist covers:
+  - Core table prefixes: sys_, ai_, org_, user_ (security foundation)
+  - Functional module prefixes: ws_, kb_, chat_, wf_ (new modules add here)
+  - Column, FK, index, constraint naming patterns
+- **Corrected** based on user feedback about actual prefix usage
+
+#### Phase 4: Update Schema Template (1 hour) ✅
+- Template emphasizes PLURAL table names (`{entities}` not `{entity}`)
+- Comments throughout template enforce plural naming
+- References corrected: `public.orgs` not `public.org`
+
+#### Phase 5: Create Validation Script (2 hours) ✅
+- Created: `scripts/validate-db-naming.py`
+- Features:
+  - Check tables use plural form
+  - Verify prefix abbreviations documented
+  - Validate snake_case columns
+  - Check FK pattern, index pattern
+  - Report violations with line numbers
+
+#### Phase 6: Update AI Prompting Templates (45 min) ✅
+- Added standards compliance to Phase 1 Discovery prompt
+- Added detailed validation to Phase 3 Implementation prompt
+- Updated to reference Rule 8 (config pattern)
+
+#### Phase 7: Update Documentation Links (15 min) ✅
+- Added DATABASE-NAMING-STANDARDS.md to Related Documentation
+- Marked as **REQUIRED**
+
+### 🎯 Additional Accomplishments
+
+#### ADR-011: Specialized Table Naming Conventions ✅
+- **File:** `docs/arch decisions/ADR-011-TABLE-NAMING-STANDARD.md`
+- **Scope Expanded:** Covers Config, Log, History, Usage, State, and Queue tables
+- **Pattern Approved:** `{module}_{type}_{scope_or_purpose}`
+- **Examples:** `ws_cfg_sys`, `user_log_auth`, `ai_hist_model_validation`
+- **Benefits:** Immediate identification, no redundancy, grep-friendly
+
+#### Rule 8: Specialized Table Patterns ✅
+- **File:** `docs/standards/cora/standard_DATABASE-NAMING.md`
+- Added comprehensive Rule 8 with all infix patterns (`_cfg_`, `_log_`, `_hist_`, etc.)
+- Deprecated Rule 7 (namespace prefixes) with migration path
+- Migration required: `sys_lambda_config` → `sys_cfg_lambda`, `ws_configs` → `ws_cfg_sys`
+
+#### Validator & Migration Plan ✅
+- **Validator:** `scripts/validate-db-naming.py` updated for Python 3.9 + all specialized patterns
+- **Plan:** `docs/plans/plan_db-naming-migration.md` created (Phased approach, 13 tables)
+
+#### Standards Updates ✅
+- Changed `platform_` → `sys_` throughout documentation
+- Updated all config table examples to use `_cfg_` infix
+- Documented scope levels: sys, org, ws, user
+
+**Progress:** 100% complete  
+**Total Time:** ~6 hours (includes ADR-011 creation)  
+**Impact:** Module Development Guide now enforces naming standards at all checkpoints. Config table naming standardized with grep-friendly pattern.
+
+### 📋 Future Work (Migration Phase)
+**Plan:** `docs/plans/plan_db-naming-migration.md`
+
+1. **Phase 1 (Critical):** `sys_idp_config` + `sys_log_idp_audit` (Auth system)
+2. **Phase 2 (High):** `sys_lambda_config` (System config)
+3. **Phase 3 (High):** `ws_configs` + `ws_org_settings` + `ws_activity_log` (Workspace module)
+4. **Phase 4 (Medium):** `org_prompt_engineering` + `sys_rag` (AI module)
+5. **Phase 5-6 (Low):** Defer log/usage tables
+
+---
+
+## ✅ Session 123: Build Error Fixes + Standards Cleanup - **COMPLETE**
+
+---
+
+## ✅ Completed: Plan Status Documentation (Session 124 - January 14, 2026)
+
+**Investigation Results:**
+
+1. **plan_missing-admin-pages-implementation.md** - ✅ **Phase 3 COMPLETE** (undocumented)
+   - All components implemented: PlatformMgmtAdmin, ScheduleTab, PerformanceTab, StorageTab
+   - Plan updated to reflect completion
+
+2. **plan_ai-platform-seeding-strategy.md** - ✅ **Status ACCURATE** 
+   - Correctly marked as "PLANNING" / "AWAITING APPROVAL"
+   - No implementation work found (as expected)
+
+3. **plan_module-ui-integration.md** - ✅ **FULLY IMPLEMENTED** (undocumented)
+   - All 6 phases complete: Types, moduleRegistry.ts, Sidebar, Layout, Admin Pages, Module Exports
+   - Standards ARE available for next module development
+   - Plan updated to reflect completion
+
+**Conclusion:** Module UI integration standards are ready. Next modules (module-kb, module-chat) can use the established patterns.
 
 ---
 
@@ -276,4 +501,4 @@ api_list = common.transform_records(db_records)
 
 ---
 
-**Updated:** January 14, 2026, 1:30 PM EST
+**Updated:** January 14, 2026, 6:30 PM EST
