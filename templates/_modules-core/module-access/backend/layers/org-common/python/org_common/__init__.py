@@ -30,6 +30,11 @@ from .validators import (
     validate_string_length, validate_url, validate_required, validate_integer,
     validate_boolean, validate_choices
 )
+from .transform import (
+    snake_to_camel, camel_to_snake,
+    transform_record, transform_records, transform_input,
+    USER_PROFILE_FIELDS, ORG_MEMBER_FIELDS, WORKSPACE_CONFIG_FIELDS, LAMBDA_CONFIG_FIELDS
+)
 
 # Utility function to extract user from event
 def get_user_from_event(event):
@@ -202,4 +207,15 @@ __all__ = [
     'get_user_from_event',
     'get_supabase_user_id_from_external_uid',
     'get_supabase_user_id_from_okta_uid',  # Deprecated alias
+    
+    # Transform utilities (snake_case <-> camelCase)
+    'snake_to_camel',
+    'camel_to_snake',
+    'transform_record',
+    'transform_records',
+    'transform_input',
+    'USER_PROFILE_FIELDS',
+    'ORG_MEMBER_FIELDS',
+    'WORKSPACE_CONFIG_FIELDS',
+    'LAMBDA_CONFIG_FIELDS',
 ]
