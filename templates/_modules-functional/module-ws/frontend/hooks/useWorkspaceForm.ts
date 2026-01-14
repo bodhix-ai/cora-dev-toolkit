@@ -5,7 +5,7 @@
  * Provides validation, dirty checking, and submission handling.
  */
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import type {
   WorkspaceFormValues,
   WorkspaceFormErrors,
@@ -94,6 +94,21 @@ export function useWorkspaceForm(
     status: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Sync form values when initialValues change (e.g., when switching from create to edit mode)
+  // This ensures the form populates with workspace data when editing
+  useEffect(() => {
+    setValues(defaultValues);
+    setErrors({});
+    setTouched({
+      name: false,
+      description: false,
+      color: false,
+      icon: false,
+      tags: false,
+      status: false,
+    });
+  }, [defaultValues]);
 
   // Validate a single field
   const validateField = useCallback(

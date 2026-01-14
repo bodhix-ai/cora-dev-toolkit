@@ -29,17 +29,23 @@ import { InviteMemberDialog } from "../org/InviteMemberDialog";
 
 /**
  * Organization Member type
+ * 
+ * Matches API response from GET /orgs/{id}/members
  */
 interface OrgMember {
   id: string;
   userId: string;
   orgId: string;
-  role: "org_user" | "org_admin" | "org_owner";
-  user?: {
+  orgRole: "org_user" | "org_admin" | "org_owner";
+  addedBy?: string;
+  profile?: {
+    userId: string;
     email: string;
-    name?: string;
+    fullName?: string;
+    avatarUrl?: string;
   };
   createdAt: string;
+  updatedAt?: string;
 }
 
 interface OrgMembersTabProps {
@@ -205,25 +211,25 @@ export function OrgMembersTab({ orgId, authAdapter }: OrgMembersTabProps) {
                         }}
                       >
                         {getUserInitials(
-                          member.user?.email || "Unknown",
-                          member.user?.name
+                          member.profile?.email || "Unknown",
+                          member.profile?.fullName
                         )}
                       </Avatar>
                       <Box>
                         <Typography variant="subtitle2">
-                          {member.user?.name || "Unknown User"}
+                          {member.profile?.fullName || "Unknown User"}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {member.user?.email || "No email"}
+                          {member.profile?.email || "No email"}
                         </Typography>
                       </Box>
                     </Box>
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={member.role.replace("org_", "")}
+                      label={member.orgRole?.replace("org_", "") || "unknown"}
                       size="small"
-                      color={getRoleColor(member.role)}
+                      color={getRoleColor(member.orgRole || "org_member")}
                     />
                   </TableCell>
                   <TableCell>
@@ -232,14 +238,14 @@ export function OrgMembersTab({ orgId, authAdapter }: OrgMembersTabProps) {
                     </Typography>
                   </TableCell>
                   <TableCell align="right">
-                    {member.role !== "org_owner" && (
+                    {member.orgRole && member.orgRole !== "org_owner" && (
                       <IconButton
                         size="small"
                         onClick={() => handleRemoveMember(member.id)}
                         disabled={removingMemberId === member.id}
                         color="error"
                         title="Remove member"
-                        aria-label={`Remove member ${member.user?.email || "Unknown"}`}
+                        aria-label={`Remove member ${member.profile?.email || "Unknown"}`}
                       >
                         {removingMemberId === member.id ? (
                           <CircularProgress size={20} />

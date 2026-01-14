@@ -103,9 +103,9 @@ export const PlatformAIConfigPanel: React.FC<PlatformAIConfigPanelProps> = ({
     return <Alert severity="error">{error}</Alert>;
   }
 
-  const chatModels = deployments?.filter((d) => d.supports_chat) || [];
+  const chatModels = deployments?.filter((d) => d.supportsChat) || [];
   const embeddingModels =
-    deployments?.filter((d) => d.supports_embeddings) || [];
+    deployments?.filter((d) => d.supportsEmbeddings) || [];
 
   const selectedChatModel = chatModels.find(
     (m) => m.id === localConfig?.defaultChatModelId
@@ -134,7 +134,7 @@ export const PlatformAIConfigPanel: React.FC<PlatformAIConfigPanelProps> = ({
               </Button>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                 {selectedChatModel
-                  ? `${selectedChatModel.model_name} (${selectedChatModel.provider})`
+                  ? `${selectedChatModel.modelName} (${selectedChatModel.provider})`
                   : "None selected"}
               </Typography>
             </Box>
@@ -148,7 +148,7 @@ export const PlatformAIConfigPanel: React.FC<PlatformAIConfigPanelProps> = ({
               </Button>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                 {selectedEmbeddingModel
-                  ? `${selectedEmbeddingModel.model_name} (${selectedEmbeddingModel.provider})`
+                  ? `${selectedEmbeddingModel.modelName} (${selectedEmbeddingModel.provider})`
                   : "None selected"}
               </Typography>
             </Box>

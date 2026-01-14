@@ -47,15 +47,26 @@ export interface UserOrganization {
 export type OrgRole = "org_user" | "org_admin" | "org_owner";
 
 // Organization Member Type (for org member management)
+// Matches API response from GET /orgs/{id}/members
 export interface OrgMember {
   id: string;
   userId: string;
   orgId: string;
-  role: OrgRole;
-  roleName: OrgRole; // Role for display (must be OrgRole for type safety)
-  joinedAt: string;
+  orgRole: OrgRole;
+  role?: OrgRole; // Deprecated: use orgRole
+  roleName?: OrgRole; // Deprecated: use orgRole
+  createdAt: string;
+  updatedAt?: string;
+  joinedAt?: string; // Alias for createdAt (backwards compatibility)
   addedBy?: string;
-  // User info (joined from user_profiles)
+  // User profile info (joined from user_profiles)
+  profile?: {
+    userId: string;
+    email: string;
+    fullName?: string;
+    avatarUrl?: string;
+  };
+  // Deprecated: use profile instead
   user?: {
     email: string;
     name?: string;
