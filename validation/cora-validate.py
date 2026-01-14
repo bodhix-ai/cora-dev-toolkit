@@ -213,6 +213,13 @@ class CoraValidator:
             "supports": ["project", "module"],
             "cli_style": "argparse",
         },
+        "rpc_function": {
+            "name": "RPC Function Validator",
+            "description": "Validates Lambda RPC calls match database function definitions",
+            "module": "rpc-function-validator",
+            "supports": ["project", "module"],
+            "cli_style": "argparse",
+        },
     }
 
     def __init__(self, verbose: bool = False):

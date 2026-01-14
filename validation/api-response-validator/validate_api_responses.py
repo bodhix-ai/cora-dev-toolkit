@@ -148,6 +148,143 @@ def check_dict_keys(node: ast.AST, file_path: Path, line_offset: int = 0, parent
     return violations
 
 
+def check_untransformed_db_data(lambda_file: Path, tree: ast.AST, content: str) -> List[Dict[str, Any]]:
+    """
+    Check for handlers that return database data without transformation.
+    
+    This catches patterns like:
+        users = common.find_many(...)
+        return common.success_response(users)
+    
+    Where 'users' contains snake_case keys from the database but is returned
+    without being transformed to camelCase.
+    
+    Detection strategy:
+    1. Find handler functions (def handle_*)
+    2. Track variables assigned from DB operations
+    3. Check if those variables are passed to success_response without transformation
+    """
+    violations = []
+    lines = content.split('\n')
+    
+    # Database functions that return snake_case data
+    DB_FUNCTIONS = {
+        'find_one', 'find_many', 'update_one', 'update_many',
+        'insert_one', 'insert_many', 'select', 'execute', 'rpc'
+    }
+    
+    # Transform function patterns - if called, data is considered transformed
+    TRANSFORM_PATTERNS = ['_transform_', 'transform_', 'format_record', 'to_camel']
+    
+    # Response wrapper functions
+    RESPONSE_FUNCTIONS = {
+        'success_response', 'created_response', 'error_response'
+    }
+    
+    class HandlerAnalyzer(ast.NodeVisitor):
+        def __init__(self):
+            self.current_function = None
+            self.db_data_vars = set()  # Variables holding raw DB data
+            self.transformed_vars = set()  # Variables that have been transformed
+            self.function_violations = []
+        
+        def visit_FunctionDef(self, node):
+            # Only analyze handler functions
+            if node.name.startswith('handle_'):
+                self.current_function = node.name
+                self.db_data_vars = set()
+                self.transformed_vars = set()
+                
+                # Visit all nodes in this function
+                for child in ast.walk(node):
+                    self._check_node(child)
+                
+                self.current_function = None
+            
+            self.generic_visit(node)
+        
+        def _check_node(self, node):
+            # Track assignments from DB operations
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        var_name = target.id
+                        # Check if RHS is a DB call
+                        if self._is_db_call(node.value):
+                            self.db_data_vars.add(var_name)
+                        # Check if RHS is a transformation call
+                        elif self._is_transform_call(node.value):
+                            self.transformed_vars.add(var_name)
+                            # If transforming a DB var, remove it from db_data_vars
+                            if isinstance(node.value, ast.Call):
+                                for arg in node.value.args:
+                                    if isinstance(arg, ast.Name) and arg.id in self.db_data_vars:
+                                        self.db_data_vars.discard(arg.id)
+                        # Check for list comprehensions with transformation
+                        elif isinstance(node.value, ast.ListComp):
+                            # Check if the comprehension applies a transform
+                            if self._listcomp_has_transform(node.value):
+                                self.transformed_vars.add(var_name)
+            
+            # Check response calls for untransformed DB data
+            if isinstance(node, ast.Call):
+                if self._is_response_call(node):
+                    for arg in node.args:
+                        if isinstance(arg, ast.Name):
+                            var_name = arg.id
+                            # Flag if variable holds raw DB data and wasn't transformed
+                            if var_name in self.db_data_vars and var_name not in self.transformed_vars:
+                                self.function_violations.append({
+                                    'file': str(lambda_file),
+                                    'line': node.lineno,
+                                    'violation': f'Untransformed DB data in response: variable "{var_name}" returned without snake_case→camelCase transformation',
+                                    'expected': f'Add transformation: transformed_{var_name} = [_transform_*(item) for item in {var_name}]',
+                                    'severity': 'warning'
+                                })
+        
+        def _is_db_call(self, node) -> bool:
+            """Check if node is a database operation call"""
+            if isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Attribute):
+                    return node.func.attr in DB_FUNCTIONS
+                elif isinstance(node.func, ast.Name):
+                    return node.func.id in DB_FUNCTIONS
+            return False
+        
+        def _is_transform_call(self, node) -> bool:
+            """Check if node is a transformation function call"""
+            if isinstance(node, ast.Call):
+                func_name = ''
+                if isinstance(node.func, ast.Attribute):
+                    func_name = node.func.attr
+                elif isinstance(node.func, ast.Name):
+                    func_name = node.func.id
+                
+                for pattern in TRANSFORM_PATTERNS:
+                    if pattern in func_name:
+                        return True
+            return False
+        
+        def _listcomp_has_transform(self, node: ast.ListComp) -> bool:
+            """Check if list comprehension applies a transformation"""
+            if isinstance(node.elt, ast.Call):
+                return self._is_transform_call(node.elt)
+            return False
+        
+        def _is_response_call(self, node) -> bool:
+            """Check if node is a response wrapper call"""
+            if isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Attribute):
+                    return node.func.attr in RESPONSE_FUNCTIONS
+            return False
+    
+    analyzer = HandlerAnalyzer()
+    analyzer.visit(tree)
+    violations.extend(analyzer.function_violations)
+    
+    return violations
+
+
 def check_lambda_response_format(lambda_file: Path) -> List[Dict[str, Any]]:
     """
     Parse Lambda function to check response format
@@ -156,6 +293,7 @@ def check_lambda_response_format(lambda_file: Path) -> List[Dict[str, Any]]:
     1. Response dictionaries use camelCase keys
     2. No snake_case keys in API responses
     3. Compliance with CORA API standard
+    4. Untransformed database data being returned (NEW)
     """
     violations = []
     
@@ -171,6 +309,9 @@ def check_lambda_response_format(lambda_file: Path) -> List[Dict[str, Any]]:
             'expected': 'Valid Python file',
             'severity': 'error'
         }]
+    
+    # NEW: Check for untransformed DB data being returned
+    violations.extend(check_untransformed_db_data(lambda_file, tree, content))
     
     # Response variable patterns that typically contain API response data
     RESPONSE_VAR_PATTERNS = [
@@ -213,6 +354,60 @@ def check_lambda_response_format(lambda_file: Path) -> List[Dict[str, Any]]:
     
     # Start traversal from root
     check_node_with_ancestors(tree)
+    
+    return violations
+
+
+def check_format_record_transformation(db_file: Path) -> List[Dict[str, Any]]:
+    """
+    Check that format_record() transforms snake_case to camelCase.
+    
+    This is CRITICAL because all API responses flow through format_record().
+    If it doesn't transform keys, ALL responses will have snake_case keys.
+    """
+    violations = []
+    
+    try:
+        with open(db_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+    except Exception as e:
+        return [{
+            'file': str(db_file),
+            'line': 0,
+            'violation': f'Failed to read file: {str(e)}',
+            'expected': 'Readable Python file',
+            'severity': 'error'
+        }]
+    
+    # Check if format_record function exists
+    if 'def format_record(' not in content:
+        return []  # Function doesn't exist, nothing to check
+    
+    # Check if it has snake_to_camel transformation
+    has_snake_to_camel = '_snake_to_camel' in content or 'snake_to_camel' in content
+    
+    # Check if format_record transforms keys
+    # Look for pattern: camel_key = _snake_to_camel(key) or similar transformation
+    has_key_transformation = (
+        'snake_to_camel(key)' in content or
+        '_snake_to_camel(key)' in content or
+        'camel_key' in content
+    )
+    
+    # If format_record exists but doesn't transform keys, it's a violation
+    if not has_key_transformation:
+        # Find the line number of format_record
+        lines = content.split('\n')
+        for line_num, line in enumerate(lines, 1):
+            if 'def format_record(' in line:
+                violations.append({
+                    'file': str(db_file),
+                    'line': line_num,
+                    'violation': 'format_record() does not transform snake_case to camelCase',
+                    'expected': 'Add key transformation: camel_key = _snake_to_camel(key)',
+                    'severity': 'error'
+                })
+                break
     
     return violations
 
@@ -278,6 +473,18 @@ def validate_project_api_responses(project_path: Path) -> Dict[str, Any]:
             lambda_files.append(lambda_file)
             file_violations = check_lambda_response_format(lambda_file)
             violations.extend(file_violations)
+    
+    # CRITICAL: Check org_common/db.py for format_record transformation
+    # This function is used by ALL responses - if it doesn't transform, nothing will
+    org_common_paths = [
+        project_path / "templates" / "_modules-core" / "module-access" / "backend" / "layers" / "org-common" / "python" / "org_common" / "db.py",
+        project_path / "packages" / "module-access" / "backend" / "layers" / "org-common" / "python" / "org_common" / "db.py",
+    ]
+    
+    for db_path in org_common_paths:
+        if db_path.exists():
+            lambda_files.append(db_path)
+            violations.extend(check_format_record_transformation(db_path))
     
     return {
         'total_files': len(lambda_files),
@@ -351,6 +558,168 @@ SKIP_FILES = {
 # Pattern to detect snake_case properties in TypeScript interface/type definitions
 # Matches: property_name: type  OR  property_name?: type
 INTERFACE_PROPERTY_PATTERN = re.compile(r'^\s+([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\s*\??\s*:', re.MULTILINE)
+
+# ============================================================================
+# API Interface Validation - Detect camelCase in interfaces that receive snake_case data
+# ============================================================================
+
+# Known API response fields that backends return in snake_case
+# If a frontend interface expects these in camelCase without transformation, it's a bug
+KNOWN_API_RESPONSE_FIELDS_SNAKE = {
+    # User/Profile fields - backend returns snake_case
+    'sys_role': 'sysRole',
+    'org_role': 'orgRole', 
+    'ws_role': 'wsRole',
+    'user_id': 'userId',
+    'org_id': 'orgId',
+    'ws_id': 'wsId',
+    'full_name': 'fullName',
+    'first_name': 'firstName',
+    'last_name': 'lastName',
+    'display_name': 'displayName',
+    'avatar_url': 'avatarUrl',
+    'current_org_id': 'currentOrgId',
+    'created_at': 'createdAt',
+    'updated_at': 'updatedAt',
+    'deleted_at': 'deletedAt',
+    'created_by': 'createdBy',
+    'updated_by': 'updatedBy',
+    'requires_invitation': 'requiresInvitation',
+    # Workspace fields
+    'is_favorited': 'isFavorited',
+    'favorited_at': 'favoritedAt',
+    'member_count': 'memberCount',
+    'retention_days': 'retentionDays',
+    # Config fields
+    'nav_label_singular': 'navLabelSingular',
+    'nav_label_plural': 'navLabelPlural',
+    'enable_favorites': 'enableFavorites',
+}
+
+# Reverse mapping: camelCase -> snake_case
+KNOWN_API_RESPONSE_FIELDS_CAMEL = {v: k for k, v in KNOWN_API_RESPONSE_FIELDS_SNAKE.items()}
+
+# ============================================================================
+# Query Parameter Validation - Detect frontend/backend param name mismatches
+# ============================================================================
+
+# Standard query parameter names - backend expects snake_case, frontend should send snake_case
+QUERY_PARAM_NAMES = {
+    'org_id': 'org_id',   # Backend expects snake_case
+    'ws_id': 'ws_id',
+    'user_id': 'user_id',
+}
+
+
+def check_api_interface_mismatch(file_path: Path, content: str) -> List[Dict[str, Any]]:
+    """
+    Check for API response interfaces that expect camelCase but backend returns snake_case.
+    
+    DISABLED: This check was causing false positives. The CORA standard (Option B) is:
+    - Backend transforms snake_case → camelCase at the API boundary
+    - Frontend interfaces use pure camelCase
+    - API client layer handles transformation if backend hasn't
+    
+    Since we expect transformation at the API client level, having camelCase 
+    interfaces is CORRECT, not a violation.
+    
+    This function is kept for documentation but returns no violations.
+    """
+    # Return empty - this check is disabled under Option B (strict camelCase standard)
+    # The correct fix is transformation at API client level, not dual-format interfaces
+    return []
+
+#  Commented out for future reference ...    
+#  This catches the case where:
+#     - Interface comment says "snake_case from backend" 
+#     - But interface fields are defined in camelCase
+#     - And there's no proper transformation handling both formats
+    
+#     Example bug detected:
+#     ```typescript
+#     // API response interface (snake_case from backend)  <-- Comment says snake_case
+#     interface ProfileApiData {
+#       sysRole?: string;  // <-- But field is camelCase! Backend returns sys_role
+#     }
+#     ```
+#     """
+#     violations = []
+#     lines = content.split('\n')
+    
+#     in_api_interface = False
+#     interface_name = ''
+#     interface_start_line = 0
+#     interface_depth = 0
+#     has_snake_case_comment = False
+#     camel_fields_expecting_snake = []
+    
+#     for line_num, line in enumerate(lines, 1):
+#         stripped = line.strip()
+        
+#         # Look for interface definitions with comments about API/backend/snake_case
+#         if re.match(r'^/\*\*|^//.*(?:API|backend|snake_case|response)', line, re.IGNORECASE):
+#             has_snake_case_comment = True
+#             continue
+        
+#         if re.match(r'^\*.*(?:API|backend|snake_case|response)', line, re.IGNORECASE):
+#             has_snake_case_comment = True
+#             continue
+        
+#         # Track when we enter an interface definition
+#         interface_match = re.match(r'^(?:export\s+)?interface\s+(\w+ApiData|\w+Response|\w+ApiResponse)', line)
+#         if interface_match or (has_snake_case_comment and re.match(r'^(?:export\s+)?interface\s+(\w+)', line)):
+#             match = interface_match or re.match(r'^(?:export\s+)?interface\s+(\w+)', line)
+#             in_api_interface = True
+#             interface_name = match.group(1)
+#             interface_start_line = line_num
+#             interface_depth = 0
+#             camel_fields_expecting_snake = []
+        
+#         # Track brace depth
+#         if in_api_interface:
+#             interface_depth += line.count('{') - line.count('}')
+#             if interface_depth <= 0:
+#                 # Interface ended - check if we found any issues
+#                 in_api_interface = False
+#                 has_snake_case_comment = False
+#                 continue
+            
+#             # Check for camelCase fields that correspond to known snake_case API fields
+#             for camel_field, snake_field in KNOWN_API_RESPONSE_FIELDS_CAMEL.items():
+#                 # Pattern: fieldName?: type  OR  fieldName: type
+#                 field_pattern = rf'^\s+{camel_field}\s*\??:'
+#                 if re.match(field_pattern, line):
+#                     # Check if there's also the snake_case version defined
+#                     snake_pattern = rf'^\s+{snake_field}\s*\??:'
+#                     has_snake_version = any(re.match(snake_pattern, l) for l in lines)
+                    
+#                     if not has_snake_version:
+#                         # Interface expects camelCase but backend likely returns snake_case
+#                         # and there's no snake_case field to receive it
+#                         violations.append({
+#                             'file': str(file_path),
+#                             'line': line_num,
+#                             'violation': f'API interface expects "{camel_field}" but backend returns "{snake_field}"',
+#                             'expected': f'Add "{snake_field}?: ..." OR transform API response',
+#                             'severity': 'warning'
+#                         })
+    
+#     return violations
+
+def check_query_param_naming(file_path: Path, content: str) -> List[Dict[str, Any]]:
+    """
+    Check for query parameter naming.
+    
+    DISABLED: Under CORA Option B (strict camelCase standard), query parameters
+    use camelCase to be consistent with the rest of the JavaScript ecosystem.
+    
+    The backend Lambdas have been updated to accept BOTH formats:
+        org_id = query_params.get('org_id') or query_params.get('orgId')
+    
+    So camelCase query params like ?orgId=123 are now CORRECT and should not be flagged.
+    """
+    # Return empty - camelCase query params are correct under Option B
+    return []
 
 
 def check_interface_definitions(file_path: Path, content: str) -> List[Dict[str, Any]]:
@@ -433,6 +802,12 @@ def check_typescript_file(file_path: Path) -> List[Dict[str, Any]]:
     
     # First, check interface definitions for snake_case properties
     violations.extend(check_interface_definitions(file_path, content))
+    
+    # Check for API interface mismatches (camelCase in interface but backend returns snake_case)
+    violations.extend(check_api_interface_mismatch(file_path, content))
+    
+    # Check for query parameter naming issues (frontend sends camelCase, backend expects snake_case)
+    violations.extend(check_query_param_naming(file_path, content))
     
     for line_num, line in enumerate(lines, 1):
         # Skip comment lines
