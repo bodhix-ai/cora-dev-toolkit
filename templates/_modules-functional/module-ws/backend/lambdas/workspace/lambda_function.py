@@ -1677,6 +1677,9 @@ def handle_update_config(
         'enableTags': 'enable_tags',
         'enableColorCoding': 'enable_color_coding',
         'defaultColor': 'default_color',
+        'defaultRetentionDays': 'default_retention_days',
+        'maxTagsPerWorkspace': 'max_tags_per_workspace',
+        'maxTagLength': 'max_tag_length',
         # Also allow snake_case input
         'nav_label_singular': 'nav_label_singular',
         'nav_label_plural': 'nav_label_plural',
@@ -1685,6 +1688,9 @@ def handle_update_config(
         'enable_tags': 'enable_tags',
         'enable_color_coding': 'enable_color_coding',
         'default_color': 'default_color',
+        'default_retention_days': 'default_retention_days',
+        'max_tags_per_workspace': 'max_tags_per_workspace',
+        'max_tag_length': 'max_tag_length',
     }
     
     # Normalize input to snake_case
@@ -1710,6 +1716,24 @@ def handle_update_config(
         color = update_data['default_color']
         if not (color.startswith('#') and len(color) == 7):
             raise common.ValidationError('default_color must be in #RRGGBB format')
+    
+    # Validate retention days
+    if 'default_retention_days' in update_data:
+        retention_days = update_data['default_retention_days']
+        if retention_days is not None and (not isinstance(retention_days, int) or retention_days < 1 or retention_days > 365):
+            raise common.ValidationError('default_retention_days must be between 1 and 365')
+    
+    # Validate max tags per workspace
+    if 'max_tags_per_workspace' in update_data:
+        max_tags = update_data['max_tags_per_workspace']
+        if max_tags is not None and (not isinstance(max_tags, int) or max_tags < 1 or max_tags > 50):
+            raise common.ValidationError('max_tags_per_workspace must be between 1 and 50')
+    
+    # Validate max tag length
+    if 'max_tag_length' in update_data:
+        max_length = update_data['max_tag_length']
+        if max_length is not None and (not isinstance(max_length, int) or max_length < 3 or max_length > 50):
+            raise common.ValidationError('max_tag_length must be between 3 and 50')
     
     update_data['updated_by'] = user_id
     

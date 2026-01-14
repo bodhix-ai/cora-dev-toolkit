@@ -26,8 +26,8 @@
 | # | Issue | API/Component | Expected Result | Code Verified | User Tested |
 |---|-------|---------------|-----------------|---------------|-------------|
 | 1 | GET /orgs/{id}/invites returns 403 | Invites API | Invites load for org admins | ✅ | ✅ Working - found #9, #10 |
-| 2 | PUT /ws/config returns 400 | Workspace Config API | Config saves successfully (200) | ✅ | ⏳ Pending |
-| 3 | GET /ws/config data not displayed | Workspace Config UI | Saved config displays in UI after refresh | ✅ | ⏳ Pending |
+| 2 | PUT /ws/config returns 400 | Workspace Config API | Config saves successfully (200) | ✅ **FIXED** | ✅ **WORKING** |
+| 3 | GET /ws/config data not displayed | Workspace Config UI | Saved config displays in UI after refresh | ✅ **FIXED** | ✅ **WORKING** (requires refresh) |
 | 4 | GET /admin/users shows "No name" | Users API | User names display correctly | ✅ | ⏳ Pending |
 | 5 | Edit Workspace popup empty | Workspace Edit Modal | Existing values populate form | ✅ | ⏳ Pending |
 | 6 | Org Members shows "Unknown User" | Org Members Tab | Member names/emails display | ✅ | ⏳ Pending |
@@ -58,6 +58,38 @@
   - Backend: Accept `expiresAt` field (camelCase per API-PATTERNS standard)
   - Frontend type: Added `expiresAt?: string` to `InviteMemberInput`
   - Frontend dialog: Added date picker with 7 calendar day default
+
+#### 11. Workspace Config - Missing fields
+- **Files:**
+  - `scripts/migrations/20260114_ws_configs_add_tag_retention_fields.sql` (new)
+  - `templates/_modules-functional/module-ws/backend/lambdas/workspace/lambda_function.py`
+  - `templates/_modules-functional/module-ws/frontend/lib/api.ts`
+- **Issue:** 
+  - API response incorrectly wrapped: `{ config: { config: {...} } }`
+  - Missing 3 fields in ws_configs: default_retention_days, max_tags_per_workspace, max_tag_length
+- **Fix:**
+  - Lambda: Added field_mapping for new fields, updated validation
+  - API client: Fixed updateConfig to unwrap `response.data.config` correctly
+  - Database: Created migration to add 3 new columns with defaults
+
+#### 12. Workspace Icon - Display not updating
+- **Files:**
+  - `templates/_project-stack-template/apps/web/components/Sidebar.tsx`
+  - `templates/_modules-functional/module-ws/frontend/lib/api.ts`
+- **Issue:** Workspace icon saved to DB but Sidebar doesn't update until page refresh
+- **Root Cause:** Independent React hook state - Sidebar and Settings page use separate `useWorkspaceConfig` instances
+- **Fix:** Updated Sidebar to use `wsConfig.navIcon` (data saves correctly)
+- **Known Limitation:** Icon updates require browser refresh (each hook has independent state)
+- **Future Enhancement:** Implement shared state management (Context/React Query) for real-time updates
+
+#### 13. Template Placeholder Issue - sync-fix-to-project.sh
+- **Files:**
+  - `templates/_modules-functional/module-ws/frontend/lib/api.ts`
+  - `templates/_project-stack-template/apps/web/components/Sidebar.tsx`
+- **Issue:** Template files contain `{{PROJECT_NAME}}` placeholders that aren't replaced when syncing
+- **Impact:** TypeScript build errors: `Cannot find module '@{{PROJECT_NAME}}/...'`
+- **Workaround:** Manually replace placeholders with `sed` after syncing
+- **Future Enhancement:** Add template variable substitution to sync-fix-to-project.sh script
 
 ### Build Error Fixes (TypeScript/Frontend)
 
@@ -209,4 +241,4 @@ api_list = common.transform_records(db_records)
 
 ---
 
-**Updated:** January 14, 2026, 10:55 AM EST
+**Updated:** January 14, 2026, 1:07 PM EST

@@ -298,14 +298,14 @@ export class WorkspaceApiClient {
    */
   async updateConfig(data: Partial<WorkspaceConfig>, orgId: string): Promise<WorkspaceConfig> {
     try {
-      const response = await this.client.put<ApiResponse<WorkspaceConfig>>(
+      const response = await this.client.put<ApiResponse<{ config: WorkspaceConfig }>>(
         `/ws/config?orgId=${orgId}`,
         data
       );
-      if (!response?.data) {
+      if (!response?.data?.config) {
         throw new Error(response?.error || "Failed to update configuration");
       }
-      return response.data;
+      return response.data.config;
     } catch (error) {
       console.error("Failed to update workspace config:", error);
       throw new Error("Failed to update configuration");

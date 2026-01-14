@@ -17,12 +17,18 @@ CREATE TABLE IF NOT EXISTS public.ws_configs (
     enable_tags BOOLEAN NOT NULL DEFAULT true,
     enable_color_coding BOOLEAN NOT NULL DEFAULT true,
     default_color VARCHAR(7) NOT NULL DEFAULT '#1976d2',
+    default_retention_days INTEGER DEFAULT 30,
+    max_tags_per_workspace INTEGER DEFAULT 10,
+    max_tag_length INTEGER DEFAULT 20,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_by UUID REFERENCES auth.users(id),
     
     -- Constraints
-    CONSTRAINT ws_configs_color_check CHECK (default_color ~ '^#[0-9A-Fa-f]{6}$')
+    CONSTRAINT ws_configs_color_check CHECK (default_color ~ '^#[0-9A-Fa-f]{6}$'),
+    CONSTRAINT ws_configs_retention_days_check CHECK (default_retention_days IS NULL OR (default_retention_days >= 1 AND default_retention_days <= 365)),
+    CONSTRAINT ws_configs_max_tags_check CHECK (max_tags_per_workspace IS NULL OR (max_tags_per_workspace >= 1 AND max_tags_per_workspace <= 50)),
+    CONSTRAINT ws_configs_max_tag_length_check CHECK (max_tag_length IS NULL OR (max_tag_length >= 3 AND max_tag_length <= 50))
 );
 
 -- =============================================
@@ -37,6 +43,9 @@ COMMENT ON COLUMN public.ws_configs.enable_favorites IS 'Enable/disable favorite
 COMMENT ON COLUMN public.ws_configs.enable_tags IS 'Enable/disable tags functionality';
 COMMENT ON COLUMN public.ws_configs.enable_color_coding IS 'Enable/disable color customization';
 COMMENT ON COLUMN public.ws_configs.default_color IS 'Default hex color for new workspaces';
+COMMENT ON COLUMN public.ws_configs.default_retention_days IS 'Default retention period in days for deleted workspaces (1-365)';
+COMMENT ON COLUMN public.ws_configs.max_tags_per_workspace IS 'Maximum number of tags allowed per workspace (1-50)';
+COMMENT ON COLUMN public.ws_configs.max_tag_length IS 'Maximum character length for workspace tags (3-50)';
 COMMENT ON COLUMN public.ws_configs.updated_by IS 'Platform admin who last updated configuration';
 
 -- =============================================
@@ -76,7 +85,10 @@ INSERT INTO public.ws_configs (
     enable_favorites,
     enable_tags,
     enable_color_coding,
-    default_color
+    default_color,
+    default_retention_days,
+    max_tags_per_workspace,
+    max_tag_length
 ) VALUES (
     '00000000-0000-0000-0000-000000000001',
     'Workspace',
@@ -85,7 +97,10 @@ INSERT INTO public.ws_configs (
     true,
     true,
     true,
-    '#1976d2'
+    '#1976d2',
+    30,
+    10,
+    20
 )
 ON CONFLICT (id) DO UPDATE SET
     updated_at = NOW();

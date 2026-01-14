@@ -27,9 +27,10 @@ Copy changed template files to an existing test project without recreating the e
 
 ### Options
 - `--dry-run` - Preview what would be copied without copying
-- `--infra` - Target the -infra repo (for Lambda files)
 - `--list` - Show common template paths
 - `--help` - Show help message
+
+**Note:** The `--infra` option is deprecated. The script auto-detects whether to sync to stack or infra repo based on the template path.
 
 ### Examples
 
@@ -42,13 +43,20 @@ Copy changed template files to an existing test project without recreating the e
 ./scripts/sync-fix-to-project.sh ~/code/bodhix/testing/test-ws-23/ai-sec-stack InviteMemberDialog.tsx --dry-run
 ```
 
-**Backend Lambda fix:**
+**Backend Lambda fix (CORA Module):**
 ```bash
-# Sync orgs Lambda to infra project
-./scripts/sync-fix-to-project.sh ~/code/bodhix/testing/test-ws-23/ai-sec-infra "orgs/lambda_function.py"
+# ⚠️ IMPORTANT: Module Lambdas go to STACK repo, not infra!
+# Sync to STACK repo (not infra repo)
+./scripts/sync-fix-to-project.sh ~/code/bodhix/testing/test-ws-23/ai-sec-stack "module-access/invites/lambda_function.py"
 
 # Use path pattern to narrow down results
-./scripts/sync-fix-to-project.sh ~/code/bodhix/testing/test-ws-23/ai-sec-infra "module-access/invites"
+./scripts/sync-fix-to-project.sh ~/code/bodhix/testing/test-ws-23/ai-sec-stack "module-access/invites"
+```
+
+**Backend Lambda fix (Infrastructure-only):**
+```bash
+# Infrastructure Lambdas (like authorizer) go to infra repo
+./scripts/sync-fix-to-project.sh ~/code/bodhix/testing/test-ws-23/ai-sec-infra "authorizer/lambda_function.py"
 ```
 
 **List common paths:**

@@ -17,6 +17,7 @@ import { useTheme } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import SettingsIcon from "@mui/icons-material/Settings";
+import * as MuiIcons from "@mui/icons-material";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 import { useWorkspaceConfig } from "@{{PROJECT_NAME}}/module-ws";
 import { useOrganizationContext, OrgIcon } from "@{{PROJECT_NAME}}/module-access";
@@ -66,6 +67,18 @@ export function Sidebar({ navigation }: SidebarProps) {
     return item.label;
   };
 
+  // Helper function to get dynamic icon for navigation items
+  const getNavIcon = (item: { href: string; icon: React.ReactNode }) => {
+    // Override workspace icon with config value if available
+    if (item.href === "/ws" && wsConfig?.navIcon) {
+      const IconComponent = (MuiIcons as Record<string, React.ComponentType<any>>)[wsConfig.navIcon];
+      if (IconComponent) {
+        return <IconComponent />;
+      }
+    }
+    return item.icon;
+  };
+
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
@@ -111,7 +124,7 @@ export function Sidebar({ navigation }: SidebarProps) {
                   },
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+                <ListItemIcon sx={{ minWidth: 40 }}>{getNavIcon(item)}</ListItemIcon>
                 <ListItemText primary={getNavLabel(item)} />
               </ListItemButton>
             </ListItem>
