@@ -109,7 +109,7 @@ def handle_list_invites(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
     
     # Verify user has admin access to this organization
     membership = common.find_one('org_members', {'user_id': user_id, 'org_id': org_id})
-    if not membership or membership.get('role') not in ['org_admin', 'org_owner']:
+    if not membership or membership.get('org_role') not in ['org_admin', 'org_owner']:
         raise common.ForbiddenError('Organization admin access required')
     
     # Query invites table
@@ -145,7 +145,7 @@ def handle_create_invite(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
     
     # Verify user has admin access to this organization
     membership = common.find_one('org_members', {'user_id': user_id, 'org_id': org_id})
-    if not membership or membership.get('role') not in ['org_admin', 'org_owner']:
+    if not membership or membership.get('org_role') not in ['org_admin', 'org_owner']:
         raise common.ForbiddenError('Organization admin access required')
     
     # Parse request body
@@ -219,7 +219,7 @@ def handle_delete_invite(event: Dict[str, Any], org_id: str, invite_id: str) -> 
     
     # Verify user has admin access to this organization
     membership = common.find_one('org_members', {'user_id': user_id, 'org_id': org_id})
-    if not membership or membership.get('role') not in ['org_admin', 'org_owner']:
+    if not membership or membership.get('org_role') not in ['org_admin', 'org_owner']:
         raise common.ForbiddenError('Organization admin access required')
     
     # Verify invite exists and belongs to this org
