@@ -220,6 +220,13 @@ class CoraValidator:
             "supports": ["project", "module"],
             "cli_style": "argparse",
         },
+        "db_naming": {
+            "name": "Database Naming Validator",
+            "description": "Validates database naming standards compliance (Rules 1, 2, 6, 8)",
+            "module": "db-naming-validator",
+            "supports": ["project", "module"],
+            "cli_style": "argparse",
+        },
     }
 
     def __init__(self, verbose: bool = False):
