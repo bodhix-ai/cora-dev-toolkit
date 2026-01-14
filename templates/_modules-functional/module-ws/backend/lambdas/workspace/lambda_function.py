@@ -94,14 +94,15 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         org_id = None
         if not is_sys_route(path):
             # Get org_id from query parameters OR request body (for POST/PUT)
+            # Accept both snake_case (org_id) and camelCase (orgId) for flexibility
             query_params = event.get('queryStringParameters') or {}
-            org_id = query_params.get('org_id')
+            org_id = query_params.get('org_id') or query_params.get('orgId')
             
             # For POST/PUT requests, also check the request body for org_id
             if not org_id and http_method in ('POST', 'PUT'):
                 try:
                     body = json.loads(event.get('body', '{}'))
-                    org_id = body.get('org_id')
+                    org_id = body.get('org_id') or body.get('orgId')
                 except json.JSONDecodeError:
                     pass
 
@@ -274,6 +275,29 @@ def _transform_member(data: Dict[str, Any]) -> Dict[str, Any]:
         'createdAt': data.get('created_at'),
         'updatedAt': data.get('updated_at'),
         'createdBy': data.get('created_by'),
+    }
+
+
+def _transform_config(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Transform database config record to API response format.
+    
+    Note: Returns camelCase to match CORA API standards and frontend TypeScript types.
+    """
+    return {
+        'id': data.get('id'),
+        'navLabelSingular': data.get('nav_label_singular'),
+        'navLabelPlural': data.get('nav_label_plural'),
+        'navIcon': data.get('nav_icon'),
+        'enableFavorites': data.get('enable_favorites'),
+        'enableTags': data.get('enable_tags'),
+        'enableColorCoding': data.get('enable_color_coding'),
+        'defaultColor': data.get('default_color'),
+        'defaultRetentionDays': data.get('default_retention_days'),
+        'maxTagsPerWorkspace': data.get('max_tags_per_workspace'),
+        'maxTagLength': data.get('max_tag_length'),
+        'createdAt': data.get('created_at'),
+        'updatedAt': data.get('updated_at'),
+        'updatedBy': data.get('updated_by'),
     }
 
 
@@ -680,7 +704,7 @@ def handle_create_workspace(
     try:
         # Call RPC function to create workspace with owner
         result = common.rpc(
-            function_name='create_workspace_with_owner',
+            function_name='create_ws_with_owner',
             params={
                 'p_org_id': org_id,
                 'p_name': name,
@@ -878,7 +902,7 @@ def handle_delete_workspace(
     try:
         # Call RPC function (handles authorization check internally)
         result = common.rpc(
-            function_name='soft_delete_workspace',
+            function_name='soft_delete_ws',
             params={
                 'p_workspace_id': workspace_id,
                 'p_user_id': user_id
@@ -926,7 +950,7 @@ def handle_restore_workspace(
     try:
         # Call RPC function (handles authorization check internally)
         result = common.rpc(
-            function_name='restore_workspace',
+            function_name='restore_ws',
             params={
                 'p_workspace_id': workspace_id,
                 'p_user_id': user_id
@@ -1588,7 +1612,7 @@ def handle_get_config() -> Dict[str, Any]:
     Get workspace module configuration. Available to all authenticated users.
     
     Returns:
-        Configuration object with navigation labels, icons, feature flags
+        Configuration object with navigation labels, icons, feature flags (camelCase)
     """
     try:
         # Get singleton config record
@@ -1598,7 +1622,7 @@ def handle_get_config() -> Dict[str, Any]:
         )
         
         if not config:
-            # Return default config if not found
+            # Return default config if not found (already camelCase)
             config = {
                 'id': '00000000-0000-0000-0000-000000000001',
                 'navLabelSingular': 'Workspace',
@@ -1609,6 +1633,9 @@ def handle_get_config() -> Dict[str, Any]:
                 'enableColorCoding': True,
                 'defaultColor': '#1976d2',
             }
+        else:
+            # Transform DB record (snake_case) to API format (camelCase)
+            config = _transform_config(config)
         
         logger.info("Retrieved workspace config")
         return common.success_response({'config': config})
@@ -1631,7 +1658,7 @@ def handle_update_config(
     Args:
         user_id: Supabase user ID
         user_info: User information from auth token
-        body: Request body with config fields to update
+        body: Request body with config fields to update (accepts both camelCase and snake_case)
     
     Returns:
         Updated configuration
@@ -1640,12 +1667,31 @@ def handle_update_config(
     if not _is_sys_admin(user_id):
         raise common.ForbiddenError('Only sys administrators can update workspace configuration')
     
-    # Allowed fields for update
-    allowed_fields = [
-        'nav_label_singular', 'nav_label_plural', 'nav_icon',
-        'enable_favorites', 'enable_tags', 'enable_color_coding', 'default_color'
-    ]
-    update_data = {k: v for k, v in body.items() if k in allowed_fields and v is not None}
+    # Map camelCase to snake_case for field names
+    # Accept both formats for flexibility (frontend sends camelCase, DB uses snake_case)
+    field_mapping = {
+        'navLabelSingular': 'nav_label_singular',
+        'navLabelPlural': 'nav_label_plural',
+        'navIcon': 'nav_icon',
+        'enableFavorites': 'enable_favorites',
+        'enableTags': 'enable_tags',
+        'enableColorCoding': 'enable_color_coding',
+        'defaultColor': 'default_color',
+        # Also allow snake_case input
+        'nav_label_singular': 'nav_label_singular',
+        'nav_label_plural': 'nav_label_plural',
+        'nav_icon': 'nav_icon',
+        'enable_favorites': 'enable_favorites',
+        'enable_tags': 'enable_tags',
+        'enable_color_coding': 'enable_color_coding',
+        'default_color': 'default_color',
+    }
+    
+    # Normalize input to snake_case
+    update_data = {}
+    for key, value in body.items():
+        if key in field_mapping and value is not None:
+            update_data[field_mapping[key]] = value
     
     if not update_data:
         raise common.ValidationError('No valid fields to update')
@@ -1679,7 +1725,8 @@ def handle_update_config(
             raise common.NotFoundError('Configuration not found')
         
         logger.info(f"Updated workspace config by user {user_id}")
-        return common.success_response({'config': updated_config})
+        # Transform DB record (snake_case) to API format (camelCase)
+        return common.success_response({'config': _transform_config(updated_config)})
     
     except Exception as e:
         logger.exception(f'Error updating config: {str(e)}')
