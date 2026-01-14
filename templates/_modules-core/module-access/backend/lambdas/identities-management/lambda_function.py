@@ -15,6 +15,32 @@ from typing import Dict, Any, Optional
 import org_common as common
 
 
+def _transform_user(user: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Transform database user record to API response format (camelCase).
+    
+    Converts snake_case fields from database to camelCase for frontend.
+    """
+    # Transform org_memberships to camelCase
+    org_memberships = []
+    for membership in user.get('org_memberships', []):
+        org_memberships.append({
+            'orgId': membership.get('org_id'),
+            'orgName': membership.get('org_name'),
+            'orgRole': membership.get('org_role'),
+        })
+    
+    return {
+        'id': user.get('user_id'),
+        'email': user.get('email'),
+        'name': user.get('full_name'),
+        'sysRole': user.get('sys_role'),
+        'createdAt': user.get('created_at'),
+        'lastSignInAt': user.get('last_signin_at'),
+        'orgMemberships': org_memberships,
+    }
+
+
 def get_supabase_user_id_from_okta_uid(okta_uid: str) -> Optional[str]:
     """
     Get Supabase user_id from Okta user ID
@@ -137,7 +163,7 @@ def handle_list_users(event: Dict[str, Any]) -> Dict[str, Any]:
             
             # Query org_members table for this user
             membership_response = client.table('org_members').select(
-                'org_id, role, orgs(id, name)'
+                'org_id, org_role, orgs(id, name)'
             ).eq('user_id', user['user_id']).execute()
             
             # Format org memberships
@@ -149,12 +175,15 @@ def handle_list_users(event: Dict[str, Any]) -> Dict[str, Any]:
                         org_memberships.append({
                             'org_id': org_data['id'],
                             'org_name': org_data['name'],
-                            'org_role': membership['role']
+                            'org_role': membership['org_role']
                         })
             
             user['org_memberships'] = org_memberships
         
-        return common.success_response(users)
+        # Transform all users to camelCase for frontend
+        transformed_users = [_transform_user(user) for user in users]
+        
+        return common.success_response(transformed_users)
         
     except Exception as e:
         print(f"Error listing users: {str(e)}")
