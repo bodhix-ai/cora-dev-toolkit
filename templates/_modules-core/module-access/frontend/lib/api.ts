@@ -10,10 +10,17 @@ import {
 } from "../types";
 
 /**
- * API response interface (snake_case from backend)
+ * API response interface for profile data
+ * 
+ * Under CORA Option B (strict camelCase standard):
+ * - Backend transforms snake_case → camelCase at the API boundary
+ * - Frontend interfaces use pure camelCase
+ * 
+ * The transformProfileResponse() function maps API response to frontend Profile type.
  */
 interface ProfileApiData {
-  id: string;
+  id: string | number;
+  userId?: string;
   email: string;
   fullName?: string | null;
   firstName?: string | null;
@@ -21,8 +28,8 @@ interface ProfileApiData {
   phone?: string | null;
   sysRole?: "sys_user" | "sys_admin" | "sys_owner";
   currentOrgId?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
   organizations?: UserOrganization[];
 }
 
@@ -37,11 +44,13 @@ interface AuthenticatedClient {
 }
 
 /**
- * Transform snake_case API response to camelCase frontend types
+ * Transform API response to frontend Profile type
+ * 
+ * Under CORA Option B, backend returns camelCase, so this is a straightforward mapping.
  */
 function transformProfileResponse(apiData: ProfileApiData): Profile {
   return {
-    id: apiData.id,
+    id: apiData.userId || String(apiData.id),
     email: apiData.email,
     name: apiData.fullName || null,
     firstName: apiData.firstName || null,
@@ -49,8 +58,8 @@ function transformProfileResponse(apiData: ProfileApiData): Profile {
     phone: apiData.phone || null,
     sysRole: apiData.sysRole || "sys_user",
     currentOrgId: apiData.currentOrgId || null,
-    createdAt: apiData.createdAt,
-    updatedAt: apiData.updatedAt,
+    createdAt: apiData.createdAt || "",
+    updatedAt: apiData.updatedAt || "",
     organizations: apiData.organizations || [],
   };
 }

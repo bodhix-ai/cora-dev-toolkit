@@ -1218,8 +1218,8 @@ def _parse_bedrock_inference_profile(profile_summary: Dict[str, Any], region: st
     model_description = f"{model_description} [Inference Profile - Cross-region routing]"
     
     return {
-        'modelId': profile_id,
-        'displayName': f"{profile_name} (Inference Profile)",
+        'model_id': profile_id,
+        'display_name': f"{profile_name} (Inference Profile)",
         'description': model_description,
         'capabilities': {
             'chat': supports_chat,
@@ -1229,13 +1229,13 @@ def _parse_bedrock_inference_profile(profile_summary: Dict[str, Any], region: st
             'maxTokens': max_tokens,
             'embeddingDimensions': 0
         },
-        'costPer1kTokens': cost_per_1k_tokens,
+        'cost_per_1k_tokens': cost_per_1k_tokens,
         'metadata': {
-            'providerName': provider_name,
-            'profileType': profile_summary.get('type', 'SYSTEM_DEFINED'),
+            'provider_name': provider_name,
+            'profile_type': profile_summary.get('type', 'SYSTEM_DEFINED'),
             'region': region,
-            'discoveredAt': datetime.utcnow().isoformat(),
-            'isInferenceProfile': True
+            'discovered_at': datetime.utcnow().isoformat(),
+            'is_inference_profile': True
         }
     }
 
@@ -1287,8 +1287,8 @@ def _parse_bedrock_model(model_summary: Dict[str, Any], region: str) -> Optional
     })
     
     return {
-        'modelId': model_id,
-        'displayName': f"{model_name} (Bedrock)",
+        'model_id': model_id,
+        'display_name': f"{model_name} (Bedrock)",
         'description': description,
         'capabilities': {
             'chat': supports_chat,
@@ -1298,12 +1298,12 @@ def _parse_bedrock_model(model_summary: Dict[str, Any], region: str) -> Optional
             'maxTokens': max_tokens,
             'embeddingDimensions': embedding_dimensions
         },
-        'costPer1kTokens': cost_per_1k_tokens,
+        'cost_per_1k_tokens': cost_per_1k_tokens,
         'metadata': {
-            'providerName': provider_name,
-            'modelArn': model_summary.get('modelArn', ''),
+            'provider_name': provider_name,
+            'model_arn': model_summary.get('modelArn', ''),
             'region': region,
-            'discoveredAt': datetime.utcnow().isoformat()
+            'discovered_at': datetime.utcnow().isoformat()
         }
     }
 

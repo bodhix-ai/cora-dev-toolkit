@@ -19,35 +19,37 @@ This standard defines the required patterns for all CORA module API endpoints, c
 3. **Audit Trail** - All operations are logged with org context
 4. **RLS Enforcement** - Supabase Row-Level Security policies use org_id for filtering
 
-#### Where to Pass org_id
+#### Where to Pass orgId
 
 | HTTP Method | Location | Example |
 |-------------|----------|---------|
-| GET | Query parameter | `GET /ws/{id}?org_id=uuid` |
-| POST | Request body | `POST /ws` with `{"org_id": "uuid", ...}` |
-| PUT | Query parameter OR body | `PUT /ws/{id}?org_id=uuid` |
-| DELETE | Query parameter | `DELETE /ws/{id}?org_id=uuid` |
+| GET | Query parameter | `GET /ws/{id}?orgId=uuid` |
+| POST | Request body | `POST /ws` with `{"orgId": "uuid", ...}` |
+| PUT | Query parameter OR body | `PUT /ws/{id}?orgId=uuid` |
+| DELETE | Query parameter | `DELETE /ws/{id}?orgId=uuid` |
+
+**Note:** Query parameters use camelCase to be consistent with the JavaScript ecosystem. Backend Lambdas accept both `orgId` and `org_id` for backward compatibility.
 
 #### Lambda Validation Pattern
 
 ```python
 def lambda_handler(event, context):
-    # Get org_id from query parameters OR request body
+    # Get orgId from query parameters (accept both camelCase and snake_case)
     query_params = event.get('queryStringParameters') or {}
-    org_id = query_params.get('org_id')
+    org_id = query_params.get('org_id') or query_params.get('orgId')
     
     # For POST/PUT requests, also check the request body
     if not org_id and http_method in ('POST', 'PUT'):
         try:
             body = json.loads(event.get('body', '{}'))
-            org_id = body.get('org_id')
+            org_id = body.get('orgId') or body.get('org_id')
         except json.JSONDecodeError:
             pass
 
-    # REQUIRED: Validate org_id is present
+    # REQUIRED: Validate orgId is present
     if not org_id:
         return common.bad_request_response(
-            'org_id is required (in query params or request body)'
+            'orgId is required (in query params or request body)'
         )
     
     # Proceed with route handling...
@@ -58,23 +60,23 @@ def lambda_handler(event, context):
 All API client methods that access organization-scoped data MUST accept `orgId` as a parameter:
 
 ```typescript
-// ✅ CORRECT - org_id passed for all operations
+// ✅ CORRECT - orgId passed for all operations (camelCase)
 async getWorkspace(id: string, orgId: string): Promise<Workspace | null> {
-  const response = await this.client.get(`/ws/${id}?org_id=${orgId}`);
+  const response = await this.client.get(`/ws/${id}?orgId=${orgId}`);
   return response?.data || null;
 }
 
 async toggleFavorite(workspaceId: string, orgId: string): Promise<FavoriteToggleResponse> {
   const response = await this.client.post(
-    `/ws/${workspaceId}/favorite?org_id=${orgId}`,
+    `/ws/${workspaceId}/favorite?orgId=${orgId}`,
     {}
   );
-  return response?.data || { is_favorited: false };
+  return response?.data || { isFavorited: false };
 }
 
-// ❌ WRONG - org_id missing, will fail with 400 error
+// ❌ WRONG - orgId missing, will fail with 400 error
 async getWorkspace(id: string): Promise<Workspace | null> {
-  const response = await this.client.get(`/ws/${id}`);  // Missing org_id!
+  const response = await this.client.get(`/ws/${id}`);  // Missing orgId!
   return response?.data || null;
 }
 ```
@@ -99,20 +101,20 @@ function useWorkspaceActions() {
 }
 ```
 
-#### Which Routes Require org_id
+#### Which Routes Require orgId
 
-| Route Type | org_id Required | Example |
-|------------|-----------------|---------|
-| List resources | ✅ Yes | `GET /ws?org_id=...` |
-| Create resource | ✅ Yes (in body) | `POST /ws` with org_id in body |
-| Get single resource | ✅ Yes | `GET /ws/{id}?org_id=...` |
-| Update resource | ✅ Yes | `PUT /ws/{id}?org_id=...` |
-| Delete resource | ✅ Yes | `DELETE /ws/{id}?org_id=...` |
-| User actions (favorite, etc.) | ✅ Yes | `POST /ws/{id}/favorite?org_id=...` |
-| Module configuration | ✅ Yes | `GET /ws/config?org_id=...` |
-| Admin routes | ✅ Yes | `GET /ws/admin/stats?org_id=...` |
+| Route Type | orgId Required | Example |
+|------------|----------------|---------|
+| List resources | ✅ Yes | `GET /ws?orgId=...` |
+| Create resource | ✅ Yes (in body) | `POST /ws` with orgId in body |
+| Get single resource | ✅ Yes | `GET /ws/{id}?orgId=...` |
+| Update resource | ✅ Yes | `PUT /ws/{id}?orgId=...` |
+| Delete resource | ✅ Yes | `DELETE /ws/{id}?orgId=...` |
+| User actions (favorite, etc.) | ✅ Yes | `POST /ws/{id}/favorite?orgId=...` |
+| Module configuration | ✅ Yes | `GET /ws/config?orgId=...` |
+| Admin routes | ✅ Yes | `GET /ws/admin/stats?orgId=...` |
 
-**Note:** Even when a resource is identified by a globally unique ID (like a UUID), org_id is STILL required for security validation - the Lambda should verify the resource belongs to the specified org.
+**Note:** Even when a resource is identified by a globally unique ID (like a UUID), orgId is STILL required for security validation - the Lambda should verify the resource belongs to the specified org.
 
 ---
 
@@ -490,7 +492,21 @@ if workspace and workspace['org_id'] != org_id:
 
 ---
 
-**Last Updated:** January 8, 2026  
+**Last Updated:** January 13, 2026  
 **Status:** Active Standard  
 **Applies To:** All CORA module Lambda functions and API clients  
 **Supersedes:** standard_api-response.md
+
+---
+
+## Appendix: CORA Option B - Strict camelCase Standard
+
+| Layer | Convention | Example |
+|-------|------------|---------|
+| Database columns | `snake_case` | `org_id`, `created_at` |
+| API JSON responses | `camelCase` | `{ "orgId": "123", "createdAt": "..." }` |
+| API JSON requests | `camelCase` | `{ "orgId": "123", "name": "..." }` |
+| Query parameters | `camelCase` | `?orgId=123&favoritesOnly=true` |
+| TypeScript code | `camelCase` | `const orgId = params.orgId` |
+
+**Key principle:** Backend Lambdas transform snake_case database fields to camelCase at the API boundary. Frontend uses pure camelCase throughout.
