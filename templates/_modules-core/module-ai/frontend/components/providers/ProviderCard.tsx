@@ -207,7 +207,7 @@ export function ProviderCard({
     deprecated: 0,
   };
 
-  const byCategory = modelCounts.by_category || {};
+  const byCategory = modelCounts.byCategory || {};
 
   // Define category groups for rendering details
   const availableCategories = [

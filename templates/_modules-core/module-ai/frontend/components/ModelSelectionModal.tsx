@@ -63,7 +63,7 @@ export const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
         model.capabilities?.embeddingDimensions === parseInt(dimensionFilter)
     )
     .filter((model) =>
-      model.model_name.toLowerCase().includes(searchTerm.toLowerCase())
+      model.modelName.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
   const handleSelect = (model: DeploymentInfo) => {
