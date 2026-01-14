@@ -1124,6 +1124,31 @@ if ! $DRY_RUN && [[ ${#ENABLED_MODULES[@]} -gt 0 ]]; then
 
       # Add module to Terraform configuration
       add_module_to_terraform "$module" "$INFRA_DIR" "$PROJECT_NAME"
+
+      # Add module as dependency to web app's package.json
+      WEB_PACKAGE_JSON="${STACK_DIR}/apps/web/package.json"
+      if [[ -f "$WEB_PACKAGE_JSON" ]]; then
+        # Check if module dependency already exists
+        MODULE_PKG_NAME="@${PROJECT_NAME}/${module}"
+        if ! grep -q "\"${MODULE_PKG_NAME}\"" "$WEB_PACKAGE_JSON"; then
+          log_info "  Adding ${MODULE_PKG_NAME} to web app dependencies..."
+          
+          # Use jq if available, otherwise use sed
+          if command -v jq &> /dev/null; then
+            # Use jq to add dependency properly
+            jq ".dependencies[\"${MODULE_PKG_NAME}\"] = \"workspace:*\"" "$WEB_PACKAGE_JSON" > "${WEB_PACKAGE_JSON}.tmp"
+            mv "${WEB_PACKAGE_JSON}.tmp" "$WEB_PACKAGE_JSON"
+          else
+            # Fallback: use sed to add dependency after the last module dependency
+            # Find the last @project/module- line and add after it
+            sed -i '' "s|\"@${PROJECT_NAME}/module-mgmt\": \"workspace:\\*\"|\"@${PROJECT_NAME}/module-mgmt\": \"workspace:*\",\\n    \"${MODULE_PKG_NAME}\": \"workspace:*\"|" "$WEB_PACKAGE_JSON" 2>/dev/null || \
+            sed -i "s|\"@${PROJECT_NAME}/module-mgmt\": \"workspace:\\*\"|\"@${PROJECT_NAME}/module-mgmt\": \"workspace:*\",\\n    \"${MODULE_PKG_NAME}\": \"workspace:*\"|" "$WEB_PACKAGE_JSON"
+          fi
+          log_info "    ✅ Added ${MODULE_PKG_NAME} to web app dependencies"
+        else
+          log_info "    ${MODULE_PKG_NAME} already in web app dependencies"
+        fi
+      fi
     else
       log_warn "Functional module template not found: ${FUNCTIONAL_MODULE_TEMPLATE}"
       log_info "Skipping ${module}"
