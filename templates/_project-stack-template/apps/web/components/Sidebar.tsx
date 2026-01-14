@@ -60,8 +60,8 @@ export function Sidebar({ navigation }: SidebarProps) {
   // Helper function to get dynamic label for navigation items
   const getNavLabel = (item: { href: string; label: string }) => {
     // Override workspace label with config value if available
-    if (item.href === "/ws" && wsConfig?.nav_label_plural) {
-      return wsConfig.nav_label_plural;
+    if (item.href === "/ws" && wsConfig?.navLabelPlural) {
+      return wsConfig.navLabelPlural;
     }
     return item.label;
   };
@@ -81,10 +81,9 @@ export function Sidebar({ navigation }: SidebarProps) {
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {/* Logo/Header - Dynamic App Branding from Organization Settings */}
       <Box sx={{ p: 3, borderBottom: 1, borderColor: "divider", display: "flex", alignItems: "center", gap: 1.5 }}>
-        <OrgIcon 
-          iconName={currentOrganization?.appIcon} 
-          sx={{ color: "primary.main", fontSize: 28 }}
-        />
+        <Box sx={{ color: "primary.main", fontSize: 28, display: "flex" }}>
+          <OrgIcon iconName={currentOrganization?.appIcon} />
+        </Box>
         <Typography variant="h6" fontWeight={600}>
           {currentOrganization?.appName || currentOrganization?.orgName || "CORA"}
         </Typography>
