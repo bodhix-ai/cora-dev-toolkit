@@ -1,0 +1,128 @@
+{
+  "name": "module-kb",
+  "displayName": "Knowledge Base",
+  "description": "RAG-based knowledge base module with multi-scope document management, pgvector embeddings, and AI chat grounding",
+  "version": "1.0.0",
+  "tier": 2,
+  "category": "core",
+  "status": "active",
+  "dependencies": ["module-access", "module-ai"],
+  "optionalDependencies": ["module-ws"],
+  "capabilities": {
+    "backend": {
+      "lambdas": ["kb-base", "kb-document", "kb-processor"],
+      "queues": ["kb-processor-queue"]
+    },
+    "frontend": {
+      "components": [
+        "KBToggleSelector",
+        "DocumentUploadZone",
+        "DocumentTable",
+        "DocumentStatusBadge",
+        "KBStatsCard",
+        "WorkspaceDataKBTab",
+        "KBFormDialog",
+        "OrgKBList",
+        "SysKBList"
+      ],
+      "hooks": [
+        "useKnowledgeBase",
+        "useKbDocuments",
+        "useOrgKbs",
+        "useSysKbs"
+      ],
+      "pages": [
+        "OrgAdminKBPage",
+        "PlatformAdminKBPage"
+      ]
+    },
+    "database": {
+      "tables": [
+        "kb_bases",
+        "kb_docs",
+        "kb_chunks",
+        "kb_access_sys",
+        "kb_access_orgs",
+        "kb_access_ws",
+        "kb_access_chats"
+      ],
+      "extensions": ["pgvector"]
+    },
+    "infrastructure": {
+      "s3": ["kb-documents-bucket"],
+      "sqs": ["kb-processor-queue"]
+    }
+  },
+  "scopes": {
+    "description": "Multi-scope KB hierarchy supporting 4 levels",
+    "levels": [
+      {
+        "name": "global",
+        "description": "Platform-wide KBs managed by platform admins",
+        "accessControl": "kb_access_sys"
+      },
+      {
+        "name": "org",
+        "description": "Organization-level KBs managed by org admins",
+        "accessControl": "kb_access_orgs"
+      },
+      {
+        "name": "workspace",
+        "description": "Workspace-level KBs auto-created on first document upload",
+        "accessControl": "kb_access_ws"
+      },
+      {
+        "name": "chat",
+        "description": "Chat-level KBs scoped to individual chat sessions",
+        "accessControl": "kb_access_chats"
+      }
+    ]
+  },
+  "apiRoutes": [
+    "GET /workspaces/{workspaceId}/kb",
+    "POST /workspaces/{workspaceId}/kb",
+    "GET /workspaces/{workspaceId}/available-kbs",
+    "POST /workspaces/{workspaceId}/kbs/{kbId}/toggle",
+    "GET /workspaces/{workspaceId}/kb/documents",
+    "POST /workspaces/{workspaceId}/kb/documents",
+    "DELETE /workspaces/{workspaceId}/kb/documents/{docId}",
+    "GET /chats/{chatId}/kb",
+    "POST /chats/{chatId}/kb",
+    "GET /chats/{chatId}/available-kbs",
+    "POST /chats/{chatId}/kbs/{kbId}/toggle",
+    "GET /admin/org/kbs",
+    "POST /admin/org/kbs",
+    "PATCH /admin/org/kbs/{kbId}",
+    "DELETE /admin/org/kbs/{kbId}",
+    "GET /admin/sys/kbs",
+    "POST /admin/sys/kbs",
+    "PATCH /admin/sys/kbs/{kbId}",
+    "DELETE /admin/sys/kbs/{kbId}",
+    "POST /admin/sys/kbs/{kbId}/orgs",
+    "DELETE /admin/sys/kbs/{kbId}/orgs/{orgId}",
+    "POST /kb/search"
+  ],
+  "adminCards": {
+    "org": {
+      "enabled": true,
+      "path": "/admin/org/kb",
+      "icon": "LibraryBooks",
+      "title": "Knowledge Bases",
+      "description": "Manage organization knowledge bases"
+    },
+    "platform": {
+      "enabled": true,
+      "path": "/admin/sys/kb",
+      "icon": "LibraryBooks",
+      "title": "Global Knowledge Bases",
+      "description": "Manage platform-wide knowledge bases"
+    }
+  },
+  "documentation": {
+    "readme": "./README.md",
+    "spec": "../../docs/specifications/module-kb/MODULE-KB-SPEC.md",
+    "technical": "../../docs/specifications/module-kb/MODULE-KB-TECHNICAL-SPEC.md",
+    "userUx": "../../docs/specifications/module-kb/MODULE-KB-USER-UX-SPEC.md",
+    "adminUx": "../../docs/specifications/module-kb/MODULE-KB-ADMIN-UX-SPEC.md"
+  }
+}
