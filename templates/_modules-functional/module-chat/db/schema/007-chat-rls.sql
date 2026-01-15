@@ -1,0 +1,274 @@
+-- =============================================
+-- MODULE-CHAT: Row Level Security Policies
+-- =============================================
+-- Purpose: Apply RLS policies to all chat tables AFTER all tables are created
+-- Source: Created for CORA toolkit Jan 2026
+
+-- =============================================
+-- CHAT_SESSIONS TABLE RLS
+-- =============================================
+
+ALTER TABLE public.chat_sessions ENABLE ROW LEVEL SECURITY;
+
+-- Users can view chats they own, are shared with, or workspace-shared chats they're members of
+DROP POLICY IF EXISTS "Users can view accessible chats" ON public.chat_sessions;
+CREATE POLICY "Users can view accessible chats" ON public.chat_sessions
+FOR SELECT
+TO authenticated
+USING (
+    is_deleted = false AND
+    (
+        -- User is the owner
+        created_by = auth.uid()
+        OR
+        -- User has a share
+        EXISTS (
+            SELECT 1 FROM public.chat_shares csh
+            WHERE csh.session_id = chat_sessions.id
+            AND csh.shared_with_user_id = auth.uid()
+        )
+        OR
+        -- Chat is shared with workspace and user is member
+        (
+            is_shared_with_workspace = true
+            AND workspace_id IS NOT NULL
+            AND EXISTS (
+                SELECT 1 FROM public.ws_members wm
+                WHERE wm.ws_id = chat_sessions.workspace_id
+                AND wm.user_id = auth.uid()
+                AND wm.deleted_at IS NULL
+            )
+        )
+    )
+);
+
+-- Org members can create chats
+DROP POLICY IF EXISTS "Org members can create chats" ON public.chat_sessions;
+CREATE POLICY "Org members can create chats" ON public.chat_sessions
+FOR INSERT
+TO authenticated
+WITH CHECK (
+    created_by = auth.uid() AND
+    EXISTS (
+        SELECT 1 FROM public.org_members
+        WHERE org_members.org_id = chat_sessions.org_id
+        AND org_members.user_id = auth.uid()
+    )
+);
+
+-- Only chat owner can update
+DROP POLICY IF EXISTS "Chat owner can update" ON public.chat_sessions;
+CREATE POLICY "Chat owner can update" ON public.chat_sessions
+FOR UPDATE
+TO authenticated
+USING (created_by = auth.uid())
+WITH CHECK (created_by = auth.uid());
+
+-- Only chat owner can delete (soft delete)
+DROP POLICY IF EXISTS "Chat owner can delete" ON public.chat_sessions;
+CREATE POLICY "Chat owner can delete" ON public.chat_sessions
+FOR DELETE
+TO authenticated
+USING (created_by = auth.uid());
+
+-- Service role has full access
+DROP POLICY IF EXISTS "Service role full access to chat_sessions" ON public.chat_sessions;
+CREATE POLICY "Service role full access to chat_sessions" ON public.chat_sessions
+FOR ALL
+USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.chat_sessions TO authenticated;
+
+COMMENT ON POLICY "Users can view accessible chats" ON public.chat_sessions IS 'Users can view chats they own, are shared with, or workspace-shared chats';
+COMMENT ON POLICY "Org members can create chats" ON public.chat_sessions IS 'Any org member can create a chat in their organization';
+COMMENT ON POLICY "Chat owner can update" ON public.chat_sessions IS 'Only chat owner can update chat settings';
+COMMENT ON POLICY "Chat owner can delete" ON public.chat_sessions IS 'Only chat owner can soft-delete a chat';
+
+-- =============================================
+-- CHAT_MESSAGES TABLE RLS
+-- =============================================
+
+ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+
+-- Users can view messages in chats they can access
+DROP POLICY IF EXISTS "Users can view messages in accessible chats" ON public.chat_messages;
+CREATE POLICY "Users can view messages in accessible chats" ON public.chat_messages
+FOR SELECT
+TO authenticated
+USING (
+    public.can_view_chat(auth.uid(), session_id)
+);
+
+-- Users can add messages if they can edit the chat
+DROP POLICY IF EXISTS "Users can add messages to editable chats" ON public.chat_messages;
+CREATE POLICY "Users can add messages to editable chats" ON public.chat_messages
+FOR INSERT
+TO authenticated
+WITH CHECK (
+    public.can_edit_chat(auth.uid(), session_id)
+);
+
+-- Messages are immutable - no updates allowed (except by service role)
+
+-- Service role has full access
+DROP POLICY IF EXISTS "Service role full access to chat_messages" ON public.chat_messages;
+CREATE POLICY "Service role full access to chat_messages" ON public.chat_messages
+FOR ALL
+USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
+
+GRANT SELECT, INSERT ON public.chat_messages TO authenticated;
+
+COMMENT ON POLICY "Users can view messages in accessible chats" ON public.chat_messages IS 'Users can read messages in chats they have view access to';
+COMMENT ON POLICY "Users can add messages to editable chats" ON public.chat_messages IS 'Users can send messages in chats they have edit access to';
+
+-- =============================================
+-- CHAT_SESSION_KB TABLE RLS (Junction: chat_sessions <-> kb_bases)
+-- =============================================
+
+ALTER TABLE public.chat_session_kb ENABLE ROW LEVEL SECURITY;
+
+-- Users can view KB associations for chats they can access
+DROP POLICY IF EXISTS "Users can view KB associations" ON public.chat_session_kb;
+CREATE POLICY "Users can view KB associations" ON public.chat_session_kb
+FOR SELECT
+TO authenticated
+USING (
+    public.can_view_chat(auth.uid(), session_id)
+);
+
+-- Only chat owner can add KB associations
+DROP POLICY IF EXISTS "Chat owner can add KB associations" ON public.chat_session_kb;
+CREATE POLICY "Chat owner can add KB associations" ON public.chat_session_kb
+FOR INSERT
+TO authenticated
+WITH CHECK (
+    added_by = auth.uid() AND
+    public.is_chat_owner(auth.uid(), session_id)
+);
+
+-- Only chat owner can update KB associations (enable/disable)
+DROP POLICY IF EXISTS "Chat owner can update KB associations" ON public.chat_session_kb;
+CREATE POLICY "Chat owner can update KB associations" ON public.chat_session_kb
+FOR UPDATE
+TO authenticated
+USING (public.is_chat_owner(auth.uid(), session_id))
+WITH CHECK (public.is_chat_owner(auth.uid(), session_id));
+
+-- Only chat owner can remove KB associations
+DROP POLICY IF EXISTS "Chat owner can remove KB associations" ON public.chat_session_kb;
+CREATE POLICY "Chat owner can remove KB associations" ON public.chat_session_kb
+FOR DELETE
+TO authenticated
+USING (public.is_chat_owner(auth.uid(), session_id));
+
+-- Service role has full access
+DROP POLICY IF EXISTS "Service role full access to chat_session_kb" ON public.chat_session_kb;
+CREATE POLICY "Service role full access to chat_session_kb" ON public.chat_session_kb
+FOR ALL
+USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.chat_session_kb TO authenticated;
+
+COMMENT ON POLICY "Users can view KB associations" ON public.chat_session_kb IS 'Users can view KB associations for chats they can access';
+COMMENT ON POLICY "Chat owner can add KB associations" ON public.chat_session_kb IS 'Only chat owner can add KB associations';
+COMMENT ON POLICY "Chat owner can update KB associations" ON public.chat_session_kb IS 'Only chat owner can enable/disable KB associations';
+COMMENT ON POLICY "Chat owner can remove KB associations" ON public.chat_session_kb IS 'Only chat owner can remove KB associations';
+
+-- =============================================
+-- CHAT_SHARES TABLE RLS
+-- =============================================
+
+ALTER TABLE public.chat_shares ENABLE ROW LEVEL SECURITY;
+
+-- Users can view shares for chats they own or are shared with them
+DROP POLICY IF EXISTS "Users can view shares" ON public.chat_shares;
+CREATE POLICY "Users can view shares" ON public.chat_shares
+FOR SELECT
+TO authenticated
+USING (
+    shared_with_user_id = auth.uid() OR
+    public.is_chat_owner(auth.uid(), session_id)
+);
+
+-- Only chat owner can create shares
+DROP POLICY IF EXISTS "Chat owner can create shares" ON public.chat_shares;
+CREATE POLICY "Chat owner can create shares" ON public.chat_shares
+FOR INSERT
+TO authenticated
+WITH CHECK (
+    created_by = auth.uid() AND
+    public.is_chat_owner(auth.uid(), session_id)
+);
+
+-- Only chat owner can update shares (change permission level)
+DROP POLICY IF EXISTS "Chat owner can update shares" ON public.chat_shares;
+CREATE POLICY "Chat owner can update shares" ON public.chat_shares
+FOR UPDATE
+TO authenticated
+USING (public.is_chat_owner(auth.uid(), session_id))
+WITH CHECK (public.is_chat_owner(auth.uid(), session_id));
+
+-- Chat owner can remove shares, or users can remove their own share
+DROP POLICY IF EXISTS "Owner or shared user can remove shares" ON public.chat_shares;
+CREATE POLICY "Owner or shared user can remove shares" ON public.chat_shares
+FOR DELETE
+TO authenticated
+USING (
+    shared_with_user_id = auth.uid() OR
+    public.is_chat_owner(auth.uid(), session_id)
+);
+
+-- Service role has full access
+DROP POLICY IF EXISTS "Service role full access to chat_shares" ON public.chat_shares;
+CREATE POLICY "Service role full access to chat_shares" ON public.chat_shares
+FOR ALL
+USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.chat_shares TO authenticated;
+
+COMMENT ON POLICY "Users can view shares" ON public.chat_shares IS 'Users can view shares for their own chats or shares given to them';
+COMMENT ON POLICY "Chat owner can create shares" ON public.chat_shares IS 'Only chat owner can share the chat';
+COMMENT ON POLICY "Chat owner can update shares" ON public.chat_shares IS 'Only chat owner can change share permissions';
+COMMENT ON POLICY "Owner or shared user can remove shares" ON public.chat_shares IS 'Owner can revoke shares, users can remove their own share';
+
+-- =============================================
+-- CHAT_FAVORITES TABLE RLS
+-- =============================================
+
+ALTER TABLE public.chat_favorites ENABLE ROW LEVEL SECURITY;
+
+-- Users can only view their own favorites
+DROP POLICY IF EXISTS "Users can view own favorites" ON public.chat_favorites;
+CREATE POLICY "Users can view own favorites" ON public.chat_favorites
+FOR SELECT
+TO authenticated
+USING (user_id = auth.uid());
+
+-- Users can add favorites for chats they can access
+DROP POLICY IF EXISTS "Users can add favorites" ON public.chat_favorites;
+CREATE POLICY "Users can add favorites" ON public.chat_favorites
+FOR INSERT
+TO authenticated
+WITH CHECK (
+    user_id = auth.uid() AND
+    public.can_view_chat(auth.uid(), session_id)
+);
+
+-- Users can only remove their own favorites
+DROP POLICY IF EXISTS "Users can remove own favorites" ON public.chat_favorites;
+CREATE POLICY "Users can remove own favorites" ON public.chat_favorites
+FOR DELETE
+TO authenticated
+USING (user_id = auth.uid());
+
+-- Service role has full access
+DROP POLICY IF EXISTS "Service role full access to chat_favorites" ON public.chat_favorites;
+CREATE POLICY "Service role full access to chat_favorites" ON public.chat_favorites
+FOR ALL
+USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
+
+GRANT SELECT, INSERT, DELETE ON public.chat_favorites TO authenticated;
+
+COMMENT ON POLICY "Users can view own favorites" ON public.chat_favorites IS 'Users can only see their own favorites';
+COMMENT ON POLICY "Users can add favorites" ON public.chat_favorites IS 'Users can favorite chats they have access to';
+COMMENT ON POLICY "Users can remove own favorites" ON public.chat_favorites IS 'Users can only unfavorite their own favorites';

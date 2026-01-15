@@ -1,0 +1,151 @@
+{
+  "name": "module-chat",
+  "version": "1.0.0",
+  "description": "AI-powered chat with streaming responses, KB grounding, and workspace integration",
+  "type": "functional",
+  "status": "complete",
+  "dependencies": {
+    "core": ["module-access", "module-ai", "module-mgmt"],
+    "functional": ["module-kb", "module-ws"]
+  },
+  "database": {
+    "tables": [
+      "chat_sessions",
+      "chat_messages",
+      "chat_kb_grounding",
+      "chat_shares",
+      "chat_favorites"
+    ],
+    "rpcFunctions": [
+      "is_chat_owner",
+      "can_view_chat",
+      "can_edit_chat",
+      "get_accessible_chats",
+      "get_grounded_kbs_for_chat",
+      "get_available_kbs_for_chat"
+    ]
+  },
+  "backend": {
+    "lambdas": [
+      {
+        "name": "chat-session",
+        "description": "Session CRUD, KB grounding, sharing, favorites",
+        "memory": 512,
+        "timeout": 30
+      },
+      {
+        "name": "chat-message",
+        "description": "Message CRUD and RAG context retrieval",
+        "memory": 512,
+        "timeout": 30
+      },
+      {
+        "name": "chat-stream",
+        "description": "AI response streaming with SSE",
+        "memory": 1024,
+        "timeout": 300
+      }
+    ]
+  },
+  "frontend": {
+    "pages": [
+      "ChatListPage",
+      "ChatDetailPage"
+    ],
+    "components": [
+      "ChatInput",
+      "ChatMessage",
+      "ChatOptionsMenu",
+      "ChatSessionList",
+      "KBGroundingSelector",
+      "ShareChatDialog"
+    ],
+    "hooks": [
+      "useChat",
+      "useChatActions",
+      "useChatKBGrounding",
+      "useChatSession",
+      "useChatSharing",
+      "useStreaming"
+    ],
+    "store": "chatStore",
+    "routes": [
+      "/chat",
+      "/chat/[id]"
+    ]
+  },
+  "features": {
+    "workspaceScopedChats": true,
+    "userLevelChats": true,
+    "kbGrounding": true,
+    "streaming": true,
+    "sharing": true,
+    "favorites": true,
+    "citations": true,
+    "conversationHistory": true
+  },
+  "adminCards": false,
+  "navigation": {
+    "leftNav": true,
+    "label": "Chats",
+    "icon": "ChatIcon",
+    "path": "/chat",
+    "requiredRole": null
+  },
+  "apiRoutes": {
+    "totalRoutes": 24,
+    "categories": [
+      {
+        "name": "Session Management",
+        "routes": [
+          "GET /workspaces/{workspaceId}/chats",
+          "POST /workspaces/{workspaceId}/chats",
+          "GET /users/me/chats",
+          "POST /users/me/chats",
+          "GET /chats/{sessionId}",
+          "PATCH /chats/{sessionId}",
+          "DELETE /chats/{sessionId}"
+        ]
+      },
+      {
+        "name": "Messages",
+        "routes": [
+          "GET /chats/{sessionId}/messages",
+          "GET /chats/{sessionId}/messages/{messageId}",
+          "POST /chats/{sessionId}/context",
+          "GET /chats/{sessionId}/history"
+        ]
+      },
+      {
+        "name": "Streaming",
+        "routes": [
+          "POST /chats/{sessionId}/stream"
+        ]
+      },
+      {
+        "name": "KB Grounding",
+        "routes": [
+          "GET /chats/{sessionId}/kbs",
+          "POST /chats/{sessionId}/kbs",
+          "DELETE /chats/{sessionId}/kbs/{kbId}",
+          "GET /chats/{sessionId}/kbs/available"
+        ]
+      },
+      {
+        "name": "Sharing",
+        "routes": [
+          "GET /chats/{sessionId}/shares",
+          "POST /chats/{sessionId}/shares",
+          "PATCH /chats/{sessionId}/shares/{shareId}",
+          "DELETE /chats/{sessionId}/shares/{shareId}"
+        ]
+      },
+      {
+        "name": "Favorites",
+        "routes": [
+          "POST /chats/{sessionId}/favorite"
+        ]
+      }
+    ]
+  }
+}
