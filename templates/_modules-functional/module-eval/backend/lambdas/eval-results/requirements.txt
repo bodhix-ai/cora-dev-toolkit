@@ -1,0 +1,14 @@
+# Eval Results Lambda Dependencies
+# Note: boto3 is provided by AWS Lambda runtime
+
+# Database
+psycopg2-binary>=2.9.9
+
+# HTTP requests
+requests>=2.31.0
+
+# Export - PDF generation
+reportlab>=4.0.0
+
+# Export - XLSX generation
+openpyxl>=3.1.0
