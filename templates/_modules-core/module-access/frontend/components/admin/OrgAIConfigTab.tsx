@@ -10,18 +10,44 @@ import {
   AlertTitle,
   CircularProgress,
   Paper,
+  Chip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormControlLabel,
+  Checkbox,
+  Divider,
 } from "@mui/material";
-import { Save, Settings } from "@mui/icons-material";
+import { Save, Info } from "@mui/icons-material";
 import { CoraAuthAdapter, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 
 /**
- * Org AI Configuration type
+ * Org AI Configuration type (matches API response)
  */
 interface OrgAIConfig {
   orgId: string;
+  policyMissionType?: string;
   customSystemPrompt?: string;
-  defaultChatModel?: string;
-  defaultEmbeddingModel?: string;
+  customContextPrompt?: string;
+  citationStyle?: string;
+  includePageNumbers?: boolean;
+  includeSourceMetadata?: boolean;
+  responseTone?: string;
+  maxResponseLength?: string;
+  orgSystemPrompt?: string;
+  platformConfig?: {
+    systemPrompt?: string;
+    defaultChatDeploymentId?: string;
+    defaultEmbeddingDeploymentId?: string;
+    chatDeployment?: {
+      modelName?: string;
+    };
+    embeddingDeployment?: {
+      modelName?: string;
+    };
+  };
+  combinedPrompt?: string;
   updatedAt?: string;
 }
 
@@ -33,8 +59,8 @@ interface OrgAIConfigTabProps {
 /**
  * Organization AI Configuration Tab
  * 
- * Manages organization-specific AI settings (system admin only).
- * Allows system admins to override default AI settings for an organization.
+ * Manages organization-specific prompt engineering configuration (system admin only).
+ * Model selection is platform-level only and cannot be overridden per-org.
  */
 export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
   const [config, setConfig] = useState<OrgAIConfig | null>(null);
@@ -44,9 +70,15 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
+    policyMissionType: "",
     customSystemPrompt: "",
-    defaultChatModel: "",
-    defaultEmbeddingModel: "",
+    customContextPrompt: "",
+    citationStyle: "inline",
+    includePageNumbers: true,
+    includeSourceMetadata: true,
+    responseTone: "",
+    maxResponseLength: "",
+    orgSystemPrompt: "",
   });
 
   useEffect(() => {
@@ -64,13 +96,19 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
       }
       const apiClient = createCoraAuthenticatedClient(token);
       const response = await apiClient.get<{ success: boolean; data: OrgAIConfig }>(`/orgs/${orgId}/ai/config`);
-      if (response.success) {
-        const data = response.data || {};
-        setConfig(data);
+
+      if (response.success && response.data) {
+        setConfig(response.data);
         setFormData({
-          customSystemPrompt: data.customSystemPrompt || "",
-          defaultChatModel: data.defaultChatModel || "",
-          defaultEmbeddingModel: data.defaultEmbeddingModel || "",
+          policyMissionType: response.data.policyMissionType || "",
+          customSystemPrompt: response.data.customSystemPrompt || "",
+          customContextPrompt: response.data.customContextPrompt || "",
+          citationStyle: response.data.citationStyle || "inline",
+          includePageNumbers: response.data.includePageNumbers !== undefined ? response.data.includePageNumbers : true,
+          includeSourceMetadata: response.data.includeSourceMetadata !== undefined ? response.data.includeSourceMetadata : true,
+          responseTone: response.data.responseTone || "",
+          maxResponseLength: response.data.maxResponseLength || "",
+          orgSystemPrompt: response.data.orgSystemPrompt || "",
         });
       } else {
         setError("Failed to load AI configuration");
@@ -96,15 +134,24 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
         return;
       }
       const apiClient = createCoraAuthenticatedClient(token);
-      const response = await apiClient.put<{ success: boolean; data: OrgAIConfig }>(`/orgs/${orgId}/ai/config`, {
+      
+      // Send all prompt engineering fields
+      const response = await apiClient.put<{ success: boolean } & OrgAIConfig>(`/orgs/${orgId}/ai/config`, {
+        policyMissionType: formData.policyMissionType || null,
         customSystemPrompt: formData.customSystemPrompt || null,
-        defaultChatModel: formData.defaultChatModel || null,
-        defaultEmbeddingModel: formData.defaultEmbeddingModel || null,
+        customContextPrompt: formData.customContextPrompt || null,
+        citationStyle: formData.citationStyle,
+        includePageNumbers: formData.includePageNumbers,
+        includeSourceMetadata: formData.includeSourceMetadata,
+        responseTone: formData.responseTone || null,
+        maxResponseLength: formData.maxResponseLength || null,
+        orgSystemPrompt: formData.orgSystemPrompt || null,
       });
 
       if (response.success) {
         setSuccessMessage("AI configuration saved successfully");
-        fetchConfig();
+        // Refresh to get latest data
+        await fetchConfig();
       } else {
         setError("Failed to save AI configuration");
       }
@@ -127,15 +174,15 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
   return (
     <Box>
       <Typography variant="h6" gutterBottom>
-        Organization AI Configuration
+        Organization Prompt Engineering Configuration
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Configure organization-specific AI settings. These settings override platform defaults for this organization.
+        Configure organization-specific prompt engineering settings. These settings control how AI responses are generated for this organization.
       </Typography>
 
       <Alert severity="warning" sx={{ mb: 3 }}>
         <AlertTitle>System Admin Only</AlertTitle>
-        This configuration is only accessible to system administrators. Organization owners and admins cannot modify these settings.
+        This configuration is only accessible to system administrators. Model selection is managed at the platform level.
       </Alert>
 
       {error && (
@@ -151,12 +198,95 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
         </Alert>
       )}
 
+      {/* Platform Settings (Read-Only) */}
+      {config?.platformConfig && (
+        <Paper variant="outlined" sx={{ p: 3, mb: 3, bgcolor: "grey.50" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+            <Info fontSize="small" color="info" />
+            <Typography variant="subtitle2" color="text.secondary">
+              Platform Settings (Read-Only)
+            </Typography>
+          </Box>
+          
+          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+            {config.platformConfig.chatDeployment?.modelName && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  Chat Model
+                </Typography>
+                <Chip 
+                  label={config.platformConfig.chatDeployment.modelName} 
+                  size="small" 
+                  color="primary" 
+                  variant="outlined"
+                />
+              </Box>
+            )}
+            
+            {config.platformConfig.embeddingDeployment?.modelName && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  Embedding Model
+                </Typography>
+                <Chip 
+                  label={config.platformConfig.embeddingDeployment.modelName} 
+                  size="small" 
+                  color="secondary" 
+                  variant="outlined"
+                />
+              </Box>
+            )}
+          </Box>
+        </Paper>
+      )}
+
+      {/* Organization Prompt Engineering Settings (Editable) */}
       <Paper variant="outlined" sx={{ p: 3 }}>
         <Box
           component="form"
           onSubmit={handleSave}
           sx={{ display: "flex", flexDirection: "column", gap: 3 }}
         >
+          {/* Mission Type */}
+          <FormControl fullWidth>
+            <InputLabel>Policy Mission Type</InputLabel>
+            <Select
+              value={formData.policyMissionType}
+              label="Policy Mission Type"
+              onChange={(e) =>
+                setFormData({ ...formData, policyMissionType: e.target.value })
+              }
+            >
+              <MenuItem value="">
+                <em>None</em>
+              </MenuItem>
+              <MenuItem value="research">Research</MenuItem>
+              <MenuItem value="compliance">Compliance</MenuItem>
+              <MenuItem value="education">Education</MenuItem>
+              <MenuItem value="general">General</MenuItem>
+            </Select>
+          </FormControl>
+
+          <Divider />
+
+          {/* Prompt Configuration */}
+          <Typography variant="subtitle2" color="text.secondary">
+            Prompt Configuration
+          </Typography>
+
+          <TextField
+            fullWidth
+            label="Organization System Prompt"
+            value={formData.orgSystemPrompt}
+            onChange={(e) =>
+              setFormData({ ...formData, orgSystemPrompt: e.target.value })
+            }
+            placeholder="Enter organization-specific system prompt..."
+            multiline
+            rows={4}
+            helperText="This prompt will be appended to the platform default system prompt"
+          />
+
           <TextField
             fullWidth
             label="Custom System Prompt"
@@ -164,45 +294,131 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
             onChange={(e) =>
               setFormData({ ...formData, customSystemPrompt: e.target.value })
             }
-            placeholder="Enter organization-specific system prompt..."
+            placeholder="Enter custom system prompt..."
             multiline
-            rows={6}
-            helperText="Override the system default system prompt for this organization"
+            rows={4}
+            helperText="Additional system-level instructions for AI responses"
           />
 
           <TextField
             fullWidth
-            label="Default Chat Model"
-            value={formData.defaultChatModel}
+            label="Custom Context Prompt"
+            value={formData.customContextPrompt}
             onChange={(e) =>
-              setFormData({ ...formData, defaultChatModel: e.target.value })
+              setFormData({ ...formData, customContextPrompt: e.target.value })
             }
-            placeholder="e.g., gpt-4, claude-3-opus"
-            helperText="Override the system default chat model for this organization"
+            placeholder="Enter custom context prompt..."
+            multiline
+            rows={4}
+            helperText="Context-specific instructions for AI responses"
           />
 
-          <TextField
-            fullWidth
-            label="Default Embedding Model"
-            value={formData.defaultEmbeddingModel}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                defaultEmbeddingModel: e.target.value,
-              })
-            }
-            placeholder="e.g., text-embedding-ada-002"
-            helperText="Override the system default embedding model for this organization"
-          />
+          <Divider />
 
-          <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end" }}>
+          {/* Citation Configuration */}
+          <Typography variant="subtitle2" color="text.secondary">
+            Citation Configuration
+          </Typography>
+
+          <FormControl fullWidth>
+            <InputLabel>Citation Style</InputLabel>
+            <Select
+              value={formData.citationStyle}
+              label="Citation Style"
+              onChange={(e) =>
+                setFormData({ ...formData, citationStyle: e.target.value })
+              }
+            >
+              <MenuItem value="inline">Inline</MenuItem>
+              <MenuItem value="footnote">Footnote</MenuItem>
+              <MenuItem value="endnote">Endnote</MenuItem>
+              <MenuItem value="none">None</MenuItem>
+            </Select>
+          </FormControl>
+
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={formData.includePageNumbers}
+                  onChange={(e) =>
+                    setFormData({ ...formData, includePageNumbers: e.target.checked })
+                  }
+                />
+              }
+              label="Include Page Numbers in Citations"
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={formData.includeSourceMetadata}
+                  onChange={(e) =>
+                    setFormData({ ...formData, includeSourceMetadata: e.target.checked })
+                  }
+                />
+              }
+              label="Include Source Metadata in Citations"
+            />
+          </Box>
+
+          <Divider />
+
+          {/* Response Configuration */}
+          <Typography variant="subtitle2" color="text.secondary">
+            Response Configuration
+          </Typography>
+
+          <FormControl fullWidth>
+            <InputLabel>Response Tone</InputLabel>
+            <Select
+              value={formData.responseTone}
+              label="Response Tone"
+              onChange={(e) =>
+                setFormData({ ...formData, responseTone: e.target.value })
+              }
+            >
+              <MenuItem value="">
+                <em>None</em>
+              </MenuItem>
+              <MenuItem value="professional">Professional</MenuItem>
+              <MenuItem value="casual">Casual</MenuItem>
+              <MenuItem value="technical">Technical</MenuItem>
+              <MenuItem value="simple">Simple</MenuItem>
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth>
+            <InputLabel>Max Response Length</InputLabel>
+            <Select
+              value={formData.maxResponseLength}
+              label="Max Response Length"
+              onChange={(e) =>
+                setFormData({ ...formData, maxResponseLength: e.target.value })
+              }
+            >
+              <MenuItem value="">
+                <em>None</em>
+              </MenuItem>
+              <MenuItem value="concise">Concise</MenuItem>
+              <MenuItem value="moderate">Moderate</MenuItem>
+              <MenuItem value="detailed">Detailed</MenuItem>
+            </Select>
+          </FormControl>
+
+          <Box sx={{ display: "flex", gap: 2, justifyContent: "flex-end", mt: 2 }}>
             <Button
               variant="outlined"
               onClick={() => {
                 setFormData({
+                  policyMissionType: config?.policyMissionType || "",
                   customSystemPrompt: config?.customSystemPrompt || "",
-                  defaultChatModel: config?.defaultChatModel || "",
-                  defaultEmbeddingModel: config?.defaultEmbeddingModel || "",
+                  customContextPrompt: config?.customContextPrompt || "",
+                  citationStyle: config?.citationStyle || "inline",
+                  includePageNumbers: config?.includePageNumbers !== undefined ? config.includePageNumbers : true,
+                  includeSourceMetadata: config?.includeSourceMetadata !== undefined ? config.includeSourceMetadata : true,
+                  responseTone: config?.responseTone || "",
+                  maxResponseLength: config?.maxResponseLength || "",
+                  orgSystemPrompt: config?.orgSystemPrompt || "",
                 });
                 setError(null);
                 setSuccessMessage(null);
