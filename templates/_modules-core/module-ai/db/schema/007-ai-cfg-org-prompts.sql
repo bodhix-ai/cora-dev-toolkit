@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS public.ai_cfg_org_prompts (
     include_source_metadata boolean DEFAULT true NOT NULL,
     response_tone text,
     max_response_length text,
-    configured_by uuid,
+    created_by uuid,
+    updated_by uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     org_system_prompt text,
@@ -70,12 +71,23 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint 
-        WHERE conname = 'ai_cfg_org_prompts_configured_by_fkey'
+        WHERE conname = 'ai_cfg_org_prompts_created_by_fkey'
         AND conrelid = 'public.ai_cfg_org_prompts'::regclass
     ) THEN
         ALTER TABLE ONLY public.ai_cfg_org_prompts
-            ADD CONSTRAINT ai_cfg_org_prompts_configured_by_fkey 
-            FOREIGN KEY (configured_by) 
+            ADD CONSTRAINT ai_cfg_org_prompts_created_by_fkey 
+            FOREIGN KEY (created_by) 
+            REFERENCES auth.users(id);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'ai_cfg_org_prompts_updated_by_fkey'
+        AND conrelid = 'public.ai_cfg_org_prompts'::regclass
+    ) THEN
+        ALTER TABLE ONLY public.ai_cfg_org_prompts
+            ADD CONSTRAINT ai_cfg_org_prompts_updated_by_fkey 
+            FOREIGN KEY (updated_by) 
             REFERENCES auth.users(id);
     END IF;
 

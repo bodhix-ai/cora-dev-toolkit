@@ -15,6 +15,7 @@ import re
 from typing import Any, Dict, Optional
 
 import org_common as common
+from org_common import camel_to_snake
 from ai_common import (
     PlatformAIConfig,
     OrgAIConfig,
@@ -231,13 +232,8 @@ def update_platform_ai_config_handler(event: Dict[str, Any], user_id: str) -> Di
         if not body:
             return common.bad_request_response("Request body is required.")
         
-        # Map camelCase to snake_case (API-PATTERNS standard)
-        field_mapping = {
-            'defaultEmbeddingModelId': 'default_embedding_model_id',
-            'defaultChatModelId': 'default_chat_model_id',
-            'systemPrompt': 'system_prompt'
-        }
-        body = {field_mapping.get(k, k): v for k, v in body.items()}
+        # Transform camelCase to snake_case (API-PATTERNS standard)
+        body = {camel_to_snake(k): v for k, v in body.items()}
         
         # Validate required fields
         embedding_model_id = body.get("default_embedding_model_id")
@@ -367,7 +363,7 @@ def get_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, 
         )
         
         # Get organization AI configuration
-        org_config = common.find_one('ai_cfg_org_prompts', {'org_id': organization_id})
+        org_config = common.find_one('ai_cfg_org_prompts', {'org_id': organization_id}, select='*')
         
         # Get platform defaults
         platform_config = common.find_one('ai_cfg_sys_rag', {})
@@ -471,15 +467,28 @@ def get_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, 
         if org_system_prompt:
             combined_prompt = f"{platform_prompt}\n\n{org_system_prompt}" if platform_prompt else org_system_prompt
 
-        # Construct final response matching OrgAIConfig type
+        # Construct final response including ALL org config fields
         config = {
             "org_id": organization_id,
             "org_system_prompt": org_system_prompt,
+            "policy_mission_type": org_config.get("policy_mission_type") if org_config else None,
+            "custom_system_prompt": org_config.get("custom_system_prompt") if org_config else None,
+            "custom_context_prompt": org_config.get("custom_context_prompt") if org_config else None,
+            "citation_style": org_config.get("citation_style") if org_config else None,
+            "include_page_numbers": org_config.get("include_page_numbers") if org_config else None,
+            "include_source_metadata": org_config.get("include_source_metadata") if org_config else None,
+            "response_tone": org_config.get("response_tone") if org_config else None,
+            "max_response_length": org_config.get("max_response_length") if org_config else None,
+            "created_by": org_config.get("created_by") if org_config else None,
+            "updated_by": org_config.get("updated_by") if org_config else None,
+            "created_at": org_config.get("created_at") if org_config else None,
+            "updated_at": org_config.get("updated_at") if org_config else None,
             "platform_config": platform_settings,
             "combined_prompt": combined_prompt
         }
         
-        return common.success_response(config)
+        # Transform to camelCase for API response
+        return common.success_response(common.transform_record(config))
     
     except common.ValidationError as e:
         return common.bad_request_response(str(e))
@@ -541,17 +550,32 @@ def update_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[st
         if not body:
             return common.bad_request_response("Request body is required.")
         
-        # Prepare update data
-        update_data = {}
+        # Transform camelCase to snake_case (API-PATTERNS standard)
+        body = {camel_to_snake(k): v for k, v in body.items()}
         
-        if "org_system_prompt" in body:
-            update_data["org_system_prompt"] = body["org_system_prompt"]
+        # Prepare update data - only include fields that exist in ai_cfg_org_prompts table
+        valid_fields = [
+            'policy_mission_type',
+            'custom_system_prompt',
+            'custom_context_prompt',
+            'citation_style',
+            'include_page_numbers',
+            'include_source_metadata',
+            'response_tone',
+            'max_response_length',
+            'org_system_prompt'
+        ]
+        
+        update_data = {k: v for k, v in body.items() if k in valid_fields}
         
         if not update_data:
             return common.bad_request_response("No valid fields to update.")
         
+        # Add updated_by to track who made the change (CORA audit standard)
+        update_data['updated_by'] = user_id
+        
         # Check if ai_cfg_org_prompts record exists
-        existing = common.find_one('ai_cfg_org_prompts', {'org_id': organization_id})
+        existing = common.find_one('ai_cfg_org_prompts', {'org_id': organization_id}, select='*')
         
         if existing:
             # Update existing record
@@ -568,6 +592,8 @@ def update_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[st
             
             insert_data = {
                 "org_id": organization_id,
+                "created_by": user_id,  # CORA audit standard
+                "updated_by": user_id,  # Set on creation as well
                 **update_data
             }
             
@@ -577,17 +603,126 @@ def update_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[st
             logger.error("Update/insert failed - no record returned")
             return common.internal_error_response("Failed to update organization AI configuration.")
         
-        # Get platform defaults for complete response
-        platform_config = common.find_one('ai_cfg_sys_rag', {})
-        
-        if platform_config:
-            updated_config["default_embedding_model_id"] = platform_config.get("default_embedding_model_id")
-            updated_config["default_chat_model_id"] = platform_config.get("default_chat_model_id")
-            updated_config["platform_system_prompt"] = platform_config.get("system_prompt")
-        
         logger.info(f"Organization AI configuration updated for {organization_id} by {user_id}")
         
-        return common.success_response(common.format_record(updated_config))
+        # Return the same structure as GET handler for consistency
+        # Get platform defaults
+        platform_config = common.find_one('ai_cfg_sys_rag', {})
+        
+        if not platform_config:
+            return common.not_found_response("Platform AI configuration not found.")
+        
+        # Prepare platform config
+        platform_settings = {
+            "system_prompt": platform_config.get("system_prompt", ""),
+            "default_chat_deployment_id": platform_config.get("default_chat_model_id"),
+            "default_embedding_deployment_id": platform_config.get("default_embedding_model_id"),
+        }
+        
+        # Fetch model details for platform config (same as GET handler)
+        if platform_settings.get("default_embedding_deployment_id"):
+            emb_model = common.find_one(
+                'ai_models',
+                {'id': platform_settings["default_embedding_deployment_id"]}
+            )
+            
+            if emb_model:
+                model_record = common.format_record(emb_model)
+                capabilities = model_record.get('capabilities')
+                if isinstance(capabilities, str):
+                    try:
+                        capabilities = json.loads(capabilities)
+                    except json.JSONDecodeError:
+                        capabilities = {}
+                
+                platform_settings["embedding_deployment"] = {
+                    "id": model_record.get('id'),
+                    "providerType": model_record.get('providerId'),
+                    "provider": "Unknown",
+                    "modelId": model_record.get('modelId'),
+                    "modelName": model_record.get('displayName', model_record.get('modelId')),
+                    "deploymentName": "Default",
+                    "supportsChat": capabilities.get('chat', False),
+                    "supportsEmbeddings": capabilities.get('embedding', False),
+                    "deploymentStatus": model_record.get('status'),
+                    "createdAt": model_record.get('createdAt'),
+                    "updatedAt": model_record.get('updatedAt'),
+                    "description": model_record.get('description'),
+                    "capabilities": capabilities
+                }
+                
+                if model_record.get('providerId'):
+                    provider = common.find_one('ai_providers', {'id': model_record.get('providerId')})
+                    if provider:
+                        platform_settings["embedding_deployment"]["provider"] = provider.get('displayName') or provider.get('name')
+                        platform_settings["embedding_deployment"]["providerType"] = provider.get('providerType')
+        
+        if platform_settings.get("default_chat_deployment_id"):
+            chat_model = common.find_one(
+                'ai_models',
+                {'id': platform_settings["default_chat_deployment_id"]}
+            )
+            
+            if chat_model:
+                model_record = common.format_record(chat_model)
+                capabilities = model_record.get('capabilities')
+                if isinstance(capabilities, str):
+                    try:
+                        capabilities = json.loads(capabilities)
+                    except json.JSONDecodeError:
+                        capabilities = {}
+                        
+                platform_settings["chat_deployment"] = {
+                    "id": model_record.get('id'),
+                    "providerType": model_record.get('providerId'),
+                    "provider": "Unknown",
+                    "modelId": model_record.get('modelId'),
+                    "modelName": model_record.get('displayName', model_record.get('modelId')),
+                    "deploymentName": "Default",
+                    "supportsChat": capabilities.get('chat', False),
+                    "supportsEmbeddings": capabilities.get('embedding', False),
+                    "deploymentStatus": model_record.get('status'),
+                    "createdAt": model_record.get('createdAt'),
+                    "updatedAt": model_record.get('updatedAt'),
+                    "description": model_record.get('description'),
+                    "capabilities": capabilities
+                }
+                
+                if model_record.get('providerId'):
+                    provider = common.find_one('ai_providers', {'id': model_record.get('providerId')})
+                    if provider:
+                        platform_settings["chat_deployment"]["provider"] = provider.get('displayName') or provider.get('name')
+                        platform_settings["chat_deployment"]["providerType"] = provider.get('providerType')
+
+        # Combine prompts
+        org_system_prompt = updated_config.get("org_system_prompt")
+        platform_prompt = platform_settings.get("system_prompt", "")
+        
+        combined_prompt = platform_prompt
+        if org_system_prompt:
+            combined_prompt = f"{platform_prompt}\n\n{org_system_prompt}" if platform_prompt else org_system_prompt
+
+        # Construct response matching GET handler structure, including ALL org config fields
+        config = {
+            "org_id": organization_id,
+            "org_system_prompt": org_system_prompt,
+            "policy_mission_type": updated_config.get("policy_mission_type"),
+            "custom_system_prompt": updated_config.get("custom_system_prompt"),
+            "custom_context_prompt": updated_config.get("custom_context_prompt"),
+            "citation_style": updated_config.get("citation_style"),
+            "include_page_numbers": updated_config.get("include_page_numbers"),
+            "include_source_metadata": updated_config.get("include_source_metadata"),
+            "response_tone": updated_config.get("response_tone"),
+            "max_response_length": updated_config.get("max_response_length"),
+            "created_by": updated_config.get("created_by"),
+            "updated_by": updated_config.get("updated_by"),
+            "created_at": updated_config.get("created_at"),
+            "updated_at": updated_config.get("updated_at"),
+            "platform_config": platform_settings,
+            "combined_prompt": combined_prompt
+        }
+        
+        return common.success_response(common.transform_record(config))
     
     except common.ValidationError as e:
         return common.bad_request_response(str(e))
