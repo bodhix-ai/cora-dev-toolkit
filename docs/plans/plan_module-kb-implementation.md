@@ -1,11 +1,14 @@
 # Module-KB Implementation Plan
 
-**Status**: � IN PROGRESS (Phase 0 ✅ COMPLETE)  
+**Status**: 🔄 IN PROGRESS (Phase 0 ✅, Phase 1 ✅)  
 **Priority**: HIGH (Foundation for module-chat and module-wf)  
+**Module Type**: Core Module (Tier 2)  
+**Template Location**: `templates/_modules-core/module-kb/`  
 **Dependencies**: module-access, module-mgmt, module-ws, module-ai (ai_cfg_sys_rag table)  
 **Estimated Duration**: 11-16 sessions (~33-48 hours)
 
-**Prerequisites**: ✅ Phase 0 (AI Config Table Migration) COMPLETE - All referenced tables use correct naming
+**Prerequisites**: ✅ Phase 0 (AI Config Table Migration) COMPLETE - All referenced tables use correct naming  
+**Phase 1**: ✅ Foundation & Specification COMPLETE - All 4 spec documents finalized
 
 ---
 
@@ -311,33 +314,36 @@ If issues arise during or after migration:
 
 ---
 
-## Phase 1: Foundation & Specification (Sessions 104-106)
+## Phase 1: Foundation & Specification ✅ COMPLETE (Session 128)
 
-**Duration**: 3 sessions (~6-9 hours)
+**Duration**: 1 session (~3 hours actual)
+**Status**: ✅ COMPLETE - All 4 specification documents finalized
 
 ### 1.1 Module Specification Documents
 
 **Location**: `docs/specifications/module-kb/`
 
-- [ ] Create specification directory structure
-- [ ] Write `MODULE-SPEC-PARENT.md`:
+- [x] Create specification directory structure
+- [x] Write `MODULE-KB-SPEC.md` (parent specification):
   - Overview and purpose
   - Multi-scope architecture (global/org/workspace/chat)
   - Dependencies: module-ws, module-access, module-mgmt
   - Integration points with module-chat, module-wf
-- [ ] Write `MODULE-SPEC-TECHNICAL.md`:
-  - Database schema (4 scopes + pgvector)
+- [x] Write `MODULE-KB-TECHNICAL-SPEC.md`:
+  - 7 entities with 4-level access control model
+  - 9 database migrations (001-009)
   - Lambda functions (kb-base, kb-document, kb-processor)
   - API endpoints with route docstrings
   - S3 bucket structure for documents
   - SQS queue for async processing
-  - pgvector embedding storage
-- [ ] Write `MODULE-SPEC-USER-UX.md`:
-  - User flows: upload doc to workspace/chat
+  - pgvector embedding storage with HNSW indexing
+- [x] Write `MODULE-KB-USER-UX-SPEC.md`:
+  - User personas and flows
+  - Document upload to workspace/chat
   - KB toggle selector (shows available KBs)
   - Document preview and management
-  - Search and filtering
-- [ ] Write `MODULE-SPEC-ADMIN-UX.md`:
+  - Component library specifications
+- [x] Write `MODULE-KB-ADMIN-UX-SPEC.md`:
   - **Platform Admin Global KB Management**:
     - Admin page: `/admin/sys/kb` (full CRUD for global KBs)
     - Create/edit/delete global KBs
@@ -357,38 +363,52 @@ If issues arise during or after migration:
     - KB templates (pre-configured KBs with common docs)
     - Document approval workflow (review before indexing)
     - Access audit logs (who accessed which KB/document)
-  - **Analytics Dashboard**:
-    - Most accessed KBs/documents
-    - Token usage per KB (via module-ai integration)
-    - Document processing status overview
-    - Storage usage by org/workspace
+  - Platform admin global KB management pages
+  - Org admin KB management pages  
+  - Admin card specifications for dashboards
+  - Component library for admin UIs
+  - Interaction patterns for CRUD operations
+  - Admin testing requirements
 
-### 1.2 Data Model Design
+### 1.2 Data Model Design ✅ COMPLETE
 
-- [ ] Design CORA-compliant database schema:
-  - `kb_base` - KB metadata (scope, org_id, workspace_id, chat_session_id)
-  - `kb_document` - Document metadata (s3_key, status, workspace_id)
-  - `kb_chunk` - RAG chunks with pgvector embeddings
-  - `kb_access_global` - Global KB org associations
-  - `kb_access_workspace` - Workspace KB toggles (NOT needed - workspace KB is always available)
-  - `kb_access_chat` - Chat KB toggles
-- [ ] Map legacy tables to CORA tables
-- [ ] Define RLS policies for multi-tenant access
-- [ ] Document pgvector integration strategy
-- [ ] Define S3 bucket structure: `{project}-kb-docs/{org_id}/{workspace_id}/`
+- [x] Design CORA-compliant database schema with 7 entities:
+  - `kb_bases` - KB metadata (scope, org_id, workspace_id, chat_session_id)
+  - `kb_docs` - Document metadata (s3_key, status) - NOTE: uses `kb_docs` not `kb_documents`
+  - `kb_chunks` - RAG chunks with pgvector embeddings (1024 dims default)
+  - `kb_access_global` - Step 1: Sys admin shares global KB with org
+  - `kb_access_orgs` - Step 2: Org admin enables KB for org
+  - `kb_access_ws` - Step 3: Workspace admin enables KB for workspace
+  - `kb_access_chats` - Step 4: User selects KB for chat
+- [x] Map legacy tables to CORA tables
+- [x] Define RLS policies for multi-tenant access (9 migrations total)
+- [x] Document pgvector integration strategy (HNSW indexing)
+- [x] Define S3 bucket structure: `{org_id}/{workspace_id}/{kb_id}/{doc_id}/{filename}`
 
-### 1.3 API Endpoint Design
+### 1.3 API Endpoint Design ✅ COMPLETE
 
-- [ ] Define Lambda route structure with docstrings
-- [ ] Map legacy endpoints to CORA patterns
-- [ ] Document camelCase API response format
-- [ ] Define presigned URL flow for S3 uploads
+- [x] Define Lambda route structure with docstrings
+- [x] Map legacy endpoints to CORA patterns
+- [x] Document camelCase API response format
+- [x] Define presigned URL flow for S3 uploads
+- [x] Define RAG search endpoint (`POST /kb/search`)
 
-**Deliverables**:
-- Complete specification documents
-- Database schema design
-- API endpoint specifications
-- S3 and pgvector integration plan
+### 1.4 4-Level Access Control Model ✅ COMPLETE
+
+Documented cascading inheritance chain:
+- Global KB: Requires all 4 levels enabled (Steps 1→2→3→4)
+- Org KB: Requires levels 2-4 (no sys admin sharing)
+- Workspace KB: Requires levels 3-4 (no org admin sharing)
+- Chat KB: User controls directly (Step 4 only)
+
+**Deliverables** ✅ ALL COMPLETE:
+- `MODULE-KB-SPEC.md` - Parent overview (~400 lines)
+- `MODULE-KB-TECHNICAL-SPEC.md` - Complete technical spec (~2700 lines)
+- `MODULE-KB-USER-UX-SPEC.md` - User flows and components (~1200 lines)
+- `MODULE-KB-ADMIN-UX-SPEC.md` - Admin pages and cards (~1000 lines)
+- Total: ~5300 lines of specification
+
+**Completed:** January 14, 2026 (Session 128)
 
 ---
 
@@ -1420,10 +1440,11 @@ Admin (Org)
 
 ---
 
-**Status**: � IN PROGRESS (Phase 0 ✅ COMPLETE, Phase 1 NEXT)  
-**Last Updated**: January 14, 2026 (Session 127)  
-**Next Review**: After Phase 1 completion (Foundation & Specification)
+**Status**: 🔄 IN PROGRESS (Phase 0 ✅, Phase 1 ✅, Phase 2 NEXT)  
+**Last Updated**: January 14, 2026 (Session 128)  
+**Next Review**: After Phase 2 completion (Database Schema)
 
-**Phase 0 Completed**: January 14, 2026 (Session 127) - Migration successful, zero errors, zero downtime
+**Phase 0 Completed**: January 14, 2026 (Session 127) - Migration successful, zero errors, zero downtime  
+**Phase 1 Completed**: January 14, 2026 (Session 128) - All 4 specification documents finalized (~5300 lines)
 
 **Cross-Reference**: [Database Naming Migration Plan - Phase 4](../plans/plan_db-naming-migration.md#phase-4-ai-config-tables--handled-by-module-kb-phase-0)
