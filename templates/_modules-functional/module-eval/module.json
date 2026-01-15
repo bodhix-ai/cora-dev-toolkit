@@ -1,0 +1,186 @@
+{
+  "name": "module-eval",
+  "version": "1.0.0",
+  "description": "Automated document evaluation against configurable compliance criteria with AI-driven assessments",
+  "type": "functional",
+  "status": "in-progress",
+  "dependencies": {
+    "core": ["module-access", "module-ai", "module-mgmt"],
+    "functional": ["module-kb", "module-ws"]
+  },
+  "database": {
+    "tables": [
+      "eval_sys_config",
+      "eval_sys_prompt_config",
+      "eval_sys_status_options",
+      "eval_org_config",
+      "eval_org_prompt_config",
+      "eval_org_status_options",
+      "eval_doc_types",
+      "eval_criteria_sets",
+      "eval_criteria_items",
+      "eval_doc_summary",
+      "eval_doc_set",
+      "eval_criteria_results",
+      "eval_result_edits"
+    ],
+    "rpcFunctions": [
+      "get_eval_config",
+      "get_eval_prompt_config",
+      "get_eval_status_options",
+      "can_manage_eval_config",
+      "is_eval_owner"
+    ]
+  },
+  "backend": {
+    "lambdas": [
+      {
+        "name": "eval-config",
+        "description": "Configuration, doc types, criteria sets, status options",
+        "memory": 512,
+        "timeout": 30
+      },
+      {
+        "name": "eval-processor",
+        "description": "Async evaluation processing with SQS trigger",
+        "memory": 1024,
+        "timeout": 900
+      },
+      {
+        "name": "eval-results",
+        "description": "Results CRUD, edits, export",
+        "memory": 512,
+        "timeout": 60
+      }
+    ]
+  },
+  "frontend": {
+    "pages": [
+      "EvalListPage",
+      "EvalDetailPage",
+      "EvalAdminConfigPage",
+      "EvalDocTypesPage",
+      "EvalCriteriaPage"
+    ],
+    "components": [
+      "EvalDocUpload",
+      "EvalProgressCard",
+      "EvalResultsTable",
+      "EvalDetailView",
+      "DocSummaryPanel",
+      "EvalQAList",
+      "EvalSummaryPanel",
+      "CitationViewer",
+      "ResultEditDialog",
+      "EvalExportButton",
+      "DocTypeManager",
+      "CriteriaSetManager",
+      "CriteriaImportDialog",
+      "CriteriaItemEditor",
+      "StatusOptionManager",
+      "PromptConfigEditor",
+      "ScoringConfigPanel",
+      "OrgDelegationManager"
+    ],
+    "hooks": [
+      "useEval",
+      "useEvalConfig",
+      "useEvalDocTypes",
+      "useEvalCriteria",
+      "useEvalResults",
+      "useEvalExport"
+    ],
+    "store": "evalStore",
+    "routes": [
+      "/eval",
+      "/eval/[id]",
+      "/admin/sys/eval/config",
+      "/admin/sys/eval/prompts",
+      "/admin/org/eval/config",
+      "/admin/org/eval/prompts",
+      "/admin/org/eval/doc-types",
+      "/admin/org/eval/criteria"
+    ]
+  },
+  "features": {
+    "documentTypes": true,
+    "criteriaImport": true,
+    "multiDocEvaluations": true,
+    "aiDrivenEvaluation": true,
+    "humanEditVersioning": true,
+    "configurableScoring": true,
+    "pdfExport": true,
+    "xlsxExport": true
+  },
+  "adminCards": true,
+  "navigation": {
+    "leftNav": true,
+    "label": "Evaluations",
+    "icon": "ClipboardDocumentCheckIcon",
+    "path": "/eval",
+    "requiredRole": null
+  },
+  "apiRoutes": {
+    "totalRoutes": 35,
+    "categories": [
+      {
+        "name": "System Config (Sys Admin)",
+        "routes": [
+          "GET /admin/sys/eval/config",
+          "PATCH /admin/sys/eval/config",
+          "GET /admin/sys/eval/status-options",
+          "POST /admin/sys/eval/status-options",
+          "PATCH /admin/sys/eval/status-options/{id}",
+          "DELETE /admin/sys/eval/status-options/{id}",
+          "GET /admin/sys/eval/prompts",
+          "PATCH /admin/sys/eval/prompts/{type}",
+          "POST /admin/sys/eval/prompts/{type}/test",
+          "GET /admin/sys/eval/orgs",
+          "PATCH /admin/sys/eval/orgs/{orgId}/delegation"
+        ]
+      },
+      {
+        "name": "Org Config (Org Admin)",
+        "routes": [
+          "GET /admin/org/eval/config",
+          "PATCH /admin/org/eval/config",
+          "GET /admin/org/eval/status-options",
+          "POST /admin/org/eval/status-options",
+          "PATCH /admin/org/eval/status-options/{id}",
+          "DELETE /admin/org/eval/status-options/{id}",
+          "GET /admin/org/eval/prompts",
+          "PATCH /admin/org/eval/prompts/{type}",
+          "POST /admin/org/eval/prompts/{type}/test"
+        ]
+      },
+      {
+        "name": "Document Types & Criteria",
+        "routes": [
+          "GET /admin/org/eval/doc-types",
+          "POST /admin/org/eval/doc-types",
+          "PATCH /admin/org/eval/doc-types/{id}",
+          "DELETE /admin/org/eval/doc-types/{id}",
+          "GET /admin/org/eval/criteria-sets",
+          "POST /admin/org/eval/criteria-sets",
+          "GET /admin/org/eval/criteria-sets/{id}",
+          "PATCH /admin/org/eval/criteria-sets/{id}",
+          "DELETE /admin/org/eval/criteria-sets/{id}",
+          "POST /admin/org/eval/criteria-sets/import"
+        ]
+      },
+      {
+        "name": "Evaluations",
+        "routes": [
+          "POST /workspaces/{wsId}/eval",
+          "GET /workspaces/{wsId}/eval",
+          "GET /workspaces/{wsId}/eval/{id}",
+          "GET /workspaces/{wsId}/eval/{id}/status",
+          "DELETE /workspaces/{wsId}/eval/{id}",
+          "PATCH /workspaces/{wsId}/eval/{id}/results/{resultId}",
+          "GET /workspaces/{wsId}/eval/{id}/export/pdf",
+          "GET /workspaces/{wsId}/eval/{id}/export/xlsx"
+        ]
+      }
+    ]
+  }
+}
