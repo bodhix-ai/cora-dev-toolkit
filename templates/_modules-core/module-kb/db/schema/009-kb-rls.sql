@@ -1,0 +1,114 @@
+-- ========================================
+-- Knowledge Base Module Schema
+-- Migration: 009-kb-rls.sql
+-- Created: January 14, 2026
+-- ========================================
+
+-- Enable RLS on all tables
+ALTER TABLE public.kb_bases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kb_docs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kb_chunks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kb_access_sys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kb_access_orgs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kb_access_ws ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kb_access_chats ENABLE ROW LEVEL SECURITY;
+
+-- ========================================
+-- kb_bases Policies
+-- ========================================
+
+CREATE POLICY "kb_bases_sys_admin_all" ON public.kb_bases
+    FOR ALL TO authenticated
+    USING (EXISTS (
+        SELECT 1 FROM public.user_profiles
+        WHERE user_id = auth.uid() AND sys_role = 'sys_admin'
+    ));
+
+CREATE POLICY "kb_bases_select" ON public.kb_bases
+    FOR SELECT TO authenticated
+    USING (can_access_kb(auth.uid(), id));
+
+CREATE POLICY "kb_bases_org_admin" ON public.kb_bases
+    FOR ALL TO authenticated
+    USING (
+        scope = 'org' AND
+        EXISTS (
+            SELECT 1 FROM public.org_members
+            WHERE org_id = kb_bases.org_id
+            AND user_id = auth.uid()
+            AND org_role IN ('org_owner', 'org_admin')
+        )
+    );
+
+-- ========================================
+-- kb_docs Policies
+-- ========================================
+
+CREATE POLICY "kb_docs_select" ON public.kb_docs
+    FOR SELECT TO authenticated
+    USING (EXISTS (
+        SELECT 1 FROM public.kb_bases kb
+        WHERE kb.id = kb_docs.kb_id
+        AND can_access_kb(auth.uid(), kb.id)
+    ));
+
+CREATE POLICY "kb_docs_insert" ON public.kb_docs
+    FOR INSERT TO authenticated
+    WITH CHECK (can_upload_to_kb(auth.uid(), kb_id));
+
+-- ========================================
+-- kb_access_sys Policies
+-- ========================================
+
+CREATE POLICY "kb_access_sys_sys_admin" ON public.kb_access_sys
+    FOR ALL TO authenticated
+    USING (EXISTS (
+        SELECT 1 FROM public.user_profiles
+        WHERE user_id = auth.uid() AND sys_role = 'sys_admin'
+    ));
+
+CREATE POLICY "kb_access_sys_select" ON public.kb_access_sys
+    FOR SELECT TO authenticated
+    USING (EXISTS (
+        SELECT 1 FROM public.org_members
+        WHERE org_id = kb_access_sys.org_id
+        AND user_id = auth.uid()
+    ));
+
+-- ========================================
+-- kb_access_orgs Policies
+-- ========================================
+
+CREATE POLICY "kb_access_orgs_admin" ON public.kb_access_orgs
+    FOR ALL TO authenticated
+    USING (EXISTS (
+        SELECT 1 FROM public.org_members
+        WHERE org_id = kb_access_orgs.org_id
+        AND user_id = auth.uid()
+        AND org_role IN ('org_owner', 'org_admin')
+    ));
+
+-- ========================================
+-- kb_access_ws Policies
+-- ========================================
+
+CREATE POLICY "kb_access_ws_admin" ON public.kb_access_ws
+    FOR ALL TO authenticated
+    USING (EXISTS (
+        SELECT 1 FROM public.ws_members
+        WHERE ws_id = kb_access_ws.workspace_id
+        AND user_id = auth.uid()
+        AND ws_role IN ('ws_owner', 'ws_admin')
+    ));
+
+-- ========================================
+-- kb_access_chats Policies
+-- ========================================
+
+CREATE POLICY "kb_access_chats_all" ON public.kb_access_chats
+    FOR ALL TO authenticated
+    USING (EXISTS (
+        SELECT 1 FROM public.chat_participants
+        WHERE chat_session_id = kb_access_chats.chat_session_id
+        AND user_id = auth.uid()
+    ));

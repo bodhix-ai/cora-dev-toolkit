@@ -1,0 +1,34 @@
+{
+  "name": "@{{PROJECT_NAME}}/module-kb",
+  "version": "1.0.0",
+  "description": "Knowledge Base and RAG frontend for CORA",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@{{PROJECT_NAME}}/api-client": "workspace:*",
+    "@{{PROJECT_NAME}}/shared-types": "workspace:*",
+    "@types/react": "^18.3.3",
+    "swr": "^2.2.4"
+  },
+  "peerDependencies": {
+    "@mui/icons-material": ">=5.0.0",
+    "@mui/material": ">=5.0.0",
+    "next": ">=14.0.0",
+    "next-auth": ">=4.0.0",
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.2",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.5"
+  }
+}
