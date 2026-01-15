@@ -2,389 +2,875 @@
 
 ## Current Focus
 
-**Session 84: Workspace Module Authorization & Frontend Errors** - 🔴 **IN PROGRESS** - 0%
+**Session 161: Module-Eval Phase 8 - Frontend State Management** - ✅ **COMPLETE** (January 15, 2026)
 
-## Session: January 10, 2026 (12:01 PM - 1:34 PM) - Session 83
-
-### 🎯 Focus: Fix Validation Errors & Lambda Authorization Issues
-
-**Context:** Validation report showed 13 errors across 4 validators. Investigation revealed Lambda path parameter mismatches, schema errors, missing Okta→Supabase mappings, and authorization bugs preventing platform_owner users from accessing admin endpoints. Additionally, workspace admin page had SessionProvider error.
-
-**Status:** ✅ **100% COMPLETE** - All validation errors fixed, authorization working, frontend error resolved
+**Previous Session:** Module-Eval Phase 7 - Frontend Types & API ✅ COMPLETE (Session 160)
 
 ---
 
-## 🚨 Issues Discovered & Fixed
+## ✅ Session 161: Module-Eval Phase 8 - Frontend State Management - **COMPLETE**
 
-### Issue 1: Import Validator Errors (4 errors)
-**Discovery:** Lambdas were calling `common.verify_org_access()` which doesn't exist in org_common module.
+**Goal:** Create Zustand store for module-eval state management.
 
-**Impact:** Lambda code would fail at runtime with import errors.
+**Status:** ✅ COMPLETE
 
-**Solution:** 
-- Replaced non-existent `verify_org_access()` calls with manual membership checks
-- Used standard `common.get_supabase_user_id_from_external_uid()` pattern
-- Fixed in provider Lambda (1 occurrence) and invites Lambda (3 occurrences)
+### Completed Work
 
-### Issue 2: Schema Validator Errors (6 errors)
-**Discovery:** invites Lambda was using wrong table name and non-existent column.
+#### 1. Zustand Eval Store Created ✅
 
-**Impact:** Lambda would fail with schema errors when trying to insert/query data.
+Created `templates/_modules-functional/module-eval/frontend/store/evalStore.ts` (~1600 lines):
 
-**Solution:**
-- Fixed table name: `org_invites` → `user_invites` (5 occurrences)
-- Removed non-existent `invite_token` field from insert operations
+**State Categories:**
+- **System Config State:** `sysConfig`, `sysPrompts`, `sysStatusOptions`, `orgsDelegation`
+- **Org Config State:** `orgConfig`, `orgPrompts`, `orgStatusOptions`
+- **Doc Types State:** `docTypes`, `selectedDocType`
+- **Criteria Sets State:** `criteriaSets`, `selectedCriteriaSet`
+- **Evaluations State:** `evaluations`, `selectedEvaluation`, `evaluationFilters`, `evaluationsPagination`
+- **Polling State:** `activePolls`, `pollInterval`
+- **Active Status Options:** Resolved options for display
 
-### Issue 3: API Tracer Errors (2 errors)
-**Discovery:** Lambdas extracting wrong path parameter names from API Gateway events.
+**Action Categories:**
+| Category | Count | Description |
+|----------|-------|-------------|
+| System Config | 10 | load/update config, prompts, status options, delegation |
+| Org Config | 9 | load/update config, prompts, status options |
+| Doc Types | 6 | CRUD + select/clear |
+| Criteria Sets | 8 | CRUD + import + select/clear |
+| Criteria Items | 3 | add/update/delete |
+| Evaluations | 8 | CRUD + select/clear + filters |
+| Polling | 3 | start/stop/stopAll |
+| Result Editing | 2 | edit + getHistory |
+| Export | 2 | PDF/XLSX |
+| Utility | 3 | loadActiveStatusOptions, clearErrors, reset |
 
-**Impact:** Lambdas would extract `None` for path parameters, causing 500 errors.
+**Key Features:**
+- Progress polling for active evaluations (automatic start/stop)
+- Optimistic updates with rollback on error
+- Persistence for user-facing data (evaluations, docTypes, criteriaSets)
+- Clean state reset on rehydration (loading states, polling)
+- Selectors for common queries
 
-**Solution:**
-- ai-config-handler: `organizationId` → `orgId`
-- idp-config: `provider_type` → `providerType`
+#### 2. Store Barrel Export Created ✅
 
-### Issue 4: CORA Compliance Error (1 error)
-**Discovery:** invites Lambda missing Okta→Supabase user ID mapping function.
+Created `templates/_modules-functional/module-eval/frontend/store/index.ts`:
+- Exports `useEvalStore` hook
+- Exports all selectors
 
-**Impact:** Lambda couldn't resolve user identities in CORA's multi-IDP architecture.
+#### 3. Frontend Index Updated ✅
 
-**Solution:** Added `get_supabase_user_id_from_okta_uid()` helper function
+Updated `templates/_modules-functional/module-eval/frontend/index.ts`:
+- Added store section with barrel export
+- Re-exports commonly used store exports
 
-### Issue 5: Platform Admin Authorization (403 errors)
-**Discovery:** Platform owner users getting 403 Forbidden on `/admin/users` and `/admin/idp-config` despite having correct role.
+### Files Created/Updated
 
-**Root Cause:** Lambdas weren't mapping Okta UID (from JWT) → Supabase user_id before querying user_profiles table.
+1. `templates/_modules-functional/module-eval/frontend/store/evalStore.ts` - ~1600 lines
+2. `templates/_modules-functional/module-eval/frontend/store/index.ts` - Barrel export
+3. `templates/_modules-functional/module-eval/frontend/index.ts` - Updated with store
 
-**Impact:** Platform admins locked out of admin features.
+### Module-Eval Progress Summary
 
-**Solution:**
-- **identities-management Lambda:** Added proper Okta→Supabase mapping, then query user_profiles
-- **idp-config Lambda:** Fixed `is_platform_admin()` to map user ID and use correct column name
+| Phase | Component | Status |
+|-------|-----------|--------|
+| Phase 2 | Database Schema (15 files) | ✅ COMPLETE |
+| Phase 3 | eval-config Lambda (35 routes) | ✅ COMPLETE |
+| Phase 4 | eval-processor Lambda (SQS) | ✅ COMPLETE |
+| Phase 5 | eval-results Lambda (9 routes) | ✅ COMPLETE |
+| Phase 6 | Terraform Infrastructure | ✅ COMPLETE |
+| Phase 7 | Frontend Types & API | ✅ COMPLETE |
+| Phase 8 | State Management | ✅ COMPLETE |
+| Phase 9 | Hooks | 🔄 NEXT |
 
-### Issue 6: Workspace Admin Page Error
-**Discovery:** Page using `useSession()` hook without SessionProvider wrapper.
+### Next Steps
 
-**Impact:** Runtime error preventing workspace admin page from loading.
-
-**Solution:** Created `layout.tsx` to wrap page in SessionProvider
-
----
-
-## ✅ Files Modified (8 files)
-
-### Backend Lambdas (6 files)
-
-#### 1. templates/_modules-core/module-ai/backend/lambdas/ai-config-handler/lambda_function.py
-**Changes:**
-- Fixed path parameter extraction: `organizationId` → `orgId` (2 occurrences)
-
-#### 2. templates/_modules-core/module-ai/backend/lambdas/provider/lambda_function.py
-**Changes:**
-- Replaced `common.verify_org_access()` with manual org membership check
-- Used standard `common.get_supabase_user_id_from_external_uid()` function
-
-#### 3. templates/_modules-core/module-access/backend/lambdas/idp-config/lambda_function.py
-**Changes:**
-- Fixed path parameter extraction: `provider_type` → `providerType` (4 occurrences)
-- Fixed `is_platform_admin()` authorization:
-  - Added Okta→Supabase user ID mapping
-  - Fixed column name: `id` → `user_id`
-  - Used standard `common.get_supabase_user_id_from_external_uid()`
-
-#### 4. templates/_modules-core/module-access/backend/lambdas/invites/lambda_function.py
-**Changes:**
-- Fixed table name: `org_invites` → `user_invites` (5 occurrences)
-- Removed non-existent `invite_token` field and token generation
-- Added `get_supabase_user_id_from_okta_uid()` helper function
-- Replaced `common.verify_org_access()` calls with manual checks (3 occurrences)
-
-#### 5. templates/_modules-core/module-access/backend/lambdas/identities-management/lambda_function.py
-**Changes:**
-- Fixed authorization in `handle_list_users()`:
-  - Added Okta→Supabase user ID mapping
-  - Query user_profiles with Supabase user_id
-  - Check global_role field for platform admin access
-- Used standard `common.get_supabase_user_id_from_external_uid()`
-
-#### 6. templates/_modules-core/module-access/backend/lambdas/members/lambda_function.py
-**Changes:** (from earlier in session)
-- Fixed path parameter extraction: `id` → `orgId`
-
-### Frontend (1 file)
-
-#### 7. templates/_modules-functional/module-ws/routes/admin/platform/modules/workspace/layout.tsx
-**Changes:** (CREATED)
-- New layout file wrapping children in SessionProvider
-- Enables `useSession()` hook in workspace admin page
-- Follows Next.js App Router + NextAuth pattern
-
-### Validation (1 file)
-
-#### 8. validation/api-tracer/lambda_parser.py
-**Changes:** (from earlier in session)
-- Enhanced to extract path parameter usage from Lambda code
-- Detects `path_params.get()`, `path_parameters.get()`, `pathParameters.get()`
-- Validates Lambda code matches API Gateway route definitions
+Phase 9: Frontend - Hooks (useEvalConfig, useEvalDocTypes, useEvaluations, etc.)
 
 ---
 
-## 📊 Session Results
+## ✅ Session 160: Module-Eval Phase 7 - Frontend Types & API - **COMPLETE**
 
-### Validation Status
-- **Before:** 13 errors across 4 validators
-- **After:** 0 errors - ✅ PASSED with SILVER certification
+**Goal:** Create TypeScript types and API client functions for module-eval frontend.
 
-**Errors Fixed:**
-- Import Validator: 4 errors → 0
-- Schema Validator: 6 errors → 0
-- API Tracer: 2 errors → 0
-- CORA Compliance: 1 error → 0
+**Status:** ✅ COMPLETE
 
-### Authorization Status
-- **Before:** Platform owners getting 403 Forbidden on admin endpoints
-- **After:** ✅ All authorization working correctly
+### Completed Work
 
-**Fixed Endpoints:**
-- `GET /admin/users` - Now accessible to platform_owner/platform_admin
-- `GET /admin/idp-config` - Now accessible to platform_owner/platform_admin
+#### 1. TypeScript Types Created ✅
 
-### Frontend Status
-- **Before:** Workspace admin page crashing with SessionProvider error
-- **After:** ✅ Page loads correctly with layout wrapper
+Created `templates/_modules-functional/module-eval/frontend/types/index.ts` (~750 lines):
+
+**Type Categories:**
+- **Enums/Constants:** `CategoricalMode`, `StatusOptionMode`, `PromptType`, `EvaluationStatus`
+- **System Config:** `EvalSysConfig`, `EvalSysPromptConfig`, `EvalSysStatusOption`
+- **Org Config:** `EvalOrgConfig`, `EvalOrgPromptConfig`, `EvalMergedPromptConfig`, `EvalOrgStatusOption`, `OrgDelegationStatus`
+- **Document Types:** `EvalDocType`, `CreateDocTypeInput`, `UpdateDocTypeInput`
+- **Criteria Sets:** `EvalCriteriaSet`, `CreateCriteriaSetInput`, `UpdateCriteriaSetInput`, `ImportCriteriaSetInput`, `ImportCriteriaSetResult`
+- **Criteria Items:** `EvalCriteriaItem`, `CreateCriteriaItemInput`, `UpdateCriteriaItemInput`
+- **Evaluations:** `Evaluation`, `EvaluationDocument`, `CreateEvaluationInput`, `EvaluationStatusResponse`
+- **Results:** `EvalCriteriaResult`, `EvalResultEdit`, `Citation`, `CriteriaResultWithItem`, `StatusOption`
+- **Export:** `ExportResponse`, `ExportUrlResponse`, `ExportContentResponse`
+- **API:** `ListEvaluationsResponse`, `PaginatedResponse`, various option types
+
+#### 2. API Client Created ✅
+
+Created `templates/_modules-functional/module-eval/frontend/lib/api.ts` (~900 lines):
+
+**API Function Categories:**
+| Category | Functions |
+|----------|-----------|
+| System Config | `getSysConfig`, `updateSysConfig` |
+| System Status | `listSysStatusOptions`, `createSysStatusOption`, `updateSysStatusOption`, `deleteSysStatusOption` |
+| System Prompts | `listSysPrompts`, `updateSysPrompt`, `testSysPrompt` |
+| Delegation | `listOrgsDelegation`, `toggleOrgDelegation` |
+| Org Config | `getOrgConfig`, `updateOrgConfig` |
+| Org Status | `listOrgStatusOptions`, `createOrgStatusOption`, `updateOrgStatusOption`, `deleteOrgStatusOption` |
+| Org Prompts | `listOrgPrompts`, `updateOrgPrompt`, `testOrgPrompt` |
+| Doc Types | `listDocTypes`, `getDocType`, `createDocType`, `updateDocType`, `deleteDocType` |
+| Criteria Sets | `listCriteriaSets`, `getCriteriaSet`, `createCriteriaSet`, `updateCriteriaSet`, `deleteCriteriaSet`, `importCriteriaSet` |
+| Criteria Items | `listCriteriaItems`, `addCriteriaItem`, `updateCriteriaItem`, `deleteCriteriaItem` |
+| Evaluations | `createEvaluation`, `listEvaluations`, `getEvaluation`, `getEvaluationStatus`, `deleteEvaluation` |
+| Result Editing | `editResult`, `getEditHistory` |
+| Export | `exportPdf`, `exportXlsx` |
+| Helpers | `downloadExport`, `pollEvaluationStatus`, `fileToBase64`, `prepareImportInput` |
+
+**Helper Features:**
+- `EvalApiError` class for standardized error handling
+- `pollEvaluationStatus()` for async evaluation progress tracking
+- `downloadExport()` handles both URL and inline content responses
+- `prepareImportInput()` prepares file uploads for criteria import
+
+#### 3. Frontend Index Created ✅
+
+Created `templates/_modules-functional/module-eval/frontend/index.ts`:
+- Barrel exports for all types
+- Barrel exports for all API functions
+- Re-exports of commonly used types and functions
+
+### Files Created
+
+1. `templates/_modules-functional/module-eval/frontend/types/index.ts` - ~750 lines
+2. `templates/_modules-functional/module-eval/frontend/lib/api.ts` - ~900 lines
+3. `templates/_modules-functional/module-eval/frontend/index.ts` - Barrel export
+
+### Module-Eval Progress Summary
+
+| Phase | Component | Status |
+|-------|-----------|--------|
+| Phase 2 | Database Schema (15 files) | ✅ COMPLETE |
+| Phase 3 | eval-config Lambda (35 routes) | ✅ COMPLETE |
+| Phase 4 | eval-processor Lambda (SQS) | ✅ COMPLETE |
+| Phase 5 | eval-results Lambda (9 routes) | ✅ COMPLETE |
+| Phase 6 | Terraform Infrastructure | ✅ COMPLETE |
+| Phase 7 | Frontend Types & API | ✅ COMPLETE |
+| Phase 8 | State Management | 🔄 NEXT |
+
+### Next Steps
+
+Phase 8: Frontend - State Management (Zustand store)
 
 ---
 
-## 💡 Key Learnings
+## ✅ Session 159: Module-Eval Phase 6 - Infrastructure - **COMPLETE**
 
-### 1. **Okta UID vs Supabase user_id Pattern**
+**Goal:** Create Terraform infrastructure for module-eval including Lambda functions, SQS queue, and API Gateway routes.
 
-CORA uses a two-tier user identity system:
-- **JWT tokens** contain Okta user IDs (external_uid)
-- **Database** uses Supabase auth.users IDs (user_id)
+**Status:** ✅ COMPLETE
 
-**Standard Pattern for Lambda Authorization:**
-```python
-# Step 1: Get Okta UID from JWT
-user_info = common.get_user_from_event(event)
-okta_uid = user_info['user_id']
+### Completed Work
 
-# Step 2: Map to Supabase user_id
-supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
+#### 1. main.tf Created ✅
 
-# Step 3: Query user_profiles with Supabase user_id
-profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
+Created `templates/_modules-functional/module-eval/infrastructure/main.tf` (~400 lines):
 
-# Step 4: Check authorization
-if profile.get('global_role') not in ['platform_admin', 'platform_owner']:
-    raise common.ForbiddenError('Platform admin access required')
+**Key Resources:**
+- **SQS Queue** - `eval_processor` queue with DLQ for async processing
+  - 15+ minute visibility timeout
+  - 3 retry attempts before DLQ
+  - 7-day DLQ retention
+- **S3 Bucket** - Optional export bucket with 7-day lifecycle expiration
+- **IAM Role** - Lambda execution role with policies:
+  - CloudWatch Logs (basic execution)
+  - Secrets Manager (Supabase credentials)
+  - SQS (send/receive messages)
+  - S3 (export file storage)
+  - Bedrock (AI model invocation)
+
+**Lambda Functions (3):**
+| Lambda | Memory | Timeout | Description |
+|--------|--------|---------|-------------|
+| eval-config | 512 MB | 60s | Configuration, doc types, criteria sets |
+| eval-processor | 1024 MB | 900s (15 min) | Async evaluation processing (SQS-triggered) |
+| eval-results | 1024 MB | 120s | CRUD, editing, PDF/XLSX export |
+
+**CloudWatch Alarms:**
+- eval-config errors (>5 in 5 min)
+- eval-processor errors (>3 in 5 min)
+- eval-results errors (>5 in 5 min)
+- DLQ messages (any failed processing)
+
+#### 2. variables.tf Created ✅
+
+Created `templates/_modules-functional/module-eval/infrastructure/variables.tf` (~100 lines):
+
+**Variables:**
+- Project config: `project_name`, `environment`, `module_name`, `aws_region`
+- Secrets: `supabase_secret_arn`, `org_common_layer_arn`
+- AI keys: `openai_api_key`, `anthropic_api_key`
+- Export config: `create_export_bucket`, `export_bucket_name`, `export_bucket_arn`
+- Optional: `sns_topic_arn`, `log_level`, `common_tags`
+
+#### 3. outputs.tf Created ✅
+
+Created `templates/_modules-functional/module-eval/infrastructure/outputs.tf` (~300 lines):
+
+**Outputs:**
+- Lambda ARNs, names, invoke ARNs
+- IAM role ARN and name
+- SQS queue URL and ARN (main and DLQ)
+- Export bucket name and ARN
+- **44 API routes** for API Gateway integration
+
+**API Routes Summary (44 total):**
+
+| Category | Count | Lambda |
+|----------|-------|--------|
+| Sys Admin Config | 2 | eval-config |
+| Sys Admin Status Options | 4 | eval-config |
+| Sys Admin Prompts | 3 | eval-config |
+| Sys Admin Delegation | 2 | eval-config |
+| Org Admin Config | 2 | eval-config |
+| Org Admin Status Options | 4 | eval-config |
+| Org Admin Prompts | 3 | eval-config |
+| Doc Types | 5 | eval-config |
+| Criteria Sets | 6 | eval-config |
+| Criteria Items | 4 | eval-config |
+| Evaluation CRUD | 5 | eval-results |
+| Result Editing | 2 | eval-results |
+| Export | 2 | eval-results |
+
+### Files Created
+
+1. `templates/_modules-functional/module-eval/infrastructure/main.tf` - ~400 lines
+2. `templates/_modules-functional/module-eval/infrastructure/variables.tf` - ~100 lines
+3. `templates/_modules-functional/module-eval/infrastructure/outputs.tf` - ~300 lines
+
+### Module-Eval Backend + Infrastructure Summary
+
+All backend and infrastructure components are now complete:
+
+| Phase | Component | Status |
+|-------|-----------|--------|
+| Phase 2 | Database Schema (15 files) | ✅ COMPLETE |
+| Phase 3 | eval-config Lambda (35 routes) | ✅ COMPLETE |
+| Phase 4 | eval-processor Lambda (SQS) | ✅ COMPLETE |
+| Phase 5 | eval-results Lambda (9 routes) | ✅ COMPLETE |
+| Phase 6 | Terraform Infrastructure | ✅ COMPLETE |
+
+**Total:** 44 API routes + SQS processing + complete infrastructure
+
+### Next Steps
+
+Phase 6 (Infrastructure) is now ✅ COMPLETE. Ready for Phase 7: Frontend - Types & API.
+
+---
+
+## ✅ Session 156: Database Naming Compliance & Module-Eval Phase 2 - **COMPLETE**
+
+**Goal:** Run db-naming validator on module-kb, module-chat, and module-eval; fix all compliance issues.
+
+**Status:** ✅ COMPLETE
+
+### Completed Work (Session 156)
+
+#### 1. DB-Naming Validator Improvements ✅
+
+Updated `scripts/validate-db-naming.py`:
+- Added SQL/PL/pgSQL keyword exclusions (prevents false positives from function/trigger bodies)
+- Added `eval_` to documented prefixes (Rule 6)
+- Added CORA audit column exclusions (`created_by`, `updated_by`, etc. exempt from FK `_id` rule)
+- Added junction table pattern recognition (Rule 3 - `{entity1}_{entity2}` pattern)
+
+#### 2. DATABASE-NAMING Standard Updated ✅
+
+Added **Rule 9 (Audit Columns)** to `docs/standards/cora/standard_DATABASE-NAMING.md`:
+- Documents required `created_at`, `created_by`, `updated_at`, `updated_by` columns
+- Explains "by whom" naming convention (not `creator_id`)
+- Includes trigger pattern for automatic `updated_at` maintenance
+
+#### 3. Module-Chat Schema Fixed ✅
+
+- **Table renamed:** `chat_kb_grounding` → `chat_session_kb` (Rule 3 - junction table)
+- **File renamed:** `003-chat-kb-grounding.sql` → `003-chat-session-kb.sql`
+- **RLS updated:** `007-chat-rls.sql` updated with new table name
+
+#### 4. Module-Eval Schema Fixed ✅ (6 tables renamed with matching files)
+
+| Old Table Name | New Table Name | Rule Applied |
+|----------------|----------------|--------------|
+| `eval_sys_config` | `eval_cfg_sys` | Rule 8 (_cfg_ pattern) |
+| `eval_sys_prompt_config` | `eval_cfg_sys_prompts` | Rule 8 |
+| `eval_org_config` | `eval_cfg_org` | Rule 8 |
+| `eval_org_prompt_config` | `eval_cfg_org_prompts` | Rule 8 |
+| `eval_doc_summary` | `eval_doc_summaries` | Rule 2 (plural) |
+| `eval_doc_set` | `eval_doc_sets` | Rule 2 (plural) |
+
+All 15 module-eval schema files updated with proper table names, constraints, indexes, triggers, and comments.
+
+#### 5. Validation Results ✅
+
+```
+module-kb:   ✅ All checks passed! (0 errors)
+module-chat: ✅ All checks passed! (0 errors)  
+module-eval: ✅ All checks passed! (0 errors)
 ```
 
-**Anti-pattern (causes 403 errors):**
-```python
-# DON'T: Query user_profiles with Okta UID directly
-user_info = common.get_user_from_event(event)
-if user_info.get('global_role') not in ['platform_admin', 'platform_owner']:
-    # This won't work - global_role is in DB, not JWT!
-```
+### Files Modified
 
-### 2. **Standard org_common Functions**
+**Validator:**
+- `scripts/validate-db-naming.py` - Enhanced with keyword exclusions, audit columns, junction tables
 
-Always use standard org_common functions instead of local helpers:
-- ✅ `common.get_supabase_user_id_from_external_uid()` - Official function
-- ❌ `get_supabase_user_id_from_okta_uid()` - Deprecated local helper
+**Standard:**
+- `docs/standards/cora/standard_DATABASE-NAMING.md` - Added Rule 9 (Audit Columns)
 
-This ensures consistency across all Lambdas and benefits from org_common improvements.
+**Module-Chat:**
+- `templates/_modules-functional/module-chat/db/schema/003-chat-session-kb.sql` - Renamed + updated
+- `templates/_modules-functional/module-chat/db/schema/007-chat-rls.sql` - Updated references
 
-### 3. **Next.js App Router + NextAuth Pattern**
-
-When using `useSession()` in App Router:
-1. Page must be wrapped in SessionProvider
-2. SessionProvider goes in parent layout.tsx, not in page.tsx
-3. Layout must be "use client" directive
-
-```tsx
-// layout.tsx
-"use client";
-import { SessionProvider } from "next-auth/react";
-
-export default function Layout({ children }) {
-  return <SessionProvider>{children}</SessionProvider>;
-}
-```
-
-### 4. **Three-Layer Validation Success**
-
-Session 83 demonstrated the value of comprehensive validation:
-1. **API Gateway** - Routes use descriptive parameters
-2. **Lambda Docstrings** - Document correct parameter names
-3. **Lambda Code** - Extract correct parameter names ✅ NEW
-
-The enhanced API Tracer now validates all three layers, catching mismatches that would cause runtime errors.
+**Module-Eval (6 files renamed + content updated):**
+- `001-eval-cfg-sys.sql` (was eval-sys-config)
+- `002-eval-cfg-sys-prompts.sql` (was eval-sys-prompt-config)
+- `004-eval-cfg-org.sql` (was eval-org-config)
+- `005-eval-cfg-org-prompts.sql` (was eval-org-prompt-config)
+- `010-eval-doc-summaries.sql` (was eval-doc-summary)
+- `011-eval-doc-sets.sql` (was eval-doc-set)
 
 ---
 
-## 🔄 Deployment Steps
+## ✅ Session 155: Module-Eval Phase 1 - Specification - **COMPLETE**
 
-**1. Copy fixes to test project:**
-```bash
-# Lambda fixes
-for lambda in ai-config-handler provider idp-config invites identities-management; do
-  src=$(find templates/_modules-core -name "$lambda" -type d 2>/dev/null | head -1)
-  if [ -n "$src" ]; then
-    dst=$(echo "$src" | sed 's|templates/_modules-core|~/code/sts/test-ws-17/ai-sec-stack/packages|')
-    cp "$src/lambda_function.py" "$dst/lambda_function.py"
-  fi
-done
+**Goal:** Create implementation plan aligned with CORA standards and specification documents.
 
-# Workspace layout fix
-cp templates/_modules-functional/module-ws/routes/admin/platform/modules/workspace/layout.tsx \
-   ~/code/sts/test-ws-17/ai-sec-stack/apps/web/app/admin/platform/modules/workspace/
-```
+**Status:** ✅ COMPLETE
 
-**2. Rebuild and deploy:**
-```bash
-cd ~/code/sts/test-ws-17/ai-sec-infra
-./scripts/build-and-deploy.sh dev
-```
+### Completed Work
 
-**3. Verify:**
-- Run validation: `cd ~/code/sts/test-ws-17/ai-sec-stack && ./scripts/validation/cora-validate.py`
-- Test platform admin dashboard loads
-- Test Users tab loads (no 403)
-- Test IDP Config card loads (no 403)
-- Test Workspace admin card loads (no SessionProvider error)
+#### 1. Implementation Plan Updated ✅
 
----
+Updated `docs/plans/plan_module-eval-implementation.md` to align with module-kb and module-chat patterns:
+- 13-phase structure matching established modules
+- Detailed task breakdowns with checkboxes
+- Session estimates: 13-15 sessions (~39-45 hours)
+- 3 Lambda functions (eval-config, eval-processor, eval-results)
+- 13 database tables across 4 categories
+- 35 API endpoints
 
-**Status:** ✅ **100% COMPLETE**  
-**Validation:** 0 errors (SILVER certification)  
-**Authorization:** Fixed  
-**Frontend:** Fixed  
-**Updated:** January 10, 2026, 1:34 PM EST
+#### 2. Parent Specification Created ✅
 
----
+Created `docs/specifications/module-eval/MODULE-EVAL-SPEC.md`:
+- Executive summary and key capabilities
+- Configuration hierarchy (sys/org/workspace)
+- 13 entities summary
+- API endpoint summary
+- Implementation phases overview
+- Risk assessment
 
-## Session: January 10, 2026 (1:42 PM - ) - Session 84
+#### 3. Technical Specification Index Created ✅
 
-### 🎯 Focus: Fix Workspace Module Authorization & Frontend Errors
+Created `docs/specifications/module-eval/MODULE-EVAL-TECHNICAL-SPEC.md`:
+- Index document referencing detailed technical docs
+- Migration summary (15 SQL files)
+- API endpoint tables (35 routes)
+- Async processing flow documentation
+- Configuration resolution logic
 
-**Context:** After completing Session 83 fixes, discovered new errors in the workspace module. The workspace admin page is still showing SessionProvider error, and workspace configuration updates are returning 403 Forbidden despite user having platform_owner role.
+#### 4. Data Model Specification Created ✅
 
-**Status:** 🔴 **IN PROGRESS** - 0%
+Created `docs/specifications/module-eval/technical/01-data-model.md` (~800 lines):
+- Complete entity definitions for all 13 tables
+- System Configuration (3 entities): eval_sys_config, eval_sys_prompt_config, eval_sys_status_options
+- Organization Configuration (3 entities): eval_org_config, eval_org_prompt_config, eval_org_status_options
+- Document Types & Criteria (3 entities): eval_doc_types, eval_criteria_sets, eval_criteria_items
+- Evaluation Results (4 entities): eval_doc_summary, eval_doc_set, eval_criteria_results, eval_result_edits
+- Configuration resolution logic (Python examples)
+- RLS policies for all access levels
+- RPC functions for access control
 
----
+#### 5. Admin UX Specification Created ✅
 
-## 🚨 Issues Discovered
+Created `docs/specifications/module-eval/MODULE-EVAL-ADMIN-UX-SPEC.md` (~1100 lines):
+- Admin personas (Sys Admin, Delegated Org Admin, Non-Delegated Org Admin)
+- Admin use cases (7 detailed flows)
+- Configuration flows with delegation impact
+- Platform Admin UI pages (config, prompts, status options, delegation)
+- Organization Admin UI pages (config, doc types, criteria, prompts, status)
+- Criteria import wizard (3-step flow with spreadsheet support)
+- Admin card designs (platform and org)
+- Analytics dashboards
+- Comprehensive testing requirements
 
-### Issue 1: SessionProvider Error (RECURRING)
-**Discovery:** Workspace admin page still throwing `useSession` must be wrapped in SessionProvider error.
+#### 6. User UX Specification Created ✅
 
-**Location:** `app/admin/platform/modules/workspace/page.tsx:68`
+Created `docs/specifications/module-eval/MODULE-EVAL-USER-UX-SPEC.md` (~900 lines):
+- User personas (Compliance Analyst, Team Lead, Occasional User)
+- Use cases (6 detailed flows: create, view, edit, export, monitor, history)
+- User journeys (first evaluation, power user, editing AI results)
+- Page specifications with ASCII layouts:
+  - Evaluation List Page (`/eval`)
+  - New Evaluation (4-step creation flow)
+  - Evaluation Detail (Overview + Criteria Results tabs)
+  - Progress monitoring page
+  - Edit Result dialog
+- Component specifications (EvalCard, CriteriaResultItem, CitationCard)
+- Interaction patterns (creation flow, progress polling, edit result)
+- Mobile responsiveness guidelines
+- Accessibility requirements (WCAG 2.1 AA)
+- Frontend testing requirements
 
-**Error Message:**
-```
-Error: [next-auth]: `useSession` must be wrapped in a <SessionProvider />
-```
+### Files Created
 
-**Impact:** Workspace admin page crashes on load.
+1. `docs/plans/plan_module-eval-implementation.md` - Updated (~800 lines)
+2. `docs/specifications/module-eval/MODULE-EVAL-SPEC.md` - Created (~450 lines)
+3. `docs/specifications/module-eval/MODULE-EVAL-TECHNICAL-SPEC.md` - Created (~300 lines)
+4. `docs/specifications/module-eval/technical/01-data-model.md` - Created (~800 lines)
+5. `docs/specifications/module-eval/MODULE-EVAL-ADMIN-UX-SPEC.md` - Created (~1100 lines)
+6. `docs/specifications/module-eval/MODULE-EVAL-USER-UX-SPEC.md` - Created (~900 lines)
 
-**Analysis:**
-- Session 83 created layout.tsx fix in templates
-- Error suggests fix either not deployed OR different workspace page path
-- Need to verify:
-  1. Was layout.tsx copied to test project?
-  2. Is there a different workspace page location?
-  3. Is the layout.tsx in the correct directory?
+### Next Steps: Phase 3 - Backend
 
-**Status:** 🔴 NOT FIXED
-
-### Issue 2: Workspace Config Update Authorization (403 Forbidden)
-**Discovery:** Platform administrators cannot update workspace configuration despite having correct role.
-
-**Location:** Workspace config Lambda handler
-
-**Error Details:**
-```
-PUT https://hk5bzq4kv3.execute-api.us-east-1.amazonaws.com/ws/config?org_id=c4a1ecf7-e646-4196-a57d-7ebbf3ee8ced 403 (Forbidden)
-
-Error: Only platform administrators can update workspace configuration
-```
-
-**Call Stack:**
-1. Frontend: `PlatformAdminConfigPage.tsx:121` → `handleSave()`
-2. Hook: `useWorkspaceConfig.ts:97` → calls API
-3. API Client: `api.ts:297` → `updateConfig()`
-4. Backend: Workspace config Lambda returns 403
-
-**Impact:** Platform owners/admins cannot modify workspace settings from admin UI.
-
-**Analysis:**
-- Similar to Session 83 Issue 5 (Platform Admin Authorization)
-- Likely same root cause: Lambda not mapping Okta UID → Supabase user_id
-- Need to check workspace config Lambda for proper authorization pattern
-- Should use standard pattern:
-  ```python
-  user_info = common.get_user_from_event(event)
-  okta_uid = user_info['user_id']
-  supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
-  profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
-  if profile.get('global_role') not in ['platform_admin', 'platform_owner']:
-      raise common.ForbiddenError(...)
-  ```
-
-**Status:** 🔴 NOT FIXED
+Phase 2 (Database Schema) is now complete. Ready for Phase 3: Backend - Eval Config Lambda.
 
 ---
 
-## 📋 Investigation Steps
+## ✅ Session 154: Module-Eval Analysis & Planning - **COMPLETE**
 
-- [ ] Verify Session 83 layout.tsx fix was deployed to test project
-- [ ] Check if workspace page path differs from expected location
-- [ ] Locate workspace config Lambda handler
-- [ ] Review workspace config Lambda authorization logic
-- [ ] Apply Okta→Supabase mapping pattern if missing
-- [ ] Test workspace config updates after fix
-- [ ] Verify SessionProvider error resolved
+**Goal:** Analyze legacy ai-doc system and create implementation plan for new module-eval.
+
+**Status:** ✅ COMPLETE
+
+### Completed Work
+
+#### 1. Legacy ai-doc Analysis ✅
+
+Analyzed 5 repositories at `~/code/sts/ai-doc/`:
+- `sts-ai-doc-fileupload-lambda` - File upload orchestration to S3
+- `sts-ai-doc-embeddings` - Document embedding generation with Azure OpenAI
+- `sts-ai-acq-embeddings` - Acquisition embeddings (similar pattern)
+- `sts-ai-doc-cleanup` - RFP deletion with cascading cleanup (10+ tables)
+- `sts-ai-doc-admin-settings` - Admin settings (placeholder)
+
+**Key Finding:** ~80% of legacy functionality can leverage existing CORA modules (module-kb, module-ai, module-ws)
+
+#### 2. Module-Eval Implementation Plan Created ✅
+
+Created `docs/plans/plan_module-eval-implementation.md` (~800 lines) containing:
+
+**Core Capabilities:**
+- Document type management with criteria sets
+- Spreadsheet import for compliance criteria (CSV/XLSX)
+- Multi-document evaluations (policy + diagram + screenshot)
+- Configurable scoring (boolean, detailed, or numerical)
+- AI-driven evaluation with RAG-sourced citations
+- Human edit with version control (narrative + status only)
+- PDF/XLSX report export
+
+**Database Schema (11 tables):**
+- `eval_sys_config` - Platform defaults
+- `eval_sys_prompt_config` - Default prompts & models
+- `eval_sys_status_options` - Default status options
+- `eval_org_config` - Org settings + delegation flag
+- `eval_org_prompt_config` - Org prompt overrides
+- `eval_org_status_options` - Org status options
+- `eval_doc_types` - Document categories
+- `eval_criteria_sets` - Criteria collections
+- `eval_criteria_items` - Individual criteria
+- `eval_doc_summary` - Evaluation records
+- `eval_doc_set` - Multi-doc link table
+- `eval_criteria_results` - AI results (immutable)
+- `eval_result_edits` - Human edits (versioned)
+
+**Configuration Hierarchy:**
+- Sys admin: Platform defaults + org delegation control
+- Org admin (delegated): Override prompts, models, AND scoring
+- Org admin (not delegated): Only configure scoring display
+
+**3 Configurable Prompt Types:**
+1. Document summary prompt & model
+2. Evaluation prompt & model
+3. Evaluation summary prompt & model
+
+**Implementation Phases:**
+1. Foundation (database schema, config endpoints)
+2. Document types & criteria management
+3. Evaluation processing (async with progress)
+4. Results & editing
+5. Export & polish
+
+### Files Created
+
+1. `docs/plans/plan_module-eval-implementation.md` - Complete implementation plan
 
 ---
 
-## 💡 Hypothesis
+## 🎉 Module-Chat Implementation COMPLETE
 
-Both issues likely stem from incomplete deployment of Session 83 fixes:
-1. **SessionProvider:** layout.tsx may not have been copied to test project
-2. **403 Error:** Workspace config Lambda likely has same authorization bug as other Lambdas fixed in Session 83
+**Total Duration:** 13 sessions (~39-52 hours)  
+**Sessions:** 141-153
+
+Module-Chat is now **code complete** with all 13 phases finished:
+- 3 Backend Lambdas (chat-session, chat-message, chat-stream)
+- 7 Database tables with RLS policies
+- Complete Terraform infrastructure
+- Full frontend implementation (types, API, store, hooks, components, pages)
+- Integration test checklist (39 test cases)
+- Complete documentation (integration guide + developer guide)
+
+**Pending (requires deployment):**
+- End-to-end testing in test project
+- Run validation suite against deployed instance
+
+---
+
+## Next Steps Options
+
+After Module-Chat completion and Module-Eval planning, the following options are available:
+
+### Option 1: Deploy & Test Module-Chat
+Deploy module-chat to test environment and run the 39 integration test cases.
+- Create new test project with `./scripts/create-cora-project.sh`
+- Deploy infrastructure
+- Run integration test checklist
+
+### Option 2: Module-Eval Implementation
+Start implementing the new module-eval based on the completed plan.
+- **Implementation Plan:** `docs/plans/plan_module-eval-implementation.md`
+- **Estimated Duration:** 10-15 sessions (~30-45 hours)
+- **Dependencies:** module-kb, module-ai, module-ws, module-access
+
+### Option 3: Module-Workflow Implementation
+Start the next functional module - workflow automation.
+- Depends on module-chat for status updates
+- New 10-15 session implementation
+
+### Option 4: Validation Framework Enhancement
+Improve validation tooling based on lessons learned.
+- Add module-chat validators
+- Enhance API tracer for streaming endpoints
+
+### Option 5: Core Module Refinements
+Address any outstanding issues from user testing validations.
+
+## ✅ Session 153: Module-Chat Phase 13 - Documentation - **COMPLETE** (January 15, 2026)
+
+**Goal:** Complete final documentation for module-chat including integration guide updates and developer guide.
+
+**Status:** ✅ COMPLETE
+
+### Completed Work
+
+#### 1. INTEGRATION-GUIDE.md Updated ✅
+
+Added comprehensive Module-Chat Integration section including:
+- Architecture overview (3 Lambda functions)
+- Chat scopes (Workspace vs User-Level)
+- Frontend integration examples (components, hooks, store)
+- Backend integration patterns (SSE streaming, RAG integration)
+- Multi-provider AI support documentation
+- Database setup instructions
+- Infrastructure requirements
+- Complete API routes reference (24 routes)
+- Navigation integration
+- Testing checklist reference
+
+#### 2. Developer Guide Created ✅
+
+Created `docs/guides/guide_MODULE-CHAT-DEVELOPMENT.md` (~800 lines) covering:
+- Architecture overview with data flow diagram
+- Adding new AI providers (4-step process with code examples)
+- Customizing citation display (CitationBadge component, inline rendering)
+- Testing streaming locally (SAM, Python, Mock Server options)
+- Monitoring token usage (database schema, aggregation queries, dashboard)
+- Conversation history management (truncation, summarization)
+- RAG context optimization (relevance threshold, dynamic context window)
+- Error handling patterns (graceful streaming errors, frontend recovery)
+- Performance optimization (connection pooling, caching, virtualization)
+- Troubleshooting guide (common issues and debug logging)
+
+### Files Created/Updated
+
+1. `INTEGRATION-GUIDE.md` - Added Module-Chat Integration section
+2. `docs/guides/guide_MODULE-CHAT-DEVELOPMENT.md` - Created (~800 lines)
+3. `memory-bank/activeContext.md` - Updated with session 153 completion
+
+### Module-Chat Implementation Progress
+
+- **Phase 1:** ✅ COMPLETE (Foundation & Specification - Session 141)
+- **Phase 2:** ✅ COMPLETE (Database Schema - Session 142)
+- **Phase 3:** ✅ COMPLETE (Backend - Chat Session Lambda - Session 143)
+- **Phase 4:** ✅ COMPLETE (Backend - Chat Message Lambda - Session 144)
+- **Phase 5:** ✅ COMPLETE (Backend - Chat Stream Lambda - Session 145)
+- **Phase 6:** ✅ COMPLETE (Infrastructure - Terraform - Session 146)
+- **Phase 7:** ✅ COMPLETE (Frontend - Types & API - Session 147)
+- **Phase 8:** ✅ COMPLETE (Frontend - State Management - Session 148)
+- **Phase 9:** ✅ COMPLETE (Frontend - Hooks - Session 149)
+- **Phase 10:** ✅ COMPLETE (Frontend - Components - Session 150)
+- **Phase 11:** ✅ COMPLETE (Frontend - Pages & Routes - Session 151)
+- **Phase 12:** ✅ COMPLETE (Integration & Testing - Session 152)
+- **Phase 13:** ✅ COMPLETE (Documentation - Session 153) ← **CURRENT**
+
+### 🎉 Module-Chat Implementation COMPLETE
+
+**Total Duration:** 13 sessions (~39-52 hours)
+
+**Deliverables:**
+- 3 Backend Lambdas (chat-session, chat-message, chat-stream)
+- 7 Database tables with RLS policies
+- Complete Terraform infrastructure
+- TypeScript types and API client
+- Zustand store with persistence
+- 6 custom hooks
+- 6 React components
+- 2 page components with routes
+- Integration test checklist (39 test cases)
+- Integration guide section
+- Developer guide
 
 **Next Steps:**
-1. Find workspace config Lambda in templates
-2. Check for proper user ID mapping
-3. Apply standard authorization pattern
-4. Verify deployment of frontend layout.tsx fix
+- End-to-end testing in test project (pending deployment)
+- Run validation suite against deployed instance
+- Module-Workflow implementation (future)
 
 ---
 
-**Status:** 🔴 **IN PROGRESS** - 0%  
-**Started:** January 10, 2026, 1:42 PM EST  
-**Updated:** January 10, 2026, 1:42 PM EST
+## ✅ Session 152: Module-Chat Phase 12 - Integration & Testing - **COMPLETE** (January 15, 2026)
+
+**Goal:** Complete module registration, integration documentation, and create comprehensive test checklist.
+
+**Status:** ✅ COMPLETE
+
+### Completed Work
+
+#### 1. Module Registration - module.json ✅
+
+Updated `templates/_modules-functional/module-chat/module.json` with:
+- Complete backend Lambda definitions with memory/timeout specs
+- Accurate frontend component list (actual implementation)
+- Accurate hooks list (actual implementation)
+- Store reference (chatStore)
+- Full API routes listing (24 routes across 6 categories)
+- Status: "complete"
+- Features: added conversationHistory
+
+#### 2. Module Registration - README.md ✅
+
+Updated `templates/_modules-functional/module-chat/README.md` with:
+- Architecture diagram (ASCII)
+- Complete route documentation for all 3 Lambdas
+- Accurate component and hook tables
+- Store documentation
+- SSE event types documentation
+- Multi-provider AI support documentation
+- Integration points with other modules
+- Installation instructions
+- Configuration reference
+
+#### 3. Integration Test Checklist ✅
+
+Created `templates/_modules-functional/module-chat/INTEGRATION-TEST-CHECKLIST.md` with:
+- **39 test cases** across 10 categories:
+  1. Session Management (5 tests)
+  2. Messaging (5 tests)
+  3. KB Grounding (4 tests)
+  4. Sharing (4 tests)
+  5. Favorites (2 tests)
+  6. Integration (4 tests)
+  7. Error Handling (5 tests)
+  8. UI/UX (4 tests)
+  9. Performance (3 tests)
+  10. Validation (3 tests)
+- Prerequisites checklist
+- Test results summary table
+- Sign-off section
+
+#### 4. Implementation Plan Updated ✅
+
+Updated `docs/plans/plan_module-chat-implementation.md`:
+- Phase 12 marked as COMPLETE
+- All module integration items checked
+- All module registration items checked
+- Validation checklist item added
+- Deliverables updated with status indicators
+
+### Files Created/Updated
+
+1. `templates/_modules-functional/module-chat/module.json` - Updated
+2. `templates/_modules-functional/module-chat/README.md` - Updated
+3. `templates/_modules-functional/module-chat/INTEGRATION-TEST-CHECKLIST.md` - Created
+4. `docs/plans/plan_module-chat-implementation.md` - Updated
+
+### Module-Chat Implementation Progress
+
+- **Phase 1:** ✅ COMPLETE (Foundation & Specification - Session 141)
+- **Phase 2:** ✅ COMPLETE (Database Schema - Session 142)
+- **Phase 3:** ✅ COMPLETE (Backend - Chat Session Lambda - Session 143)
+- **Phase 4:** ✅ COMPLETE (Backend - Chat Message Lambda - Session 144)
+- **Phase 5:** ✅ COMPLETE (Backend - Chat Stream Lambda - Session 145)
+- **Phase 6:** ✅ COMPLETE (Infrastructure - Terraform - Session 146)
+- **Phase 7:** ✅ COMPLETE (Frontend - Types & API - Session 147)
+- **Phase 8:** ✅ COMPLETE (Frontend - State Management - Session 148)
+- **Phase 9:** ✅ COMPLETE (Frontend - Hooks - Session 149)
+- **Phase 10:** ✅ COMPLETE (Frontend - Components - Session 150)
+- **Phase 11:** ✅ COMPLETE (Frontend - Pages & Routes - Session 151)
+- **Phase 12:** ✅ COMPLETE (Integration & Testing - Session 152) ← **CURRENT**
+- **Phase 13:** 🔄 NEXT (Documentation)
+
+### Next Steps
+
+1. **Phase 13: Documentation** - Final documentation:
+   - Update INTEGRATION-GUIDE.md with module-chat section
+   - Create guide_MODULE-CHAT-DEVELOPMENT.md
+   - Final memory bank update
 
 ---
 
-## Session: January 10, 2026 (12:01 PM - 1:34 PM) - Session 83
+## ✅ Session 151: Module-Chat Phase 11 - Frontend Pages & Routes - **COMPLETE** (January 15, 2026)
 
-### 🎯 Focus: Fix Validation Errors & Lambda Authorization Issues
+**Goal:** Create page components and route configuration for chat UI integration.
 
-**Context:** Validation report showed 13 errors across 4 validators. Investigation revealed Lambda path parameter mismatches, schema errors, missing Okta→Supabase mappings, and authorization bugs preventing platform_owner users from accessing admin endpoints. Additionally, workspace admin page had SessionProvider error.
+**Status:** ✅ COMPLETE
 
-**Status:** ✅ **100% COMPLETE** - All validation errors fixed, authorization working, frontend error resolved
+### Completed Work
+
+#### 1. ChatListPage ✅
+
+Created `templates/_modules-functional/module-chat/frontend/pages/ChatListPage.tsx` (~250 lines):
+
+**Features:**
+- Chat session list with header
+- New Chat button with creation flow
+- Search, filters, and favorites support
+- Share dialog integration (with full props)
+- KB grounding selector integration
+- Workspace-level or user-level mode
+- Back button support
+
+#### 2. ChatDetailPage ✅
+
+Created `templates/_modules-functional/module-chat/frontend/pages/ChatDetailPage.tsx` (~400 lines):
+
+**Features:**
+- Full message history display
+- Real-time streaming response with typing indicator
+- Message input with KB grounding display
+- Infinite scroll for older messages
+- Share dialog integration
+- KB grounding selector dialog
+- Session header with actions (share, KB, options menu)
+- Auto-scroll to new messages
+
+#### 3. Pages Barrel Export ✅
+
+Created `templates/_modules-functional/module-chat/frontend/pages/index.ts` with exports for:
+- `ChatListPage` / `ChatListPageProps`
+- `ChatDetailPage` / `ChatDetailPageProps`
+
+#### 4. Route Configuration ✅
+
+Created Next.js App Router routes:
+
+**Chat List Route:** `routes/chat/page.tsx`
+- Route: `/chat`
+- Renders ChatListPage with workspace context
+- Handles navigation to chat detail
+
+**Chat Detail Route:** `routes/chat/[id]/page.tsx`
+- Route: `/chat/[id]`
+- Renders ChatDetailPage with session ID from params
+- Handles back navigation and deletion
+
+#### 5. Frontend Index ✅
+
+Created `templates/_modules-functional/module-chat/frontend/index.ts` barrel export with:
+- Types export
+- API client export
+- Store export (useChatStore)
+- Hooks export
+- Components export
+- Pages export
+- Commonly used type re-exports
+
+### Files Created
+
+1. `templates/_modules-functional/module-chat/frontend/pages/ChatListPage.tsx` - ~250 lines
+2. `templates/_modules-functional/module-chat/frontend/pages/ChatDetailPage.tsx` - ~400 lines
+3. `templates/_modules-functional/module-chat/frontend/pages/index.ts` - Export barrel
+4. `templates/_modules-functional/module-chat/routes/chat/page.tsx` - Chat list route
+5. `templates/_modules-functional/module-chat/routes/chat/[id]/page.tsx` - Chat detail route
+6. `templates/_modules-functional/module-chat/frontend/index.ts` - Module frontend index
 
 ---
 
-## Session: January 10, 2026 (9:56 AM - 11:54 AM) - Session 82
+## ✅ Session 150: Module-Chat Phase 10 - Frontend Components - **COMPLETE** (January 15, 2026)
 
-### 🎯 Focus: Complete Org Admin Functionality & Establish Path Parameter Naming Standard
+**Goal:** Create React components for chat UI, including session list, message display, input, and dialogs.
 
-**Context:** Implemented all remaining org admin features, then discovered and fixed a systemic path parameter naming issue affecting API Tracer validation. Established a new CORA standard for descriptive path parameter names. Fixed all 3 architectural layers (Frontend, API Gateway, Lambda) to use descriptive parameter names consistently.
+**Status:** ✅ COMPLETE
 
-**Status:** ✅ **ORG ADMIN COMPLETE** | ✅ **PATH PARAM STANDARD 100% COMPLETE** | ✅ **VALIDATION ENHANCED** | ✅ **ALL 3 LAYERS FIXED** | ✅ **DEPLOYED & VALIDATED**
+### Summary
 
-[... Session 82 content preserved ...]
+Created 6 components:
+1. `ChatOptionsMenu.tsx` - 3-dots menu with actions (~300 lines)
+2. `ChatSessionList.tsx` - Session list with filters (~400 lines)
+3. `ChatMessage.tsx` - Message display with citations (~280 lines)
+4. `ChatInput.tsx` - Multi-line input with send/cancel (~230 lines)
+5. `KBGroundingSelector.tsx` - Toggle-based KB selection (~340 lines)
+6. `ShareChatDialog.tsx` - Share management dialog (~420 lines)
+
+---
+
+## Current Test Environment
+
+**Project:** ai-sec (test-ws-23)
+
+| Repo | Path |
+|------|------|
+| Stack | `~/code/bodhix/testing/test-ws-23/ai-sec-stack` |
+| Infra | `~/code/bodhix/testing/test-ws-23/ai-sec-infra` |
+
+**Note:** Update these paths when creating new test environments.
+
+---
+
+## ⏳ Outstanding User Testing Validations
+
+**Status:** All critical items verified ✅
+
+| # | Issue | API/Component | Expected Result | Code Verified | User Tested |
+|---|-------|---------------|-----------------|---------------|-------------|
+| 1 | GET /orgs/{id}/invites returns 403 | Invites API | Invites load for org admins | ✅ | ✅ Working |
+| 2 | PUT /ws/config returns 400 | Workspace Config API | Config saves successfully (200) | ✅ | ✅ Working |
+| 3 | GET /ws/config data not displayed | Workspace Config UI | Saved config displays in UI | ✅ | ✅ Working |
+| 4 | GET /admin/users shows "No name" | Users API | User names display correctly | ✅ | ✅ Working |
+| 5 | Edit Workspace popup empty | Workspace Edit Modal | Existing values populate form | ✅ | ✅ Working |
+| 6 | Org Members shows "Unknown User" | Org Members Tab | Member names/emails display | ✅ | ✅ Working |
+| 7 | AI Config shows no models | AI Config Panel | Chat/embedding models appear | ✅ | ✅ Working |
+| 8 | Lambda Warming toggle not working | Platform Mgmt | Toggle state displays correctly | ✅ | ✅ Working |
+| 9 | Invites "Invited By" shows "Unknown" | Invites Tab | Shows inviter name/email | ✅ | ✅ Working |
+| 10 | Create Invitation missing expiration | Invite Dialog | Date picker with 7-day default | ✅ | ✅ Working |
+| 11 | Embedding dimension warning inverted | AI Config Panel | Warning only for non-1024 | ✅ | ✅ Working |
+| 12 | Org members missing action buttons | Org Members Tab | Edit/delete buttons for org_owner | 🔍 | ⏳ Pending |
+| 13 | AI config save returns 400 | AI Config API | Saves with camelCase fields | ✅ | ✅ Working |
+| 14 | Lambda warming config errors | Platform Mgmt | Custom schedule + camelCase | ✅ | ✅ Working |
+
+---
+
+## Key Metrics
+
+**Module-KB:** ✅ COMPLETE (14 sessions, ~42-56 hours)
+**Module-Chat:** ✅ COMPLETE (13 sessions, ~39-52 hours)
+**Module-Eval:** 🔄 IN PROGRESS - Phase 3 Complete, Phase 4 Next
+
+**Estimated Module-Eval Duration:** 13-15 sessions (~39-45 hours)
+
+---
+
+**Updated:** January 15, 2026, 4:54 PM EST

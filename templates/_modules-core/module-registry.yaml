@@ -43,6 +43,16 @@ modules:
     required: true
     dependencies: [module-access]
     config_file: module.config.yaml
+
+  module-kb:
+    type: core
+    tier: 2
+    name: "Knowledge Base"
+    description: "RAG-based knowledge base with multi-scope document management, pgvector embeddings, and AI chat grounding"
+    required: true
+    dependencies: [module-access, module-ai]
+    optional_dependencies: [module-ws]
+    config_file: module.config.yaml
   
   # ===== FUNCTIONAL MODULES =====
   # Functional modules are OPTIONAL and can be enabled per-project
@@ -57,14 +67,6 @@ modules:
     config_file: module.config.yaml
     
   # Future functional modules can be added here
-  # module-kb:
-  #   type: functional
-  #   name: "Knowledge Base"
-  #   description: "RAG-based knowledge base with vector search"
-  #   required: false
-  #   dependencies: [module-access, module-ai]
-  #   config_file: module.config.yaml
-  #
   # module-chat:
   #   type: functional
   #   name: "Chat & Messaging"

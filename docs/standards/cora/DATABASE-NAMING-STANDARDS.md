@@ -206,6 +206,74 @@ CREATE TABLE platform_members (...);  -- Should be: ws_members, org_members, etc
 
 ## Column Naming Standards
 
+### Rule 9: Required Audit Columns
+
+Tables that track user-created or user-modified data MUST include standard audit columns.
+
+**Required Audit Columns:**
+
+| Column | Type | Purpose | Required When |
+|--------|------|---------|---------------|
+| `created_at` | `TIMESTAMPTZ` | Timestamp of creation | All entity tables |
+| `created_by` | `UUID` | User who created the record | Tables where users create records |
+| `updated_at` | `TIMESTAMPTZ` | Timestamp of last update | Tables that can be updated |
+| `updated_by` | `UUID` | User who last updated the record | Tables where users update records |
+
+**Note:** `created_by` and `updated_by` use the "by whom" naming convention (not `creator_id` / `updater_id`) because they represent "created BY user" semantically. They reference `user_profiles(id)` but are exempt from the standard FK `_id` suffix rule.
+
+**✅ Correct:**
+```sql
+CREATE TABLE eval_doc_types (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id UUID NOT NULL REFERENCES orgs(id),
+    name TEXT NOT NULL,
+    -- ... other columns ...
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_by UUID REFERENCES user_profiles(id),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_by UUID REFERENCES user_profiles(id)
+);
+```
+
+**❌ Incorrect:**
+```sql
+CREATE TABLE eval_doc_types (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id UUID NOT NULL REFERENCES orgs(id),
+    name TEXT NOT NULL
+    -- Missing audit columns!
+);
+```
+
+**Additional Audit Columns (Optional):**
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| `deleted_at` | `TIMESTAMPTZ` | Soft delete timestamp |
+| `deleted_by` | `UUID` | User who deleted the record |
+| `invited_by` | `UUID` | User who sent an invitation |
+| `edited_by` | `UUID` | User who made a specific edit |
+
+**Trigger Pattern:**
+For automatic `updated_at` maintenance, use a standard trigger:
+
+```sql
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_eval_doc_types_updated_at
+    BEFORE UPDATE ON eval_doc_types
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+```
+
+---
+
 ### Rule 1: Snake Case for All Columns
 
 All column names must use **snake_case** (lowercase with underscores).
