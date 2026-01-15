@@ -2,7 +2,153 @@
 
 ## Current Focus
 
-**Session 127: Module-KB Implementation - Phase 0 Complete** - ✅ **COMPLETE** (January 14, 2026)
+**Session 129: Module-KB Architecture Updates & Spec Restructure** - ✅ **COMPLETE** (January 15, 2026)
+
+**Next Session:** Phase 2 - Database Schema Implementation
+
+---
+
+## ✅ Session 129: Module-KB Core Module Promotion & Spec Split - **COMPLETE** (January 15, 2026)
+
+**Goal:** Promote module-kb to Core Module (Tier 2) and split technical spec into manageable files.
+
+**Status:** ✅ COMPLETE - Architecture decision made, specs restructured
+
+### Completed Work
+
+#### 1. Module-KB Promoted to Core Module (Tier 2) ✅
+- **Rationale:** KB provides foundational RAG/knowledge infrastructure that functional modules (module-chat, module-wf) depend on
+- **Decision:** Module-kb is now alongside module-ai as Tier 2 infrastructure
+- **Template Location:** `templates/_modules-core/module-kb/` (when created)
+
+**Core Module Tier Classification:**
+| Tier | Module | Purpose |
+|------|--------|---------|
+| 1 | module-access | Identity & access control |
+| 2 | module-ai | AI provider management |
+| 2 | **module-kb** | Knowledge base & RAG infrastructure |
+| 3 | module-mgmt | Platform management & monitoring |
+
+#### 2. Technical Spec Split into Smaller Files ✅
+Created `docs/specifications/module-kb/technical/` directory:
+- `01-data-model.md` - 7 entities with global→sys naming fixes (~350 lines)
+- `02-database-schema.md` - 9 migration files with complete SQL (~500 lines)
+- `MODULE-KB-TECHNICAL-SPEC.md` - Converted to index/reference document
+
+#### 3. Naming Standardization Applied ✅
+All spec files now use correct CORA naming:
+- `scope = 'sys'` (not 'global')
+- `kb_access_sys` table (not `kb_access_global`)
+- Consistent 4-level inheritance chain terminology
+
+### Files Modified/Created
+
+1. `docs/specifications/module-kb/technical/01-data-model.md` (NEW)
+2. `docs/specifications/module-kb/technical/02-database-schema.md` (NEW)
+3. `docs/specifications/module-kb/MODULE-KB-TECHNICAL-SPEC.md` (converted to index)
+4. `docs/specifications/module-kb/MODULE-KB-SPEC.md` (updated classification)
+5. `docs/plans/plan_module-kb-implementation.md` (added Core Module info)
+
+### Outstanding Tasks
+
+- [ ] Update `.clinerules` to add module-kb to core modules list
+- [ ] Create remaining technical spec files (03-07) incrementally as needed
+- [ ] Proceed with Phase 2: Database Schema Implementation
+
+**Progress:** 100% of session goals complete  
+**Total Time:** ~1 hour  
+**Next:** Phase 2 - Create actual database migration files in template
+
+---
+
+## ✅ Session 128: Module-KB Phase 1 Specifications - **COMPLETE** (January 14, 2026)
+
+**Goal:** Complete Phase 1 Foundation & Specification documents for module-kb.
+
+**Status:** ✅ COMPLETE - All 4 specification documents finalized
+
+### Completed Work
+
+#### 1. Specification Directory Structure ✅
+- Created: `docs/specifications/module-kb/`
+- Files created:
+  - `MODULE-KB-SPEC.md` (parent specification)
+  - `MODULE-KB-TECHNICAL-SPEC.md` (database, API, infrastructure)
+  - `MODULE-KB-USER-UX-SPEC.md` (user flows, document upload)
+  - `MODULE-KB-ADMIN-UX-SPEC.md` (admin KB management)
+
+#### 2. 4-Level Access Control Model ✅
+- **Inheritance Chain Documented:**
+  - **kb_access_global** → Sys admin shares global KB with org (Step 1)
+  - **kb_access_orgs** → Org admin enables KB for their org (Step 2)
+  - **kb_access_ws** → Workspace admin enables KB for workspace chats (Step 3)
+  - **kb_access_chats** → User selects KB for their chat (Step 4)
+  
+- **Scope Rules:**
+  - Global KB: Requires all 4 levels enabled
+  - Org KB: Requires levels 2-4 (no sys admin sharing)
+  - Workspace KB: Requires levels 3-4 (no org admin sharing)
+  - Chat KB: User controls directly
+
+#### 3. Technical Spec Updates ✅
+- [x] Renamed migration 002: `kb_documents` → `kb_docs`
+- [x] Added migration `005-kb-access-orgs.sql` for org-level enablement
+- [x] Added migration `006-kb-access-ws.sql` for workspace-level enablement
+- [x] Renumbered migrations: 005→007 (chats), 006→008 (RPC), 007→009 (RLS)
+- [x] Updated `can_access_kb()` RPC for 4-level inheritance
+- [x] Updated `get_accessible_kbs_for_workspace()` RPC for inheritance chain
+- [x] Added `get_accessible_kbs_for_chat()` RPC for full 4-level check
+- [x] Added RLS policies for `kb_access_orgs` and `kb_access_ws` tables
+
+#### 4. Parent Spec Updates ✅
+- [x] Updated Section 7 with all 7 entities and inheritance documentation
+- [x] Added scope-based inheritance rules table
+
+#### 5. Admin UX Spec Created ✅
+- [x] Platform admin global KB management pages
+- [x] Org admin KB management pages
+- [x] Admin card specifications for dashboards
+- [x] Component library for admin UIs
+- [x] Interaction patterns for CRUD operations
+- [x] Admin testing requirements
+
+### Key Technical Decisions
+
+1. **4-Table Access Model:** Each scope level has its own access table for fine-grained control
+2. **Cascading Inheritance:** Higher levels must enable before lower levels can access
+3. **Default Dimension:** 1024 (AWS Bedrock Titan V2) - cost-effective for most use cases
+4. **Abbreviations:** `kb_docs` not `kb_documents` per CORA naming standards
+
+### Files Modified This Session
+
+1. `docs/specifications/module-kb/MODULE-KB-SPEC.md` - Updated Section 7 with 7 entities
+2. `docs/specifications/module-kb/MODULE-KB-TECHNICAL-SPEC.md` - Major updates:
+   - Renamed 002-kb-documents.sql → 002-kb-docs.sql
+   - Added 005-kb-access-orgs.sql migration
+   - Added 006-kb-access-ws.sql migration  
+   - Renumbered 007-009 migrations
+   - Updated RPC functions for 4-level inheritance
+   - Added RLS policies for new access tables
+3. `docs/specifications/module-kb/MODULE-KB-USER-UX-SPEC.md` - Complete (no changes needed)
+4. `docs/specifications/module-kb/MODULE-KB-ADMIN-UX-SPEC.md` - Created (~1000 lines)
+
+### Specification Summary
+
+| Document | Status | Lines | Purpose |
+|----------|--------|-------|---------|
+| MODULE-KB-SPEC.md | ✅ Complete | ~400 | Parent overview, 7 entities, scope hierarchy |
+| MODULE-KB-TECHNICAL-SPEC.md | ✅ Complete | ~2700 | 9 migrations, APIs, Lambda patterns, Terraform |
+| MODULE-KB-USER-UX-SPEC.md | ✅ Complete | ~1200 | User personas, flows, components, testing |
+| MODULE-KB-ADMIN-UX-SPEC.md | ✅ Complete | ~1000 | Admin personas, pages, cards, testing |
+| **Total** | **✅** | **~5300** | Complete Phase 1 specification |
+
+**Progress:** 100% of Phase 1 complete  
+**Total Time:** ~3 hours (Session 128)  
+**Next:** Phase 2 - Database Schema Implementation
+
+---
+
+## ✅ Session 127: Module-KB Implementation - Phase 0 Complete
 
 ---
 
