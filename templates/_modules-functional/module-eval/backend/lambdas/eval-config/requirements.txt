@@ -1,0 +1,14 @@
+# Eval Config Lambda Dependencies
+# Note: org_common layer provides most common dependencies
+
+# AWS SDK (usually provided by Lambda runtime, but pinned for local development)
+boto3>=1.34.0
+
+# PostgreSQL adapter (for direct database queries if needed)
+psycopg2-binary>=2.9.9
+
+# HTTP client
+requests>=2.31.0
+
+# Excel file parsing for criteria import
+openpyxl>=3.1.0
