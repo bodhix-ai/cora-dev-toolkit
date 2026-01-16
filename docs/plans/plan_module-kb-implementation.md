@@ -1,11 +1,14 @@
 # Module-KB Implementation Plan
 
-**Status**: 🔵 PLANNED  
+**Status**: 🔄 IN PROGRESS (Phase 0 ✅, Phase 1 ✅)  
 **Priority**: HIGH (Foundation for module-chat and module-wf)  
-**Dependencies**: module-access, module-mgmt, module-ws, module-ai (sys_rag table)  
+**Module Type**: Core Module (Tier 2)  
+**Template Location**: `templates/_modules-core/module-kb/`  
+**Dependencies**: module-access, module-mgmt, module-ws, module-ai (ai_cfg_sys_rag table)  
 **Estimated Duration**: 11-16 sessions (~33-48 hours)
 
-**Prerequisites**: Phase 0 (RAG Table Migration) must be completed before starting main module implementation
+**Prerequisites**: ✅ Phase 0 (AI Config Table Migration) COMPLETE - All referenced tables use correct naming  
+**Phase 1**: ✅ Foundation & Specification COMPLETE - All 4 spec documents finalized
 
 ---
 
@@ -61,11 +64,12 @@ Implement a CORA-compliant Knowledge Base module with multi-scope document manag
 
 ---
 
-## Phase 0: Prerequisite - AI Config Table Migration (Session 103)
+## Phase 0: Prerequisite - AI Config Table Migration ✅ COMPLETE (Session 127)
 
-**Duration**: 1 session (~3-4 hours)  
+**Duration**: 1 session (~6 hours actual)  
 **Risk Level**: ⚠️ MEDIUM - AI config functionality  
-**Lambda Impact**: `module-ai/ai-config-handler` only
+**Lambda Impact**: `module-ai/ai-config-handler` only  
+**Status**: ✅ COMPLETE - Migration executed successfully, zero errors, zero downtime
 
 **Note**: This phase corresponds to **Phase 4** of the [Database Naming Migration Plan](../plans/plan_db-naming-migration.md#phase-4-ai-config-tables--handled-by-module-kb-phase-0).
 
@@ -293,31 +297,268 @@ If issues arise during or after migration:
 
 ## Phase 1: Foundation & Specification (Sessions 104-106)
 
-**Duration**: 3 sessions (~6-9 hours)
+**Rationale**: Migrating only `sys_rag` would require touching `ai-config-handler` Lambda again later for `org_prompt_engineering`. By doing both now, we complete all AI config table migrations in a single pass.
+
+### 0.1 Tables to Migrate
+
+| Current Name | New Name | Type | Scope |
+|--------------|----------|------|-------|
+| `sys_rag` | `ai_cfg_sys_rag` | Config | System (Platform) |
+| `org_prompt_engineering` | `ai_cfg_org_prompts` | Config | Organization |
+
+**Migration SQL** (`scripts/migrations/20260114_ai_config_tables_migration.sql`):
+```sql
+-- ============================================================================
+-- AI Config Tables Migration (Database Naming Standards - Phase 4)
+-- Migrates both AI config tables used by ai-config-handler Lambda
+-- ============================================================================
+
+-- 1. Create new tables with correct naming
+CREATE TABLE ai_cfg_sys_rag (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    embedding_provider VARCHAR(50) NOT NULL,
+    embedding_model VARCHAR(100) NOT NULL,
+    embedding_dimension INTEGER NOT NULL DEFAULT 1024,
+    embedding_api_key TEXT,
+    embedding_endpoint TEXT,
+    config JSONB DEFAULT '{}',
+    is_enabled BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    created_by UUID REFERENCES auth.users(id),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_by UUID REFERENCES auth.users(id)
+);
+
+CREATE TABLE ai_cfg_org_prompts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    org_id UUID REFERENCES orgs(id) ON DELETE CASCADE NOT NULL,
+    prompt_type VARCHAR(50) NOT NULL,
+    prompt_content TEXT NOT NULL,
+    is_enabled BOOLEAN DEFAULT true,
+    config JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    created_by UUID REFERENCES auth.users(id) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_by UUID REFERENCES auth.users(id)
+);
+
+-- 2. Copy data from old tables
+INSERT INTO ai_cfg_sys_rag 
+SELECT * FROM sys_rag;
+
+INSERT INTO ai_cfg_org_prompts 
+SELECT * FROM org_prompt_engineering;
+
+-- 3. Update foreign keys (if any - ai_cfg_org_prompts already has FK)
+-- ai_cfg_sys_rag has no FKs beyond created_by/updated_by (already defined)
+
+-- 4. Recreate indexes
+CREATE INDEX idx_ai_cfg_sys_rag_provider ON ai_cfg_sys_rag(embedding_provider);
+CREATE INDEX idx_ai_cfg_sys_rag_enabled ON ai_cfg_sys_rag(is_enabled);
+
+CREATE INDEX idx_ai_cfg_org_prompts_org_id ON ai_cfg_org_prompts(org_id);
+CREATE INDEX idx_ai_cfg_org_prompts_type ON ai_cfg_org_prompts(prompt_type);
+CREATE INDEX idx_ai_cfg_org_prompts_enabled ON ai_cfg_org_prompts(is_enabled);
+
+-- 5. Recreate RLS policies
+ALTER TABLE ai_cfg_sys_rag ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_cfg_org_prompts ENABLE ROW LEVEL SECURITY;
+
+-- RLS for ai_cfg_sys_rag
+CREATE POLICY "Platform admins can manage RAG config"
+    ON ai_cfg_sys_rag
+    FOR ALL
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM user_profiles
+            WHERE user_profiles.user_id = auth.uid()
+            AND user_profiles.sys_role = 'platform_admin'
+        )
+    );
+
+CREATE POLICY "All authenticated users can view RAG config"
+    ON ai_cfg_sys_rag
+    FOR SELECT
+    TO authenticated
+    USING (is_enabled = true);
+
+-- RLS for ai_cfg_org_prompts
+CREATE POLICY "Org admins can manage org prompts"
+    ON ai_cfg_org_prompts
+    FOR ALL
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM org_members
+            WHERE org_members.org_id = ai_cfg_org_prompts.org_id
+            AND org_members.user_id = auth.uid()
+            AND org_members.org_role IN ('org_owner', 'org_admin')
+        )
+    );
+
+CREATE POLICY "Org members can view enabled org prompts"
+    ON ai_cfg_org_prompts
+    FOR SELECT
+    TO authenticated
+    USING (
+        is_enabled = true
+        AND EXISTS (
+            SELECT 1 FROM org_members
+            WHERE org_members.org_id = ai_cfg_org_prompts.org_id
+            AND org_members.user_id = auth.uid()
+        )
+    );
+
+-- 6. Create backward-compatible views (temporary - remove after 1 week)
+CREATE VIEW sys_rag AS SELECT * FROM ai_cfg_sys_rag;
+CREATE VIEW org_prompt_engineering AS SELECT * FROM ai_cfg_org_prompts;
+
+-- 7. Add comments documenting migration
+COMMENT ON TABLE ai_cfg_sys_rag IS 'RAG embedding configuration (migrated from sys_rag on 2026-01-14)';
+COMMENT ON TABLE ai_cfg_org_prompts IS 'Organization prompt engineering config (migrated from org_prompt_engineering on 2026-01-14)';
+```
+
+### 0.2 Code Changes
+
+**Lambda:** `templates/_modules-core/module-ai/backend/lambdas/ai-config-handler/lambda_function.py`
+
+Update all SQL queries referencing both tables:
+```python
+# Before:
+# SELECT * FROM sys_rag WHERE is_enabled = true
+# SELECT * FROM org_prompt_engineering WHERE org_id = %s
+
+# After:
+# SELECT * FROM ai_cfg_sys_rag WHERE is_enabled = true
+# SELECT * FROM ai_cfg_org_prompts WHERE org_id = %s
+```
+
+**Template Schemas:**
+- `templates/_modules-core/module-ai/db/schema/006-sys-rag.sql` → `006-ai-cfg-sys-rag.sql`
+  - Update CREATE TABLE statement to use new name
+  - Update all index names
+  - Update all constraint names
+  
+- `templates/_modules-core/module-ai/db/schema/007-org-prompt-engineering.sql` → `007-ai-cfg-org-prompts.sql`
+  - Update CREATE TABLE statement to use new name
+  - Update all index names
+  - Update all constraint names
+
+### 0.3 Testing Checklist ✅ ALL COMPLETE
+
+- [x] Create migration SQL file in `scripts/migrations/`
+- [x] Test migration in dev environment
+- [x] Verify data copied correctly (row count match for BOTH tables)
+- [x] Test RAG configuration read via API (`GET /platform/ai-config/embedding`)
+- [x] Test RAG configuration write via API (`PUT /platform/ai-config/embedding`)
+- [x] Test org prompt configuration read via API (`GET /orgs/{orgId}/ai-config`)
+- [x] Test org prompt configuration write via API (`PUT /orgs/{orgId}/ai-config`)
+- [x] Verify kb-processor can retrieve embedding config
+- [x] Verify RLS policies work correctly:
+  - Platform admins can edit `ai_cfg_sys_rag`
+  - All authenticated users can read enabled `ai_cfg_sys_rag`
+  - Org admins can edit `ai_cfg_org_prompts` for their org
+  - Org members can read enabled `ai_cfg_org_prompts` for their org
+- [x] Confirm backward-compatible views work for BOTH tables
+- [x] Update template schema files (both 006 and 007)
+- [x] Update ai-config-handler Lambda code
+- [x] **Frontend validation - ALL fields display correctly:**
+  - Policy Mission Type, Custom Prompts, Citation Config, Response Config
+  - Audit columns (`updated_by`, `created_by`) populating correctly
+  - Zero errors in browser console
+  - Zero TypeScript compilation errors
+
+### 0.4 Rollback Plan
+
+If issues arise during or after migration:
+
+1. **Immediate Rollback:**
+   ```sql
+   -- Drop new tables (data still in old tables)
+   DROP TABLE IF EXISTS ai_cfg_sys_rag CASCADE;
+   DROP TABLE IF EXISTS ai_cfg_org_prompts CASCADE;
+   DROP VIEW IF EXISTS sys_rag;
+   DROP VIEW IF EXISTS org_prompt_engineering;
+   
+   -- Revert Lambda code to use old table names
+   ```
+
+2. **View Safety Net:**
+   - Backward-compatible views (`sys_rag`, `org_prompt_engineering`) ensure old code continues working
+   - Keep views active for 1 week post-migration
+   - Remove views only after confirming stability
+
+3. **Partial Rollback:**
+   - If only one table has issues, can roll back individually
+   - Both tables are independent (no FK between them)
+
+### 0.5 Deliverables ✅ ALL COMPLETE
+
+- [x] Migration SQL file created and tested
+- [x] `ai_cfg_sys_rag` table created with correct naming and structure
+- [x] `ai_cfg_org_prompts` table created with correct naming and structure
+- [x] Data migrated from `sys_rag` to `ai_cfg_sys_rag`
+- [x] Data migrated from `org_prompt_engineering` to `ai_cfg_org_prompts`
+- [x] `ai-config-handler` Lambda updated to use new table names (both tables)
+- [x] Template schema files renamed and updated (006 and 007)
+- [x] Backward-compatible views created (both tables)
+- [x] Frontend component fixed: `OrgAIConfigTab.tsx` data access bug resolved
+- [x] All backend tests passing
+- [x] All frontend validation passing (UI displays all fields correctly)
+- [x] Documentation updated in migration plan
+
+**Success Criteria:** ✅ ALL MET
+- ✅ Zero downtime during migration
+- ✅ All existing AI config functionality works unchanged (RAG + org prompts)
+- ✅ New module-kb code references correct table names from start
+- ✅ Validation passes: `python scripts/validate-db-naming.py` (0 violations for both tables)
+- ✅ Database Naming Migration Plan Phase 4 marked as complete
+- ✅ **Frontend validation complete:** All RAG config fields display correctly
+- ✅ **Audit columns working:** `updated_by`, `created_by` populating correctly
+- ✅ **End-to-end testing complete:** Backend API + Frontend UI fully validated
+
+**Git Commit:** `95bf750` - feat(module-kb): Complete Phase 0 - AI Config Table Migration  
+**Branch:** `feature/module-kb-implementation`  
+**Files Changed:** 8 files, 952 insertions, 28 deletions (includes OrgAIConfigTab.tsx fix)
+
+**Frontend Fix:** Session 127 (same day) - Fixed `OrgAIConfigTab.tsx` data access bug
+- Component was accessing `response.policyMissionType` instead of `response.data.policyMissionType`
+- Fixed in template + synced to test project
+- User validated: All fields display correctly, audit columns working
+
+---
+
+## Phase 1: Foundation & Specification ✅ COMPLETE (Session 128)
+
+**Duration**: 1 session (~3 hours actual)
+**Status**: ✅ COMPLETE - All 4 specification documents finalized
 
 ### 1.1 Module Specification Documents
 
 **Location**: `docs/specifications/module-kb/`
 
-- [ ] Create specification directory structure
-- [ ] Write `MODULE-SPEC-PARENT.md`:
+- [x] Create specification directory structure
+- [x] Write `MODULE-KB-SPEC.md` (parent specification):
   - Overview and purpose
   - Multi-scope architecture (global/org/workspace/chat)
   - Dependencies: module-ws, module-access, module-mgmt
   - Integration points with module-chat, module-wf
-- [ ] Write `MODULE-SPEC-TECHNICAL.md`:
-  - Database schema (4 scopes + pgvector)
+- [x] Write `MODULE-KB-TECHNICAL-SPEC.md`:
+  - 7 entities with 4-level access control model
+  - 9 database migrations (001-009)
   - Lambda functions (kb-base, kb-document, kb-processor)
   - API endpoints with route docstrings
   - S3 bucket structure for documents
   - SQS queue for async processing
-  - pgvector embedding storage
-- [ ] Write `MODULE-SPEC-USER-UX.md`:
-  - User flows: upload doc to workspace/chat
+  - pgvector embedding storage with HNSW indexing
+- [x] Write `MODULE-KB-USER-UX-SPEC.md`:
+  - User personas and flows
+  - Document upload to workspace/chat
   - KB toggle selector (shows available KBs)
   - Document preview and management
-  - Search and filtering
-- [ ] Write `MODULE-SPEC-ADMIN-UX.md`:
+  - Component library specifications
+- [x] Write `MODULE-KB-ADMIN-UX-SPEC.md`:
   - **Platform Admin Global KB Management**:
     - Admin page: `/admin/sys/kb` (full CRUD for global KBs)
     - Create/edit/delete global KBs
@@ -337,38 +578,52 @@ If issues arise during or after migration:
     - KB templates (pre-configured KBs with common docs)
     - Document approval workflow (review before indexing)
     - Access audit logs (who accessed which KB/document)
-  - **Analytics Dashboard**:
-    - Most accessed KBs/documents
-    - Token usage per KB (via module-ai integration)
-    - Document processing status overview
-    - Storage usage by org/workspace
+  - Platform admin global KB management pages
+  - Org admin KB management pages  
+  - Admin card specifications for dashboards
+  - Component library for admin UIs
+  - Interaction patterns for CRUD operations
+  - Admin testing requirements
 
-### 1.2 Data Model Design
+### 1.2 Data Model Design ✅ COMPLETE
 
-- [ ] Design CORA-compliant database schema:
-  - `kb_base` - KB metadata (scope, org_id, workspace_id, chat_session_id)
-  - `kb_document` - Document metadata (s3_key, status, workspace_id)
-  - `kb_chunk` - RAG chunks with pgvector embeddings
-  - `kb_access_global` - Global KB org associations
-  - `kb_access_workspace` - Workspace KB toggles (NOT needed - workspace KB is always available)
-  - `kb_access_chat` - Chat KB toggles
-- [ ] Map legacy tables to CORA tables
-- [ ] Define RLS policies for multi-tenant access
-- [ ] Document pgvector integration strategy
-- [ ] Define S3 bucket structure: `{project}-kb-docs/{org_id}/{workspace_id}/`
+- [x] Design CORA-compliant database schema with 7 entities:
+  - `kb_bases` - KB metadata (scope, org_id, workspace_id, chat_session_id)
+  - `kb_docs` - Document metadata (s3_key, status) - NOTE: uses `kb_docs` not `kb_documents`
+  - `kb_chunks` - RAG chunks with pgvector embeddings (1024 dims default)
+  - `kb_access_global` - Step 1: Sys admin shares global KB with org
+  - `kb_access_orgs` - Step 2: Org admin enables KB for org
+  - `kb_access_ws` - Step 3: Workspace admin enables KB for workspace
+  - `kb_access_chats` - Step 4: User selects KB for chat
+- [x] Map legacy tables to CORA tables
+- [x] Define RLS policies for multi-tenant access (9 migrations total)
+- [x] Document pgvector integration strategy (HNSW indexing)
+- [x] Define S3 bucket structure: `{org_id}/{workspace_id}/{kb_id}/{doc_id}/{filename}`
 
-### 1.3 API Endpoint Design
+### 1.3 API Endpoint Design ✅ COMPLETE
 
-- [ ] Define Lambda route structure with docstrings
-- [ ] Map legacy endpoints to CORA patterns
-- [ ] Document camelCase API response format
-- [ ] Define presigned URL flow for S3 uploads
+- [x] Define Lambda route structure with docstrings
+- [x] Map legacy endpoints to CORA patterns
+- [x] Document camelCase API response format
+- [x] Define presigned URL flow for S3 uploads
+- [x] Define RAG search endpoint (`POST /kb/search`)
 
-**Deliverables**:
-- Complete specification documents
-- Database schema design
-- API endpoint specifications
-- S3 and pgvector integration plan
+### 1.4 4-Level Access Control Model ✅ COMPLETE
+
+Documented cascading inheritance chain:
+- Global KB: Requires all 4 levels enabled (Steps 1→2→3→4)
+- Org KB: Requires levels 2-4 (no sys admin sharing)
+- Workspace KB: Requires levels 3-4 (no org admin sharing)
+- Chat KB: User controls directly (Step 4 only)
+
+**Deliverables** ✅ ALL COMPLETE:
+- `MODULE-KB-SPEC.md` - Parent overview (~400 lines)
+- `MODULE-KB-TECHNICAL-SPEC.md` - Complete technical spec (~2700 lines)
+- `MODULE-KB-USER-UX-SPEC.md` - User flows and components (~1200 lines)
+- `MODULE-KB-ADMIN-UX-SPEC.md` - Admin pages and cards (~1000 lines)
+- Total: ~5300 lines of specification
+
+**Completed:** January 14, 2026 (Session 128)
 
 ---
 
@@ -1400,8 +1655,11 @@ Admin (Org)
 
 ---
 
-**Status**: 🔵 PLANNED  
-**Last Updated**: January 14, 2026  
-**Next Review**: After Phase 0 completion (AI config table migration)
+**Status**: 🔄 IN PROGRESS (Phase 0 ✅, Phase 1 ✅, Phase 2 NEXT)  
+**Last Updated**: January 14, 2026 (Session 128)  
+**Next Review**: After Phase 2 completion (Database Schema)
+
+**Phase 0 Completed**: January 14, 2026 (Session 127) - Migration successful, zero errors, zero downtime  
+**Phase 1 Completed**: January 14, 2026 (Session 128) - All 4 specification documents finalized (~5300 lines)
 
 **Cross-Reference**: [Database Naming Migration Plan - Phase 4](../plans/plan_db-naming-migration.md#phase-4-ai-config-tables--handled-by-module-kb-phase-0)

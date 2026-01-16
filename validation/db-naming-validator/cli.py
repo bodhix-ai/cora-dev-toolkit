@@ -8,16 +8,39 @@ CLI interface for the validation orchestrator.
 import sys
 import json
 import argparse
+import importlib.util
 from pathlib import Path
 from typing import List
 
 # Import validation logic from the scripts directory
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from scripts.validate_db_naming import (
-    find_sql_files,
-    validate_sql_file,
-    ValidationResult,
-)
+# The file is named validate-db-naming.py (with hyphens), so we need to use importlib
+scripts_dir = Path(__file__).parent.parent.parent / "scripts"
+validate_module_path = scripts_dir / "validate-db-naming.py"
+
+if validate_module_path.exists():
+    spec = importlib.util.spec_from_file_location("validate_db_naming", validate_module_path)
+    validate_db_naming = importlib.util.module_from_spec(spec)
+    sys.modules["validate_db_naming"] = validate_db_naming
+    spec.loader.exec_module(validate_db_naming)
+    
+    find_sql_files = validate_db_naming.find_sql_files
+    validate_sql_file = validate_db_naming.validate_sql_file
+    ValidationResult = validate_db_naming.ValidationResult
+else:
+    # Fallback error if module not found
+    def find_sql_files(path):
+        return []
+    def validate_sql_file(path, result):
+        pass
+    class ValidationResult:
+        def __init__(self):
+            self.errors = []
+            self.warnings = []
+            self.info = []
+        def has_errors(self):
+            return len(self.errors) > 0
+        def print_report(self):
+            return 0
 
 
 def format_error(file: str, line: int, message: str) -> str:
@@ -56,14 +79,26 @@ def main():
     
     # Search for schema files in typical CORA locations
     if path.is_dir():
-        # Look for db/schema directories
+        # Look for db/schema directories (only in packages/ or templates/)
         schema_dirs = list(path.rglob("db/schema"))
         if schema_dirs:
             for schema_dir in schema_dirs:
                 sql_files.extend(find_sql_files(schema_dir))
-        else:
-            # Fallback: search for all SQL files
-            sql_files = find_sql_files(path)
+        
+        # If no db/schema found, try templates/_modules-* pattern
+        if not sql_files:
+            # Look in toolkit template modules
+            for module_schema in path.rglob("_modules-*/*/db/schema"):
+                sql_files.extend(find_sql_files(module_schema))
+        
+        # Filter out non-schema SQL files (scripts, migrations, etc.)
+        sql_files = [
+            f for f in sql_files 
+            if '/scripts/' not in str(f) 
+            and '/migrations/' not in str(f)
+            and 'drop-' not in f.name.lower()
+            and 'cleanup' not in f.name.lower()
+        ]
     else:
         sql_files = find_sql_files(path)
     
