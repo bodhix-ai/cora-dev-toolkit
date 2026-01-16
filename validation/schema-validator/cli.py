@@ -9,6 +9,9 @@ Usage:
     python cli.py --path /path/to/lambda/files
     python cli.py --path lambda_function.py --output json
     python cli.py --path packages/ --propose-fixes --output markdown
+    
+    # Template mode (no database required - uses SQL files)
+    python cli.py --path /path/to/templates --static
 """
 
 import sys
@@ -25,6 +28,7 @@ from query_parser import QueryParser
 from validator import Validator
 from fix_proposer import FixProposer
 from reporter import Reporter
+from static_schema_parser import StaticSchemaParser, find_schema_sql_files
 
 # Note: .env loading moved into validate() function to support project-specific .env files
 
@@ -64,7 +68,18 @@ logger = logging.getLogger(__name__)
     is_flag=True,
     help='Clear schema cache and force re-introspection'
 )
-def validate(path: str, output: str, propose_fixes: bool, verbose: bool, clear_cache: bool):
+@click.option(
+    '--static',
+    is_flag=True,
+    help='Use static schema parsing from SQL files (no database required). For template validation.'
+)
+@click.option(
+    '--schema-path',
+    type=click.Path(exists=True),
+    default=None,
+    help='Path to directory containing SQL schema files (used with --static)'
+)
+def validate(path: str, output: str, propose_fixes: bool, verbose: bool, clear_cache: bool, static: bool, schema_path: str):
     """
     Validate Lambda database queries against Supabase schema.
     
@@ -82,7 +97,7 @@ def validate(path: str, output: str, propose_fixes: bool, verbose: bool, clear_c
         # Validate and propose fixes
         python cli.py --path packages/ --propose-fixes
         
-    Environment variables required (from .env file):
+    Environment variables required (from .env file) - NOT needed with --static flag:
         SUPABASE_DB_HOST
         SUPABASE_DB_PORT (optional, defaults to 5432)
         SUPABASE_DB_NAME
@@ -93,58 +108,120 @@ def validate(path: str, output: str, propose_fixes: bool, verbose: bool, clear_c
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
     
-    # Load environment variables from .env file
-    # Priority: 
-    # 1. Project's scripts/validation/.env (if validating a project)
-    # 2. Validator's directory .env (fallback)
     path_obj = Path(path)
+    schema_inspector = None
     
-    # Try to find project root (look for scripts/validation/.env)
-    env_locations = []
-    
-    # If path is a directory, check if it has scripts/validation/.env
-    if path_obj.is_dir():
-        project_env = path_obj / 'scripts' / 'validation' / '.env'
-        if project_env.exists():
-            env_locations.append(project_env)
-    
-    # Check parent directories for project root
-    current = path_obj if path_obj.is_dir() else path_obj.parent
-    for _ in range(5):  # Check up to 5 levels up
-        project_env = current / 'scripts' / 'validation' / '.env'
-        if project_env.exists():
-            env_locations.append(project_env)
-            break
-        parent = current.parent
-        if parent == current:  # Reached filesystem root
-            break
-        current = parent
-    
-    # Fallback to validator's .env
-    validator_env = Path(__file__).parent / '.env'
-    if validator_env.exists():
-        env_locations.append(validator_env)
-    
-    # Load the first .env file found
-    if env_locations:
-        env_file = env_locations[0]
-        logger.info(f"Loading environment from: {env_file}")
-        load_dotenv(env_file)
+    # Static mode: use SQL files for schema instead of live database
+    if static:
+        logger.info("Using static schema parsing (no database connection required)")
+        
+        # Determine schema path
+        if schema_path:
+            schema_base = Path(schema_path)
+        else:
+            # Auto-detect schema location
+            # Look for schema files in the target path or parent directories
+            schema_base = path_obj if path_obj.is_dir() else path_obj.parent
+            
+            # If target is inside templates/, look at toolkit root
+            current = schema_base
+            while current != current.parent:
+                if current.name == 'templates' or (current / 'templates').exists():
+                    if current.name == 'templates':
+                        schema_base = current.parent
+                    else:
+                        schema_base = current
+                    break
+                current = current.parent
+        
+        logger.info(f"Looking for schema SQL files in: {schema_base}")
+        sql_files = find_schema_sql_files(schema_base)
+        
+        if not sql_files:
+            logger.warning(f"No schema SQL files found in {schema_base}")
+            if output == 'json':
+                import json
+                print(json.dumps({
+                    'status': 'passed',
+                    'errors': [],
+                    'warnings': [f'No schema SQL files found for static validation'],
+                    'info': ['Static schema validation skipped - no SQL files found']
+                }, indent=2))
+            else:
+                print("⚠️ No schema SQL files found for static validation")
+            sys.exit(0)
+        
+        # Parse static schema
+        static_parser = StaticSchemaParser()
+        static_schema = static_parser.parse_sql_files(sql_files)
+        logger.info(f"Loaded {len(static_schema)} tables from SQL files")
+        
+        # Create a wrapper that provides the schema dict
+        class StaticSchemaWrapper:
+            """Wrapper to make static schema compatible with Validator."""
+            def __init__(self, schema_dict):
+                self._schema = schema_dict
+            
+            def introspect_schema(self):
+                return self._schema
+            
+            def close(self):
+                pass
+        
+        schema_inspector = StaticSchemaWrapper(static_schema)
     else:
-        logger.warning("No .env file found. Database credentials must be set via environment variables.")
-    
-    try:
-        # Initialize components
-        logger.info("Initializing schema validator...")
+        # Live database mode - load .env and connect
+        # Priority: 
+        # 1. Project's scripts/validation/.env (if validating a project)
+        # 2. Validator's directory .env (fallback)
+        
+        # Try to find project root (look for scripts/validation/.env)
+        env_locations = []
+        
+        # If path is a directory, check if it has scripts/validation/.env
+        if path_obj.is_dir():
+            project_env = path_obj / 'scripts' / 'validation' / '.env'
+            if project_env.exists():
+                env_locations.append(project_env)
+        
+        # Check parent directories for project root
+        current = path_obj if path_obj.is_dir() else path_obj.parent
+        for _ in range(5):  # Check up to 5 levels up
+            project_env = current / 'scripts' / 'validation' / '.env'
+            if project_env.exists():
+                env_locations.append(project_env)
+                break
+            parent = current.parent
+            if parent == current:  # Reached filesystem root
+                break
+            current = parent
+        
+        # Fallback to validator's .env
+        validator_env = Path(__file__).parent / '.env'
+        if validator_env.exists():
+            env_locations.append(validator_env)
+        
+        # Load the first .env file found
+        if env_locations:
+            env_file = env_locations[0]
+            logger.info(f"Loading environment from: {env_file}")
+            load_dotenv(env_file)
+        else:
+            logger.warning("No .env file found. Database credentials must be set via environment variables.")
+        
+        logger.info("Initializing schema validator with live database...")
         schema_inspector = SchemaInspector()
-        query_parser = QueryParser()
-        validator = Validator(schema_inspector, query_parser)
-        reporter = Reporter()
         
         # Clear cache if requested
         if clear_cache:
             logger.info("Clearing schema cache...")
             schema_inspector.clear_cache()
+    
+    try:
+        # Initialize remaining components
+        query_parser = QueryParser()
+        validator = Validator(schema_inspector, query_parser)
+        reporter = Reporter()
         
         # Validate
         logger.info(f"Validating: {path}")

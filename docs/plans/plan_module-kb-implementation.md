@@ -230,6 +230,221 @@ Update all SQL queries referencing both tables:
   - Update all index names
   - Update all constraint names
 
+### 0.3 Testing Checklist
+
+- [ ] Create migration SQL file in `scripts/migrations/`
+- [ ] Test migration in dev environment
+- [ ] Verify data copied correctly (row count match for BOTH tables)
+- [ ] Test RAG configuration read via API (`GET /platform/ai-config/embedding`)
+- [ ] Test RAG configuration write via API (`PUT /platform/ai-config/embedding`)
+- [ ] Test org prompt configuration read via API (`GET /orgs/{orgId}/ai-config/prompts`)
+- [ ] Test org prompt configuration write via API (`PUT /orgs/{orgId}/ai-config/prompts`)
+- [ ] Verify kb-processor can retrieve embedding config
+- [ ] Verify RLS policies work correctly:
+  - Platform admins can edit `ai_cfg_sys_rag`
+  - All authenticated users can read enabled `ai_cfg_sys_rag`
+  - Org admins can edit `ai_cfg_org_prompts` for their org
+  - Org members can read enabled `ai_cfg_org_prompts` for their org
+- [ ] Confirm backward-compatible views work for BOTH tables
+- [ ] Update template schema files (both 006 and 007)
+- [ ] Update ai-config-handler Lambda code
+
+### 0.4 Rollback Plan
+
+If issues arise during or after migration:
+
+1. **Immediate Rollback:**
+   ```sql
+   -- Drop new tables (data still in old tables)
+   DROP TABLE IF EXISTS ai_cfg_sys_rag CASCADE;
+   DROP TABLE IF EXISTS ai_cfg_org_prompts CASCADE;
+   DROP VIEW IF EXISTS sys_rag;
+   DROP VIEW IF EXISTS org_prompt_engineering;
+   
+   -- Revert Lambda code to use old table names
+   ```
+
+2. **View Safety Net:**
+   - Backward-compatible views (`sys_rag`, `org_prompt_engineering`) ensure old code continues working
+   - Keep views active for 1 week post-migration
+   - Remove views only after confirming stability
+
+3. **Partial Rollback:**
+   - If only one table has issues, can roll back individually
+   - Both tables are independent (no FK between them)
+
+### 0.5 Deliverables
+
+- [ ] Migration SQL file created and tested
+- [ ] `ai_cfg_sys_rag` table created with correct naming and structure
+- [ ] `ai_cfg_org_prompts` table created with correct naming and structure
+- [ ] Data migrated from `sys_rag` to `ai_cfg_sys_rag`
+- [ ] Data migrated from `org_prompt_engineering` to `ai_cfg_org_prompts`
+- [ ] `ai-config-handler` Lambda updated to use new table names (both tables)
+- [ ] Template schema files renamed and updated (006 and 007)
+- [ ] Backward-compatible views created (both tables)
+- [ ] All tests passing
+- [ ] Documentation updated in migration plan
+
+**Success Criteria:**
+- Zero downtime during migration
+- All existing AI config functionality works unchanged (RAG + org prompts)
+- New module-kb code references correct table names from start
+- Validation passes: `python scripts/validate-db-naming.py` (0 violations for both tables)
+- Database Naming Migration Plan Phase 4 marked as complete
+
+---
+
+## Phase 1: Foundation & Specification (Sessions 104-106)
+
+**Rationale**: Migrating only `sys_rag` would require touching `ai-config-handler` Lambda again later for `org_prompt_engineering`. By doing both now, we complete all AI config table migrations in a single pass.
+
+### 0.1 Tables to Migrate
+
+| Current Name | New Name | Type | Scope |
+|--------------|----------|------|-------|
+| `sys_rag` | `ai_cfg_sys_rag` | Config | System (Platform) |
+| `org_prompt_engineering` | `ai_cfg_org_prompts` | Config | Organization |
+
+**Migration SQL** (`scripts/migrations/20260114_ai_config_tables_migration.sql`):
+```sql
+-- ============================================================================
+-- AI Config Tables Migration (Database Naming Standards - Phase 4)
+-- Migrates both AI config tables used by ai-config-handler Lambda
+-- ============================================================================
+
+-- 1. Create new tables with correct naming
+CREATE TABLE ai_cfg_sys_rag (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    embedding_provider VARCHAR(50) NOT NULL,
+    embedding_model VARCHAR(100) NOT NULL,
+    embedding_dimension INTEGER NOT NULL DEFAULT 1024,
+    embedding_api_key TEXT,
+    embedding_endpoint TEXT,
+    config JSONB DEFAULT '{}',
+    is_enabled BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    created_by UUID REFERENCES auth.users(id),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_by UUID REFERENCES auth.users(id)
+);
+
+CREATE TABLE ai_cfg_org_prompts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    org_id UUID REFERENCES orgs(id) ON DELETE CASCADE NOT NULL,
+    prompt_type VARCHAR(50) NOT NULL,
+    prompt_content TEXT NOT NULL,
+    is_enabled BOOLEAN DEFAULT true,
+    config JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    created_by UUID REFERENCES auth.users(id) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_by UUID REFERENCES auth.users(id)
+);
+
+-- 2. Copy data from old tables
+INSERT INTO ai_cfg_sys_rag 
+SELECT * FROM sys_rag;
+
+INSERT INTO ai_cfg_org_prompts 
+SELECT * FROM org_prompt_engineering;
+
+-- 3. Update foreign keys (if any - ai_cfg_org_prompts already has FK)
+-- ai_cfg_sys_rag has no FKs beyond created_by/updated_by (already defined)
+
+-- 4. Recreate indexes
+CREATE INDEX idx_ai_cfg_sys_rag_provider ON ai_cfg_sys_rag(embedding_provider);
+CREATE INDEX idx_ai_cfg_sys_rag_enabled ON ai_cfg_sys_rag(is_enabled);
+
+CREATE INDEX idx_ai_cfg_org_prompts_org_id ON ai_cfg_org_prompts(org_id);
+CREATE INDEX idx_ai_cfg_org_prompts_type ON ai_cfg_org_prompts(prompt_type);
+CREATE INDEX idx_ai_cfg_org_prompts_enabled ON ai_cfg_org_prompts(is_enabled);
+
+-- 5. Recreate RLS policies
+ALTER TABLE ai_cfg_sys_rag ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_cfg_org_prompts ENABLE ROW LEVEL SECURITY;
+
+-- RLS for ai_cfg_sys_rag
+CREATE POLICY "Platform admins can manage RAG config"
+    ON ai_cfg_sys_rag
+    FOR ALL
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM user_profiles
+            WHERE user_profiles.user_id = auth.uid()
+            AND user_profiles.sys_role = 'platform_admin'
+        )
+    );
+
+CREATE POLICY "All authenticated users can view RAG config"
+    ON ai_cfg_sys_rag
+    FOR SELECT
+    TO authenticated
+    USING (is_enabled = true);
+
+-- RLS for ai_cfg_org_prompts
+CREATE POLICY "Org admins can manage org prompts"
+    ON ai_cfg_org_prompts
+    FOR ALL
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM org_members
+            WHERE org_members.org_id = ai_cfg_org_prompts.org_id
+            AND org_members.user_id = auth.uid()
+            AND org_members.org_role IN ('org_owner', 'org_admin')
+        )
+    );
+
+CREATE POLICY "Org members can view enabled org prompts"
+    ON ai_cfg_org_prompts
+    FOR SELECT
+    TO authenticated
+    USING (
+        is_enabled = true
+        AND EXISTS (
+            SELECT 1 FROM org_members
+            WHERE org_members.org_id = ai_cfg_org_prompts.org_id
+            AND org_members.user_id = auth.uid()
+        )
+    );
+
+-- 6. Create backward-compatible views (temporary - remove after 1 week)
+CREATE VIEW sys_rag AS SELECT * FROM ai_cfg_sys_rag;
+CREATE VIEW org_prompt_engineering AS SELECT * FROM ai_cfg_org_prompts;
+
+-- 7. Add comments documenting migration
+COMMENT ON TABLE ai_cfg_sys_rag IS 'RAG embedding configuration (migrated from sys_rag on 2026-01-14)';
+COMMENT ON TABLE ai_cfg_org_prompts IS 'Organization prompt engineering config (migrated from org_prompt_engineering on 2026-01-14)';
+```
+
+### 0.2 Code Changes
+
+**Lambda:** `templates/_modules-core/module-ai/backend/lambdas/ai-config-handler/lambda_function.py`
+
+Update all SQL queries referencing both tables:
+```python
+# Before:
+# SELECT * FROM sys_rag WHERE is_enabled = true
+# SELECT * FROM org_prompt_engineering WHERE org_id = %s
+
+# After:
+# SELECT * FROM ai_cfg_sys_rag WHERE is_enabled = true
+# SELECT * FROM ai_cfg_org_prompts WHERE org_id = %s
+```
+
+**Template Schemas:**
+- `templates/_modules-core/module-ai/db/schema/006-sys-rag.sql` → `006-ai-cfg-sys-rag.sql`
+  - Update CREATE TABLE statement to use new name
+  - Update all index names
+  - Update all constraint names
+  
+- `templates/_modules-core/module-ai/db/schema/007-org-prompt-engineering.sql` → `007-ai-cfg-org-prompts.sql`
+  - Update CREATE TABLE statement to use new name
+  - Update all index names
+  - Update all constraint names
+
 ### 0.3 Testing Checklist ✅ ALL COMPLETE
 
 - [x] Create migration SQL file in `scripts/migrations/`

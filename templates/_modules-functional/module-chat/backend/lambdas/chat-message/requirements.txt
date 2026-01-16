@@ -1,0 +1,17 @@
+# Chat Message Lambda Dependencies
+# Note: boto3 and botocore are provided by AWS Lambda runtime
+
+# HTTP requests for OpenAI API
+requests==2.31.0
+
+# PostgreSQL adapter (if not using org_common layer)
+psycopg2-binary==2.9.9
+
+# OpenAI SDK (optional, for direct API usage)
+openai==1.10.0
+
+# Note: org_common layer provides:
+# - Database connection utilities
+# - Response formatting
+# - Validation helpers
+# - Error classes
