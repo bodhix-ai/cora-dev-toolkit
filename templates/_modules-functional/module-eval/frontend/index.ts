@@ -157,3 +157,123 @@ export {
   selectCurrentProgress,
   selectOrgDelegation,
 } from "./store";
+
+// =============================================================================
+// HOOKS
+// =============================================================================
+
+export * from "./hooks";
+
+// Re-export commonly used hooks for convenience
+export {
+  // Admin hooks
+  useSysEvalConfig,
+  useSysEvalPrompts,
+  useOrgsDelegation,
+  useOrgEvalConfig,
+  useOrgEvalPrompts,
+  useEvalConfig,
+  useEvalDocTypes,
+  useEvalDocType,
+  useDocTypeSelect,
+  useEvalCriteriaSets,
+  useEvalCriteriaSetsByDocType,
+  useEvalCriteriaSet,
+  useCriteriaSetSelect,
+  useEvalCriteriaItems,
+  useSysStatusOptions,
+  useOrgStatusOptions,
+  useActiveStatusOptions,
+  useStatusOptionSelect,
+  // User hooks
+  useEvaluations,
+  useProcessingEvaluations,
+  useCompletedEvaluations,
+  useFailedEvaluations,
+  useEvaluationsByDocType,
+  useEvaluationStats,
+  useEvaluation,
+  useEvaluationResults,
+  useEvaluationSummary,
+  useEvaluationDocuments,
+  useEvaluationCitations,
+  useEvalProgress,
+  useProgressBar,
+  useAnyProcessing,
+  useProgressSteps,
+  useEvalExport,
+  useExportButtons,
+  useBulkExport,
+} from "./hooks";
+
+// =============================================================================
+// COMPONENTS
+// =============================================================================
+
+export * from "./components";
+
+// Re-export commonly used components for convenience
+export {
+  // Progress & Status
+  EvalProgressCard,
+  EvalProgressCardCompact,
+  EvalProgressList,
+  // Results Table
+  EvalResultsTable,
+  // Citations
+  CitationViewer,
+  CitationCard,
+  InlineCitation,
+  CitationTooltip,
+  CitationSummary,
+  // Q&A Results
+  EvalQAList,
+  EvalQACard,
+  EvalQAStats,
+  // Summary Panels
+  EvalSummaryPanel,
+  DocSummaryPanel,
+  ComplianceScore,
+  SummaryStats,
+  // Result Editing
+  ResultEditDialog,
+  ConfirmDialog,
+  // Export
+  EvalExportButton,
+  ExportButtonsGroup,
+  ExportStatus,
+  ExportDropdown,
+} from "./components";
+
+// =============================================================================
+// PAGES
+// =============================================================================
+
+export * from "./pages";
+
+// Re-export commonly used pages for convenience
+export {
+  // User pages
+  EvalListPage,
+  EvalDetailPage,
+  // System admin pages
+  SysEvalConfigPage,
+  SysEvalPromptsPage,
+  // Org admin pages
+  OrgEvalConfigPage,
+  OrgEvalPromptsPage,
+  OrgEvalDocTypesPage,
+  OrgEvalCriteriaPage,
+} from "./pages";
+
+// Re-export page prop types
+export type {
+  EvalListPageProps,
+  EvalDetailPageProps,
+  SysEvalConfigPageProps,
+  SysEvalPromptsPageProps,
+  OrgEvalConfigPageProps,
+  OrgEvalPromptsPageProps,
+  OrgEvalDocTypesPageProps,
+  OrgEvalCriteriaPageProps,
+} from "./pages";
