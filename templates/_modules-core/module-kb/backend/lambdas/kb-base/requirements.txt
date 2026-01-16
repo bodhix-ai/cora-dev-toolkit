@@ -1,0 +1,11 @@
+# KB Base Lambda Dependencies
+# Python 3.11 runtime
+
+# Database
+psycopg2-binary==2.9.9
+
+# AWS SDK
+boto3==1.34.0
+
+# HTTP Requests
+requests==2.31.0
