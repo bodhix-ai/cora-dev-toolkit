@@ -336,11 +336,27 @@ def load_org_common_signatures(base_path: str = None) -> Dict[str, Any]:
     if not org_common_path.exists():
         org_common_path = base_path / 'packages' / 'org-module' / 'backend' / 'layers' / 'org-common' / 'python' / 'org_common'
     
+    # Fall back to cora-dev-toolkit template location (when validating templates)
+    if not org_common_path.exists():
+        # If base_path is inside templates/, look for org_common at toolkit root
+        toolkit_root = base_path
+        while toolkit_root != toolkit_root.parent:
+            if toolkit_root.name == 'templates' or (toolkit_root / 'templates').exists():
+                # Found toolkit root or templates dir
+                if toolkit_root.name == 'templates':
+                    toolkit_root = toolkit_root.parent
+                toolkit_path = toolkit_root / 'templates' / '_modules-core' / 'module-access' / 'backend' / 'layers' / 'org-common' / 'python' / 'org_common'
+                if toolkit_path.exists():
+                    org_common_path = toolkit_path
+                    break
+            toolkit_root = toolkit_root.parent
+    
     if not org_common_path.exists():
         raise FileNotFoundError(
             f"org_common module not found. Searched:\n"
             f"  - {base_path / 'packages' / 'module-access' / 'backend' / 'layers' / 'org-common' / 'python' / 'org_common'}\n"
-            f"  - {base_path / 'packages' / 'org-module' / 'backend' / 'layers' / 'org-common' / 'python' / 'org_common'}"
+            f"  - {base_path / 'packages' / 'org-module' / 'backend' / 'layers' / 'org-common' / 'python' / 'org_common'}\n"
+            f"  - {base_path / 'templates' / '_modules-core' / 'module-access' / 'backend' / 'layers' / 'org-common' / 'python' / 'org_common'}"
         )
     
     loader = SignatureLoader(str(org_common_path))

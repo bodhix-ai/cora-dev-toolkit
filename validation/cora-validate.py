@@ -106,6 +106,11 @@ class ValidationReport:
 class CoraValidator:
     """Main CORA validation orchestrator."""
 
+    def __init__(self, verbose: bool = False, template_mode: bool = False):
+        self.verbose = verbose
+        self.template_mode = template_mode
+        self.validation_dir = Path(__file__).parent
+
     def clear_cache(self):
         """Clear Python bytecode cache to ensure fresh validation results."""
         import shutil
@@ -229,9 +234,6 @@ class CoraValidator:
         },
     }
 
-    def __init__(self, verbose: bool = False):
-        self.verbose = verbose
-        self.validation_dir = Path(__file__).parent
 
     def log(self, message: str):
         """Log message if verbose mode enabled."""
@@ -314,11 +316,14 @@ class CoraValidator:
             elif cli_style == "click_env":
                 # Click-based with --path flag and .env file: --path /path --output json
                 # Note: schema-validator requires .env file in its directory
+                # In template mode, use --static flag for schema validation
                 cmd = [
                     sys.executable, "-m", module_name,
                     "--path", target_path,
                     "--output", "json"
                 ]
+                if self.template_mode:
+                    cmd.append("--static")
             else:
                 # Default to argparse style
                 cmd = [
@@ -883,6 +888,11 @@ Examples:
             action="store_true",
             help="Disable colored output"
         )
+        p.add_argument(
+            "--template-mode",
+            action="store_true",
+            help="Template validation mode (no live database required). Uses static schema parsing."
+        )
 
     # Project validation
     project_parser = subparsers.add_parser("project", help="Validate a CORA project")
@@ -993,7 +1003,8 @@ def main():
         return 1
 
     # Run validation
-    validator = CoraValidator(verbose=args.verbose)
+    template_mode = getattr(args, 'template_mode', False)
+    validator = CoraValidator(verbose=args.verbose, template_mode=template_mode)
     
     if args.command == "project":
         report = validator.validate_project(
