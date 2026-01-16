@@ -132,8 +132,21 @@ class CoraComplianceChecker:
         
         return sorted(lambda_files)
     
-    def check_standard_1_response_format(self, content: str, common_alias: str) -> StandardCheck:
+    def check_standard_1_response_format(self, content: str, common_alias: str, lambda_name: str = "") -> StandardCheck:
         """Check Standard 1: org_common Response Format"""
+        # Whitelist: SQS processors don't use HTTP response format
+        is_sqs_processor = any(sj in lambda_name for sj in self.SCHEDULED_JOB_LAMBDAS)
+        
+        if is_sqs_processor:
+            return StandardCheck(
+                standard_number=1,
+                standard_name="org_common Response Format",
+                is_compliant=True,
+                score=1.0,
+                details=["ℹ SQS/EventBridge triggered Lambda", "✓ HTTP response format not required"],
+                issues=[]
+            )
+        
         has_import = bool(self.ORG_COMMON_IMPORT.search(content))
         
         uses_responses = []
@@ -180,8 +193,9 @@ class CoraComplianceChecker:
             issues=issues
         )
     
-    # Scheduled/background jobs that don't receive user requests
-    SCHEDULED_JOB_LAMBDAS = ['cleanup']
+    # Scheduled/background jobs and SQS processors that don't receive user requests
+    # These Lambdas are triggered by EventBridge or SQS, not API Gateway
+    SCHEDULED_JOB_LAMBDAS = ['cleanup', 'processor']
     
     def check_standard_2_authentication(self, content: str, lambda_name: str = "") -> StandardCheck:
         """Check Standard 2: Authentication & Authorization"""
@@ -527,7 +541,7 @@ class CoraComplianceChecker:
         
         # Check all 7 standards (pass lambda_name for whitelisting scheduled jobs)
         standards = [
-            self.check_standard_1_response_format(content, common_alias),
+            self.check_standard_1_response_format(content, common_alias, lambda_name),
             self.check_standard_2_authentication(content, lambda_name),
             self.check_standard_3_multi_tenancy(content, lambda_name),
             self.check_standard_4_validation(content, lambda_name),
