@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "Automated document evaluation against configurable compliance criteria with AI-driven assessments",
   "type": "functional",
-  "status": "in-progress",
+  "status": "complete",
   "dependencies": {
-    "core": ["module-access", "module-ai", "module-mgmt"],
-    "functional": ["module-kb", "module-ws"]
+    "core": ["module-access", "module-ai", "module-kb", "module-mgmt"],
+    "functional": ["module-ws"]
   },
   "database": {
     "tables": [
@@ -58,19 +58,19 @@
     "pages": [
       "EvalListPage",
       "EvalDetailPage",
-      "EvalAdminConfigPage",
-      "EvalDocTypesPage",
-      "EvalCriteriaPage"
+      "SysEvalConfigPage",
+      "SysEvalPromptsPage",
+      "OrgEvalConfigPage",
+      "OrgEvalPromptsPage",
+      "OrgEvalDocTypesPage",
+      "OrgEvalCriteriaPage"
     ],
     "components": [
-      "EvalDocUpload",
       "EvalProgressCard",
       "EvalResultsTable",
-      "EvalDetailView",
-      "DocSummaryPanel",
+      "CitationViewer",
       "EvalQAList",
       "EvalSummaryPanel",
-      "CitationViewer",
       "ResultEditDialog",
       "EvalExportButton",
       "DocTypeManager",
@@ -83,11 +83,13 @@
       "OrgDelegationManager"
     ],
     "hooks": [
-      "useEval",
       "useEvalConfig",
       "useEvalDocTypes",
-      "useEvalCriteria",
-      "useEvalResults",
+      "useEvalCriteriaSets",
+      "useEvalStatusOptions",
+      "useEvaluations",
+      "useEvaluation",
+      "useEvalProgress",
       "useEvalExport"
     ],
     "store": "evalStore",
