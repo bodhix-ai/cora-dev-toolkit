@@ -26,8 +26,6 @@ import boto3
 import org_common as common
 
 # Environment variables
-SUPABASE_URL = os.environ.get('SUPABASE_URL')
-SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
 AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
 
 # AWS clients
@@ -50,15 +48,13 @@ def lambda_handler(event, context):
         for record in event.get('Records', []):
             process_sqs_message(record)
         
-        return {
-            'statusCode': 200,
-            'body': json.dumps({'message': 'Processing complete'})
-        }
+        return common.success_response({'message': 'Processing complete'})
     
     except Exception as e:
         print(f"Unhandled error in lambda_handler: {str(e)}")
         print(traceback.format_exc())
-        raise  # Re-raise to send message to DLQ
+        return common.internal_error_response('Processing failed')
+
 
 
 def process_sqs_message(record: Dict):
@@ -78,8 +74,23 @@ def process_sqs_message(record: Dict):
         
         print(f"Processing document {document_id} from {s3_bucket}/{s3_key}")
         
+        # Get document to extract org_id (CORA Compliance)
+        document = common.find_one(
+            table='kb_docs',
+            filters={'id': document_id, 'is_deleted': False}
+        )
+        
+        if not document:
+            print(f"Document {document_id} not found")
+            return
+        
+        org_id = document.get('org_id')
+        if not org_id:
+            print(f"Document {document_id} has no org_id")
+            return
+        
         # Update status to processing
-        update_document_status(document_id, 'processing')
+        update_document_status(document_id, org_id, 'processing')
         
         # Process document
         if action == 'index':
@@ -96,11 +107,30 @@ def process_sqs_message(record: Dict):
 def process_document(document_id: str, kb_id: str, s3_bucket: str, s3_key: str):
     """Main document processing pipeline."""
     try:
-        # Step 1: Download document from S3
+        # Step 1: Get document and extract org_id for multi-tenancy validation (CORA Compliance)
+        document = common.find_one(
+            table='kb_docs',
+            filters={'id': document_id, 'is_deleted': False}
+        )
+        
+        if not document:
+            raise ValueError(f"Document {document_id} not found")
+        
+        org_id = document.get('org_id')
+        if not org_id:
+            raise ValueError(f"Document {document_id} has no org_id")
+        
+        # Validate document belongs to the specified KB
+        if document.get('kb_id') != kb_id:
+            raise ValueError(f"Document {document_id} does not belong to KB {kb_id}")
+        
+        print(f"Processing document {document_id} for org {org_id}")
+        
+        # Step 2: Download document from S3
         print(f"Downloading document from S3: {s3_key}")
         document_bytes, mime_type = download_from_s3(s3_bucket, s3_key)
         
-        # Step 2: Parse document based on MIME type
+        # Step 3: Parse document based on MIME type
         print(f"Parsing document (MIME: {mime_type})")
         text, metadata = parse_document(document_bytes, mime_type, s3_key)
         
@@ -109,37 +139,37 @@ def process_document(document_id: str, kb_id: str, s3_bucket: str, s3_key: str):
         
         print(f"Extracted {len(text)} characters from document")
         
-        # Step 3: Get KB config for chunking parameters
-        kb_config = get_kb_config(kb_id)
+        # Step 4: Get KB config for chunking parameters (with org_id filter)
+        kb_config = get_kb_config(kb_id, org_id)
         chunk_size = kb_config.get('chunkSize', DEFAULT_CHUNK_SIZE)
         chunk_overlap = kb_config.get('chunkOverlap', DEFAULT_CHUNK_OVERLAP)
         
-        # Step 4: Chunk text
+        # Step 5: Chunk text
         print(f"Chunking text (size: {chunk_size}, overlap: {chunk_overlap})")
         chunks = chunk_text(text, chunk_size, chunk_overlap)
         
         print(f"Created {len(chunks)} chunks")
         
-        # Step 5: Get embedding configuration
+        # Step 6: Get embedding configuration
         embedding_config = get_embedding_config()
         embedding_model = embedding_config.get('model', DEFAULT_EMBEDDING_MODEL)
         
-        # Step 6: Generate embeddings
-        print(f"Generating embeddings with model: {embedding_model}")
+        # Step 7: Generate embeddings
+        print(f"Generating embeddings with model: {embedding_model})")
         embeddings = generate_embeddings(chunks, embedding_model)
         
         if len(embeddings) != len(chunks):
             raise ValueError(f"Embedding count mismatch: {len(embeddings)} != {len(chunks)}")
         
-        # Step 7: Store chunks with embeddings
+        # Step 8: Store chunks with embeddings (with org_id for multi-tenancy)
         print(f"Storing {len(chunks)} chunks in database")
-        store_chunks(document_id, kb_id, chunks, embeddings, embedding_model)
+        store_chunks(document_id, kb_id, org_id, chunks, embeddings, embedding_model)
         
-        # Step 8: Update document metadata
-        update_document_metadata(document_id, metadata, len(chunks))
+        # Step 9: Update document metadata (with org_id filter)
+        update_document_metadata(document_id, org_id, metadata, len(chunks))
         
-        # Step 9: Update status to indexed
-        update_document_status(document_id, 'indexed')
+        # Step 10: Update status to indexed (with org_id filter)
+        update_document_status(document_id, org_id, 'indexed')
         
         print(f"Successfully processed document {document_id}")
     
@@ -148,8 +178,24 @@ def process_document(document_id: str, kb_id: str, s3_bucket: str, s3_key: str):
         print(f"Error processing document {document_id}: {error_message}")
         print(traceback.format_exc())
         
-        # Update status to failed with error message
-        update_document_status(document_id, 'failed', error_message)
+        # Update status to failed with error message (with org_id if available)
+        try:
+            # Try to get org_id from document for status update
+            document = common.find_one(
+                table='kb_docs',
+                filters={'id': document_id}
+            )
+            if document and document.get('org_id'):
+                update_document_status(document_id, document['org_id'], 'failed', error_message)
+            else:
+                # Fallback without org_id filter (shouldn't happen but handle gracefully)
+                common.update_one(
+                    table='kb_docs',
+                    filters={'id': document_id},
+                    data={'status': 'failed', 'error_message': error_message}
+                )
+        except Exception as update_error:
+            print(f"Error updating failed status: {str(update_error)}")
 
 
 # ============================================================================
@@ -470,107 +516,94 @@ def generate_bedrock_embeddings(chunks: List[Dict], model: str) -> List[List[flo
 # Database Operations
 # ============================================================================
 
-def get_kb_config(kb_id: str) -> Dict[str, Any]:
-    """Get KB configuration from database."""
+def get_kb_config(kb_id: str, org_id: str) -> Dict[str, Any]:
+    """Get KB configuration from database with org_id filter (CORA Compliance)."""
     try:
-        with common.get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    SELECT config FROM kb_bases
-                    WHERE id = %s AND is_deleted = false
-                """, (kb_id,))
-                
-                result = cur.fetchone()
-                
-                if not result:
-                    return {}
-                
-                return result[0] or {}
+        kb = common.find_one(
+            table='kb_bases',
+            filters={'id': kb_id, 'org_id': org_id, 'is_deleted': False}
+        )
+        
+        if not kb:
+            raise ValueError(f"KB {kb_id} not found or access denied")
+        
+        return kb.get('config') or {}
     
     except Exception as e:
         print(f"Error getting KB config: {str(e)}")
-        return {}
+        raise
 
 
-def store_chunks(document_id: str, kb_id: str, chunks: List[Dict], 
+def store_chunks(document_id: str, kb_id: str, org_id: str, chunks: List[Dict], 
                 embeddings: List[List[float]], embedding_model: str):
-    """Store chunks with embeddings in database."""
+    """Store chunks with embeddings in database (with org_id for multi-tenancy)."""
     try:
-        with common.get_db_connection() as conn:
-            with conn.cursor() as cur:
-                for chunk, embedding in zip(chunks, embeddings):
-                    # Convert embedding list to pgvector format
-                    embedding_str = '[' + ','.join(map(str, embedding)) + ']'
-                    
-                    cur.execute("""
-                        INSERT INTO kb_chunks 
-                        (kb_id, document_id, content, embedding, chunk_index, 
-                         token_count, metadata, embedding_model)
-                        VALUES (%s, %s, %s, %s::vector, %s, %s, %s, %s)
-                    """, (
-                        kb_id,
-                        document_id,
-                        chunk['content'],
-                        embedding_str,
-                        chunk['chunk_index'],
-                        estimate_token_count(chunk['content']),
-                        json.dumps(chunk['metadata']),
-                        embedding_model
-                    ))
-                
-                conn.commit()
-                
-                print(f"Stored {len(chunks)} chunks for document {document_id}")
+        for chunk, embedding in zip(chunks, embeddings):
+            # Convert embedding list to pgvector format string
+            embedding_str = '[' + ','.join(map(str, embedding)) + ']'
+            
+            # Use common.execute_query for raw SQL with pgvector
+            # Note: kb_chunks table inherits org_id from kb_bases via foreign key
+            common.execute_query(
+                """
+                INSERT INTO kb_chunks 
+                (kb_id, document_id, content, embedding, chunk_index, 
+                 token_count, metadata, embedding_model, org_id)
+                VALUES ($1, $2, $3, $4::vector, $5, $6, $7, $8, $9)
+                """,
+                [
+                    kb_id,
+                    document_id,
+                    chunk['content'],
+                    embedding_str,
+                    chunk['chunk_index'],
+                    estimate_token_count(chunk['content']),
+                    json.dumps(chunk['metadata']),
+                    embedding_model,
+                    org_id
+                ]
+            )
+        
+        print(f"Stored {len(chunks)} chunks for document {document_id}")
     
     except Exception as e:
         raise ValueError(f"Failed to store chunks: {str(e)}")
 
 
-def update_document_status(document_id: str, status: str, error_message: Optional[str] = None):
-    """Update document processing status."""
+def update_document_status(document_id: str, org_id: str, status: str, error_message: Optional[str] = None):
+    """Update document processing status with org_id filter (CORA Compliance)."""
     try:
-        with common.get_db_connection() as conn:
-            with conn.cursor() as cur:
-                if error_message:
-                    cur.execute("""
-                        UPDATE kb_docs
-                        SET status = %s,
-                            error_message = %s,
-                            updated_at = NOW()
-                        WHERE id = %s
-                    """, (status, error_message, document_id))
-                else:
-                    cur.execute("""
-                        UPDATE kb_docs
-                        SET status = %s,
-                            error_message = NULL,
-                            updated_at = NOW()
-                        WHERE id = %s
-                    """, (status, document_id))
-                
-                conn.commit()
-                
-                print(f"Updated document {document_id} status to: {status}")
+        update_data = {'status': status}
+        
+        if error_message:
+            update_data['error_message'] = error_message
+        else:
+            update_data['error_message'] = None
+        
+        common.update_one(
+            table='kb_docs',
+            filters={'id': document_id, 'org_id': org_id},
+            data=update_data
+        )
+        
+        print(f"Updated document {document_id} status to: {status}")
     
     except Exception as e:
         print(f"Error updating document status: {str(e)}")
         # Don't raise - status update failure shouldn't fail processing
 
 
-def update_document_metadata(document_id: str, metadata: Dict, chunk_count: int):
-    """Update document metadata after successful processing."""
+def update_document_metadata(document_id: str, org_id: str, metadata: Dict, chunk_count: int):
+    """Update document metadata after successful processing with org_id filter (CORA Compliance)."""
     try:
-        with common.get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    UPDATE kb_docs
-                    SET metadata = %s,
-                        chunk_count = %s,
-                        updated_at = NOW()
-                    WHERE id = %s
-                """, (json.dumps(metadata), chunk_count, document_id))
-                
-                conn.commit()
+        common.update_one(
+            table='kb_docs',
+            filters={'id': document_id, 'org_id': org_id},
+            data={
+                'metadata': metadata,
+                'chunk_count': chunk_count
+            }
+        )
     
     except Exception as e:
         print(f"Error updating document metadata: {str(e)}")
