@@ -13,20 +13,16 @@ import {
   ChevronLeft,
   BookOpen,
   Share2,
-  MoreVertical,
   Loader2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+  Box,
+  IconButton,
+  Button,
+  Chip,
+  Typography,
+  CircularProgress,
+} from "@mui/material";
 import { useSession } from "next-auth/react";
 import { useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
 import { ChatMessage } from "../components/ChatMessage";
@@ -201,80 +197,75 @@ export function ChatDetailPage({
 
   if (messagesLoading && !session) {
     return (
-      <div className={cn("flex items-center justify-center h-full", className)}>
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+      <Box className={className} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
   if (!session) {
     return (
-      <div className={cn("flex flex-col items-center justify-center h-full gap-4", className)}>
-        <MessageSquare className="h-12 w-12 text-muted-foreground opacity-50" />
-        <p className="text-muted-foreground">Chat session not found</p>
+      <Box className={className} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 2 }}>
+        <MessageSquare size={48} style={{ opacity: 0.5 }} color="text.secondary" />
+        <Typography variant="body2" color="text.secondary">Chat session not found</Typography>
         {showBackButton && onBack && (
-          <Button variant="outline" onClick={onBack}>
+          <Button variant="outlined" onClick={onBack}>
             Go Back
           </Button>
         )}
-      </div>
+      </Box>
     );
   }
 
   return (
-    <div className={cn("flex flex-col h-full", className)}>
+    <Box className={className} sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-background">
-        <div className="flex items-center gap-3 min-w-0">
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
           {showBackButton && onBack && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onBack}
-              className="flex-shrink-0"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
+            <IconButton onClick={onBack} sx={{ flexShrink: 0 }}>
+              <ChevronLeft size={20} />
+            </IconButton>
           )}
-          <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-semibold truncate">{session.title}</h1>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography variant="h6" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {session.title}
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {session.isSharedWithWorkspace && (
-                <Badge variant="secondary" className="text-xs">
-                  Workspace
-                </Badge>
+                <Chip label="Workspace" size="small" variant="outlined" />
               )}
               {groundedKbs.length > 0 && (
-                <Badge variant="outline" className="text-xs gap-1">
-                  <BookOpen className="h-3 w-3" />
-                  {groundedKbs.length} KB{groundedKbs.length > 1 ? "s" : ""}
-                </Badge>
+                <Chip 
+                  icon={<BookOpen size={12} />}
+                  label={`${groundedKbs.length} KB${groundedKbs.length > 1 ? "s" : ""}`}
+                  size="small"
+                  variant="outlined"
+                />
               )}
               {session.metadata.messageCount !== undefined && (
-                <span>{session.metadata.messageCount} messages</span>
+                <Typography variant="caption" color="text.secondary">
+                  {session.metadata.messageCount} messages
+                </Typography>
               )}
-            </div>
-          </div>
-        </div>
+            </Box>
+          </Box>
+        </Box>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+          <IconButton
             onClick={() => setKbDialogOpen(true)}
             title="Knowledge Base Grounding"
           >
-            <BookOpen className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
+            <BookOpen size={16} />
+          </IconButton>
+          <IconButton
             onClick={() => setShareDialogOpen(true)}
             title="Share Chat"
           >
-            <Share2 className="h-4 w-4" />
-          </Button>
+            <Share2 size={16} />
+          </IconButton>
           <ChatOptionsMenu
             chat={session}
             onShareClick={() => setShareDialogOpen(true)}
@@ -282,31 +273,32 @@ export function ChatDetailPage({
             onError={handleError}
             onSuccess={handleSuccess}
           />
-        </div>
-      </div>
+        </Box>
+      </Box>
 
       {/* Messages */}
-      <ScrollArea
-        className="flex-1"
+      <Box
         ref={scrollAreaRef}
-        onScrollCapture={handleScroll}
+        onScroll={handleScroll}
+        sx={{
+          flex: 1,
+          overflow: 'auto',
+        }}
       >
-        <div className="flex flex-col p-4 gap-4">
+        <Box sx={{ display: 'flex', flexDirection: 'column', p: 2, gap: 2 }}>
           {/* Load More Button */}
           {hasMoreMessages && (
-            <div className="flex justify-center">
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
               <Button
-                variant="ghost"
-                size="sm"
+                variant="text"
+                size="small"
                 onClick={handleLoadMore}
                 disabled={messagesLoading}
+                startIcon={messagesLoading ? <CircularProgress size={16} /> : null}
               >
-                {messagesLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : null}
                 Load Earlier Messages
               </Button>
-            </div>
+            </Box>
           )}
 
           {/* Message List */}
@@ -337,25 +329,25 @@ export function ChatDetailPage({
 
           {/* Empty State */}
           {messages.length === 0 && !isStreaming && (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <MessageSquare className="h-12 w-12 mb-4 opacity-50" />
-              <p className="text-sm">No messages yet. Start the conversation!</p>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 6, color: 'text.secondary' }}>
+              <MessageSquare size={48} style={{ marginBottom: 16, opacity: 0.5 }} />
+              <Typography variant="body2">No messages yet. Start the conversation!</Typography>
               {groundedKbs.length > 0 && (
-                <p className="text-xs mt-2">
+                <Typography variant="caption" sx={{ mt: 1 }}>
                   This chat is grounded in {groundedKbs.length} knowledge base
                   {groundedKbs.length > 1 ? "s" : ""}.
-                </p>
+                </Typography>
               )}
-            </div>
+            </Box>
           )}
 
           {/* Scroll anchor */}
           <div ref={messagesEndRef} />
-        </div>
-      </ScrollArea>
+        </Box>
+      </Box>
 
       {/* Input */}
-      <div className="border-t bg-background p-4">
+      <Box sx={{ borderTop: 1, borderColor: 'divider', bgcolor: 'background.paper', p: 2 }}>
         <ChatInput
           onSend={handleSendMessage}
           onCancel={canCancel ? cancelStreaming : undefined}
@@ -371,7 +363,7 @@ export function ChatDetailPage({
           }
           onManageKBs={() => setKbDialogOpen(true)}
         />
-      </div>
+      </Box>
 
       {/* Share Dialog */}
       <ShareChatDialog
@@ -392,7 +384,7 @@ export function ChatDetailPage({
         onError={handleError}
         onSuccess={() => handleSuccess("kb_grounding")}
       />
-    </div>
+    </Box>
   );
 }
 

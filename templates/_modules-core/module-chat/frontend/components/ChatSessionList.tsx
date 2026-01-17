@@ -18,19 +18,22 @@ import {
   Plus,
   Loader2,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuCheckboxItem,
-} from "@/components/ui/dropdown-menu";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
+  TextField,
+  Button,
+  IconButton,
+  Menu,
+  MenuItem,
+  Box,
+  Typography,
+  CircularProgress,
+  FormControlLabel,
+  Checkbox,
+  Divider,
+  InputAdornment,
+  ListItemIcon,
+  ListItemText,
+} from "@mui/material";
 import { useChat } from "../hooks/useChat";
 import { ChatOptionsMenu } from "./ChatOptionsMenu";
 import type { ChatSession, ListSessionsOptions } from "../types";
@@ -116,12 +119,23 @@ function ChatSessionItem({
   }, [lastMessageAt]);
 
   return (
-    <div
-      className={cn(
-        "group flex items-center gap-2 rounded-lg p-3 cursor-pointer transition-colors",
-        "hover:bg-muted/50",
-        isSelected && "bg-muted"
-      )}
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        p: 1.5,
+        borderRadius: 1,
+        cursor: 'pointer',
+        bgcolor: isSelected ? 'action.selected' : 'transparent',
+        '&:hover': {
+          bgcolor: isSelected ? 'action.selected' : 'action.hover',
+          '& .options-menu': {
+            opacity: 1,
+          },
+        },
+        transition: 'background-color 0.2s',
+      }}
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -132,40 +146,61 @@ function ChatSessionItem({
       }}
     >
       {/* Icon */}
-      <div className="flex-shrink-0">
+      <Box sx={{ flexShrink: 0 }}>
         {session.isFavorited ? (
-          <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+          <Star size={16} style={{ color: '#fbbf24', fill: '#fbbf24' }} />
         ) : session.isSharedWithWorkspace ? (
-          <Users className="h-4 w-4 text-muted-foreground" />
+          <Users size={16} color="text.secondary" />
         ) : (
-          <MessageSquare className="h-4 w-4 text-muted-foreground" />
+          <MessageSquare size={16} color="text.secondary" />
         )}
-      </div>
+      </Box>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2">
-          <span className="font-medium truncate text-sm">{session.title}</span>
-          <span className="text-xs text-muted-foreground flex-shrink-0">
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: 500,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {session.title}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
             {formattedDate}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {session.metadata.messageCount !== undefined && (
-            <span>{session.metadata.messageCount} messages</span>
+            <Typography variant="caption" color="text.secondary">
+              {session.metadata.messageCount} messages
+            </Typography>
           )}
           {session.accessType === "shared" && (
-            <span className="text-blue-500">Shared with you</span>
+            <Typography variant="caption" sx={{ color: 'info.main' }}>
+              Shared with you
+            </Typography>
           )}
           {session.accessType === "workspace" && (
-            <span className="text-green-500">Workspace</span>
+            <Typography variant="caption" sx={{ color: 'success.main' }}>
+              Workspace
+            </Typography>
           )}
-        </div>
-      </div>
+        </Box>
+      </Box>
 
       {/* Options Menu */}
-      <div
-        className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+      <Box
+        className="options-menu"
+        sx={{
+          flexShrink: 0,
+          opacity: 0,
+          transition: 'opacity 0.2s',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <ChatOptionsMenu
@@ -174,10 +209,10 @@ function ChatSessionItem({
           onKBGroundingClick={onKBGroundingClick}
           onError={onError}
           onSuccess={onSuccess}
-          size="sm"
+          size="small"
         />
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }
 
@@ -224,6 +259,7 @@ export function ChatSessionList({
   // === State ===
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [filterAnchorEl, setFilterAnchorEl] = useState<null | HTMLElement>(null);
 
   // Debounce search input
   useEffect(() => {
@@ -249,11 +285,6 @@ export function ChatSessionList({
     autoLoad: true,
   });
 
-  // Report errors via callback
-  useEffect(() => {
-    // Error handling is done at the component level if needed
-  }, [onError]);
-
   // Update search filter when debounced search changes
   useEffect(() => {
     setSearch(debouncedSearch);
@@ -267,6 +298,7 @@ export function ChatSessionList({
   const handleSortChange = useCallback(
     (sortBy: "createdAt" | "updatedAt" | "title", sortOrder: "asc" | "desc") => {
       setSort(sortBy, sortOrder);
+      setFilterAnchorEl(null);
     },
     [setSort]
   );
@@ -292,97 +324,145 @@ export function ChatSessionList({
 
   // === Render ===
   return (
-    <div className={cn("flex flex-col", className)} style={{ height }}>
+    <Box className={className} sx={{ display: 'flex', flexDirection: 'column', height }}>
       {/* Header */}
-      <div className="flex items-center gap-2 p-3 border-b">
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.5, borderBottom: 1, borderColor: 'divider' }}>
         {showNewChatButton && (
-          <Button onClick={onNewChat} size="sm" className="flex-shrink-0">
-            <Plus className="h-4 w-4 mr-1" />
+          <Button
+            onClick={onNewChat}
+            size="small"
+            variant="contained"
+            startIcon={<Plus size={16} />}
+            sx={{ flexShrink: 0 }}
+          >
             New Chat
           </Button>
         )}
 
         {/* Search */}
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search chats..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="pl-8 h-9"
-          />
-        </div>
+        <TextField
+          placeholder="Search chats..."
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          size="small"
+          fullWidth
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search size={16} />
+              </InputAdornment>
+            ),
+          }}
+        />
 
         {/* Filters */}
         {showFilters && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="h-9 w-9">
-                <Filter className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Filters</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem
-                checked={filters.favoritesOnly}
-                onCheckedChange={handleToggleFavoritesOnly}
-              >
-                <Star className="mr-2 h-4 w-4" />
-                Favorites Only
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel>Sort By</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() => handleSortChange("updatedAt", "desc")}
-              >
-                <SortDesc className="mr-2 h-4 w-4" />
-                Latest Activity
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleSortChange("createdAt", "desc")}
-              >
-                <SortDesc className="mr-2 h-4 w-4" />
-                Newest First
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleSortChange("createdAt", "asc")}
-              >
-                <SortAsc className="mr-2 h-4 w-4" />
-                Oldest First
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleSortChange("title", "asc")}
-              >
-                <SortAsc className="mr-2 h-4 w-4" />
-                Title (A-Z)
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <>
+            <IconButton
+              size="small"
+              onClick={(e) => setFilterAnchorEl(e.currentTarget)}
+              sx={{ flexShrink: 0 }}
+            >
+              <Filter size={16} />
+            </IconButton>
+            <Menu
+              anchorEl={filterAnchorEl}
+              open={Boolean(filterAnchorEl)}
+              onClose={() => setFilterAnchorEl(null)}
+              anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'right',
+              }}
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'right',
+              }}
+            >
+              <Box sx={{ px: 2, py: 1 }}>
+                <Typography variant="caption" fontWeight="bold">
+                  Filters
+                </Typography>
+              </Box>
+              <Divider />
+              <MenuItem>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={filters.favoritesOnly}
+                      onChange={handleToggleFavoritesOnly}
+                      size="small"
+                    />
+                  }
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Star size={14} />
+                      <Typography variant="body2">Favorites Only</Typography>
+                    </Box>
+                  }
+                />
+              </MenuItem>
+              <Divider />
+              <Box sx={{ px: 2, py: 1 }}>
+                <Typography variant="caption" fontWeight="bold">
+                  Sort By
+                </Typography>
+              </Box>
+              <MenuItem onClick={() => handleSortChange("updatedAt", "desc")}>
+                <ListItemIcon>
+                  <SortDesc size={16} />
+                </ListItemIcon>
+                <ListItemText>Latest Activity</ListItemText>
+              </MenuItem>
+              <MenuItem onClick={() => handleSortChange("createdAt", "desc")}>
+                <ListItemIcon>
+                  <SortDesc size={16} />
+                </ListItemIcon>
+                <ListItemText>Newest First</ListItemText>
+              </MenuItem>
+              <MenuItem onClick={() => handleSortChange("createdAt", "asc")}>
+                <ListItemIcon>
+                  <SortAsc size={16} />
+                </ListItemIcon>
+                <ListItemText>Oldest First</ListItemText>
+              </MenuItem>
+              <MenuItem onClick={() => handleSortChange("title", "asc")}>
+                <ListItemIcon>
+                  <SortAsc size={16} />
+                </ListItemIcon>
+                <ListItemText>Title (A-Z)</ListItemText>
+              </MenuItem>
+            </Menu>
+          </>
         )}
-      </div>
+      </Box>
 
       {/* Session List */}
-      <ScrollArea className="flex-1" onScrollCapture={handleScroll}>
-        <div className="p-2 space-y-1">
+      <Box
+        sx={{
+          flex: 1,
+          overflow: 'auto',
+        }}
+        onScroll={handleScroll}
+      >
+        <Box sx={{ p: 1 }}>
           {sessions.length === 0 && !isLoading ? (
-            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-              <MessageSquare className="h-12 w-12 mb-4 opacity-50" />
-              <p className="text-sm">
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 8, color: 'text.secondary' }}>
+              <MessageSquare size={48} style={{ marginBottom: 16, opacity: 0.5 }} />
+              <Typography variant="body2">
                 {debouncedSearch
                   ? "No chats match your search"
                   : "No chat sessions yet"}
-              </p>
+              </Typography>
               {!debouncedSearch && showNewChatButton && (
                 <Button
-                  variant="link"
+                  variant="text"
                   onClick={onNewChat}
-                  className="mt-2"
+                  sx={{ mt: 1 }}
                 >
                   Start a new chat
                 </Button>
               )}
-            </div>
+            </Box>
           ) : (
             <>
               {sessions.map((session) => (
@@ -400,26 +480,27 @@ export function ChatSessionList({
 
               {/* Loading Indicator */}
               {isLoading && (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                  <CircularProgress size={24} />
+                </Box>
               )}
 
               {/* Load More Button (fallback) */}
               {!isLoading && hasMoreSessions && (
                 <Button
-                  variant="ghost"
+                  variant="text"
                   onClick={handleLoadMore}
-                  className="w-full mt-2"
+                  fullWidth
+                  sx={{ mt: 1 }}
                 >
                   Load More
                 </Button>
               )}
             </>
           )}
-        </div>
-      </ScrollArea>
-    </div>
+        </Box>
+      </Box>
+    </Box>
   );
 }
 

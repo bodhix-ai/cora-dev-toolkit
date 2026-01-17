@@ -8,10 +8,14 @@
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Send, Square, Loader2, BookOpen } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { 
+  TextField, 
+  Button, 
+  IconButton, 
+  Chip, 
+  Box, 
+  Typography 
+} from "@mui/material";
 import type { KBInfo } from "../types";
 
 // =============================================================================
@@ -82,15 +86,6 @@ export function ChatInput({
   const [isSending, setIsSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-resize textarea
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = "auto";
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
-    }
-  }, [message]);
-
   // Auto-focus
   useEffect(() => {
     if (autoFocus && textareaRef.current) {
@@ -107,10 +102,6 @@ export function ChatInput({
     try {
       await onSend(trimmedMessage);
       setMessage("");
-      // Reset textarea height
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "auto";
-      }
     } finally {
       setIsSending(false);
     }
@@ -132,110 +123,132 @@ export function ChatInput({
   const charCount = message.length;
   const charCountColor =
     charCount > maxLength * 0.9
-      ? "text-destructive"
+      ? "error.main"
       : charCount > maxLength * 0.75
-        ? "text-warning"
-        : "text-muted-foreground";
+        ? "warning.main"
+        : "text.secondary";
 
   const isDisabled = disabled || isSending;
   const showCancel = isStreaming && onCancel;
   const canSend = message.trim().length > 0 && !isDisabled && !isStreaming;
 
   return (
-    <div className={cn("border-t bg-background p-4", className)}>
+    <Box 
+      className={className}
+      sx={{ 
+        borderTop: 1, 
+        borderColor: 'divider',
+        bgcolor: 'background.paper',
+        p: 2
+      }}
+    >
       {/* KB Grounding Indicator */}
       {groundedKbs.length > 0 && (
-        <div className="flex items-center gap-2 mb-2 flex-wrap">
-          <span className="text-xs text-muted-foreground flex items-center gap-1">
-            <BookOpen className="h-3 w-3" />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+          <Typography 
+            variant="caption" 
+            sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}
+          >
+            <BookOpen size={12} />
             Grounded in:
-          </span>
+          </Typography>
           {groundedKbs.slice(0, 3).map((kb) => (
-            <Badge key={kb.id} variant="secondary" className="text-xs">
-              {kb.name}
-            </Badge>
+            <Chip 
+              key={kb.id} 
+              label={kb.name}
+              size="small"
+              variant="outlined"
+            />
           ))}
           {groundedKbs.length > 3 && (
-            <Badge variant="outline" className="text-xs">
-              +{groundedKbs.length - 3} more
-            </Badge>
+            <Chip 
+              label={`+${groundedKbs.length - 3} more`}
+              size="small"
+              variant="outlined"
+            />
           )}
           {onManageKBs && (
             <Button
-              variant="ghost"
-              size="sm"
+              variant="text"
+              size="small"
               onClick={onManageKBs}
-              className="h-6 text-xs"
+              sx={{ minHeight: 24, px: 1, fontSize: '0.75rem' }}
             >
               Manage
             </Button>
           )}
-        </div>
+        </Box>
       )}
 
       {/* Input Row */}
-      <div className="flex items-end gap-2">
-        <div className="relative flex-1">
-          <Textarea
-            ref={textareaRef}
+      <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1 }}>
+        <Box sx={{ position: 'relative', flex: 1 }}>
+          <TextField
+            inputRef={textareaRef}
             value={message}
             onChange={(e) => setMessage(e.target.value.slice(0, maxLength))}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={isDisabled}
-            className={cn(
-              "min-h-[44px] max-h-[200px] resize-none pr-16",
-              "focus-visible:ring-1"
-            )}
-            rows={1}
+            multiline
+            maxRows={8}
+            fullWidth
+            variant="outlined"
+            size="small"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                pr: 8,
+              }
+            }}
           />
           {/* Character Count */}
-          <div
-            className={cn(
-              "absolute right-2 bottom-2 text-xs",
-              charCountColor
-            )}
+          <Typography
+            variant="caption"
+            sx={{
+              position: 'absolute',
+              right: 8,
+              bottom: 8,
+              color: charCountColor,
+            }}
           >
             {charCount}/{maxLength}
-          </div>
-        </div>
+          </Typography>
+        </Box>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-1">
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           {showCancel ? (
-            <Button
-              variant="destructive"
-              size="icon"
+            <IconButton
+              color="error"
               onClick={onCancel}
-              className="h-10 w-10"
               aria-label="Cancel"
+              sx={{ width: 40, height: 40 }}
             >
-              <Square className="h-4 w-4" />
-            </Button>
+              <Square size={16} />
+            </IconButton>
           ) : (
-            <Button
-              variant="default"
-              size="icon"
+            <IconButton
+              color="primary"
               onClick={handleSend}
               disabled={!canSend}
-              className="h-10 w-10"
               aria-label="Send message"
+              sx={{ width: 40, height: 40 }}
             >
               {isSending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 size={16} className="animate-spin" />
               ) : (
-                <Send className="h-4 w-4" />
+                <Send size={16} />
               )}
-            </Button>
+            </IconButton>
           )}
-        </div>
-      </div>
+        </Box>
+      </Box>
 
       {/* Hint */}
-      <p className="text-xs text-muted-foreground mt-2">
+      <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary' }}>
         Press Enter to send, Shift+Enter for new line
-      </p>
-    </div>
+      </Typography>
+    </Box>
   );
 }
 

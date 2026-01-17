@@ -20,18 +20,20 @@ import {
 } from "lucide-react";
 import {
   Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Chip,
+  Box,
+  Typography,
+  Checkbox,
+  FormControlLabel,
+  CircularProgress,
+  Paper,
+  InputAdornment,
+} from "@mui/material";
 import { useChatKBGrounding } from "../hooks/useChatKBGrounding";
 import type { KBInfo, ChatKBGrounding } from "../types";
 
@@ -65,9 +67,9 @@ interface KBItemProps {
 
 function KBItem({ kb, isGrounded, isLoading, onToggle }: KBItemProps) {
   const scopeIcon = {
-    system: <Globe className="h-3 w-3" />,
-    org: <Building2 className="h-3 w-3" />,
-    workspace: <Database className="h-3 w-3" />,
+    system: <Globe size={12} />,
+    org: <Building2 size={12} />,
+    workspace: <Database size={12} />,
   };
 
   const scopeLabel = {
@@ -77,14 +79,23 @@ function KBItem({ kb, isGrounded, isLoading, onToggle }: KBItemProps) {
   };
 
   return (
-    <div
-      className={cn(
-        "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
-        isGrounded
-          ? "border-primary bg-primary/5"
-          : "border-border hover:border-muted-foreground/50",
-        isLoading && "opacity-50 pointer-events-none"
-      )}
+    <Paper
+      sx={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 1.5,
+        p: 1.5,
+        cursor: 'pointer',
+        border: 1,
+        borderColor: isGrounded ? 'primary.main' : 'divider',
+        bgcolor: isGrounded ? 'primary.light' : 'background.paper',
+        opacity: isLoading ? 0.5 : 1,
+        pointerEvents: isLoading ? 'none' : 'auto',
+        '&:hover': {
+          borderColor: isGrounded ? 'primary.main' : 'text.secondary',
+        },
+        transition: 'all 0.2s',
+      }}
       onClick={onToggle}
       role="button"
       tabIndex={0}
@@ -99,40 +110,64 @@ function KBItem({ kb, isGrounded, isLoading, onToggle }: KBItemProps) {
       <Checkbox
         checked={isGrounded}
         disabled={isLoading}
-        className="mt-0.5"
+        size="small"
+        sx={{ mt: -0.5 }}
         aria-label={`${isGrounded ? "Remove" : "Add"} ${kb.name}`}
       />
 
       {/* KB Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <BookOpen className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium text-sm truncate">{kb.name}</span>
-          {isLoading && <Loader2 className="h-3 w-3 animate-spin" />}
-        </div>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <BookOpen size={16} color="text.secondary" />
+          <Typography
+            variant="body2"
+            fontWeight="medium"
+            sx={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {kb.name}
+          </Typography>
+          {isLoading && <CircularProgress size={12} />}
+        </Box>
         {kb.description && (
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              mt: 0.5,
+            }}
+          >
             {kb.description}
-          </p>
+          </Typography>
         )}
-        <div className="flex items-center gap-2 mt-2">
-          <Badge variant="outline" className="text-xs">
-            {scopeIcon[kb.scope]}
-            <span className="ml-1">{scopeLabel[kb.scope]}</span>
-          </Badge>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+          <Chip
+            icon={scopeIcon[kb.scope]}
+            label={scopeLabel[kb.scope]}
+            size="small"
+            variant="outlined"
+            sx={{ height: 20, fontSize: '0.625rem' }}
+          />
           {kb.documentCount !== undefined && (
-            <span className="text-xs text-muted-foreground">
+            <Typography variant="caption" color="text.secondary">
               {kb.documentCount} docs
-            </span>
+            </Typography>
           )}
-        </div>
-      </div>
+        </Box>
+      </Box>
 
       {/* Selected Indicator */}
       {isGrounded && !isLoading && (
-        <Check className="h-4 w-4 text-primary flex-shrink-0" />
+        <Check size={16} color="primary" style={{ flexShrink: 0 }} />
       )}
-    </div>
+    </Paper>
   );
 }
 
@@ -246,104 +281,156 @@ export function KBGroundingSelector({
   const renderGroup = (title: string, kbs: KBInfo[]) => {
     if (kbs.length === 0) return null;
     return (
-      <div className="space-y-2">
-        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+      <Box sx={{ mb: 2 }}>
+        <Typography
+          variant="caption"
+          fontWeight="medium"
+          color="text.secondary"
+          sx={{
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            display: 'block',
+            mb: 1,
+          }}
+        >
           {title}
-        </h4>
-        {kbs.map((kb) => (
-          <KBItem
-            key={kb.id}
-            kb={kb}
-            isGrounded={isGrounded(kb.id)}
-            isLoading={loadingKbs.has(kb.id)}
-            onToggle={() => handleToggle(kb)}
-          />
-        ))}
-      </div>
+        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {kbs.map((kb) => (
+            <KBItem
+              key={kb.id}
+              kb={kb}
+              isGrounded={isGrounded(kb.id)}
+              isLoading={loadingKbs.has(kb.id)}
+              onToggle={() => handleToggle(kb)}
+            />
+          ))}
+        </Box>
+      </Box>
     );
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
-            Knowledge Base Grounding
-          </DialogTitle>
-          <DialogDescription>
-            Select knowledge bases to ground this chat. The AI will use these
-            sources to provide informed answers.
-          </DialogDescription>
-        </DialogHeader>
+    <Dialog
+      open={open}
+      onClose={() => onOpenChange(false)}
+      maxWidth="sm"
+      fullWidth
+    >
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <BookOpen size={20} />
+        Knowledge Base Grounding
+      </DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Select knowledge bases to ground this chat. The AI will use these
+          sources to provide informed answers.
+        </Typography>
 
         {/* Currently Grounded */}
         {groundedKbs.length > 0 && (
-          <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-lg">
-            <span className="text-xs text-muted-foreground w-full mb-1">
+          <Paper
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 1,
+              p: 1.5,
+              bgcolor: 'action.hover',
+              mb: 2,
+            }}
+          >
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ width: '100%', mb: 0.5 }}
+            >
               Currently grounded ({groundedKbs.length}):
-            </span>
+            </Typography>
             {groundedKbs.map((grounding) => (
-              <Badge
+              <Chip
                 key={grounding.id}
-                variant="secondary"
-                className="cursor-pointer hover:bg-secondary/80"
-                onClick={() =>
+                label={grounding.kbName}
+                size="small"
+                onDelete={() =>
                   handleToggle({
                     id: grounding.kbId,
                     name: grounding.kbName ?? "Unknown KB",
                     scope: "workspace",
                   })
                 }
-              >
-                {grounding.kbName}
-                <X className="h-3 w-3 ml-1" />
-              </Badge>
+                deleteIcon={<X size={12} />}
+                sx={{
+                  cursor: 'pointer',
+                  '&:hover': {
+                    bgcolor: 'action.selected',
+                  },
+                }}
+              />
             ))}
-          </div>
+          </Paper>
         )}
 
         {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search knowledge bases..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
-          />
-        </div>
+        <TextField
+          placeholder="Search knowledge bases..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          fullWidth
+          size="small"
+          sx={{ mb: 2 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search size={16} />
+              </InputAdornment>
+            ),
+          }}
+        />
 
         {/* KB List */}
-        <ScrollArea className="h-[300px] -mx-6 px-6">
+        <Box
+          sx={{
+            maxHeight: 300,
+            overflow: 'auto',
+          }}
+        >
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 4 }}>
+              <CircularProgress size={24} />
+            </Box>
           ) : filteredKbs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-              <Database className="h-12 w-12 mb-4 opacity-50" />
-              <p className="text-sm">
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                py: 4,
+                color: 'text.secondary',
+              }}
+            >
+              <Database size={48} style={{ marginBottom: 16, opacity: 0.5 }} />
+              <Typography variant="body2">
                 {search
                   ? "No knowledge bases match your search"
                   : "No knowledge bases available"}
-              </p>
-            </div>
+              </Typography>
+            </Box>
           ) : (
-            <div className="space-y-4">
+            <>
               {renderGroup("Workspace", groupedKbs.workspace)}
               {renderGroup("Organization", groupedKbs.org)}
               {renderGroup("System", groupedKbs.system)}
-            </div>
+            </>
           )}
-        </ScrollArea>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Done
-          </Button>
-        </DialogFooter>
+        </Box>
       </DialogContent>
+
+      <DialogActions>
+        <Button variant="outlined" onClick={() => onOpenChange(false)}>
+          Done
+        </Button>
+      </DialogActions>
     </Dialog>
   );
 }
