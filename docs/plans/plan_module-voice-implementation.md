@@ -477,25 +477,51 @@ Implement a CORA-compliant Voice module derived from the legacy `ai-interview-mo
 ## Phase 4: Validation & Deployment
 
 **Duration**: 2 sessions (~6-8 hours)  
-**Status**: 🔵 PENDING
+**Status**: � IN PROGRESS (Session 8 - January 17, 2026)
 
-### 4.1 Compliance Checks
+**Workflow Approach**: Using new `.cline/workflows/` system from workflow optimization plan (Phase 1+2 complete)
 
+**Test Environment**:
+- Config: `setup.config.test-voice.yaml`
+- Location: `~/code/bodhix/testing/test-voice/`
+- Modules: module-ws, module-eval, module-voice
+
+### 4.1 Compliance Checks (Using test-module.md + full-lifecycle.sh)
+
+**Phase 0: Pre-flight & Configuration**
+- [x] Verify setup.config.test-voice.yaml exists
+- [x] Confirm module-voice enabled in config
+- [ ] Run full-lifecycle.sh OR manual test-module.md workflow
+
+**Validation Targets**:
 - [ ] API response validator: 0 violations
 - [ ] Frontend compliance validator: 0 violations
 - [ ] Structure validator: 0 violations
 - [ ] Database naming validator: 0 violations
 
-### 4.2 Integration Testing
+### 4.2 Integration Testing (Using fix-cycle.md for errors)
 
+**Deployment Steps**:
 - [ ] Create test project with module-voice
-- [ ] Deploy infrastructure
+- [ ] Deploy infrastructure (Terraform)
+- [ ] Build and deploy Lambdas
+- [ ] Start dev server
+
+**Functional Tests**:
 - [ ] Test session creation
 - [ ] Test Daily.co room creation
 - [ ] Test ECS bot startup
 - [ ] Test real-time transcription
 - [ ] Test transcript storage
 - [ ] Test analytics generation
+
+**Error Tracking Table** (Template-First Fixes):
+| Category | Errors | Fixed | Template Updated | Synced | Validated |
+|----------|--------|-------|------------------|--------|-----------|
+| Frontend | 0 | 0 | - | - | - |
+| Backend | 0 | 0 | - | - | - |
+| Infrastructure | 0 | 0 | - | - | - |
+| Data | 0 | 0 | - | - | - |
 
 ### 4.3 Documentation ✅ COMPLETE
 
@@ -664,15 +690,37 @@ Main Navigation
 ---
 
 **Status**: ✅ PHASE 3 COMPLETE + PHASE 4.3 DOCUMENTATION COMPLETE  
-**Last Updated**: January 16, 2026  
-**Branch**: `module-voice-dev`  
-**Next Steps**: 
+**Last Updated**: January 17, 2026  
+**Branch**: `feature/module-voice-dev` (renamed from `module-voice-dev` on January 17, 2026)  
+
+**Next Session Priority: Workflow Optimization & Validation Testing**
+
+The next session will practice the end-to-end workflow using `.cline/workflows/` to:
+1. Create test project with module-voice
+2. Deploy infrastructure and build local dev server
+3. Run validation suite to identify errors
+4. Fix errors using Template-First workflow (fix templates → sync → verify)
+5. Achieve zero validation errors
+
+**Key Resources:**
+- Workflows: `cora-dev-toolkit/.cline/workflows/` (9 workflow files)
+- Plan: `docs/plans/plan_cora-workflow-optimization.md` (pull latest code first)
+- Goal: Efficient discover → fix → verify cycle
+
+**Preparation for Next Session:**
+1. Pull latest code from remote (get workflow optimization plan)
+2. Review workflows in `.cline/workflows/`
+3. Set up test environment for module-voice deployment
+
+**Completed Steps**: 
 1. ~~Create remaining frontend components (ConfigForm, InterviewRoom)~~ ✅ DONE
 2. ~~Update routes with new components/hooks~~ ✅ DONE
 3. ~~Module configuration (admin pages, navigation)~~ ✅ DONE
 4. ~~Phase 4.3 Documentation~~ ✅ DONE
-5. Phase 4.1 Compliance Checks
-6. Phase 4.2 Integration Testing
+
+**Deferred to Workflow Session:**
+5. Phase 4.1 Compliance Checks (will be done during workflow practice)
+6. Phase 4.2 Integration Testing (will be done during workflow practice)
 
 **Session 3 Summary**: 
 - Added workspace and KB association support per user feedback
