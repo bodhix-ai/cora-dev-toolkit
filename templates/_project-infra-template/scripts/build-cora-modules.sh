@@ -140,7 +140,7 @@ for module in ${MODULES}; do
   # Run build-lambda-zip.sh for this module
   # Output goes to module's backend/.build/ directory
   if [ -f "${module}/backend/build.sh" ]; then
-    (cd "${module}/backend" && ./build.sh)
+    (cd "${module}/backend" && bash build.sh)
   else
     log_warn "No build.sh found for ${module_name}, skipping"
     continue
