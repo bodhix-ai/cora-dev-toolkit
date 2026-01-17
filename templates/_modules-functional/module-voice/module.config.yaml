@@ -1,0 +1,212 @@
+# =============================================================================
+# Module-Voice Configuration
+# =============================================================================
+# This file defines the default configuration for the Voice Interviews module.
+# These values are merged into the project's setup.config.yaml when module-voice is enabled.
+
+module_voice:
+  # Module Display Settings
+  display_name: "Voice Interviews"
+  
+  # Navigation Configuration
+  navigation:
+    label_singular: "Interview"
+    label_plural: "Interviews"
+    icon: "MicrophoneIcon"
+    show_in_main_nav: true
+    nav_priority: 30  # Lower number = higher in navigation order
+  
+  # Admin Card Configuration
+  # Supports both platform-level and organization-level admin cards
+  admin_cards:
+    platform:
+      enabled: true
+      path: "/admin/sys/voice"
+      title: "Voice Configuration"
+      description: "Manage platform-wide voice service credentials (Daily.co, Deepgram, Cartesia)"
+      icon: "SettingsIcon"
+      priority: 50
+      context: "platform"
+    organization:
+      enabled: true
+      path: "/admin/org/voice"
+      title: "Voice Settings"
+      description: "Manage interview configurations and view analytics"
+      icon: "MicrophoneIcon"
+      priority: 50
+      context: "organization"
+  
+  # Voice Interview Features
+  features:
+    # Enable Daily.co WebRTC integration
+    enable_daily_co: true
+    
+    # Enable ECS Pipecat bot orchestration
+    enable_ecs_bot: true
+    
+    # Enable real-time transcription
+    enable_real_time_transcription: true
+    
+    # Enable S3 transcript archival
+    enable_transcript_archival: true
+    
+    # Enable AI-powered analytics
+    enable_ai_analytics: true
+    
+    # Enable standby bot pool (for faster session startup)
+    enable_standby_pool: true
+    
+    # Enable KB grounding for interviews
+    enable_kb_grounding: true
+  
+  # Interview Session Settings
+  sessions:
+    # Maximum concurrent sessions per organization (0 = unlimited)
+    max_concurrent_sessions: 10
+    
+    # Session timeout in minutes (0 = no timeout)
+    session_timeout_minutes: 60
+    
+    # Default session status on creation
+    default_status: "pending"
+    
+    # Auto-cleanup completed sessions after days
+    completed_retention_days: 90
+    
+    # Auto-cleanup failed sessions after days
+    failed_retention_days: 7
+  
+  # Transcript Settings
+  transcripts:
+    # Storage location: database | s3 | both
+    storage_location: "both"
+    
+    # S3 bucket prefix for transcript archival
+    s3_prefix: "voice-transcripts/"
+    
+    # Transcript retention period (days, 0 = indefinite)
+    retention_days: 90
+    
+    # Enable transcript search/indexing
+    enable_search: true
+    
+    # Generate AI summary for transcripts
+    enable_ai_summary: true
+  
+  # Bot Configuration
+  bot:
+    # Standby pool size (pre-warmed bots)
+    standby_pool_size: 2
+    
+    # Bot startup timeout (seconds)
+    startup_timeout: 30
+    
+    # Bot health check interval (seconds)
+    health_check_interval: 60
+    
+    # Auto-restart failed bots
+    enable_auto_restart: true
+    
+    # Maximum bot restart attempts
+    max_restart_attempts: 3
+  
+  # AI Analytics Settings
+  analytics:
+    # Enable automatic analytics generation
+    enable_auto_generation: true
+    
+    # Scoring algorithm: basic | advanced
+    scoring_algorithm: "advanced"
+    
+    # Minimum score threshold (0-100)
+    min_score_threshold: 0
+    
+    # Generate recommendations
+    enable_recommendations: true
+    
+    # Analytics retention period (days, 0 = indefinite)
+    retention_days: 365
+  
+  # External Service Credentials
+  # These are managed at the platform level via voice_credentials table
+  external_services:
+    daily_co:
+      required: true
+      description: "WebRTC video room service"
+      credential_type: "api_key"
+    
+    deepgram:
+      required: true
+      description: "Speech-to-text transcription"
+      credential_type: "api_key"
+    
+    cartesia:
+      required: true
+      description: "Text-to-speech synthesis"
+      credential_type: "api_key"
+  
+  # Integration Settings
+  integrations:
+    # Enable KB grounding for AI responses
+    enable_kb_integration: true
+    
+    # Enable workspace association
+    enable_workspace_integration: true
+    
+    # Enable chat export of transcripts
+    enable_chat_integration: false
+    
+    # Enable calendar integration for scheduling
+    enable_calendar_integration: false
+  
+  # Permissions
+  permissions:
+    # Allow all users to create sessions
+    allow_user_session_creation: true
+    
+    # Require approval for session creation
+    require_session_approval: false
+    
+    # Role-based access control
+    roles:
+      voice_admin:
+        description: "Full control over voice interviews and configurations"
+        can_create_sessions: true
+        can_manage_configs: true
+        can_view_analytics: true
+        can_delete_sessions: true
+      voice_interviewer:
+        description: "Can create and conduct interviews"
+        can_create_sessions: true
+        can_manage_configs: false
+        can_view_analytics: true
+        can_delete_sessions: false
+      voice_viewer:
+        description: "View-only access to interviews and transcripts"
+        can_create_sessions: false
+        can_manage_configs: false
+        can_view_analytics: true
+        can_delete_sessions: false
+  
+  # Business Hours Settings (for standby pool optimization)
+  business_hours:
+    # Enable business hours optimization
+    enabled: false
+    
+    # Timezone for business hours (IANA timezone)
+    timezone: "America/New_York"
+    
+    # Business days (0 = Sunday, 6 = Saturday)
+    business_days: [1, 2, 3, 4, 5]  # Monday-Friday
+    
+    # Business start time (24-hour format)
+    start_time: "09:00"
+    
+    # Business end time (24-hour format)
+    end_time: "17:00"
+    
+    # Standby pool size during business hours
+    business_hours_pool_size: 5
+    
+    # Standby pool size outside business hours
+    off_hours_pool_size: 1

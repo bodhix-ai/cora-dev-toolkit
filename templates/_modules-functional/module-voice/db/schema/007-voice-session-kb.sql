@@ -35,47 +35,11 @@ CREATE INDEX IF NOT EXISTS idx_voice_session_kb_kb ON public.voice_session_kb(kb
 CREATE INDEX IF NOT EXISTS idx_voice_session_kb_enabled ON public.voice_session_kb(session_id, is_enabled) WHERE is_enabled = true;
 
 -- =============================================
--- ROW LEVEL SECURITY
+-- NOTE: Row Level Security (RLS) Policies
 -- =============================================
-
-ALTER TABLE public.voice_session_kb ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies: Access controlled through parent voice_sessions table
-CREATE POLICY "voice_session_kb_select_policy" ON public.voice_session_kb
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM public.voice_sessions vs
-            WHERE vs.id = voice_session_kb.session_id
-            AND can_access_org_data(vs.org_id)
-        )
-    );
-
-CREATE POLICY "voice_session_kb_insert_policy" ON public.voice_session_kb
-    FOR INSERT WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM public.voice_sessions vs
-            WHERE vs.id = voice_session_kb.session_id
-            AND can_access_org_data(vs.org_id)
-        )
-    );
-
-CREATE POLICY "voice_session_kb_update_policy" ON public.voice_session_kb
-    FOR UPDATE USING (
-        EXISTS (
-            SELECT 1 FROM public.voice_sessions vs
-            WHERE vs.id = voice_session_kb.session_id
-            AND can_modify_org_data(vs.org_id)
-        )
-    );
-
-CREATE POLICY "voice_session_kb_delete_policy" ON public.voice_session_kb
-    FOR DELETE USING (
-        EXISTS (
-            SELECT 1 FROM public.voice_sessions vs
-            WHERE vs.id = voice_session_kb.session_id
-            AND can_modify_org_data(vs.org_id)
-        )
-    );
+-- RLS policies for this table are defined in 009-apply-rls.sql
+-- This ensures all tables exist before applying security constraints
+-- Access is controlled through parent voice_sessions table
 
 -- =============================================
 -- COMMENTS

@@ -7,7 +7,7 @@ DROP TABLE IF EXISTS public.voice_credentials CASCADE;
 
 CREATE TABLE public.voice_credentials (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    org_id UUID NOT NULL REFERENCES public.org(id) ON DELETE CASCADE,
+    org_id UUID NOT NULL REFERENCES public.orgs(id) ON DELETE CASCADE,
     service_name VARCHAR(50) NOT NULL,
     credentials_secret_arn TEXT NOT NULL,
     config_metadata JSONB NOT NULL DEFAULT '{}',
@@ -30,28 +30,21 @@ CREATE INDEX idx_voice_credentials_org_id ON public.voice_credentials(org_id);
 CREATE INDEX idx_voice_credentials_service ON public.voice_credentials(service_name);
 CREATE INDEX idx_voice_credentials_is_active ON public.voice_credentials(is_active);
 
--- Enable RLS
-ALTER TABLE public.voice_credentials ENABLE ROW LEVEL SECURITY;
+-- Trigger function
+CREATE OR REPLACE FUNCTION update_voice_credentials_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- RLS Policies (admin-only access)
-CREATE POLICY "voice_credentials_select_policy" ON public.voice_credentials
-    FOR SELECT USING (can_admin_org(org_id));
-
-CREATE POLICY "voice_credentials_insert_policy" ON public.voice_credentials
-    FOR INSERT WITH CHECK (can_admin_org(org_id));
-
-CREATE POLICY "voice_credentials_update_policy" ON public.voice_credentials
-    FOR UPDATE USING (can_admin_org(org_id))
-    WITH CHECK (can_admin_org(org_id));
-
-CREATE POLICY "voice_credentials_delete_policy" ON public.voice_credentials
-    FOR DELETE USING (can_admin_org(org_id));
-
--- Updated at trigger
-CREATE TRIGGER update_voice_credentials_updated_at
+-- Trigger
+DROP TRIGGER IF EXISTS voice_credentials_updated_at ON public.voice_credentials;
+CREATE TRIGGER voice_credentials_updated_at 
     BEFORE UPDATE ON public.voice_credentials
     FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+    EXECUTE FUNCTION update_voice_credentials_updated_at();
 
 -- Comments
 COMMENT ON TABLE public.voice_credentials IS 'Voice service credentials (Daily, Deepgram, Cartesia)';

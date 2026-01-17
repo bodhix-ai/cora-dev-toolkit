@@ -107,7 +107,7 @@ def handle_list_configs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': org_id, 'user_id': user_id, 'active': True}
+        filters={'org_id': org_id, 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this organization')
@@ -152,7 +152,7 @@ def handle_get_config(event: Dict[str, Any], user_id: str, config_id: str) -> Di
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': config['org_id'], 'user_id': user_id, 'active': True}
+        filters={'org_id': config['org_id'], 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this config')
@@ -202,7 +202,7 @@ def handle_create_config(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': org_id, 'user_id': user_id, 'active': True}
+        filters={'org_id': org_id, 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this organization')
@@ -265,7 +265,7 @@ def handle_update_config(event: Dict[str, Any], user_id: str, config_id: str) ->
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': config['org_id'], 'user_id': user_id, 'active': True}
+        filters={'org_id': config['org_id'], 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this config')
@@ -341,7 +341,7 @@ def handle_delete_config(event: Dict[str, Any], user_id: str, config_id: str) ->
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': config['org_id'], 'user_id': user_id, 'active': True}
+        filters={'org_id': config['org_id'], 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this config')

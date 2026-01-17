@@ -110,7 +110,7 @@ def handle_list_transcripts(event: Dict[str, Any], user_id: str) -> Dict[str, An
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': org_id, 'user_id': user_id, 'active': True}
+        filters={'org_id': org_id, 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this organization')
@@ -182,7 +182,7 @@ def handle_get_transcript(event: Dict[str, Any], user_id: str, transcript_id: st
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': transcript['org_id'], 'user_id': user_id, 'active': True}
+        filters={'org_id': transcript['org_id'], 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this transcript')
@@ -247,7 +247,7 @@ def handle_delete_transcript(event: Dict[str, Any], user_id: str, transcript_id:
     # Verify org membership with admin role
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': transcript['org_id'], 'user_id': user_id, 'active': True}
+        filters={'org_id': transcript['org_id'], 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this transcript')

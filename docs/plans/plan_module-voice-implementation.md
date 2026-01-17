@@ -477,25 +477,51 @@ Implement a CORA-compliant Voice module derived from the legacy `ai-interview-mo
 ## Phase 4: Validation & Deployment
 
 **Duration**: 2 sessions (~6-8 hours)  
-**Status**: 🔵 PENDING
+**Status**: � IN PROGRESS (Session 8 - January 17, 2026)
 
-### 4.1 Compliance Checks
+**Workflow Approach**: Using new `.cline/workflows/` system from workflow optimization plan (Phase 1+2 complete)
 
+**Test Environment**:
+- Config: `setup.config.test-voice.yaml`
+- Location: `~/code/bodhix/testing/test-voice/`
+- Modules: module-ws, module-eval, module-voice
+
+### 4.1 Compliance Checks (Using test-module.md + full-lifecycle.sh)
+
+**Phase 0: Pre-flight & Configuration**
+- [x] Verify setup.config.test-voice.yaml exists
+- [x] Confirm module-voice enabled in config
+- [ ] Run full-lifecycle.sh OR manual test-module.md workflow
+
+**Validation Targets**:
 - [ ] API response validator: 0 violations
 - [ ] Frontend compliance validator: 0 violations
 - [ ] Structure validator: 0 violations
 - [ ] Database naming validator: 0 violations
 
-### 4.2 Integration Testing
+### 4.2 Integration Testing (Using fix-cycle.md for errors)
 
+**Deployment Steps**:
 - [ ] Create test project with module-voice
-- [ ] Deploy infrastructure
+- [ ] Deploy infrastructure (Terraform)
+- [ ] Build and deploy Lambdas
+- [ ] Start dev server
+
+**Functional Tests**:
 - [ ] Test session creation
 - [ ] Test Daily.co room creation
 - [ ] Test ECS bot startup
 - [ ] Test real-time transcription
 - [ ] Test transcript storage
 - [ ] Test analytics generation
+
+**Error Tracking Table** (Template-First Fixes):
+| Category | Errors | Fixed | Template Updated | Synced | Validated |
+|----------|--------|-------|------------------|--------|-----------|
+| Frontend | 0 | 0 | - | - | - |
+| Backend | 0 | 0 | - | - | - |
+| Infrastructure | 0 | 0 | - | - | - |
+| Data | 0 | 0 | - | - | - |
 
 ### 4.3 Documentation ✅ COMPLETE
 
@@ -664,15 +690,37 @@ Main Navigation
 ---
 
 **Status**: ✅ PHASE 3 COMPLETE + PHASE 4.3 DOCUMENTATION COMPLETE  
-**Last Updated**: January 16, 2026  
-**Branch**: `module-voice-dev`  
-**Next Steps**: 
+**Last Updated**: January 17, 2026  
+**Branch**: `feature/module-voice-dev` (renamed from `module-voice-dev` on January 17, 2026)  
+
+**Next Session Priority: Workflow Optimization & Validation Testing**
+
+The next session will practice the end-to-end workflow using `.cline/workflows/` to:
+1. Create test project with module-voice
+2. Deploy infrastructure and build local dev server
+3. Run validation suite to identify errors
+4. Fix errors using Template-First workflow (fix templates → sync → verify)
+5. Achieve zero validation errors
+
+**Key Resources:**
+- Workflows: `cora-dev-toolkit/.cline/workflows/` (9 workflow files)
+- Plan: `docs/plans/plan_cora-workflow-optimization.md` (pull latest code first)
+- Goal: Efficient discover → fix → verify cycle
+
+**Preparation for Next Session:**
+1. Pull latest code from remote (get workflow optimization plan)
+2. Review workflows in `.cline/workflows/`
+3. Set up test environment for module-voice deployment
+
+**Completed Steps**: 
 1. ~~Create remaining frontend components (ConfigForm, InterviewRoom)~~ ✅ DONE
 2. ~~Update routes with new components/hooks~~ ✅ DONE
 3. ~~Module configuration (admin pages, navigation)~~ ✅ DONE
 4. ~~Phase 4.3 Documentation~~ ✅ DONE
-5. Phase 4.1 Compliance Checks
-6. Phase 4.2 Integration Testing
+
+**Deferred to Workflow Session:**
+5. Phase 4.1 Compliance Checks (will be done during workflow practice)
+6. Phase 4.2 Integration Testing (will be done during workflow practice)
 
 **Session 3 Summary**: 
 - Added workspace and KB association support per user feedback
@@ -718,3 +766,124 @@ Main Navigation
   - `docs/DEPLOYMENT.md` - Step-by-step deployment guide with prerequisites, infrastructure, database, Lambda, ECS, and frontend integration
 - Module README.md already existed and is comprehensive
 - **Phase 4.3 Documentation is complete!**
+
+**Session 8 Summary (January 17, 2026)**: 
+- **Issue Resolution:**
+  - Created `module.config.yaml` for module-voice (was missing, causing validation errors)
+  - Merged main into feature/module-voice-dev (resolved 4 merge conflicts)
+  - Pushed 11 commits (24 files) to remote branch
+- **Bug Discovered:**
+  - create-cora-project.sh is not copying module-voice to new projects
+  - Script detects module-voice during dependency resolution but fails to create it
+  - Config file correctly lists both module-ws and module-voice, but script only creates module-ws
+  - Root cause: YAML parsing bug in functional module detection logic
+
+**Session 9 Summary (January 17, 2026)**:
+- **Bug Fix Applied:**
+  - Fixed `scripts/create-cora-project.sh` lines 530-545
+  - Script now uses `INPUT_CONFIG` when provided (via `--input` parameter)
+  - Falls back to `${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml` if no `--input`
+  - Bug was: script looked for config file in newly created stack dir (doesn't exist yet)
+  - Fix: use the actual config file path from `--input` parameter
+- **Next Steps:**
+  - Test fix by creating new project with module-voice
+  - Verify module-voice is copied correctly
+  - Proceed with Phase 4.1 and 4.2 validation testing
+
+**Session 10 Summary (January 17, 2026)**:
+- **Focus:** Voice module permission model implementation and RLS bug fix
+- **Critical Issue Resolved:**
+  - **Original Error:** `can_access_org_data()` and `can_modify_org_data()` functions didn't exist
+  - **Root Cause:** `007-voice-session-kb.sql` had inline RLS policies using non-existent functions
+  - **Impact:** Project creation failed during database schema provisioning (Phase 1)
+- **Architectural Decision (ADR-014):**
+  - Analyzed CORA permission patterns (sys, org, ws, chat modules)
+  - Decided on **Owner + Assignee + Shares** model for voice module
+  - Supports dual use case: 
+    - External job interviews (candidate_email set, assigned_to NULL)
+    - Internal career capture (assigned_to set, candidate_email NULL)
+  - Created comprehensive `docs/arch decisions/ADR-014-VOICE-MODULE-PERMISSIONS.md`
+- **Schema Changes Implemented:**
+  - Updated `002-voice-sessions.sql`:
+    - Added `assigned_to UUID` column (for internal user assignment)
+    - Added `is_shared_with_workspace BOOLEAN` column (for workspace sharing)
+    - Added participant check constraint (external OR internal participant required)
+    - Added index for `assigned_to` column
+    - Updated column comments with clear descriptions
+  - Created `008-voice-shares.sql`:
+    - New table following chat_shares pattern
+    - Permission levels: `view`, `view_transcript`, `view_analytics`
+    - Supports selective sharing with individual users
+    - Unique constraint on (session_id, shared_with_user_id)
+- **Helper Functions Added:**
+  - `is_voice_owner(session_id, user_id)` in `006-voice-rpc-functions.sql`
+  - `is_voice_assignee(session_id, user_id)` in `006-voice-rpc-functions.sql`
+  - `is_org_member(org_id, user_id)` in `module-mgmt/003-sys-module-usage.sql`
+- **RLS Implementation (CRITICAL FIX):**
+  - Removed all problematic RLS policies from `007-voice-session-kb.sql`
+  - Created `009-apply-rls.sql` - comprehensive consolidated RLS file
+  - Implemented policies for all 7 voice tables:
+    - `voice_sessions` - owner, assignee, shares, workspace, service role
+    - `voice_shares` - owner can create/modify, shared users can view
+    - `voice_transcripts` - inherited from parent session
+    - `voice_analytics` - inherited from parent session
+    - `voice_session_kb` - inherited from parent session
+    - `voice_configs` - org-level access
+    - `voice_credentials` - org-level access
+  - All RLS policies use existing CORA patterns (inline EXISTS checks + helper functions)
+  - No more missing function errors!
+- **Permission Model Summary:**
+  - **created_by** (Owner): Full control - view, modify, delete, share session
+  - **assigned_to** (Assignee): Participant - participate in interview, view own transcript/analytics
+  - **voice_shares** (Viewer): Shared access - view transcript/analytics per permission_level
+  - **Workspace Members**: Team visibility if `is_shared_with_workspace = true`
+  - **Service Role**: System override for Lambda functions
+- **Files Modified:**
+  - `templates/_modules-functional/module-voice/db/schema/002-voice-sessions.sql`
+  - `templates/_modules-functional/module-voice/db/schema/006-voice-rpc-functions.sql`
+  - `templates/_modules-functional/module-voice/db/schema/007-voice-session-kb.sql`
+  - `templates/_modules-functional/module-voice/db/schema/008-voice-shares.sql` (NEW)
+  - `templates/_modules-functional/module-voice/db/schema/009-apply-rls.sql` (NEW)
+  - `templates/_modules-core/module-mgmt/db/schema/003-sys-module-usage.sql`
+  - `docs/arch decisions/ADR-014-VOICE-MODULE-PERMISSIONS.md` (NEW)
+- **Next Steps:**
+  - Re-run Phase 1 (project creation) to test fixes
+  - Verify database provisioning succeeds without errors
+  - Proceed with Phase 4.1 and 4.2 validation testing
+
+**Session 11 Summary (January 17, 2026)**:
+- **Focus:** Validation testing and error tracking plan creation
+- **Achievements:**
+  - ✅ **PROVISIONING ISSUE RESOLVED** - Session 10 RLS fixes worked perfectly!
+  - Updated `.clinerules` to add prominent **"ALWAYS USE WORKFLOWS FIRST"** section
+  - Followed `test-module.md` workflow properly (corrected approach)
+  - Created test project successfully (`test-voice` at `~/code/bodhix/testing/test-voice/`)
+  - Database schema provisioned successfully (7 voice tables, 146 RLS policies, 73 functions)
+  - Ran full validation suite on test project
+- **Validation Results:**
+  - ✅ 10 validators PASSED (API Response, Role Naming, External UID, RPC Function, DB Naming, Portability, API Tracer, Import)
+  - ❌ 71 errors across 5 validators (all template quality issues, not infrastructure)
+- **Error Breakdown (Voice-Specific Only):**
+  - Structure: 1 error (missing package.json)
+  - Schema: 25 errors (org_members.active column references)
+  - CORA Compliance: 25 errors (missing access_common integration)
+  - Accessibility: 20 errors (missing labels, aria-labels)
+  - Frontend Compliance: 10 errors (IconButton aria-labels)
+- **Deliverables:**
+  - Created comprehensive validation fix plan: `docs/plans/plan_module-voice-validation-fixes.md`
+  - Documented Sprint 1 (critical validators: 51 errors, 3-4 hours)
+  - Documented Sprint 2 (accessibility + frontend: 30 errors, 2-3 hours)
+  - Defined session tracking template
+  - Created risk assessment and success metrics
+- **Files Modified:**
+  - `.clinerules` - Added prominent workflow usage section
+  - `docs/plans/plan_module-voice-validation-fixes.md` (NEW) - Comprehensive fix plan
+- **Key Insight:**
+  - Provisioning works perfectly! All database tables, RLS policies, and helper functions created successfully
+  - Remaining errors are **template code quality issues only** (Lambda code, frontend accessibility)
+  - Ready to begin Sprint 1 error fixes in next session
+- **Next Steps:**
+  - Execute Sprint 1: Fix structure, schema, and CORA compliance errors (51 errors)
+  - Execute Sprint 2: Fix accessibility and frontend compliance errors (30 errors)
+  - Re-run validation to achieve 0 errors
+  - Continue with test-module.md workflow (Phases 2-5)
