@@ -1,0 +1,4 @@
+# Voice Configs Lambda dependencies
+# Note: access_common is provided via Lambda Layer
+
+# No additional dependencies required
