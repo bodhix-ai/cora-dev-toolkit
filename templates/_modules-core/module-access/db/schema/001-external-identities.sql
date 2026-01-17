@@ -57,12 +57,16 @@ DROP POLICY IF EXISTS "Users can delete their own external identities" ON public
 
 -- Users can view their own external identities
 DROP POLICY IF EXISTS "Users can view their own external identities" ON public.user_auth_ext_ids;
+DROP POLICY IF EXISTS "Users can view their own external identities" ON public.user_auth_ext_ids;
+DROP POLICY IF EXISTS "Users can view their own external identities" ON public.user_auth_ext_ids;
 CREATE POLICY "Users can view their own external identities" ON public.user_auth_ext_ids
     FOR SELECT 
     TO authenticated
     USING (auth_user_id = auth.uid());
 
 -- Users can link their own external identities
+DROP POLICY IF EXISTS "Users can link their own external identities" ON public.user_auth_ext_ids;
+DROP POLICY IF EXISTS "Users can link their own external identities" ON public.user_auth_ext_ids;
 DROP POLICY IF EXISTS "Users can link their own external identities" ON public.user_auth_ext_ids;
 CREATE POLICY "Users can link their own external identities" ON public.user_auth_ext_ids
     FOR INSERT 
@@ -71,6 +75,8 @@ CREATE POLICY "Users can link their own external identities" ON public.user_auth
 
 -- Users can update their own external identities
 DROP POLICY IF EXISTS "Users can update their own external identities" ON public.user_auth_ext_ids;
+DROP POLICY IF EXISTS "Users can update their own external identities" ON public.user_auth_ext_ids;
+DROP POLICY IF EXISTS "Users can update their own external identities" ON public.user_auth_ext_ids;
 CREATE POLICY "Users can update their own external identities" ON public.user_auth_ext_ids
     FOR UPDATE 
     TO authenticated
@@ -78,6 +84,8 @@ CREATE POLICY "Users can update their own external identities" ON public.user_au
     WITH CHECK (auth_user_id = auth.uid());
 
 -- Users can delete their own external identities
+DROP POLICY IF EXISTS "Users can delete their own external identities" ON public.user_auth_ext_ids;
+DROP POLICY IF EXISTS "Users can delete their own external identities" ON public.user_auth_ext_ids;
 DROP POLICY IF EXISTS "Users can delete their own external identities" ON public.user_auth_ext_ids;
 CREATE POLICY "Users can delete their own external identities" ON public.user_auth_ext_ids
     FOR DELETE 
@@ -98,6 +106,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS user_auth_ext_ids_updated_at ON public.user_auth_ext_ids;
+DROP TRIGGER IF EXISTS user_auth_ext_ids_updated_at ON public.user_auth_ext_ids;
 DROP TRIGGER IF EXISTS user_auth_ext_ids_updated_at ON public.user_auth_ext_ids;
 DROP TRIGGER IF EXISTS user_auth_ext_ids_updated_at ON public.user_auth_ext_ids;
 CREATE TRIGGER user_auth_ext_ids_updated_at BEFORE UPDATE ON public.user_auth_ext_ids

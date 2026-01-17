@@ -412,9 +412,11 @@ CREATE TABLE orgs (
 );
 ```
 
-### Rule 3: Foreign Keys → `{table_singular}_id`
+### Rule 3: Foreign Keys → `{table_singular}_id` (Use Abbreviations When Available)
 
-Foreign key columns should reference the singular form of the related table + `_id`.
+Foreign key columns should reference the singular form of the related table + `_id`. 
+
+**CRITICAL:** When the related table uses an abbreviated prefix (as documented in Table Naming Rule 6), the foreign key column MUST use that same abbreviation, NOT the spelled-out form.
 
 **✅ Correct:**
 ```sql
@@ -423,16 +425,54 @@ CREATE TABLE org_members (
   org_id UUID REFERENCES orgs(id),     -- References orgs table
   user_id UUID REFERENCES users(id)    -- References users table
 );
+
+-- When referencing tables with abbreviations:
+CREATE TABLE kb_access_sys (
+  id UUID PRIMARY KEY,
+  kb_id UUID REFERENCES kb_bases(id),  -- ✅ Uses 'kb' abbreviation (from kb_bases)
+  org_id UUID REFERENCES orgs(id)
+);
+
+CREATE TABLE ws_members (
+  id UUID PRIMARY KEY,
+  ws_id UUID REFERENCES workspaces(id), -- ✅ Uses 'ws' abbreviation (from workspaces)
+  user_id UUID REFERENCES users(id)
+);
 ```
 
 **❌ Incorrect:**
 ```sql
 CREATE TABLE org_members (
   id UUID PRIMARY KEY,
-  orgs_id UUID REFERENCES orgs(id),    -- Should be: org_id
-  owner UUID REFERENCES users(id)       -- Should be: user_id
+  orgs_id UUID REFERENCES orgs(id),      -- Should be: org_id
+  owner UUID REFERENCES users(id)         -- Should be: user_id
+);
+
+-- WRONG: Spelling out abbreviated table names
+CREATE TABLE kb_access_sys (
+  id UUID PRIMARY KEY,
+  knowledge_base_id UUID REFERENCES kb_bases(id),  -- ❌ Should be: kb_id
+  org_id UUID REFERENCES orgs(id)
+);
+
+CREATE TABLE ws_members (
+  id UUID PRIMARY KEY,
+  workspace_id UUID REFERENCES workspaces(id),     -- ❌ Should be: ws_id
+  user_id UUID REFERENCES users(id)
 );
 ```
+
+**Standard Abbreviations for Foreign Keys:**
+
+| Related Table | Foreign Key Column | NOT This ❌ |
+|---------------|-------------------|-------------|
+| `kb_bases` | `kb_id` | `knowledge_base_id` |
+| `workspaces` | `ws_id` | `workspace_id` |
+| `workflows` | `wf_id` | `workflow_id` |
+| `orgs` | `org_id` | `organization_id` |
+| `chat_sessions` | `chat_session_id` | `chat_session_id` ✅ |
+
+**Rationale:** Consistency in abbreviation usage reduces errors, makes queries shorter, and ensures grep-ability. If a table uses an abbreviation in its name, all references to it should use that same abbreviation.
 
 ### Rule 4: Boolean Columns → `is_` or `has_` Prefix
 

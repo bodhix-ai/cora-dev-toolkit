@@ -1,0 +1,81 @@
+-- =============================================
+-- MODULE-CHAT: Chat Sessions Table
+-- =============================================
+-- Purpose: Primary chat session container supporting workspace-scoped and user-level conversations
+-- Source: Created for CORA toolkit Jan 2026
+
+-- =============================================
+-- CHAT_SESSIONS TABLE
+-- =============================================
+
+CREATE TABLE IF NOT EXISTS public.chat_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL DEFAULT 'New Chat',
+    workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE,
+    org_id UUID NOT NULL REFERENCES public.orgs(id) ON DELETE CASCADE,
+    created_by UUID NOT NULL REFERENCES auth.users(id),
+    is_shared_with_workspace BOOLEAN NOT NULL DEFAULT false,
+    metadata JSONB NOT NULL DEFAULT '{}',
+    is_deleted BOOLEAN NOT NULL DEFAULT false,
+    deleted_at TIMESTAMPTZ,
+    deleted_by UUID REFERENCES auth.users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_by UUID REFERENCES auth.users(id),
+    
+    -- Constraints
+    CONSTRAINT chat_sessions_title_check CHECK (char_length(title) >= 1 AND char_length(title) <= 255)
+);
+
+-- =============================================
+-- INDEXES
+-- =============================================
+
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_workspace_id ON public.chat_sessions(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_org_id ON public.chat_sessions(org_id);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_created_by ON public.chat_sessions(created_by);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_created_at ON public.chat_sessions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_is_deleted ON public.chat_sessions(is_deleted) WHERE is_deleted = false;
+
+-- Composite index for common query: user's chats in workspace
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_ws_user ON public.chat_sessions(workspace_id, created_by) WHERE is_deleted = false;
+
+-- =============================================
+-- COMMENTS
+-- =============================================
+
+COMMENT ON TABLE public.chat_sessions IS 'Primary chat session container supporting workspace-scoped and user-level conversations';
+COMMENT ON COLUMN public.chat_sessions.title IS 'Chat title (1-255 characters)';
+COMMENT ON COLUMN public.chat_sessions.workspace_id IS 'Workspace (for workspace-scoped chats, NULL for user-level chats)';
+COMMENT ON COLUMN public.chat_sessions.org_id IS 'Organization ID for multi-tenancy (required for all chats)';
+COMMENT ON COLUMN public.chat_sessions.created_by IS 'User who created the chat (owner)';
+COMMENT ON COLUMN public.chat_sessions.is_shared_with_workspace IS 'Whether chat is shared with all workspace members';
+COMMENT ON COLUMN public.chat_sessions.metadata IS 'Chat metadata (lastMessageAt, messageCount, tokenUsage, model, temperature)';
+COMMENT ON COLUMN public.chat_sessions.is_deleted IS 'Soft delete flag';
+COMMENT ON COLUMN public.chat_sessions.deleted_at IS 'Soft delete timestamp';
+COMMENT ON COLUMN public.chat_sessions.deleted_by IS 'User who soft-deleted the chat';
+
+-- =============================================
+-- NOTE: Row Level Security (RLS) Policies
+-- =============================================
+-- RLS policies for this table are defined in 007-chat-rls.sql
+-- This ensures all tables exist before applying security constraints
+
+-- =============================================
+-- TRIGGER: Auto-update updated_at
+-- =============================================
+
+CREATE OR REPLACE FUNCTION update_chat_sessions_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS chat_sessions_updated_at ON public.chat_sessions;
+DROP TRIGGER IF EXISTS chat_sessions_updated_at ON public.chat_sessions;
+DROP TRIGGER IF EXISTS chat_sessions_updated_at ON public.chat_sessions;
+CREATE TRIGGER chat_sessions_updated_at BEFORE UPDATE ON public.chat_sessions
+    FOR EACH ROW
+    EXECUTE FUNCTION update_chat_sessions_updated_at();

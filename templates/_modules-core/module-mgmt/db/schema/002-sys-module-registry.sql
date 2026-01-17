@@ -103,6 +103,8 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trigger_update_sys_module_registry_timestamp 
     ON sys_module_registry;
 
+DROP TRIGGER IF EXISTS trigger_update_sys_module_registry_timestamp ON sys_module_registry;
+DROP TRIGGER IF EXISTS trigger_update_sys_module_registry_timestamp ON sys_module_registry;
 CREATE TRIGGER trigger_update_sys_module_registry_timestamp BEFORE UPDATE ON sys_module_registry
     FOR EACH ROW
     EXECUTE FUNCTION update_sys_module_registry_updated_at();

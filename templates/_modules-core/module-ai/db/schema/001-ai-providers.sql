@@ -52,6 +52,8 @@ ALTER TABLE public.ai_providers ENABLE ROW LEVEL SECURITY;
 
 -- Admin-only access (sys_owner, sys_admin)
 DROP POLICY IF EXISTS "ai_providers_admin_access" ON public.ai_providers;
+DROP POLICY IF EXISTS "ai_providers_admin_access" ON public.ai_providers;
+DROP POLICY IF EXISTS "ai_providers_admin_access" ON public.ai_providers;
 CREATE POLICY "ai_providers_admin_access" ON public.ai_providers
     FOR ALL
     USING (
@@ -63,6 +65,8 @@ CREATE POLICY "ai_providers_admin_access" ON public.ai_providers
     );
 
 -- Service role has full access
+DROP POLICY IF EXISTS "Service role full access to ai_providers" ON public.ai_providers;
+DROP POLICY IF EXISTS "Service role full access to ai_providers" ON public.ai_providers;
 DROP POLICY IF EXISTS "Service role full access to ai_providers" ON public.ai_providers;
 CREATE POLICY "Service role full access to ai_providers" ON public.ai_providers
     FOR ALL
@@ -82,6 +86,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS ai_providers_updated_at ON public.ai_providers;
+DROP TRIGGER IF EXISTS ai_providers_updated_at ON public.ai_providers;
+DROP TRIGGER IF EXISTS ai_providers_updated_at ON public.ai_providers;
 CREATE TRIGGER ai_providers_updated_at BEFORE UPDATE ON public.ai_providers
     FOR EACH ROW
     EXECUTE FUNCTION update_ai_providers_updated_at();
@@ -100,6 +106,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS ai_providers_created_by ON public.ai_providers;
+DROP TRIGGER IF EXISTS ai_providers_created_by ON public.ai_providers;
 DROP TRIGGER IF EXISTS ai_providers_created_by ON public.ai_providers;
 CREATE TRIGGER ai_providers_created_by BEFORE INSERT ON public.ai_providers
     FOR EACH ROW

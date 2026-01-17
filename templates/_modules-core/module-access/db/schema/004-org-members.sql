@@ -50,6 +50,8 @@ ALTER TABLE public.org_members ENABLE ROW LEVEL SECURITY;
 
 -- Org members can view other members in their organizations
 DROP POLICY IF EXISTS "Org members can view org members" ON public.org_members;
+DROP POLICY IF EXISTS "Org members can view org members" ON public.org_members;
+DROP POLICY IF EXISTS "Org members can view org members" ON public.org_members;
 CREATE POLICY "Org members can view org members" ON public.org_members
     FOR SELECT 
     TO authenticated
@@ -62,6 +64,8 @@ CREATE POLICY "Org members can view org members" ON public.org_members
     );
 
 -- Org owners can add members
+DROP POLICY IF EXISTS "Org owners can add members" ON public.org_members;
+DROP POLICY IF EXISTS "Org owners can add members" ON public.org_members;
 DROP POLICY IF EXISTS "Org owners can add members" ON public.org_members;
 CREATE POLICY "Org owners can add members" ON public.org_members
     FOR INSERT 
@@ -76,6 +80,8 @@ CREATE POLICY "Org owners can add members" ON public.org_members
     );
 
 -- Org owners can update members
+DROP POLICY IF EXISTS "Org owners can update members" ON public.org_members;
+DROP POLICY IF EXISTS "Org owners can update members" ON public.org_members;
 DROP POLICY IF EXISTS "Org owners can update members" ON public.org_members;
 CREATE POLICY "Org owners can update members" ON public.org_members
     FOR UPDATE 
@@ -99,6 +105,8 @@ CREATE POLICY "Org owners can update members" ON public.org_members
 
 -- Org owners can remove members
 DROP POLICY IF EXISTS "Org owners can remove members" ON public.org_members;
+DROP POLICY IF EXISTS "Org owners can remove members" ON public.org_members;
+DROP POLICY IF EXISTS "Org owners can remove members" ON public.org_members;
 CREATE POLICY "Org owners can remove members" ON public.org_members
     FOR DELETE 
     TO authenticated
@@ -112,6 +120,8 @@ CREATE POLICY "Org owners can remove members" ON public.org_members
     );
 
 -- Service role has full access
+DROP POLICY IF EXISTS "Service role full access to org_members" ON public.org_members;
+DROP POLICY IF EXISTS "Service role full access to org_members" ON public.org_members;
 DROP POLICY IF EXISTS "Service role full access to org_members" ON public.org_members;
 CREATE POLICY "Service role full access to org_members" ON public.org_members
     FOR ALL
@@ -130,6 +140,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS org_members_updated_at ON public.org_members;
+DROP TRIGGER IF EXISTS org_members_updated_at ON public.org_members;
+DROP TRIGGER IF EXISTS org_members_updated_at ON public.org_members;
 CREATE TRIGGER org_members_updated_at BEFORE UPDATE ON public.org_members
     FOR EACH ROW
     EXECUTE FUNCTION update_org_members_updated_at();
@@ -139,6 +151,8 @@ CREATE TRIGGER org_members_updated_at BEFORE UPDATE ON public.org_members
 -- =============================================
 
 -- Org members can view their organizations
+DROP POLICY IF EXISTS "Org members can view orgs" ON public.orgs;
+DROP POLICY IF EXISTS "Org members can view orgs" ON public.orgs;
 DROP POLICY IF EXISTS "Org members can view orgs" ON public.orgs;
 CREATE POLICY "Org members can view orgs" ON public.orgs
     FOR SELECT 

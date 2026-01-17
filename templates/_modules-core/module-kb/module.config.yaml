@@ -1,0 +1,79 @@
+# =============================================================================
+# Module-KB Configuration
+# =============================================================================
+# This file defines the default configuration for the Knowledge Base module.
+# These values are merged into the project's setup.config.yaml automatically.
+
+module_kb:
+  # Module Display Settings
+  display_name: "Knowledge Base"
+  nav_icon: "LibraryBooks"
+
+  # Admin Card Configuration (New Format)
+  admin_cards:
+    platform:
+      enabled: true
+      path: "/admin/sys/kb"
+      title: "Knowledge Base Config"
+      description: "Configure system-wide KB settings, embedding models, and RAG defaults"
+      icon: "LibraryBooks"
+      priority: 40  # After core platform features (access=10, ai=20, mgmt=30)
+      context: "platform"
+    
+    organization:
+      enabled: true
+      path: "/admin/org/kb"
+      title: "Knowledge Bases"
+      description: "Manage organization knowledge bases and document settings"
+      icon: "LibraryBooks"
+      priority: 30  # After org settings (10) and members (20)
+      context: "organization"
+
+  # Knowledge Base Settings
+  knowledge_bases:
+    # Maximum file size for document uploads (in MB)
+    max_file_size_mb: 50
+    
+    # Allowed file types for upload
+    allowed_file_types:
+      - "pdf"
+      - "docx"
+      - "txt"
+      - "md"
+      - "html"
+    
+    # Default chunk size for document processing
+    default_chunk_size: 1000
+    
+    # Default chunk overlap
+    default_chunk_overlap: 200
+
+  # Vector Search Settings
+  vector_search:
+    # Default number of results to return
+    default_top_k: 5
+    
+    # Similarity threshold (0-1)
+    similarity_threshold: 0.7
+    
+    # Embedding model configuration
+    embedding_model: "amazon.titan-embed-text-v1"
+
+  # Access Scopes
+  access_scopes:
+    enable_system_scope: true
+    enable_org_scope: true
+    enable_workspace_scope: true
+    enable_chat_scope: true
+
+  # Processing Settings
+  processing:
+    # Enable async document processing
+    async_processing: true
+    
+    # SQS queue for document processing
+    use_sqs_queue: true
+    
+    # Retry settings
+    max_retries: 3
+    retry_delay_seconds: 30

@@ -43,7 +43,7 @@ modules:
     required: true
     dependencies: [module-access]
     config_file: module.config.yaml
-
+    
   module-kb:
     type: core
     tier: 3
@@ -52,7 +52,7 @@ modules:
     required: true
     dependencies: [module-access, module-ai]
     config_file: module.config.yaml
-
+    
   module-chat:
     type: core
     tier: 3
@@ -61,7 +61,7 @@ modules:
     required: true
     dependencies: [module-access, module-ai, module-kb]
     config_file: module.config.yaml
-
+  
   # ===== FUNCTIONAL MODULES =====
   # Functional modules are OPTIONAL and can be enabled per-project
 
@@ -73,7 +73,7 @@ modules:
     required: false
     dependencies: [module-access]
     config_file: module.config.yaml
-
+    
   module-eval:
     type: functional
     tier: null
@@ -82,7 +82,7 @@ modules:
     required: false
     dependencies: [module-access, module-ai]
     config_file: module.config.yaml
-
+    
   module-voice:
     type: functional
     tier: null

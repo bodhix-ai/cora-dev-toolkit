@@ -99,6 +99,8 @@ DROP POLICY IF EXISTS "org_email_domains_delete" ON public.org_email_domains;
 -- Org members can view their org's email domains
 -- Sys admins can view all email domains
 DROP POLICY IF EXISTS "org_email_domains_select" ON public.org_email_domains;
+DROP POLICY IF EXISTS "org_email_domains_select" ON public.org_email_domains;
+DROP POLICY IF EXISTS "org_email_domains_select" ON public.org_email_domains;
 CREATE POLICY "org_email_domains_select" ON public.org_email_domains
     FOR SELECT 
     TO authenticated
@@ -121,6 +123,8 @@ CREATE POLICY "org_email_domains_select" ON public.org_email_domains
 
 -- Org owners/admins can insert email domains for their org
 -- Sys admins can insert email domains for any org
+DROP POLICY IF EXISTS "org_email_domains_insert" ON public.org_email_domains;
+DROP POLICY IF EXISTS "org_email_domains_insert" ON public.org_email_domains;
 DROP POLICY IF EXISTS "org_email_domains_insert" ON public.org_email_domains;
 CREATE POLICY "org_email_domains_insert" ON public.org_email_domains
     FOR INSERT 
@@ -145,6 +149,8 @@ CREATE POLICY "org_email_domains_insert" ON public.org_email_domains
 
 -- Org owners/admins can update email domains for their org
 -- Sys admins can update email domains for any org
+DROP POLICY IF EXISTS "org_email_domains_update" ON public.org_email_domains;
+DROP POLICY IF EXISTS "org_email_domains_update" ON public.org_email_domains;
 DROP POLICY IF EXISTS "org_email_domains_update" ON public.org_email_domains;
 CREATE POLICY "org_email_domains_update" ON public.org_email_domains
     FOR UPDATE 
@@ -186,6 +192,8 @@ CREATE POLICY "org_email_domains_update" ON public.org_email_domains
 -- Org owners/admins can delete email domains for their org
 -- Sys admins can delete email domains for any org
 DROP POLICY IF EXISTS "org_email_domains_delete" ON public.org_email_domains;
+DROP POLICY IF EXISTS "org_email_domains_delete" ON public.org_email_domains;
+DROP POLICY IF EXISTS "org_email_domains_delete" ON public.org_email_domains;
 CREATE POLICY "org_email_domains_delete" ON public.org_email_domains
     FOR DELETE 
     TO authenticated
@@ -223,6 +231,8 @@ DROP POLICY IF EXISTS "user_invites_delete" ON public.user_invites;
 -- Sys admins can view all invites
 -- Users can view invites addressed to them
 DROP POLICY IF EXISTS "user_invites_select" ON public.user_invites;
+DROP POLICY IF EXISTS "user_invites_select" ON public.user_invites;
+DROP POLICY IF EXISTS "user_invites_select" ON public.user_invites;
 CREATE POLICY "user_invites_select" ON public.user_invites
     FOR SELECT 
     TO authenticated
@@ -253,6 +263,8 @@ CREATE POLICY "user_invites_select" ON public.user_invites
 -- Org owners/admins can create invites for their org
 -- Sys admins can create invites for any org
 DROP POLICY IF EXISTS "user_invites_insert" ON public.user_invites;
+DROP POLICY IF EXISTS "user_invites_insert" ON public.user_invites;
+DROP POLICY IF EXISTS "user_invites_insert" ON public.user_invites;
 CREATE POLICY "user_invites_insert" ON public.user_invites
     FOR INSERT 
     TO authenticated
@@ -276,6 +288,8 @@ CREATE POLICY "user_invites_insert" ON public.user_invites
 
 -- Org owners/admins can update invites for their org
 -- Sys admins can update any invite
+DROP POLICY IF EXISTS "user_invites_update" ON public.user_invites;
+DROP POLICY IF EXISTS "user_invites_update" ON public.user_invites;
 DROP POLICY IF EXISTS "user_invites_update" ON public.user_invites;
 CREATE POLICY "user_invites_update" ON public.user_invites
     FOR UPDATE 
@@ -317,6 +331,8 @@ CREATE POLICY "user_invites_update" ON public.user_invites
 -- Org owners/admins can delete invites for their org
 -- Sys admins can delete any invite
 DROP POLICY IF EXISTS "user_invites_delete" ON public.user_invites;
+DROP POLICY IF EXISTS "user_invites_delete" ON public.user_invites;
+DROP POLICY IF EXISTS "user_invites_delete" ON public.user_invites;
 CREATE POLICY "user_invites_delete" ON public.user_invites
     FOR DELETE 
     TO authenticated
@@ -354,6 +370,8 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS org_email_domains_updated_at ON public.org_email_domains;
 DROP TRIGGER IF EXISTS org_email_domains_updated_at ON public.org_email_domains;
+DROP TRIGGER IF EXISTS org_email_domains_updated_at ON public.org_email_domains;
+DROP TRIGGER IF EXISTS org_email_domains_updated_at ON public.org_email_domains;
 CREATE TRIGGER org_email_domains_updated_at BEFORE UPDATE ON public.org_email_domains
     FOR EACH ROW
     EXECUTE FUNCTION update_org_email_domains_updated_at();
@@ -366,6 +384,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS user_invites_updated_at ON public.user_invites;
+DROP TRIGGER IF EXISTS user_invites_updated_at ON public.user_invites;
 DROP TRIGGER IF EXISTS user_invites_updated_at ON public.user_invites;
 DROP TRIGGER IF EXISTS user_invites_updated_at ON public.user_invites;
 CREATE TRIGGER user_invites_updated_at BEFORE UPDATE ON public.user_invites
@@ -391,8 +411,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS check_expired_invites ON public.user_invites;
-CREATE TRIGGER check_expired_invites
-    AFTER INSERT ON public.user_invites
+DROP TRIGGER IF EXISTS check_expired_invites ON public.user_invites;
+DROP TRIGGER IF EXISTS check_expired_invites ON public.user_invites;
+CREATE TRIGGER check_expired_invites AFTER INSERT ON public.user_invites
     FOR EACH STATEMENT
     EXECUTE FUNCTION auto_expire_invites();
 

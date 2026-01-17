@@ -58,6 +58,20 @@ DEPRECATED_SUFFIX_PATTERNS = {
     '_progress': 'DEPRECATED - use {module}_state_{process} infix pattern instead',
 }
 
+# SQL keywords that appear at start of lines in PL/pgSQL (to skip during column extraction)
+SQL_KEYWORDS = {
+    'RETURN', 'RETURNS', 'BEGIN', 'END', 'IF', 'THEN', 'ELSE', 'ELSIF',
+    'CASE', 'WHEN', 'LOOP', 'FOR', 'WHILE', 'BEFORE', 'AFTER', 'DECLARE',
+    'NEW', 'OLD', 'EXECUTE', 'PERFORM', 'RAISE', 'EXCEPTION', 'INTO',
+    'AS', 'LANGUAGE', 'FUNCTION', 'TRIGGER', 'PROCEDURE', 'OR', 'AND',
+    'NOT', 'NULL', 'TRUE', 'FALSE', 'IN', 'OUT', 'INOUT', 'SELECT',
+    'INSERT', 'UPDATE', 'DELETE', 'FROM', 'WHERE', 'SET', 'VALUES',
+    'CREATE', 'DROP', 'ALTER', 'TABLE', 'INDEX', 'VIEW', 'GRANT',
+    'REVOKE', 'ON', 'TO', 'WITH', 'JOIN', 'LEFT', 'RIGHT', 'INNER',
+    'OUTER', 'USING', 'GROUP', 'ORDER', 'BY', 'HAVING', 'LIMIT',
+    'OFFSET', 'UNION', 'INTERSECT', 'EXCEPT', 'DISTINCT', 'ALL',
+}
+
 # Core tables that are allowed to be plural without prefixes
 CORE_TABLES = {
     'orgs', 'users', 'profiles', 'resumes', 'workspaces', 'workflows',
@@ -157,7 +171,13 @@ def extract_column_name(line: str) -> Optional[str]:
         return None
     
     match = re.match(r'\s+([a-z_][a-z0-9_]*)\s+', line, re.IGNORECASE)
-    return match.group(1) if match else None
+    if match:
+        name = match.group(1)
+        # Skip SQL keywords (PL/pgSQL functions)
+        if name.upper() in SQL_KEYWORDS:
+            return None
+        return name
+    return None
 
 
 def extract_index_name(line: str) -> Optional[str]:

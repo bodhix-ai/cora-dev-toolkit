@@ -962,7 +962,7 @@ if $WITH_CORE_MODULES && ! $DRY_RUN; then
   # Ensure packages directory exists
   mkdir -p "${STACK_DIR}/packages"
   
-  CORE_MODULES=("module-access" "module-ai" "module-mgmt")
+  CORE_MODULES=("module-access" "module-ai" "module-chat" "module-kb" "module-mgmt")
   CORE_MODULES_DIR="${TOOLKIT_ROOT}/templates/_modules-core"
   MODULE_TEMPLATE="${TOOLKIT_ROOT}/templates/_module-template"
   
@@ -1054,27 +1054,42 @@ if [[ -f "$CONFIG_FILE_FOR_MODULES" ]] && ! $DRY_RUN; then
 fi
 
 if ! $DRY_RUN && [[ ${#ENABLED_MODULES[@]} -gt 0 ]]; then
-  log_step "Creating functional modules..."
-  log_info "Found ${#ENABLED_MODULES[@]} functional modules to create: ${ENABLED_MODULES[*]}"
+  log_step "Creating enabled modules..."
+  log_info "Found ${#ENABLED_MODULES[@]} modules to create: ${ENABLED_MODULES[*]}"
 
   # Ensure packages directory exists
   mkdir -p "${STACK_DIR}/packages"
 
   FUNCTIONAL_MODULES_DIR="${TOOLKIT_ROOT}/templates/_modules-functional"
+  CORE_MODULES_DIR="${TOOLKIT_ROOT}/templates/_modules-core"
 
   for module in "${ENABLED_MODULES[@]}"; do
-    # Skip core modules (they're created separately with --with-core-modules)
+    # Skip required core modules (they're created separately with --with-core-modules)
     if [[ "$module" == "module-access" ]] || [[ "$module" == "module-ai" ]] || [[ "$module" == "module-mgmt" ]]; then
-      log_info "Skipping ${module} (core module, use --with-core-modules)"
+      log_info "Skipping ${module} (required core module, already created)"
       continue
     fi
 
     MODULE_DIR="${STACK_DIR}/packages/${module}"
-    FUNCTIONAL_MODULE_TEMPLATE="${FUNCTIONAL_MODULES_DIR}/${module}"
-
-    if [[ -d "$FUNCTIONAL_MODULE_TEMPLATE" ]]; then
+    
+    # Check both functional and core module directories
+    # This handles optional core modules like module-kb
+    if [[ -d "${FUNCTIONAL_MODULES_DIR}/${module}" ]]; then
+      MODULE_TEMPLATE="${FUNCTIONAL_MODULES_DIR}/${module}"
       log_info "Creating ${module} from functional module template..."
-      cp -r "$FUNCTIONAL_MODULE_TEMPLATE" "$MODULE_DIR"
+    elif [[ -d "${CORE_MODULES_DIR}/${module}" ]]; then
+      MODULE_TEMPLATE="${CORE_MODULES_DIR}/${module}"
+      log_info "Creating ${module} from core module template (optional core module)..."
+    else
+      log_warn "Module template not found for ${module}"
+      log_info "Checked: ${FUNCTIONAL_MODULES_DIR}/${module}"
+      log_info "Checked: ${CORE_MODULES_DIR}/${module}"
+      log_info "Skipping ${module}"
+      continue
+    fi
+
+    if [[ -d "$MODULE_TEMPLATE" ]]; then
+      cp -r "$MODULE_TEMPLATE" "$MODULE_DIR"
 
       # Replace standardized placeholders ({{...}} format only)
       find "$MODULE_DIR" -type f \( -name "*.py" -o -name "*.ts" -o -name "*.tsx" -o -name "*.json" -o -name "*.tf" -o -name "*.md" -o -name "*.sql" -o -name "*.mjs" \) | while read -r file; do
@@ -1089,7 +1104,7 @@ if ! $DRY_RUN && [[ ${#ENABLED_MODULES[@]} -gt 0 ]]; then
       done
 
       # Copy module routes to app directory if they exist
-      routes_dir="${FUNCTIONAL_MODULE_TEMPLATE}/routes"
+      routes_dir="${MODULE_TEMPLATE}/routes"
       if [[ -d "$routes_dir" ]]; then
         app_routes_dir="${STACK_DIR}/apps/web/app"
         log_info "  Copying routes from ${module}..."
@@ -1149,9 +1164,6 @@ if ! $DRY_RUN && [[ ${#ENABLED_MODULES[@]} -gt 0 ]]; then
           log_info "    ${MODULE_PKG_NAME} already in web app dependencies"
         fi
       fi
-    else
-      log_warn "Functional module template not found: ${FUNCTIONAL_MODULE_TEMPLATE}"
-      log_info "Skipping ${module}"
     fi
   done
 fi
@@ -2182,6 +2194,20 @@ run_post_creation_validation() {
   local stack_dir="$1"
   
   log_step "Running full validation suite..."
+  
+  # Run UI library validation first (fast check)
+  log_info "Checking UI library compliance..."
+  if [[ -f "${TOOLKIT_ROOT}/scripts/validate-ui-library.sh" ]]; then
+    if "${TOOLKIT_ROOT}/scripts/validate-ui-library.sh" "templates" > /dev/null 2>&1; then
+      log_info "✅ UI library validation passed"
+    else
+      log_warn "⚠️  UI library validation found violations"
+      log_info "Run: ./scripts/validate-ui-library.sh templates for details"
+    fi
+  else
+    log_warn "UI library validator not found: ${TOOLKIT_ROOT}/scripts/validate-ui-library.sh"
+  fi
+  echo ""
   
   # Check if cora-validate.py exists
   if [[ ! -f "${stack_dir}/scripts/validation/cora-validate.py" ]]; then

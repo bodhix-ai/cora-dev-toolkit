@@ -334,12 +334,17 @@ class CoraValidator:
             
             self.log(f"Command: {' '.join(cmd)}")
             
+            # Set PYTHONPATH to include validation directory so Python can import validator modules
+            env = os.environ.copy()
+            env['PYTHONPATH'] = str(self.validation_dir) + os.pathsep + env.get('PYTHONPATH', '')
+            
             # Run the validator's CLI with JSON output
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
                 cwd=str(self.validation_dir),
+                env=env,  # Pass modified environment
                 timeout=300  # 5 minute timeout
             )
 
@@ -358,8 +363,15 @@ class CoraValidator:
             passed = result.returncode == 0
             
             # Get lists of actual error/warning objects
+            # Some validators (like import_validator) nest errors in a summary object
             errors = output.get("errors", [])
+            if not errors and "summary" in output:
+                errors = output.get("summary", {}).get("errors", [])
+            
             warnings = output.get("warnings", [])
+            if not warnings and "summary" in output:
+                warnings = output.get("summary", {}).get("warnings", [])
+            
             info = output.get("info", [])
             details = output.get("details", {})
             

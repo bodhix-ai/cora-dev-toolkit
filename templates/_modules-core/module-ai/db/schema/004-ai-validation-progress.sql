@@ -55,6 +55,8 @@ ALTER TABLE public.ai_model_validation_progress ENABLE ROW LEVEL SECURITY;
 
 -- Admin-only access (sys_owner, sys_admin)
 DROP POLICY IF EXISTS "ai_model_validation_progress_admin_access" ON public.ai_model_validation_progress;
+DROP POLICY IF EXISTS "ai_model_validation_progress_admin_access" ON public.ai_model_validation_progress;
+DROP POLICY IF EXISTS "ai_model_validation_progress_admin_access" ON public.ai_model_validation_progress;
 CREATE POLICY "ai_model_validation_progress_admin_access" ON public.ai_model_validation_progress
     FOR ALL
     USING (
@@ -66,6 +68,8 @@ CREATE POLICY "ai_model_validation_progress_admin_access" ON public.ai_model_val
     );
 
 -- Service role has full access (for Lambda functions)
+DROP POLICY IF EXISTS "Service role full access to ai_model_validation_progress" ON public.ai_model_validation_progress;
+DROP POLICY IF EXISTS "Service role full access to ai_model_validation_progress" ON public.ai_model_validation_progress;
 DROP POLICY IF EXISTS "Service role full access to ai_model_validation_progress" ON public.ai_model_validation_progress;
 CREATE POLICY "Service role full access to ai_model_validation_progress" ON public.ai_model_validation_progress
     FOR ALL
@@ -84,6 +88,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS ai_model_validation_progress_updated_at ON public.ai_model_validation_progress;
+DROP TRIGGER IF EXISTS ai_model_validation_progress_updated_at ON public.ai_model_validation_progress;
 DROP TRIGGER IF EXISTS ai_model_validation_progress_updated_at ON public.ai_model_validation_progress;
 CREATE TRIGGER ai_model_validation_progress_updated_at BEFORE UPDATE ON public.ai_model_validation_progress
     FOR EACH ROW

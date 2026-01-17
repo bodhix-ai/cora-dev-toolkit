@@ -1,0 +1,57 @@
+# =============================================================================
+# Module-Chat Configuration
+# =============================================================================
+# This file defines the default configuration for the Chat module.
+# These values are merged into the project's setup.config.yaml automatically.
+
+module_chat:
+  # Module Display Settings
+  display_name: "Chat"
+  nav_icon: "Chat"
+
+  # Admin Card Configuration
+  admin_cards:
+    platform:
+      enabled: true
+      path: "/admin/sys/chat"
+      title: "Chat Config"
+      description: "Configure system-wide chat settings and defaults"
+      icon: "Chat"
+      priority: 45  # After KB (40)
+      context: "platform"
+    
+    organization:
+      enabled: true
+      path: "/admin/org/chat"
+      title: "Chat Settings"
+      description: "Manage organization chat settings and preferences"
+      icon: "Chat"
+      priority: 35  # After KB (30)
+      context: "organization"
+
+  # Chat Settings
+  chat:
+    # Maximum messages per chat session
+    max_messages_per_session: 1000
+    
+    # Default AI model for chat (overridable by user)
+    default_model: "gpt-4"
+    
+    # Message retention policy (in days)
+    retention_days: 90
+
+  # Sharing Settings
+  sharing:
+    # Enable workspace-level chat sharing
+    enable_workspace_sharing: true
+    
+    # Enable organization-level chat sharing
+    enable_org_sharing: false
+
+  # Streaming Settings
+  streaming:
+    # Enable streaming responses
+    enable_streaming: true
+    
+    # Chunk size for streaming
+    chunk_size: 1024

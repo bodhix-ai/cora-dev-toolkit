@@ -17,6 +17,8 @@ ALTER TABLE public.kb_access_chats ENABLE ROW LEVEL SECURITY;
 -- kb_bases Policies
 -- ========================================
 
+DROP POLICY IF EXISTS "kb_bases_sys_admin_all" ON public.kb_bases;
+DROP POLICY IF EXISTS "kb_bases_sys_admin_all" ON public.kb_bases;
 CREATE POLICY "kb_bases_sys_admin_all" ON public.kb_bases
     FOR ALL TO authenticated
     USING (EXISTS (
@@ -24,10 +26,14 @@ CREATE POLICY "kb_bases_sys_admin_all" ON public.kb_bases
         WHERE user_id = auth.uid() AND sys_role = 'sys_admin'
     ));
 
+DROP POLICY IF EXISTS "kb_bases_select" ON public.kb_bases;
+DROP POLICY IF EXISTS "kb_bases_select" ON public.kb_bases;
 CREATE POLICY "kb_bases_select" ON public.kb_bases
     FOR SELECT TO authenticated
     USING (can_access_kb(auth.uid(), id));
 
+DROP POLICY IF EXISTS "kb_bases_org_admin" ON public.kb_bases;
+DROP POLICY IF EXISTS "kb_bases_org_admin" ON public.kb_bases;
 CREATE POLICY "kb_bases_org_admin" ON public.kb_bases
     FOR ALL TO authenticated
     USING (
@@ -44,6 +50,8 @@ CREATE POLICY "kb_bases_org_admin" ON public.kb_bases
 -- kb_docs Policies
 -- ========================================
 
+DROP POLICY IF EXISTS "kb_docs_select" ON public.kb_docs;
+DROP POLICY IF EXISTS "kb_docs_select" ON public.kb_docs;
 CREATE POLICY "kb_docs_select" ON public.kb_docs
     FOR SELECT TO authenticated
     USING (EXISTS (
@@ -52,6 +60,8 @@ CREATE POLICY "kb_docs_select" ON public.kb_docs
         AND can_access_kb(auth.uid(), kb.id)
     ));
 
+DROP POLICY IF EXISTS "kb_docs_insert" ON public.kb_docs;
+DROP POLICY IF EXISTS "kb_docs_insert" ON public.kb_docs;
 CREATE POLICY "kb_docs_insert" ON public.kb_docs
     FOR INSERT TO authenticated
     WITH CHECK (can_upload_to_kb(auth.uid(), kb_id));
@@ -60,6 +70,8 @@ CREATE POLICY "kb_docs_insert" ON public.kb_docs
 -- kb_access_sys Policies
 -- ========================================
 
+DROP POLICY IF EXISTS "kb_access_sys_sys_admin" ON public.kb_access_sys;
+DROP POLICY IF EXISTS "kb_access_sys_sys_admin" ON public.kb_access_sys;
 CREATE POLICY "kb_access_sys_sys_admin" ON public.kb_access_sys
     FOR ALL TO authenticated
     USING (EXISTS (
@@ -67,6 +79,8 @@ CREATE POLICY "kb_access_sys_sys_admin" ON public.kb_access_sys
         WHERE user_id = auth.uid() AND sys_role = 'sys_admin'
     ));
 
+DROP POLICY IF EXISTS "kb_access_sys_select" ON public.kb_access_sys;
+DROP POLICY IF EXISTS "kb_access_sys_select" ON public.kb_access_sys;
 CREATE POLICY "kb_access_sys_select" ON public.kb_access_sys
     FOR SELECT TO authenticated
     USING (EXISTS (
@@ -79,6 +93,8 @@ CREATE POLICY "kb_access_sys_select" ON public.kb_access_sys
 -- kb_access_orgs Policies
 -- ========================================
 
+DROP POLICY IF EXISTS "kb_access_orgs_admin" ON public.kb_access_orgs;
+DROP POLICY IF EXISTS "kb_access_orgs_admin" ON public.kb_access_orgs;
 CREATE POLICY "kb_access_orgs_admin" ON public.kb_access_orgs
     FOR ALL TO authenticated
     USING (EXISTS (
@@ -92,6 +108,8 @@ CREATE POLICY "kb_access_orgs_admin" ON public.kb_access_orgs
 -- kb_access_ws Policies
 -- ========================================
 
+DROP POLICY IF EXISTS "kb_access_ws_admin" ON public.kb_access_ws;
+DROP POLICY IF EXISTS "kb_access_ws_admin" ON public.kb_access_ws;
 CREATE POLICY "kb_access_ws_admin" ON public.kb_access_ws
     FOR ALL TO authenticated
     USING (EXISTS (
@@ -105,10 +123,9 @@ CREATE POLICY "kb_access_ws_admin" ON public.kb_access_ws
 -- kb_access_chats Policies
 -- ========================================
 
+-- Users can manage KB access for chats they can view
+DROP POLICY IF EXISTS "kb_access_chats_all" ON public.kb_access_chats;
+DROP POLICY IF EXISTS "kb_access_chats_all" ON public.kb_access_chats;
 CREATE POLICY "kb_access_chats_all" ON public.kb_access_chats
     FOR ALL TO authenticated
-    USING (EXISTS (
-        SELECT 1 FROM public.chat_participants
-        WHERE chat_session_id = kb_access_chats.chat_session_id
-        AND user_id = auth.uid()
-    ));
+    USING (public.can_view_chat(auth.uid(), chat_session_id));

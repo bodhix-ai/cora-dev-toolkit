@@ -84,6 +84,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS update_ai_cfg_sys_rag_updated_at ON public.ai_cfg_sys_rag;
+DROP TRIGGER IF EXISTS update_ai_cfg_sys_rag_updated_at ON public.ai_cfg_sys_rag;
+DROP TRIGGER IF EXISTS update_ai_cfg_sys_rag_updated_at ON public.ai_cfg_sys_rag;
 CREATE TRIGGER update_ai_cfg_sys_rag_updated_at BEFORE UPDATE ON public.ai_cfg_sys_rag 
     FOR EACH ROW 
     EXECUTE FUNCTION update_ai_cfg_sys_rag_updated_at();
@@ -139,12 +141,16 @@ ALTER TABLE public.ai_cfg_sys_rag ENABLE ROW LEVEL SECURITY;
 
 -- Authenticated users can view system RAG settings
 DROP POLICY IF EXISTS "Authenticated users can view ai_cfg_sys_rag" ON public.ai_cfg_sys_rag;
+DROP POLICY IF EXISTS "Authenticated users can view ai_cfg_sys_rag" ON public.ai_cfg_sys_rag;
+DROP POLICY IF EXISTS "Authenticated users can view ai_cfg_sys_rag" ON public.ai_cfg_sys_rag;
 CREATE POLICY "Authenticated users can view ai_cfg_sys_rag" ON public.ai_cfg_sys_rag 
     FOR SELECT 
     TO authenticated 
     USING (true);
 
 -- System admins can modify system RAG settings
+DROP POLICY IF EXISTS "System admins can modify ai_cfg_sys_rag" ON public.ai_cfg_sys_rag;
+DROP POLICY IF EXISTS "System admins can modify ai_cfg_sys_rag" ON public.ai_cfg_sys_rag;
 DROP POLICY IF EXISTS "System admins can modify ai_cfg_sys_rag" ON public.ai_cfg_sys_rag;
 CREATE POLICY "System admins can modify ai_cfg_sys_rag" ON public.ai_cfg_sys_rag 
     TO authenticated 

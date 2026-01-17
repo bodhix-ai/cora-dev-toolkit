@@ -260,7 +260,7 @@ def handle_create_workspace_kb(event: Dict[str, Any], user_id: str, workspace_id
     workspace_id = common.validate_uuid(workspace_id, 'workspace_id')
     
     # Check workspace admin access
-    if not check_workspace_admin_access(user_id, workspace_id):
+    if not check_ws_admin_access(user_id, workspace_id):
         raise common.ForbiddenError('Only workspace admins can create workspace KBs')
     
     # Get workspace
@@ -332,9 +332,9 @@ def handle_list_available_kbs_for_workspace(user_id: str, workspace_id: str) -> 
         raise common.ForbiddenError('You do not have access to this workspace')
     
     # Use RPC function to get accessible KBs
-    result = common.execute_rpc(
-        function_name='get_accessible_kbs_for_workspace',
-        params={'p_user_id': user_id, 'p_workspace_id': workspace_id}
+    result = common.rpc(
+        'get_accessible_kbs_for_workspace',
+        {'p_user_id': user_id, 'p_workspace_id': workspace_id}
     )
     
     # Format response
@@ -365,7 +365,7 @@ def handle_toggle_kb_for_workspace(event: Dict[str, Any], user_id: str, workspac
     kb_id = common.validate_uuid(kb_id, 'kb_id')
     
     # Check workspace admin access
-    if not check_workspace_admin_access(user_id, workspace_id):
+    if not check_ws_admin_access(user_id, workspace_id):
         raise common.ForbiddenError('Only workspace admins can toggle KB access')
     
     # Parse request body
@@ -388,7 +388,7 @@ def handle_toggle_kb_for_workspace(event: Dict[str, Any], user_id: str, workspac
     existing_toggle = common.find_one(
         table='kb_access_ws',
         filters={
-            'knowledge_base_id': kb_id,
+            'kb_id': kb_id,
             'workspace_id': workspace_id
         }
     )
@@ -405,7 +405,7 @@ def handle_toggle_kb_for_workspace(event: Dict[str, Any], user_id: str, workspac
         updated = common.insert_one(
             table='kb_access_ws',
             data={
-                'knowledge_base_id': kb_id,
+                'kb_id': kb_id,
                 'workspace_id': workspace_id,
                 'is_enabled': is_enabled,
                 'created_by': user_id
@@ -539,9 +539,9 @@ def handle_list_available_kbs_for_chat(user_id: str, chat_id: str) -> Dict[str, 
         return common.success_response([])
     
     # Use workspace RPC to get available KBs
-    result = common.execute_rpc(
-        function_name='get_accessible_kbs_for_workspace',
-        params={'p_user_id': user_id, 'p_workspace_id': chat['workspace_id']}
+    result = common.rpc(
+        'get_accessible_kbs_for_workspace',
+        {'p_user_id': user_id, 'p_workspace_id': chat['workspace_id']}
     )
     
     # Add chat-specific toggles
@@ -551,7 +551,7 @@ def handle_list_available_kbs_for_chat(user_id: str, chat_id: str) -> Dict[str, 
         chat_toggle = common.find_one(
             table='kb_access_chats',
             filters={
-                'knowledge_base_id': row['kb_id'],
+                'kb_id': row['kb_id'],
                 'chat_session_id': chat_id
             }
         )
@@ -585,7 +585,7 @@ def handle_toggle_kb_for_chat(event: Dict[str, Any], user_id: str, chat_id: str,
     existing_toggle = common.find_one(
         table='kb_access_chats',
         filters={
-            'knowledge_base_id': kb_id,
+            'kb_id': kb_id,
             'chat_session_id': chat_id
         }
     )
@@ -602,7 +602,7 @@ def handle_toggle_kb_for_chat(event: Dict[str, Any], user_id: str, chat_id: str,
         updated = common.insert_one(
             table='kb_access_chats',
             data={
-                'knowledge_base_id': kb_id,
+                'kb_id': kb_id,
                 'chat_session_id': chat_id,
                 'is_enabled': is_enabled,
                 'is_override': True
@@ -713,7 +713,7 @@ def handle_create_org_kb(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     common.insert_one(
         table='kb_access_orgs',
         data={
-            'knowledge_base_id': kb['id'],
+            'kb_id': kb['id'],
             'org_id': org_id,
             'is_enabled': True,
             'created_by': user_id
@@ -755,7 +755,7 @@ def handle_get_org_kb(user_id: str, kb_id: str) -> Dict[str, Any]:
 def handle_list_sys_kbs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """List system KBs (platform admin only)"""
     # Check platform admin access
-    if not check_platform_admin_access(user_id):
+    if not check_sys_admin_access(user_id):
         raise common.ForbiddenError('Only platform admins can list system KBs')
     
     kbs = common.find_many(
@@ -772,7 +772,7 @@ def handle_list_sys_kbs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         # Add org association count
         org_count = len(common.find_many(
             table='kb_access_sys',
-            filters={'knowledge_base_id': kb['id'], 'is_enabled': True}
+            filters={'kb_id': kb['id'], 'is_enabled': True}
         ))
         kb_data['orgCount'] = org_count
         
@@ -784,7 +784,7 @@ def handle_list_sys_kbs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
 def handle_create_sys_kb(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """Create system KB (platform admin only)"""
     # Check platform admin access
-    if not check_platform_admin_access(user_id):
+    if not check_sys_admin_access(user_id):
         raise common.ForbiddenError('Only platform admins can create system KBs')
     
     body = json.loads(event.get('body', '{}'))
@@ -825,7 +825,7 @@ def handle_get_sys_kb(user_id: str, kb_id: str) -> Dict[str, Any]:
     kb_id = common.validate_uuid(kb_id, 'kb_id')
     
     # Check platform admin access
-    if not check_platform_admin_access(user_id):
+    if not check_sys_admin_access(user_id):
         raise common.ForbiddenError('Only platform admins can view system KBs')
     
     kb = common.find_one(
@@ -842,7 +842,7 @@ def handle_get_sys_kb(user_id: str, kb_id: str) -> Dict[str, Any]:
     # Add org associations
     org_associations = common.find_many(
         table='kb_access_sys',
-        filters={'knowledge_base_id': kb_id}
+        filters={'kb_id': kb_id}
     )
     
     result['orgAssociations'] = [
@@ -869,7 +869,7 @@ def handle_associate_sys_kb_org(event: Dict[str, Any], user_id: str, kb_id: str)
     kb_id = common.validate_uuid(kb_id, 'kb_id')
     
     # Check platform admin access
-    if not check_platform_admin_access(user_id):
+    if not check_sys_admin_access(user_id):
         raise common.ForbiddenError('Only platform admins can associate system KBs')
     
     body = json.loads(event.get('body', '{}'))
@@ -879,7 +879,7 @@ def handle_associate_sys_kb_org(event: Dict[str, Any], user_id: str, kb_id: str)
     # Check if association exists
     existing = common.find_one(
         table='kb_access_sys',
-        filters={'knowledge_base_id': kb_id, 'org_id': org_id}
+        filters={'kb_id': kb_id, 'org_id': org_id}
     )
     
     if existing:
@@ -894,7 +894,7 @@ def handle_associate_sys_kb_org(event: Dict[str, Any], user_id: str, kb_id: str)
         updated = common.insert_one(
             table='kb_access_sys',
             data={
-                'knowledge_base_id': kb_id,
+                'kb_id': kb_id,
                 'org_id': org_id,
                 'is_enabled': True,
                 'created_by': user_id
@@ -914,13 +914,13 @@ def handle_remove_sys_kb_org(user_id: str, kb_id: str, org_id: str) -> Dict[str,
     org_id = common.validate_uuid(org_id, 'org_id')
     
     # Check platform admin access
-    if not check_platform_admin_access(user_id):
+    if not check_sys_admin_access(user_id):
         raise common.ForbiddenError('Only platform admins can remove system KB associations')
     
     # Find association
     association = common.find_one(
         table='kb_access_sys',
-        filters={'knowledge_base_id': kb_id, 'org_id': org_id}
+        filters={'kb_id': kb_id, 'org_id': org_id}
     )
     
     if not association:
@@ -970,13 +970,13 @@ def handle_update_kb(event: Dict[str, Any], user_id: str, kb_id: str, expected_s
     
     # Check access based on scope
     if expected_scope == 'sys':
-        if not check_platform_admin_access(user_id):
+        if not check_sys_admin_access(user_id):
             raise common.ForbiddenError('Only platform admins can update system KBs')
     elif expected_scope == 'org':
         if not check_org_admin_access(user_id, kb['org_id']):
             raise common.ForbiddenError('Only org admins can update org KBs')
     elif expected_scope == 'workspace':
-        if not check_workspace_admin_access(user_id, kb['workspace_id']):
+        if not check_ws_admin_access(user_id, kb['workspace_id']):
             raise common.ForbiddenError('Only workspace admins can update workspace KBs')
     
     # Parse request body
@@ -1029,7 +1029,7 @@ def handle_delete_kb(user_id: str, kb_id: str, expected_scope: str) -> Dict[str,
     
     # Check access
     if expected_scope == 'sys':
-        if not check_platform_admin_access(user_id):
+        if not check_sys_admin_access(user_id):
             raise common.ForbiddenError('Only platform admins can delete system KBs')
     elif expected_scope == 'org':
         if not check_org_admin_access(user_id, kb['org_id']):
@@ -1111,7 +1111,7 @@ def check_workspace_access(user_id: str, workspace_id: str) -> bool:
     return membership is not None
 
 
-def check_workspace_admin_access(user_id: str, workspace_id: str) -> bool:
+def check_ws_admin_access(user_id: str, workspace_id: str) -> bool:
     """Check if user is workspace admin"""
     membership = common.find_one(
         table='ws_members',
@@ -1125,12 +1125,41 @@ def check_workspace_admin_access(user_id: str, workspace_id: str) -> bool:
 
 
 def check_chat_access(user_id: str, chat_id: str) -> bool:
-    """Check if user has access to chat"""
-    participant = common.find_one(
-        table='chat_participants',
-        filters={'chat_session_id': chat_id, 'user_id': user_id}
-    )
-    return participant is not None
+    """Check if user has access to chat (owner, workspace member, or shared)"""
+    try:
+        # Get chat session
+        chat = common.find_one(
+            table='chat_sessions',
+            filters={'id': chat_id, 'is_deleted': False}
+        )
+        
+        if not chat:
+            return False
+        
+        # Check if user is the owner
+        if chat.get('created_by') == user_id:
+            return True
+        
+        # Check if chat is shared with workspace and user is workspace member
+        if chat.get('is_shared_with_workspace') and chat.get('workspace_id'):
+            membership = common.find_one(
+                table='ws_members',
+                filters={'ws_id': chat['workspace_id'], 'user_id': user_id}
+            )
+            if membership:
+                return True
+        
+        # Check if user has explicit share access
+        share = common.find_one(
+            table='chat_shares',
+            filters={'session_id': chat_id, 'shared_with_user_id': user_id}
+        )
+        
+        return share is not None
+    
+    except Exception as e:
+        print(f"Error checking chat access: {str(e)}")
+        return False
 
 
 def check_org_admin_access(user_id: str, org_id: str) -> bool:
@@ -1146,7 +1175,7 @@ def check_org_admin_access(user_id: str, org_id: str) -> bool:
     return membership is not None
 
 
-def check_platform_admin_access(user_id: str) -> bool:
+def check_sys_admin_access(user_id: str) -> bool:
     """Check if user is platform admin"""
     profile = common.find_one(
         table='user_profiles',

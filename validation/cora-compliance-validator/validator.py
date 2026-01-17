@@ -97,11 +97,12 @@ class CoraComplianceChecker:
         re.compile(r'common\.delete_one\s*\('),
         re.compile(r'supabase\.table\s*\('),
     ]
-    RAW_SQL_PATTERNS = [
-        re.compile(r'["\']SELECT\s+.*FROM', re.IGNORECASE),
-        re.compile(r'["\']INSERT\s+INTO', re.IGNORECASE),
-        re.compile(r'["\']UPDATE\s+.*SET', re.IGNORECASE),
-        re.compile(r'["\']DELETE\s+FROM', re.IGNORECASE),
+    # Actual SQL execution patterns (true violations)
+    # Only match actual .execute() calls, not SQL strings in comments/docstrings
+    SQL_EXECUTION_PATTERNS = [
+        re.compile(r'\.execute\s*\(["\']'),
+        re.compile(r'cursor\.(execute|executemany)\s*\('),
+        re.compile(r'conn\.(execute|cursor)\s*\('),
     ]
     
     # Standard 6: Error Handling
@@ -197,10 +198,16 @@ class CoraComplianceChecker:
     # These Lambdas are triggered by EventBridge or SQS, not API Gateway
     SCHEDULED_JOB_LAMBDAS = ['cleanup', 'processor']
     
+    # SQS-triggered Lambdas (asynchronous background processing)
+    SQS_TRIGGERED_LAMBDAS = ['kb-processor']
+    
     def check_standard_2_authentication(self, content: str, lambda_name: str = "") -> StandardCheck:
         """Check Standard 2: Authentication & Authorization"""
         # Whitelist: Scheduled jobs triggered by EventBridge don't receive user JWTs
         is_scheduled_job = any(sj in lambda_name for sj in self.SCHEDULED_JOB_LAMBDAS)
+        
+        # Whitelist: SQS-triggered Lambdas process background jobs, no user JWTs
+        is_sqs_lambda = any(sqs in lambda_name for sqs in self.SQS_TRIGGERED_LAMBDAS)
         
         if is_scheduled_job:
             return StandardCheck(
@@ -209,6 +216,16 @@ class CoraComplianceChecker:
                 is_compliant=True,
                 score=1.0,
                 details=["ℹ Scheduled job (EventBridge trigger)", "✓ No user authentication required"],
+                issues=[]
+            )
+        
+        if is_sqs_lambda:
+            return StandardCheck(
+                standard_number=2,
+                standard_name="Authentication & Authorization",
+                is_compliant=True,
+                score=1.0,
+                details=["ℹ SQS-triggered Lambda (background processing)", "✓ No user authentication required"],
                 issues=[]
             )
         
@@ -386,7 +403,7 @@ class CoraComplianceChecker:
         for pattern in self.DB_HELPER_PATTERNS:
             helper_count += len(pattern.findall(content))
         
-        for pattern in self.RAW_SQL_PATTERNS:
+        for pattern in self.SQL_EXECUTION_PATTERNS:
             raw_sql_count += len(pattern.findall(content))
         
         details = []

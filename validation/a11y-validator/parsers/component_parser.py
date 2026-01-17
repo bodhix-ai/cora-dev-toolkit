@@ -86,10 +86,12 @@ class ComponentParser:
             return None
         
         elements = self.extract_jsx_elements(content)
+        labels = self.extract_labels(elements)
         
         return {
             'file_path': str(path),
             'elements': elements,
+            'labels': labels,
             'line_count': len(content.splitlines()),
         }
     
@@ -481,7 +483,7 @@ class ComponentParser:
     def extract_form_controls(self, elements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Extract form control elements.
-        
+
         Returns:
             List of form controls
         """
@@ -491,6 +493,28 @@ class ComponentParser:
         ]
         
         return [el for el in elements if el['type'] in form_control_types]
+    
+    def extract_labels(self, elements: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        """
+        Extract label elements with their htmlFor attributes.
+        
+        Returns:
+            Dictionary mapping htmlFor IDs to label elements
+        """
+        labels = {}
+        
+        for element in elements:
+            if element['type'] == 'label':
+                # Check for htmlFor attribute
+                html_for = element['attributes'].get('htmlFor')
+                if html_for:
+                    labels[html_for] = {
+                        'line': element['line'],
+                        'column': element['column'],
+                        'element': element
+                    }
+        
+        return labels
 
 
 def extract_inline_styles(element: Dict[str, Any]) -> Dict[str, str]:
