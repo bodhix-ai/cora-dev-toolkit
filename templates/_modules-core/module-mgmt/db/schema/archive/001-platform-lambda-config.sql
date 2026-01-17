@@ -52,6 +52,8 @@ ALTER TABLE public.platform_lambda_config ENABLE ROW LEVEL SECURITY;
 
 -- Platform admins can view all platform configs
 DROP POLICY IF EXISTS "Platform admins can view all platform configs" ON public.platform_lambda_config;
+DROP POLICY IF EXISTS "Platform admins can view all platform configs" ON public.platform_lambda_config;
+DROP POLICY IF EXISTS "Platform admins can view all platform configs" ON public.platform_lambda_config;
 CREATE POLICY "Platform admins can view all platform configs" ON public.platform_lambda_config
 FOR SELECT
 TO authenticated
@@ -66,6 +68,8 @@ USING (
 
 -- Platform admins can insert platform configs
 DROP POLICY IF EXISTS "Platform admins can insert platform configs" ON public.platform_lambda_config;
+DROP POLICY IF EXISTS "Platform admins can insert platform configs" ON public.platform_lambda_config;
+DROP POLICY IF EXISTS "Platform admins can insert platform configs" ON public.platform_lambda_config;
 CREATE POLICY "Platform admins can insert platform configs" ON public.platform_lambda_config
 FOR INSERT
 TO authenticated
@@ -79,6 +83,8 @@ WITH CHECK (
 );
 
 -- Platform admins can update platform configs
+DROP POLICY IF EXISTS "Platform admins can update platform configs" ON public.platform_lambda_config;
+DROP POLICY IF EXISTS "Platform admins can update platform configs" ON public.platform_lambda_config;
 DROP POLICY IF EXISTS "Platform admins can update platform configs" ON public.platform_lambda_config;
 CREATE POLICY "Platform admins can update platform configs" ON public.platform_lambda_config
 FOR UPDATE
@@ -102,6 +108,8 @@ WITH CHECK (
 
 -- Platform admins can delete platform configs
 DROP POLICY IF EXISTS "Platform admins can delete platform configs" ON public.platform_lambda_config;
+DROP POLICY IF EXISTS "Platform admins can delete platform configs" ON public.platform_lambda_config;
+DROP POLICY IF EXISTS "Platform admins can delete platform configs" ON public.platform_lambda_config;
 CREATE POLICY "Platform admins can delete platform configs" ON public.platform_lambda_config
 FOR DELETE
 TO authenticated
@@ -115,6 +123,8 @@ USING (
 );
 
 -- Service role has full access
+DROP POLICY IF EXISTS "Service role full access to platform_lambda_config" ON public.platform_lambda_config;
+DROP POLICY IF EXISTS "Service role full access to platform_lambda_config" ON public.platform_lambda_config;
 DROP POLICY IF EXISTS "Service role full access to platform_lambda_config" ON public.platform_lambda_config;
 CREATE POLICY "Service role full access to platform_lambda_config" ON public.platform_lambda_config
 FOR ALL
@@ -141,8 +151,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS platform_lambda_config_updated_at ON public.platform_lambda_config;
-CREATE TRIGGER platform_lambda_config_updated_at 
-    BEFORE UPDATE ON public.platform_lambda_config
+DROP TRIGGER IF EXISTS platform_lambda_config_updated_at ON public.platform_lambda_config;
+DROP TRIGGER IF EXISTS platform_lambda_config_updated_at ON public.platform_lambda_config;
+CREATE TRIGGER platform_lambda_config_updated_at BEFORE UPDATE ON public.platform_lambda_config
     FOR EACH ROW
     EXECUTE FUNCTION update_platform_lambda_config_updated_at();
 

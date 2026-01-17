@@ -24,10 +24,10 @@ BEGIN
             -- System KB requires ALL 4 levels enabled
             SELECT EXISTS (
                 SELECT 1 FROM public.kb_access_sys kas
-                JOIN public.kb_access_orgs kao ON kao.knowledge_base_id = kas.knowledge_base_id 
+                JOIN public.kb_access_orgs kao ON kao.kb_id = kas.kb_id 
                     AND kao.org_id = kas.org_id
                 JOIN public.org_members om ON om.org_id = kas.org_id
-                WHERE kas.knowledge_base_id = p_kb_id
+                WHERE kas.kb_id = p_kb_id
                 AND kas.is_enabled = true
                 AND kao.is_enabled = true
                 AND om.user_id = p_user_id
@@ -48,11 +48,9 @@ BEGIN
             ) INTO v_has_access;
             
         WHEN 'chat' THEN
-            -- Chat KB: Check if user is chat participant
-            SELECT EXISTS (
-                SELECT 1 FROM public.chat_participants
-                WHERE chat_session_id = v_kb.chat_session_id AND user_id = p_user_id
-            ) INTO v_has_access;
+            -- Chat KB: Use module-chat's access control function
+            -- This checks: owner OR direct share OR workspace share (via ws_members)
+            SELECT can_view_chat(p_user_id, v_kb.chat_session_id) INTO v_has_access;
     END CASE;
     
     RETURN v_has_access;
@@ -141,7 +139,7 @@ BEGIN
     RETURN QUERY
     SELECT kb.id, kb.name, kb.scope, kaw.is_enabled, 'org'::TEXT
     FROM public.kb_bases kb
-    JOIN public.kb_access_ws kaw ON kaw.knowledge_base_id = kb.id AND kaw.workspace_id = p_workspace_id
+    JOIN public.kb_access_ws kaw ON kaw.kb_id = kb.id AND kaw.workspace_id = p_workspace_id
     WHERE kb.org_id = v_workspace.org_id
     AND kb.scope = 'org'
     AND kb.is_deleted = false
@@ -152,9 +150,9 @@ BEGIN
     RETURN QUERY
     SELECT kb.id, kb.name, kb.scope, kaw.is_enabled, 'sys'::TEXT
     FROM public.kb_bases kb
-    JOIN public.kb_access_sys kas ON kas.knowledge_base_id = kb.id
-    JOIN public.kb_access_orgs kao ON kao.knowledge_base_id = kb.id AND kao.org_id = kas.org_id
-    JOIN public.kb_access_ws kaw ON kaw.knowledge_base_id = kb.id AND kaw.workspace_id = p_workspace_id
+    JOIN public.kb_access_sys kas ON kas.kb_id = kb.id
+    JOIN public.kb_access_orgs kao ON kao.kb_id = kb.id AND kao.org_id = kas.org_id
+    JOIN public.kb_access_ws kaw ON kaw.kb_id = kb.id AND kaw.workspace_id = p_workspace_id
     WHERE kas.org_id = v_workspace.org_id
     AND kb.scope = 'sys'
     AND kb.is_deleted = false

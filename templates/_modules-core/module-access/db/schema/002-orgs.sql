@@ -60,6 +60,8 @@ ALTER TABLE public.orgs ENABLE ROW LEVEL SECURITY;
 
 -- Organization owners can update their organizations
 DROP POLICY IF EXISTS "Org owners can update org" ON public.orgs;
+DROP POLICY IF EXISTS "Org owners can update org" ON public.orgs;
+DROP POLICY IF EXISTS "Org owners can update org" ON public.orgs;
 CREATE POLICY "Org owners can update org" ON public.orgs
     FOR UPDATE 
     TO authenticated
@@ -68,6 +70,8 @@ CREATE POLICY "Org owners can update org" ON public.orgs
 
 -- Users can create new organizations
 DROP POLICY IF EXISTS "Users can create organizations" ON public.orgs;
+DROP POLICY IF EXISTS "Users can create organizations" ON public.orgs;
+DROP POLICY IF EXISTS "Users can create organizations" ON public.orgs;
 CREATE POLICY "Users can create organizations" ON public.orgs
     FOR INSERT 
     TO authenticated
@@ -75,12 +79,16 @@ CREATE POLICY "Users can create organizations" ON public.orgs
 
 -- Organization owners can delete their organizations
 DROP POLICY IF EXISTS "Org owners can delete org" ON public.orgs;
+DROP POLICY IF EXISTS "Org owners can delete org" ON public.orgs;
+DROP POLICY IF EXISTS "Org owners can delete org" ON public.orgs;
 CREATE POLICY "Org owners can delete org" ON public.orgs
     FOR DELETE 
     TO authenticated
     USING (owner_id = auth.uid());
 
 -- Service role has full access
+DROP POLICY IF EXISTS "Service role full access to orgs" ON public.orgs;
+DROP POLICY IF EXISTS "Service role full access to orgs" ON public.orgs;
 DROP POLICY IF EXISTS "Service role full access to orgs" ON public.orgs;
 CREATE POLICY "Service role full access to orgs" ON public.orgs
     FOR ALL
@@ -98,6 +106,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_orgs_updated_at ON orgs;
+DROP TRIGGER IF EXISTS update_orgs_updated_at ON orgs;
 DROP TRIGGER IF EXISTS update_orgs_updated_at ON orgs;
 CREATE TRIGGER update_orgs_updated_at BEFORE UPDATE ON orgs 
     FOR EACH ROW

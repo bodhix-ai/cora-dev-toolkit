@@ -58,6 +58,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS update_ai_cfg_org_prompts_updated_at ON public.ai_cfg_org_prompts;
+DROP TRIGGER IF EXISTS update_ai_cfg_org_prompts_updated_at ON public.ai_cfg_org_prompts;
+DROP TRIGGER IF EXISTS update_ai_cfg_org_prompts_updated_at ON public.ai_cfg_org_prompts;
 CREATE TRIGGER update_ai_cfg_org_prompts_updated_at BEFORE UPDATE ON public.ai_cfg_org_prompts 
     FOR EACH ROW 
     EXECUTE FUNCTION update_ai_cfg_org_prompts_updated_at();
@@ -111,6 +113,8 @@ END $$;
 ALTER TABLE public.ai_cfg_org_prompts ENABLE ROW LEVEL SECURITY;
 
 -- Sys admins can manage all prompt engineering settings
+DROP POLICY IF EXISTS "Sys admins can manage prompt engineering" ON public.ai_cfg_org_prompts;
+DROP POLICY IF EXISTS "Sys admins can manage prompt engineering" ON public.ai_cfg_org_prompts;
 DROP POLICY IF EXISTS "Sys admins can manage prompt engineering" ON public.ai_cfg_org_prompts;
 CREATE POLICY "Sys admins can manage prompt engineering" ON public.ai_cfg_org_prompts 
     TO authenticated 

@@ -89,6 +89,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_sys_idp_config_timestamp ON sys_idp_config;
+DROP TRIGGER IF EXISTS trg_sys_idp_config_timestamp ON sys_idp_config;
+DROP TRIGGER IF EXISTS trg_sys_idp_config_timestamp ON sys_idp_config;
 CREATE TRIGGER trg_sys_idp_config_timestamp BEFORE UPDATE ON sys_idp_config
     FOR EACH ROW
     EXECUTE FUNCTION update_sys_idp_timestamp();

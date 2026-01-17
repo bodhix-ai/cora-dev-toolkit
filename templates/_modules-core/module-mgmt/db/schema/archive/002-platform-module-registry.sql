@@ -103,6 +103,8 @@ DROP TRIGGER IF EXISTS trigger_update_module_registry_timestamp
     ON platform_module_registry;
 
 DROP TRIGGER IF EXISTS trigger_update_module_registry_timestamp ON platform_module_registry;
+DROP TRIGGER IF EXISTS trigger_update_module_registry_timestamp ON platform_module_registry;
+DROP TRIGGER IF EXISTS trigger_update_module_registry_timestamp ON platform_module_registry;
 CREATE TRIGGER trigger_update_module_registry_timestamp BEFORE UPDATE ON platform_module_registry
     FOR EACH ROW
     EXECUTE FUNCTION update_platform_module_registry_updated_at();

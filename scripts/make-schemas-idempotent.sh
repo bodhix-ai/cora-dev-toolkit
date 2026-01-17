@@ -9,7 +9,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TOOLKIT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-TEMPLATES_DIR="${TOOLKIT_ROOT}/templates/_cora-core-modules"
+TEMPLATES_DIR="${TOOLKIT_ROOT}/templates/_modules-core"
 
 # Colors
 GREEN='\033[0;32m'
