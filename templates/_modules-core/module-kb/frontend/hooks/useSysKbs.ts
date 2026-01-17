@@ -12,9 +12,17 @@ import {
   UpdateKbInput,
   AssociateOrgInput 
 } from '../types';
+import type { KbModuleApiClient } from '../lib/api';
+
+/**
+ * API client interface with KB module
+ */
+export interface ApiClientWithKb {
+  kb: KbModuleApiClient;
+}
 
 export interface UseSysKbsOptions {
-  apiClient: any;
+  apiClient: ApiClientWithKb;
   autoFetch?: boolean;
 }
 
@@ -50,11 +58,12 @@ export function useSysKbs({
       setError(null);
 
       const kbClient = apiClient.kb;
-      const data = await kbClient.sysAdmin.listKbs();
-      setKbs(data);
-    } catch (err: any) {
+      const response = await kbClient.sysAdmin.listKbs();
+      setKbs(response.data);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch knowledge bases';
       console.error('Failed to fetch system KBs:', err);
-      setError(err.message || 'Failed to fetch knowledge bases');
+      setError(errorMessage);
       setKbs([]);
     } finally {
       setLoading(false);
@@ -80,15 +89,16 @@ export function useSysKbs({
         };
 
         const kbClient = apiClient.kb;
-        const newKb = await kbClient.sysAdmin.createKb(fullInput);
+        const response = await kbClient.sysAdmin.createKb(fullInput);
 
         // Refresh list to include new KB
         await fetchKbs();
 
-        return newKb;
-      } catch (err: any) {
+        return response.data;
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to create knowledge base';
         console.error('Failed to create system KB:', err);
-        setError(err.message || 'Failed to create knowledge base');
+        setError(errorMessage);
         throw err;
       }
     },
@@ -105,17 +115,18 @@ export function useSysKbs({
         setError(null);
 
         const kbClient = apiClient.kb;
-        const updatedKb = await kbClient.sysAdmin.updateKb(kbId, input);
+        const response = await kbClient.sysAdmin.updateKb(kbId, input);
 
         // Update local state
         setKbs((prev) =>
-          prev.map((kb) => (kb.id === kbId ? updatedKb : kb))
+          prev.map((kb) => (kb.id === kbId ? response.data : kb))
         );
 
-        return updatedKb;
-      } catch (err: any) {
+        return response.data;
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to update knowledge base';
         console.error(`Failed to update KB ${kbId}:`, err);
-        setError(err.message || 'Failed to update knowledge base');
+        setError(errorMessage);
         throw err;
       }
     },
@@ -136,9 +147,10 @@ export function useSysKbs({
 
         // Remove from local state
         setKbs((prev) => prev.filter((kb) => kb.id !== kbId));
-      } catch (err: any) {
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete knowledge base';
         console.error(`Failed to delete KB ${kbId}:`, err);
-        setError(err.message || 'Failed to delete knowledge base');
+        setError(errorMessage);
         throw err;
       }
     },
@@ -155,12 +167,13 @@ export function useSysKbs({
         setError(null);
 
         const kbClient = apiClient.kb;
-        const kb = await kbClient.sysAdmin.getKb(kbId);
+        const response = await kbClient.sysAdmin.getKb(kbId);
 
-        return kb;
-      } catch (err: any) {
+        return response.data;
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to get knowledge base';
         console.error(`Failed to get KB ${kbId}:`, err);
-        setError(err.message || 'Failed to get knowledge base');
+        setError(errorMessage);
         throw err;
       }
     },
@@ -182,9 +195,10 @@ export function useSysKbs({
 
         // Refresh to get updated org associations
         await fetchKbs();
-      } catch (err: any) {
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to associate organization';
         console.error(`Failed to associate org ${orgId} with KB ${kbId}:`, err);
-        setError(err.message || 'Failed to associate organization');
+        setError(errorMessage);
         throw err;
       }
     },
@@ -205,9 +219,10 @@ export function useSysKbs({
 
         // Refresh to get updated org associations
         await fetchKbs();
-      } catch (err: any) {
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to remove organization';
         console.error(`Failed to remove org ${orgId} from KB ${kbId}:`, err);
-        setError(err.message || 'Failed to remove organization');
+        setError(errorMessage);
         throw err;
       }
     },

@@ -104,8 +104,8 @@ export interface UseChatSharingReturn {
  *         onRemove={remove}
  *       />
  *       <div>
- *         <input value={email} onChange={(e) => setEmail(e.target.value)} />
- *         <select value={permission} onChange={(e) => setPermission(e.target.value)}>
+ *         <input value={email} onChange={(e) => setEmail(e.target.value)} aria-label="Email address to share with" />
+ *         <select value={permission} onChange={(e) => setPermission(e.target.value)} aria-label="Permission level">
  *           <option value="view">View</option>
  *           <option value="edit">Edit</option>
  *         </select>

@@ -60,7 +60,7 @@ DEPRECATED_SUFFIX_PATTERNS = {
 
 # SQL keywords that appear at start of lines in PL/pgSQL (to skip during column extraction)
 SQL_KEYWORDS = {
-    'RETURN', 'RETURNS', 'BEGIN', 'END', 'IF', 'THEN', 'ELSE', 'ELSIF',
+    'RETURN', 'RETURNS', 'RETURNING', 'BEGIN', 'END', 'IF', 'THEN', 'ELSE', 'ELSIF',
     'CASE', 'WHEN', 'LOOP', 'FOR', 'WHILE', 'BEFORE', 'AFTER', 'DECLARE',
     'NEW', 'OLD', 'EXECUTE', 'PERFORM', 'RAISE', 'EXCEPTION', 'INTO',
     'AS', 'LANGUAGE', 'FUNCTION', 'TRIGGER', 'PROCEDURE', 'OR', 'AND',
@@ -69,7 +69,32 @@ SQL_KEYWORDS = {
     'CREATE', 'DROP', 'ALTER', 'TABLE', 'INDEX', 'VIEW', 'GRANT',
     'REVOKE', 'ON', 'TO', 'WITH', 'JOIN', 'LEFT', 'RIGHT', 'INNER',
     'OUTER', 'USING', 'GROUP', 'ORDER', 'BY', 'HAVING', 'LIMIT',
-    'OFFSET', 'UNION', 'INTERSECT', 'EXCEPT', 'DISTINCT', 'ALL',
+    'OFFSET', 'UNION', 'INTERSECT', 'EXCEPT', 'DISTINCT', 'ALL', 'EXISTS',
+    'REFERENCES', 'CONSTRAINT', 'PRIMARY', 'FOREIGN', 'UNIQUE', 'CHECK',
+    'DO', 'GET',  # PL/pgSQL control flow keywords
+}
+
+# Whitelisted tables/indexes (legacy modules - to be migrated via plan_db-naming-migration.md)
+# These will be removed from the whitelist as each migration phase completes
+LEGACY_WHITELIST = {
+    # Phase 1: Critical Auth Tables (module-access)
+    'sys_idp_config',
+    'sys_idp_audit_log',
+    
+    # Phase 2: System Config Tables (module-mgmt)
+    'sys_lambda_config',
+    
+    # Phase 5: Log/History Tables (Deferred)
+    'user_auth_log',
+    'ai_model_validation_history',
+    'ai_model_validation_progress',
+    
+    # Not Yet Scheduled (needs phase assignment)
+    'sys_module_registry',
+    'sys_module_usage',
+    
+    # Index naming (module-ai)
+    'ai_cfg_sys_rag_singleton',
 }
 
 # Core tables that are allowed to be plural without prefixes
@@ -192,6 +217,10 @@ def extract_index_name(line: str) -> Optional[str]:
 
 def validate_table_name(table_name: str, result: ValidationResult, file: str, line_num: int):
     """Validate table naming (Rule 1, 2, 6, 8)"""
+    # Check if it's a whitelisted legacy table (skip validation)
+    if table_name in LEGACY_WHITELIST:
+        return
+    
     # Check if it's a core table (allowed)
     if table_name in CORE_TABLES:
         return
@@ -360,6 +389,10 @@ def validate_foreign_key(line: str, result: ValidationResult, file: str, line_nu
 
 def validate_index_name(index_name: str, result: ValidationResult, file: str, line_num: int):
     """Validate index naming pattern"""
+    # Check if it's a whitelisted legacy index (skip validation)
+    if index_name in LEGACY_WHITELIST:
+        return
+    
     if not index_name.startswith('idx_'):
         result.add_error(
             file, line_num,
@@ -400,11 +433,13 @@ def validate_sql_file(file_path: Path, result: ValidationResult):
 
 
 def find_sql_files(path: Path) -> List[Path]:
-    """Find all SQL files in path (file or directory)"""
+    """Find all SQL files in path (file or directory), excluding archive/ directories"""
     if path.is_file():
         return [path] if path.suffix == '.sql' else []
     elif path.is_dir():
-        return sorted(path.rglob('*.sql'))
+        all_files = sorted(path.rglob('*.sql'))
+        # Exclude files in archive/ directories
+        return [f for f in all_files if 'archive' not in f.parts]
     else:
         return []
 

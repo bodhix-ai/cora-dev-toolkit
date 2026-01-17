@@ -223,7 +223,7 @@ export function ChatDetailPage({
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
           {showBackButton && onBack && (
-            <IconButton onClick={onBack} sx={{ flexShrink: 0 }}>
+            <IconButton onClick={onBack} aria-label="Back" sx={{ flexShrink: 0 }}>
               <ChevronLeft size={20} />
             </IconButton>
           )}
@@ -256,12 +256,14 @@ export function ChatDetailPage({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
           <IconButton
             onClick={() => setKbDialogOpen(true)}
+            aria-label="Knowledge Base Grounding"
             title="Knowledge Base Grounding"
           >
             <BookOpen size={16} />
           </IconButton>
           <IconButton
             onClick={() => setShareDialogOpen(true)}
+            aria-label="Share Chat"
             title="Share Chat"
           >
             <Share2 size={16} />

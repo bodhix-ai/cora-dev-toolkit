@@ -12,11 +12,19 @@ import {
   UploadDocumentResponse,
   DownloadDocumentResponse 
 } from '../types';
+import type { KbModuleApiClient } from '../lib/api';
+
+/**
+ * API client interface with KB module
+ */
+export interface ApiClientWithKb {
+  kb: KbModuleApiClient;
+}
 
 export interface UseKbDocumentsOptions {
   scope: 'workspace' | 'chat' | 'kb';
   scopeId: string | null; // workspaceId, chatId, or kbId
-  apiClient: any;
+  apiClient: ApiClientWithKb;
   autoFetch?: boolean;
 }
 
@@ -53,21 +61,22 @@ export function useKbDocuments({
       setError(null);
 
       const kbClient = apiClient.kb;
-      let data: KbDocument[];
+      let response;
 
       if (scope === 'workspace') {
-        data = await kbClient.workspace.listDocuments(scopeId);
+        response = await kbClient.workspace.listDocuments(scopeId);
       } else if (scope === 'chat') {
-        data = await kbClient.chat.listDocuments(scopeId);
+        response = await kbClient.chat.listDocuments(scopeId);
       } else {
         // Direct KB ID access (for admin views)
-        data = await kbClient.orgAdmin.listDocuments(scopeId);
+        response = await kbClient.orgAdmin.listDocuments(scopeId);
       }
 
-      setDocuments(data);
-    } catch (err: any) {
+      setDocuments(response.data);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch documents';
       console.error(`Failed to fetch documents for ${scope}:`, err);
-      setError(err.message || 'Failed to fetch documents');
+      setError(errorMessage);
       setDocuments([]);
     } finally {
       setLoading(false);
@@ -96,16 +105,18 @@ export function useKbDocuments({
         };
 
         const kbClient = apiClient.kb;
-        let uploadResponse: UploadDocumentResponse;
+        let response;
 
         if (scope === 'workspace') {
-          uploadResponse = await kbClient.workspace.uploadDocument(scopeId, input);
+          response = await kbClient.workspace.uploadDocument(scopeId, input);
         } else if (scope === 'chat') {
-          uploadResponse = await kbClient.chat.uploadDocument(scopeId, input);
+          response = await kbClient.chat.uploadDocument(scopeId, input);
         } else {
           // Admin upload to specific KB
-          uploadResponse = await kbClient.orgAdmin.uploadDocument(scopeId, input);
+          response = await kbClient.orgAdmin.uploadDocument(scopeId, input);
         }
+        
+        const uploadResponse = response.data;
 
         // Step 2: Upload file directly to S3 using presigned URL
         const uploadResult = await fetch(uploadResponse.uploadUrl, {
@@ -124,9 +135,10 @@ export function useKbDocuments({
         await fetchDocuments();
 
         return uploadResponse.document;
-      } catch (err: any) {
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to upload document';
         console.error('Failed to upload document:', err);
-        setError(err.message || 'Failed to upload document');
+        setError(errorMessage);
         throw err;
       } finally {
         setUploading(false);
@@ -156,9 +168,10 @@ export function useKbDocuments({
 
         // Refresh document list
         await fetchDocuments();
-      } catch (err: any) {
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete document';
         console.error(`Failed to delete document ${documentId}:`, err);
-        setError(err.message || 'Failed to delete document');
+        setError(errorMessage);
         throw err;
       }
     },
@@ -175,21 +188,18 @@ export function useKbDocuments({
         setError(null);
 
         const kbClient = apiClient.kb;
-        let downloadResponse: DownloadDocumentResponse;
 
         if (scope === 'workspace') {
-          downloadResponse = await kbClient.workspace.downloadDocument(scopeId, documentId);
-        } else if (scope === 'chat') {
-          // Chat scope may not have download endpoint - fallback to workspace
-          throw new Error('Download not supported for chat scope');
+          const response = await kbClient.workspace.downloadDocument(scopeId, documentId);
+          return response.data.downloadUrl;
         } else {
-          downloadResponse = await kbClient.orgAdmin.downloadDocument(scopeId, documentId);
+          // Chat and KB scopes don't have download endpoint
+          throw new Error(`Download not supported for ${scope} scope`);
         }
-
-        return downloadResponse.downloadUrl;
-      } catch (err: any) {
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to get download URL';
         console.error(`Failed to get download URL for document ${documentId}:`, err);
-        setError(err.message || 'Failed to get download URL');
+        setError(errorMessage);
         throw err;
       }
     },

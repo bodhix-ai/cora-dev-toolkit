@@ -308,6 +308,7 @@ export function ChatMessage({
           <IconButton
             size="small"
             onClick={handleCopy}
+            aria-label="Copy message"
             sx={{ width: 24, height: 24 }}
           >
             {copied ? (

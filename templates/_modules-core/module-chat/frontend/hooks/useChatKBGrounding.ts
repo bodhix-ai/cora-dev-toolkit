@@ -139,6 +139,7 @@ export interface UseChatKBGroundingReturn {
  *             type="checkbox"
  *             checked={isGrounded(kb.id)}
  *             onChange={() => toggle(kb.id)}
+ *             aria-label={`Toggle ${kb.name} knowledge base`}
  *           />
  *           {kb.name}
  *         </label>

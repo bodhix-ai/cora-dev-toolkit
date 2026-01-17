@@ -16,7 +16,7 @@ import {
   Trash2,
   Share2,
   Users,
-  Link,
+  Link as LinkIcon,
   BookOpen,
 } from "lucide-react";
 import {
@@ -240,7 +240,7 @@ export function ChatOptionsMenu({
         {/* Copy Link */}
         <MenuItem onClick={handleCopyLink}>
           <ListItemIcon>
-            <Link size={16} />
+            <LinkIcon size={16} />
           </ListItemIcon>
           <ListItemText>Copy Link</ListItemText>
         </MenuItem>

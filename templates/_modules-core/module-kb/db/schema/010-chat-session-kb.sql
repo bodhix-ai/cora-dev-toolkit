@@ -3,17 +3,17 @@
 -- =============================================
 -- Purpose: Associates knowledge bases with chat sessions for RAG context retrieval
 -- Source: Created for CORA toolkit Jan 2026
--- Naming: Follows Rule 3 (Junction Tables - both nouns singular)
+-- Naming: Follows Rule 2 (Table names use plural nouns - ADR-011)
 --
 -- NOTE: This migration MUST run AFTER module-kb is installed
 -- because it references the kb_bases table from module-kb.
 -- See deployment sequence in docs/plans/plan_module-chat-implementation.md
 
 -- =============================================
--- CHAT_SESSION_KB TABLE (Junction: chat_sessions <-> kb_bases)
+-- CHAT_SESSION_KBS TABLE (Junction: chat_sessions <-> kb_bases)
 -- =============================================
 
-CREATE TABLE IF NOT EXISTS public.chat_session_kb (
+CREATE TABLE IF NOT EXISTS public.chat_session_kbs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID NOT NULL REFERENCES public.chat_sessions(id) ON DELETE CASCADE,
     kb_id UUID NOT NULL REFERENCES public.kb_bases(id) ON DELETE CASCADE,
@@ -22,29 +22,29 @@ CREATE TABLE IF NOT EXISTS public.chat_session_kb (
     added_by UUID NOT NULL REFERENCES auth.users(id),
     
     -- Constraints
-    CONSTRAINT chat_session_kb_unique UNIQUE (session_id, kb_id)
+    CONSTRAINT chat_session_kbs_unique UNIQUE (session_id, kb_id)
 );
 
 -- =============================================
 -- INDEXES
 -- =============================================
 
-CREATE INDEX IF NOT EXISTS idx_chat_session_kb_session ON public.chat_session_kb(session_id);
-CREATE INDEX IF NOT EXISTS idx_chat_session_kb_kb ON public.chat_session_kb(kb_id);
+CREATE INDEX IF NOT EXISTS idx_chat_session_kbs_session ON public.chat_session_kbs(session_id);
+CREATE INDEX IF NOT EXISTS idx_chat_session_kbs_kb ON public.chat_session_kbs(kb_id);
 
 -- Index for finding enabled KBs for a chat
-CREATE INDEX IF NOT EXISTS idx_chat_session_kb_enabled ON public.chat_session_kb(session_id, is_enabled) WHERE is_enabled = true;
+CREATE INDEX IF NOT EXISTS idx_chat_session_kbs_enabled ON public.chat_session_kbs(session_id, is_enabled) WHERE is_enabled = true;
 
 -- =============================================
 -- COMMENTS
 -- =============================================
 
-COMMENT ON TABLE public.chat_session_kb IS 'Junction table: Associates knowledge bases with chat sessions for RAG context retrieval';
-COMMENT ON COLUMN public.chat_session_kb.session_id IS 'Chat session this KB association belongs to';
-COMMENT ON COLUMN public.chat_session_kb.kb_id IS 'Knowledge base to use for RAG context';
-COMMENT ON COLUMN public.chat_session_kb.is_enabled IS 'Whether this KB is currently active for the chat';
-COMMENT ON COLUMN public.chat_session_kb.added_at IS 'When the KB association was added';
-COMMENT ON COLUMN public.chat_session_kb.added_by IS 'User who added the KB association';
+COMMENT ON TABLE public.chat_session_kbs IS 'Junction table: Associates knowledge bases with chat sessions for RAG context retrieval';
+COMMENT ON COLUMN public.chat_session_kbs.session_id IS 'Chat session this KB association belongs to';
+COMMENT ON COLUMN public.chat_session_kbs.kb_id IS 'Knowledge base to use for RAG context';
+COMMENT ON COLUMN public.chat_session_kbs.is_enabled IS 'Whether this KB is currently active for the chat';
+COMMENT ON COLUMN public.chat_session_kbs.added_at IS 'When the KB association was added';
+COMMENT ON COLUMN public.chat_session_kbs.added_by IS 'User who added the KB association';
 
 -- =============================================
 -- RPC FUNCTIONS (KB-Chat Integration)
@@ -79,7 +79,7 @@ AS $$
         csk.is_enabled,
         csk.added_at,
         csk.added_by
-    FROM public.chat_session_kb csk
+    FROM public.chat_session_kbs csk
     JOIN public.kb_bases kb ON kb.id = csk.kb_id
     WHERE csk.session_id = p_session_id
     ORDER BY csk.added_at ASC;
@@ -162,7 +162,7 @@ AS $$
         uak.scope AS kb_scope,
         uak.description AS kb_description,
         EXISTS (
-            SELECT 1 FROM public.chat_session_kb csk
+            SELECT 1 FROM public.chat_session_kbs csk
             WHERE csk.session_id = p_session_id
             AND csk.kb_id = uak.id
         ) AS is_already_added

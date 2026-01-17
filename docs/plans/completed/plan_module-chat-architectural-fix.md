@@ -1,7 +1,10 @@
 # Plan: Fix Module-Chat Architectural Dependencies
 
-**Status**: 📋 Ready for Implementation  
+**Status**: ❌ CANCELLED / SUPERSEDED  
+**Superseded By**: `plan_module-chat-mui-migration.md`  
+**Reason**: This plan proposed creating a shared UI package with Shadcn UI, which violated CORA's Material-UI standard (Rule 4.2). The correct fix was to migrate module-chat to Material-UI, which was completed in `plan_module-chat-mui-migration.md`.  
 **Created**: January 16, 2026  
+**Cancelled**: January 17, 2026  
 **Priority**: HIGH  
 **Estimated Duration**: 4-6 hours  
 **Blocking**: Module-chat type-check failures  

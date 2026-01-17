@@ -165,7 +165,7 @@ export default function SystemKBConfigPage() {
         <CardContent>
           {/* System Prompt */}
           <Box sx={{ mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h5" gutterBottom>
               System Prompt
             </Typography>
             <TextField
@@ -175,13 +175,14 @@ export default function SystemKBConfigPage() {
               value={config.system_prompt}
               onChange={(e) => setConfig({ ...config, system_prompt: e.target.value })}
               placeholder="Enter system prompt for RAG responses"
+              aria-label="System Prompt"
             />
           </Box>
 
           <Divider sx={{ my: 3 }} />
 
           {/* Model Configuration */}
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h5" gutterBottom>
             Model Configuration
           </Typography>
           
@@ -208,7 +209,7 @@ export default function SystemKBConfigPage() {
           <Divider sx={{ my: 3 }} />
 
           {/* Chunking Configuration */}
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h5" gutterBottom>
             Document Chunking
           </Typography>
 
@@ -245,7 +246,7 @@ export default function SystemKBConfigPage() {
           <Divider sx={{ my: 3 }} />
 
           {/* Search Configuration */}
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h5" gutterBottom>
             Search Configuration
           </Typography>
 

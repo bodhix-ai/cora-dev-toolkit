@@ -136,6 +136,7 @@ function ShareItem({
           onChange={(e) => onUpdatePermission(e.target.value as PermissionLevel)}
           disabled={isLoading}
           sx={{ height: 32 }}
+          inputProps={{ "aria-label": "Permission level" }}
         >
           <MenuItem value="view">
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -382,12 +383,14 @@ export function ShareChatDialog({
               disabled={isSubmitting}
               size="small"
               fullWidth
+              aria-label="Enter email address to share with"
             />
             <FormControl size="small" sx={{ minWidth: 100 }}>
               <Select
                 value={permission}
                 onChange={(e) => setPermission(e.target.value as PermissionLevel)}
                 disabled={isSubmitting}
+                inputProps={{ "aria-label": "Permission level" }}
               >
                 <MenuItem value="view">View</MenuItem>
                 <MenuItem value="edit">Edit</MenuItem>
@@ -397,6 +400,7 @@ export function ShareChatDialog({
               color="primary"
               onClick={handleShare}
               disabled={isSubmitting || !email.trim()}
+              aria-label="Add person"
               sx={{ width: 40, height: 40 }}
             >
               {isSubmitting ? (

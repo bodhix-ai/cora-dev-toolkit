@@ -322,6 +322,7 @@ export function SysKBList({
                           <IconButton
                             size="small"
                             onClick={() => handleEdit(kb)}
+                            aria-label="Edit"
                           >
                             <EditIcon fontSize="small" />
                           </IconButton>
@@ -329,6 +330,7 @@ export function SysKBList({
                         <IconButton
                           size="small"
                           onClick={(e) => handleMenuOpen(e, kb.id)}
+                          aria-label="More actions"
                         >
                           <MoreVertIcon fontSize="small" />
                         </IconButton>

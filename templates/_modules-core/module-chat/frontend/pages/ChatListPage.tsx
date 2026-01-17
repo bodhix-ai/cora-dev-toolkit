@@ -180,7 +180,7 @@ export function ChatListPage({
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           {showBackButton && onBack && (
-            <IconButton onClick={onBack} sx={{ mr: 1 }}>
+            <IconButton onClick={onBack} aria-label="Back" sx={{ mr: 1 }}>
               <ChevronLeft size={20} />
             </IconButton>
           )}

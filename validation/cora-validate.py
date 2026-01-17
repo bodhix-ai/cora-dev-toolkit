@@ -366,11 +366,15 @@ class CoraValidator:
             # Some validators (like import_validator) nest errors in a summary object
             errors = output.get("errors", [])
             if not errors and "summary" in output:
-                errors = output.get("summary", {}).get("errors", [])
+                summary_errors = output.get("summary", {}).get("errors", [])
+                # Convert integer counts to empty lists (validators that return {"summary": {"errors": 0}})
+                errors = summary_errors if isinstance(summary_errors, list) else []
             
             warnings = output.get("warnings", [])
             if not warnings and "summary" in output:
-                warnings = output.get("summary", {}).get("warnings", [])
+                summary_warnings = output.get("summary", {}).get("warnings", [])
+                # Convert integer counts to empty lists
+                warnings = summary_warnings if isinstance(summary_warnings, list) else []
             
             info = output.get("info", [])
             details = output.get("details", {})
@@ -389,11 +393,23 @@ class CoraValidator:
                     # No output at all
                     errors = [f"Validator failed with exit code {result.returncode} but provided no output"]
             
-            # Handle summary format - DON'T override the lists with counts!
-            # Some validators (portability, a11y, etc.) provide both:
-            # - "errors": [...list of error objects...]
-            # - "summary": {"errors": count, "warnings": count}
-            # We want the lists, not the counts
+            # Ensure errors and warnings are proper lists, not counts or [0] format
+            # If a validator returned a count instead of a list, convert to empty list if 0
+            if isinstance(errors, (int, float)):
+                errors = [] if errors == 0 else [f"{int(errors)} errors (details not provided)"]
+            elif isinstance(errors, list) and len(errors) > 0:
+                # Check if list contains only numeric values (e.g. [0] or [5])
+                if all(isinstance(e, (int, float)) for e in errors):
+                    error_count = sum(int(e) for e in errors)
+                    errors = [] if error_count == 0 else [f"{error_count} errors (details not provided)"]
+            
+            if isinstance(warnings, (int, float)):
+                warnings = [] if warnings == 0 else [f"{int(warnings)} warnings (details not provided)"]
+            elif isinstance(warnings, list) and len(warnings) > 0:
+                # Check if list contains only numeric values
+                if all(isinstance(w, (int, float)) for w in warnings):
+                    warning_count = sum(int(w) for w in warnings)
+                    warnings = [] if warning_count == 0 else [f"{warning_count} warnings (details not provided)"]
                 
             return ValidationResult(
                 validator=validator_key,
