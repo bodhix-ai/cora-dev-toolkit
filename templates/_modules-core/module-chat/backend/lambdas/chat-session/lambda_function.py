@@ -703,7 +703,7 @@ def handle_add_kb_grounding(
     
     # Check if already grounded
     existing = common.find_one(
-        table='chat_session_kb',
+        table='chat_session_kbs',
         filters={
             'session_id': session_id,
             'kb_id': kb_id
@@ -752,7 +752,7 @@ def handle_remove_kb_grounding(
     
     # Find and delete the grounding
     grounding = common.find_one(
-        table='chat_session_kb',
+        table='chat_session_kbs',
         filters={
             'session_id': session_id,
             'kb_id': kb_id
@@ -763,7 +763,7 @@ def handle_remove_kb_grounding(
         raise common.NotFoundError('KB grounding not found')
     
     common.delete_one(
-        table='chat_session_kb',
+        table='chat_session_kbs',
         filters={'id': grounding['id']}
     )
     
@@ -1157,6 +1157,6 @@ def _add_kb_grounding_internal(
     }
     
     return common.insert_one(
-        table='chat_session_kb',
+        table='chat_session_kbs',
         data=grounding_data
     )
