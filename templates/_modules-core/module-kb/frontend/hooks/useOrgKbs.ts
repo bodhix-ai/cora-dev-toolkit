@@ -11,10 +11,18 @@ import {
   CreateKbInput,
   UpdateKbInput 
 } from '../types';
+import type { KbModuleApiClient } from '../lib/api';
+
+/**
+ * API client interface with KB module
+ */
+export interface ApiClientWithKb {
+  kb: KbModuleApiClient;
+}
 
 export interface UseOrgKbsOptions {
   orgId: string | null;
-  apiClient: any;
+  apiClient: ApiClientWithKb;
   autoFetch?: boolean;
 }
 
@@ -49,11 +57,12 @@ export function useOrgKbs({
       setError(null);
 
       const kbClient = apiClient.kb;
-      const data = await kbClient.orgAdmin.listKbs(orgId);
-      setKbs(data);
-    } catch (err: any) {
+      const response = await kbClient.orgAdmin.listKbs();
+      setKbs(response.data);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch knowledge bases';
       console.error('Failed to fetch org KBs:', err);
-      setError(err.message || 'Failed to fetch knowledge bases');
+      setError(errorMessage);
       setKbs([]);
     } finally {
       setLoading(false);
@@ -80,15 +89,16 @@ export function useOrgKbs({
         };
 
         const kbClient = apiClient.kb;
-        const newKb = await kbClient.orgAdmin.createKb(orgId, fullInput);
+        const response = await kbClient.orgAdmin.createKb(fullInput);
 
         // Refresh list to include new KB
         await fetchKbs();
 
-        return newKb;
-      } catch (err: any) {
+        return response.data;
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to create knowledge base';
         console.error('Failed to create org KB:', err);
-        setError(err.message || 'Failed to create knowledge base');
+        setError(errorMessage);
         throw err;
       }
     },
@@ -105,17 +115,18 @@ export function useOrgKbs({
         setError(null);
 
         const kbClient = apiClient.kb;
-        const updatedKb = await kbClient.orgAdmin.updateKb(orgId, kbId, input);
+        const response = await kbClient.orgAdmin.updateKb(kbId, input);
 
         // Update local state
         setKbs((prev) =>
-          prev.map((kb) => (kb.id === kbId ? updatedKb : kb))
+          prev.map((kb) => (kb.id === kbId ? response.data : kb))
         );
 
-        return updatedKb;
-      } catch (err: any) {
+        return response.data;
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to update knowledge base';
         console.error(`Failed to update KB ${kbId}:`, err);
-        setError(err.message || 'Failed to update knowledge base');
+        setError(errorMessage);
         throw err;
       }
     },
@@ -132,13 +143,14 @@ export function useOrgKbs({
         setError(null);
 
         const kbClient = apiClient.kb;
-        await kbClient.orgAdmin.deleteKb(orgId, kbId);
+        await kbClient.orgAdmin.deleteKb(kbId);
 
         // Remove from local state
         setKbs((prev) => prev.filter((kb) => kb.id !== kbId));
-      } catch (err: any) {
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete knowledge base';
         console.error(`Failed to delete KB ${kbId}:`, err);
-        setError(err.message || 'Failed to delete knowledge base');
+        setError(errorMessage);
         throw err;
       }
     },
@@ -155,12 +167,13 @@ export function useOrgKbs({
         setError(null);
 
         const kbClient = apiClient.kb;
-        const kb = await kbClient.orgAdmin.getKb(orgId, kbId);
+        const response = await kbClient.orgAdmin.getKb(kbId);
 
-        return kb;
-      } catch (err: any) {
+        return response.data;
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to get knowledge base';
         console.error(`Failed to get KB ${kbId}:`, err);
-        setError(err.message || 'Failed to get knowledge base');
+        setError(errorMessage);
         throw err;
       }
     },

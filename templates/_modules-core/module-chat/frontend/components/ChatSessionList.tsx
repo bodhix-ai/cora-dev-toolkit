@@ -346,6 +346,7 @@ export function ChatSessionList({
           onChange={(e) => setSearchInput(e.target.value)}
           size="small"
           fullWidth
+          aria-label="Search chats"
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -361,6 +362,7 @@ export function ChatSessionList({
             <IconButton
               size="small"
               onClick={(e) => setFilterAnchorEl(e.currentTarget)}
+              aria-label="Filter and sort chats"
               sx={{ flexShrink: 0 }}
             >
               <Filter size={16} />
@@ -391,6 +393,7 @@ export function ChatSessionList({
                       checked={filters.favoritesOnly}
                       onChange={handleToggleFavoritesOnly}
                       size="small"
+                      aria-label="Show favorites only"
                     />
                   }
                   label={

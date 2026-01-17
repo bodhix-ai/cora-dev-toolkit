@@ -335,6 +335,7 @@ export function DocumentTable({
                           size="small"
                           onClick={() => handleDownload(doc.id)}
                           disabled={doc.status !== 'indexed'}
+                          aria-label="Download"
                         >
                           <DownloadIcon fontSize="small" />
                         </IconButton>
@@ -344,6 +345,7 @@ export function DocumentTable({
                       <IconButton
                         size="small"
                         onClick={(e) => handleMenuOpen(e, doc.id)}
+                        aria-label="More actions"
                       >
                         <MoreVertIcon fontSize="small" />
                       </IconButton>

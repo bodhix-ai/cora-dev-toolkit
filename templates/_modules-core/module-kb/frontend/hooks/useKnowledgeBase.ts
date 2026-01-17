@@ -11,11 +11,19 @@ import {
   AvailableKb,
   ToggleKbInput 
 } from '../types';
+import type { KbModuleApiClient } from '../lib/api';
+
+/**
+ * API client interface with KB module
+ */
+export interface ApiClientWithKb {
+  kb: KbModuleApiClient;
+}
 
 export interface UseKnowledgeBaseOptions {
   scope: 'workspace' | 'chat';
   scopeId: string | null;
-  apiClient: any; // Authenticated API client
+  apiClient: ApiClientWithKb;
   autoFetch?: boolean;
 }
 
@@ -52,15 +60,16 @@ export function useKnowledgeBase({
       const kbClient = apiClient.kb;
       
       if (scope === 'workspace') {
-        const data = await kbClient.workspace.getKb(scopeId);
-        setKb(data);
+        const response = await kbClient.workspace.getKb(scopeId);
+        setKb(response.data);
       } else {
-        const data = await kbClient.chat.getKb(scopeId);
-        setKb(data);
+        const response = await kbClient.chat.getKb(scopeId);
+        setKb(response.data);
       }
-    } catch (err: any) {
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch knowledge base';
       console.error(`Failed to fetch ${scope} KB:`, err);
-      setError(err.message || 'Failed to fetch knowledge base');
+      setError(errorMessage);
       setKb(null);
     } finally {
       setLoading(false);
@@ -77,15 +86,16 @@ export function useKnowledgeBase({
       const kbClient = apiClient.kb;
       
       if (scope === 'workspace') {
-        const data = await kbClient.workspace.listAvailableKbs(scopeId);
-        setAvailableKbs(data);
+        const response = await kbClient.workspace.listAvailableKbs(scopeId);
+        setAvailableKbs(response.data);
       } else {
-        const data = await kbClient.chat.listAvailableKbs(scopeId);
-        setAvailableKbs(data);
+        const response = await kbClient.chat.listAvailableKbs(scopeId);
+        setAvailableKbs(response.data);
       }
-    } catch (err: any) {
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch available knowledge bases';
       console.error(`Failed to fetch available KBs for ${scope}:`, err);
-      setError(err.message || 'Failed to fetch available knowledge bases');
+      setError(errorMessage);
       setAvailableKbs([]);
     }
   }, [scope, scopeId, apiClient]);
@@ -117,9 +127,10 @@ export function useKnowledgeBase({
 
         // Refresh available KBs to reflect new state
         await fetchAvailableKbs();
-      } catch (err: any) {
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to toggle knowledge base';
         console.error(`Failed to toggle KB ${kbId}:`, err);
-        setError(err.message || 'Failed to toggle knowledge base');
+        setError(errorMessage);
         throw err;
       }
     },

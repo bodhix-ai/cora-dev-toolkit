@@ -195,6 +195,7 @@ export function ChatInput({
             fullWidth
             variant="outlined"
             size="small"
+            aria-label="Type your message"
             sx={{
               '& .MuiOutlinedInput-root': {
                 pr: 8,

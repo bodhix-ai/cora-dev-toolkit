@@ -377,6 +377,7 @@ export function KBGroundingSelector({
           onChange={(e) => setSearch(e.target.value)}
           fullWidth
           size="small"
+          aria-label="Search knowledge bases"
           sx={{ mb: 2 }}
           InputProps={{
             startAdornment: (

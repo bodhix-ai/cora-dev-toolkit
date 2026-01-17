@@ -285,6 +285,7 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
             multiline
             rows={4}
             helperText="This prompt will be appended to the platform default system prompt"
+            aria-label="Organization System Prompt"
           />
 
           <TextField
@@ -298,6 +299,7 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
             multiline
             rows={4}
             helperText="Additional system-level instructions for AI responses"
+            aria-label="Custom System Prompt"
           />
 
           <TextField
@@ -344,6 +346,7 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
                   onChange={(e) =>
                     setFormData({ ...formData, includePageNumbers: e.target.checked })
                   }
+                  inputProps={{ 'aria-label': 'Include Page Numbers in Citations' }}
                 />
               }
               label="Include Page Numbers in Citations"
@@ -355,6 +358,7 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
                   onChange={(e) =>
                     setFormData({ ...formData, includeSourceMetadata: e.target.checked })
                   }
+                  inputProps={{ 'aria-label': 'Include Source Metadata in Citations' }}
                 />
               }
               label="Include Source Metadata in Citations"
