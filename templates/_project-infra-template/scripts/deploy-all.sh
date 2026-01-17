@@ -8,8 +8,9 @@
 set -e
 
 # --- Configuration ---
-ENVIRONMENT="${1:-dev}"
+ENVIRONMENT="${1}"
 SKIP_BUILD=false
+SKIP_VALIDATION=false
 AUTO_APPROVE=""
 
 # --- Colors ---
@@ -42,12 +43,14 @@ Arguments:
 
 Options:
   --skip-build        Skip build step (use existing build artifacts)
+  --skip-validation   Skip import validation during build (use when validator has false positives)
   --auto-approve      Skip interactive approval in Terraform
   --help              Show this help message
 
 Environment Variables:
   AWS_PROFILE         AWS profile to use
   AWS_REGION          AWS region
+  SKIP_VALIDATION     Skip validation (can also use --skip-validation flag)
 
 Examples:
   # Full deployment to dev
@@ -71,6 +74,10 @@ while [[ $# -gt 0 ]]; do
       SKIP_BUILD=true
       shift
       ;;
+    --skip-validation)
+      SKIP_VALIDATION=true
+      shift
+      ;;
     --auto-approve)
       AUTO_APPROVE="--auto-approve"
       shift
@@ -88,6 +95,18 @@ while [[ $# -gt 0 ]]; do
 done
 
 # --- Validate Environment ---
+if [ -z "$ENVIRONMENT" ]; then
+  log_error "Environment parameter is required"
+  echo ""
+  echo "Usage: $0 <environment> [OPTIONS]"
+  echo "Valid environments: dev, stg, prd"
+  echo ""
+  echo "Examples:"
+  echo "  $0 dev"
+  echo "  $0 prd --auto-approve"
+  exit 1
+fi
+
 case $ENVIRONMENT in
   dev|stg|prd)
     ;;
@@ -107,10 +126,11 @@ echo "========================================"
 echo ""
 log_info "Environment: ${ENVIRONMENT}"
 log_info "Skip Build:  ${SKIP_BUILD}"
+log_info "Skip Validation: ${SKIP_VALIDATION}"
 echo ""
 
 # Step 0: Sync configuration to Terraform variables
-log_step "Step 0/3: Syncing configuration to Terraform variables..."
+log_step "Step 0/4: Syncing configuration to Terraform variables..."
 if [ -f "${SCRIPT_DIR}/sync-config-to-terraform.sh" ]; then
   "${SCRIPT_DIR}/sync-config-to-terraform.sh" "${ENVIRONMENT}"
   echo ""
@@ -122,9 +142,11 @@ fi
 
 # Step 1: Build Lambda packages
 if ! $SKIP_BUILD; then
-  log_step "Step 1/3: Building Lambda packages..."
+  log_step "Step 1/4: Building Lambda packages..."
   
   # Build CORA modules (module-mgmt, module-ai, module-access)
+  # Pass SKIP_VALIDATION to build script
+  export SKIP_VALIDATION="${SKIP_VALIDATION}"
   "${SCRIPT_DIR}/build-cora-modules.sh"
   echo ""
   
@@ -145,13 +167,28 @@ else
   echo ""
 fi
 
+# Step 1.5: Pre-deployment validation (validates build artifacts before expensive Terraform)
+log_step "Step 1.5/4: Running pre-deployment validation..."
+if [ -f "${SCRIPT_DIR}/pre-deploy-check.sh" ]; then
+  if ! "${SCRIPT_DIR}/pre-deploy-check.sh" --skip-typecheck; then
+    log_error "Pre-deployment validation failed!"
+    log_error "Fix the errors above before proceeding."
+    log_info "This check saves ~5 minutes of failed Terraform deployment."
+    exit 1
+  fi
+  echo ""
+else
+  log_warn "pre-deploy-check.sh not found - skipping pre-deployment validation"
+  echo ""
+fi
+
 # Step 2: Upload to S3
-log_step "Step 2/3: Uploading artifacts to S3..."
+log_step "Step 2/4: Uploading artifacts to S3..."
 "${SCRIPT_DIR}/deploy-cora-modules.sh"
 echo ""
 
 # Step 3: Apply Terraform (includes environment variable updates)
-log_step "Step 3/3: Applying Terraform infrastructure..."
+log_step "Step 3/4: Applying Terraform infrastructure..."
 "${SCRIPT_DIR}/deploy-terraform.sh" "${ENVIRONMENT}" ${AUTO_APPROVE}
 echo ""
 
