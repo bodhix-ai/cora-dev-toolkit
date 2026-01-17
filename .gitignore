@@ -59,3 +59,5 @@ temp/
 # Validation Reports
 validation-report-*.json
 validation-report-*.md
+# Schema backup files
+*.sql.bak
