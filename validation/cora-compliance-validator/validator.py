@@ -97,11 +97,12 @@ class CoraComplianceChecker:
         re.compile(r'common\.delete_one\s*\('),
         re.compile(r'supabase\.table\s*\('),
     ]
-    RAW_SQL_PATTERNS = [
-        re.compile(r'["\']SELECT\s+.*FROM', re.IGNORECASE),
-        re.compile(r'["\']INSERT\s+INTO', re.IGNORECASE),
-        re.compile(r'["\']UPDATE\s+.*SET', re.IGNORECASE),
-        re.compile(r'["\']DELETE\s+FROM', re.IGNORECASE),
+    # Actual SQL execution patterns (true violations)
+    # Only match actual .execute() calls, not SQL strings in comments/docstrings
+    SQL_EXECUTION_PATTERNS = [
+        re.compile(r'\.execute\s*\(["\']'),
+        re.compile(r'cursor\.(execute|executemany)\s*\('),
+        re.compile(r'conn\.(execute|cursor)\s*\('),
     ]
     
     # Standard 6: Error Handling
@@ -402,7 +403,7 @@ class CoraComplianceChecker:
         for pattern in self.DB_HELPER_PATTERNS:
             helper_count += len(pattern.findall(content))
         
-        for pattern in self.RAW_SQL_PATTERNS:
+        for pattern in self.SQL_EXECUTION_PATTERNS:
             raw_sql_count += len(pattern.findall(content))
         
         details = []
