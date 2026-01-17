@@ -1,0 +1,210 @@
+{
+  "name": "module-voice",
+  "version": "1.0.0",
+  "description": "AI-powered voice interviews with Daily.co WebRTC, real-time transcription, and ECS-based Pipecat bot orchestration",
+  "type": "functional",
+  "status": "complete",
+  "dependencies": {
+    "core": ["module-access", "module-ai", "module-mgmt"],
+    "functional": ["module-kb"]
+  },
+  "database": {
+    "tables": [
+      "voice_sessions",
+      "voice_transcripts",
+      "voice_configs",
+      "voice_credentials",
+      "voice_analytics",
+      "voice_session_kb"
+    ],
+    "rpcFunctions": [
+      "get_voice_session_details",
+      "get_org_voice_stats",
+      "update_voice_session_status"
+    ]
+  },
+  "backend": {
+    "lambdas": [
+      {
+        "name": "voice-sessions",
+        "description": "Session CRUD, start bot, status management",
+        "memory": 512,
+        "timeout": 30
+      },
+      {
+        "name": "voice-configs",
+        "description": "Interview configuration CRUD",
+        "memory": 256,
+        "timeout": 30
+      },
+      {
+        "name": "voice-credentials",
+        "description": "Voice service credentials management (Daily, Deepgram, Cartesia)",
+        "memory": 256,
+        "timeout": 30
+      },
+      {
+        "name": "voice-transcripts",
+        "description": "Transcript retrieval and management",
+        "memory": 512,
+        "timeout": 30
+      },
+      {
+        "name": "voice-analytics",
+        "description": "Interview analytics and scoring",
+        "memory": 512,
+        "timeout": 60
+      },
+      {
+        "name": "voice-websocket",
+        "description": "Real-time transcript streaming via WebSocket",
+        "memory": 256,
+        "timeout": 300
+      }
+    ]
+  },
+  "frontend": {
+    "pages": [
+      "VoiceSessionListPage",
+      "VoiceSessionDetailPage",
+      "VoiceConfigListPage",
+      "VoiceConfigDetailPage"
+    ],
+    "components": [
+      "SessionCard",
+      "SessionList",
+      "SessionStatusBadge",
+      "ConfigForm",
+      "ConfigList",
+      "TranscriptViewer",
+      "LiveTranscriptPanel",
+      "InterviewRoom",
+      "AnalyticsSummary"
+    ],
+    "hooks": [
+      "useVoiceSessions",
+      "useVoiceSession",
+      "useVoiceConfigs",
+      "useVoiceConfig",
+      "useVoiceTranscripts",
+      "useVoiceAnalytics",
+      "useRealTimeTranscript",
+      "useDailyRoom"
+    ],
+    "store": "voiceStore",
+    "routes": [
+      "/voice",
+      "/voice/sessions/[id]",
+      "/voice/configs",
+      "/voice/configs/[id]"
+    ]
+  },
+  "features": {
+    "dailyCoIntegration": true,
+    "ecsPipecatBot": true,
+    "realTimeTranscription": true,
+    "s3TranscriptArchival": true,
+    "aiAnalytics": true,
+    "standbyBotPool": true,
+    "multiTenantCredentials": true
+  },
+  "adminCards": {
+    "orgAdmin": {
+      "enabled": true,
+      "path": "/admin/org/voice",
+      "label": "Voice Settings",
+      "description": "Manage interview configurations and view analytics"
+    },
+    "platformAdmin": {
+      "enabled": true,
+      "path": "/admin/sys/voice",
+      "label": "Voice Configuration",
+      "description": "Manage platform-wide voice service credentials"
+    }
+  },
+  "navigation": {
+    "leftNav": true,
+    "label": "Interviews",
+    "icon": "MicrophoneIcon",
+    "path": "/voice",
+    "requiredRole": null
+  },
+  "externalServices": {
+    "dailyCo": {
+      "purpose": "WebRTC video rooms",
+      "credentialType": "api_key"
+    },
+    "deepgram": {
+      "purpose": "Speech-to-text transcription",
+      "credentialType": "api_key"
+    },
+    "cartesia": {
+      "purpose": "Text-to-speech synthesis",
+      "credentialType": "api_key"
+    },
+    "ecsFargate": {
+      "purpose": "Pipecat bot runtime",
+      "credentialType": "iam_role"
+    },
+    "sqs": {
+      "purpose": "Standby bot pool queue",
+      "credentialType": "iam_role"
+    },
+    "s3": {
+      "purpose": "Transcript archival",
+      "credentialType": "iam_role"
+    }
+  },
+  "apiRoutes": {
+    "totalRoutes": 22,
+    "categories": [
+      {
+        "name": "Sessions",
+        "routes": [
+          "GET /api/voice/sessions",
+          "GET /api/voice/sessions/{id}",
+          "POST /api/voice/sessions",
+          "PUT /api/voice/sessions/{id}",
+          "DELETE /api/voice/sessions/{id}",
+          "POST /api/voice/sessions/{id}/start",
+          "GET /api/voice/sessions/{id}/kbs",
+          "POST /api/voice/sessions/{id}/kbs",
+          "PUT /api/voice/sessions/{id}/kbs/{kbId}",
+          "DELETE /api/voice/sessions/{id}/kbs/{kbId}"
+        ]
+      },
+      {
+        "name": "Configs",
+        "routes": [
+          "GET /api/voice/configs",
+          "GET /api/voice/configs/{id}",
+          "POST /api/voice/configs",
+          "PUT /api/voice/configs/{id}",
+          "DELETE /api/voice/configs/{id}"
+        ]
+      },
+      {
+        "name": "Credentials",
+        "routes": [
+          "GET /api/voice/credentials",
+          "POST /api/voice/credentials",
+          "DELETE /api/voice/credentials/{id}",
+          "POST /api/voice/credentials/{id}/validate"
+        ]
+      },
+      {
+        "name": "Transcripts",
+        "routes": [
+          "GET /api/voice/transcripts",
+          "GET /api/voice/transcripts/{id}"
+        ]
+      },
+      {
+        "name": "Analytics",
+        "routes": [
+          "GET /api/voice/analytics/{sessionId}"
+        ]
+      }
+    ]
+  }
+}
