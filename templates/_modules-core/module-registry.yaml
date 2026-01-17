@@ -43,25 +43,25 @@ modules:
     required: true
     dependencies: [module-access]
     config_file: module.config.yaml
-
-  module-chat:
-    type: core
-    tier: 2
-    name: "Chat & Messaging"
-    description: "Real-time chat with AI integration and KB grounding"
-    required: false
-    dependencies: [module-access, module-ai]
-    config_file: module.config.yaml
-
+    
   module-kb:
     type: core
-    tier: 2
-    name: "Knowledge Base"
-    description: "RAG-based knowledge base with multi-scope document management, pgvector embeddings, and AI chat grounding"
-    required: false
-    dependencies: [module-access, module-ai, module-chat]
+    tier: 3
+    name: "Knowledge Base & RAG"
+    description: "Vector search, knowledge retrieval, and RAG-based knowledge management"
+    required: true
+    dependencies: [module-access, module-ai]
     config_file: module.config.yaml
-
+    
+  module-chat:
+    type: core
+    tier: 3
+    name: "Chat & Messaging"
+    description: "AI-powered chat interface with streaming, history, and knowledge grounding"
+    required: true
+    dependencies: [module-access, module-ai, module-kb]
+    config_file: module.config.yaml
+  
   # ===== FUNCTIONAL MODULES =====
   # Functional modules are OPTIONAL and can be enabled per-project
   
@@ -77,8 +77,17 @@ modules:
   module-eval:
     type: functional
     tier: null
-    name: "Document Evaluation"
-    description: "AI-powered document evaluation with criteria-based scoring"
+    name: "Model Evaluation"
+    description: "AI model testing, evaluation, and performance analysis"
+    required: false
+    dependencies: [module-access, module-ai]
+    config_file: module.config.yaml
+    
+  module-voice:
+    type: functional
+    tier: null
+    name: "Voice Interaction"
+    description: "Voice-based AI interaction capabilities"
     required: false
     dependencies: [module-access, module-ai]
     config_file: module.config.yaml

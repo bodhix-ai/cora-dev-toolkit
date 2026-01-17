@@ -18,6 +18,7 @@
     "paths": {
       "@{{PROJECT_NAME}}/api-client": ["packages/api-client/src"],
       "@{{PROJECT_NAME}}/shared-types": ["packages/shared-types/src"],
+      "@{{PROJECT_NAME}}/ui": ["packages/ui"],
       "@{{PROJECT_NAME}}/module-access/*": [
         "packages/module-access/frontend/*"
       ],
