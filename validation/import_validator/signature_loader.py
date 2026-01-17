@@ -38,6 +38,7 @@ class SignatureLoader:
             'responses': self.org_common_path / 'responses.py',
             'supabase_client': self.org_common_path / 'supabase_client.py',
             'jwt_utils': self.org_common_path / 'jwt_utils.py',
+            'transform': self.org_common_path / 'transform.py',  # Transformation utilities
         }
         
         for module_name, file_path in module_files.items():
