@@ -7,7 +7,7 @@ DROP TABLE IF EXISTS public.voice_transcripts CASCADE;
 
 CREATE TABLE public.voice_transcripts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    org_id UUID NOT NULL REFERENCES public.org(id) ON DELETE CASCADE,
+    org_id UUID NOT NULL REFERENCES public.orgs(id) ON DELETE CASCADE,
     session_id UUID NOT NULL REFERENCES public.voice_sessions(id) ON DELETE CASCADE,
     transcript_text TEXT,
     transcript_s3_url TEXT,
@@ -28,28 +28,21 @@ CREATE INDEX idx_voice_transcripts_org_id ON public.voice_transcripts(org_id);
 CREATE INDEX idx_voice_transcripts_session_id ON public.voice_transcripts(session_id);
 CREATE INDEX idx_voice_transcripts_created_at ON public.voice_transcripts(created_at DESC);
 
--- Enable RLS
-ALTER TABLE public.voice_transcripts ENABLE ROW LEVEL SECURITY;
+-- Trigger function
+CREATE OR REPLACE FUNCTION update_voice_transcripts_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- RLS Policies
-CREATE POLICY "voice_transcripts_select_policy" ON public.voice_transcripts
-    FOR SELECT USING (can_access_org_data(org_id));
-
-CREATE POLICY "voice_transcripts_insert_policy" ON public.voice_transcripts
-    FOR INSERT WITH CHECK (can_access_org_data(org_id));
-
-CREATE POLICY "voice_transcripts_update_policy" ON public.voice_transcripts
-    FOR UPDATE USING (can_modify_org_data(org_id))
-    WITH CHECK (can_modify_org_data(org_id));
-
-CREATE POLICY "voice_transcripts_delete_policy" ON public.voice_transcripts
-    FOR DELETE USING (can_modify_org_data(org_id));
-
--- Updated at trigger
-CREATE TRIGGER update_voice_transcripts_updated_at
+-- Trigger
+DROP TRIGGER IF EXISTS voice_transcripts_updated_at ON public.voice_transcripts;
+CREATE TRIGGER voice_transcripts_updated_at 
     BEFORE UPDATE ON public.voice_transcripts
     FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+    EXECUTE FUNCTION update_voice_transcripts_updated_at();
 
 -- Comments
 COMMENT ON TABLE public.voice_transcripts IS 'Interview transcripts with S3 archival';

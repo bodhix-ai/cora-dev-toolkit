@@ -162,7 +162,7 @@ def handle_list_sessions(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': org_id, 'user_id': user_id, 'active': True}
+        filters={'org_id': org_id, 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this organization')
@@ -237,7 +237,7 @@ def handle_get_session(event: Dict[str, Any], user_id: str, session_id: str) -> 
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': session['org_id'], 'user_id': user_id, 'active': True}
+        filters={'org_id': session['org_id'], 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this session')
@@ -291,7 +291,7 @@ def handle_create_session(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': org_id, 'user_id': user_id, 'active': True}
+        filters={'org_id': org_id, 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this organization')
@@ -410,7 +410,7 @@ def handle_update_session(event: Dict[str, Any], user_id: str, session_id: str) 
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': session['org_id'], 'user_id': user_id, 'active': True}
+        filters={'org_id': session['org_id'], 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this session')
@@ -502,7 +502,7 @@ def handle_delete_session(event: Dict[str, Any], user_id: str, session_id: str) 
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': session['org_id'], 'user_id': user_id, 'active': True}
+        filters={'org_id': session['org_id'], 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this session')
@@ -550,7 +550,7 @@ def handle_start_session(event: Dict[str, Any], user_id: str, session_id: str) -
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': session['org_id'], 'user_id': user_id, 'active': True}
+        filters={'org_id': session['org_id'], 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this session')
@@ -794,7 +794,7 @@ def handle_list_session_kbs(event: Dict[str, Any], user_id: str, session_id: str
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': session['org_id'], 'user_id': user_id, 'active': True}
+        filters={'org_id': session['org_id'], 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this session')
@@ -830,7 +830,7 @@ def handle_add_session_kb(event: Dict[str, Any], user_id: str, session_id: str) 
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': session['org_id'], 'user_id': user_id, 'active': True}
+        filters={'org_id': session['org_id'], 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this session')
@@ -906,7 +906,7 @@ def handle_toggle_session_kb(event: Dict[str, Any], user_id: str, session_id: st
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': session['org_id'], 'user_id': user_id, 'active': True}
+        filters={'org_id': session['org_id'], 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this session')
@@ -962,7 +962,7 @@ def handle_remove_session_kb(event: Dict[str, Any], user_id: str, session_id: st
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': session['org_id'], 'user_id': user_id, 'active': True}
+        filters={'org_id': session['org_id'], 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this session')

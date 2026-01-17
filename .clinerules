@@ -1,5 +1,27 @@
 # CORA Development Toolkit - Cline Rules
 
+## ⚠️ CRITICAL: ALWAYS USE WORKFLOWS FIRST
+
+**BEFORE doing ANYTHING, check if a workflow exists in `.cline/workflows/` for the task.**
+
+| Task | Workflow to Use | NEVER |
+|------|----------------|-------|
+| Testing a new module | `.cline/workflows/test-module.md` | ❌ DO NOT run `create-cora-project.sh` directly |
+| Fixing errors | `.cline/workflows/fix-cycle.md` or domain-specific `/fix-*.md` | ❌ DO NOT manually fix without workflow |
+| Validating code | `.cline/workflows/validate.md` | ❌ DO NOT run validators directly |
+| Syncing fixes | `.cline/workflows/fix-and-sync.md` | ❌ DO NOT manually copy files |
+
+**If you bypass a workflow when one exists, you are doing it WRONG.**
+
+**Example of correct behavior:**
+- User says: "test module-voice"
+- ✅ CORRECT: Use `.cline/workflows/test-module.md` workflow
+- ❌ WRONG: Run `create-cora-project.sh` directly
+
+**Workflows save time, enforce standards, and prevent errors. Use them.**
+
+---
+
 ## Project Overview
 
 This is the **CORA Development Toolkit** repository - the authoritative source for CORA (Composable Organizational Resource Architecture) standards, templates, and tooling. This toolkit is used to create and develop CORA-compliant applications.
