@@ -197,10 +197,16 @@ class CoraComplianceChecker:
     # These Lambdas are triggered by EventBridge or SQS, not API Gateway
     SCHEDULED_JOB_LAMBDAS = ['cleanup', 'processor']
     
+    # SQS-triggered Lambdas (asynchronous background processing)
+    SQS_TRIGGERED_LAMBDAS = ['kb-processor']
+    
     def check_standard_2_authentication(self, content: str, lambda_name: str = "") -> StandardCheck:
         """Check Standard 2: Authentication & Authorization"""
         # Whitelist: Scheduled jobs triggered by EventBridge don't receive user JWTs
         is_scheduled_job = any(sj in lambda_name for sj in self.SCHEDULED_JOB_LAMBDAS)
+        
+        # Whitelist: SQS-triggered Lambdas process background jobs, no user JWTs
+        is_sqs_lambda = any(sqs in lambda_name for sqs in self.SQS_TRIGGERED_LAMBDAS)
         
         if is_scheduled_job:
             return StandardCheck(
@@ -209,6 +215,16 @@ class CoraComplianceChecker:
                 is_compliant=True,
                 score=1.0,
                 details=["ℹ Scheduled job (EventBridge trigger)", "✓ No user authentication required"],
+                issues=[]
+            )
+        
+        if is_sqs_lambda:
+            return StandardCheck(
+                standard_number=2,
+                standard_name="Authentication & Authorization",
+                is_compliant=True,
+                score=1.0,
+                details=["ℹ SQS-triggered Lambda (background processing)", "✓ No user authentication required"],
                 issues=[]
             )
         
