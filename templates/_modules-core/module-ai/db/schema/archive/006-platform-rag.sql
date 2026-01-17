@@ -82,6 +82,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS update_platform_rag_updated_at ON public.platform_rag;
+DROP TRIGGER IF EXISTS update_platform_rag_updated_at ON public.platform_rag;
+DROP TRIGGER IF EXISTS update_platform_rag_updated_at ON public.platform_rag;
 CREATE TRIGGER update_platform_rag_updated_at BEFORE UPDATE ON public.platform_rag 
     FOR EACH ROW 
     EXECUTE FUNCTION update_platform_rag_updated_at();
@@ -137,12 +139,16 @@ ALTER TABLE public.platform_rag ENABLE ROW LEVEL SECURITY;
 
 -- Authenticated users can view platform RAG settings
 DROP POLICY IF EXISTS "Authenticated users can view platform_rag" ON public.platform_rag;
+DROP POLICY IF EXISTS "Authenticated users can view platform_rag" ON public.platform_rag;
+DROP POLICY IF EXISTS "Authenticated users can view platform_rag" ON public.platform_rag;
 CREATE POLICY "Authenticated users can view platform_rag" ON public.platform_rag 
     FOR SELECT 
     TO authenticated 
     USING (true);
 
 -- Platform admins can modify platform RAG settings
+DROP POLICY IF EXISTS "Super admins can modify platform_rag" ON public.platform_rag;
+DROP POLICY IF EXISTS "Super admins can modify platform_rag" ON public.platform_rag;
 DROP POLICY IF EXISTS "Super admins can modify platform_rag" ON public.platform_rag;
 CREATE POLICY "Super admins can modify platform_rag" ON public.platform_rag 
     TO authenticated 

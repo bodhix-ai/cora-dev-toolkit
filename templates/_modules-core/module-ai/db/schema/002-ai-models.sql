@@ -58,6 +58,8 @@ ALTER TABLE public.ai_models ENABLE ROW LEVEL SECURITY;
 
 -- Admin-only access (sys_owner, sys_admin)
 DROP POLICY IF EXISTS "ai_models_admin_access" ON public.ai_models;
+DROP POLICY IF EXISTS "ai_models_admin_access" ON public.ai_models;
+DROP POLICY IF EXISTS "ai_models_admin_access" ON public.ai_models;
 CREATE POLICY "ai_models_admin_access" ON public.ai_models
     FOR ALL
     USING (
@@ -69,6 +71,8 @@ CREATE POLICY "ai_models_admin_access" ON public.ai_models
     );
 
 -- Service role has full access
+DROP POLICY IF EXISTS "Service role full access to ai_models" ON public.ai_models;
+DROP POLICY IF EXISTS "Service role full access to ai_models" ON public.ai_models;
 DROP POLICY IF EXISTS "Service role full access to ai_models" ON public.ai_models;
 CREATE POLICY "Service role full access to ai_models" ON public.ai_models
     FOR ALL
@@ -88,6 +92,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS ai_models_updated_at ON public.ai_models;
+DROP TRIGGER IF EXISTS ai_models_updated_at ON public.ai_models;
+DROP TRIGGER IF EXISTS ai_models_updated_at ON public.ai_models;
 CREATE TRIGGER ai_models_updated_at BEFORE UPDATE ON public.ai_models
     FOR EACH ROW
     EXECUTE FUNCTION update_ai_models_updated_at();
@@ -106,6 +112,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS ai_models_created_by ON public.ai_models;
+DROP TRIGGER IF EXISTS ai_models_created_by ON public.ai_models;
 DROP TRIGGER IF EXISTS ai_models_created_by ON public.ai_models;
 CREATE TRIGGER ai_models_created_by BEFORE INSERT ON public.ai_models
     FOR EACH ROW

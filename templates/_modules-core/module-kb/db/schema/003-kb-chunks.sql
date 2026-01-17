@@ -25,12 +25,12 @@ CREATE TABLE IF NOT EXISTS public.kb_chunks (
 );
 
 -- Indexes for efficient retrieval
-CREATE INDEX idx_kb_chunks_kb_id ON public.kb_chunks(kb_id);
-CREATE INDEX idx_kb_chunks_document_id ON public.kb_chunks(document_id);
-CREATE INDEX idx_kb_chunks_chunk_index ON public.kb_chunks(document_id, chunk_index);
+CREATE INDEX IF NOT EXISTS idx_kb_chunks_kb_id ON public.kb_chunks(kb_id);
+CREATE INDEX IF NOT EXISTS idx_kb_chunks_document_id ON public.kb_chunks(document_id);
+CREATE INDEX IF NOT EXISTS idx_kb_chunks_chunk_index ON public.kb_chunks(document_id, chunk_index);
 
 -- pgvector index for similarity search (HNSW for better out-of-box performance)
-CREATE INDEX idx_kb_chunks_embedding ON public.kb_chunks 
+CREATE INDEX IF NOT EXISTS idx_kb_chunks_embedding ON public.kb_chunks 
     USING hnsw (embedding vector_cosine_ops)
     WITH (m = 16, ef_construction = 64);
 

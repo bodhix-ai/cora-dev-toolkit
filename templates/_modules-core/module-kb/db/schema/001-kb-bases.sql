@@ -38,20 +38,20 @@ CREATE TABLE IF NOT EXISTS public.kb_bases (
 );
 
 -- Indexes
-CREATE INDEX idx_kb_bases_scope ON public.kb_bases(scope);
-CREATE INDEX idx_kb_bases_org_id ON public.kb_bases(org_id) WHERE org_id IS NOT NULL;
-CREATE INDEX idx_kb_bases_workspace_id ON public.kb_bases(workspace_id) WHERE workspace_id IS NOT NULL;
-CREATE INDEX idx_kb_bases_chat_session_id ON public.kb_bases(chat_session_id) WHERE chat_session_id IS NOT NULL;
-CREATE INDEX idx_kb_bases_is_enabled ON public.kb_bases(is_enabled) WHERE is_deleted = false;
-CREATE INDEX idx_kb_bases_created_at ON public.kb_bases(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_kb_bases_scope ON public.kb_bases(scope);
+CREATE INDEX IF NOT EXISTS idx_kb_bases_org_id ON public.kb_bases(org_id) WHERE org_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_kb_bases_workspace_id ON public.kb_bases(workspace_id) WHERE workspace_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_kb_bases_chat_session_id ON public.kb_bases(chat_session_id) WHERE chat_session_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_kb_bases_is_enabled ON public.kb_bases(is_enabled) WHERE is_deleted = false;
+CREATE INDEX IF NOT EXISTS idx_kb_bases_created_at ON public.kb_bases(created_at DESC);
 
 -- Partial unique index for workspace-scoped KBs (one per workspace)
-CREATE UNIQUE INDEX idx_kb_bases_workspace_unique 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_kb_bases_workspace_unique 
     ON public.kb_bases(workspace_id) 
     WHERE scope = 'workspace' AND is_deleted = false;
 
 -- Partial unique index for chat-scoped KBs (one per chat session)
-CREATE UNIQUE INDEX idx_kb_bases_chat_unique 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_kb_bases_chat_unique 
     ON public.kb_bases(chat_session_id) 
     WHERE scope = 'chat' AND is_deleted = false;
 

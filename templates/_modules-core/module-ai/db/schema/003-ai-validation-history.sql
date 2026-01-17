@@ -52,6 +52,8 @@ ALTER TABLE public.ai_model_validation_history ENABLE ROW LEVEL SECURITY;
 
 -- Admin-only access (sys_owner, sys_admin)
 DROP POLICY IF EXISTS "ai_model_validation_history_admin_access" ON public.ai_model_validation_history;
+DROP POLICY IF EXISTS "ai_model_validation_history_admin_access" ON public.ai_model_validation_history;
+DROP POLICY IF EXISTS "ai_model_validation_history_admin_access" ON public.ai_model_validation_history;
 CREATE POLICY "ai_model_validation_history_admin_access" ON public.ai_model_validation_history
     FOR ALL
     USING (
@@ -63,6 +65,8 @@ CREATE POLICY "ai_model_validation_history_admin_access" ON public.ai_model_vali
     );
 
 -- Service role has full access (for Lambda functions)
+DROP POLICY IF EXISTS "Service role full access to ai_model_validation_history" ON public.ai_model_validation_history;
+DROP POLICY IF EXISTS "Service role full access to ai_model_validation_history" ON public.ai_model_validation_history;
 DROP POLICY IF EXISTS "Service role full access to ai_model_validation_history" ON public.ai_model_validation_history;
 CREATE POLICY "Service role full access to ai_model_validation_history" ON public.ai_model_validation_history
     FOR ALL
@@ -80,6 +84,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS ai_model_validation_history_updated_at ON public.ai_model_validation_history;
+DROP TRIGGER IF EXISTS ai_model_validation_history_updated_at ON public.ai_model_validation_history;
 DROP TRIGGER IF EXISTS ai_model_validation_history_updated_at ON public.ai_model_validation_history;
 CREATE TRIGGER ai_model_validation_history_updated_at BEFORE UPDATE ON public.ai_model_validation_history
     FOR EACH ROW
