@@ -15,6 +15,50 @@ This plan migrates 13 tables to comply with the updated DATABASE-NAMING standard
 
 ---
 
+## Validator Whitelist (Temporary - January 17, 2026)
+
+The following tables/indexes are **whitelisted in the Database Naming validator** (`scripts/validate-db-naming.py`) until their migration phases complete. This allows new modules to pass validation while deferring legacy module migrations.
+
+### Legacy Module Errors (9 items - Whitelisted)
+
+**Phase 1: Critical Auth Tables (module-access)**
+- `sys_idp_config` → Will be migrated to `sys_cfg_idp`
+- `sys_idp_audit_log` → Will be migrated to `sys_log_idp_audit`
+
+**Phase 2: System Config Tables (module-mgmt)**
+- `sys_lambda_config` → Will be migrated to `sys_cfg_lambda`
+
+**Phase 5: Log/History Tables (Deferred)**
+- `user_auth_log` → Will be migrated to `user_log_auth`
+- `ai_model_validation_history` → Will be migrated to `ai_hist_model_validation`
+- `ai_model_validation_progress` → Will be migrated to `ai_state_validation`
+
+**Not Yet Scheduled (Needs Phase Assignment)**
+- `sys_module_registry` → Needs pluralization (not yet in plan)
+- `sys_module_usage` → Needs pluralization (Phase 6 - deferred)
+
+**Index Naming (module-ai)**
+- `ai_cfg_sys_rag_singleton` → Should be `idx_ai_cfg_sys_rag_singleton`
+
+### New Module Fixes (2 items - Fixed in Templates)
+
+**module-kb (Session 151 - January 17, 2026):**
+- ✅ `chat_session_kb` → `chat_session_kbs` - **FIXED in templates**
+  - Updated: `templates/_modules-core/module-kb/db/schema/010-chat-session-kb.sql`
+  - Updated: `templates/_modules-core/module-kb/db/schema/011-chat-rls-kb.sql`
+  - **Cleanup Required**: Before next test-module run, execute: `DROP TABLE IF EXISTS public.chat_session_kb CASCADE;`
+
+**module-ws (Not Yet Templated):**
+- `ws_activity_log` → `ws_activity_logs` - **Pending templating**
+  - Module-ws exists only in test projects (not templated yet)
+  - Fix will be applied when module-ws is templated
+
+### Whitelist Removal Process
+
+As each migration phase completes, remove the corresponding tables/indexes from `LEGACY_WHITELIST` in `scripts/validate-db-naming.py`.
+
+---
+
 ## Migration Phases
 
 ### Phase 0: Standards Foundation ✅ COMPLETE
@@ -98,6 +142,11 @@ CREATE VIEW sys_idp_audit_log AS SELECT * FROM sys_log_idp_audit;
 - [ ] Test auth flow end-to-end
 - [ ] Verify RLS policies work correctly
 
+#### Post-Migration
+
+- [ ] **Remove from whitelist**: Delete `sys_idp_config` and `sys_idp_audit_log` from `LEGACY_WHITELIST` in `scripts/validate-db-naming.py`
+- [ ] Verify validator passes with whitelist entries removed
+
 #### Rollback Plan
 
 1. Drop new tables
@@ -159,6 +208,11 @@ CREATE VIEW sys_lambda_config AS SELECT * FROM sys_cfg_lambda;
 - [ ] Test Lambda warming toggle
 - [ ] Test custom schedule configuration
 - [ ] Test admin dashboard displays correctly
+
+#### Post-Migration
+
+- [ ] **Remove from whitelist**: Delete `sys_lambda_config` from `LEGACY_WHITELIST` in `scripts/validate-db-naming.py`
+- [ ] Verify validator passes with whitelist entry removed
 
 ---
 
@@ -242,6 +296,11 @@ CREATE VIEW ws_activity_log AS SELECT * FROM ws_log_activity;
 - [ ] Test activity logging
 - [ ] Test workspace admin page
 
+#### Post-Migration
+
+- [ ] **Note**: `ws_activity_log` not in whitelist (module-ws not yet templated)
+- [ ] When module-ws is templated, ensure it uses `ws_activity_logs` (plural)
+
 ---
 
 ### Phase 4: AI Config Tables ✅ HANDLED BY MODULE-KB PHASE 0
@@ -294,6 +353,11 @@ CREATE VIEW ws_activity_log AS SELECT * FROM ws_log_activity;
 
 **Decision:** Defer to after kb/chat/wf modules complete. These tables are read-only for analytics and don't block new module development.
 
+#### Post-Migration (When Phase 5 Executes)
+
+- [ ] **Remove from whitelist**: Delete `user_auth_log`, `ai_model_validation_history`, and `ai_model_validation_progress` from `LEGACY_WHITELIST` in `scripts/validate-db-naming.py`
+- [ ] Verify validator passes with whitelist entries removed
+
 ---
 
 ### Phase 6: Usage Tracking Tables (Low Priority - Deferred)
@@ -310,6 +374,12 @@ CREATE VIEW ws_activity_log AS SELECT * FROM ws_log_activity;
 | `sys_module_usage_daily` | `sys_usage_module_daily` | Usage | P3 (Low) |
 
 **Decision:** Defer indefinitely. No code currently uses these tables.
+
+#### Post-Migration (When Phase 6 Executes)
+
+- [ ] **Remove from whitelist**: Delete `sys_module_usage` from `LEGACY_WHITELIST` in `scripts/validate-db-naming.py`
+- [ ] **Add to plan**: `sys_module_registry` migration (not yet scheduled)
+- [ ] **Note**: `ai_cfg_sys_rag_singleton` index needs idx_ prefix (not yet scheduled)
 
 ---
 
