@@ -74,6 +74,7 @@ class A11yValidator:
         for file_result in parsed_files:
             file_path = file_result['file_path']
             elements = file_result['elements']
+            labels = file_result.get('labels', {})
             total_components += len(elements)
             
             if self.verbose:
@@ -81,7 +82,11 @@ class A11yValidator:
             
             # Run each validator
             for validator in self.validators:
-                issues = validator.validate(elements)
+                # Pass labels to FormsValidator (other validators don't use them)
+                if isinstance(validator, FormsValidator):
+                    issues = validator.validate(elements, labels)
+                else:
+                    issues = validator.validate(elements)
                 
                 # Add file path to each issue
                 for issue in issues:
@@ -139,6 +144,7 @@ class A11yValidator:
             }
         
         elements = file_result['elements']
+        labels = file_result.get('labels', {})
         total_components = len(elements)
         
         # Collect all issues
@@ -146,7 +152,11 @@ class A11yValidator:
         
         # Run each validator
         for validator in self.validators:
-            issues = validator.validate(elements)
+            # Pass labels to FormsValidator (other validators don't use them)
+            if isinstance(validator, FormsValidator):
+                issues = validator.validate(elements, labels)
+            else:
+                issues = validator.validate(elements)
             
             # Add file path to each issue
             for issue in issues:

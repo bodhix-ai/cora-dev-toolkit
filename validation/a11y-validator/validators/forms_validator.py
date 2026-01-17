@@ -17,17 +17,22 @@ class FormsValidator:
     
     def __init__(self):
         self.rules = {rule['rule_name']: rule for rule in get_rules_by_baseline('10.A') + get_rules_by_baseline('10.C')}
+        self.labels = {}
     
-    def validate(self, elements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def validate(self, elements: List[Dict[str, Any]], labels: Dict[str, Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         Validate all form control elements.
         
         Args:
             elements: List of parsed JSX elements
+            labels: Optional dictionary mapping htmlFor IDs to label elements
             
         Returns:
             List of validation errors/warnings
         """
+        # Store labels for use in validation methods
+        self.labels = labels or {}
+        
         issues = []
         
         form_control_types = [
@@ -91,9 +96,10 @@ class FormsValidator:
             if isinstance(input_props, str) and 'aria-label' in input_props:
                 return True
         
-        # Check for id (could be associated with a <label> element)
-        # Note: This requires context analysis of surrounding elements
-        # For now, we'll flag as missing unless explicit ARIA or label prop
+        # Check for associated <label htmlFor> element
+        element_id = element['attributes'].get('id')
+        if element_id and element_id in self.labels:
+            return True
         
         return False
     
