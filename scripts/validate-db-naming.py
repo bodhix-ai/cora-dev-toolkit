@@ -69,7 +69,7 @@ SQL_KEYWORDS = {
     'CREATE', 'DROP', 'ALTER', 'TABLE', 'INDEX', 'VIEW', 'GRANT',
     'REVOKE', 'ON', 'TO', 'WITH', 'JOIN', 'LEFT', 'RIGHT', 'INNER',
     'OUTER', 'USING', 'GROUP', 'ORDER', 'BY', 'HAVING', 'LIMIT',
-    'OFFSET', 'UNION', 'INTERSECT', 'EXCEPT', 'DISTINCT', 'ALL',
+    'OFFSET', 'UNION', 'INTERSECT', 'EXCEPT', 'DISTINCT', 'ALL', 'EXISTS',
 }
 
 # Core tables that are allowed to be plural without prefixes

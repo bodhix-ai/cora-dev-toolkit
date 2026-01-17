@@ -93,12 +93,22 @@ class FrontendComplianceChecker:
         
         if not is_api_file and not is_upload_file and not is_auth_provider and not is_module_registry:
             for i, line in enumerate(lines):
+                # Skip commented lines (fix for false positives in TODO comments)
+                stripped_line = line.strip()
+                if stripped_line.startswith("//") or stripped_line.startswith("*"):
+                    continue
+                
                 if re.search(r'\bfetch\s*\(', line):
                     # Check if this is a FormData upload (common pattern)
                     context_before = "\n".join(lines[max(0, i-10):i])
                     context_after = "\n".join(lines[i:min(len(lines), i+10)])
+                    
+                    # Allow FormData uploads
                     if "FormData" in context_before or "FormData" in context_after or "multipart" in context_before or "multipart" in context_after:
-                        # This is likely a file upload, which is acceptable
+                        continue
+                    
+                    # Allow S3 presigned URL uploads (legitimate use case)
+                    if "uploadUrl" in context_before or "uploadUrl" in context_after or "presigned" in context_before.lower() or "presigned" in context_after.lower():
                         continue
                     
                     issues.append(ComplianceIssue(
@@ -117,9 +127,11 @@ class FrontendComplianceChecker:
             has_use_user = "useUser" in content
             # Allow useOrgAIConfig which takes orgId as param
             is_ai_config = "useAIConfig.ts" in relative_path
+            # Allow hooks that receive orgId as a parameter (not from context)
+            has_org_id_param = "orgId:" in content or "orgId?" in content or "orgId :" in content
             is_multi_tenant = has_current_org or has_org_id
             
-            if is_multi_tenant and not has_org_context and "OrgContext" not in content and not has_use_user and not is_ai_config:
+            if is_multi_tenant and not has_org_context and "OrgContext" not in content and not has_use_user and not is_ai_config and not has_org_id_param:
                 issues.append(ComplianceIssue(
                     line_number=1,
                     line_content="import { useOrganizationContext } ...",
@@ -173,9 +185,9 @@ class FrontendComplianceChecker:
         if is_component_file:
             for i, line in enumerate(lines):
                 if "<IconButton" in line:
-                    # Look ahead up to 10 lines for aria-label (increased from 5 to handle multi-line props)
+                    # Look ahead up to 15 lines for aria-label (handles multi-line props like complex sx objects)
                     # This is a simple check, a full parser is better but this matches original script logic roughly
-                    context = " ".join(lines[i:i+10])
+                    context = " ".join(lines[i:i+15])
                     if "aria-label" not in context:
                         issues.append(ComplianceIssue(
                             line_number=i+1,
