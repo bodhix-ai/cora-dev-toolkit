@@ -247,6 +247,20 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 
+-- Function to check if user is a member of organization (any role)
+CREATE OR REPLACE FUNCTION is_org_member(
+    p_org_id UUID,
+    p_user_id UUID
+) RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.org_members
+        WHERE org_id = p_org_id
+        AND user_id = p_user_id
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- ============================================================================
 -- Row Level Security
 -- ============================================================================
@@ -325,6 +339,7 @@ COMMENT ON FUNCTION aggregate_module_usage_daily IS 'Aggregates raw usage data i
 COMMENT ON FUNCTION get_current_org_id IS 'Extract current user org_id from JWT claims';
 COMMENT ON FUNCTION is_sys_admin IS 'Check if current user is a system administrator';
 COMMENT ON FUNCTION is_org_admin IS 'Check if current user is an organization administrator';
+COMMENT ON FUNCTION is_org_member(UUID, UUID) IS 'Check if user is a member of the specified organization (any role)';
 
 COMMENT ON POLICY module_usage_select_org ON sys_module_usage IS 'Allow org admins to read their org usage data';
 COMMENT ON POLICY usage_daily_select_org ON sys_module_usage_daily IS 'Allow org admins to read their org daily stats';

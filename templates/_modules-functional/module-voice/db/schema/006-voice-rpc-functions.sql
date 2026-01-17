@@ -147,9 +147,43 @@ BEGIN
 END;
 $$;
 
+-- ========================================
+-- Permission Helper Functions (ADR-014)
+-- ========================================
+
+-- Function: Check if user is owner of voice session
+CREATE OR REPLACE FUNCTION is_voice_owner(
+    p_session_id UUID,
+    p_user_id UUID
+) RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.voice_sessions
+        WHERE id = p_session_id
+        AND created_by = p_user_id
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function: Check if user is assigned to voice session
+CREATE OR REPLACE FUNCTION is_voice_assignee(
+    p_session_id UUID,
+    p_user_id UUID
+) RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.voice_sessions
+        WHERE id = p_session_id
+        AND assigned_to = p_user_id
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Comments
 COMMENT ON FUNCTION get_voice_session_details(UUID) IS 'Get session with related config, transcript, and analytics';
 COMMENT ON FUNCTION get_org_voice_stats(UUID) IS 'Get aggregated voice interview statistics for an organization';
 COMMENT ON FUNCTION update_voice_session_status(UUID, VARCHAR, UUID) IS 'Update session status with transition validation';
 COMMENT ON FUNCTION calculate_voice_session_duration(UUID) IS 'Calculate and store session duration from timestamps';
 COMMENT ON FUNCTION get_org_active_voice_sessions(UUID) IS 'Get count of active sessions for an organization';
+COMMENT ON FUNCTION is_voice_owner(UUID, UUID) IS 'Checks if user is the owner (created_by) of the specified voice session';
+COMMENT ON FUNCTION is_voice_assignee(UUID, UUID) IS 'Checks if user is assigned to participate in the specified voice session';

@@ -309,6 +309,161 @@ openai_key = ai.get_provider_credentials(org_id, 'openai')
   - Phase 4.1 Compliance Checks
   - Phase 4.2 Integration Testing
 
+### Session 8 (January 17, 2026)
+- **Focus:** Issue resolution and bug discovery
+- **Completed:**
+  - Created `module.config.yaml` for module-voice (was missing, causing validation errors)
+  - Merged main into feature/module-voice-dev:
+    - Resolved 4 merge conflicts (module-registry.yaml, validator.py, plan and context files)
+    - Brought in latest changes from main (ADR-013, module-chat/kb moved to core, workflows, etc.)
+  - Pushed 11 commits (24 files) to remote branch
+- **Bug Discovered:**
+  - create-cora-project.sh is not copying module-voice to new projects
+  - Script detects module-voice during dependency resolution but fails to create module directory
+  - Config file correctly lists both module-ws and module-voice, but script only creates module-ws
+  - Root cause: YAML parsing bug in functional module detection logic
+  - Verification: `find ~/code/bodhix/testing/test-voice/ai-sec-stack/packages -name "*voice*"` returned 0 results
+
+### Session 9 (January 17, 2026)
+- **Focus:** Fix YAML parsing bug in create-cora-project.sh
+- **Completed:**
+  - Fixed `scripts/create-cora-project.sh` lines 530-545
+  - Script now uses `INPUT_CONFIG` when provided (via `--input` parameter)
+  - Falls back to `${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml` if no `--input`
+  - Updated implementation plan with Session 9 summary
+  - Updated context file with session notes
+- **Bug Analysis:**
+  - **Problem:** Script looked for config file at `${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml`
+  - **Issue:** This file doesn't exist yet (stack dir was just created from templates)
+  - **Solution:** Use `INPUT_CONFIG` first (the actual config file path from `--input` parameter)
+  - **Impact:** Functional modules listed in config file now properly copied to new projects
+- **Next Steps:**
+  - Test fix by creating new project with module-voice
+  - Verify module-voice is copied correctly (directory, routes, Terraform config)
+  - Proceed with Phase 4.1 and 4.2 validation testing
+
+### Session 10 (January 17, 2026)
+- **Focus:** Voice module permission model implementation and RLS bug fix
+- **Critical Issue Resolved:**
+  - **Original Error:** `can_access_org_data()` and `can_modify_org_data()` functions didn't exist
+  - **Root Cause:** `007-voice-session-kb.sql` had inline RLS policies using non-existent functions
+  - **Impact:** Project creation failed during database schema provisioning
+- **Architectural Decision (ADR-014):**
+  - Analyzed CORA permission patterns (sys, org, ws, chat)
+  - Decided on **Owner + Assignee + Shares** model for voice module
+  - Supports dual use case: external job interviews + internal career capture
+  - Created comprehensive ADR-014 documenting decision
+- **Schema Changes:**
+  - Updated `002-voice-sessions.sql`:
+    - Added `assigned_to UUID` column (for internal user assignment)
+    - Added `is_shared_with_workspace BOOLEAN` column (for workspace sharing)
+    - Added participant check constraint (external OR internal)
+    - Added index for `assigned_to` column
+    - Updated column comments
+  - Created `008-voice-shares.sql`:
+    - New table following chat_shares pattern
+    - Permission levels: `view`, `view_transcript`, `view_analytics`
+    - Supports sharing with individual users
+- **Helper Functions Added:**
+  - `is_voice_owner(session_id, user_id)` in `006-voice-rpc-functions.sql`
+  - `is_voice_assignee(session_id, user_id)` in `006-voice-rpc-functions.sql`
+  - `is_org_member(org_id, user_id)` in `module-mgmt/003-sys-module-usage.sql`
+- **RLS Implementation:**
+  - Removed all problematic RLS from `007-voice-session-kb.sql` (**CRITICAL FIX**)
+  - Created `009-apply-rls.sql` - comprehensive consolidated RLS file
+  - Implemented owner, assignee, shares, workspace, and service role policies
+  - All RLS policies use existing CORA patterns (no more missing functions!)
+- **Permission Model Summary:**
+  - **created_by** (Owner): Full control - view, modify, delete, share
+  - **assigned_to** (Assignee): Participant - participate, view own data
+  - **voice_shares** (Viewer): Shared access - view per permission_level
+  - **Workspace Members**: Team visibility if `is_shared_with_workspace = true`
+  - **Service Role**: System override for Lambda functions
+- **Files Modified:**
+  - `templates/_modules-functional/module-voice/db/schema/002-voice-sessions.sql`
+  - `templates/_modules-functional/module-voice/db/schema/006-voice-rpc-functions.sql`
+  - `templates/_modules-functional/module-voice/db/schema/007-voice-session-kb.sql`
+  - `templates/_modules-functional/module-voice/db/schema/008-voice-shares.sql` (NEW)
+  - `templates/_modules-functional/module-voice/db/schema/009-apply-rls.sql` (NEW)
+  - `templates/_modules-core/module-mgmt/db/schema/003-sys-module-usage.sql`
+  - `docs/arch decisions/ADR-014-VOICE-MODULE-PERMISSIONS.md` (NEW)
+- **Next Steps:**
+  - Re-run Phase 1 (project creation) to test fixes
+  - Verify database provisioning succeeds
+  - Proceed with Phase 4.1 and 4.2 validation testing
+
+### Session 11 (January 17, 2026)
+- **Focus:** Validation testing and error tracking plan creation
+- **Achievements:**
+  - ✅ **PROVISIONING ISSUE RESOLVED** - Session 10 RLS fixes worked perfectly!
+  - Updated `.clinerules` with prominent **"ALWAYS USE WORKFLOWS FIRST"** section
+  - Followed `test-module.md` workflow properly (corrected approach)
+  - Created test project successfully (`test-voice` at `~/code/bodhix/testing/test-voice/`)
+  - Database schema provisioned successfully (7 voice tables, 146 RLS policies, 73 functions)
+  - Ran full validation suite on test project
+- **Validation Results:**
+  - ✅ 10 validators PASSED (API Response, Role Naming, External UID, RPC Function, DB Naming, Portability, API Tracer, Import)
+  - ❌ 71 errors across 5 validators (all template quality issues, not infrastructure)
+- **Error Breakdown (Voice-Specific Only):**
+  - Structure: 1 error (missing package.json)
+  - Schema: 25 errors (org_members.active column references)
+  - CORA Compliance: 25 errors (missing access_common integration)
+  - Accessibility: 20 errors (missing labels, aria-labels)
+  - Frontend Compliance: 10 errors (IconButton aria-labels)
+- **Deliverables:**
+  - Created comprehensive validation fix plan: `docs/plans/plan_module-voice-validation-fixes.md`
+  - Documented Sprint 1 (critical validators: 51 errors, 3-4 hours)
+  - Documented Sprint 2 (accessibility + frontend: 30 errors, 2-3 hours)
+  - Defined session tracking template, risk assessment, success metrics
+- **Files Modified:**
+  - `.clinerules` - Added prominent workflow usage section at top
+  - `docs/plans/plan_module-voice-validation-fixes.md` (NEW) - Comprehensive fix plan
+  - `docs/plans/plan_module-voice-implementation.md` - Added Session 11 summary
+  - `memory-bank/context-module-voice.md` - Updated with Session 11
+- **Key Insight:**
+  - Provisioning works perfectly! All database tables, RLS policies, helper functions created successfully
+  - Remaining errors are **template code quality issues only** (Lambda code, frontend accessibility)
+  - Ready to begin Sprint 1 error fixes in next session
+- **Next Steps:**
+  - Execute Sprint 1: Fix structure, schema, CORA compliance errors (51 errors, 3-4 hours)
+  - Execute Sprint 2: Fix accessibility, frontend compliance errors (30 errors, 2-3 hours)
+  - Re-run validation to achieve 0 errors
+  - Continue with test-module.md workflow (Phases 2-5)
+
+### Session 12 (January 17, 2026)
+- **Focus:** Sprint 1 Partial Completion - Fix Structure and Schema validators
+- **Achievements:**
+  - ✅ Fixed 26 of 139 total validation errors (19% complete)
+  - ✅ Structure validator: PASSING (created frontend/package.json)
+  - ✅ Schema validator: PASSING (removed 25 org_members.active references)
+  - Created fresh test-voice project with validation (113 errors, BRONZE certification)
+- **Files Modified:**
+  1. `templates/_modules-functional/module-voice/frontend/package.json` (NEW)
+  2. `templates/_modules-functional/module-voice/backend/lambdas/voice-configs/lambda_function.py` (5 fixes)
+  3. `templates/_modules-functional/module-voice/backend/lambdas/voice-credentials/lambda_function.py` (5 fixes)
+  4. `templates/_modules-functional/module-voice/backend/lambdas/voice-sessions/lambda_function.py` (10 fixes)
+  5. `templates/_modules-functional/module-voice/backend/lambdas/voice-transcripts/lambda_function.py` (3 fixes)
+  6. `templates/_modules-functional/module-voice/backend/lambdas/voice-analytics/lambda_function.py` (2 fixes)
+- **Validation Results (Fresh test-voice project - 2:25 PM):**
+  - Total Errors: 113 (was estimated 71)
+  - Certification: BRONZE (10 of 13 validators passing)
+  - ✅ Structure: 0 errors (package.json fix worked!)
+  - ✅ Schema: 0 errors (org_members.active fixes worked!)
+  - ❌ CORA Compliance: 27 errors (validator expects org_common, code uses access_common)
+  - ❌ Accessibility: 32 errors (higher than estimated)
+  - ❌ Frontend Compliance: 50 errors (much higher than estimated)
+- **Key Findings:**
+  - Database provisioned successfully: 45 tables, 146 RLS policies, 73 functions
+  - Actual error count higher than estimated (113 vs 71)
+  - CORA Compliance errors appear to be validator naming mismatch issue
+- **Documentation Updated:**
+  - `docs/plans/plan_module-voice-validation-fixes.md` - Updated with actual error counts
+  - `memory-bank/context-module-voice.md` - Added Session 12 summary
+- **Next Steps:**
+  - Investigate CORA Compliance validator (org_common vs access_common naming)
+  - Continue with remaining Sprint 1 errors (CORA Compliance: 27 errors)
+  - Execute Sprint 2 (Accessibility: 32 errors, Frontend: 50 errors)
+
 ---
 
 ## Source Material
@@ -334,5 +489,5 @@ openai_key = ai.get_provider_credentials(org_id, 'openai')
 
 ---
 
-**Last Updated:** January 16, 2026  
-**Current Session:** Session 7
+**Last Updated:** January 17, 2026  
+**Current Session:** Session 12

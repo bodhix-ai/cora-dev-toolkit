@@ -116,7 +116,7 @@ def handle_list_credentials(event: Dict[str, Any], user_id: str) -> Dict[str, An
     # Verify org membership with admin role
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': org_id, 'user_id': user_id, 'active': True}
+        filters={'org_id': org_id, 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this organization')
@@ -170,7 +170,7 @@ def handle_get_credential(event: Dict[str, Any], user_id: str, credential_id: st
     # Verify org membership with admin role
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': credential['org_id'], 'user_id': user_id, 'active': True}
+        filters={'org_id': credential['org_id'], 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this credential')
@@ -219,7 +219,7 @@ def handle_create_credential(event: Dict[str, Any], user_id: str) -> Dict[str, A
     # Verify org membership with admin role
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': org_id, 'user_id': user_id, 'active': True}
+        filters={'org_id': org_id, 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this organization')
@@ -283,7 +283,7 @@ def handle_update_credential(event: Dict[str, Any], user_id: str, credential_id:
     # Verify org membership with admin role
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': credential['org_id'], 'user_id': user_id, 'active': True}
+        filters={'org_id': credential['org_id'], 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this credential')
@@ -343,7 +343,7 @@ def handle_delete_credential(event: Dict[str, Any], user_id: str, credential_id:
     # Verify org membership with admin role
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': credential['org_id'], 'user_id': user_id, 'active': True}
+        filters={'org_id': credential['org_id'], 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this credential')

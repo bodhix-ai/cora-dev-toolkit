@@ -7,7 +7,7 @@ DROP TABLE IF EXISTS public.voice_configs CASCADE;
 
 CREATE TABLE public.voice_configs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    org_id UUID NOT NULL REFERENCES public.org(id) ON DELETE CASCADE,
+    org_id UUID NOT NULL REFERENCES public.orgs(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     interview_type VARCHAR(100) NOT NULL,
     description TEXT,
@@ -28,28 +28,21 @@ CREATE INDEX idx_voice_configs_org_id ON public.voice_configs(org_id);
 CREATE INDEX idx_voice_configs_is_active ON public.voice_configs(is_active);
 CREATE INDEX idx_voice_configs_interview_type ON public.voice_configs(interview_type);
 
--- Enable RLS
-ALTER TABLE public.voice_configs ENABLE ROW LEVEL SECURITY;
+-- Trigger function
+CREATE OR REPLACE FUNCTION update_voice_configs_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- RLS Policies
-CREATE POLICY "voice_configs_select_policy" ON public.voice_configs
-    FOR SELECT USING (can_access_org_data(org_id));
-
-CREATE POLICY "voice_configs_insert_policy" ON public.voice_configs
-    FOR INSERT WITH CHECK (can_access_org_data(org_id));
-
-CREATE POLICY "voice_configs_update_policy" ON public.voice_configs
-    FOR UPDATE USING (can_modify_org_data(org_id))
-    WITH CHECK (can_modify_org_data(org_id));
-
-CREATE POLICY "voice_configs_delete_policy" ON public.voice_configs
-    FOR DELETE USING (can_modify_org_data(org_id));
-
--- Updated at trigger
-CREATE TRIGGER update_voice_configs_updated_at
+-- Trigger
+DROP TRIGGER IF EXISTS voice_configs_updated_at ON public.voice_configs;
+CREATE TRIGGER voice_configs_updated_at 
     BEFORE UPDATE ON public.voice_configs
     FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+    EXECUTE FUNCTION update_voice_configs_updated_at();
 
 -- Comments
 COMMENT ON TABLE public.voice_configs IS 'Pipecat interview configurations per organization';

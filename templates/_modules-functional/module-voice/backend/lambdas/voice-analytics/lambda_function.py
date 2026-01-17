@@ -96,7 +96,7 @@ def handle_list_analytics(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': org_id, 'user_id': user_id, 'active': True}
+        filters={'org_id': org_id, 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this organization')
@@ -186,7 +186,7 @@ def handle_get_analytics(event: Dict[str, Any], user_id: str, session_id: str) -
     # Verify org membership
     membership = access.find_one(
         table='org_members',
-        filters={'org_id': session['org_id'], 'user_id': user_id, 'active': True}
+        filters={'org_id': session['org_id'], 'user_id': user_id}
     )
     if not membership:
         raise access.ForbiddenError('You do not have access to this session')

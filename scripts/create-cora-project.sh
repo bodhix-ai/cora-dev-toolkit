@@ -1035,7 +1035,12 @@ fi
 # --- Create Functional Modules from config file or --modules parameter ---
 # First, read modules from config file if it exists
 CONFIG_MODULES=()
-CONFIG_FILE_FOR_MODULES="${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml"
+# Use INPUT_CONFIG when provided (--input parameter), fall back to stack dir config
+if [[ -n "$INPUT_CONFIG" ]]; then
+  CONFIG_FILE_FOR_MODULES="$INPUT_CONFIG"
+else
+  CONFIG_FILE_FOR_MODULES="${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml"
+fi
 if [[ -f "$CONFIG_FILE_FOR_MODULES" ]] && ! $DRY_RUN; then
   if command -v yq &> /dev/null; then
     while IFS= read -r module; do
