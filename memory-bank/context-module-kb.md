@@ -123,22 +123,40 @@ All fixes applied to TEMPLATES (not test projects), ensuring fixes persist in al
 
 ## Next Priority
 
-**Task:** Complete Sprint 2 - Accessibility & Frontend Compliance  
+**🚨 CRITICAL TASK:** Fix ALL 65 Validation Errors - Sprint 2  
 **Plan:** `docs/plans/plan_module-kb-chat-validation-fixes.md`  
 **Status:** Ready to start  
-**Estimated Duration:** ~2 hours  
+**Estimated Duration:** ~3 hours (increased scope)  
+**Priority:** HIGH - Must achieve GOLD certification (0 errors)
 
 **Sprint 1:** ✅ **COMPLETE!** All critical validators passing!
 
-**Sprint 2 Remaining Fixes (48 errors):**
+**Sprint 2 Remaining Fixes (65 errors total):**
 
-**Accessibility Validator (14 errors):**
-1. ⏳ Add aria-labels to form inputs (30 min)
-2. ⏳ Fix link accessibility in ChatOptionsMenu (15 min)
-3. ⏳ Add aria-labels to IconButtons (30 min)
+**Accessibility Validator (19 errors - 5 more than before):**
+1. ⏳ Add aria-labels to form inputs in ChatSessionList (TextField search)
+2. ⏳ Add aria-labels to form inputs in KBGroundingSelector (TextField search)
+3. ⏳ Add aria-labels to form inputs in ShareChatDialog (TextField email)
+4. ⏳ Add aria-labels to form inputs in ChatInput (TextField message)
+5. ⏳ Add aria-labels to form inputs in ModuleAdminDashboard (textarea)
+6. ⏳ Fix Checkbox missing label in ChatSessionList
+7. ⏳ Fix Link missing text in ChatOptionsMenu
+8. ⏳ Fix IconButton missing label in ShareChatDialog
+9. ⏳ Fix IconButton missing label in ChatMessage (multiple)
+10. ⏳ Fix IconButton missing label in ChatSessionList (multiple)
 
-**Frontend Compliance Validator (34 errors):**
-4. ⏳ Replace direct fetch() with createAuthenticatedClient (60 min)
+**Frontend Compliance Validator (42 errors - 8 more than before):**
+11. ⏳ Replace direct fetch() in admin/sys/kb/page.tsx (2 instances)
+12. ⏳ Add aria-label to IconButtons in ChatMessage.tsx
+13. ⏳ Add aria-label to IconButtons in ChatSessionList.tsx
+14. ⏳ Add aria-label to IconButtons in ShareChatDialog.tsx
+15. ⏳ Add aria-label to IconButtons in KBGroundingSelector.tsx
+16. ⏳ Add aria-label to IconButtons throughout module-chat components (37 total)
+
+**Estimated Effort:**
+- Accessibility fixes: ~90 minutes (19 errors)
+- Frontend compliance fixes: ~90 minutes (42 errors)
+- Total: ~3 hours
 
 **After Sprint 2 Complete:**
 1. Test: Create test-ws-26 to validate all fixes
@@ -175,14 +193,17 @@ All fixes applied to TEMPLATES (not test projects), ensuring fixes persist in al
 
 ## Test-WS-25 Validation Results (Latest)
 
-**Test Run:** January 16, 2026, 9:32 PM  
+**Test Run:** January 17, 2026, 11:24 AM (After Validator Improvements)  
 **Location:** `~/code/bodhix/testing/test-ws-25/`  
 
 ### Summary:
-- **Total Errors:** 48 (down from 78)
+- **Total Errors:** 65 (increased from 48 due to improved validator accuracy)
 - **Total Warnings:** 257
 - **Certification:** BRONZE
-- **Overall Status:** FAILED (only due to accessibility & frontend compliance)
+- **Overall Status:** FAILED (accessibility & frontend compliance)
+- **Duration:** 13.8 seconds
+
+**Note:** Error count increased because validator improvements in Session 136 made validators more accurate at detecting real issues (while eliminating ~309 false positives). This is a positive change - we're now finding issues that were previously missed.
 
 ### Critical Validators (All Passing! ✅):
 - ✅ Schema Validator: PASSED (0 errors)
@@ -198,8 +219,8 @@ All fixes applied to TEMPLATES (not test projects), ensuring fixes persist in al
 - ✅ API Tracer: PASSED (0 errors, 139 warnings)
 
 ### Non-Critical Validators (Sprint 2):
-- ❌ Accessibility: 14 errors, 23 warnings
-- ❌ Frontend Compliance: 34 errors
+- ❌ Accessibility: 19 errors, 23 warnings (increased from 14 - improved detection)
+- ❌ Frontend Compliance: 42 errors (increased from 34 - improved detection)
 
 ### Key Achievement:
 **All critical validators now pass!** Sprint 1 is complete. Only accessibility and frontend compliance remain for Sprint 2 to achieve GOLD certification.
