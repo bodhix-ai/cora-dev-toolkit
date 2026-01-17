@@ -20,33 +20,21 @@ import {
   BookOpen,
 } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import {
+  Menu,
+  MenuItem,
+  IconButton,
+  Button,
   Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+  DialogContent,
+  DialogActions,
+  TextField,
+  Divider,
+  ListItemIcon,
+  ListItemText,
+  Box,
+  Typography,
+} from "@mui/material";
 import { useChatActions } from "../hooks/useChatActions";
 import type { ChatSession } from "../types";
 
@@ -72,9 +60,9 @@ export interface ChatOptionsMenuProps {
   /** Optional class name */
   className?: string;
   /** Button variant */
-  variant?: "ghost" | "outline" | "default";
+  variant?: "text" | "outlined" | "contained";
   /** Button size */
-  size?: "sm" | "default" | "lg" | "icon";
+  size?: "small" | "medium" | "large";
 }
 
 // =============================================================================
@@ -113,13 +101,16 @@ export function ChatOptionsMenu({
   showShareOptions = true,
   showKBOptions = true,
   className,
-  variant = "ghost",
-  size = "icon",
+  variant = "text",
+  size = "medium",
 }: ChatOptionsMenuProps) {
   // === State ===
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [newTitle, setNewTitle] = useState(chat.title);
+
+  const menuOpen = Boolean(anchorEl);
 
   // === Hook ===
   const {
@@ -139,15 +130,26 @@ export function ChatOptionsMenu({
   });
 
   // === Handlers ===
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
   const handleFavoriteClick = useCallback(async () => {
+    handleMenuClose();
     await toggleFavorite(chat.id);
   }, [toggleFavorite, chat.id]);
 
   const handleCopyLink = useCallback(async () => {
+    handleMenuClose();
     await copyLink(chat.id);
   }, [copyLink, chat.id]);
 
   const handleWorkspaceShareToggle = useCallback(async () => {
+    handleMenuClose();
     await toggleWorkspaceSharing(chat.id);
   }, [toggleWorkspaceSharing, chat.id]);
 
@@ -170,180 +172,222 @@ export function ChatOptionsMenu({
   }, [deleteChat, chat.id]);
 
   const handleOpenRenameDialog = useCallback(() => {
+    handleMenuClose();
     setNewTitle(chat.title);
     setRenameDialogOpen(true);
   }, [chat.title]);
+
+  const handleOpenDeleteDialog = useCallback(() => {
+    handleMenuClose();
+    setDeleteDialogOpen(true);
+  }, []);
 
   // === Render ===
   const isLoading = isAnyLoading(chat.id);
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant={variant}
-            size={size}
-            className={className}
-            disabled={isLoading}
-            aria-label="Chat options"
-          >
-            <MoreVertical className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          {/* Favorite Toggle */}
-          <DropdownMenuItem
-            onClick={handleFavoriteClick}
-            disabled={isFavoriteLoading(chat.id)}
-          >
-            {chat.isFavorited ? (
-              <>
-                <StarOff className="mr-2 h-4 w-4" />
-                Remove Favorite
-              </>
-            ) : (
-              <>
-                <Star className="mr-2 h-4 w-4" />
-                Add to Favorites
-              </>
-            )}
-          </DropdownMenuItem>
+      <IconButton
+        className={className}
+        onClick={handleMenuOpen}
+        disabled={isLoading}
+        aria-label="Chat options"
+        size={size}
+        color={variant === "contained" ? "primary" : "default"}
+      >
+        <MoreVertical size={16} />
+      </IconButton>
 
-          {/* Rename */}
-          {chat.canEdit && (
-            <DropdownMenuItem onClick={handleOpenRenameDialog}>
-              <Edit2 className="mr-2 h-4 w-4" />
-              Rename
-            </DropdownMenuItem>
-          )}
+      <Menu
+        anchorEl={anchorEl}
+        open={menuOpen}
+        onClose={handleMenuClose}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "right",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+        PaperProps={{
+          sx: { minWidth: 200 },
+        }}
+      >
+        {/* Favorite Toggle */}
+        <MenuItem
+          onClick={handleFavoriteClick}
+          disabled={isFavoriteLoading(chat.id)}
+        >
+          <ListItemIcon>
+            {chat.isFavorited ? <StarOff size={16} /> : <Star size={16} />}
+          </ListItemIcon>
+          <ListItemText>
+            {chat.isFavorited ? "Remove Favorite" : "Add to Favorites"}
+          </ListItemText>
+        </MenuItem>
 
-          {/* Copy Link */}
-          <DropdownMenuItem onClick={handleCopyLink}>
-            <Link className="mr-2 h-4 w-4" />
-            Copy Link
-          </DropdownMenuItem>
+        {/* Rename */}
+        {chat.canEdit && (
+          <MenuItem onClick={handleOpenRenameDialog}>
+            <ListItemIcon>
+              <Edit2 size={16} />
+            </ListItemIcon>
+            <ListItemText>Rename</ListItemText>
+          </MenuItem>
+        )}
 
-          {/* Share Options */}
-          {showShareOptions && chat.isOwner && (
-            <>
-              <DropdownMenuSeparator />
+        {/* Copy Link */}
+        <MenuItem onClick={handleCopyLink}>
+          <ListItemIcon>
+            <Link size={16} />
+          </ListItemIcon>
+          <ListItemText>Copy Link</ListItemText>
+        </MenuItem>
 
-              {/* Workspace Sharing Toggle */}
-              {chat.workspaceId && (
-                <DropdownMenuItem
-                  onClick={handleWorkspaceShareToggle}
-                  disabled={isSharingLoading(chat.id)}
-                >
-                  <Users className="mr-2 h-4 w-4" />
+        {/* Share Options */}
+        {showShareOptions && chat.isOwner && (
+          <>
+            <Divider />
+
+            {/* Workspace Sharing Toggle */}
+            {chat.workspaceId && (
+              <MenuItem
+                onClick={handleWorkspaceShareToggle}
+                disabled={isSharingLoading(chat.id)}
+              >
+                <ListItemIcon>
+                  <Users size={16} />
+                </ListItemIcon>
+                <ListItemText>
                   {chat.isSharedWithWorkspace
                     ? "Stop Sharing with Workspace"
                     : "Share with Workspace"}
-                </DropdownMenuItem>
-              )}
+                </ListItemText>
+              </MenuItem>
+            )}
 
-              {/* Share with Users */}
-              {onShareClick && (
-                <DropdownMenuItem onClick={() => onShareClick(chat.id)}>
-                  <Share2 className="mr-2 h-4 w-4" />
-                  Share with Users...
-                </DropdownMenuItem>
-              )}
-            </>
-          )}
+            {/* Share with Users */}
+            {onShareClick && (
+              <MenuItem onClick={() => {
+                handleMenuClose();
+                onShareClick(chat.id);
+              }}>
+                <ListItemIcon>
+                  <Share2 size={16} />
+                </ListItemIcon>
+                <ListItemText>Share with Users...</ListItemText>
+              </MenuItem>
+            )}
+          </>
+        )}
 
-          {/* KB Grounding Options */}
-          {showKBOptions && chat.canEdit && onKBGroundingClick && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onKBGroundingClick(chat.id)}>
-                <BookOpen className="mr-2 h-4 w-4" />
-                Manage Knowledge Bases...
-              </DropdownMenuItem>
-            </>
-          )}
+        {/* KB Grounding Options */}
+        {showKBOptions && chat.canEdit && onKBGroundingClick && (
+          <>
+            <Divider />
+            <MenuItem onClick={() => {
+              handleMenuClose();
+              onKBGroundingClick(chat.id);
+            }}>
+              <ListItemIcon>
+                <BookOpen size={16} />
+              </ListItemIcon>
+              <ListItemText>Manage Knowledge Bases...</ListItemText>
+            </MenuItem>
+          </>
+        )}
 
-          {/* Delete */}
-          {chat.canDelete && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setDeleteDialogOpen(true)}
-                className="text-destructive focus:text-destructive"
-                disabled={isDeleteLoading(chat.id)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete Chat
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        {/* Delete */}
+        {chat.canDelete && (
+          <>
+            <Divider />
+            <MenuItem
+              onClick={handleOpenDeleteDialog}
+              disabled={isDeleteLoading(chat.id)}
+              sx={{ color: 'error.main' }}
+            >
+              <ListItemIcon>
+                <Trash2 size={16} color="inherit" />
+              </ListItemIcon>
+              <ListItemText>Delete Chat</ListItemText>
+            </MenuItem>
+          </>
+        )}
+      </Menu>
 
       {/* Rename Dialog */}
-      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+      <Dialog 
+        open={renameDialogOpen} 
+        onClose={() => setRenameDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Rename Chat</DialogTitle>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Rename Chat</DialogTitle>
-            <DialogDescription>
-              Enter a new name for this chat session.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="chat-title">Title</Label>
-              <Input
-                id="chat-title"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Chat title"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleRenameSubmit();
-                  }
-                }}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setRenameDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleRenameSubmit}
-              disabled={isRenameLoading(chat.id) || !newTitle.trim()}
-            >
-              {isRenameLoading(chat.id) ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Enter a new name for this chat session.
+          </Typography>
+          <TextField
+            autoFocus
+            label="Title"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Chat title"
+            fullWidth
+            variant="outlined"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleRenameSubmit();
+              }
+            }}
+          />
         </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setRenameDialogOpen(false)}
+            variant="outlined"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleRenameSubmit}
+            disabled={isRenameLoading(chat.id) || !newTitle.trim()}
+            variant="contained"
+          >
+            {isRenameLoading(chat.id) ? "Saving..." : "Save"}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Chat</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete &quot;{chat.title}&quot;? This
-              action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={isDeleteLoading(chat.id)}
-            >
-              {isDeleteLoading(chat.id) ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <Dialog 
+        open={deleteDialogOpen} 
+        onClose={() => setDeleteDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Delete Chat</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Are you sure you want to delete &quot;{chat.title}&quot;? This
+            action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} variant="outlined">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            disabled={isDeleteLoading(chat.id)}
+            variant="contained"
+            color="error"
+          >
+            {isDeleteLoading(chat.id) ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

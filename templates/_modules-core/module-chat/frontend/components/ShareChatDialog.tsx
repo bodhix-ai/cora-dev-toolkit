@@ -21,27 +21,24 @@ import {
 } from "lucide-react";
 import {
   Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
   Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Box,
+  Typography,
+  Alert,
+  AlertTitle,
+  Divider,
+  CircularProgress,
+  IconButton,
+  Avatar,
+} from "@mui/material";
 import { useChatSharing } from "../hooks/useChatSharing";
 import type { ChatShare, PermissionLevel } from "../types";
 
@@ -86,70 +83,95 @@ function ShareItem({
   isLoading,
 }: ShareItemProps) {
   return (
-    <div
-      className={cn(
-        "flex items-center gap-3 p-3 rounded-lg border",
-        isLoading && "opacity-50 pointer-events-none"
-      )}
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1.5,
+        p: 1.5,
+        borderRadius: 1,
+        border: 1,
+        borderColor: 'divider',
+        opacity: isLoading ? 0.5 : 1,
+        pointerEvents: isLoading ? 'none' : 'auto',
+      }}
     >
       {/* Avatar/Icon */}
-      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-        <Mail className="h-4 w-4 text-muted-foreground" />
-      </div>
+      <Avatar sx={{ width: 32, height: 32, bgcolor: 'action.hover' }}>
+        <Mail size={16} />
+      </Avatar>
 
       {/* User Info */}
-      <div className="flex-1 min-w-0">
-        <div className="font-medium text-sm truncate">
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography
+          variant="body2"
+          fontWeight="medium"
+          sx={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
           {share.sharedWithName || share.sharedWithEmail || "Unknown user"}
-        </div>
+        </Typography>
         {share.sharedWithName && share.sharedWithEmail && (
-          <div className="text-xs text-muted-foreground truncate">
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
             {share.sharedWithEmail}
-          </div>
+          </Typography>
         )}
-      </div>
+      </Box>
 
       {/* Permission Select */}
-      <Select
-        value={share.permissionLevel}
-        onValueChange={(value: PermissionLevel) => onUpdatePermission(value)}
-        disabled={isLoading}
-      >
-        <SelectTrigger className="w-24 h-8">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="view">
-            <div className="flex items-center gap-1">
-              <Eye className="h-3 w-3" />
+      <FormControl size="small" sx={{ minWidth: 100 }}>
+        <Select
+          value={share.permissionLevel}
+          onChange={(e) => onUpdatePermission(e.target.value as PermissionLevel)}
+          disabled={isLoading}
+          sx={{ height: 32 }}
+        >
+          <MenuItem value="view">
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Eye size={12} />
               View
-            </div>
-          </SelectItem>
-          <SelectItem value="edit">
-            <div className="flex items-center gap-1">
-              <Edit3 className="h-3 w-3" />
+            </Box>
+          </MenuItem>
+          <MenuItem value="edit">
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Edit3 size={12} />
               Edit
-            </div>
-          </SelectItem>
-        </SelectContent>
-      </Select>
+            </Box>
+          </MenuItem>
+        </Select>
+      </FormControl>
 
       {/* Remove Button */}
-      <Button
-        variant="ghost"
-        size="icon"
+      <IconButton
+        size="small"
         onClick={onRemove}
         disabled={isLoading}
-        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+        sx={{
+          color: 'text.secondary',
+          '&:hover': {
+            color: 'error.main',
+          },
+        }}
         aria-label={`Remove access for ${share.sharedWithEmail}`}
       >
         {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <CircularProgress size={16} />
         ) : (
-          <Trash2 className="h-4 w-4" />
+          <Trash2 size={16} />
         )}
-      </Button>
-    </div>
+      </IconButton>
+    </Box>
   );
 }
 
@@ -288,144 +310,177 @@ export function ShareChatDialog({
 
   // === Render ===
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Share2 className="h-5 w-5" />
-            Share Chat
-          </DialogTitle>
-          <DialogDescription>
-            Share &quot;{chatTitle}&quot; with colleagues.
-          </DialogDescription>
-        </DialogHeader>
+    <Dialog
+      open={open}
+      onClose={() => onOpenChange(false)}
+      maxWidth="sm"
+      fullWidth
+    >
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Share2 size={20} />
+        Share Chat
+      </DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Share &quot;{chatTitle}&quot; with colleagues.
+        </Typography>
 
         {/* Workspace Sharing Option */}
         {onToggleWorkspaceSharing && (
           <>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-3">
-                <Users className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <div className="font-medium text-sm">
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                p: 1.5,
+                borderRadius: 1,
+                bgcolor: 'action.hover',
+                mb: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Users size={20} color="text.secondary" />
+                <Box>
+                  <Typography variant="body2" fontWeight="medium">
                     Share with Workspace
-                  </div>
-                  <div className="text-xs text-muted-foreground">
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
                     All workspace members can access this chat
-                  </div>
-                </div>
-              </div>
+                  </Typography>
+                </Box>
+              </Box>
               <Button
-                variant={isSharedWithWorkspace ? "secondary" : "outline"}
-                size="sm"
+                variant={isSharedWithWorkspace ? "contained" : "outlined"}
+                size="small"
                 onClick={onToggleWorkspaceSharing}
               >
                 {isSharedWithWorkspace ? "Shared" : "Share"}
               </Button>
-            </div>
-            <Separator />
+            </Box>
+            <Divider sx={{ mb: 2 }} />
           </>
         )}
 
         {/* Share with Email */}
-        <div className="space-y-3">
-          <Label htmlFor="share-email">Share with specific people</Label>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <Input
-                id="share-email"
-                type="email"
-                placeholder="Enter email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleShare();
-                  }
-                }}
-                disabled={isSubmitting}
-              />
-            </div>
-            <Select
-              value={permission}
-              onValueChange={(value: PermissionLevel) => setPermission(value)}
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
+            Share with specific people
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField
+              type="email"
+              placeholder="Enter email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleShare();
+                }
+              }}
               disabled={isSubmitting}
-            >
-              <SelectTrigger className="w-24">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="view">View</SelectItem>
-                <SelectItem value="edit">Edit</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
+              size="small"
+              fullWidth
+            />
+            <FormControl size="small" sx={{ minWidth: 100 }}>
+              <Select
+                value={permission}
+                onChange={(e) => setPermission(e.target.value as PermissionLevel)}
+                disabled={isSubmitting}
+              >
+                <MenuItem value="view">View</MenuItem>
+                <MenuItem value="edit">Edit</MenuItem>
+              </Select>
+            </FormControl>
+            <IconButton
+              color="primary"
               onClick={handleShare}
               disabled={isSubmitting || !email.trim()}
+              sx={{ width: 40, height: 40 }}
             >
               {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <CircularProgress size={20} />
               ) : (
-                <UserPlus className="h-4 w-4" />
+                <UserPlus size={20} />
               )}
-            </Button>
-          </div>
-        </div>
+            </IconButton>
+          </Box>
+        </Box>
 
         {/* Permission Explanation */}
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="text-xs">
+        <Alert severity="info" icon={<AlertCircle size={16} />} sx={{ mb: 2 }}>
+          <Typography variant="caption">
             <strong>View:</strong> Can read messages.{" "}
             <strong>Edit:</strong> Can also send messages.
-          </AlertDescription>
+          </Typography>
         </Alert>
 
         {/* Current Shares */}
         {shares.length > 0 && (
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground uppercase tracking-wider">
+          <Box>
+            <Typography
+              variant="caption"
+              fontWeight="medium"
+              color="text.secondary"
+              sx={{
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                display: 'block',
+                mb: 1,
+              }}
+            >
               People with access ({shares.length})
-            </Label>
-            <ScrollArea className="max-h-[200px]">
-              <div className="space-y-2">
-                {shares.map((share) => (
-                  <ShareItem
-                    key={share.id}
-                    share={share}
-                    onRemove={() => handleRemoveShare(share.id)}
-                    onUpdatePermission={(perm) =>
-                      handleUpdatePermission(share.id, perm)
-                    }
-                    isLoading={loadingShares.has(share.id)}
-                  />
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
+            </Typography>
+            <Box
+              sx={{
+                maxHeight: 200,
+                overflow: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+              }}
+            >
+              {shares.map((share) => (
+                <ShareItem
+                  key={share.id}
+                  share={share}
+                  onRemove={() => handleRemoveShare(share.id)}
+                  onUpdatePermission={(perm) =>
+                    handleUpdatePermission(share.id, perm)
+                  }
+                  isLoading={loadingShares.has(share.id)}
+                />
+              ))}
+            </Box>
+          </Box>
         )}
 
         {/* Loading State */}
         {isLoading && shares.length === 0 && (
-          <div className="flex justify-center py-4">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+            <CircularProgress size={24} />
+          </Box>
         )}
 
         {/* Empty State */}
         {!isLoading && shares.length === 0 && (
-          <div className="text-center py-4 text-muted-foreground text-sm">
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            align="center"
+            sx={{ py: 2 }}
+          >
             This chat hasn&apos;t been shared with anyone yet.
-          </div>
+          </Typography>
         )}
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Done
-          </Button>
-        </DialogFooter>
       </DialogContent>
+
+      <DialogActions>
+        <Button variant="outlined" onClick={() => onOpenChange(false)}>
+          Done
+        </Button>
+      </DialogActions>
     </Dialog>
   );
 }

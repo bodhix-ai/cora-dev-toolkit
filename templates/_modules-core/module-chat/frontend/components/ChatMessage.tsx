@@ -17,13 +17,16 @@ import {
   Copy,
   Check,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
+  Box,
+  IconButton,
+  Typography,
+  Avatar,
+  Paper,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+} from "@mui/material";
 import type { ChatMessage as ChatMessageType, Citation } from "../types";
 
 // =============================================================================
@@ -57,41 +60,81 @@ interface CitationItemProps {
 
 function CitationItem({ citation, index, onClick }: CitationItemProps) {
   return (
-    <button
-      className={cn(
-        "flex items-start gap-2 p-2 rounded-md text-left w-full",
-        "bg-muted/50 hover:bg-muted transition-colors",
-        "text-sm"
-      )}
+    <Paper
+      component="button"
       onClick={() => onClick?.(citation)}
+      sx={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 1,
+        p: 1,
+        width: '100%',
+        textAlign: 'left',
+        bgcolor: 'action.hover',
+        '&:hover': {
+          bgcolor: 'action.selected',
+        },
+        cursor: 'pointer',
+        border: 'none',
+        transition: 'background-color 0.2s',
+      }}
     >
-      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-medium">
+      <Avatar
+        sx={{
+          width: 24,
+          height: 24,
+          fontSize: '0.75rem',
+          bgcolor: 'primary.light',
+          color: 'primary.contrastText',
+        }}
+      >
         {index + 1}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <FileText className="h-3 w-3" />
-          <span className="truncate">{citation.documentName}</span>
+      </Avatar>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <FileText size={12} />
+          <Typography
+            variant="caption"
+            sx={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              color: 'text.secondary',
+            }}
+          >
+            {citation.documentName}
+          </Typography>
           {citation.pageNumber && (
-            <span className="text-muted-foreground">
+            <Typography variant="caption" color="text.secondary">
               · p.{citation.pageNumber}
-            </span>
+            </Typography>
           )}
-        </div>
-        <p className="text-xs mt-1 line-clamp-2">{citation.content}</p>
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-xs text-muted-foreground">
+        </Box>
+        <Typography
+          variant="caption"
+          sx={{
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            mt: 0.5,
+          }}
+        >
+          {citation.content}
+        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+          <Typography variant="caption" color="text.secondary">
             {citation.kbName}
-          </span>
+          </Typography>
           {citation.relevanceScore !== undefined && (
-            <span className="text-xs text-muted-foreground">
+            <Typography variant="caption" color="text.secondary">
               {Math.round(citation.relevanceScore * 100)}% match
-            </span>
+            </Typography>
           )}
-        </div>
-      </div>
-      <ExternalLink className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
-    </button>
+        </Box>
+      </Box>
+      <ExternalLink size={12} color="text.secondary" />
+    </Paper>
   );
 }
 
@@ -161,121 +204,167 @@ export function ChatMessage({
   const isAssistant = message.role === "assistant";
 
   return (
-    <div
-      className={cn(
-        "flex gap-3 p-4",
-        isUser && "flex-row-reverse",
-        className
-      )}
+    <Box
+      className={className}
+      sx={{
+        display: 'flex',
+        gap: 1.5,
+        p: 2,
+        flexDirection: isUser ? 'row-reverse' : 'row',
+      }}
     >
       {/* Avatar */}
-      <div
-        className={cn(
-          "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
-          isUser ? "bg-primary text-primary-foreground" : "bg-muted"
-        )}
+      <Avatar
+        sx={{
+          width: 32,
+          height: 32,
+          bgcolor: isUser ? 'primary.main' : 'action.hover',
+          color: isUser ? 'primary.contrastText' : 'text.primary',
+        }}
       >
-        {isUser ? (
-          <User className="h-4 w-4" />
-        ) : (
-          <Bot className="h-4 w-4" />
-        )}
-      </div>
+        {isUser ? <User size={16} /> : <Bot size={16} />}
+      </Avatar>
 
       {/* Message Content */}
-      <div
-        className={cn(
-          "flex-1 min-w-0 space-y-2",
-          isUser && "text-right"
-        )}
+      <Box
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1,
+          alignItems: isUser ? 'flex-end' : 'flex-start',
+        }}
       >
         {/* Message Bubble */}
-        <div
-          className={cn(
-            "inline-block rounded-lg px-4 py-2 max-w-[85%]",
-            isUser
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted",
-            isUser ? "rounded-br-sm" : "rounded-bl-sm"
-          )}
+        <Paper
+          sx={{
+            display: 'inline-block',
+            maxWidth: '85%',
+            px: 2,
+            py: 1,
+            bgcolor: isUser ? 'primary.main' : 'action.hover',
+            color: isUser ? 'primary.contrastText' : 'text.primary',
+            borderRadius: 2,
+            borderBottomRightRadius: isUser ? 1 : 2,
+            borderBottomLeftRadius: isUser ? 2 : 1,
+          }}
         >
           {/* Content */}
-          <div className="whitespace-pre-wrap break-words">
+          <Typography
+            component="div"
+            sx={{
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+            }}
+          >
             {content}
             {isStreaming && (
-              <span className="inline-block w-2 h-4 bg-current ml-1 animate-pulse" />
+              <Box
+                component="span"
+                sx={{
+                  display: 'inline-block',
+                  width: 2,
+                  height: 16,
+                  bgcolor: 'currentColor',
+                  ml: 0.5,
+                  animation: 'pulse 1s ease-in-out infinite',
+                  '@keyframes pulse': {
+                    '0%, 100%': { opacity: 1 },
+                    '50%': { opacity: 0.5 },
+                  },
+                }}
+              />
             )}
-          </div>
+          </Typography>
 
           {/* Truncated Warning */}
           {message.wasTruncated && (
-            <div className="text-xs mt-2 opacity-70">
+            <Typography variant="caption" sx={{ display: 'block', mt: 1, opacity: 0.7 }}>
               (Response was truncated)
-            </div>
+            </Typography>
           )}
-        </div>
+        </Paper>
 
         {/* Message Footer */}
-        <div
-          className={cn(
-            "flex items-center gap-2 text-xs text-muted-foreground",
-            isUser && "justify-end"
-          )}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            color: 'text.secondary',
+          }}
         >
-          <span>{formattedTime}</span>
+          <Typography variant="caption">{formattedTime}</Typography>
           
           {/* Token Usage (for assistant messages) */}
           {isAssistant && message.tokenUsage && (
-            <span>· {message.tokenUsage.totalTokens} tokens</span>
+            <Typography variant="caption">
+              · {message.tokenUsage.totalTokens} tokens
+            </Typography>
           )}
 
           {/* Copy Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
+          <IconButton
+            size="small"
             onClick={handleCopy}
+            sx={{ width: 24, height: 24 }}
           >
             {copied ? (
-              <Check className="h-3 w-3 text-green-500" />
+              <Check size={12} style={{ color: '#4caf50' }} />
             ) : (
-              <Copy className="h-3 w-3" />
+              <Copy size={12} />
             )}
-          </Button>
-        </div>
+          </IconButton>
+        </Box>
 
         {/* Citations */}
         {showCitations && hasCitations && isAssistant && (
-          <Collapsible open={citationsOpen} onOpenChange={setCitationsOpen}>
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                <FileText className="h-3 w-3 mr-1" />
+          <Accordion
+            expanded={citationsOpen}
+            onChange={(_, expanded) => setCitationsOpen(expanded)}
+            sx={{
+              width: '100%',
+              maxWidth: '85%',
+              boxShadow: 'none',
+              '&:before': { display: 'none' },
+              bgcolor: 'transparent',
+            }}
+          >
+            <AccordionSummary
+              expandIcon={citationsOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              sx={{
+                minHeight: 32,
+                px: 0,
+                '& .MuiAccordionSummary-content': {
+                  margin: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                },
+              }}
+            >
+              <FileText size={12} />
+              <Typography variant="caption" color="text.secondary">
                 {citations.length} source{citations.length > 1 ? "s" : ""}
-                {citationsOpen ? (
-                  <ChevronUp className="h-3 w-3 ml-1" />
-                ) : (
-                  <ChevronDown className="h-3 w-3 ml-1" />
-                )}
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-2 mt-2">
-              {citations.map((citation, index) => (
-                <CitationItem
-                  key={`${citation.documentId}-${citation.chunkIndex}`}
-                  citation={citation}
-                  index={index}
-                  onClick={onCitationClick}
-                />
-              ))}
-            </CollapsibleContent>
-          </Collapsible>
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ px: 0, py: 1 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {citations.map((citation, index) => (
+                  <CitationItem
+                    key={`${citation.documentId}-${citation.chunkIndex}`}
+                    citation={citation}
+                    index={index}
+                    onClick={onCitationClick}
+                  />
+                ))}
+              </Box>
+            </AccordionDetails>
+          </Accordion>
         )}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }
 

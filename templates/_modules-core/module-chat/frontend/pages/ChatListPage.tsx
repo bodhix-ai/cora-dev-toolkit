@@ -11,11 +11,14 @@ import React, { useState, useCallback } from "react";
 import {
   MessageSquare,
   Plus,
-  Settings,
   ChevronLeft,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import {
+  Box,
+  Button,
+  IconButton,
+  Typography,
+} from "@mui/material";
 import { useSession } from "next-auth/react";
 import { useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
 import { ChatSessionList } from "../components/ChatSessionList";
@@ -172,41 +175,36 @@ export function ChatListPage({
 
   // === Render ===
   return (
-    <div className={cn("flex flex-col h-full", className)}>
+    <Box className={className} sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-background">
-        <div className="flex items-center gap-3">
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           {showBackButton && onBack && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onBack}
-              className="mr-2"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
+            <IconButton onClick={onBack} sx={{ mr: 1 }}>
+              <ChevronLeft size={20} />
+            </IconButton>
           )}
-          <div className="flex items-center gap-2">
-            <MessageSquare className="h-6 w-6 text-primary" />
-            <div>
-              <h1 className="text-xl font-semibold">{pageTitle}</h1>
-              <p className="text-sm text-muted-foreground">{pageDescription}</p>
-            </div>
-          </div>
-        </div>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <MessageSquare size={24} color="primary" />
+            <Box>
+              <Typography variant="h6">{pageTitle}</Typography>
+              <Typography variant="caption" color="text.secondary">{pageDescription}</Typography>
+            </Box>
+          </Box>
+        </Box>
 
         <Button
           onClick={handleNewChat}
           disabled={isCreating}
-          className="gap-2"
+          variant="contained"
+          startIcon={<Plus size={16} />}
         >
-          <Plus className="h-4 w-4" />
           New Chat
         </Button>
-      </div>
+      </Box>
 
       {/* Chat Session List */}
-      <div className="flex-1 overflow-hidden">
+      <Box sx={{ flex: 1, overflow: 'hidden' }}>
         <ChatSessionList
           workspaceId={workspaceId}
           onSelectSession={handleSelectSession}
@@ -219,7 +217,7 @@ export function ChatListPage({
           showFilters={true}
           height="100%"
         />
-      </div>
+      </Box>
 
       {/* Share Dialog */}
       {shareDialogChat && (
@@ -244,7 +242,7 @@ export function ChatListPage({
           onSuccess={() => handleSuccess("kb_grounding", kbDialogChatId)}
         />
       )}
-    </div>
+    </Box>
   );
 }
 

@@ -2195,6 +2195,20 @@ run_post_creation_validation() {
   
   log_step "Running full validation suite..."
   
+  # Run UI library validation first (fast check)
+  log_info "Checking UI library compliance..."
+  if [[ -f "${TOOLKIT_ROOT}/scripts/validate-ui-library.sh" ]]; then
+    if "${TOOLKIT_ROOT}/scripts/validate-ui-library.sh" "templates" > /dev/null 2>&1; then
+      log_info "✅ UI library validation passed"
+    else
+      log_warn "⚠️  UI library validation found violations"
+      log_info "Run: ./scripts/validate-ui-library.sh templates for details"
+    fi
+  else
+    log_warn "UI library validator not found: ${TOOLKIT_ROOT}/scripts/validate-ui-library.sh"
+  fi
+  echo ""
+  
   # Check if cora-validate.py exists
   if [[ ! -f "${stack_dir}/scripts/validation/cora-validate.py" ]]; then
     log_warn "Validation orchestrator not found: ${stack_dir}/scripts/validation/cora-validate.py"
