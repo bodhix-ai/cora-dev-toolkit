@@ -18,7 +18,8 @@
 
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
+import { useUser } from "@{project}/module-access";
 import { useSysEvalPrompts } from "../hooks";
 import { PromptConfigEditor } from "../components";
 import type { PromptType } from "../types";
@@ -173,6 +174,25 @@ export function SysEvalPromptsPage({
   className = "",
   loadingComponent,
 }: SysEvalPromptsPageProps) {
+  // Get auth token
+  const { authAdapter } = useUser();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchToken() {
+      try {
+        const t = await authAdapter.getToken();
+        if (mounted) setToken(t);
+      } catch (error) {
+        console.error("Failed to get auth token:", error);
+        if (mounted) setToken(null);
+      }
+    }
+    fetchToken();
+    return () => { mounted = false; };
+  }, [authAdapter]);
+
   // State
   const [activeTab, setActiveTab] = useState<PromptType>("doc_summary");
 
@@ -180,14 +200,13 @@ export function SysEvalPromptsPage({
   const {
     prompts,
     isLoading,
-    error,
-    updatePrompt,
-    testPrompt,
+    update,
     refresh,
-  } = useSysEvalPrompts();
+    getPromptByType,
+  } = useSysEvalPrompts(token);
 
   // Get current prompt config
-  const currentPrompt = prompts?.find((p) => p.promptType === activeTab);
+  const currentPrompt = getPromptByType(activeTab);
 
   // Handlers
   const handleTabChange = useCallback((tab: PromptType) => {
@@ -202,32 +221,16 @@ export function SysEvalPromptsPage({
       aiModel?: string;
       temperature?: number;
     }) => {
-      await updatePrompt(activeTab, data);
+      await update(activeTab, data);
     },
-    [updatePrompt, activeTab]
-  );
-
-  const handleTestPrompt = useCallback(
-    async (testInput: string) => {
-      return await testPrompt(activeTab, testInput);
-    },
-    [testPrompt, activeTab]
+    [update, activeTab]
   );
 
   // Render loading state
-  if (isLoading) {
+  if (isLoading || !token || !prompts || !currentPrompt) {
     return (
       <div className={`p-6 ${className}`}>
         {loadingComponent || <LoadingState />}
-      </div>
-    );
-  }
-
-  // Render error state
-  if (error) {
-    return (
-      <div className={`p-6 ${className}`}>
-        <ErrorState error={error} onRetry={refresh} />
       </div>
     );
   }
@@ -246,8 +249,6 @@ export function SysEvalPromptsPage({
           promptType={activeTab}
           config={currentPrompt}
           onSave={handleUpdatePrompt}
-          onTest={handleTestPrompt}
-          isSystemLevel
         />
       </div>
 

@@ -33,12 +33,15 @@ export function useSysStatusOptions(token: string | null) {
     deleteSysStatusOption,
   } = useEvalStore();
 
+  // Ensure sysStatusOptions is always an array (defensive check)
+  const statusOptionsArray = Array.isArray(sysStatusOptions) ? sysStatusOptions : [];
+
   // Load status options on mount
   useEffect(() => {
-    if (token && sysStatusOptions.length === 0 && !sysConfigLoading) {
+    if (token && statusOptionsArray.length === 0 && !sysConfigLoading) {
       loadSysStatusOptions(token);
     }
-  }, [token, sysStatusOptions.length, sysConfigLoading, loadSysStatusOptions]);
+  }, [token, statusOptionsArray.length, sysConfigLoading, loadSysStatusOptions]);
 
   const create = useCallback(
     async (input: StatusOptionInput) => {
@@ -72,24 +75,24 @@ export function useSysStatusOptions(token: string | null) {
   // Filter by mode
   const getByMode = useCallback(
     (mode: StatusOptionMode) =>
-      sysStatusOptions.filter((o) => o.mode === mode || o.mode === "both"),
-    [sysStatusOptions]
+      statusOptionsArray.filter((o) => o.mode === mode || o.mode === "both"),
+    [statusOptionsArray]
   );
 
   // Get boolean mode options
   const booleanOptions = useMemo(
-    () => sysStatusOptions.filter((o) => o.mode === "boolean" || o.mode === "both"),
-    [sysStatusOptions]
+    () => statusOptionsArray.filter((o) => o.mode === "boolean" || o.mode === "both"),
+    [statusOptionsArray]
   );
 
   // Get detailed mode options
   const detailedOptions = useMemo(
-    () => sysStatusOptions.filter((o) => o.mode === "detailed" || o.mode === "both"),
-    [sysStatusOptions]
+    () => statusOptionsArray.filter((o) => o.mode === "detailed" || o.mode === "both"),
+    [statusOptionsArray]
   );
 
   return {
-    options: sysStatusOptions,
+    options: statusOptionsArray,
     booleanOptions,
     detailedOptions,
     isLoading: sysConfigLoading,

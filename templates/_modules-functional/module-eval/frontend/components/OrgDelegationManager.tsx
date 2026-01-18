@@ -180,8 +180,11 @@ export function OrgDelegationManager({
     "all"
   );
 
+  // Ensure organizations is always an array (defensive check)
+  const orgsArray = Array.isArray(organizations) ? organizations : [];
+
   // Filter organizations
-  const filteredOrgs = organizations.filter((org) => {
+  const filteredOrgs = orgsArray.filter((org) => {
     const matchesSearch = org.name
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
@@ -194,9 +197,9 @@ export function OrgDelegationManager({
 
   // Stats
   const stats = {
-    total: organizations.length,
-    delegated: organizations.filter((o) => o.aiConfigDelegated).length,
-    customized: organizations.filter((o) => o.hasOrgConfig).length,
+    total: orgsArray.length,
+    delegated: orgsArray.filter((o) => o.aiConfigDelegated).length,
+    customized: orgsArray.filter((o) => o.hasOrgConfig).length,
   };
 
   const handleToggle = async (orgId: string, enabled: boolean) => {
@@ -319,21 +322,21 @@ export function OrgDelegationManager({
       )}
 
       {/* Loading */}
-      {isLoading && organizations.length === 0 && (
+      {isLoading && orgsArray.length === 0 && (
         <div className="py-8 text-center text-gray-500">
           Loading organizations...
         </div>
       )}
 
       {/* Empty State */}
-      {!isLoading && organizations.length === 0 && (
+      {!isLoading && orgsArray.length === 0 && (
         <div className="py-8 text-center text-gray-500">
           No organizations found.
         </div>
       )}
 
       {/* No Results */}
-      {!isLoading && organizations.length > 0 && filteredOrgs.length === 0 && (
+      {!isLoading && orgsArray.length > 0 && filteredOrgs.length === 0 && (
         <div className="py-8 text-center text-gray-500">
           No organizations match your filter.
         </div>

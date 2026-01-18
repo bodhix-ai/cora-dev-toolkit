@@ -15,7 +15,8 @@
 
 "use client";
 
-import React, { useCallback } from "react";
+import React, { useCallback, useState, useEffect } from "react";
+import { useUser } from "@{project}/module-access";
 import {
   useOrgEvalConfig,
   useOrgStatusOptions,
@@ -145,28 +146,46 @@ export function OrgEvalConfigPage({
   className = "",
   loadingComponent,
 }: OrgEvalConfigPageProps) {
+  // Get auth token
+  const { authAdapter } = useUser();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchToken() {
+      try {
+        const t = await authAdapter.getToken();
+        if (mounted) setToken(t);
+      } catch (error) {
+        console.error("Failed to get auth token:", error);
+        if (mounted) setToken(null);
+      }
+    }
+    fetchToken();
+    return () => { mounted = false; };
+  }, [authAdapter]);
+
   // Hooks
   const {
     config,
     isLoading: isConfigLoading,
     error: configError,
-    updateConfig,
+    update: updateConfig,
     refresh: refreshConfig,
-  } = useOrgEvalConfig(orgId);
+  } = useOrgEvalConfig(token, orgId);
 
   const {
-    statusOptions,
+    options: statusOptions,
     isLoading: isStatusLoading,
-    error: statusError,
-    createOption,
-    updateOption,
-    deleteOption,
+    create: createOption,
+    update: updateOption,
+    remove: deleteOption,
     refresh: refreshStatus,
-  } = useOrgStatusOptions(orgId);
+  } = useOrgStatusOptions(token, orgId);
 
   // Combined loading and error states
-  const isLoading = isConfigLoading || isStatusLoading;
-  const error = configError || statusError;
+  const isLoading = isConfigLoading || isStatusLoading || !token;
+  const error = configError;
 
   // Handlers
   const handleRefresh = useCallback(() => {
@@ -182,7 +201,7 @@ export function OrgEvalConfigPage({
   );
 
   // Render loading state
-  if (isLoading) {
+  if (isLoading || !config) {
     return (
       <div className={`p-6 ${className}`}>
         {loadingComponent || <LoadingState />}
@@ -210,9 +229,11 @@ export function OrgEvalConfigPage({
         description="Configure how evaluations are scored for your organization."
       >
         <ScoringConfigPanel
-          categoricalMode={config?.categoricalMode || "boolean"}
-          showNumericalScore={config?.showNumericalScore || false}
-          onChange={handleScoringUpdate}
+          config={{
+            categoricalMode: config?.categoricalMode || "boolean",
+            showNumericalScore: config?.showNumericalScore || false,
+          }}
+          onSave={handleScoringUpdate}
           isSystemLevel={false}
         />
       </Section>

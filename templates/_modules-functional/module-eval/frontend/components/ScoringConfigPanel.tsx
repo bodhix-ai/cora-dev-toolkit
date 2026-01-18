@@ -7,7 +7,7 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type {
   EvalSysConfig,
   EvalOrgConfig,
@@ -171,6 +171,13 @@ export function ScoringConfigPanel({
   );
   const [localError, setLocalError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Sync state when config prop changes (e.g., after API load)
+  useEffect(() => {
+    setCategoricalMode(config.categoricalMode);
+    setShowNumericalScore(config.showNumericalScore);
+    setHasChanges(false);
+  }, [config.categoricalMode, config.showNumericalScore]);
 
   const handleModeChange = (mode: CategoricalMode) => {
     setCategoricalMode(mode);
