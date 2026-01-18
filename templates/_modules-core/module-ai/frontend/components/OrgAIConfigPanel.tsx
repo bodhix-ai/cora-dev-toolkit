@@ -71,7 +71,7 @@ export default function OrgAIConfigPanel({
       setIsSaving(true);
 
       await updateConfig({
-        org_systemPrompt: orgSystemPrompt.trim() || null,
+        orgSystemPrompt: orgSystemPrompt.trim() || null,
       });
 
       setNotification({
@@ -148,7 +148,7 @@ export default function OrgAIConfigPanel({
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {config.platformConfig.chatDeployment
-                ? `${config.platformConfig.chatDeployment.provider} - ${config.platformConfig.chatDeployment.model_name} (${config.platformConfig.chatDeployment.deployment_name})`
+                ? `${config.platformConfig.chatDeployment.provider} - ${config.platformConfig.chatDeployment.modelName} (${config.platformConfig.chatDeployment.deploymentName})`
                 : config.platformConfig.defaultChatDeploymentId}
             </Typography>
           </Box>
@@ -159,7 +159,7 @@ export default function OrgAIConfigPanel({
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {config.platformConfig.embeddingDeployment
-                ? `${config.platformConfig.embeddingDeployment.provider} - ${config.platformConfig.embeddingDeployment.model_name} (${config.platformConfig.embeddingDeployment.deployment_name})`
+                ? `${config.platformConfig.embeddingDeployment.provider} - ${config.platformConfig.embeddingDeployment.modelName} (${config.platformConfig.embeddingDeployment.deploymentName})`
                 : config.platformConfig.defaultEmbeddingDeploymentId}
             </Typography>
           </Box>

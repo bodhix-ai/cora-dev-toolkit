@@ -36,8 +36,8 @@ import boto3
 import org_common as common
 
 # Environment variables
-S3_BUCKET = os.environ.get('KB_S3_BUCKET')
-SQS_QUEUE_URL = os.environ.get('KB_PROCESSOR_QUEUE_URL')
+S3_BUCKET = os.environ.get('S3_BUCKET')  # Matches Terraform: S3_BUCKET = aws_s3_bucket.kb_documents.id
+SQS_QUEUE_URL = os.environ.get('SQS_QUEUE_URL')  # Matches Terraform: SQS_QUEUE_URL
 AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
 
 # AWS clients
@@ -500,6 +500,13 @@ def handle_delete_document(user_id: str, doc_id: str, scope: str):
 
 def format_document_record(record: Dict[str, Any]) -> Dict[str, Any]:
     """Transform DB record to camelCase API response."""
+    # Handle created_at - may already be a string from Supabase
+    created_at = record.get('created_at')
+    if created_at:
+        created_at_str = created_at.isoformat() if hasattr(created_at, 'isoformat') else str(created_at)
+    else:
+        created_at_str = None
+    
     return {
         "id": str(record.get('id', '')),
         "kbId": str(record.get('kb_id', '')),
@@ -512,7 +519,7 @@ def format_document_record(record: Dict[str, Any]) -> Dict[str, Any]:
         "errorMessage": record.get('error_message'),
         "chunkCount": record.get('chunk_count') or 0,
         "metadata": record.get('metadata') or {},
-        "createdAt": record.get('created_at').isoformat() if record.get('created_at') else None,
+        "createdAt": created_at_str,
         "createdBy": str(record.get('created_by')) if record.get('created_by') else None
     }
 

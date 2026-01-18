@@ -23,7 +23,7 @@ export interface ApiClientWithKb {
 export interface UseKnowledgeBaseOptions {
   scope: 'workspace' | 'chat';
   scopeId: string | null;
-  apiClient: ApiClientWithKb;
+  apiClient?: ApiClientWithKb;
   autoFetch?: boolean;
 }
 
@@ -137,11 +137,15 @@ export function useKnowledgeBase({
     [scope, scopeId, apiClient, fetchAvailableKbs]
   );
 
+  // Only fetch when scopeId changes, not when callbacks change
+  // This prevents infinite loop when apiClient is recreated each render
   useEffect(() => {
-    if (autoFetch) {
-      refresh();
+    if (autoFetch && scopeId && apiClient) {
+      fetchKb();
+      fetchAvailableKbs();
     }
-  }, [autoFetch, refresh]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFetch, scope, scopeId]);
 
   return {
     kb,

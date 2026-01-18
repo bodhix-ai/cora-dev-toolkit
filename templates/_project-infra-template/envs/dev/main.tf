@@ -189,6 +189,46 @@ module "module_mgmt" {
   }
 }
 
+module "module_kb" {
+  source = "../../../{{PROJECT_NAME}}-stack/packages/module-kb/infrastructure"
+
+  project_name         = "{{PROJECT_NAME}}"
+  environment          = "dev"
+  module_name          = "kb"
+  org_common_layer_arn = module.module_access.layer_arn
+  supabase_secret_arn  = module.secrets.supabase_secret_arn
+  aws_region           = var.aws_region
+  log_level            = var.log_level
+
+  common_tags = {
+    Environment = "dev"
+    Project     = "{{PROJECT_NAME}}"
+    ManagedBy   = "terraform"
+    Module      = "module-kb"
+    ModuleType  = "CORA"
+  }
+}
+
+module "module_chat" {
+  source = "../../../{{PROJECT_NAME}}-stack/packages/module-chat/infrastructure"
+
+  project_name         = "{{PROJECT_NAME}}"
+  environment          = "dev"
+  module_name          = "chat"
+  org_common_layer_arn = module.module_access.layer_arn
+  supabase_secret_arn  = module.secrets.supabase_secret_arn
+  aws_region           = var.aws_region
+  log_level            = var.log_level
+
+  common_tags = {
+    Environment = "dev"
+    Project     = "{{PROJECT_NAME}}"
+    ManagedBy   = "terraform"
+    Module      = "module-chat"
+    ModuleType  = "CORA"
+  }
+}
+
 # ========================================================================
 # CORA Modular API Gateway
 # ========================================================================
@@ -206,6 +246,8 @@ module "modular_api_gateway" {
     module.module_access.api_routes,
     module.module_ai.api_routes,
     module.module_mgmt.api_routes,
+    module.module_kb.api_routes,
+    module.module_chat.api_routes,
     []
   )
 

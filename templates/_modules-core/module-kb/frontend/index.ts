@@ -40,7 +40,7 @@ export {
 } from './types';
 
 // API Client
-export { createKbModuleClient } from './lib/api';
+export { createKbModuleClient, createAuthenticatedClient } from './lib/api';
 export type { KbModuleApiClient } from './lib/api';
 
 // Hooks

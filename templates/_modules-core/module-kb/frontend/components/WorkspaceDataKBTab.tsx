@@ -101,8 +101,9 @@ interface WorkspaceDataKBTabProps {
   
   /**
    * Callback to download document
+   * Returns the download URL for the document
    */
-  onDownloadDocument?: (docId: string) => Promise<void>;
+  onDownloadDocument?: (docId: string) => Promise<string>;
   
   /**
    * Callback to retry failed document
@@ -142,6 +143,9 @@ export function WorkspaceDataKBTab({
   currentUserId,
 }: WorkspaceDataKBTabProps) {
   const [uploadError, setUploadError] = useState<string | null>(null);
+  
+  // Ensure documents is always an array
+  const safeDocuments = Array.isArray(documents) ? documents : [];
   
   // Default grouped KBs structure
   const groupedKbs: GroupedAvailableKbs = availableKbs || {
@@ -212,8 +216,8 @@ export function WorkspaceDataKBTab({
                 documentCount: kb.documentCount || 0,
                 chunkCount: kb.chunkCount || 0,
                 totalSize: kb.totalSize || 0,
-                processingCount: documents.filter(d => d.status === 'processing').length,
-                failedCount: documents.filter(d => d.status === 'failed').length,
+                processingCount: safeDocuments.filter(d => d.status === 'processing').length,
+                failedCount: safeDocuments.filter(d => d.status === 'failed').length,
               }}
               compact={true}
             />
@@ -237,16 +241,16 @@ export function WorkspaceDataKBTab({
 
         {/* Documents Table */}
         <DocumentTable
-          documents={documents}
+          documents={safeDocuments}
           loading={documentsLoading}
           onDelete={onDeleteDocument || (async () => {})}
-          onDownload={onDownloadDocument || (async () => {})}
+          onDownload={onDownloadDocument || (async () => '')}
           onRetry={onRetryDocument}
           currentUserId={currentUserId}
         />
 
         {/* No KB message */}
-        {!kb && documents.length === 0 && !documentsLoading && (
+        {!kb && safeDocuments.length === 0 && !documentsLoading && (
           <Alert severity="info" icon={<KBIcon />}>
             No workspace knowledge base yet. Upload documents to create one.
           </Alert>

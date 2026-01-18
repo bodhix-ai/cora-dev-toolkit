@@ -8,10 +8,10 @@
 import React from 'react';
 import { Chip, Tooltip } from '@mui/material';
 import {
-  Clock as ClockIcon,
+  Schedule as ClockIcon,
   CheckCircle as CheckCircleIcon,
-  XCircle as XCircleIcon,
-  Loader2 as Loader2Icon,
+  Cancel as XCircleIcon,
+  HourglassEmpty as Loader2Icon,
 } from '@mui/icons-material';
 import type { DocumentStatus } from '../types';
 

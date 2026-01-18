@@ -24,7 +24,7 @@ export interface ApiClientWithKb {
 export interface UseKbDocumentsOptions {
   scope: 'workspace' | 'chat' | 'kb';
   scopeId: string | null; // workspaceId, chatId, or kbId
-  apiClient: ApiClientWithKb;
+  apiClient?: ApiClientWithKb;
   autoFetch?: boolean;
 }
 
@@ -72,7 +72,23 @@ export function useKbDocuments({
         response = await kbClient.orgAdmin.listDocuments(scopeId);
       }
 
-      setDocuments(response.data);
+      // Handle both cases:
+      // - API client returns typed data directly (response.data is KbDocument[])
+      // - Raw API response has nested structure (response.data.documents)
+      const data = response.data as unknown;
+      let documentsArray: KbDocument[];
+      
+      if (Array.isArray(data)) {
+        // Already an array (typed API client)
+        documentsArray = data;
+      } else if (data && typeof data === 'object' && 'documents' in data) {
+        // Nested structure from raw API
+        documentsArray = (data as { documents: KbDocument[] }).documents || [];
+      } else {
+        documentsArray = [];
+      }
+      
+      setDocuments(documentsArray);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch documents';
       console.error(`Failed to fetch documents for ${scope}:`, err);
@@ -206,11 +222,14 @@ export function useKbDocuments({
     [scope, scopeId, apiClient]
   );
 
+  // Only fetch when scopeId changes, not when callbacks change
+  // This prevents infinite loop when apiClient is recreated each render
   useEffect(() => {
-    if (autoFetch) {
+    if (autoFetch && scopeId && apiClient) {
       fetchDocuments();
     }
-  }, [autoFetch, fetchDocuments]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFetch, scope, scopeId]);
 
   return {
     documents,

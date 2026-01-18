@@ -296,6 +296,38 @@ fi
 # Copy the file
 cp "$SOURCE_FILE" "$DEST_FILE"
 
+# --- Replace Template Placeholders ---
+# Extract project name from PROJECT_PATH (e.g., "ai-sec-stack" → "ai-sec")
+PROJECT_NAME=""
+if [[ "$PROJECT_PATH" =~ ([^/]+)-(stack|infra)/?$ ]]; then
+  PROJECT_NAME="${BASH_REMATCH[1]}"
+elif [[ "$PROJECT_PATH" =~ /([^/]+)/?$ ]]; then
+  # Fallback: use last directory name
+  LAST_DIR="${BASH_REMATCH[1]}"
+  if [[ "$LAST_DIR" == *"-stack" ]]; then
+    PROJECT_NAME="${LAST_DIR%-stack}"
+  elif [[ "$LAST_DIR" == *"-infra" ]]; then
+    PROJECT_NAME="${LAST_DIR%-infra}"
+  else
+    PROJECT_NAME="$LAST_DIR"
+  fi
+fi
+
+# Only replace placeholders in text files (not binary)
+if [[ -n "$PROJECT_NAME" ]] && file "$DEST_FILE" | grep -q "text"; then
+  log_info "Replacing template placeholders with project name: $PROJECT_NAME"
+  
+  # Replace {{PROJECT_NAME}} placeholder
+  if grep -q "{{PROJECT_NAME}}" "$DEST_FILE" 2>/dev/null; then
+    sed -i '' "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$DEST_FILE" 2>/dev/null || \
+    sed -i "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$DEST_FILE"
+    log_info "  Replaced {{PROJECT_NAME}} with $PROJECT_NAME"
+  fi
+  
+  # Note: Other placeholders like {{AWS_REGION}}, {{GITHUB_ORG}} are typically
+  # in infrastructure files and should be set via project configuration, not sync
+fi
+
 log_info "✅ File synced successfully"
 echo ""
 

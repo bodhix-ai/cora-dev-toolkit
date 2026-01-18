@@ -1,5 +1,20 @@
 # CORA Development Toolkit - Cline Rules
 
+## 🛑 STOP - READ THIS FIRST
+
+**Before ANY action, run: `ls .cline/workflows/` and check if a workflow exists.**
+
+| Task | MUST USE | NEVER DO |
+|------|----------|----------|
+| Syncing fixes | `/fix-and-sync.md <filename>` | ❌ Running `sync-fix-to-project.sh` directly |
+| Testing modules | `/test-module.md <module>` | ❌ Running `create-cora-project.sh` directly |
+| Fixing errors | `/fix-cycle.md` | ❌ Manual fixes without workflow |
+| Validating | `/validate.md` | ❌ Running validators directly |
+
+**Workflows handle placeholder substitution, path mapping, and next steps automatically.**
+
+---
+
 ## ⚠️ CRITICAL: ALWAYS USE WORKFLOWS FIRST
 
 **BEFORE doing ANYTHING, check if a workflow exists in `.cline/workflows/` for the task.**
@@ -76,29 +91,47 @@ Routes - Category:
 
 This enables the API Tracer validator to match API Gateway routes to Lambda handlers during static analysis.
 
-## Module Naming Convention
+## Module Classification and Locations
 
-CORA uses a strict naming convention for modules:
+**Authoritative Sources:**
+- **Classification Criteria:** `docs/arch decisions/ADR-013-CORE-MODULE-CRITERIA.md`
+- **Module Registry:** `templates/_modules-core/module-registry.yaml`
 
-```
-module-{purpose}
-```
+CORA uses a strict naming convention for modules: `module-{purpose}` where `{purpose}` is a **single word** describing the module's main responsibility.
 
-Where `{purpose}` is a **single word** describing the module's main responsibility.
+### Module Locations (Source of Truth)
 
-### Core Modules (Required)
+| Module | Type | Tier | Location |
+|--------|------|------|----------|
+| module-access | Core | 1 | `templates/_modules-core/module-access/` |
+| module-ai | Core | 2 | `templates/_modules-core/module-ai/` |
+| module-mgmt | Core | 3 | `templates/_modules-core/module-mgmt/` |
+| module-kb | Core | 3 | `templates/_modules-core/module-kb/` |
+| module-chat | Core | 3 | `templates/_modules-core/module-chat/` |
+| module-ws | Functional | - | `templates/_modules-functional/module-ws/` |
+| module-eval | Functional | - | `templates/_modules-functional/module-eval/` |
+| module-voice | Functional | - | `templates/_modules-functional/module-voice/` |
 
-- `module-access` - Identity & access control (Tier 1)
-- `module-ai` - AI provider management (Tier 2)
-- `module-mgmt` - Platform management & monitoring (Tier 3)
+### Core Modules (Required - Always Included)
 
-### Functional Modules (Per-Feature)
+Core modules are REQUIRED for all CORA projects and follow a tier system for boot order:
 
-- `module-kb` - Knowledge base
-- `module-chat` - Chat & messaging
-- `module-project` - Project management
-- `module-dashboard` - Analytics dashboard
-- etc.
+- **Tier 1:** `module-access` - Identity & access control (foundation)
+- **Tier 2:** `module-ai` - AI provider management (platform services)
+- **Tier 3:** `module-mgmt` - Platform management & monitoring
+- **Tier 3:** `module-kb` - Knowledge base & RAG (core AI capability)
+- **Tier 3:** `module-chat` - Chat & messaging (core AI capability)
+
+**Why KB and Chat are Core:** CORA is an AI application framework. Knowledge retrieval (KB) and chat interaction (Chat) are fundamental capabilities for AI applications, not optional features. See ADR-013 for full rationale.
+
+### Functional Modules (Optional - Per-Project Selection)
+
+Functional modules are OPTIONAL and can be enabled based on project needs:
+
+- `module-ws` - Workspace management (multi-tenancy)
+- `module-eval` - Model evaluation & testing
+- `module-voice` - Voice interaction capabilities
+- (Future functional modules as needed)
 
 ## Module Route File Locations
 

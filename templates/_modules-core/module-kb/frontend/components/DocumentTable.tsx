@@ -47,8 +47,9 @@ interface DocumentTableProps {
   
   /**
    * Callback to download document (gets presigned URL)
+   * Returns the download URL for the document
    */
-  onDownload: (documentId: string) => Promise<void>;
+  onDownload: (documentId: string) => Promise<string>;
   
   /**
    * Callback to delete document
@@ -118,12 +119,15 @@ export function DocumentTable({
 
   /**
    * Handle document download
+   * Gets the presigned URL and opens it in a new tab
    */
   const handleDownload = async (docId: string) => {
     setActionInProgress(docId);
     handleMenuClose();
     try {
-      await onDownload(docId);
+      const downloadUrl = await onDownload(docId);
+      // Open the download URL in a new tab
+      window.open(downloadUrl, '_blank');
     } finally {
       setActionInProgress(null);
     }
@@ -210,10 +214,12 @@ export function DocumentTable({
 
   /**
    * Filter documents by status
+   * Defensive check - documents might be undefined, null, or an API response object
    */
+  const safeDocuments = Array.isArray(documents) ? documents : [];
   const filteredDocuments = statusFilter === 'all'
-    ? documents
-    : documents.filter(doc => doc.status === statusFilter);
+    ? safeDocuments
+    : safeDocuments.filter(doc => doc.status === statusFilter);
 
   // Loading state
   if (loading) {
@@ -236,7 +242,7 @@ export function DocumentTable({
   }
 
   // Empty state
-  if (documents.length === 0) {
+  if (safeDocuments.length === 0) {
     return (
       <Paper sx={{ p: 4, textAlign: 'center' }}>
         <FileIcon sx={{ fontSize: 48, color: 'action.disabled', mb: 2 }} />

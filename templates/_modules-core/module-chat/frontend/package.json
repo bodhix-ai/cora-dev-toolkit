@@ -3,7 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "description": "CORA Chat Module - Core chat and messaging functionality",
-  "main": "index.ts",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "tsc -b",
@@ -12,10 +16,17 @@
   },
   "dependencies": {
     "@{{PROJECT_NAME}}/api-client": "workspace:*",
+    "@{{PROJECT_NAME}}/module-access": "workspace:*",
+    "@mui/material": "^5.14.0",
+    "@mui/icons-material": "^5.14.0",
+    "lucide-react": "^0.263.1",
+    "next": "^14.0.0",
+    "next-auth": "^4.24.0",
     "react": "^18.2.0",
-    "next": "^14.0.0"
+    "zustand": "^4.4.0"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "typescript": "^5.0.0"
   }

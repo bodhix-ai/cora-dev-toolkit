@@ -10,6 +10,7 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 | Branch | Context File | Focus Area |
 |--------|--------------|------------|
+| `ws-crud-kbs` | [plan_ws-crud-kbs.md](../docs/plans/plan_ws-crud-kbs.md) | Workspace KB CRUD (Part 1/3: Upload/delete docs, view enabled KBs) |
 | `module-voice-dev` | `context-module-voice.md` | Module-Voice (Phase 1.5: Specifications) |
 | `feature/module-eval-implementation` | `context-module-eval.md` | Module-Eval (Phase 9: Frontend Hooks) |
 | `feature/module-kb-implementation` | `context-module-kb.md` | Module-KB development |
