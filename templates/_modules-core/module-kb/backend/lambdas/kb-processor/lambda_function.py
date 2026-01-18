@@ -540,28 +540,24 @@ def store_chunks(document_id: str, kb_id: str, org_id: str, chunks: List[Dict],
     try:
         for chunk, embedding in zip(chunks, embeddings):
             # Convert embedding list to pgvector format string
+            # pgvector accepts '[x,y,z]' format for vector columns
             embedding_str = '[' + ','.join(map(str, embedding)) + ']'
             
-            # Use common.execute_query for raw SQL with pgvector
-            # Note: kb_chunks table inherits org_id from kb_bases via foreign key
-            common.execute_query(
-                """
-                INSERT INTO kb_chunks 
-                (kb_id, document_id, content, embedding, chunk_index, 
-                 token_count, metadata, embedding_model, org_id)
-                VALUES ($1, $2, $3, $4::vector, $5, $6, $7, $8, $9)
-                """,
-                [
-                    kb_id,
-                    document_id,
-                    chunk['content'],
-                    embedding_str,
-                    chunk['chunk_index'],
-                    estimate_token_count(chunk['content']),
-                    json.dumps(chunk['metadata']),
-                    embedding_model,
-                    org_id
-                ]
+            # Use common.insert_one for inserts
+            # The database driver handles the vector type conversion
+            common.insert_one(
+                table='kb_chunks',
+                data={
+                    'kb_id': kb_id,
+                    'document_id': document_id,
+                    'content': chunk['content'],
+                    'embedding': embedding_str,
+                    'chunk_index': chunk['chunk_index'],
+                    'token_count': estimate_token_count(chunk['content']),
+                    'metadata': chunk['metadata'],
+                    'embedding_model': embedding_model,
+                    'org_id': org_id
+                }
             )
         
         print(f"Stored {len(chunks)} chunks for document {document_id}")

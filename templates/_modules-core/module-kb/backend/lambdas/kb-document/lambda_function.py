@@ -36,8 +36,8 @@ import boto3
 import org_common as common
 
 # Environment variables
-S3_BUCKET = os.environ.get('KB_S3_BUCKET')
-SQS_QUEUE_URL = os.environ.get('KB_PROCESSOR_QUEUE_URL')
+S3_BUCKET = os.environ.get('S3_BUCKET') or os.environ.get('KB_S3_BUCKET')
+SQS_QUEUE_URL = os.environ.get('SQS_QUEUE_URL') or os.environ.get('KB_PROCESSOR_QUEUE_URL')
 AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
 
 # AWS clients
@@ -298,6 +298,12 @@ def handle_get_upload_url(user_id: str, workspace_id: Optional[str], chat_id: Op
         if not verify_upload_permission(user_id, kb_id):
             return common.forbidden_response("Upload permission denied")
         
+        # Get KB to extract org_id for the document record
+        kb = get_kb_by_id(kb_id)
+        if not kb:
+            return common.internal_error_response("KB not found")
+        org_id = kb.get('org_id')
+        
         # Generate document ID and S3 key
         doc_id = str(uuid.uuid4())
         s3_key = generate_s3_key(kb_id, doc_id, filename, workspace_id, chat_id)
@@ -313,12 +319,13 @@ def handle_get_upload_url(user_id: str, workspace_id: Optional[str], chat_id: Op
             ExpiresIn=PRESIGNED_URL_EXPIRATION
         )
         
-        # Create document record in pending state
+        # Create document record in pending state (include org_id for CORA compliance)
         common.insert_one(
             table='kb_docs',
             data={
                 'id': doc_id,
                 'kb_id': kb_id,
+                'org_id': org_id,  # Required for kb-processor multi-tenancy
                 'filename': filename,
                 's3_key': s3_key,
                 's3_bucket': S3_BUCKET,
@@ -328,6 +335,9 @@ def handle_get_upload_url(user_id: str, workspace_id: Optional[str], chat_id: Op
                 'created_by': user_id
             }
         )
+        
+        # Publish SQS message for processing
+        publish_processing_message(doc_id, kb_id, s3_key)
         
         return common.success_response({
             "uploadUrl": presigned_url,
@@ -381,12 +391,13 @@ def handle_admin_upload_url(user_id: str, kb_id: str, event: Dict):
             ExpiresIn=PRESIGNED_URL_EXPIRATION
         )
         
-        # Create document record
+        # Create document record (include org_id for CORA compliance)
         common.insert_one(
             table='kb_docs',
             data={
                 'id': doc_id,
                 'kb_id': kb_id,
+                'org_id': kb.get('org_id'),  # Required for kb-processor multi-tenancy
                 'filename': filename,
                 's3_key': s3_key,
                 's3_bucket': S3_BUCKET,
@@ -500,6 +511,13 @@ def handle_delete_document(user_id: str, doc_id: str, scope: str):
 
 def format_document_record(record: Dict[str, Any]) -> Dict[str, Any]:
     """Transform DB record to camelCase API response."""
+    # Handle created_at - may be datetime or string from DB
+    created_at = record.get('created_at')
+    if created_at:
+        if hasattr(created_at, 'isoformat'):
+            created_at = created_at.isoformat()
+        # else it's already a string, use as-is
+    
     return {
         "id": str(record.get('id', '')),
         "kbId": str(record.get('kb_id', '')),
@@ -512,7 +530,7 @@ def format_document_record(record: Dict[str, Any]) -> Dict[str, Any]:
         "errorMessage": record.get('error_message'),
         "chunkCount": record.get('chunk_count') or 0,
         "metadata": record.get('metadata') or {},
-        "createdAt": record.get('created_at').isoformat() if record.get('created_at') else None,
+        "createdAt": created_at,
         "createdBy": str(record.get('created_by')) if record.get('created_by') else None
     }
 
