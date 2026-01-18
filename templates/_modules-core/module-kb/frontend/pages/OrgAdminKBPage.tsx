@@ -106,8 +106,9 @@ interface OrgAdminKBPageProps {
   
   /**
    * Callback to download document
+   * Returns the download URL
    */
-  onDownloadDocument?: (docId: string) => Promise<void>;
+  onDownloadDocument?: (docId: string) => Promise<string>;
   
   /**
    * Callback to retry failed document
@@ -186,11 +187,13 @@ export function OrgAdminKBPage({
   /**
    * Handle document upload
    */
-  const handleUpload = useCallback(async (file: File) => {
+  const handleUpload = useCallback(async (files: File[]) => {
     if (!onUploadDocument) return;
     setUploadError(null);
     try {
-      await onUploadDocument(file);
+      for (const file of files) {
+        await onUploadDocument(file);
+      }
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed');
     }
@@ -287,7 +290,7 @@ export function OrgAdminKBPage({
               documents={documents}
               loading={documentsLoading}
               onDelete={onDeleteDocument || (async () => {})}
-              onDownload={onDownloadDocument || (async () => {})}
+              onDownload={onDownloadDocument || (async () => '')}
               onRetry={onRetryDocument}
               canDeleteAll={true}
             />
