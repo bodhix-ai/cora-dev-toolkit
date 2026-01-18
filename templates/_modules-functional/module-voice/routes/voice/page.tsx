@@ -130,6 +130,7 @@ export default function VoiceSessionsPage() {
       <Box display="flex" gap={2} mb={3} flexWrap="wrap">
         <TextField
           size="small"
+          label="Search"
           placeholder="Search by name or type..."
           value={searchTerm}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
@@ -184,7 +185,7 @@ export default function VoiceSessionsPage() {
           borderRadius={2}
           p={4}
         >
-          <Typography variant="h6" color="text.secondary" gutterBottom>
+          <Typography variant="h2" fontSize="1.25rem" color="text.secondary" gutterBottom>
             {searchTerm ? 'No matching interviews' : 'No voice interviews yet'}
           </Typography>
           <Typography variant="body2" color="text.secondary" mb={2}>

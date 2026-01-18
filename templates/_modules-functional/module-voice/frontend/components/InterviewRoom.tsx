@@ -77,7 +77,10 @@ export function InterviewRoom({
 
   // Note: In production, you would import Daily from '@daily-co/daily-js'
   // For now, this is a placeholder that shows the room info
-  const isDailyAvailable = typeof window !== "undefined" && (window as any).DailyIframe;
+  interface WindowWithDaily extends Window {
+    DailyIframe?: unknown;
+  }
+  const isDailyAvailable = typeof window !== "undefined" && (window as WindowWithDaily).DailyIframe;
 
   const initializeDaily = useCallback(async () => {
     if (!containerRef.current || !roomUrl) return;
@@ -88,7 +91,7 @@ export function InterviewRoom({
     try {
       if (isDailyAvailable) {
         // Daily.co SDK integration
-        const DailyIframe = (window as any).DailyIframe;
+        const DailyIframe = (window as WindowWithDaily).DailyIframe;
         
         const dailyFrame = DailyIframe.createFrame(containerRef.current, {
           iframeStyle: {
@@ -113,7 +116,7 @@ export function InterviewRoom({
           onLeave?.();
         });
 
-        dailyFrame.on("error", (event: any) => {
+        dailyFrame.on("error", (event: { errorMsg?: string }) => {
           const err = new Error(event.errorMsg || "Unknown Daily.co error");
           setError(err.message);
           onError?.(err);
@@ -128,7 +131,11 @@ export function InterviewRoom({
         });
 
         // Join the room
-        const joinOptions: any = { url: roomUrl };
+        interface JoinOptions {
+          url: string;
+          token?: string;
+        }
+        const joinOptions: JoinOptions = { url: roomUrl };
         if (roomToken) {
           joinOptions.token = roomToken;
         }
