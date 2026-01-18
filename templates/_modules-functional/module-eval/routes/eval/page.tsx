@@ -6,10 +6,11 @@
  */
 
 import React from 'react';
+import { Box, Typography } from '@mui/material';
 import { useOrgContext } from '@/contexts/OrgContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useRouter } from 'next/navigation';
-import { EvalListPage } from '@{project}/module-eval';
+import { EvalListPage } from '@{{PROJECT_NAME}}/module-eval';
 
 export default function Page() {
   const router = useRouter();
@@ -18,11 +19,11 @@ export default function Page() {
 
   if (!currentOrg || !currentWorkspace) {
     return (
-      <div className="p-6">
-        <div className="text-center text-gray-500">
+      <Box sx={{ p: 3 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
           Please select an organization and workspace to view evaluations.
-        </div>
-      </div>
+        </Typography>
+      </Box>
     );
   }
 

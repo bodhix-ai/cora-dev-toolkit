@@ -12,13 +12,13 @@
  */
 
 import React, { useState, useContext } from 'react';
-import { OrgContext } from '@{project}/module-access';
+import { OrgContext } from '@{{PROJECT_NAME}}/module-access';
 import { 
   OrgEvalConfigPage,
   OrgEvalPromptsPage,
   OrgEvalDocTypesPage,
   OrgEvalCriteriaPage
-} from '@{project}/module-eval';
+} from '@{{PROJECT_NAME}}/module-eval';
 import { Box, Tabs, Tab, CircularProgress, Alert } from '@mui/material';
 
 type TabValue = 'config' | 'doc-types' | 'criteria' | 'prompts';

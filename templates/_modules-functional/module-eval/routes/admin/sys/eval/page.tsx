@@ -13,7 +13,7 @@ import React, { useState } from 'react';
 import { 
   SysEvalConfigPage,
   SysEvalPromptsPage
-} from '@{project}/module-eval';
+} from '@{{PROJECT_NAME}}/module-eval';
 import { Box, Tabs, Tab } from '@mui/material';
 
 type TabValue = 'config' | 'prompts';
