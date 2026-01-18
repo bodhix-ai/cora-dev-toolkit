@@ -267,9 +267,9 @@ export interface KbSearchInput {
 
 /**
  * KB toggle input
+ * Note: knowledgeBaseId is in the URL path, not the request body
  */
 export interface ToggleKbInput {
-  knowledgeBaseId: string;
   isEnabled: boolean;
 }
 

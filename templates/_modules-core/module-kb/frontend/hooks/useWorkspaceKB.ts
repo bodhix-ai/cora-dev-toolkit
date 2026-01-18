@@ -137,13 +137,13 @@ export function useWorkspaceKB({
       };
 
       for (const kbItem of kbs) {
-        if (kbItem.scope === 'workspace') {
+        if (kbItem.kb.scope === 'workspace') {
           grouped.workspaceKb = kbItem;
-        } else if (kbItem.scope === 'chat') {
+        } else if (kbItem.kb.scope === 'chat') {
           grouped.chatKb = kbItem;
-        } else if (kbItem.scope === 'org') {
+        } else if (kbItem.kb.scope === 'org') {
           grouped.orgKbs.push(kbItem);
-        } else if (kbItem.scope === 'global' || kbItem.scope === 'sys') {
+        } else if (kbItem.kb.scope === 'sys') {
           grouped.globalKbs.push(kbItem);
         }
       }
@@ -174,7 +174,7 @@ export function useWorkspaceKB({
       // Get presigned URL
       const uploadResponse = await apiClient.kb.workspace.uploadDocument(workspaceId, {
         filename: file.name,
-        contentType: file.type,
+        mimeType: file.type,
         fileSize: file.size,
       });
       const { uploadUrl } = uploadResponse.data;
@@ -219,7 +219,7 @@ export function useWorkspaceKB({
   const toggleKb = useCallback(async (kbId: string, enabled: boolean) => {
     if (!apiClient || !workspaceId) return;
 
-    await apiClient.kb.workspace.toggleKb(workspaceId, kbId, { enabled });
+    await apiClient.kb.workspace.toggleKb(workspaceId, kbId, { isEnabled: enabled });
     await fetchAvailableKbs();
   }, [apiClient, workspaceId, fetchAvailableKbs]);
 

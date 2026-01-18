@@ -186,11 +186,12 @@ export function OrgAdminKBPage({
   /**
    * Handle document upload
    */
-  const handleUpload = useCallback(async (file: File) => {
-    if (!onUploadDocument) return;
+  const handleUpload = useCallback(async (files: File[]) => {
+    if (!onUploadDocument || files.length === 0) return;
     setUploadError(null);
     try {
-      await onUploadDocument(file);
+      // DocumentUploadZone passes File[] but onUploadDocument expects single File
+      await onUploadDocument(files[0]);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed');
     }

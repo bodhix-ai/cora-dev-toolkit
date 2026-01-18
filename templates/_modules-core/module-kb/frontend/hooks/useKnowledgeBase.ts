@@ -125,9 +125,8 @@ export function useKnowledgeBase({
       try {
         setError(null);
 
-        const input: ToggleKbInput = { 
-          knowledgeBaseId: kbId,
-          isEnabled: enabled 
+        const input: ToggleKbInput = {
+          isEnabled: enabled
         };
         const kbClient = apiClient.kb;
 

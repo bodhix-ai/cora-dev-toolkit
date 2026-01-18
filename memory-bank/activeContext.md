@@ -29,10 +29,12 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 ## Current Branch Status
 
 ### ws-crud-kbs-embeddings (ACTIVE)
-- **Status:** � IN PROGRESS - KB Document Processing Sprint
-- **Plan:** `docs/plans/plan_ws-kb-processing-fix.md`
+- **Status:** 🔄 IN PROGRESS - Module-KB TypeScript Type Error Fixes
+- **Plans:** 
+  - `docs/plans/plan_module-kb-type-fixes.md` (ACTIVE - Session 153)
+  - `docs/plans/plan_ws-kb-processing-fix.md` (Previous - Session 152)
 - **Context:** See `context-module-kb.md`
-- **Current:** Fixing Data tab regression + org_id in kb_chunks
+- **Current:** Fixing TypeScript type errors (16 errors in 6 files)
 
 ### feature/module-eval-implementation
 - **Status:** Phase 9 - Frontend Hooks (🔄 IN PROGRESS)
