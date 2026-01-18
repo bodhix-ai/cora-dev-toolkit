@@ -9,7 +9,7 @@ locals {
   module_name = "voice"
   lambda_prefix = "${var.project_name}-${var.environment}-voice"
   
-  common_tags = merge(var.tags, {
+  common_tags = merge(var.common_tags, {
     Module      = "voice"
     Environment = var.environment
   })
@@ -62,6 +62,7 @@ resource "aws_iam_role_policy" "voice_lambda_policy" {
           "secretsmanager:GetSecretValue"
         ]
         Resource = compact([
+          var.supabase_secret_arn,
           var.daily_api_key_secret_arn,
           var.deepgram_api_key_secret_arn,
           var.cartesia_api_key_secret_arn
@@ -125,20 +126,19 @@ resource "aws_lambda_function" "voice_sessions" {
   timeout       = var.module_voice_lambda_timeout
   memory_size   = var.module_voice_lambda_memory
   
-  filename         = "${path.module}/../dist/voice-sessions.zip"
-  source_code_hash = filebase64sha256("${path.module}/../dist/voice-sessions.zip")
+  filename         = "${path.module}/../backend/.build/voice-sessions.zip"
+  source_code_hash = filebase64sha256("${path.module}/../backend/.build/voice-sessions.zip")
   
   role = aws_iam_role.voice_lambda_role[0].arn
   
   layers = compact([
-    var.access_common_layer_arn,
+    var.org_common_layer_arn,
     var.ai_common_layer_arn
   ])
   
   environment {
     variables = {
-      SUPABASE_URL                = var.supabase_url
-      SUPABASE_KEY                = var.supabase_service_key
+      SUPABASE_SECRET_ARN         = var.supabase_secret_arn
       ENVIRONMENT                 = var.environment
       ECS_CLUSTER_NAME            = var.ecs_cluster_name
       ECS_TASK_DEFINITION_ARN     = var.ecs_task_definition_arn
@@ -168,18 +168,17 @@ resource "aws_lambda_function" "voice_configs" {
   timeout       = var.module_voice_lambda_timeout
   memory_size   = 256
   
-  filename         = "${path.module}/../dist/voice-configs.zip"
-  source_code_hash = filebase64sha256("${path.module}/../dist/voice-configs.zip")
+  filename         = "${path.module}/../backend/.build/voice-configs.zip"
+  source_code_hash = filebase64sha256("${path.module}/../backend/.build/voice-configs.zip")
   
   role = aws_iam_role.voice_lambda_role[0].arn
   
-  layers = [var.access_common_layer_arn]
+  layers = [var.org_common_layer_arn]
   
   environment {
     variables = {
-      SUPABASE_URL = var.supabase_url
-      SUPABASE_KEY = var.supabase_service_key
-      ENVIRONMENT  = var.environment
+      SUPABASE_SECRET_ARN = var.supabase_secret_arn
+      ENVIRONMENT         = var.environment
     }
   }
   

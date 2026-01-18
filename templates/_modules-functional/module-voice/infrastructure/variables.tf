@@ -32,8 +32,8 @@ variable "module_voice_lambda_memory" {
 }
 
 # Lambda layers
-variable "access_common_layer_arn" {
-  description = "ARN of access_common Lambda layer"
+variable "org_common_layer_arn" {
+  description = "ARN of org_common Lambda layer (from module-access)"
   type        = string
 }
 
@@ -44,15 +44,28 @@ variable "ai_common_layer_arn" {
 }
 
 # Supabase
-variable "supabase_url" {
-  description = "Supabase project URL"
-  type        = string
-}
-
-variable "supabase_service_key" {
-  description = "Supabase service role key"
+variable "supabase_secret_arn" {
+  description = "ARN of Supabase credentials in AWS Secrets Manager"
   type        = string
   sensitive   = true
+}
+
+# AWS Configuration
+variable "aws_region" {
+  description = "AWS region for Lambda functions"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "log_level" {
+  description = "Log level for Lambda functions (DEBUG, INFO, WARNING, ERROR)"
+  type        = string
+  default     = "INFO"
+
+  validation {
+    condition     = contains(["DEBUG", "INFO", "WARNING", "ERROR"], var.log_level)
+    error_message = "Log level must be one of: DEBUG, INFO, WARNING, ERROR"
+  }
 }
 
 # ECS configuration (for Pipecat bot)
@@ -127,8 +140,8 @@ variable "websocket_api_url" {
 }
 
 # Tags
-variable "tags" {
-  description = "Tags to apply to all resources"
+variable "common_tags" {
+  description = "Common tags to apply to all resources"
   type        = map(string)
   default     = {}
 }
