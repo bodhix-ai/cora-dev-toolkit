@@ -121,26 +121,53 @@ class TypeScriptValidator:
         """
         Execute the typecheck command.
         
+        Runs both 'typecheck' and 'type-check' to handle inconsistent naming.
+        
         Returns:
             CompletedProcess result or None if command failed
         """
-        try:
-            cmd = 'pnpm -r typecheck'
-            result = subprocess.run(
-                cmd,
-                shell=True,
-                cwd=self.stack_path,
-                capture_output=True,
-                text=True,
-                timeout=300  # 5 minute timeout
+        all_output = ""
+        all_errors = ""
+        
+        # Run both script names to catch all packages
+        for script_name in ['typecheck', 'type-check']:
+            try:
+                cmd = f'pnpm -r {script_name}'
+                result = subprocess.run(
+                    cmd,
+                    shell=True,
+                    cwd=self.stack_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=300  # 5 minute timeout
+                )
+                
+                all_output += result.stdout
+                all_errors += result.stderr
+                
+            except subprocess.TimeoutExpired:
+                self.warnings.append(f"TypeScript {script_name} timed out after 5 minutes")
+            except Exception as e:
+                # Silently skip if script doesn't exist
+                pass
+        
+        # Check for pnpm recursive run failures
+        combined_output = all_output + all_errors
+        if 'ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL' in combined_output:
+            self.warnings.append(
+                "⚠️  pnpm stopped after first package failure. "
+                "Some packages may not have been type-checked. "
+                "Fix errors and re-run to validate all packages."
             )
-            return result
-        except subprocess.TimeoutExpired:
-            self.warnings.append("TypeScript typecheck timed out after 5 minutes")
-            return None
-        except Exception as e:
-            self.warnings.append(f"Failed to run typecheck: {str(e)}")
-            return None
+        
+        # Create a fake result object with combined output
+        class CombinedResult:
+            def __init__(self, stdout, stderr):
+                self.stdout = stdout
+                self.stderr = stderr
+                self.returncode = 1 if 'error TS' in (stdout + stderr) else 0
+        
+        return CombinedResult(all_output, all_errors)
     
     def _parse_errors(self, output: str) -> None:
         """
@@ -149,12 +176,19 @@ class TypeScriptValidator:
         TypeScript error format:
         file(line,col): error TS####: message
         
+        Also handles pnpm output with multiple formats:
+        │ file(line,col): error TS####: message
+        packages/module-kb/frontend typecheck: file(line,col): error TS####: message
+        
         Args:
             output: Combined stdout and stderr from typecheck command
         """
         # Pattern for TypeScript errors
-        # Example: hooks/useKbDocuments.ts(86,34): error TS2339: Property 'documents' does not exist on type 'KbDocument[]'.
-        error_pattern = r'([^\s]+?)\((\d+),(\d+)\):\s+error\s+(TS\d+):\s+(.+?)(?=\n|$)'
+        # Example 1: hooks/useKbDocuments.ts(86,34): error TS2339: Property 'documents' does not exist on type 'KbDocument[]'.
+        # Example 2: │ components/ChatInput.tsx(190,13): error TS2322: ...
+        # Example 3: packages/module-kb/frontend typecheck: adminCard.tsx(10,38): error TS2307: ...
+        # Example 4: packages/module-ws/frontend type-check: pages/WorkspaceDetailPage.tsx(76,8): error TS2307: ...
+        error_pattern = r'^\s*(?:│\s*)?(?:.*?type-?check:\s*)?([^\s]+?)\((\d+),(\d+)\):\s+error\s+(TS\d+):\s+(.+?)(?=\n|$)'
         
         for match in re.finditer(error_pattern, output, re.MULTILINE):
             file_path = match.group(1)
