@@ -305,7 +305,11 @@ export function ExportDropdown({
 
   return (
     <div className={`flex items-center gap-1 ${className}`}>
+      <label htmlFor="export-format-select" className="sr-only">
+        Export Format
+      </label>
       <select
+        id="export-format-select"
         onChange={(e) => {
           const format = e.target.value as ExportFormat;
           if (format) {
