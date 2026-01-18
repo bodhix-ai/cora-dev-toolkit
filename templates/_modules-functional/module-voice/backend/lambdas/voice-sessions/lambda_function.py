@@ -364,7 +364,7 @@ def handle_create_session(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
                 )
                 if kb:
                     common.insert_one(
-                        table='voice_session_kb',
+                        table='voice_session_kbs',
                         data={
                             'session_id': session['id'],
                             'kb_id': kb_id,
@@ -852,7 +852,7 @@ def handle_add_session_kb(event: Dict[str, Any], user_id: str, session_id: str) 
     
     # Check if already associated
     existing = common.find_one(
-        table='voice_session_kb',
+        table='voice_session_kbs',
         filters={'session_id': session_id, 'kb_id': kb_id}
     )
     if existing:
@@ -861,7 +861,7 @@ def handle_add_session_kb(event: Dict[str, Any], user_id: str, session_id: str) 
     # Add association
     is_enabled = body.get('isEnabled', True)
     association = common.insert_one(
-        table='voice_session_kb',
+        table='voice_session_kbs',
         data={
             'session_id': session_id,
             'kb_id': kb_id,
@@ -913,7 +913,7 @@ def handle_toggle_session_kb(event: Dict[str, Any], user_id: str, session_id: st
     
     # Get association
     association = common.find_one(
-        table='voice_session_kb',
+        table='voice_session_kbs',
         filters={'session_id': session_id, 'kb_id': kb_id}
     )
     if not association:
@@ -928,7 +928,7 @@ def handle_toggle_session_kb(event: Dict[str, Any], user_id: str, session_id: st
     
     # Update association
     updated = common.update_one(
-        table='voice_session_kb',
+        table='voice_session_kbs',
         filters={'session_id': session_id, 'kb_id': kb_id},
         data={'is_enabled': is_enabled}
     )
@@ -969,7 +969,7 @@ def handle_remove_session_kb(event: Dict[str, Any], user_id: str, session_id: st
     
     # Get association
     association = common.find_one(
-        table='voice_session_kb',
+        table='voice_session_kbs',
         filters={'session_id': session_id, 'kb_id': kb_id}
     )
     if not association:
@@ -977,7 +977,7 @@ def handle_remove_session_kb(event: Dict[str, Any], user_id: str, session_id: st
     
     # Delete association
     common.delete_one(
-        table='voice_session_kb',
+        table='voice_session_kbs',
         filters={'session_id': session_id, 'kb_id': kb_id}
     )
     
@@ -991,7 +991,7 @@ def handle_remove_session_kb(event: Dict[str, Any], user_id: str, session_id: st
 def _get_session_kbs(session_id: str) -> list:
     """Get all KB associations for a session with KB details."""
     associations = common.find_many(
-        table='voice_session_kb',
+        table='voice_session_kbs',
         filters={'session_id': session_id}
     )
     

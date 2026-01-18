@@ -62,3 +62,7 @@ validation-report-*.md
 # Schema backup files
 *.sql.bak
 validation-results/
+test-voice-*/
+test-ws-*/
+*.swp
+.DS_Store
