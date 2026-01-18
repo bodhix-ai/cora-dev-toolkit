@@ -732,11 +732,243 @@ Based on module-voice experience, expect:
 
 **Plan Owner**: Development Team  
 **Success Definition**: Module-eval passes validation and deploys successfully  
-**Next Session**: Recreate test project and run validation suite
+**Next Session**: Continue fixing validation errors (remaining: 39 errors)
 
 **Created**: January 17, 2026  
-**Updated**: January 18, 2026 (Session 5 - 12:10 AM)  
-**Status**: ✅ ALL 10 BUGS FIXED | Ready for validation testing
+**Updated**: January 18, 2026 (Session 7 - 12:39 AM)  
+**Status**: ✅ 5 Schema Validator errors fixed | ⏳ 39 errors remaining (BRONZE certification)
+
+---
+
+## Validation Results - Session 6 (Fresh Project Recreation)
+
+**Project Recreated**: January 18, 2026, 12:26 AM  
+**Validation Run**: January 18, 2026, 12:26 AM  
+**Overall Status**: ✗ FAILED  
+**Certification**: BRONZE  
+**Total Errors**: 42  
+**Total Warnings**: 362  
+
+### Validators PASSED ✅ (10 validators)
+1. Structure Validator - ✓ PASSED
+2. Portability Validator - ✓ PASSED (15 warnings)
+3. Import Validator - ✓ PASSED
+4. External UID Validator - ✓ PASSED
+5. CORA Compliance - ✓ PASSED (20 warnings)
+6. Frontend Compliance - ✓ PASSED
+7. API Response Validator - ✓ PASSED
+8. Role Naming Validator - ✓ PASSED
+9. RPC Function Validator - ✓ PASSED
+10. **Database Naming Validator - ✓ PASSED** (improved from earlier sessions!)
+
+### Validators FAILED ❌ (3 validators)
+
+#### 1. Accessibility Validator - ✗ FAILED
+**Errors**: 14  
+**Warnings**: 49  
+
+**Error Breakdown**:
+- **Heading Level Issues** (1 error):
+  - File: `PromptConfigEditor.tsx` line 477
+  - Issue: Heading level skipped (h2 → h4, skipped 1 level)
+  - Fix: Add h3 heading or change h4 to h3
+
+- **Form Input Missing Labels** (13 errors):
+  - `CriteriaSetManager.tsx` line 463: `<select>` missing label
+  - `ScoringConfigPanel.tsx` line 316: `<input type="checkbox">` missing label
+  - `EvalExportButton.tsx` line 308: `<select>` missing label
+  - `CriteriaImportDialog.tsx` line 435: `<input type="file">` missing label
+  - Plus 9 more similar issues
+  - Fix: Add `<label>` with `htmlFor` attribute, or use `aria-label`/`aria-labelledby`
+
+**Warning Breakdown** (49 warnings):
+- **Placeholder Not Label** (49 warnings):
+  - Multiple files in module-voice (`ConfigForm.tsx`) and module-eval
+  - Issue: Inputs have `placeholder` but no visible `<label>`
+  - Fix: Add visible labels (placeholders are not substitutes for labels)
+
+#### 2. API Tracer - ✗ FAILED
+**Errors**: 22  
+**Warnings**: 207  
+
+**Error Breakdown**:
+- **Missing Lambda Handlers** (1 error):
+  - Endpoint: `GET /admin/org/eval/doc-types/{id}`
+  - Issue: API Gateway defines route but Lambda only handles PATCH, DELETE
+  - Fix: Add GET handler to Lambda or remove route from API Gateway
+
+- **Path Parameter Naming** (21 errors):
+  - Generic `{id}` used instead of specific resource names
+  - Affected endpoints:
+    - `/admin/sys/eval/status-options/{id}` (PATCH, DELETE) - should use `{status_optionId}`
+    - `/admin/org/eval/status-options/{id}` (PATCH, DELETE) - should use `{status_optionId}`
+    - `/admin/org/eval/doc-types/{id}` (PATCH, DELETE) - should use `{doc_typeId}`
+    - `/admin/org/eval/prompts/{id}` (PATCH, DELETE) - should use `{promptId}`
+    - `/admin/org/eval/criteria-sets/{id}` (multiple methods) - should use `{criteria_setId}`
+    - And 16 more similar issues
+  - Fix: Update API Gateway route definitions to use specific parameter names
+  - Reference: `docs/standards/standard_API-PATTERNS.md`
+
+**Warning Breakdown** (207 warnings):
+- **Orphaned Routes**: Lambda handlers exist but no frontend calls found
+  - This might be intentional (webhooks, internal APIs) or dead code
+  - Examples: voice module config endpoints, chat module endpoints
+  - Note: Many warnings are in module-voice and module-chat (not module-eval specific)
+
+#### 3. Schema Validator - ✗ FAILED
+**Errors**: 6  
+**Warnings**: 71  
+
+**Error Breakdown** (module-eval Lambda files):
+- **File**: `eval-results/lambda_function.py` line 156
+  - Table: `workspace_members`
+  - Issue: Table doesn't exist in schema
+  - Suggestion: Did you mean `workspaces`? Or should it be `ws_members`?
+
+- **File**: `eval-results/lambda_function.py` line 260
+  - Table: `kb_documents`
+  - Issue: Table doesn't exist in schema
+  - Suggestion: Did you mean `kb_docs`?
+
+- **File**: `eval-results/lambda_function.py` line 420
+  - Table: `kb_documents`
+  - Issue: Table doesn't exist (same as line 260)
+  - Suggestion: Did you mean `kb_docs`?
+
+- **File**: `eval-config/lambda_function.py` line 596
+  - Table: `organizations`
+  - Issue: Table doesn't exist in schema
+  - Suggestion: Did you mean `orgs`?
+
+- **File**: `eval-config/lambda_function.py` line 621
+  - Table: `organizations`
+  - Issue: Table doesn't exist (same as line 596)
+  - Suggestion: Did you mean `orgs`?
+
+- Plus 1 more error
+
+**Warning Breakdown** (71 warnings):
+- Most warnings are "Could not extract table name from query"
+- These are in validation scripts themselves, not project code
+- Not critical for module-eval functionality
+
+---
+
+## Validation Errors Summary - Module-Eval Specific
+
+### HIGH Priority (Blocking Issues)
+
+**Schema Validator Errors (6 errors in 2 Lambda files)**:
+1. `eval-results/lambda_function.py`:
+   - Line 156: `workspace_members` → should be `ws_members`
+   - Line 260, 420: `kb_documents` → should be `kb_docs`
+   
+2. `eval-config/lambda_function.py`:
+   - Line 596, 621: `organizations` → should be `orgs`
+
+**Impact**: Database queries will fail at runtime. These must be fixed before deployment.
+
+**Fix**: Update Lambda function code to use correct table names.
+
+### MEDIUM Priority (Standards Compliance)
+
+**API Tracer - Path Parameter Naming (21 errors)**:
+- All eval module API routes use generic `{id}` instead of specific names
+- Violates CORA API naming standards
+- Examples:
+  - `/admin/sys/eval/status-options/{id}` → `/admin/sys/eval/status-options/{status_optionId}`
+  - `/admin/org/eval/doc-types/{id}` → `/admin/org/eval/doc-types/{doc_typeId}`
+  - `/admin/org/eval/criteria-sets/{id}` → `/admin/org/eval/criteria-sets/{criteria_setId}`
+
+**Impact**: API routes don't follow CORA standards, reduces code clarity.
+
+**Fix**: Update Terraform infrastructure files to use specific parameter names.
+
+**API Tracer - Missing Handler (1 error)**:
+- `GET /admin/org/eval/doc-types/{id}` defined in API Gateway but not implemented in Lambda
+
+**Impact**: 404 error when frontend calls this endpoint.
+
+**Fix**: Add GET handler to Lambda or remove route from API Gateway (if not needed).
+
+### LOW Priority (Accessibility & UX)
+
+**Accessibility - Form Labels (14 errors)**:
+- Multiple form inputs missing labels in eval components
+- Affects: CriteriaSetManager, ScoringConfigPanel, EvalExportButton, CriteriaImportDialog, etc.
+
+**Impact**: Screen readers can't identify form inputs, violates WCAG 1.3.1 Level A.
+
+**Fix**: Add `<label>` elements with `htmlFor` attributes or use `aria-label`.
+
+**Accessibility - Heading Hierarchy (1 error)**:
+- `PromptConfigEditor.tsx` skips from h2 to h4
+
+**Impact**: Screen readers rely on proper heading hierarchy for navigation.
+
+**Fix**: Add h3 heading or change h4 to h3.
+
+**Accessibility - Placeholder Warnings (49 warnings)**:
+- Many inputs use placeholder but no visible label
+
+**Impact**: Placeholders disappear when typing, not accessible.
+
+**Fix**: Add visible labels (best practice).
+
+---
+
+## Next Steps for Session 7
+
+### Phase 1: Schema Validator Fixes (HIGH Priority)
+1. Fix `eval-results/lambda_function.py`:
+   - Line 156: Change `workspace_members` to `ws_members`
+   - Line 260, 420: Change `kb_documents` to `kb_docs`
+
+2. Fix `eval-config/lambda_function.py`:
+   - Line 596, 621: Change `organizations` to `orgs`
+
+**Expected Impact**: 6 errors → 0 errors (Schema Validator should PASS)
+
+### Phase 2: API Parameter Naming (MEDIUM Priority)
+1. Update infrastructure outputs.tf:
+   - Change all `{id}` to specific resource names
+   - Follow pattern: `{resource}Id` (camelCase)
+
+2. Verify Lambda docstrings match new route names
+
+**Expected Impact**: 21 errors → 0 errors (API Tracer errors resolved)
+
+### Phase 3: Missing GET Handler (MEDIUM Priority)
+1. Decide: Is `GET /admin/org/eval/doc-types/{id}` needed?
+   - If YES: Add handler to Lambda
+   - If NO: Remove from API Gateway infrastructure
+
+**Expected Impact**: 1 error → 0 errors
+
+### Phase 4: Accessibility Fixes (LOW Priority)
+1. Add labels to all form inputs (14 errors)
+2. Fix heading hierarchy in PromptConfigEditor (1 error)
+3. Add visible labels where placeholders are used (49 warnings - optional)
+
+**Expected Impact**: 15 errors → 0 errors, 49 warnings → 0 warnings
+
+---
+
+## Certification Progress Projection
+
+**Current**: BRONZE (42 errors, 362 warnings)
+
+**After Phase 1** (Schema fixes): 36 errors, 362 warnings - Still BRONZE
+
+**After Phase 2** (API naming): 15 errors, 362 warnings - Still BRONZE  
+
+**After Phase 3** (Missing handler): 14 errors, 362 warnings - Still BRONZE
+
+**After Phase 4** (Accessibility): 0 errors, 313 warnings - **SILVER** ✨
+
+**Target**: SILVER or GOLD certification before deployment
+
+---
 
 ---
 
@@ -903,3 +1135,145 @@ updated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
 | #10 | 4 | Type mismatch | ⏳ Pending | 1 | 2+ |
 
 **Total**: 10 bugs discovered, 9 fixed, 1 remaining
+
+---
+
+## Validation Fixes - Session 7 (January 18, 2026, 12:33 AM - 12:39 AM)
+
+**Duration**: ~6 minutes  
+**Focus**: HIGH Priority Schema Validator Fixes
+
+### Activities
+
+1. **Fixed eval-results Lambda** (3 errors):
+   - Line 156: `workspace_members` → `ws_members` (also: `workspace_id` → `ws_id`)
+   - Line 260: `kb_documents` → `kb_docs` (also: `workspace_id` → `ws_id`)
+   - Line 420: `kb_documents` → `kb_docs`
+
+2. **Fixed eval-config Lambda** (2 errors):
+   - Line 596: `organizations` → `orgs`
+   - Line 621: `organizations` → `orgs`
+
+3. **Synced fixes to test project**:
+   - Used `sync-fix-to-project.sh` script
+   - ✅ eval-results Lambda synced successfully
+   - ✅ eval-config Lambda synced successfully
+
+4. **Ran validation suite**:
+   - Total errors: 44 → 39 (5 errors fixed)
+   - Schema Validator: 6 → 1 error (83% reduction!)
+
+### Validation Results - Session 7
+
+**Validation Run**: January 18, 2026, 12:37 AM  
+**Overall Status**: ✗ FAILED  
+**Certification**: BRONZE  
+**Total Errors**: 39 (down from 44)  
+**Total Warnings**: 368 (unchanged)
+
+#### Validators PASSED ✅ (10 validators)
+1. Structure Validator
+2. Portability Validator (15 warnings)
+3. Import Validator
+4. External UID Validator
+5. CORA Compliance (20 warnings)
+6. Frontend Compliance
+7. API Response Validator
+8. Role Naming Validator
+9. RPC Function Validator
+10. Database Naming Validator (2 errors - unchanged)
+
+#### Validators FAILED ❌ (3 validators)
+
+**1. Schema Validator - ✗ FAILED**
+- **Errors**: 1 (down from 6!)
+- **Warnings**: 71 (unchanged)
+
+**Remaining Error**:
+- **File**: `eval-processor/lambda_function.py` line 519
+- **Issue**: Table `kb_documents` doesn't exist
+- **Fix**: Change to `kb_docs`
+- **Note**: This is a 3rd Lambda file not in the original error list
+
+**2. API Tracer - ✗ FAILED**
+- **Errors**: 22 (unchanged)
+- **Warnings**: 207 (unchanged)
+
+**Error Breakdown**:
+- Path parameter naming: 21 errors (generic `{id}` instead of specific names)
+- Missing Lambda handler: 1 error (`GET /admin/org/eval/doc-types/{id}`)
+
+**3. Accessibility Validator - ✗ FAILED**
+- **Errors**: 14 (unchanged)
+- **Warnings**: 49 (unchanged)
+
+**Error Breakdown**:
+- Form input missing labels: 13 errors
+- Heading level skipped: 1 error (h2 → h4 in PromptConfigEditor.tsx)
+
+### Progress Summary - Session 7
+
+**✅ Completed:**
+- Fixed 5 out of 6 Schema Validator errors (83% reduction)
+- Updated 2 Lambda template files
+- Synced fixes to test project
+- Reduced total errors from 44 to 39
+
+**⏳ Remaining Work:**
+- 1 Schema Validator error (eval-processor Lambda)
+- 22 API Tracer errors (21 path naming + 1 missing handler)
+- 14 Accessibility errors (13 form labels + 1 heading)
+- 2 Database Naming errors (unchanged from Session 6)
+
+**📊 Impact:**
+- Total errors: 44 → 39 (11% reduction)
+- Schema Validator: 6 → 1 error (83% reduction!)
+- Still at BRONZE certification (39 errors)
+- Need to reach <20 errors for SILVER certification
+
+### Next Steps for Session 8
+
+**Option A - Complete Schema Validator (Recommended):**
+1. Fix remaining error in `eval-processor` Lambda (line 519: kb_documents → kb_docs)
+2. Sync to test project
+3. Re-run validation to confirm 0 Schema Validator errors
+
+**Option B - Tackle API Tracer Errors:**
+1. Fix 21 path parameter naming errors in infrastructure
+2. Fix 1 missing GET handler
+3. Expected to bring errors down to 16 total
+
+**Option C - Accessibility Fixes:**
+1. Add labels to form inputs (13 errors)
+2. Fix heading hierarchy (1 error)
+3. Expected to bring errors down to 24 total
+
+**Recommendation**: Complete Schema Validator first (Option A) - only 1 error remaining, high impact, low effort.
+
+### Commits - Session 7
+
+No commits created in Session 7 - fixes synced to test project only. Template changes ready to commit:
+- `templates/_modules-functional/module-eval/backend/lambdas/eval-results/lambda_function.py`
+- `templates/_modules-functional/module-eval/backend/lambdas/eval-config/lambda_function.py`
+
+**Next Commit**: Should include Session 7 fixes + eval-processor fix
+
+---
+
+### Session 7 Time Tracking
+
+**Start**: January 18, 2026, 12:33 AM  
+**End**: January 18, 2026, 12:39 AM  
+**Duration**: ~6 minutes  
+
+**Efficiency**: Fixed 5 errors in 6 minutes (avg. 1.2 min/error)
+
+**Total Time Across All Sessions**:
+- Session 1: 14 minutes (4 template bugs)
+- Session 2: 17 minutes (1 template bug)
+- Session 3: 12 minutes (3 template bugs)
+- Session 4: 12 minutes (1 template bug + 1 discovered)
+- Session 5: 40 minutes (1 architectural fix + docs)
+- Session 6: N/A (validation run only)
+- Session 7: 6 minutes (5 Lambda table name fixes)
+- **Total**: ~101 minutes (~1.7 hours)
