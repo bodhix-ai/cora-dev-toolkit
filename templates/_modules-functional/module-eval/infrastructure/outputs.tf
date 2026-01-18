@@ -123,13 +123,13 @@ output "api_routes" {
     },
     {
       method      = "PATCH"
-      path        = "/admin/sys/eval/status-options/{id}"
+      path        = "/admin/sys/eval/status-options/{statusOptionId}"
       integration = aws_lambda_function.eval_config.invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/admin/sys/eval/status-options/{id}"
+      path        = "/admin/sys/eval/status-options/{statusOptionId}"
       integration = aws_lambda_function.eval_config.invoke_arn
       public      = false
     },
@@ -205,13 +205,13 @@ output "api_routes" {
     },
     {
       method      = "PATCH"
-      path        = "/admin/org/eval/status-options/{id}"
+      path        = "/admin/org/eval/status-options/{statusOptionId}"
       integration = aws_lambda_function.eval_config.invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/admin/org/eval/status-options/{id}"
+      path        = "/admin/org/eval/status-options/{statusOptionId}"
       integration = aws_lambda_function.eval_config.invoke_arn
       public      = false
     },
@@ -254,20 +254,14 @@ output "api_routes" {
       public      = false
     },
     {
-      method      = "GET"
-      path        = "/admin/org/eval/doc-types/{id}"
-      integration = aws_lambda_function.eval_config.invoke_arn
-      public      = false
-    },
-    {
       method      = "PATCH"
-      path        = "/admin/org/eval/doc-types/{id}"
+      path        = "/admin/org/eval/doc-types/{docTypeId}"
       integration = aws_lambda_function.eval_config.invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/admin/org/eval/doc-types/{id}"
+      path        = "/admin/org/eval/doc-types/{docTypeId}"
       integration = aws_lambda_function.eval_config.invoke_arn
       public      = false
     },
@@ -289,19 +283,19 @@ output "api_routes" {
     },
     {
       method      = "GET"
-      path        = "/admin/org/eval/criteria-sets/{id}"
+      path        = "/admin/org/eval/criteria-sets/{criteriaSetId}"
       integration = aws_lambda_function.eval_config.invoke_arn
       public      = false
     },
     {
       method      = "PATCH"
-      path        = "/admin/org/eval/criteria-sets/{id}"
+      path        = "/admin/org/eval/criteria-sets/{criteriaSetId}"
       integration = aws_lambda_function.eval_config.invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/admin/org/eval/criteria-sets/{id}"
+      path        = "/admin/org/eval/criteria-sets/{criteriaSetId}"
       integration = aws_lambda_function.eval_config.invoke_arn
       public      = false
     },
@@ -317,25 +311,25 @@ output "api_routes" {
     # =========================================================================
     {
       method      = "GET"
-      path        = "/admin/org/eval/criteria-sets/{id}/items"
+      path        = "/admin/org/eval/criteria-sets/{criteriaSetId}/items"
       integration = aws_lambda_function.eval_config.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/admin/org/eval/criteria-sets/{id}/items"
+      path        = "/admin/org/eval/criteria-sets/{criteriaSetId}/items"
       integration = aws_lambda_function.eval_config.invoke_arn
       public      = false
     },
     {
       method      = "PATCH"
-      path        = "/admin/org/eval/criteria-items/{id}"
+      path        = "/admin/org/eval/criteria-items/{criteriaItemId}"
       integration = aws_lambda_function.eval_config.invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/admin/org/eval/criteria-items/{id}"
+      path        = "/admin/org/eval/criteria-items/{criteriaItemId}"
       integration = aws_lambda_function.eval_config.invoke_arn
       public      = false
     },
@@ -357,19 +351,19 @@ output "api_routes" {
     },
     {
       method      = "GET"
-      path        = "/workspaces/{wsId}/eval/{id}"
+      path        = "/workspaces/{wsId}/eval/{evalId}"
       integration = aws_lambda_function.eval_results.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/workspaces/{wsId}/eval/{id}/status"
+      path        = "/workspaces/{wsId}/eval/{evalId}/status"
       integration = aws_lambda_function.eval_results.invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/workspaces/{wsId}/eval/{id}"
+      path        = "/workspaces/{wsId}/eval/{evalId}"
       integration = aws_lambda_function.eval_results.invoke_arn
       public      = false
     },
@@ -379,13 +373,13 @@ output "api_routes" {
     # =========================================================================
     {
       method      = "PATCH"
-      path        = "/workspaces/{wsId}/eval/{id}/results/{resultId}"
+      path        = "/workspaces/{wsId}/eval/{evalId}/results/{resultId}"
       integration = aws_lambda_function.eval_results.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/workspaces/{wsId}/eval/{id}/results/{resultId}/history"
+      path        = "/workspaces/{wsId}/eval/{evalId}/results/{resultId}/history"
       integration = aws_lambda_function.eval_results.invoke_arn
       public      = false
     },
@@ -395,13 +389,13 @@ output "api_routes" {
     # =========================================================================
     {
       method      = "GET"
-      path        = "/workspaces/{wsId}/eval/{id}/export/pdf"
+      path        = "/workspaces/{wsId}/eval/{evalId}/export/pdf"
       integration = aws_lambda_function.eval_results.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/workspaces/{wsId}/eval/{id}/export/xlsx"
+      path        = "/workspaces/{wsId}/eval/{evalId}/export/xlsx"
       integration = aws_lambda_function.eval_results.invoke_arn
       public      = false
     }

@@ -96,7 +96,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # EVALUATION CRUD ROUTES
         # =================================================================
         
-        eval_id = path_params.get('id')
+        eval_id = path_params.get('evalId')
         result_id = path_params.get('resultId')
         
         # Export routes
@@ -154,8 +154,8 @@ def has_workspace_access(user_id: str, workspace_id: str) -> bool:
     try:
         # Check workspace membership
         membership = common.find_one(
-            'workspace_members',
-            {'user_id': user_id, 'workspace_id': workspace_id}
+            'ws_members',
+            {'user_id': user_id, 'ws_id': workspace_id}
         )
         if membership:
             return True
@@ -257,7 +257,7 @@ def handle_create_evaluation(
     
     # Verify documents exist in workspace
     for doc_id in validated_doc_ids:
-        doc = common.find_one('kb_documents', {'id': doc_id, 'workspace_id': workspace_id})
+        doc = common.find_one('kb_docs', {'id': doc_id, 'ws_id': workspace_id})
         if not doc:
             raise common.NotFoundError(f'Document not found: {doc_id}')
     
@@ -417,7 +417,7 @@ def handle_get_evaluation(eval_id: str, workspace_id: str, org_id: str) -> Dict[
     
     documents = []
     for doc_set in doc_sets:
-        doc = common.find_one('kb_documents', {'id': doc_set['kb_doc_id']})
+        doc = common.find_one('kb_docs', {'id': doc_set['kb_doc_id']})
         if doc:
             documents.append({
                 'id': doc['id'],

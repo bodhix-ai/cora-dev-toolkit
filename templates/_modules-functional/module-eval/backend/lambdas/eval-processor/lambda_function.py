@@ -515,8 +515,8 @@ def get_document_content(workspace_id: str, doc_id: str) -> Optional[str]:
     This calls the module-kb API to retrieve document text.
     """
     try:
-        # First try to get from kb_documents table directly
-        doc = common.find_one('kb_documents', {'id': doc_id, 'workspace_id': workspace_id})
+        # First try to get from kb_docs table directly
+        doc = common.find_one('kb_docs', {'id': doc_id, 'workspace_id': workspace_id})
         
         if doc:
             # If we have extracted text, return it
