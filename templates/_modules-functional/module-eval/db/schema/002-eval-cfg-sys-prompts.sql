@@ -9,8 +9,8 @@
 CREATE TABLE IF NOT EXISTS eval_cfg_sys_prompts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     prompt_type TEXT NOT NULL,
-    ai_provider_id UUID REFERENCES ai_cfg_providers(id) ON DELETE SET NULL,
-    ai_model_id UUID REFERENCES ai_cfg_models(id) ON DELETE SET NULL,
+    ai_provider_id UUID REFERENCES ai_providers(id) ON DELETE SET NULL,
+    ai_model_id UUID REFERENCES ai_models(id) ON DELETE SET NULL,
     system_prompt TEXT,
     user_prompt_template TEXT,
     temperature DECIMAL(3,2) NOT NULL DEFAULT 0.3,
