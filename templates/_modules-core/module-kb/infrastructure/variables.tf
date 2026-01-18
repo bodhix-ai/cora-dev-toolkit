@@ -39,6 +39,11 @@ variable "supabase_secret_arn" {
   sensitive   = true
 }
 
+variable "org_common_layer_arn" {
+  description = "ARN of the org-common Lambda layer (from module-access)"
+  type        = string
+}
+
 variable "sns_topic_arn" {
   description = "SNS topic ARN for CloudWatch alarms (optional)"
   type        = string

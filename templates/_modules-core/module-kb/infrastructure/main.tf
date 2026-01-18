@@ -19,16 +19,6 @@ locals {
 }
 
 # =============================================================================
-# Lambda Layer - org-common (Reused from module-access)
-# =============================================================================
-
-# Note: org-common layer is shared across modules and should be deployed by module-access
-# This data source references the existing layer from module-access
-data "aws_lambda_layer_version" "org_common" {
-  layer_name = "${var.project_name}-${var.environment}-org-common"
-}
-
-# =============================================================================
 # S3 Bucket for Document Storage
 # =============================================================================
 
@@ -237,7 +227,7 @@ resource "aws_lambda_function" "kb_base" {
   filename         = "${local.build_dir}/kb-base.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/kb-base.zip")
 
-  layers = [data.aws_lambda_layer_version.org_common.arn]
+  layers = [var.org_common_layer_arn]
 
   environment {
     variables = {
@@ -284,7 +274,7 @@ resource "aws_lambda_function" "kb_document" {
   filename         = "${local.build_dir}/kb-document.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/kb-document.zip")
 
-  layers = [data.aws_lambda_layer_version.org_common.arn]
+  layers = [var.org_common_layer_arn]
 
   environment {
     variables = {
@@ -333,7 +323,7 @@ resource "aws_lambda_function" "kb_processor" {
   filename         = "${local.build_dir}/kb-processor.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/kb-processor.zip")
 
-  layers = [data.aws_lambda_layer_version.org_common.arn]
+  layers = [var.org_common_layer_arn]
 
   environment {
     variables = {
