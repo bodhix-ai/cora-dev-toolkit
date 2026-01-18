@@ -8,6 +8,32 @@
 "use client";
 
 import React, { useState } from "react";
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  TextField,
+  Button,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Checkbox,
+  FormControlLabel,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton,
+  Chip,
+  Grid,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import type {
   EvalSysStatusOption,
   EvalOrgStatusOption,
@@ -100,38 +126,48 @@ const MODE_OPTIONS: { value: StatusOptionMode; label: string }[] = [
 
 export function ColorPicker({ value, onChange, disabled }: ColorPickerProps) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex gap-1" role="group" aria-label="Preset colors">
+    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+      <Box sx={{ display: "flex", gap: 0.5 }} role="group" aria-label="Preset colors">
         {PRESET_COLORS.map((color) => (
-          <button
+          <IconButton
             key={color}
-            type="button"
             onClick={() => onChange(color)}
             disabled={disabled}
-            className={`
-              w-6 h-6 rounded border-2 transition-all
-              ${value === color ? "border-gray-900 scale-110" : "border-transparent"}
-              ${disabled ? "opacity-50 cursor-not-allowed" : "hover:scale-105"}
-            `}
-            style={{ backgroundColor: color }}
+            size="small"
+            sx={{
+              width: 24,
+              height: 24,
+              bgcolor: color,
+              border: 2,
+              borderColor: value === color ? "grey.900" : "transparent",
+              transform: value === color ? "scale(1.1)" : "scale(1)",
+              "&:hover": {
+                bgcolor: color,
+                transform: "scale(1.05)",
+              },
+            }}
             aria-label={`Select color ${color}`}
             aria-pressed={value === color}
           />
         ))}
-      </div>
-      <label htmlFor="custom-color-picker" className="sr-only">
-        Custom color
-      </label>
-      <input
-        id="custom-color-picker"
+      </Box>
+      <Box
+        component="input"
         type="color"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
         disabled={disabled}
-        className="w-8 h-8 rounded cursor-pointer border border-gray-300"
+        sx={{
+          width: 32,
+          height: 32,
+          borderRadius: 1,
+          cursor: "pointer",
+          border: "1px solid",
+          borderColor: "grey.300",
+        }}
         aria-label="Custom color picker"
       />
-    </div>
+    </Box>
   );
 }
 
@@ -206,134 +242,103 @@ export function StatusOptionForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label
-          htmlFor="status-name"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
-          Name <span className="text-red-500">*</span>
-        </label>
-        <input
-          id="status-name"
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          disabled={isSaving}
-          className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-          placeholder="e.g., Compliant, Non-Compliant"
-        />
-      </div>
+    <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <TextField
+        label="Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        disabled={isSaving}
+        required
+        fullWidth
+        placeholder="e.g., Compliant, Non-Compliant"
+      />
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      <Box>
+        <Typography variant="body2" fontWeight="medium" gutterBottom>
           Color
-        </label>
+        </Typography>
         <ColorPicker value={color} onChange={setColor} disabled={isSaving} />
-      </div>
+      </Box>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label
-            htmlFor="status-score"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Score Value
-          </label>
-          <input
-            id="status-score"
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6}>
+          <TextField
+            label="Score Value"
             type="number"
             value={scoreValue}
             onChange={(e) => setScoreValue(e.target.value)}
             disabled={isSaving}
-            step="0.1"
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+            fullWidth
+            inputProps={{ step: 0.1 }}
             placeholder="e.g., 1.0"
+            helperText="Used for compliance scoring"
           />
-          <p className="mt-1 text-xs text-gray-500">
-            Used for compliance scoring
-          </p>
-        </div>
-        <div>
-          <label
-            htmlFor="status-order"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Display Order
-          </label>
-          <input
-            id="status-order"
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <TextField
+            label="Display Order"
             type="number"
             value={orderIndex}
             onChange={(e) => setOrderIndex(e.target.value)}
             disabled={isSaving}
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+            fullWidth
           />
-        </div>
-      </div>
+        </Grid>
+      </Grid>
 
       {isSystemLevel && (
-        <div>
-          <label
-            htmlFor="status-mode"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Applies To
-          </label>
-          <select
-            id="status-mode"
+        <FormControl fullWidth>
+          <InputLabel>Applies To</InputLabel>
+          <Select
             value={mode}
             onChange={(e) => setMode(e.target.value as StatusOptionMode)}
             disabled={isSaving}
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+            label="Applies To"
           >
             {MODE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
+              <MenuItem key={opt.value} value={opt.value}>
                 {opt.label}
-              </option>
+              </MenuItem>
             ))}
-          </select>
-        </div>
+          </Select>
+        </FormControl>
       )}
 
       {!isSystemLevel && (
-        <div className="flex items-center gap-2">
-          <input
-            id="status-active"
-            type="checkbox"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
-            disabled={isSaving}
-            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          <label htmlFor="status-active" className="text-sm text-gray-700">
-            Active
-          </label>
-        </div>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={isActive}
+              onChange={(e) => setIsActive(e.target.checked)}
+              disabled={isSaving}
+            />
+          }
+          label="Active"
+        />
       )}
 
       {error && (
-        <div className="rounded bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        <Alert severity="error">{error}</Alert>
       )}
 
-      <div className="flex items-center justify-end gap-3 pt-2">
-        <button
-          type="button"
+      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, pt: 1 }}>
+        <Button
           onClick={onCancel}
           disabled={isSaving}
-          className="rounded px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+          variant="outlined"
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
           disabled={isSaving}
-          className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          variant="contained"
+          color="primary"
         >
           {isSaving ? "Saving..." : isEdit ? "Update" : "Create"}
-        </button>
-      </div>
-    </form>
+        </Button>
+      </Box>
+    </Box>
   );
 }
 
@@ -351,69 +356,76 @@ export function StatusOptionCard({
   const isSysOption = "mode" in statusOption;
 
   return (
-    <div
-      className={`
-        flex items-center justify-between rounded-lg border p-3 bg-white
-        ${isOrgOption && !statusOption.isActive ? "opacity-60" : ""}
-        ${className}
-      `}
+    <Card
+      className={className}
+      sx={{
+        opacity: isOrgOption && !statusOption.isActive ? 0.6 : 1,
+      }}
     >
-      <div className="flex items-center gap-3">
-        {/* Color Badge */}
-        <div
-          className="w-4 h-4 rounded-full border border-gray-200"
-          style={{ backgroundColor: statusOption.color }}
-          title={statusOption.color}
-        />
+      <CardContent>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            {/* Color Badge */}
+            <Box
+              sx={{
+                width: 16,
+                height: 16,
+                borderRadius: "50%",
+                border: "1px solid",
+                borderColor: "grey.300",
+                bgcolor: statusOption.color,
+              }}
+              title={statusOption.color}
+            />
 
-        {/* Name */}
-        <span className="font-medium text-gray-900">{statusOption.name}</span>
+            {/* Name */}
+            <Typography variant="body1" fontWeight="medium">
+              {statusOption.name}
+            </Typography>
 
-        {/* Badges */}
-        <div className="flex items-center gap-2">
-          {isSysOption && (
-            <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-              {(statusOption as EvalSysStatusOption).mode === "both"
-                ? "All Modes"
-                : (statusOption as EvalSysStatusOption).mode === "boolean"
-                ? "Boolean"
-                : "Detailed"}
-            </span>
-          )}
-          {statusOption.scoreValue !== undefined && (
-            <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
-              Score: {statusOption.scoreValue}
-            </span>
-          )}
-          {isOrgOption && !statusOption.isActive && (
-            <span className="rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
-              Inactive
-            </span>
-          )}
-        </div>
-      </div>
+            {/* Badges */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              {isSysOption && (
+                <Chip
+                  size="small"
+                  label={
+                    (statusOption as EvalSysStatusOption).mode === "both"
+                      ? "All Modes"
+                      : (statusOption as EvalSysStatusOption).mode === "boolean"
+                      ? "Boolean"
+                      : "Detailed"
+                  }
+                />
+              )}
+              {statusOption.scoreValue !== undefined && (
+                <Chip
+                  size="small"
+                  label={`Score: ${statusOption.scoreValue}`}
+                  color="primary"
+                  variant="outlined"
+                />
+              )}
+              {isOrgOption && !statusOption.isActive && (
+                <Chip size="small" label="Inactive" />
+              )}
+            </Box>
+          </Box>
 
-      {/* Actions */}
-      <div className="flex items-center gap-1">
-        <span className="text-xs text-gray-400 mr-2">
-          #{statusOption.orderIndex}
-        </span>
-        <button
-          onClick={onEdit}
-          className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-          title="Edit"
-        >
-          ✏️
-        </button>
-        <button
-          onClick={onDelete}
-          className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"
-          title="Delete"
-        >
-          🗑️
-        </button>
-      </div>
-    </div>
+          {/* Actions */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
+              #{statusOption.orderIndex}
+            </Typography>
+            <IconButton onClick={onEdit} size="small" title="Edit">
+              <EditIcon fontSize="small" />
+            </IconButton>
+            <IconButton onClick={onDelete} size="small" title="Delete" color="error">
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -483,90 +495,105 @@ export function StatusOptionManager({
   };
 
   return (
-    <div className={className}>
+    <Box className={className}>
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">
+      <Box sx={{ mb: 3, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Box>
+          <Typography variant="h6" gutterBottom>
             {isSystemLevel ? "System Status Options" : "Organization Status Options"}
-          </h2>
-          <p className="text-sm text-gray-500">
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
             {isSystemLevel
               ? "Default status options for all organizations"
               : "Status options for your organization"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+          </Typography>
+        </Box>
+        <Box sx={{ display: "flex", gap: 1 }}>
           {onRefresh && (
-            <button
+            <IconButton
               onClick={onRefresh}
               disabled={isLoading}
-              className="rounded px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+              size="small"
+              title="Refresh"
             >
-              Refresh
-            </button>
+              <RefreshIcon />
+            </IconButton>
           )}
-          <button
+          <Button
             onClick={() => setIsCreating(true)}
             disabled={isLoading || isCreating}
-            className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            variant="contained"
+            startIcon={<AddIcon />}
+            size="small"
           >
-            + Add Option
-          </button>
-        </div>
-      </div>
+            Add Option
+          </Button>
+        </Box>
+      </Box>
 
       {/* Error */}
       {error && (
-        <div className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">
+        <Alert severity="error" sx={{ mb: 2 }}>
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Create Form */}
       {isCreating && (
-        <div className="mb-4 rounded-lg border bg-white p-4">
-          <h3 className="mb-3 font-medium text-gray-900">New Status Option</h3>
-          <StatusOptionForm
-            isSystemLevel={isSystemLevel}
-            isSaving={isSaving}
-            onSubmit={handleCreate}
-            onCancel={() => setIsCreating(false)}
-          />
-        </div>
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="subtitle1" gutterBottom>
+              New Status Option
+            </Typography>
+            <StatusOptionForm
+              isSystemLevel={isSystemLevel}
+              isSaving={isSaving}
+              onSubmit={handleCreate}
+              onCancel={() => setIsCreating(false)}
+            />
+          </CardContent>
+        </Card>
       )}
 
       {/* Edit Form */}
       {editingOption && (
-        <div className="mb-4 rounded-lg border bg-white p-4">
-          <h3 className="mb-3 font-medium text-gray-900">Edit Status Option</h3>
-          <StatusOptionForm
-            statusOption={editingOption}
-            isSystemLevel={isSystemLevel}
-            isSaving={isSaving}
-            onSubmit={handleUpdate}
-            onCancel={() => setEditingId(null)}
-          />
-        </div>
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="subtitle1" gutterBottom>
+              Edit Status Option
+            </Typography>
+            <StatusOptionForm
+              statusOption={editingOption}
+              isSystemLevel={isSystemLevel}
+              isSaving={isSaving}
+              onSubmit={handleUpdate}
+              onCancel={() => setEditingId(null)}
+            />
+          </CardContent>
+        </Card>
       )}
 
       {/* Loading */}
       {isLoading && statusOptions.length === 0 && (
-        <div className="py-8 text-center text-gray-500">
-          Loading status options...
-        </div>
+        <Box sx={{ py: 8, textAlign: "center" }}>
+          <Typography color="text.secondary">
+            Loading status options...
+          </Typography>
+        </Box>
       )}
 
       {/* Empty State */}
       {!isLoading && statusOptions.length === 0 && (
-        <div className="py-8 text-center text-gray-500">
-          No status options yet. Create one to get started.
-        </div>
+        <Box sx={{ py: 8, textAlign: "center" }}>
+          <Typography color="text.secondary">
+            No status options yet. Create one to get started.
+          </Typography>
+        </Box>
       )}
 
       {/* Status Option List */}
       {sortedOptions.length > 0 && (
-        <div className="space-y-2">
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {sortedOptions.map((option) => (
             <StatusOptionCard
               key={option.id}
@@ -575,45 +602,41 @@ export function StatusOptionManager({
               onDelete={() => setDeletingId(option.id)}
             />
           ))}
-        </div>
+        </Box>
       )}
 
       {/* Delete Confirmation */}
-      {deletingId && deletingOption && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !isSaving) setDeletingId(null);
-          }}
-        >
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Delete Status Option?
-            </h3>
-            <p className="mt-2 text-sm text-gray-600">
-              This will delete <strong>{deletingOption.name}</strong>. Existing
-              evaluations using this status will not be affected.
-            </p>
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button
-                onClick={() => setDeletingId(null)}
-                disabled={isSaving}
-                className="rounded px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={isSaving}
-                className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-              >
-                {isSaving ? "Deleting..." : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      <Dialog
+        open={!!deletingId && !!deletingOption}
+        onClose={() => !isSaving && setDeletingId(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Delete Status Option?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            This will delete <strong>{deletingOption?.name}</strong>. Existing
+            evaluations using this status will not be affected.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setDeletingId(null)}
+            disabled={isSaving}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDelete}
+            disabled={isSaving}
+            variant="contained"
+            color="error"
+          >
+            {isSaving ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 }
 

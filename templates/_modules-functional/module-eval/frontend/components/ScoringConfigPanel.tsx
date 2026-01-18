@@ -8,6 +8,20 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Typography,
+  Button,
+  Switch,
+  FormControlLabel,
+  Card,
+  CardContent,
+  Alert,
+  Chip,
+  Radio,
+  RadioGroup,
+} from "@mui/material";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import type {
   EvalSysConfig,
   EvalOrgConfig,
@@ -94,58 +108,65 @@ export function ScoringModeCard({
   const info = MODE_INFO[mode];
 
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      disabled={disabled}
-      className={`
-        w-full text-left rounded-lg border-2 p-4 transition-all
-        ${isSelected
-          ? "border-blue-500 bg-blue-50"
-          : "border-gray-200 bg-white hover:border-gray-300"
-        }
-        ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
-      `}
+    <Card
+      onClick={!disabled ? onSelect : undefined}
+      sx={{
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.5 : 1,
+        border: 2,
+        borderColor: isSelected ? "primary.main" : "grey.300",
+        bgcolor: isSelected ? "primary.50" : "background.paper",
+        transition: "all 0.2s",
+        "&:hover": disabled ? {} : {
+          borderColor: isSelected ? "primary.main" : "grey.400",
+        },
+      }}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="font-medium text-gray-900">{info.title}</h3>
+      <CardContent>
+        <Box sx={{ display: "flex", alignItems: "start", justifyContent: "space-between" }}>
+          <Box sx={{ flex: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+              <Typography variant="subtitle1" fontWeight="medium">
+                {info.title}
+              </Typography>
+              {isSelected && (
+                <Chip label="Active" size="small" color="primary" />
+              )}
+              {isOverride && isSelected && (
+                <Chip label="Override" size="small" color="secondary" />
+              )}
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {info.description}
+            </Typography>
+            <Box>
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                Examples:
+              </Typography>
+              <Box component="ul" sx={{ m: 0, pl: 2, listStyle: "disc" }}>
+                {info.examples.map((ex, i) => (
+                  <Typography key={i} component="li" variant="caption" color="text.secondary">
+                    {ex}
+                  </Typography>
+                ))}
+              </Box>
+            </Box>
+          </Box>
+          <Box
+            sx={{
+              ml: 2,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
             {isSelected && (
-              <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
-                Active
-              </span>
+              <CheckCircleIcon color="primary" />
             )}
-            {isOverride && isSelected && (
-              <span className="rounded bg-purple-100 px-2 py-0.5 text-xs text-purple-700">
-                Override
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-sm text-gray-600">{info.description}</p>
-          <div className="mt-2">
-            <p className="text-xs text-gray-500 mb-1">Examples:</p>
-            <ul className="text-xs text-gray-600 space-y-0.5">
-              {info.examples.map((ex, i) => (
-                <li key={i}>• {ex}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
-        <div
-          className={`
-            w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-3
-            ${isSelected ? "border-blue-500 bg-blue-500" : "border-gray-300"}
-          `}
-        >
-          {isSelected && (
-            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 12 12">
-              <path d="M10.28 2.28L3.989 8.575 1.695 6.28A1 1 0 00.28 7.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 2.28z" />
-            </svg>
-          )}
-        </div>
-      </div>
-    </button>
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -237,37 +258,42 @@ export function ScoringConfigPanel({
   const displayError = error || localError;
 
   return (
-    <div className={className}>
+    <Box className={className}>
       {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold text-gray-900">Scoring Configuration</h2>
-        <p className="text-sm text-gray-500">
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Scoring Configuration
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
           {isSystemLevel
             ? "Configure default scoring settings for all organizations"
             : "Configure scoring settings for your organization"}
-        </p>
-      </div>
+        </Typography>
+      </Box>
 
       {/* Categorical Mode */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="font-medium text-gray-900">Evaluation Mode</h3>
-            <p className="text-sm text-gray-500">
+      <Box sx={{ mb: 4 }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+          <Box>
+            <Typography variant="subtitle1" fontWeight="medium">
+              Evaluation Mode
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
               How criteria results are categorized
-            </p>
-          </div>
+            </Typography>
+          </Box>
           {!isSystemLevel && config.isOrgOverride?.categoricalMode && onResetField && (
-            <button
+            <Button
               onClick={handleResetMode}
               disabled={isSaving}
-              className="text-sm text-blue-600 hover:text-blue-700 disabled:opacity-50"
+              size="small"
+              color="primary"
             >
               Reset to default
-            </button>
+            </Button>
           )}
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        </Box>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
           <ScoringModeCard
             mode="boolean"
             isSelected={categoricalMode === "boolean"}
@@ -282,107 +308,98 @@ export function ScoringConfigPanel({
             isOverride={!isSystemLevel && config.isOrgOverride?.categoricalMode}
             onSelect={() => handleModeChange("detailed")}
           />
-        </div>
-      </div>
+        </Box>
+      </Box>
 
       {/* Numerical Score Toggle */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="font-medium text-gray-900">Numerical Compliance Score</h3>
-            <p className="text-sm text-gray-500">
+      <Box sx={{ mb: 4 }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+          <Box>
+            <Typography variant="subtitle1" fontWeight="medium">
+              Numerical Compliance Score
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
               Display a percentage-based compliance score
-            </p>
-          </div>
+            </Typography>
+          </Box>
           {!isSystemLevel && config.isOrgOverride?.showNumericalScore && onResetField && (
-            <button
+            <Button
               onClick={handleResetNumerical}
               disabled={isSaving}
-              className="text-sm text-blue-600 hover:text-blue-700 disabled:opacity-50"
+              size="small"
+              color="primary"
             >
               Reset to default
-            </button>
+            </Button>
           )}
-        </div>
-        <div className="rounded-lg border bg-white p-4">
-          <label className="flex items-center justify-between cursor-pointer">
-            <div>
-              <span className="font-medium text-gray-900">
-                Show numerical score
-              </span>
-              {!isSystemLevel && config.isOrgOverride?.showNumericalScore && (
-                <span className="ml-2 rounded bg-purple-100 px-2 py-0.5 text-xs text-purple-700">
-                  Override
-                </span>
-              )}
-              <p className="text-sm text-gray-500 mt-1">
-                Display compliance as a percentage (e.g., 84% compliant)
-              </p>
-            </div>
-            <div className="relative">
-              <input
-                type="checkbox"
-                aria-label="Show numerical score"
+        </Box>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Typography variant="body1" fontWeight="medium">
+                    Show numerical score
+                  </Typography>
+                  {!isSystemLevel && config.isOrgOverride?.showNumericalScore && (
+                    <Chip label="Override" size="small" color="secondary" />
+                  )}
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Display compliance as a percentage (e.g., 84% compliant)
+                </Typography>
+              </Box>
+              <Switch
                 checked={showNumericalScore}
                 onChange={(e) => handleNumericalChange(e.target.checked)}
                 disabled={isSaving}
-                className="sr-only"
+                color="primary"
               />
-              <div
-                className={`
-                  w-11 h-6 rounded-full transition-colors
-                  ${showNumericalScore ? "bg-blue-600" : "bg-gray-200"}
-                  ${isSaving ? "opacity-50" : ""}
-                `}
-              />
-              <div
-                className={`
-                  absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow
-                  ${showNumericalScore ? "translate-x-5" : "translate-x-0"}
-                `}
-              />
-            </div>
-          </label>
-        </div>
-      </div>
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
 
       {/* System Default Reference (for org level) */}
       {!isSystemLevel && sysConfig && (
-        <div className="mb-6 rounded bg-gray-50 p-4">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">
-            System Defaults
-          </h4>
-          <div className="text-sm text-gray-600 space-y-1">
-            <p>
-              <strong>Mode:</strong>{" "}
-              {sysConfig.categoricalMode === "boolean" ? "Boolean" : "Detailed"}
-            </p>
-            <p>
-              <strong>Numerical Score:</strong>{" "}
-              {sysConfig.showNumericalScore ? "Enabled" : "Disabled"}
-            </p>
-          </div>
-        </div>
+        <Card sx={{ mb: 3, bgcolor: "grey.50" }}>
+          <CardContent>
+            <Typography variant="subtitle2" gutterBottom>
+              System Defaults
+            </Typography>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Mode:</strong>{" "}
+                {sysConfig.categoricalMode === "boolean" ? "Boolean" : "Detailed"}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Numerical Score:</strong>{" "}
+                {sysConfig.showNumericalScore ? "Enabled" : "Disabled"}
+              </Typography>
+            </Box>
+          </CardContent>
+        </Card>
       )}
 
       {/* Error */}
       {displayError && (
-        <div className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">
+        <Alert severity="error" sx={{ mb: 2 }}>
           {displayError}
-        </div>
+        </Alert>
       )}
 
       {/* Actions */}
-      <div className="flex items-center justify-end gap-3">
-        <button
+      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+        <Button
           onClick={handleSave}
           disabled={isSaving || !hasChanges}
-          className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          variant="contained"
+          color="primary"
         >
           {isSaving ? "Saving..." : "Save Changes"}
-        </button>
-      </div>
-    </div>
+        </Button>
+      </Box>
+    </Box>
   );
 }
 

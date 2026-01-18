@@ -8,6 +8,26 @@
 "use client";
 
 import React, { useState } from "react";
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Card,
+  CardContent,
+  Alert,
+  Chip,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  CircularProgress,
+} from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import AddIcon from "@mui/icons-material/Add";
 import type {
   EvalDocType,
   CreateDocTypeInput,
@@ -95,67 +115,55 @@ export function DocTypeForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label
-          htmlFor="doctype-name"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
-          Name <span className="text-red-500">*</span>
-        </label>
-        <input
-          id="doctype-name"
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          disabled={isSaving}
-          className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-          placeholder="e.g., IT Security Policy"
-        />
-      </div>
+    <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <TextField
+        id="doctype-name"
+        label="Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        disabled={isSaving}
+        placeholder="e.g., IT Security Policy"
+        required
+        fullWidth
+        size="small"
+      />
 
-      <div>
-        <label
-          htmlFor="doctype-description"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
-          Description
-        </label>
-        <textarea
-          id="doctype-description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          disabled={isSaving}
-          rows={3}
-          className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-          placeholder="Brief description of this document type..."
-        />
-      </div>
+      <TextField
+        id="doctype-description"
+        label="Description"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        disabled={isSaving}
+        placeholder="Brief description of this document type..."
+        multiline
+        rows={3}
+        fullWidth
+        size="small"
+      />
 
       {error && (
-        <div className="rounded bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </div>
+        <Alert severity="error">{error}</Alert>
       )}
 
-      <div className="flex items-center justify-end gap-3 pt-2">
-        <button
+      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5, pt: 1 }}>
+        <Button
           type="button"
           onClick={onCancel}
           disabled={isSaving}
-          className="rounded px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+          variant="text"
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
           disabled={isSaving}
-          className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          variant="contained"
+          color="primary"
         >
           {isSaving ? "Saving..." : isEdit ? "Update" : "Create"}
-        </button>
-      </div>
-    </form>
+        </Button>
+      </Box>
+    </Box>
   );
 }
 
@@ -170,57 +178,76 @@ export function DocTypeCard({
   className = "",
 }: DocTypeCardProps) {
   return (
-    <div
-      className={`
-        rounded-lg border p-4 transition-shadow hover:shadow-sm
-        ${!docType.isActive ? "opacity-60 bg-gray-50" : "bg-white"}
-        ${className}
-      `}
+    <Card
+      className={className}
+      sx={{
+        opacity: docType.isActive ? 1 : 0.6,
+        backgroundColor: docType.isActive ? "background.paper" : "grey.50",
+        transition: "box-shadow 0.2s",
+        "&:hover": {
+          boxShadow: 2,
+        },
+      }}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="font-medium text-gray-900">{docType.name}</h3>
-            {!docType.isActive && (
-              <span className="rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
-                Inactive
-              </span>
+      <CardContent>
+        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+              <Typography variant="subtitle1" fontWeight={500}>
+                {docType.name}
+              </Typography>
+              {!docType.isActive && (
+                <Chip label="Inactive" size="small" color="default" />
+              )}
+            </Box>
+            {docType.description && (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  mt: 1,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                }}
+              >
+                {docType.description}
+              </Typography>
             )}
-          </div>
-          {docType.description && (
-            <p className="mt-1 text-sm text-gray-600 line-clamp-2">
-              {docType.description}
-            </p>
-          )}
-          <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
-            <span>
-              {docType.criteriaSetsCount ?? 0} criteria set
-              {docType.criteriaSetsCount !== 1 ? "s" : ""}
-            </span>
-            <span>
-              Created {new Date(docType.createdAt).toLocaleDateString()}
-            </span>
-          </div>
-        </div>
+            <Box sx={{ mt: 2, display: "flex", alignItems: "center", gap: 2 }}>
+              <Typography variant="caption" color="text.secondary">
+                {docType.criteriaSetsCount ?? 0} criteria set
+                {docType.criteriaSetsCount !== 1 ? "s" : ""}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Created {new Date(docType.createdAt).toLocaleDateString()}
+              </Typography>
+            </Box>
+          </Box>
 
-        <div className="ml-4 flex items-center gap-2">
-          <button
-            onClick={onEdit}
-            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-            title="Edit"
-          >
-            ✏️
-          </button>
-          <button
-            onClick={onDelete}
-            className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"
-            title="Delete"
-          >
-            🗑️
-          </button>
-        </div>
-      </div>
-    </div>
+          <Box sx={{ ml: 2, display: "flex", alignItems: "center", gap: 0.5 }}>
+            <IconButton
+              onClick={onEdit}
+              size="small"
+              color="default"
+              title="Edit"
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              onClick={onDelete}
+              size="small"
+              color="error"
+              title="Delete"
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -280,84 +307,103 @@ export function DocTypeManager({
   };
 
   return (
-    <div className={className}>
+    <Box className={className}>
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Document Types</h2>
-          <p className="text-sm text-gray-500">
+      <Box sx={{ mb: 3, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Box>
+          <Typography variant="h6" sx={{ mb: 0.5 }}>
+            Document Types
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
             Categorize documents for evaluation
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+          </Typography>
+        </Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           {onRefresh && (
-            <button
+            <Button
               onClick={onRefresh}
               disabled={isLoading}
-              className="rounded px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+              startIcon={<RefreshIcon />}
+              variant="text"
+              size="small"
             >
               Refresh
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             onClick={() => setIsCreating(true)}
             disabled={isLoading || isCreating}
-            className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            startIcon={<AddIcon />}
+            variant="contained"
+            size="small"
           >
-            + New Doc Type
-          </button>
-        </div>
-      </div>
+            New Doc Type
+          </Button>
+        </Box>
+      </Box>
 
       {/* Error */}
       {error && (
-        <div className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">
+        <Alert severity="error" sx={{ mb: 3 }}>
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Create Form */}
       {isCreating && (
-        <div className="mb-4 rounded-lg border bg-white p-4">
-          <h3 className="mb-3 font-medium text-gray-900">New Document Type</h3>
-          <DocTypeForm
-            isSaving={isSaving}
-            onSubmit={handleCreate}
-            onCancel={() => setIsCreating(false)}
-          />
-        </div>
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="subtitle1" fontWeight={500} sx={{ mb: 2 }}>
+              New Document Type
+            </Typography>
+            <DocTypeForm
+              isSaving={isSaving}
+              onSubmit={handleCreate}
+              onCancel={() => setIsCreating(false)}
+            />
+          </CardContent>
+        </Card>
       )}
 
       {/* Edit Form */}
       {editingDocType && (
-        <div className="mb-4 rounded-lg border bg-white p-4">
-          <h3 className="mb-3 font-medium text-gray-900">Edit Document Type</h3>
-          <DocTypeForm
-            docType={editingDocType}
-            isSaving={isSaving}
-            onSubmit={handleUpdate}
-            onCancel={() => setEditingId(null)}
-          />
-        </div>
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="subtitle1" fontWeight={500} sx={{ mb: 2 }}>
+              Edit Document Type
+            </Typography>
+            <DocTypeForm
+              docType={editingDocType}
+              isSaving={isSaving}
+              onSubmit={handleUpdate}
+              onCancel={() => setEditingId(null)}
+            />
+          </CardContent>
+        </Card>
       )}
 
       {/* Loading */}
       {isLoading && docTypes.length === 0 && (
-        <div className="py-8 text-center text-gray-500">
-          Loading document types...
-        </div>
+        <Box sx={{ py: 8, display: "flex", justifyContent: "center", alignItems: "center", gap: 2 }}>
+          <CircularProgress size={24} />
+          <Typography color="text.secondary">
+            Loading document types...
+          </Typography>
+        </Box>
       )}
 
       {/* Empty State */}
       {!isLoading && docTypes.length === 0 && (
-        <div className="py-8 text-center text-gray-500">
-          No document types yet. Create one to get started.
-        </div>
+        <Box sx={{ py: 8, textAlign: "center" }}>
+          <Typography color="text.secondary">
+            No document types yet. Create one to get started.
+          </Typography>
+        </Box>
       )}
 
       {/* Doc Type List */}
       {docTypes.length > 0 && (
-        <div className="space-y-3">
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {docTypes.map((docType) => (
             <DocTypeCard
               key={docType.id}
@@ -366,45 +412,42 @@ export function DocTypeManager({
               onDelete={() => setDeletingId(docType.id)}
             />
           ))}
-        </div>
+        </Box>
       )}
 
       {/* Delete Confirmation */}
-      {deletingId && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !isSaving) setDeletingId(null);
-          }}
-        >
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Delete Document Type?
-            </h3>
-            <p className="mt-2 text-sm text-gray-600">
-              This will also affect any evaluations using this document type.
-              This action cannot be undone.
-            </p>
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button
-                onClick={() => setDeletingId(null)}
-                disabled={isSaving}
-                className="rounded px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={isSaving}
-                className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-              >
-                {isSaving ? "Deleting..." : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      <Dialog
+        open={!!deletingId}
+        onClose={() => !isSaving && setDeletingId(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Delete Document Type?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            This will also affect any evaluations using this document type.
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setDeletingId(null)}
+            disabled={isSaving}
+            variant="text"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDelete}
+            disabled={isSaving}
+            variant="contained"
+            color="error"
+          >
+            {isSaving ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 }
 

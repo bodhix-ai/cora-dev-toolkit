@@ -7,7 +7,27 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Typography,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Button,
+  Alert,
+  Chip,
+  Paper,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Grid,
+  FormHelperText,
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ScienceIcon from "@mui/icons-material/Science";
 import type {
   EvalSysPromptConfig,
   EvalOrgPromptConfig,
@@ -118,31 +138,69 @@ export function PromptPreview({
   onToggle,
 }: PromptPreviewProps) {
   return (
-    <div className="rounded-lg border bg-gray-50">
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-2 text-left hover:bg-gray-100"
-      >
-        <span className="text-sm font-medium text-gray-700">Preview</span>
-        <span className="text-sm">{isExpanded ? "▼" : "▶"}</span>
-      </button>
-      {isExpanded && (
-        <div className="border-t px-4 py-3 space-y-4">
-          <div>
-            <h3 className="text-xs font-medium text-gray-500 mb-1">System Prompt</h3>
-            <pre className="text-xs bg-white rounded border p-2 overflow-x-auto whitespace-pre-wrap text-gray-700">
-              {systemPrompt || "(empty)"}
-            </pre>
-          </div>
-          <div>
-            <h3 className="text-xs font-medium text-gray-500 mb-1">User Prompt Template</h3>
-            <pre className="text-xs bg-white rounded border p-2 overflow-x-auto whitespace-pre-wrap text-gray-700">
-              {userPromptTemplate || "(empty)"}
-            </pre>
-          </div>
-        </div>
-      )}
-    </div>
+    <Accordion expanded={isExpanded} onChange={onToggle}>
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Typography variant="body2" fontWeight={500}>
+          Preview
+        </Typography>
+      </AccordionSummary>
+      <AccordionDetails>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
+              System Prompt
+            </Typography>
+            <Paper
+              variant="outlined"
+              sx={{
+                p: 1,
+                backgroundColor: "background.paper",
+                overflowX: "auto",
+              }}
+            >
+              <Typography
+                component="pre"
+                variant="caption"
+                sx={{
+                  fontFamily: "monospace",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  m: 0,
+                }}
+              >
+                {systemPrompt || "(empty)"}
+              </Typography>
+            </Paper>
+          </Box>
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: "block" }}>
+              User Prompt Template
+            </Typography>
+            <Paper
+              variant="outlined"
+              sx={{
+                p: 1,
+                backgroundColor: "background.paper",
+                overflowX: "auto",
+              }}
+            >
+              <Typography
+                component="pre"
+                variant="caption"
+                sx={{
+                  fontFamily: "monospace",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  m: 0,
+                }}
+              >
+                {userPromptTemplate || "(empty)"}
+              </Typography>
+            </Paper>
+          </Box>
+        </Box>
+      </AccordionDetails>
+    </Accordion>
   );
 }
 
@@ -159,33 +217,27 @@ export function TestVariablesForm({
 
   if (entries.length === 0) {
     return (
-      <p className="text-sm text-gray-500">
+      <Typography variant="body2" color="text.secondary">
         No template variables detected.
-      </p>
+      </Typography>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {entries.map(([key, value]) => (
-        <div key={key}>
-          <label
-            htmlFor={`var-${key}`}
-            className="block text-xs font-medium text-gray-600 mb-1"
-          >
-            {`{{${key}}}`}
-          </label>
-          <input
-            id={`var-${key}`}
-            type="text"
-            value={value}
-            onChange={(e) => onChange({ ...variables, [key]: e.target.value })}
-            disabled={disabled}
-            className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-          />
-        </div>
+        <TextField
+          key={key}
+          id={`var-${key}`}
+          label={`{{${key}}}`}
+          value={value}
+          onChange={(e) => onChange({ ...variables, [key]: e.target.value })}
+          disabled={disabled}
+          size="small"
+          fullWidth
+        />
       ))}
-    </div>
+    </Box>
   );
 }
 
@@ -224,6 +276,17 @@ export function PromptConfigEditor({
     DEFAULT_TEST_VARIABLES[promptType] || {}
   );
   const [showTestPanel, setShowTestPanel] = useState(false);
+
+  // Sync state when config prop changes (e.g., when switching between prompt types)
+  useEffect(() => {
+    setAiProviderId(config.aiProviderId || "");
+    setAiModelId(config.aiModelId || "");
+    setSystemPrompt(config.systemPrompt || "");
+    setUserPromptTemplate(config.userPromptTemplate || "");
+    setTemperature(config.temperature.toString());
+    setMaxTokens(config.maxTokens.toString());
+    setTestVariables(DEFAULT_TEST_VARIABLES[promptType] || {});
+  }, [config, promptType]);
 
   const handleProviderChange = (providerId: string) => {
     setAiProviderId(providerId);
@@ -275,166 +338,146 @@ export function PromptConfigEditor({
   const displayError = error || localError;
 
   return (
-    <div className={className}>
+    <Box className={className}>
       {/* Header */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Box>
+            <Typography variant="h6" sx={{ mb: 0.5 }}>
               {PROMPT_TYPE_LABELS[promptType]} Prompt
-            </h2>
-            <p className="text-sm text-gray-500">
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
               {PROMPT_TYPE_DESCRIPTIONS[promptType]}
-            </p>
-          </div>
+            </Typography>
+          </Box>
           {config.hasOrgOverride && (
-            <span className="rounded bg-blue-100 px-2 py-1 text-xs text-blue-700">
-              Org Override
-            </span>
+            <Chip label="Org Override" color="info" size="small" />
           )}
-        </div>
-      </div>
+        </Box>
+      </Box>
 
       {/* Not Editable Warning */}
       {!canEdit && (
-        <div className="mb-4 rounded bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800">
-          ⚠️ AI configuration is managed at the system level. Contact your
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          AI configuration is managed at the system level. Contact your
           platform administrator to enable org-level prompt customization.
-        </div>
+        </Alert>
       )}
 
       {/* Form */}
-      <div className="space-y-4">
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
         {/* AI Provider & Model */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label
-              htmlFor="prompt-provider"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              AI Provider
-            </label>
-            <select
-              id="prompt-provider"
-              value={aiProviderId}
-              onChange={(e) => handleProviderChange(e.target.value)}
-              disabled={!canEdit || isSaving}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-            >
-              <option value="">Default</option>
-              {aiProviders.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label
-              htmlFor="prompt-model"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              AI Model
-            </label>
-            <select
-              id="prompt-model"
-              value={aiModelId}
-              onChange={(e) => setAiModelId(e.target.value)}
-              disabled={!canEdit || isSaving || !aiProviderId}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-            >
-              <option value="">Default</option>
-              {aiModels.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="prompt-provider-label">AI Provider</InputLabel>
+              <Select
+                labelId="prompt-provider-label"
+                id="prompt-provider"
+                value={aiProviderId}
+                onChange={(e) => handleProviderChange(e.target.value)}
+                disabled={!canEdit || isSaving}
+                label="AI Provider"
+              >
+                <MenuItem value="">Default</MenuItem>
+                {aiProviders.map((p) => (
+                  <MenuItem key={p.id} value={p.id}>
+                    {p.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="prompt-model-label">AI Model</InputLabel>
+              <Select
+                labelId="prompt-model-label"
+                id="prompt-model"
+                value={aiModelId}
+                onChange={(e) => setAiModelId(e.target.value)}
+                disabled={!canEdit || isSaving || !aiProviderId}
+                label="AI Model"
+              >
+                <MenuItem value="">Default</MenuItem>
+                {aiModels.map((m) => (
+                  <MenuItem key={m.id} value={m.id}>
+                    {m.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
 
         {/* Temperature & Max Tokens */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label
-              htmlFor="prompt-temperature"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Temperature
-            </label>
-            <input
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField
               id="prompt-temperature"
+              label="Temperature"
               type="number"
               value={temperature}
               onChange={(e) => setTemperature(e.target.value)}
               disabled={!canEdit || isSaving}
-              min="0"
-              max="2"
-              step="0.1"
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+              inputProps={{ min: 0, max: 2, step: 0.1 }}
+              size="small"
+              fullWidth
+              helperText="0 = deterministic, 1 = creative"
             />
-            <p className="mt-1 text-xs text-gray-500">0 = deterministic, 1 = creative</p>
-          </div>
-          <div>
-            <label
-              htmlFor="prompt-max-tokens"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Max Tokens
-            </label>
-            <input
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
               id="prompt-max-tokens"
+              label="Max Tokens"
               type="number"
               value={maxTokens}
               onChange={(e) => setMaxTokens(e.target.value)}
               disabled={!canEdit || isSaving}
-              min="1"
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+              inputProps={{ min: 1 }}
+              size="small"
+              fullWidth
+              helperText="Max response length"
             />
-            <p className="mt-1 text-xs text-gray-500">Max response length</p>
-          </div>
-        </div>
+          </Grid>
+        </Grid>
 
         {/* System Prompt */}
-        <div>
-          <label
-            htmlFor="prompt-system"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            System Prompt
-          </label>
-          <textarea
-            id="prompt-system"
-            value={systemPrompt}
-            onChange={(e) => setSystemPrompt(e.target.value)}
-            disabled={!canEdit || isSaving}
-            rows={4}
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm font-mono focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-            placeholder="You are an expert document evaluator..."
-          />
-        </div>
+        <TextField
+          id="prompt-system"
+          label="System Prompt"
+          value={systemPrompt}
+          onChange={(e) => setSystemPrompt(e.target.value)}
+          disabled={!canEdit || isSaving}
+          multiline
+          rows={4}
+          placeholder="You are an expert document evaluator..."
+          fullWidth
+          InputProps={{
+            sx: { fontFamily: "monospace" },
+          }}
+        />
 
         {/* User Prompt Template */}
-        <div>
-          <label
-            htmlFor="prompt-user"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            User Prompt Template
-          </label>
-          <textarea
+        <Box>
+          <TextField
             id="prompt-user"
+            label="User Prompt Template"
             value={userPromptTemplate}
             onChange={(e) => setUserPromptTemplate(e.target.value)}
             disabled={!canEdit || isSaving}
+            multiline
             rows={6}
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm font-mono focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
             placeholder="Evaluate the following document against the criteria..."
+            fullWidth
+            InputProps={{
+              sx: { fontFamily: "monospace" },
+            }}
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <FormHelperText>
             Use {`{{variable_name}}`} for template placeholders
-          </p>
-        </div>
+          </FormHelperText>
+        </Box>
 
         {/* Preview */}
         <PromptPreview
@@ -446,108 +489,135 @@ export function PromptConfigEditor({
 
         {/* Test Panel */}
         {onTest && (
-          <div className="rounded-lg border">
-            <button
-              onClick={() => setShowTestPanel(!showTestPanel)}
-              className="w-full flex items-center justify-between px-4 py-2 text-left hover:bg-gray-50"
-            >
-              <span className="text-sm font-medium text-gray-700">
-                🧪 Test Prompt
-              </span>
-              <span className="text-sm">{showTestPanel ? "▼" : "▶"}</span>
-            </button>
-            {showTestPanel && (
-              <div className="border-t px-4 py-3 space-y-4">
+          <Accordion expanded={showTestPanel} onChange={() => setShowTestPanel(!showTestPanel)}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <ScienceIcon fontSize="small" />
+                <Typography variant="body2" fontWeight={500}>
+                  Test Prompt
+                </Typography>
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
                 <TestVariablesForm
                   variables={testVariables}
                   onChange={setTestVariables}
                   disabled={isTesting}
                 />
-                <div className="flex items-center gap-2">
-                  <button
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Button
                     onClick={handleTest}
                     disabled={isTesting || !canEdit}
-                    className="rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                    variant="contained"
+                    color="success"
+                    size="small"
                   >
                     {isTesting ? "Testing..." : "Run Test"}
-                  </button>
-                </div>
+                  </Button>
+                </Box>
                 {testResult && (
-                  <div className="rounded border bg-gray-50 p-3">
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">
+                  <Paper variant="outlined" sx={{ p: 2, backgroundColor: "grey.50" }}>
+                    <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>
                       Test Result
-                    </h3>
-                    <p className="text-sm text-green-700">{testResult.message}</p>
+                    </Typography>
+                    <Typography variant="body2" color="success.main">
+                      {testResult.message}
+                    </Typography>
                     {testResult.renderedSystemPrompt && (
-                      <div className="mt-2">
-                        <p className="text-xs text-gray-500">Rendered System:</p>
-                        <pre className="text-xs bg-white rounded border p-2 mt-1 overflow-x-auto">
-                          {testResult.renderedSystemPrompt}
-                        </pre>
-                      </div>
+                      <Box sx={{ mt: 2 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Rendered System:
+                        </Typography>
+                        <Paper variant="outlined" sx={{ p: 1, mt: 0.5, overflowX: "auto" }}>
+                          <Typography
+                            component="pre"
+                            variant="caption"
+                            sx={{
+                              fontFamily: "monospace",
+                              whiteSpace: "pre-wrap",
+                              m: 0,
+                            }}
+                          >
+                            {testResult.renderedSystemPrompt}
+                          </Typography>
+                        </Paper>
+                      </Box>
                     )}
                     {testResult.renderedUserPrompt && (
-                      <div className="mt-2">
-                        <p className="text-xs text-gray-500">Rendered User:</p>
-                        <pre className="text-xs bg-white rounded border p-2 mt-1 overflow-x-auto">
-                          {testResult.renderedUserPrompt}
-                        </pre>
-                      </div>
+                      <Box sx={{ mt: 2 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Rendered User:
+                        </Typography>
+                        <Paper variant="outlined" sx={{ p: 1, mt: 0.5, overflowX: "auto" }}>
+                          <Typography
+                            component="pre"
+                            variant="caption"
+                            sx={{
+                              fontFamily: "monospace",
+                              whiteSpace: "pre-wrap",
+                              m: 0,
+                            }}
+                          >
+                            {testResult.renderedUserPrompt}
+                          </Typography>
+                        </Paper>
+                      </Box>
                     )}
-                  </div>
+                  </Paper>
                 )}
-              </div>
-            )}
-          </div>
+              </Box>
+            </AccordionDetails>
+          </Accordion>
         )}
 
         {/* System Default Reference (for org level) */}
         {sysConfig && (
-          <div className="rounded bg-gray-50 p-3">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">
+          <Paper variant="outlined" sx={{ p: 2, backgroundColor: "grey.50" }}>
+            <Typography variant="body2" fontWeight={500} sx={{ mb: 1.5 }}>
               System Default
-            </h3>
-            <div className="text-xs text-gray-600 space-y-1">
-              <p>
+            </Typography>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+              <Typography variant="caption" color="text.secondary">
                 <strong>Temperature:</strong> {sysConfig.temperature}
-              </p>
-              <p>
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
                 <strong>Max Tokens:</strong> {sysConfig.maxTokens}
-              </p>
-            </div>
+              </Typography>
+            </Box>
             {onResetToDefault && canEdit && (
-              <button
+              <Button
                 onClick={onResetToDefault}
                 disabled={isSaving}
-                className="mt-2 text-sm text-blue-600 hover:text-blue-700 disabled:opacity-50"
+                size="small"
+                sx={{ mt: 1.5 }}
               >
                 Reset to system default
-              </button>
+              </Button>
             )}
-          </div>
+          </Paper>
         )}
 
         {/* Error */}
         {displayError && (
-          <div className="rounded bg-red-50 p-3 text-sm text-red-700">
-            {displayError}
-          </div>
+          <Alert severity="error">{displayError}</Alert>
         )}
 
         {/* Actions */}
         {canEdit && (
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <button
+          <Box sx={{ display: "flex", justifyContent: "flex-end", pt: 1 }}>
+            <Button
               onClick={handleSave}
               disabled={isSaving}
-              className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              variant="contained"
+              color="primary"
             >
               {isSaving ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
+            </Button>
+          </Box>
         )}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }
 

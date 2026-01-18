@@ -8,6 +8,25 @@
 "use client";
 
 import React, { useState } from "react";
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  TextField,
+  Button,
+  Switch,
+  Grid,
+  Chip,
+  Alert,
+  ToggleButtonGroup,
+  ToggleButton,
+  InputAdornment,
+  IconButton,
+} from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import BusinessIcon from "@mui/icons-material/Business";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import type {
   OrgDelegationStatus,
   ToggleDelegationInput,
@@ -66,20 +85,44 @@ export function DelegationStats({
   customized,
 }: DelegationStatsProps) {
   return (
-    <div className="grid grid-cols-3 gap-4 mb-6">
-      <div className="rounded-lg border bg-white p-4 text-center">
-        <p className="text-2xl font-semibold text-gray-900">{total}</p>
-        <p className="text-sm text-gray-500">Total Organizations</p>
-      </div>
-      <div className="rounded-lg border bg-white p-4 text-center">
-        <p className="text-2xl font-semibold text-blue-600">{delegated}</p>
-        <p className="text-sm text-gray-500">Delegation Enabled</p>
-      </div>
-      <div className="rounded-lg border bg-white p-4 text-center">
-        <p className="text-2xl font-semibold text-purple-600">{customized}</p>
-        <p className="text-sm text-gray-500">With Custom Config</p>
-      </div>
-    </div>
+    <Grid container spacing={2} sx={{ mb: 3 }}>
+      <Grid item xs={12} md={4}>
+        <Card>
+          <CardContent sx={{ textAlign: "center" }}>
+            <Typography variant="h4" fontWeight="semibold">
+              {total}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Total Organizations
+            </Typography>
+          </CardContent>
+        </Card>
+      </Grid>
+      <Grid item xs={12} md={4}>
+        <Card>
+          <CardContent sx={{ textAlign: "center" }}>
+            <Typography variant="h4" fontWeight="semibold" color="primary">
+              {delegated}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Delegation Enabled
+            </Typography>
+          </CardContent>
+        </Card>
+      </Grid>
+      <Grid item xs={12} md={4}>
+        <Card>
+          <CardContent sx={{ textAlign: "center" }}>
+            <Typography variant="h4" fontWeight="semibold" color="secondary">
+              {customized}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              With Custom Config
+            </Typography>
+          </CardContent>
+        </Card>
+      </Grid>
+    </Grid>
   );
 }
 
@@ -94,70 +137,66 @@ export function OrgDelegationCard({
   className = "",
 }: OrgDelegationCardProps) {
   return (
-    <div
-      className={`
-        flex items-center justify-between rounded-lg border bg-white p-4
-        ${className}
-      `}
-    >
-      <div className="flex items-center gap-3">
-        {/* Org Icon */}
-        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-          🏢
-        </div>
+    <Card className={className}>
+      <CardContent>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            {/* Org Icon */}
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                bgcolor: "grey.100",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <BusinessIcon color="action" />
+            </Box>
 
-        {/* Org Info */}
-        <div>
-          <h3 className="font-medium text-gray-900">{org.name}</h3>
-          <div className="flex items-center gap-2 mt-0.5">
-            {org.aiConfigDelegated && (
-              <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
-                Delegation Enabled
-              </span>
-            )}
-            {org.hasOrgConfig && (
-              <span className="rounded bg-purple-100 px-2 py-0.5 text-xs text-purple-700">
-                Custom Config
-              </span>
-            )}
-            {!org.aiConfigDelegated && !org.hasOrgConfig && (
-              <span className="text-xs text-gray-500">Using system defaults</span>
-            )}
-          </div>
-        </div>
-      </div>
+            {/* Org Info */}
+            <Box>
+              <Typography variant="subtitle1" fontWeight="medium">
+                {org.name}
+              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
+                {org.aiConfigDelegated && (
+                  <Chip label="Delegation Enabled" size="small" color="primary" />
+                )}
+                {org.hasOrgConfig && (
+                  <Chip label="Custom Config" size="small" color="secondary" />
+                )}
+                {!org.aiConfigDelegated && !org.hasOrgConfig && (
+                  <Typography variant="caption" color="text.secondary">
+                    Using system defaults
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          </Box>
 
-      {/* Toggle */}
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-500">
-          {org.aiConfigDelegated ? "Enabled" : "Disabled"}
-        </span>
-        <button
-          onClick={() => onToggle(!org.aiConfigDelegated)}
-          disabled={isToggling}
-          className="relative"
-          title={
-            org.aiConfigDelegated
-              ? "Disable AI config delegation"
-              : "Enable AI config delegation"
-          }
-        >
-          <div
-            className={`
-              w-11 h-6 rounded-full transition-colors
-              ${org.aiConfigDelegated ? "bg-blue-600" : "bg-gray-200"}
-              ${isToggling ? "opacity-50" : ""}
-            `}
-          />
-          <div
-            className={`
-              absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow
-              ${org.aiConfigDelegated ? "translate-x-5" : "translate-x-0"}
-            `}
-          />
-        </button>
-      </div>
-    </div>
+          {/* Toggle */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              {org.aiConfigDelegated ? "Enabled" : "Disabled"}
+            </Typography>
+            <Switch
+              checked={org.aiConfigDelegated}
+              onChange={(e) => onToggle(e.target.checked)}
+              disabled={isToggling}
+              color="primary"
+              title={
+                org.aiConfigDelegated
+                  ? "Disable AI config delegation"
+                  : "Enable AI config delegation"
+              }
+            />
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -217,134 +256,119 @@ export function OrgDelegationManager({
   const displayError = error || localError;
 
   return (
-    <div className={className}>
+    <Box className={className}>
       {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold text-gray-900">
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
           AI Configuration Delegation
-        </h2>
-        <p className="text-sm text-gray-500">
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
           Control which organizations can customize their AI prompt configurations
-        </p>
-      </div>
+        </Typography>
+      </Box>
 
       {/* Stats */}
       <DelegationStats {...stats} />
 
       {/* Info Box */}
-      <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
-        <h3 className="font-medium text-blue-900 mb-2">
+      <Alert severity="info" sx={{ mb: 3 }}>
+        <Typography variant="subtitle2" gutterBottom>
           About AI Configuration Delegation
-        </h3>
-        <ul className="text-sm text-blue-800 space-y-1">
-          <li>
-            • <strong>Disabled (default):</strong> Organization uses system-level
+        </Typography>
+        <Box component="ul" sx={{ m: 0, pl: 2 }}>
+          <Typography component="li" variant="body2">
+            <strong>Disabled (default):</strong> Organization uses system-level
             prompt configurations
-          </li>
-          <li>
-            • <strong>Enabled:</strong> Organization can customize prompts, AI
+          </Typography>
+          <Typography component="li" variant="body2">
+            <strong>Enabled:</strong> Organization can customize prompts, AI
             providers, and models
-          </li>
-          <li>
-            • Disabling delegation does not delete existing org-level configurations
-          </li>
-          <li>
-            • Scoring settings (mode, numerical score) are always customizable by
+          </Typography>
+          <Typography component="li" variant="body2">
+            Disabling delegation does not delete existing org-level configurations
+          </Typography>
+          <Typography component="li" variant="body2">
+            Scoring settings (mode, numerical score) are always customizable by
             org admins
-          </li>
-        </ul>
-      </div>
+          </Typography>
+        </Box>
+      </Alert>
 
       {/* Filters */}
-      <div className="mb-4 flex items-center gap-4 flex-wrap">
-        <div className="flex-1 min-w-[200px]">
-          <label htmlFor="org-search" className="sr-only">
-            Search organizations
-          </label>
-          <input
-            id="org-search"
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search organizations..."
-            aria-label="Search organizations"
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-        <div className="flex items-center gap-1 rounded border bg-gray-100 p-0.5">
-          <button
-            onClick={() => setFilterMode("all")}
-            className={`rounded px-3 py-1 text-xs font-medium ${
-              filterMode === "all"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => setFilterMode("delegated")}
-            className={`rounded px-3 py-1 text-xs font-medium ${
-              filterMode === "delegated"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Delegated
-          </button>
-          <button
-            onClick={() => setFilterMode("default")}
-            className={`rounded px-3 py-1 text-xs font-medium ${
-              filterMode === "default"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Default
-          </button>
-        </div>
+      <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+        <TextField
+          size="small"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search organizations..."
+          sx={{ flexGrow: 1, minWidth: 200 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <ToggleButtonGroup
+          size="small"
+          value={filterMode}
+          exclusive
+          onChange={(e, newValue) => newValue && setFilterMode(newValue)}
+        >
+          <ToggleButton value="all">All</ToggleButton>
+          <ToggleButton value="delegated">Delegated</ToggleButton>
+          <ToggleButton value="default">Default</ToggleButton>
+        </ToggleButtonGroup>
         {onRefresh && (
-          <button
+          <IconButton
             onClick={onRefresh}
             disabled={isLoading}
-            className="rounded px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+            size="small"
+            title="Refresh"
           >
-            Refresh
-          </button>
+            <RefreshIcon />
+          </IconButton>
         )}
-      </div>
+      </Box>
 
       {/* Error */}
       {displayError && (
-        <div className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">
+        <Alert severity="error" sx={{ mb: 2 }}>
           {displayError}
-        </div>
+        </Alert>
       )}
 
       {/* Loading */}
       {isLoading && orgsArray.length === 0 && (
-        <div className="py-8 text-center text-gray-500">
-          Loading organizations...
-        </div>
+        <Box sx={{ py: 8, textAlign: "center" }}>
+          <Typography color="text.secondary">
+            Loading organizations...
+          </Typography>
+        </Box>
       )}
 
       {/* Empty State */}
       {!isLoading && orgsArray.length === 0 && (
-        <div className="py-8 text-center text-gray-500">
-          No organizations found.
-        </div>
+        <Box sx={{ py: 8, textAlign: "center" }}>
+          <Typography color="text.secondary">
+            No organizations found.
+          </Typography>
+        </Box>
       )}
 
       {/* No Results */}
       {!isLoading && orgsArray.length > 0 && filteredOrgs.length === 0 && (
-        <div className="py-8 text-center text-gray-500">
-          No organizations match your filter.
-        </div>
+        <Box sx={{ py: 8, textAlign: "center" }}>
+          <Typography color="text.secondary">
+            No organizations match your filter.
+          </Typography>
+        </Box>
       )}
 
       {/* Organization List */}
       {filteredOrgs.length > 0 && (
-        <div className="space-y-3">
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {filteredOrgs.map((org) => (
             <OrgDelegationCard
               key={org.id}
@@ -353,9 +377,9 @@ export function OrgDelegationManager({
               onToggle={(enabled) => handleToggle(org.id, enabled)}
             />
           ))}
-        </div>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 }
 
