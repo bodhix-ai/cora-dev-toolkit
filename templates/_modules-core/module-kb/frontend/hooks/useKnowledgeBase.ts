@@ -23,7 +23,7 @@ export interface ApiClientWithKb {
 export interface UseKnowledgeBaseOptions {
   scope: 'workspace' | 'chat';
   scopeId: string | null;
-  apiClient: ApiClientWithKb;
+  apiClient?: ApiClientWithKb;
   autoFetch?: boolean;
 }
 

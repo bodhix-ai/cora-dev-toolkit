@@ -24,7 +24,7 @@ export interface ApiClientWithKb {
 export interface UseKbDocumentsOptions {
   scope: 'workspace' | 'chat' | 'kb';
   scopeId: string | null; // workspaceId, chatId, or kbId
-  apiClient: ApiClientWithKb;
+  apiClient?: ApiClientWithKb;
   autoFetch?: boolean;
 }
 

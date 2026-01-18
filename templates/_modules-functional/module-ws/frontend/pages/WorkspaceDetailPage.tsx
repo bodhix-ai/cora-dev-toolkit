@@ -303,7 +303,7 @@ export function WorkspaceDetailPage({
   } = useKnowledgeBase({
     scope: 'workspace',
     scopeId: workspaceId,
-    ...(kbApiClient ? { apiClient: { kb: kbApiClient } } : {}),
+    apiClient: kbApiClient ? { kb: kbApiClient } : undefined,
     autoFetch: !!kbApiClient,
   });
 
@@ -316,7 +316,7 @@ export function WorkspaceDetailPage({
   } = useKbDocuments({
     scope: 'workspace',
     scopeId: workspaceId,
-    ...(kbApiClient ? { apiClient: { kb: kbApiClient } } : {}),
+    apiClient: kbApiClient ? { kb: kbApiClient } : undefined,
     autoFetch: !!kbApiClient,
   });
 
