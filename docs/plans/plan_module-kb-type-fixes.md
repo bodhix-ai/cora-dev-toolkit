@@ -258,4 +258,170 @@ pnpm -r typecheck
 
 ---
 
-**Status:** Ready for implementation in `ws-crud-kbs-embeddings` branch
+**Status:** ✅ COMPLETE - All type errors resolved
+
+---
+
+## 🔧 Next Task: Add TypeScript Validation to Test Suite
+
+**Priority:** HIGH  
+**Estimated Time:** 1-2 hours  
+**Status:** Scoped for next session
+
+### Objective
+
+Create a TypeScript typecheck validator and integrate it into the CORA validation suite to prevent type errors from being reintroduced.
+
+### Why This Is Critical
+
+1. **Prevention:** The 16 type errors we just fixed would have been caught automatically
+2. **Pre-Deployment Safety:** Catch type errors before infrastructure deployment
+3. **CI/CD Integration:** Enable automated type checking in build pipelines
+4. **Developer Experience:** Faster feedback loop during development
+
+### Implementation Plan
+
+#### 1. Create TypeScript Validator Script
+
+**Location:** `validation/typescript-validator/`
+
+**Files to Create:**
+```
+validation/typescript-validator/
+├── __init__.py
+├── typescript_validator.py
+└── README.md
+```
+
+**Core Logic (`typescript_validator.py`):**
+```python
+"""
+TypeScript Type Check Validator
+
+Runs TypeScript compiler in type-check mode across all packages.
+Identifies type errors with file, line, and column information.
+"""
+
+import subprocess
+import json
+import re
+from pathlib import Path
+from typing import List, Dict
+
+class TypeScriptValidator:
+    def __init__(self, stack_path: str):
+        self.stack_path = Path(stack_path)
+        self.errors = []
+        
+    def validate(self) -> Dict:
+        """Run pnpm -r typecheck and parse errors"""
+        cmd = f"cd {self.stack_path} && pnpm -r typecheck"
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            capture_output=True,
+            text=True
+        )
+        
+        # Parse TypeScript errors from output
+        # Format: file(line,col): error TS####: message
+        error_pattern = r'(.+?)\((\d+),(\d+)\): error (TS\d+): (.+)'
+        
+        for line in result.stdout.split('\n'):
+            match = re.match(error_pattern, line)
+            if match:
+                self.errors.append({
+                    'file': match.group(1),
+                    'line': int(match.group(2)),
+                    'column': int(match.group(3)),
+                    'code': match.group(4),
+                    'message': match.group(5)
+                })
+        
+        return {
+            'passed': len(self.errors) == 0,
+            'error_count': len(self.errors),
+            'errors': self.errors
+        }
+```
+
+#### 2. Integrate with `cora-validate.py`
+
+**Location:** `validation/cora-validate.py`
+
+**Changes Required:**
+
+```python
+# Add import
+from typescript_validator.typescript_validator import TypeScriptValidator
+
+# Add to validator registry
+VALIDATORS = {
+    # ... existing validators ...
+    'typescript': {
+        'name': 'TypeScript Type Check',
+        'class': TypeScriptValidator,
+        'enabled': True,
+        'blocking': True,  # Fail build if type errors
+        'order': 2,  # Run early (after structure validation)
+    },
+}
+
+# Add CLI flag
+parser.add_argument(
+    '--skip-typescript',
+    action='store_true',
+    help='Skip TypeScript type checking'
+)
+```
+
+#### 3. Update Validation Workflows
+
+**Files to Update:**
+- `.cline/workflows/validate.md` - Add typecheck step
+- `scripts/pre-deploy-check.sh` - Include typecheck
+- `docs/guides/guide_VALIDATION-TOOLS-IMPLEMENTATION.md` - Document new validator
+
+#### 4. Configuration Options
+
+**Add to `.env.example`:**
+```bash
+# TypeScript Validation
+TYPESCRIPT_STRICT_MODE=true          # Fail on any type error
+TYPESCRIPT_IGNORE_TEMPLATES=true    # Ignore template placeholder errors
+TYPESCRIPT_MAX_ERRORS=0             # Maximum allowed errors (0 = none)
+```
+
+#### 5. Integration Checklist
+
+- [ ] Create `validation/typescript-validator/` directory
+- [ ] Implement `TypeScriptValidator` class
+- [ ] Add to `cora-validate.py` validator registry
+- [ ] Update `.cline/workflows/validate.md`
+- [ ] Update `scripts/pre-deploy-check.sh`
+- [ ] Add configuration options to `.env.example`
+- [ ] Create test cases for validator
+- [ ] Update documentation in `guide_VALIDATION-TOOLS-IMPLEMENTATION.md`
+- [ ] Test on clean project (expect pass)
+- [ ] Test on project with errors (expect fail)
+- [ ] Create PR with implementation
+
+### Success Criteria
+
+1. ✅ TypeScript typecheck runs as part of `cora-validate.py`
+2. ✅ Catches all 16+ type errors we just fixed
+3. ✅ Provides clear, actionable error messages
+4. ✅ Fails validation when type errors exist
+5. ✅ Integrates with existing validation workflows
+6. ✅ Documented in validation guide
+
+### Related Files
+
+- Implementation: `validation/typescript-validator/typescript_validator.py`
+- Integration: `validation/cora-validate.py`
+- Workflow: `.cline/workflows/validate.md`
+- Documentation: `docs/guides/guide_VALIDATION-TOOLS-IMPLEMENTATION.md`
+
+---
+
+**Ready for Next Session:** Implementation scoped and ready to execute
