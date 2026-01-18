@@ -162,6 +162,7 @@ export function KbSelector({
                     checked={kb.isEnabled}
                     onChange={() => handleToggle(kb.kbId, kb.isEnabled)}
                     disabled={disabled || isLoading}
+                    aria-label={`Toggle ${kb.kbName || 'KB'}`}
                     className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50"
                   />
                   

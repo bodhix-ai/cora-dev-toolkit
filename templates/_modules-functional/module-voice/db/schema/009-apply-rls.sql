@@ -276,17 +276,17 @@ COMMENT ON POLICY "voice_analytics_select" ON public.voice_analytics IS 'Access 
 -- VOICE_SESSION_KB TABLE RLS (Junction Table)
 -- =============================================
 
-ALTER TABLE public.voice_session_kb ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.voice_session_kbs ENABLE ROW LEVEL SECURITY;
 
 -- Access inherited from parent voice_sessions
-DROP POLICY IF EXISTS "voice_session_kb_select" ON public.voice_session_kb;
-CREATE POLICY "voice_session_kb_select" ON public.voice_session_kb
+DROP POLICY IF EXISTS "voice_session_kbs_select" ON public.voice_session_kbs;
+CREATE POLICY "voice_session_kbs_select" ON public.voice_session_kbs
 FOR SELECT
 TO authenticated
 USING (
     EXISTS (
         SELECT 1 FROM public.voice_sessions vs
-        WHERE vs.id = voice_session_kb.session_id
+        WHERE vs.id = voice_session_kbs.session_id
         AND (
             vs.created_by = auth.uid() OR
             vs.assigned_to = auth.uid() OR
@@ -310,57 +310,57 @@ USING (
 );
 
 -- Session owners can add KBs to their sessions
-DROP POLICY IF EXISTS "voice_session_kb_owner_insert" ON public.voice_session_kb;
-CREATE POLICY "voice_session_kb_owner_insert" ON public.voice_session_kb
+DROP POLICY IF EXISTS "voice_session_kbs_owner_insert" ON public.voice_session_kbs;
+CREATE POLICY "voice_session_kbs_owner_insert" ON public.voice_session_kbs
 FOR INSERT
 TO authenticated
 WITH CHECK (
     EXISTS (
         SELECT 1 FROM public.voice_sessions vs
-        WHERE vs.id = voice_session_kb.session_id
+        WHERE vs.id = voice_session_kbs.session_id
         AND vs.created_by = auth.uid()
     )
 );
 
 -- Session owners can update KB associations
-DROP POLICY IF EXISTS "voice_session_kb_owner_update" ON public.voice_session_kb;
-CREATE POLICY "voice_session_kb_owner_update" ON public.voice_session_kb
+DROP POLICY IF EXISTS "voice_session_kbs_owner_update" ON public.voice_session_kbs;
+CREATE POLICY "voice_session_kbs_owner_update" ON public.voice_session_kbs
 FOR UPDATE
 TO authenticated
 USING (
     EXISTS (
         SELECT 1 FROM public.voice_sessions vs
-        WHERE vs.id = voice_session_kb.session_id
+        WHERE vs.id = voice_session_kbs.session_id
         AND vs.created_by = auth.uid()
     )
 );
 
 -- Session owners can remove KBs from their sessions
-DROP POLICY IF EXISTS "voice_session_kb_owner_delete" ON public.voice_session_kb;
-CREATE POLICY "voice_session_kb_owner_delete" ON public.voice_session_kb
+DROP POLICY IF EXISTS "voice_session_kbs_owner_delete" ON public.voice_session_kbs;
+CREATE POLICY "voice_session_kbs_owner_delete" ON public.voice_session_kbs
 FOR DELETE
 TO authenticated
 USING (
     EXISTS (
         SELECT 1 FROM public.voice_sessions vs
-        WHERE vs.id = voice_session_kb.session_id
+        WHERE vs.id = voice_session_kbs.session_id
         AND vs.created_by = auth.uid()
     )
 );
 
 -- Service role has full access
-DROP POLICY IF EXISTS "voice_session_kb_service_role" ON public.voice_session_kb;
-CREATE POLICY "voice_session_kb_service_role" ON public.voice_session_kb
+DROP POLICY IF EXISTS "voice_session_kbs_service_role" ON public.voice_session_kbs;
+CREATE POLICY "voice_session_kbs_service_role" ON public.voice_session_kbs
 FOR ALL
 USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
 
 -- Grant usage to authenticated users (RLS policies will restrict actual access)
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.voice_session_kb TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.voice_session_kbs TO authenticated;
 
-COMMENT ON POLICY "voice_session_kb_select" ON public.voice_session_kb IS 'Access inherited from parent voice_sessions table';
-COMMENT ON POLICY "voice_session_kb_owner_insert" ON public.voice_session_kb IS 'Session owners can add KBs to their sessions';
-COMMENT ON POLICY "voice_session_kb_owner_update" ON public.voice_session_kb IS 'Session owners can update KB associations';
-COMMENT ON POLICY "voice_session_kb_owner_delete" ON public.voice_session_kb IS 'Session owners can remove KBs from their sessions';
+COMMENT ON POLICY "voice_session_kbs_select" ON public.voice_session_kbs IS 'Access inherited from parent voice_sessions table';
+COMMENT ON POLICY "voice_session_kbs_owner_insert" ON public.voice_session_kbs IS 'Session owners can add KBs to their sessions';
+COMMENT ON POLICY "voice_session_kbs_owner_update" ON public.voice_session_kbs IS 'Session owners can update KB associations';
+COMMENT ON POLICY "voice_session_kbs_owner_delete" ON public.voice_session_kbs IS 'Session owners can remove KBs from their sessions';
 
 -- =============================================
 -- VOICE_CONFIGS TABLE RLS (Org-level)

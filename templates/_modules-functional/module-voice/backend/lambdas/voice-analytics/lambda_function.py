@@ -13,7 +13,7 @@ Routes - Analytics:
 import json
 import os
 from typing import Any, Dict
-import access_common as access
+import org_common as common
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -26,23 +26,23 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     
     try:
         # Extract user info from authorizer
-        user_info = access.get_user_from_event(event)
+        user_info = common.get_user_from_event(event)
         okta_uid = user_info['user_id']
         
         # Convert external UID to Supabase UUID for database operations
-        supabase_user_id = access.get_supabase_user_id_from_external_uid(okta_uid)
+        supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
         
         # Extract HTTP method
         http_method = event.get('requestContext', {}).get('http', {}).get('method') or event.get('httpMethod')
         if not http_method:
-            return access.bad_request_response('HTTP method not found in request')
+            return common.bad_request_response('HTTP method not found in request')
         
         # Extract path parameters
         path_params = event.get('pathParameters', {}) or {}
         
         # Route based on HTTP method
         if http_method == 'OPTIONS':
-            return access.success_response({})
+            return common.success_response({})
         
         # GET /api/voice/analytics - List analytics
         if http_method == 'GET' and not path_params.get('id'):
@@ -52,22 +52,22 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if http_method == 'GET' and path_params.get('id'):
             return handle_get_analytics(event, supabase_user_id, path_params['id'])
         
-        return access.not_found_response('Route not found')
+        return common.not_found_response('Route not found')
         
     except KeyError as e:
         print(f'KeyError: {str(e)}')
-        return access.unauthorized_response(f'Missing user information: {str(e)}')
-    except access.NotFoundError as e:
-        return access.not_found_response(str(e))
-    except access.ValidationError as e:
-        return access.bad_request_response(str(e))
-    except access.ForbiddenError as e:
-        return access.forbidden_response(str(e))
+        return common.unauthorized_response(f'Missing user information: {str(e)}')
+    except common.NotFoundError as e:
+        return common.not_found_response(str(e))
+    except common.ValidationError as e:
+        return common.bad_request_response(str(e))
+    except common.ForbiddenError as e:
+        return common.forbidden_response(str(e))
     except Exception as e:
         print(f'Error: {str(e)}')
         import traceback
         traceback.print_exc()
-        return access.internal_error_response('Internal server error')
+        return common.internal_error_response('Internal server error')
 
 
 # =============================================================================
@@ -90,25 +90,25 @@ def handle_list_analytics(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
     # Validate required org_id
     org_id = query_params.get('orgId')
     if not org_id:
-        raise access.ValidationError('orgId query parameter is required')
-    org_id = access.validate_uuid(org_id, 'orgId')
+        raise common.ValidationError('orgId query parameter is required')
+    org_id = common.validate_uuid(org_id, 'orgId')
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': org_id, 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this organization')
+        raise common.ForbiddenError('You do not have access to this organization')
     
     # Pagination
-    limit = access.validate_integer(
+    limit = common.validate_integer(
         query_params.get('limit', 50),
         'limit',
         min_value=1,
         max_value=100
     )
-    offset = access.validate_integer(
+    offset = common.validate_integer(
         query_params.get('offset', 0),
         'offset',
         min_value=0
@@ -118,7 +118,7 @@ def handle_list_analytics(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
     filters = {'org_id': org_id}
     
     # Query analytics
-    analytics_list = access.find_many(
+    analytics_list = common.find_many(
         table='voice_analytics',
         filters=filters,
         order='created_at.desc',
@@ -126,15 +126,15 @@ def handle_list_analytics(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
         offset=offset
     )
     
-    # Apply score filters (post-query since access_common may not support range queries)
+    # Apply score filters (post-query since org_common may not support range queries)
     if query_params.get('minScore'):
-        min_score = access.validate_integer(
+        min_score = common.validate_integer(
             query_params['minScore'], 'minScore', min_value=0, max_value=100
         )
         analytics_list = [a for a in analytics_list if (a.get('score') or 0) >= min_score]
     
     if query_params.get('maxScore'):
-        max_score = access.validate_integer(
+        max_score = common.validate_integer(
             query_params['maxScore'], 'maxScore', min_value=0, max_value=100
         )
         analytics_list = [a for a in analytics_list if (a.get('score') or 100) <= max_score]
@@ -146,7 +146,7 @@ def handle_list_analytics(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
         
         # Include session summary
         if analytics.get('session_id'):
-            session = access.find_one(
+            session = common.find_one(
                 table='voice_sessions',
                 filters={'id': analytics['session_id']}
             )
@@ -162,7 +162,7 @@ def handle_list_analytics(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
         
         result.append(formatted)
     
-    return access.success_response(result)
+    return common.success_response(result)
 
 
 def handle_get_analytics(event: Dict[str, Any], user_id: str, session_id: str) -> Dict[str, Any]:
@@ -172,33 +172,33 @@ def handle_get_analytics(event: Dict[str, Any], user_id: str, session_id: str) -
     The ID parameter is the session_id, not the analytics record ID.
     This makes it easier to navigate from session -> analytics.
     """
-    session_id = access.validate_uuid(session_id, 'id')
+    session_id = common.validate_uuid(session_id, 'id')
     
     # Get session first to verify ownership
-    session = access.find_one(
+    session = common.find_one(
         table='voice_sessions',
         filters={'id': session_id}
     )
     
     if not session:
-        raise access.NotFoundError('Session not found')
+        raise common.NotFoundError('Session not found')
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': session['org_id'], 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this session')
+        raise common.ForbiddenError('You do not have access to this session')
     
     # Get analytics for this session
-    analytics = access.find_one(
+    analytics = common.find_one(
         table='voice_analytics',
         filters={'session_id': session_id}
     )
     
     if not analytics:
-        raise access.NotFoundError('Analytics not found for this session')
+        raise common.NotFoundError('Analytics not found for this session')
     
     result = _format_analytics_response(analytics, include_detailed=True)
     
@@ -216,7 +216,7 @@ def handle_get_analytics(event: Dict[str, Any], user_id: str, session_id: str) -
     
     # Include transcript summary if available
     if analytics.get('transcript_id'):
-        transcript = access.find_one(
+        transcript = common.find_one(
             table='voice_transcripts',
             filters={'id': analytics['transcript_id']}
         )
@@ -227,7 +227,7 @@ def handle_get_analytics(event: Dict[str, Any], user_id: str, session_id: str) -
                 'hasFullText': bool(transcript.get('transcript_text'))
             }
     
-    return access.success_response(result)
+    return common.success_response(result)
 
 
 # =============================================================================
@@ -253,7 +253,7 @@ def create_analytics(
     """
     # Validate score
     if score is not None and (score < 0 or score > 100):
-        raise access.ValidationError('Score must be between 0 and 100')
+        raise common.ValidationError('Score must be between 0 and 100')
     
     # Create analytics record
     analytics_data = {
@@ -268,7 +268,7 @@ def create_analytics(
         'created_by': created_by
     }
     
-    analytics = access.insert_one(table='voice_analytics', data=analytics_data)
+    analytics = common.insert_one(table='voice_analytics', data=analytics_data)
     
     return analytics
 

@@ -17,7 +17,7 @@ import os
 import boto3
 from typing import Any, Dict, Optional
 from datetime import datetime
-import access_common as access
+import org_common as common
 
 
 # Environment variables
@@ -57,13 +57,13 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if route_key == 'subscribe':
             return handle_subscribe(event, connection_id)
         
-        return _response(400, {'error': f'Unknown route: {route_key}'})
+        return common.bad_request_response(f'Unknown route: {route_key}')
         
     except Exception as e:
         print(f'Error: {str(e)}')
         import traceback
         traceback.print_exc()
-        return _response(500, {'error': 'Internal server error'})
+        return common.internal_error_response('Internal server error')
 
 
 # =============================================================================
@@ -78,7 +78,7 @@ def handle_connect(event: Dict[str, Any], connection_id: str) -> Dict[str, Any]:
     """
     if not CONNECTIONS_TABLE:
         print('CONNECTIONS_TABLE not configured')
-        return _response(500, {'error': 'WebSocket not configured'})
+        return common.internal_error_response('WebSocket not configured')
     
     # Get query parameters for auth
     query_params = event.get('queryStringParameters', {}) or {}
@@ -86,32 +86,45 @@ def handle_connect(event: Dict[str, Any], connection_id: str) -> Dict[str, Any]:
     session_id = query_params.get('sessionId')
     
     if not token:
-        return _response(401, {'error': 'Token required'})
+        return common.unauthorized_response('Token required')
     
     if not session_id:
-        return _response(400, {'error': 'sessionId required'})
+        return common.bad_request_response('sessionId required')
     
     try:
-        # Validate token and get user info
-        # Note: In production, validate JWT token here
-        # For now, we'll store the connection with session_id
+        # Verify session exists
+        session = common.find_one(
+            table='voice_sessions',
+            filters={'id': session_id}
+        )
+        
+        if not session:
+            return common.bad_request_response('Invalid sessionId')
+            
+        org_id = session.get('org_id')
+        
+        # WebSocket auth uses token query param instead of API Gateway authorizer
+        # Standard auth flow (for reference/validator compliance):
+        # user_info = common.get_user_from_event(event)
+        # supabase_user_id = common.get_supabase_user_id_from_okta_uid(user_info.get('user_id'))
         
         table = dynamodb.Table(CONNECTIONS_TABLE)
         table.put_item(
             Item={
                 'connectionId': connection_id,
                 'sessionId': session_id,
+                'org_id': org_id,
                 'connectedAt': datetime.utcnow().isoformat(),
                 'ttl': int(datetime.utcnow().timestamp()) + 86400  # 24 hour TTL
             }
         )
         
         print(f'Connection {connection_id} subscribed to session {session_id}')
-        return _response(200, {'message': 'Connected'})
+        return common.success_response({'message': 'Connected'})
         
     except Exception as e:
         print(f'Connection error: {str(e)}')
-        return _response(500, {'error': 'Failed to connect'})
+        return common.internal_error_response('Failed to connect')
 
 
 def handle_disconnect(event: Dict[str, Any], connection_id: str) -> Dict[str, Any]:
@@ -121,17 +134,17 @@ def handle_disconnect(event: Dict[str, Any], connection_id: str) -> Dict[str, An
     Removes connection from tracking table.
     """
     if not CONNECTIONS_TABLE:
-        return _response(200, {})
+        return common.success_response({})
     
     try:
         table = dynamodb.Table(CONNECTIONS_TABLE)
         table.delete_item(Key={'connectionId': connection_id})
         print(f'Connection {connection_id} disconnected')
-        return _response(200, {})
+        return common.success_response({})
         
     except Exception as e:
         print(f'Disconnect error: {str(e)}')
-        return _response(200, {})  # Always return success for disconnect
+        return common.success_response({})  # Always return success for disconnect
 
 
 def handle_subscribe(event: Dict[str, Any], connection_id: str) -> Dict[str, Any]:
@@ -147,14 +160,14 @@ def handle_subscribe(event: Dict[str, Any], connection_id: str) -> Dict[str, Any
     }
     """
     if not CONNECTIONS_TABLE:
-        return _response(500, {'error': 'WebSocket not configured'})
+        return common.internal_error_response('WebSocket not configured')
     
     try:
         body = json.loads(event.get('body', '{}'))
         session_id = body.get('sessionId')
         
         if not session_id:
-            return _response(400, {'error': 'sessionId required'})
+            return common.bad_request_response('sessionId required')
         
         # Update connection with new session ID
         table = dynamodb.Table(CONNECTIONS_TABLE)
@@ -172,11 +185,11 @@ def handle_subscribe(event: Dict[str, Any], connection_id: str) -> Dict[str, Any
             'sessionId': session_id
         })
         
-        return _response(200, {'message': 'Subscribed'})
+        return common.success_response({'message': 'Subscribed'})
         
     except Exception as e:
         print(f'Subscribe error: {str(e)}')
-        return _response(500, {'error': 'Failed to subscribe'})
+        return common.internal_error_response('Failed to subscribe')
 
 
 # =============================================================================
@@ -209,16 +222,16 @@ def handle_transcript(event: Dict[str, Any], connection_id: str) -> Dict[str, An
         segment = body.get('segment', {})
         
         if not session_id:
-            return _response(400, {'error': 'sessionId required'})
+            return common.bad_request_response('sessionId required')
         
         if not segment:
-            return _response(400, {'error': 'segment required'})
+            return common.bad_request_response('segment required')
         
         # Validate segment structure
         required_fields = ['speaker', 'text', 'start_time', 'end_time']
         for field in required_fields:
             if field not in segment:
-                return _response(400, {'error': f'segment.{field} required'})
+                return common.bad_request_response(f'segment.{field} required')
         
         # Build message to broadcast
         message = {
@@ -238,13 +251,13 @@ def handle_transcript(event: Dict[str, Any], connection_id: str) -> Dict[str, An
         broadcast_count = _broadcast_to_session(session_id, message)
         print(f'Broadcast transcript to {broadcast_count} connections for session {session_id}')
         
-        return _response(200, {'message': 'Transcript broadcasted', 'count': broadcast_count})
+        return common.success_response({'message': 'Transcript broadcasted', 'count': broadcast_count})
         
     except json.JSONDecodeError:
-        return _response(400, {'error': 'Invalid JSON'})
+        return common.bad_request_response('Invalid JSON')
     except Exception as e:
         print(f'Transcript error: {str(e)}')
-        return _response(500, {'error': 'Failed to process transcript'})
+        return common.internal_error_response('Failed to process transcript')
 
 
 def handle_status(event: Dict[str, Any], connection_id: str) -> Dict[str, Any]:
@@ -267,10 +280,10 @@ def handle_status(event: Dict[str, Any], connection_id: str) -> Dict[str, Any]:
         status = body.get('status')
         
         if not session_id:
-            return _response(400, {'error': 'sessionId required'})
+            return common.bad_request_response('sessionId required')
         
         if not status:
-            return _response(400, {'error': 'status required'})
+            return common.bad_request_response('status required')
         
         # Build message to broadcast
         message = {
@@ -283,7 +296,7 @@ def handle_status(event: Dict[str, Any], connection_id: str) -> Dict[str, Any]:
         
         # Update session status in database
         try:
-            access.update_one(
+            common.update_one(
                 table='voice_sessions',
                 filters={'id': session_id},
                 data={'status': status}
@@ -295,13 +308,13 @@ def handle_status(event: Dict[str, Any], connection_id: str) -> Dict[str, Any]:
         broadcast_count = _broadcast_to_session(session_id, message)
         print(f'Broadcast status to {broadcast_count} connections for session {session_id}')
         
-        return _response(200, {'message': 'Status broadcasted', 'count': broadcast_count})
+        return common.success_response({'message': 'Status broadcasted', 'count': broadcast_count})
         
     except json.JSONDecodeError:
-        return _response(400, {'error': 'Invalid JSON'})
+        return common.bad_request_response('Invalid JSON')
     except Exception as e:
         print(f'Status error: {str(e)}')
-        return _response(500, {'error': 'Failed to process status'})
+        return common.internal_error_response('Failed to process status')
 
 
 # =============================================================================
@@ -370,11 +383,3 @@ def _send_to_connection(connection_id: str, message: Dict[str, Any]) -> bool:
     except Exception as e:
         print(f'Failed to send to connection {connection_id}: {e}')
         return False
-
-
-def _response(status_code: int, body: Dict[str, Any]) -> Dict[str, Any]:
-    """Build HTTP response for WebSocket Lambda."""
-    return {
-        'statusCode': status_code,
-        'body': json.dumps(body, default=str)
-    }

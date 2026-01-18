@@ -16,7 +16,7 @@ import json
 import os
 import boto3
 from typing import Any, Dict
-import access_common as access
+import org_common as common
 
 
 # Supported voice services
@@ -36,23 +36,23 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     
     try:
         # Extract user info from authorizer
-        user_info = access.get_user_from_event(event)
+        user_info = common.get_user_from_event(event)
         okta_uid = user_info['user_id']
         
         # Convert external UID to Supabase UUID for database operations
-        supabase_user_id = access.get_supabase_user_id_from_external_uid(okta_uid)
+        supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
         
         # Extract HTTP method
         http_method = event.get('requestContext', {}).get('http', {}).get('method') or event.get('httpMethod')
         if not http_method:
-            return access.bad_request_response('HTTP method not found in request')
+            return common.bad_request_response('HTTP method not found in request')
         
         # Extract path parameters
         path_params = event.get('pathParameters', {}) or {}
         
         # Route based on HTTP method
         if http_method == 'OPTIONS':
-            return access.success_response({})
+            return common.success_response({})
         
         # GET /api/voice/credentials - List credentials
         if http_method == 'GET' and not path_params.get('id'):
@@ -74,22 +74,22 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if http_method == 'DELETE':
             return handle_delete_credential(event, supabase_user_id, path_params['id'])
         
-        return access.not_found_response('Route not found')
+        return common.not_found_response('Route not found')
         
     except KeyError as e:
         print(f'KeyError: {str(e)}')
-        return access.unauthorized_response(f'Missing user information: {str(e)}')
-    except access.NotFoundError as e:
-        return access.not_found_response(str(e))
-    except access.ValidationError as e:
-        return access.bad_request_response(str(e))
-    except access.ForbiddenError as e:
-        return access.forbidden_response(str(e))
+        return common.unauthorized_response(f'Missing user information: {str(e)}')
+    except common.NotFoundError as e:
+        return common.not_found_response(str(e))
+    except common.ValidationError as e:
+        return common.bad_request_response(str(e))
+    except common.ForbiddenError as e:
+        return common.forbidden_response(str(e))
     except Exception as e:
         print(f'Error: {str(e)}')
         import traceback
         traceback.print_exc()
-        return access.internal_error_response('Internal server error')
+        return common.internal_error_response('Internal server error')
 
 
 # =============================================================================
@@ -110,20 +110,20 @@ def handle_list_credentials(event: Dict[str, Any], user_id: str) -> Dict[str, An
     # Validate required org_id
     org_id = query_params.get('orgId')
     if not org_id:
-        raise access.ValidationError('orgId query parameter is required')
-    org_id = access.validate_uuid(org_id, 'orgId')
+        raise common.ValidationError('orgId query parameter is required')
+    org_id = common.validate_uuid(org_id, 'orgId')
     
     # Verify org membership with admin role
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': org_id, 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this organization')
+        raise common.ForbiddenError('You do not have access to this organization')
     
     # Require admin role for credential access
     if membership.get('role') not in ['admin', 'owner']:
-        raise access.ForbiddenError('Only org admins can view credentials')
+        raise common.ForbiddenError('Only org admins can view credentials')
     
     # Build filters
     filters = {'org_id': org_id}
@@ -131,7 +131,7 @@ def handle_list_credentials(event: Dict[str, Any], user_id: str) -> Dict[str, An
     if query_params.get('serviceName'):
         service_name = query_params['serviceName'].lower()
         if service_name not in SUPPORTED_SERVICES:
-            raise access.ValidationError(
+            raise common.ValidationError(
                 f'Invalid serviceName. Supported: {", ".join(SUPPORTED_SERVICES)}'
             )
         filters['service_name'] = service_name
@@ -140,7 +140,7 @@ def handle_list_credentials(event: Dict[str, Any], user_id: str) -> Dict[str, An
         filters['is_active'] = query_params['isActive'].lower() == 'true'
     
     # Query credentials
-    credentials = access.find_many(
+    credentials = common.find_many(
         table='voice_credentials',
         filters=filters,
         order='created_at.desc'
@@ -149,38 +149,38 @@ def handle_list_credentials(event: Dict[str, Any], user_id: str) -> Dict[str, An
     # Format response (exclude secret ARN details for security)
     result = [_format_credential_response(c) for c in credentials]
     
-    return access.success_response(result)
+    return common.success_response(result)
 
 
 def handle_get_credential(event: Dict[str, Any], user_id: str, credential_id: str) -> Dict[str, Any]:
     """
     Get voice credential by ID.
     """
-    credential_id = access.validate_uuid(credential_id, 'id')
+    credential_id = common.validate_uuid(credential_id, 'id')
     
     # Get credential
-    credential = access.find_one(
+    credential = common.find_one(
         table='voice_credentials',
         filters={'id': credential_id}
     )
     
     if not credential:
-        raise access.NotFoundError('Credential not found')
+        raise common.NotFoundError('Credential not found')
     
     # Verify org membership with admin role
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': credential['org_id'], 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this credential')
+        raise common.ForbiddenError('You do not have access to this credential')
     
     if membership.get('role') not in ['admin', 'owner']:
-        raise access.ForbiddenError('Only org admins can view credentials')
+        raise common.ForbiddenError('Only org admins can view credentials')
     
     result = _format_credential_response(credential)
     
-    return access.success_response(result)
+    return common.success_response(result)
 
 
 def handle_create_credential(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
@@ -200,40 +200,40 @@ def handle_create_credential(event: Dict[str, Any], user_id: str) -> Dict[str, A
     # Validate required fields
     org_id = body.get('orgId')
     if not org_id:
-        raise access.ValidationError('orgId is required')
-    org_id = access.validate_uuid(org_id, 'orgId')
+        raise common.ValidationError('orgId is required')
+    org_id = common.validate_uuid(org_id, 'orgId')
     
     service_name = body.get('serviceName')
     if not service_name:
-        raise access.ValidationError('serviceName is required')
+        raise common.ValidationError('serviceName is required')
     service_name = service_name.lower()
     if service_name not in SUPPORTED_SERVICES:
-        raise access.ValidationError(
+        raise common.ValidationError(
             f'Invalid serviceName. Supported: {", ".join(SUPPORTED_SERVICES)}'
         )
     
     api_key = body.get('apiKey')
     if not api_key:
-        raise access.ValidationError('apiKey is required')
+        raise common.ValidationError('apiKey is required')
     
     # Verify org membership with admin role
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': org_id, 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this organization')
+        raise common.ForbiddenError('You do not have access to this organization')
     
     if membership.get('role') not in ['admin', 'owner']:
-        raise access.ForbiddenError('Only org admins can create credentials')
+        raise common.ForbiddenError('Only org admins can create credentials')
     
     # Check for existing credential for this service
-    existing = access.find_one(
+    existing = common.find_one(
         table='voice_credentials',
         filters={'org_id': org_id, 'service_name': service_name}
     )
     if existing:
-        raise access.ValidationError(
+        raise common.ValidationError(
             f'Credential for {service_name} already exists. Update or delete the existing one.'
         )
     
@@ -251,11 +251,11 @@ def handle_create_credential(event: Dict[str, Any], user_id: str) -> Dict[str, A
         'created_by': user_id
     }
     
-    credential = access.insert_one(table='voice_credentials', data=credential_data)
+    credential = common.insert_one(table='voice_credentials', data=credential_data)
     
     result = _format_credential_response(credential)
     
-    return access.created_response(result)
+    return common.created_response(result)
 
 
 def handle_update_credential(event: Dict[str, Any], user_id: str, credential_id: str) -> Dict[str, Any]:
@@ -269,27 +269,27 @@ def handle_update_credential(event: Dict[str, Any], user_id: str, credential_id:
         "isActive": true          // optional
     }
     """
-    credential_id = access.validate_uuid(credential_id, 'id')
+    credential_id = common.validate_uuid(credential_id, 'id')
     
     # Get existing credential
-    credential = access.find_one(
+    credential = common.find_one(
         table='voice_credentials',
         filters={'id': credential_id}
     )
     
     if not credential:
-        raise access.NotFoundError('Credential not found')
+        raise common.NotFoundError('Credential not found')
     
     # Verify org membership with admin role
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': credential['org_id'], 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this credential')
+        raise common.ForbiddenError('You do not have access to this credential')
     
     if membership.get('role') not in ['admin', 'owner']:
-        raise access.ForbiddenError('Only org admins can update credentials')
+        raise common.ForbiddenError('Only org admins can update credentials')
     
     body = json.loads(event.get('body', '{}'))
     update_data = {}
@@ -307,12 +307,12 @@ def handle_update_credential(event: Dict[str, Any], user_id: str, credential_id:
         update_data['is_active'] = bool(body['isActive'])
     
     if not update_data and 'apiKey' not in body:
-        raise access.ValidationError('No valid fields to update')
+        raise common.ValidationError('No valid fields to update')
     
     if update_data:
         update_data['updated_by'] = user_id
         
-        credential = access.update_one(
+        credential = common.update_one(
             table='voice_credentials',
             filters={'id': credential_id},
             data=update_data
@@ -320,7 +320,7 @@ def handle_update_credential(event: Dict[str, Any], user_id: str, credential_id:
     
     result = _format_credential_response(credential)
     
-    return access.success_response(result)
+    return common.success_response(result)
 
 
 def handle_delete_credential(event: Dict[str, Any], user_id: str, credential_id: str) -> Dict[str, Any]:
@@ -329,27 +329,27 @@ def handle_delete_credential(event: Dict[str, Any], user_id: str, credential_id:
     
     Also deletes the associated secret from AWS Secrets Manager.
     """
-    credential_id = access.validate_uuid(credential_id, 'id')
+    credential_id = common.validate_uuid(credential_id, 'id')
     
     # Get credential
-    credential = access.find_one(
+    credential = common.find_one(
         table='voice_credentials',
         filters={'id': credential_id}
     )
     
     if not credential:
-        raise access.NotFoundError('Credential not found')
+        raise common.NotFoundError('Credential not found')
     
     # Verify org membership with admin role
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': credential['org_id'], 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this credential')
+        raise common.ForbiddenError('You do not have access to this credential')
     
     if membership.get('role') not in ['admin', 'owner']:
-        raise access.ForbiddenError('Only org admins can delete credentials')
+        raise common.ForbiddenError('Only org admins can delete credentials')
     
     # Delete secret from Secrets Manager
     try:
@@ -359,12 +359,12 @@ def handle_delete_credential(event: Dict[str, Any], user_id: str, credential_id:
         # Continue with record deletion even if secret deletion fails
     
     # Delete the credential record
-    access.delete_one(
+    common.delete_one(
         table='voice_credentials',
         filters={'id': credential_id}
     )
     
-    return access.success_response({
+    return common.success_response({
         'message': 'Credential deleted successfully',
         'id': credential_id
     })

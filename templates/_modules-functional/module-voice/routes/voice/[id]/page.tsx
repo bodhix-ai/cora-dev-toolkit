@@ -162,13 +162,13 @@ export default function VoiceSessionDetailPage() {
           color={statusColors[session.status]}
         />
         <Tooltip title="Refresh">
-          <IconButton onClick={refresh} disabled={loading}>
+          <IconButton onClick={refresh} disabled={loading} aria-label="Refresh session">
             <RefreshIcon />
           </IconButton>
         </Tooltip>
         {(session.status === 'pending' || session.status === 'completed' || session.status === 'cancelled') && (
           <Tooltip title="Delete">
-            <IconButton onClick={handleDelete} color="error">
+            <IconButton onClick={handleDelete} color="error" aria-label="Delete session">
               <DeleteIcon />
             </IconButton>
           </Tooltip>
@@ -180,7 +180,7 @@ export default function VoiceSessionDetailPage() {
         <Paper sx={{ p: 3, minHeight: 400 }}>
           {session.status === 'pending' && (
             <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" height="100%">
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h2" fontSize="1.25rem" gutterBottom>
                 Session Ready
               </Typography>
               <Typography variant="body2" color="text.secondary" mb={3} textAlign="center">
@@ -201,7 +201,7 @@ export default function VoiceSessionDetailPage() {
           
           {session.status === 'ready' && session.dailyRoomUrl && (
             <Box>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h2" fontSize="1.25rem" gutterBottom>
                 Interview Room Ready
               </Typography>
               <Typography variant="body2" color="text.secondary" mb={2}>
@@ -229,7 +229,7 @@ export default function VoiceSessionDetailPage() {
                   {session.dailyRoomUrl}
                 </Typography>
                 <Tooltip title="Copy link">
-                  <IconButton size="small" onClick={handleCopyRoomUrl}>
+                  <IconButton size="small" onClick={handleCopyRoomUrl} aria-label="Copy room link">
                     <CopyIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
@@ -256,7 +256,7 @@ export default function VoiceSessionDetailPage() {
           {session.status === 'active' && (
             <Box>
               <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h6">
+                <Typography variant="h2" fontSize="1.25rem">
                   Interview In Progress
                 </Typography>
                 <Chip 
@@ -284,7 +284,7 @@ export default function VoiceSessionDetailPage() {
           
           {(session.status === 'completed' || session.status === 'failed' || session.status === 'cancelled') && (
             <Box>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h2" fontSize="1.25rem" gutterBottom>
                 {session.status === 'completed' ? 'Interview Completed' : 
                  session.status === 'failed' ? 'Interview Failed' : 'Interview Cancelled'}
               </Typography>

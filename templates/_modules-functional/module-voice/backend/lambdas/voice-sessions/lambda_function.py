@@ -25,7 +25,7 @@ import requests
 import boto3
 from typing import Any, Dict, Optional
 from datetime import datetime, timedelta
-import access_common as access
+import org_common as common
 
 
 # Environment variables
@@ -52,16 +52,16 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     
     try:
         # Extract user info from authorizer
-        user_info = access.get_user_from_event(event)
+        user_info = common.get_user_from_event(event)
         okta_uid = user_info['user_id']
         
         # Convert external UID to Supabase UUID for database operations
-        supabase_user_id = access.get_supabase_user_id_from_external_uid(okta_uid)
+        supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
         
         # Extract HTTP method
         http_method = event.get('requestContext', {}).get('http', {}).get('method') or event.get('httpMethod')
         if not http_method:
-            return access.bad_request_response('HTTP method not found in request')
+            return common.bad_request_response('HTTP method not found in request')
         
         # Extract path and path parameters
         path = event.get('rawPath', '') or event.get('path', '')
@@ -69,7 +69,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         # Route based on path patterns
         if http_method == 'OPTIONS':
-            return access.success_response({})
+            return common.success_response({})
         
         # POST /api/voice/sessions/{id}/start - Start bot for session
         if http_method == 'POST' and '/start' in path:
@@ -117,22 +117,22 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if http_method == 'DELETE':
             return handle_delete_session(event, supabase_user_id, path_params['id'])
         
-        return access.not_found_response('Route not found')
+        return common.not_found_response('Route not found')
         
     except KeyError as e:
         print(f'KeyError: {str(e)}')
-        return access.unauthorized_response(f'Missing user information: {str(e)}')
-    except access.NotFoundError as e:
-        return access.not_found_response(str(e))
-    except access.ValidationError as e:
-        return access.bad_request_response(str(e))
-    except access.ForbiddenError as e:
-        return access.forbidden_response(str(e))
+        return common.unauthorized_response(f'Missing user information: {str(e)}')
+    except common.NotFoundError as e:
+        return common.not_found_response(str(e))
+    except common.ValidationError as e:
+        return common.bad_request_response(str(e))
+    except common.ForbiddenError as e:
+        return common.forbidden_response(str(e))
     except Exception as e:
         print(f'Error: {str(e)}')
         import traceback
         traceback.print_exc()
-        return access.internal_error_response('Internal server error')
+        return common.internal_error_response('Internal server error')
 
 
 # =============================================================================
@@ -156,37 +156,37 @@ def handle_list_sessions(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     # Validate required org_id
     org_id = query_params.get('orgId')
     if not org_id:
-        raise access.ValidationError('orgId query parameter is required')
-    org_id = access.validate_uuid(org_id, 'orgId')
+        raise common.ValidationError('orgId query parameter is required')
+    org_id = common.validate_uuid(org_id, 'orgId')
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': org_id, 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this organization')
+        raise common.ForbiddenError('You do not have access to this organization')
     
     # Validate workspace_id if provided
     workspace_id = query_params.get('workspaceId')
     if workspace_id:
-        workspace_id = access.validate_uuid(workspace_id, 'workspaceId')
+        workspace_id = common.validate_uuid(workspace_id, 'workspaceId')
         # Verify workspace membership
-        ws_membership = access.find_one(
+        ws_membership = common.find_one(
             table='ws_members',
             filters={'ws_id': workspace_id, 'user_id': user_id}
         )
         if not ws_membership:
-            raise access.ForbiddenError('You do not have access to this workspace')
+            raise common.ForbiddenError('You do not have access to this workspace')
     
     # Pagination
-    limit = access.validate_integer(
+    limit = common.validate_integer(
         query_params.get('limit', 50),
         'limit',
         min_value=1,
         max_value=100
     )
-    offset = access.validate_integer(
+    offset = common.validate_integer(
         query_params.get('offset', 0),
         'offset',
         min_value=0
@@ -205,7 +205,7 @@ def handle_list_sessions(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         filters['interview_type'] = query_params['interviewType']
     
     # Query sessions
-    sessions = access.find_many(
+    sessions = common.find_many(
         table='voice_sessions',
         filters=filters,
         order='created_at.desc',
@@ -216,37 +216,37 @@ def handle_list_sessions(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     # Format response (snake_case to camelCase)
     result = [_format_session_response(s) for s in sessions]
     
-    return access.success_response(result)
+    return common.success_response(result)
 
 
 def handle_get_session(event: Dict[str, Any], user_id: str, session_id: str) -> Dict[str, Any]:
     """
     Get voice session by ID.
     """
-    session_id = access.validate_uuid(session_id, 'id')
+    session_id = common.validate_uuid(session_id, 'id')
     
     # Get session
-    session = access.find_one(
+    session = common.find_one(
         table='voice_sessions',
         filters={'id': session_id}
     )
     
     if not session:
-        raise access.NotFoundError('Session not found')
+        raise common.NotFoundError('Session not found')
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': session['org_id'], 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this session')
+        raise common.ForbiddenError('You do not have access to this session')
     
     result = _format_session_response(session)
     
     # Include config details if present
     if session.get('config_id'):
-        config = access.find_one(
+        config = common.find_one(
             table='voice_configs',
             filters={'id': session['config_id']}
         )
@@ -257,7 +257,7 @@ def handle_get_session(event: Dict[str, Any], user_id: str, session_id: str) -> 
                 'interviewType': config['interview_type']
             }
     
-    return access.success_response(result)
+    return common.success_response(result)
 
 
 def handle_create_session(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
@@ -280,61 +280,61 @@ def handle_create_session(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
     # Validate required fields
     org_id = body.get('orgId')
     if not org_id:
-        raise access.ValidationError('orgId is required')
-    org_id = access.validate_uuid(org_id, 'orgId')
+        raise common.ValidationError('orgId is required')
+    org_id = common.validate_uuid(org_id, 'orgId')
     
     interview_type = body.get('interviewType')
     if not interview_type:
-        raise access.ValidationError('interviewType is required')
-    interview_type = access.validate_string_length(interview_type, 'interviewType', max_length=100)
+        raise common.ValidationError('interviewType is required')
+    interview_type = common.validate_string_length(interview_type, 'interviewType', max_length=100)
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': org_id, 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this organization')
+        raise common.ForbiddenError('You do not have access to this organization')
     
     # Validate workspace_id if provided
     workspace_id = body.get('workspaceId')
     if workspace_id:
-        workspace_id = access.validate_uuid(workspace_id, 'workspaceId')
+        workspace_id = common.validate_uuid(workspace_id, 'workspaceId')
         # Verify workspace membership
-        ws_membership = access.find_one(
+        ws_membership = common.find_one(
             table='ws_members',
             filters={'ws_id': workspace_id, 'user_id': user_id}
         )
         if not ws_membership:
-            raise access.ForbiddenError('You do not have access to this workspace')
+            raise common.ForbiddenError('You do not have access to this workspace')
         
         # Verify workspace belongs to the org
-        workspace = access.find_one(
+        workspace = common.find_one(
             table='workspaces',
             filters={'id': workspace_id, 'org_id': org_id}
         )
         if not workspace:
-            raise access.ValidationError('Workspace does not belong to the specified organization')
+            raise common.ValidationError('Workspace does not belong to the specified organization')
     
     # Validate config_id if provided
     config_id = body.get('configId')
     if config_id:
-        config_id = access.validate_uuid(config_id, 'configId')
-        config = access.find_one(
+        config_id = common.validate_uuid(config_id, 'configId')
+        config = common.find_one(
             table='voice_configs',
             filters={'id': config_id, 'org_id': org_id, 'is_active': True}
         )
         if not config:
-            raise access.NotFoundError('Config not found or inactive')
+            raise common.NotFoundError('Config not found or inactive')
     
     # Validate optional fields
     candidate_name = body.get('candidateName')
     if candidate_name:
-        candidate_name = access.validate_string_length(candidate_name, 'candidateName', max_length=255)
+        candidate_name = common.validate_string_length(candidate_name, 'candidateName', max_length=255)
     
     candidate_email = body.get('candidateEmail')
     if candidate_email:
-        candidate_email = access.validate_string_length(candidate_email, 'candidateEmail', max_length=255)
+        candidate_email = common.validate_string_length(candidate_email, 'candidateEmail', max_length=255)
     
     # Create session
     session_data = {
@@ -349,22 +349,22 @@ def handle_create_session(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
         'created_by': user_id
     }
     
-    session = access.insert_one(table='voice_sessions', data=session_data)
+    session = common.insert_one(table='voice_sessions', data=session_data)
     
     # Add KB associations if provided
     kb_ids = body.get('kbIds', [])
     if kb_ids:
         for kb_id in kb_ids:
             try:
-                kb_id = access.validate_uuid(kb_id, 'kbId')
+                kb_id = common.validate_uuid(kb_id, 'kbId')
                 # Verify KB exists and is accessible
-                kb = access.find_one(
+                kb = common.find_one(
                     table='kb_bases',
                     filters={'id': kb_id}
                 )
                 if kb:
-                    access.insert_one(
-                        table='voice_session_kb',
+                    common.insert_one(
+                        table='voice_session_kbs',
                         data={
                             'session_id': session['id'],
                             'kb_id': kb_id,
@@ -381,7 +381,7 @@ def handle_create_session(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
     if kb_ids:
         result['kbAssociations'] = _get_session_kbs(session['id'])
     
-    return access.created_response(result)
+    return common.created_response(result)
 
 
 def handle_update_session(event: Dict[str, Any], user_id: str, session_id: str) -> Dict[str, Any]:
@@ -396,36 +396,36 @@ def handle_update_session(event: Dict[str, Any], user_id: str, session_id: str) 
         "sessionMetadata": {}
     }
     """
-    session_id = access.validate_uuid(session_id, 'id')
+    session_id = common.validate_uuid(session_id, 'id')
     
     # Get existing session
-    session = access.find_one(
+    session = common.find_one(
         table='voice_sessions',
         filters={'id': session_id}
     )
     
     if not session:
-        raise access.NotFoundError('Session not found')
+        raise common.NotFoundError('Session not found')
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': session['org_id'], 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this session')
+        raise common.ForbiddenError('You do not have access to this session')
     
     body = json.loads(event.get('body', '{}'))
     update_data = {}
     
     # Handle updatable fields
     if 'candidateName' in body:
-        update_data['candidate_name'] = access.validate_string_length(
+        update_data['candidate_name'] = common.validate_string_length(
             body['candidateName'], 'candidateName', max_length=255
         ) if body['candidateName'] else None
     
     if 'candidateEmail' in body:
-        update_data['candidate_email'] = access.validate_string_length(
+        update_data['candidate_email'] = common.validate_string_length(
             body['candidateEmail'], 'candidateEmail', max_length=255
         ) if body['candidateEmail'] else None
     
@@ -446,7 +446,7 @@ def handle_update_session(event: Dict[str, Any], user_id: str, session_id: str) 
         
         allowed = valid_transitions.get(current_status, [])
         if new_status not in allowed:
-            raise access.ValidationError(
+            raise common.ValidationError(
                 f'Invalid status transition from {current_status} to {new_status}'
             )
         
@@ -467,11 +467,11 @@ def handle_update_session(event: Dict[str, Any], user_id: str, session_id: str) 
                 update_data['duration_seconds'] = int(duration)
     
     if not update_data:
-        raise access.ValidationError('No valid fields to update')
+        raise common.ValidationError('No valid fields to update')
     
     update_data['updated_by'] = user_id
     
-    updated_session = access.update_one(
+    updated_session = common.update_one(
         table='voice_sessions',
         filters={'id': session_id},
         data=update_data
@@ -479,7 +479,7 @@ def handle_update_session(event: Dict[str, Any], user_id: str, session_id: str) 
     
     result = _format_session_response(updated_session)
     
-    return access.success_response(result)
+    return common.success_response(result)
 
 
 def handle_delete_session(event: Dict[str, Any], user_id: str, session_id: str) -> Dict[str, Any]:
@@ -488,39 +488,39 @@ def handle_delete_session(event: Dict[str, Any], user_id: str, session_id: str) 
     
     Only sessions in pending/cancelled/failed status can be deleted.
     """
-    session_id = access.validate_uuid(session_id, 'id')
+    session_id = common.validate_uuid(session_id, 'id')
     
     # Get session
-    session = access.find_one(
+    session = common.find_one(
         table='voice_sessions',
         filters={'id': session_id}
     )
     
     if not session:
-        raise access.NotFoundError('Session not found')
+        raise common.NotFoundError('Session not found')
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': session['org_id'], 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this session')
+        raise common.ForbiddenError('You do not have access to this session')
     
     # Check if session can be deleted
     if session['status'] not in ['pending', 'cancelled', 'failed']:
-        raise access.ValidationError(
+        raise common.ValidationError(
             f"Cannot delete session in status: {session['status']}. "
             "Only pending, cancelled, or failed sessions can be deleted."
         )
     
     # Delete the session
-    access.delete_one(
+    common.delete_one(
         table='voice_sessions',
         filters={'id': session_id}
     )
     
-    return access.success_response({
+    return common.success_response({
         'message': 'Session deleted successfully',
         'id': session_id
     })
@@ -536,28 +536,28 @@ def handle_start_session(event: Dict[str, Any], user_id: str, session_id: str) -
     
     POST /api/voice/sessions/{id}/start
     """
-    session_id = access.validate_uuid(session_id, 'id')
+    session_id = common.validate_uuid(session_id, 'id')
     
     # Get session
-    session = access.find_one(
+    session = common.find_one(
         table='voice_sessions',
         filters={'id': session_id}
     )
     
     if not session:
-        raise access.NotFoundError('Session not found')
+        raise common.NotFoundError('Session not found')
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': session['org_id'], 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this session')
+        raise common.ForbiddenError('You do not have access to this session')
     
     # Check session status
     if session['status'] not in ['pending', 'ready']:
-        raise access.ValidationError(
+        raise common.ValidationError(
             f"Cannot start session in status: {session['status']}. "
             "Session must be in pending or ready status."
         )
@@ -567,7 +567,7 @@ def handle_start_session(event: Dict[str, Any], user_id: str, session_id: str) -
     # Get interview config
     config = {}
     if session.get('config_id'):
-        config_record = access.find_one(
+        config_record = common.find_one(
             table='voice_configs',
             filters={'id': session['config_id']}
         )
@@ -591,7 +591,7 @@ def handle_start_session(event: Dict[str, Any], user_id: str, session_id: str) -
     )
     
     # Update session with Daily.co details
-    updated_session = access.update_one(
+    updated_session = common.update_one(
         table='voice_sessions',
         filters={'id': session_id},
         data={
@@ -606,7 +606,7 @@ def handle_start_session(event: Dict[str, Any], user_id: str, session_id: str) -
     
     result = _format_session_response(updated_session)
     
-    return access.success_response(result)
+    return common.success_response(result)
 
 
 # =============================================================================
@@ -616,7 +616,7 @@ def handle_start_session(event: Dict[str, Any], user_id: str, session_id: str) -
 def _get_daily_api_key(org_id: str) -> str:
     """Get Daily.co API key from AWS Secrets Manager."""
     # First check for org-specific credentials
-    credential = access.find_one(
+    credential = common.find_one(
         table='voice_credentials',
         filters={'org_id': org_id, 'service_name': 'daily', 'is_active': True}
     )
@@ -628,7 +628,7 @@ def _get_daily_api_key(org_id: str) -> str:
         secret_arn = DAILY_API_KEY_SECRET_ARN
     
     if not secret_arn:
-        raise access.ValidationError('Daily.co API key not configured')
+        raise common.ValidationError('Daily.co API key not configured')
     
     response = secrets_client.get_secret_value(SecretId=secret_arn)
     secret_data = json.loads(response['SecretString'])
@@ -780,28 +780,28 @@ def handle_list_session_kbs(event: Dict[str, Any], user_id: str, session_id: str
     
     GET /api/voice/sessions/{id}/kbs
     """
-    session_id = access.validate_uuid(session_id, 'id')
+    session_id = common.validate_uuid(session_id, 'id')
     
     # Get session and verify access
-    session = access.find_one(
+    session = common.find_one(
         table='voice_sessions',
         filters={'id': session_id}
     )
     
     if not session:
-        raise access.NotFoundError('Session not found')
+        raise common.NotFoundError('Session not found')
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': session['org_id'], 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this session')
+        raise common.ForbiddenError('You do not have access to this session')
     
     result = _get_session_kbs(session_id)
     
-    return access.success_response(result)
+    return common.success_response(result)
 
 
 def handle_add_session_kb(event: Dict[str, Any], user_id: str, session_id: str) -> Dict[str, Any]:
@@ -816,52 +816,52 @@ def handle_add_session_kb(event: Dict[str, Any], user_id: str, session_id: str) 
         "isEnabled": true  // optional, default true
     }
     """
-    session_id = access.validate_uuid(session_id, 'id')
+    session_id = common.validate_uuid(session_id, 'id')
     
     # Get session and verify access
-    session = access.find_one(
+    session = common.find_one(
         table='voice_sessions',
         filters={'id': session_id}
     )
     
     if not session:
-        raise access.NotFoundError('Session not found')
+        raise common.NotFoundError('Session not found')
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': session['org_id'], 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this session')
+        raise common.ForbiddenError('You do not have access to this session')
     
     body = json.loads(event.get('body', '{}'))
     
     kb_id = body.get('kbId')
     if not kb_id:
-        raise access.ValidationError('kbId is required')
-    kb_id = access.validate_uuid(kb_id, 'kbId')
+        raise common.ValidationError('kbId is required')
+    kb_id = common.validate_uuid(kb_id, 'kbId')
     
     # Verify KB exists
-    kb = access.find_one(
+    kb = common.find_one(
         table='kb_bases',
         filters={'id': kb_id}
     )
     if not kb:
-        raise access.NotFoundError('Knowledge base not found')
+        raise common.NotFoundError('Knowledge base not found')
     
     # Check if already associated
-    existing = access.find_one(
-        table='voice_session_kb',
+    existing = common.find_one(
+        table='voice_session_kbs',
         filters={'session_id': session_id, 'kb_id': kb_id}
     )
     if existing:
-        raise access.ValidationError('KB is already associated with this session')
+        raise common.ValidationError('KB is already associated with this session')
     
     # Add association
     is_enabled = body.get('isEnabled', True)
-    association = access.insert_one(
-        table='voice_session_kb',
+    association = common.insert_one(
+        table='voice_session_kbs',
         data={
             'session_id': session_id,
             'kb_id': kb_id,
@@ -870,7 +870,7 @@ def handle_add_session_kb(event: Dict[str, Any], user_id: str, session_id: str) 
         }
     )
     
-    return access.created_response({
+    return common.created_response({
         'id': association['id'],
         'sessionId': session_id,
         'kbId': kb_id,
@@ -891,49 +891,49 @@ def handle_toggle_session_kb(event: Dict[str, Any], user_id: str, session_id: st
         "isEnabled": true|false
     }
     """
-    session_id = access.validate_uuid(session_id, 'id')
-    kb_id = access.validate_uuid(kb_id, 'kbId')
+    session_id = common.validate_uuid(session_id, 'id')
+    kb_id = common.validate_uuid(kb_id, 'kbId')
     
     # Get session and verify access
-    session = access.find_one(
+    session = common.find_one(
         table='voice_sessions',
         filters={'id': session_id}
     )
     
     if not session:
-        raise access.NotFoundError('Session not found')
+        raise common.NotFoundError('Session not found')
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': session['org_id'], 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this session')
+        raise common.ForbiddenError('You do not have access to this session')
     
     # Get association
-    association = access.find_one(
-        table='voice_session_kb',
+    association = common.find_one(
+        table='voice_session_kbs',
         filters={'session_id': session_id, 'kb_id': kb_id}
     )
     if not association:
-        raise access.NotFoundError('KB association not found')
+        raise common.NotFoundError('KB association not found')
     
     body = json.loads(event.get('body', '{}'))
     
     if 'isEnabled' not in body:
-        raise access.ValidationError('isEnabled is required')
+        raise common.ValidationError('isEnabled is required')
     
     is_enabled = bool(body['isEnabled'])
     
     # Update association
-    updated = access.update_one(
-        table='voice_session_kb',
+    updated = common.update_one(
+        table='voice_session_kbs',
         filters={'session_id': session_id, 'kb_id': kb_id},
         data={'is_enabled': is_enabled}
     )
     
-    return access.success_response({
+    return common.success_response({
         'id': updated['id'],
         'sessionId': session_id,
         'kbId': kb_id,
@@ -947,41 +947,41 @@ def handle_remove_session_kb(event: Dict[str, Any], user_id: str, session_id: st
     
     DELETE /api/voice/sessions/{id}/kbs/{kbId}
     """
-    session_id = access.validate_uuid(session_id, 'id')
-    kb_id = access.validate_uuid(kb_id, 'kbId')
+    session_id = common.validate_uuid(session_id, 'id')
+    kb_id = common.validate_uuid(kb_id, 'kbId')
     
     # Get session and verify access
-    session = access.find_one(
+    session = common.find_one(
         table='voice_sessions',
         filters={'id': session_id}
     )
     
     if not session:
-        raise access.NotFoundError('Session not found')
+        raise common.NotFoundError('Session not found')
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': session['org_id'], 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this session')
+        raise common.ForbiddenError('You do not have access to this session')
     
     # Get association
-    association = access.find_one(
-        table='voice_session_kb',
+    association = common.find_one(
+        table='voice_session_kbs',
         filters={'session_id': session_id, 'kb_id': kb_id}
     )
     if not association:
-        raise access.NotFoundError('KB association not found')
+        raise common.NotFoundError('KB association not found')
     
     # Delete association
-    access.delete_one(
-        table='voice_session_kb',
+    common.delete_one(
+        table='voice_session_kbs',
         filters={'session_id': session_id, 'kb_id': kb_id}
     )
     
-    return access.success_response({
+    return common.success_response({
         'message': 'KB removed from session',
         'sessionId': session_id,
         'kbId': kb_id
@@ -990,14 +990,14 @@ def handle_remove_session_kb(event: Dict[str, Any], user_id: str, session_id: st
 
 def _get_session_kbs(session_id: str) -> list:
     """Get all KB associations for a session with KB details."""
-    associations = access.find_many(
-        table='voice_session_kb',
+    associations = common.find_many(
+        table='voice_session_kbs',
         filters={'session_id': session_id}
     )
     
     result = []
     for assoc in associations:
-        kb = access.find_one(
+        kb = common.find_one(
             table='kb_bases',
             filters={'id': assoc['kb_id']}
         )
