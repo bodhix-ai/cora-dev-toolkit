@@ -39,6 +39,8 @@ export interface UseKbDocumentsReturn {
   refresh: () => Promise<void>;
 }
 
+const MAX_FETCH_RETRIES = 3;
+
 export function useKbDocuments({
   scope,
   scopeId,
@@ -49,10 +51,18 @@ export function useKbDocuments({
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const fetchDocuments = useCallback(async () => {
     if (!scopeId || !apiClient) {
       setDocuments([]);
+      setRetryCount(0);
+      return;
+    }
+
+    // Stop fetching if max retries reached
+    if (retryCount >= MAX_FETCH_RETRIES) {
+      console.warn(`Max fetch retries (${MAX_FETCH_RETRIES}) reached for ${scope}. Stopping further attempts.`);
       return;
     }
 
@@ -72,16 +82,19 @@ export function useKbDocuments({
         response = await kbClient.orgAdmin.listDocuments(scopeId);
       }
 
-      setDocuments(response.data);
+      // Extract documents array from response data structure
+      setDocuments(response.data.documents || []);
+      setRetryCount(0); // Reset retry count on success
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch documents';
-      console.error(`Failed to fetch documents for ${scope}:`, err);
+      console.error(`Failed to fetch documents for ${scope} (attempt ${retryCount + 1}/${MAX_FETCH_RETRIES}):`, err);
       setError(errorMessage);
       setDocuments([]);
+      setRetryCount(prev => prev + 1);
     } finally {
       setLoading(false);
     }
-  }, [scope, scopeId, apiClient]);
+  }, [scope, scopeId, apiClient, retryCount]);
 
   const refresh = useCallback(async () => {
     await fetchDocuments();
@@ -207,10 +220,11 @@ export function useKbDocuments({
   );
 
   useEffect(() => {
-    if (autoFetch) {
+    if (autoFetch && retryCount < MAX_FETCH_RETRIES) {
       fetchDocuments();
     }
-  }, [autoFetch, fetchDocuments]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFetch, scopeId]);
 
   return {
     documents,

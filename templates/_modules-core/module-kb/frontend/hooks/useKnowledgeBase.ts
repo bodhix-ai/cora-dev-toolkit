@@ -36,6 +36,8 @@ export interface UseKnowledgeBaseReturn {
   refresh: () => Promise<void>;
 }
 
+const MAX_FETCH_RETRIES = 3;
+
 export function useKnowledgeBase({
   scope,
   scopeId,
@@ -46,10 +48,18 @@ export function useKnowledgeBase({
   const [availableKbs, setAvailableKbs] = useState<AvailableKb[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const fetchKb = useCallback(async () => {
     if (!scopeId || !apiClient) {
       setKb(null);
+      setRetryCount(0);
+      return;
+    }
+
+    // Stop fetching if max retries reached
+    if (retryCount >= MAX_FETCH_RETRIES) {
+      console.warn(`Max fetch retries (${MAX_FETCH_RETRIES}) reached for ${scope} KB. Stopping further attempts.`);
       return;
     }
 
@@ -66,15 +76,17 @@ export function useKnowledgeBase({
         const response = await kbClient.chat.getKb(scopeId);
         setKb(response.data);
       }
+      setRetryCount(0); // Reset retry count on success
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch knowledge base';
-      console.error(`Failed to fetch ${scope} KB:`, err);
+      console.error(`Failed to fetch ${scope} KB (attempt ${retryCount + 1}/${MAX_FETCH_RETRIES}):`, err);
       setError(errorMessage);
       setKb(null);
+      setRetryCount(prev => prev + 1);
     } finally {
       setLoading(false);
     }
-  }, [scope, scopeId, apiClient]);
+  }, [scope, scopeId, apiClient, retryCount]);
 
   const fetchAvailableKbs = useCallback(async () => {
     if (!scopeId || !apiClient) {
@@ -138,10 +150,11 @@ export function useKnowledgeBase({
   );
 
   useEffect(() => {
-    if (autoFetch) {
+    if (autoFetch && retryCount < MAX_FETCH_RETRIES) {
       refresh();
     }
-  }, [autoFetch, refresh]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFetch, scopeId]);
 
   return {
     kb,
