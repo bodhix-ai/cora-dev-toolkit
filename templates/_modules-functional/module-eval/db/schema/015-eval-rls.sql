@@ -8,32 +8,32 @@
 -- System Configuration Tables - Sys Admin Only
 -- ============================================================================
 
--- eval_sys_config: Only sys_admin can read/write
-ALTER TABLE eval_sys_config ENABLE ROW LEVEL SECURITY;
+-- eval_cfg_sys: Only sys_admin can read/write
+ALTER TABLE eval_cfg_sys ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS eval_sys_config_select ON eval_sys_config;
-CREATE POLICY eval_sys_config_select ON eval_sys_config
+DROP POLICY IF EXISTS eval_cfg_sys_select ON eval_cfg_sys;
+CREATE POLICY eval_cfg_sys_select ON eval_cfg_sys
     FOR SELECT USING (
         auth.jwt() ->> 'sys_role' IN ('sys_owner', 'sys_admin')
     );
 
-DROP POLICY IF EXISTS eval_sys_config_update ON eval_sys_config;
-CREATE POLICY eval_sys_config_update ON eval_sys_config
+DROP POLICY IF EXISTS eval_cfg_sys_update ON eval_cfg_sys;
+CREATE POLICY eval_cfg_sys_update ON eval_cfg_sys
     FOR UPDATE USING (
         auth.jwt() ->> 'sys_role' IN ('sys_owner', 'sys_admin')
     );
 
--- eval_sys_prompt_config: Only sys_admin
-ALTER TABLE eval_sys_prompt_config ENABLE ROW LEVEL SECURITY;
+-- eval_cfg_sys_prompts: Only sys_admin
+ALTER TABLE eval_cfg_sys_prompts ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS eval_sys_prompt_config_select ON eval_sys_prompt_config;
-CREATE POLICY eval_sys_prompt_config_select ON eval_sys_prompt_config
+DROP POLICY IF EXISTS eval_cfg_sys_prompts_select ON eval_cfg_sys_prompts;
+CREATE POLICY eval_cfg_sys_prompts_select ON eval_cfg_sys_prompts
     FOR SELECT USING (
         auth.jwt() ->> 'sys_role' IN ('sys_owner', 'sys_admin')
     );
 
-DROP POLICY IF EXISTS eval_sys_prompt_config_all ON eval_sys_prompt_config;
-CREATE POLICY eval_sys_prompt_config_all ON eval_sys_prompt_config
+DROP POLICY IF EXISTS eval_cfg_sys_prompts_all ON eval_cfg_sys_prompts;
+CREATE POLICY eval_cfg_sys_prompts_all ON eval_cfg_sys_prompts
     FOR ALL USING (
         auth.jwt() ->> 'sys_role' IN ('sys_owner', 'sys_admin')
     );
@@ -55,57 +55,57 @@ CREATE POLICY eval_sys_status_options_all ON eval_sys_status_options
 -- Organization Configuration Tables
 -- ============================================================================
 
--- eval_org_config: Sys admin can read all, org admin can read/write own
-ALTER TABLE eval_org_config ENABLE ROW LEVEL SECURITY;
+-- eval_cfg_org: Sys admin can read all, org admin can read/write own
+ALTER TABLE eval_cfg_org ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS eval_org_config_sys_admin ON eval_org_config;
-CREATE POLICY eval_org_config_sys_admin ON eval_org_config
+DROP POLICY IF EXISTS eval_cfg_org_sys_admin ON eval_cfg_org;
+CREATE POLICY eval_cfg_org_sys_admin ON eval_cfg_org
     FOR ALL USING (
         auth.jwt() ->> 'sys_role' IN ('sys_owner', 'sys_admin')
     );
 
-DROP POLICY IF EXISTS eval_org_config_org_admin_select ON eval_org_config;
-CREATE POLICY eval_org_config_org_admin_select ON eval_org_config
+DROP POLICY IF EXISTS eval_cfg_org_org_admin_select ON eval_cfg_org;
+CREATE POLICY eval_cfg_org_org_admin_select ON eval_cfg_org
     FOR SELECT USING (
         EXISTS (
             SELECT 1 FROM org_members 
-            WHERE org_members.org_id = eval_org_config.org_id
+            WHERE org_members.org_id = eval_cfg_org.org_id
             AND org_members.user_id = auth.uid()
             AND org_members.org_role IN ('org_owner', 'org_admin')
         )
     );
 
-DROP POLICY IF EXISTS eval_org_config_org_admin_update ON eval_org_config;
-CREATE POLICY eval_org_config_org_admin_update ON eval_org_config
+DROP POLICY IF EXISTS eval_cfg_org_org_admin_update ON eval_cfg_org;
+CREATE POLICY eval_cfg_org_org_admin_update ON eval_cfg_org
     FOR UPDATE USING (
         EXISTS (
             SELECT 1 FROM org_members 
-            WHERE org_members.org_id = eval_org_config.org_id
+            WHERE org_members.org_id = eval_cfg_org.org_id
             AND org_members.user_id = auth.uid()
             AND org_members.org_role IN ('org_owner', 'org_admin')
         )
     );
 
--- eval_org_prompt_config: Delegation check for org admin
-ALTER TABLE eval_org_prompt_config ENABLE ROW LEVEL SECURITY;
+-- eval_cfg_org_prompts: Delegation check for org admin
+ALTER TABLE eval_cfg_org_prompts ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS eval_org_prompt_config_sys_admin ON eval_org_prompt_config;
-CREATE POLICY eval_org_prompt_config_sys_admin ON eval_org_prompt_config
+DROP POLICY IF EXISTS eval_cfg_org_prompts_sys_admin ON eval_cfg_org_prompts;
+CREATE POLICY eval_cfg_org_prompts_sys_admin ON eval_cfg_org_prompts
     FOR ALL USING (
         auth.jwt() ->> 'sys_role' IN ('sys_owner', 'sys_admin')
     );
 
-DROP POLICY IF EXISTS eval_org_prompt_config_delegated ON eval_org_prompt_config;
-CREATE POLICY eval_org_prompt_config_delegated ON eval_org_prompt_config
+DROP POLICY IF EXISTS eval_cfg_org_prompts_delegated ON eval_cfg_org_prompts;
+CREATE POLICY eval_cfg_org_prompts_delegated ON eval_cfg_org_prompts
     FOR ALL USING (
         EXISTS (
-            SELECT 1 FROM eval_org_config 
-            WHERE eval_org_config.org_id = eval_org_prompt_config.org_id
-            AND eval_org_config.ai_config_delegated = true
+            SELECT 1 FROM eval_cfg_org 
+            WHERE eval_cfg_org.org_id = eval_cfg_org_prompts.org_id
+            AND eval_cfg_org.ai_config_delegated = true
         )
         AND EXISTS (
             SELECT 1 FROM org_members 
-            WHERE org_members.org_id = eval_org_prompt_config.org_id
+            WHERE org_members.org_id = eval_cfg_org_prompts.org_id
             AND org_members.user_id = auth.uid()
             AND org_members.org_role IN ('org_owner', 'org_admin')
         )
