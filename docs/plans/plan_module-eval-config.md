@@ -577,21 +577,320 @@ Infra:  ~/code/bodhix/testing/test-eval/ai-sec-infra
 
 ---
 
-### Session 142: Configuration Testing
-**Date**: TBD  
-**Duration**: TBD  
-**Focus**: Complete Milestone 2
+### Session 142: Bug Diagnosis & API Response Fixes
+**Date**: January 18, 2026  
+**Duration**: ~1 hour  
+**Focus**: Diagnose and fix data display issues
+
+**Issues Discovered:**
+
+**Issue 1: CSS/Styling Problems**
+- **Symptoms:** Oversized checkmarks/icons (1/3 page size), missing CSS styles
+- **Root Cause:** Tailwind CSS not loading for module-eval components
+- **Status:** ⚠️ Configuration issue - requires Tailwind config update in projects
+
+**Issue 2: UI Values Don't Match API Response**
+- **Symptoms:** UI shows `boolean` mode and numerical scoring `disabled`
+- **API Returns:** `categoricalMode: "detailed"`, `showNumericalScore: true`
+- **Root Cause:** API returns `{ success: true, data: {...} }` wrapper, frontend expects raw data
+- **Impact:** `config?.categoricalMode` gets `undefined`, falls back to `"boolean"`
+
+**Issue 3: Prompts Tab Shows No Data**
+- **Symptoms:** Empty prompts tab despite successful API response
+- **API Returns:** `{ success: true, data: [...] }` with 3 prompt configs
+- **Root Cause:** Same wrapper issue - `Array.isArray(sysPrompts)` returns false for wrapper object
+- **Impact:** `getPromptByType()` always returns `undefined`, loading state persists
+
+**Root Cause Analysis:**
+
+Lambda backend returns responses in standard wrapper format:
+```json
+{ "success": true, "data": <actual_data> }
+```
+
+Frontend API client expects raw data directly. The `parseResponse()` function in `api.ts` doesn't unwrap this standard format.
 
 **Completed:**
-- [ ] All org admin config flows tested
-- [ ] Criteria import validated
-- [ ] Status options configured
+- [x] Diagnosed all three issues
+- [x] Identified root cause: API response wrapper mismatch
+- [x] Created fix plan for api.ts and evalStore.ts
+- [x] Implement Fix 1: Update parseResponse to unwrap responses
+- [x] Implement Fix 2: Add defensive checks in store
+- [x] Implement Fix 3: Document Tailwind config requirement
+- [x] Sync fixes to test project
+- [ ] Verify all issues resolved (user confirmation pending)
 
-**Issues Found:**
-- (Document issues here)
+**Fix Plan:**
+
+1. **api.ts** - Add response unwrapping in `parseResponse()`
+2. **evalStore.ts** - Add defensive unwrapping (belt & suspenders)
+3. **README.md** - Document Tailwind config requirement
 
 **Next Session:**
-- Start Milestone 3 (User integration)
+- ~~Execute fix plan~~
+- ~~Test fixes resolve all issues~~
+- Continue Milestone 2 testing if successful
+
+**Status:** ✅ API fixes complete, awaiting user verification
+
+---
+
+### Session 143: Material-UI Conversion - Priority 1 Components ✅
+**Date**: January 18, 2026  
+**Duration**: ~2 hours  
+**Focus**: Convert module-eval components from Tailwind to Material-UI (CORA standard compliance)
+
+**Root Cause Discovery:**
+- **Issue:** Module-eval pages displayed with unstyled/broken UI (oversized icons, missing styling)
+- **Cause:** Module-eval components built with Tailwind CSS, NOT Material-UI
+- **CORA Standard:** All CORA modules MUST use Material-UI (@mui/material) - See `docs/standards/standard_CORA-UI-LIBRARY.md`
+- **Impact:** Module-eval UI didn't match rest of application's professional styling
+
+**Conversion Work Completed:**
+
+**Priority 1: Config Page Components (3/15 components)**
+
+1. **ScoringConfigPanel.tsx** ✅
+   - Converted from Tailwind → Material-UI
+   - Components: Box, Typography, Card, Button, Switch, Chip, Alert, Grid
+   - Used on `/admin/sys/eval/config` and `/admin/org/eval/config`
+   - Status: Converted & Synced
+
+2. **OrgDelegationManager.tsx** ✅
+   - Converted from Tailwind → Material-UI
+   - Components: Grid, Card, TextField, ToggleButtonGroup, Switch, IconButton
+   - Features: Search, filters, delegation toggle, stats cards
+   - Status: Converted & Synced
+
+3. **StatusOptionManager.tsx** ✅
+   - Converted from Tailwind → Material-UI
+   - Components: Dialog, FormControl, Select, MenuItem, Checkbox, TextField
+   - Features: CRUD forms, color picker, delete confirmation dialog
+   - Status: Converted & Synced
+
+**Files Modified:**
+- `templates/_modules-functional/module-eval/frontend/components/ScoringConfigPanel.tsx`
+- `templates/_modules-functional/module-eval/frontend/components/OrgDelegationManager.tsx`
+- `templates/_modules-functional/module-eval/frontend/components/StatusOptionManager.tsx`
+
+**All changes synced to test project:** `~/code/bodhix/testing/test-eval/ai-sec-stack`
+
+**Testing Instructions:**
+1. Restart dev server: `cd ~/code/bodhix/testing/test-eval/ai-sec-stack && ./scripts/start-dev.sh`
+2. Navigate to `/admin/sys/eval/config`
+3. Verify Config tab displays with professional Material-UI styling
+4. All 3 sections should match app's UI design system
+
+**Remaining Work (12/15 components):**
+
+**Priority 2: Prompts Tab**
+- PromptConfigEditor (~700 lines) - Large component, needs conversion
+
+**Priority 3: Org Admin Pages**
+- DocTypeManager (doc-types page)
+- CriteriaSetManager (criteria page)
+- CriteriaImportDialog (criteria page)
+- CriteriaItemEditor (criteria page)
+
+**Priority 4: User-Facing Components (9 components)**
+- EvalExportButton, EvalProgressCard, EvalQAList, EvalResultsTable
+- EvalSummaryPanel, CitationViewer, ResultEditDialog
+- (Lower priority for admin testing)
+
+**Progress:**
+- ✅ 20% complete (3 of 15 components)
+- ✅ Priority 1 (Config page) complete
+- ⏭️ Priority 2-4 remaining
+
+**Milestone Progress:**
+- **Milestone 1:** ✅ COMPLETE
+- **Milestone 2:** 🔄 IN PROGRESS - Config page ready for testing
+
+**Next Session:**
+- User tests Priority 1 components (Config page)
+- Based on user choice:
+  - Option A: Continue with Priority 2 (PromptConfigEditor)
+  - Option B: User testing feedback & adjustments
+
+---
+
+### Session 144: UI Library Validation Enhancement ✅
+**Date**: January 18, 2026  
+**Duration**: ~30 minutes  
+**Focus**: Create validation to detect Tailwind CSS violations
+
+**User Request:**
+- Stop Material-UI conversion work
+- Develop validation script for early detection of non-compliance with MUI usage
+- Integrate with validation test suite
+
+**Completed:**
+- [x] Enhanced `scripts/validate-ui-library.sh` with Tailwind CSS detection
+- [x] Added 3 new validation checks:
+  - CHECK 1: Tailwind CSS className patterns (10 regex patterns)
+  - CHECK 2: Tailwind configuration files (tailwind.config.*)
+  - CHECK 3: @tailwind directives in CSS files
+- [x] Ran baseline validation on templates
+- [x] Quantified non-compliance scope
+
+**Baseline Non-Compliance Results:**
+
+**Total Violations: 39 files** with Tailwind CSS className usage
+
+**By Module:**
+- module-access (core): 11 files
+- module-mgmt (core): 1 file
+- module-eval (functional): 18 files (3 already converted ✅)
+- module-voice (functional): 7 files
+
+**module-eval Breakdown (18 files):**
+- Components: 10 files (3 converted: ScoringConfigPanel, OrgDelegationManager, StatusOptionManager)
+- Pages: 6 files
+- Routes: 2 files
+
+**Validation Passed:**
+- ✅ No Tailwind config files
+- ✅ No @tailwind CSS directives  
+- ✅ No Shadcn UI imports
+- ✅ No custom UI packages
+- ✅ No styled-components
+- ✅ Material-UI usage found (168 files)
+
+**Impact:**
+- Validator now catches Tailwind violations during project creation
+- Early detection prevents non-compliant code from being deployed
+- Clear migration guide provided in validation output
+
+**Next Session:**
+- User decision: Continue Material-UI conversion or review baseline
+- Complete remaining module-eval components (13/18 files)
+- Verify all violations resolved with validator
+
+---
+
+### Session 145: Material-UI Conversion - Module-Eval & Module-Voice (In Progress)
+**Date**: January 18, 2026  
+**Duration**: ~1 hour (in progress)  
+**Focus**: Convert all remaining Tailwind components to Material-UI in module-eval and module-voice
+
+**User Request:**
+- Focus on fixing MUI issues in module-eval and module-voice only
+- Complete conversion work for both modules
+- Verify all violations resolved with validator
+
+**Scope:**
+
+**module-eval: 20 files** (3 already converted in Session 143 = 17 remaining)
+
+**Components (10 files):**
+1. ~~EvalExportButton.tsx~~ ✅
+2. ~~CitationViewer.tsx~~ ✅
+3. ~~EvalProgressCard.tsx~~ ✅
+4. ~~EvalQAList.tsx~~ ✅
+5. EvalResultsTable.tsx
+6. EvalSummaryPanel.tsx
+7. ResultEditDialog.tsx
+8. CriteriaImportDialog.tsx
+9. CriteriaItemEditor.tsx
+10. CriteriaSetManager.tsx
+
+**Pages (8 files):**
+1. EvalDetailPage.tsx
+2. EvalListPage.tsx
+3. OrgEvalConfigPage.tsx
+4. OrgEvalCriteriaPage.tsx
+5. OrgEvalDocTypesPage.tsx
+6. OrgEvalPromptsPage.tsx
+7. SysEvalConfigPage.tsx
+8. SysEvalPromptsPage.tsx
+
+**Routes (2 files):**
+1. routes/eval/[id]/page.tsx
+2. routes/eval/page.tsx
+
+**module-voice: 7 files**
+
+**Components (5 files):**
+1. ConfigForm.tsx
+2. InterviewRoom.tsx
+3. KbSelector.tsx
+4. SessionCard.tsx
+5. TranscriptViewer.tsx
+
+**Pages (2 files):**
+1. OrgVoiceConfigPage.tsx
+2. SysVoiceConfigPage.tsx
+
+**Total Files to Convert: 27**
+
+**Conversion Strategy:**
+1. Convert smaller utility components first (export buttons, cards)
+2. Convert larger components (dialogs, managers, tables)
+3. Convert pages last (they import components)
+4. Test with validator after each module is complete
+5. Sync all changes to test project
+
+**Progress (4/27 files - 15% complete):**
+- [x] module-eval components (4/10 files complete)
+  - [x] EvalExportButton.tsx ✅
+  - [x] CitationViewer.tsx ✅
+  - [x] EvalProgressCard.tsx ✅
+  - [x] EvalQAList.tsx ✅
+- [ ] module-eval components (6 remaining)
+- [ ] module-eval pages (8 files)
+- [ ] module-eval routes (2 files)
+- [ ] module-voice components (5 files)
+- [ ] module-voice pages (2 files)
+- [ ] Run validator to verify 0 violations
+- [ ] Sync all changes to test project
+- [ ] Update plan with results
+
+**Files Converted:**
+
+1. **EvalExportButton.tsx** ✅
+   - Converted 4 export components (button, dropdown, group, status)
+   - Used: Button, Menu, MenuItem, Select, FormControl, CircularProgress
+   - ~370 lines converted
+
+2. **CitationViewer.tsx** ✅
+   - Converted 5 citation components (card, viewer, inline, tooltip, summary)
+   - Used: Box, Typography, Button, Chip
+   - ~405 lines converted
+
+3. **EvalProgressCard.tsx** ✅
+   - Converted 3 progress components (card, compact, list)
+   - Used: Card, CardContent, LinearProgress, Chip, Alert, Grid
+   - ~430 lines converted
+
+4. **EvalQAList.tsx** ✅
+   - Converted 3 Q&A components (card, list, stats)
+   - Used: Card, Chip, Button, Collapse, Grid, ExpandMore/ExpandLess icons
+   - ~550 lines converted
+
+**Patterns Established:**
+- **className → sx prop:** All Tailwind classes converted to MUI sx objects
+- **Color mapping:** Tailwind colors → theme colors (success.main, error.main, etc.)
+- **Layout:** Flexbox → Box with display: flex, Grid for responsive layouts
+- **Progress bars:** Custom divs → LinearProgress component
+- **Badges:** Custom styled spans → Chip component
+- **Cards:** Custom divs → Card + CardContent
+- **Collapsible sections:** Custom state → Collapse component
+- **Icons:** Material Icons imported from @mui/icons-material
+
+**Issues Found:**
+- TypeScript errors in template context (expected - resolve when used in project)
+- No functional issues discovered
+
+**Next Steps:**
+- Commit current progress (4 files)
+- Continue with remaining 23 files or pause for review
+
+**Next Session:**
+- Complete remaining module-eval components (6 files)
+- Convert module-eval pages (8 files)
+- Convert module-eval routes (2 files)
+- Convert module-voice files (7 files)
+- Verify with validator
 
 ---
 
