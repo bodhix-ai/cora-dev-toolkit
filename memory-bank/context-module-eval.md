@@ -1,26 +1,222 @@
 # Context: Module-Eval Development
 
-**Branch:** `feature/module-eval-implementation`  
+**Branch:** `feature/module-eval-config`  
 **Workstation:** WS-135  
-**Last Updated:** January 16, 2026
+**Last Updated:** January 18, 2026
 
 ---
 
 ## Current Session
 
+**Session 141: Infrastructure Redeployment & Frontend Fixes**
+
+**Goal:** Deploy missing routes, fix frontend bugs, achieve first successful page load
+
+**Status:** ✅ COMPLETE
+
+### Session 141 Accomplishments
+### Session 141 Accomplishments
+- [x] **Infrastructure Redeployment:**
+  - Identified that routes were created AFTER Session 139 deployment
+  - All 3 Lambdas exist: eval-config, eval-processor, eval-results
+  - Redeployed infrastructure to register routes created in Session 140
+  - Verified all 44 API routes registered in API Gateway
+  - API calls now return 200 OK with data (not 404)
+
+- [x] **Frontend Bug Fixes (4 files):**
+  1. `useEvalStatusOptions.ts` - Added defensive array check for `sysStatusOptions`
+  2. `module-access/frontend/index.ts` - Added `OrgContext` to exports
+  3. `OrgDelegationManager.tsx` - Added defensive array check for `organizations`
+  4. `ScoringConfigPanel.tsx` - Added `useEffect` to sync state with API response
+
+- [x] **All fixes synced to test project**
+- [x] **🎉 PAGE LOADS FOR FIRST TIME!**
+  - `/admin/sys/eval/config` displays full UI
+  - Scoring Configuration panel visible
+  - Status Options manager visible
+  - Organization Delegation panel visible
+
+### Issues Discovered & Resolved
+
+**Bug 1:** `sysStatusOptions.filter is not a function`
+- **Cause:** No defensive check for array type
+- **Fix:** Added `Array.isArray()` guard
+- **Status:** ✅ Fixed in template, synced to test project
+
+**Bug 2:** `OrgContext is undefined`
+- **Cause:** `OrgContext` not exported from module-access package
+- **Fix:** Added `OrgContext` to exports: `export { OrgProvider, OrgContext } from "./contexts/OrgContext"`
+- **Status:** ✅ Fixed in template, synced to test project
+
+**Bug 3:** `organizations.filter is not a function`
+- **Cause:** Same as Bug 1, no defensive array check
+- **Fix:** Added `Array.isArray()` guard
+- **Status:** ✅ Fixed in template, synced to test project
+
+**Bug 4:** Checkbox showing unchecked despite API returning `showNumericalScore: true`
+- **Cause:** Component state initialized on mount, doesn't update when API data loads
+- **Fix:** Added `useEffect` to sync state when config prop changes
+- **Status:** ✅ Fixed in template, synced to test project (requires dev server restart)
+
+### Issues Pending
+
+**Issue:** Formatting - checkmark rendering 1/3 page size
+- **Likely Cause:** Tailwind CSS not loading or conflicting styles
+- **Status:** ⚠️ Needs investigation
+- **Recommendation:** Check browser DevTools for CSS errors, verify tailwind.config.js includes module paths
+
+**Clarification:** Org delegation schema
+- **Question:** "Don't see those columns on eval_cfg_sys table"
+- **Answer:** ✅ Correct! Delegation is stored on `organizations` table (`ai_config_delegated` column), not on eval config tables
+- **Design:** Delegation is an organization-level permission, not an eval config setting
+
+### Milestone Progress
+- **Milestone 1:** ✅ COMPLETE - Infrastructure deployed, routes registered, page loads
+- **Milestone 2:** 🔄 READY TO BEGIN - Org admin configuration testing can start
+
+### Next Actions (Session 142)
+- [ ] **User to restart dev server** to pick up ScoringConfigPanel.tsx state sync fix
+- [ ] Investigate Tailwind CSS loading issue (if not resolved)
+- [ ] Begin Milestone 2 testing: Create status options, doc types, criteria sets
+- [ ] Test scoring configuration save/load
+- [ ] Test other tabs (Doc Types, Criteria, Prompts)
+
+**Reference:** `docs/plans/plan_module-eval-config.md` - Session 141 documented
+
+---
+
+## Previous Session
+
+**Session 140: Route Creation & Test Environment Preparation**
+
+**Goal:** Complete module-eval routes, prepare for deployment testing
+
+**Status:** ✅ COMPLETE
+
+### Session 140 Accomplishments
+- [x] Created 8 module-eval route files in template (`templates/_modules-functional/module-eval/routes/`)
+  - Org admin routes: config, doc-types, criteria, prompts
+  - System admin routes: config, prompts
+  - User routes: eval list, eval detail
+- [x] Recreated test project from updated templates
+- [x] Manually copied routes to test project (workaround for script gap)
+- [x] Documented proper test workflow requirements
+
+### Critical Issues Discovered
+
+**1. Script Gap: `create-cora-project.sh` Missing `routes/` Support**
+- Script only copies `frontend/`, `backend/`, `db/`, `infrastructure/` directories
+- Module routes at `{module}/routes/` are NOT copied during project creation
+- **Impact:** Routes must be manually copied until script is updated
+
+**2. Process Error: Dev Server Before Deployment**
+- Initially suggested "start dev server" without deployment
+- **Problem:** Frontend `.env.local` is NOT populated until `deploy-all.sh` runs
+- **Impact:** Dev server cannot start without API Gateway endpoint
+- **Correct Workflow:** Must follow `.cline/workflows/test-module.md` phases
+
+### Lessons Learned
+1. Infrastructure deployment MUST happen before dev server startup
+2. Always check `.cline/workflows/` before suggesting test procedures
+3. Follow test-module.md phases in order: Config → Create → Validate → Deploy → Dev Server
+4. Never suggest dev server startup without confirming deployment completed
+
+---
+
+## Previous Session
+
+**Session 139: Infrastructure Deployment & Sync Script Creation**
+
+**Goal:** Deploy infrastructure, verify Milestone 1, create infrastructure sync tooling
+
+**Status:** ✅ COMPLETE
+
+### Session 139 Accomplishments
+- [x] Built all modules in test project (31 Lambda packages)
+- [x] Fixed critical infrastructure bugs:
+  - Module-voice `outputs.tf`: Changed from `lambda_name`/`description` to `integration`/`public`
+  - Module-eval `main.tf`: Added `filter { prefix = "" }` to S3 lifecycle rule
+- [x] Deployed infrastructure successfully (420 resources created)
+- [x] Created infrastructure sync script: `scripts/sync-infra-to-project.sh`
+- [x] Documented infrastructure sync in `.clinerules` for future AI agents
+
+### Deployment Results
+- **API Gateway ID:** `hk5bzq4kv3`
+- **API Gateway URL:** `https://hk5bzq4kv3.execute-api.us-east-1.amazonaws.com/`
+- **Module-eval Lambdas:** 3 functions deployed (eval-config, eval-processor, eval-results)
+- **SQS Queue:** Created for async processing
+- **S3 Bucket:** Created for exports
+
+### Infrastructure Fixes Applied
+1. **Module-voice** `outputs.tf` - Fixed api_routes structure (integration + public)
+2. **Module-eval** `main.tf` - Fixed S3 lifecycle configuration (added filter)
+
+### Tooling Created
+- `scripts/sync-infra-to-project.sh` - Syncs Terraform infrastructure files from templates to test projects
+- Documented in `.clinerules` Script Reference table and Fast Iteration Testing Workflow
+
+### Warnings (Non-Critical)
+- ⚠️ S3 lifecycle warnings in other modules (module-kb, etc.) - same pattern, can be fixed later
+
+### Next Actions (Session 140)
+- [ ] Verify Milestone 1 completion checklist
+- [ ] Start Milestone 2: Org admin configuration testing
+- [ ] Test doc type creation at `/admin/org/eval/doc-types`
+- [ ] Test criteria import from spreadsheet
+
+**Reference:** `docs/plans/plan_module-eval-config.md` - Milestone 1 COMPLETE
+
+---
+
+## Previous Session
+
+**Session 138: Module-Eval Template Fixes & Test Project Creation**
+
+**Goal:** Create build scripts for module-eval/voice, standardize module-voice, recreate test project
+
+**Status:** ✅ COMPLETE
+
+### Session 138 Accomplishments
+- [x] Created `build.sh` for module-eval template (all 3 Lambdas)
+- [x] Created `build.sh` for module-voice template (all 6 Lambdas)
+- [x] Standardized module-voice template infrastructure
+- [x] Verified all 8 modules build successfully (30+ Lambda packages)
+- [x] Deleted old test project and recreated from updated templates
+- [x] Project created: `~/code/bodhix/testing/test-eval/ai-sec-{infra,stack}`
+- [x] Database schema applied (58 tables, 189 indexes, 88 functions, 176 policies)
+- [x] Validation: BRONZE certification
+
+---
+
+## Previous Session
+
+**Session 137: Module-Eval-Config Sprint - Milestone 1 Preparation**
+
+**Goal:** Plan deployment and prepare test environment
+
+**Status:** ✅ COMPLETE
+
+### Session 137 Work
+- [x] Reviewed session plan and objectives
+- [x] Prepared for deployment testing
+
+---
+
+## Previous Session
+
 **Session 136: Module-Eval-Config Sprint - Planning**
 
 **Goal:** Create sprint plan and setup branch for org admin config testing
 
-**Status:** 🔄 IN PROGRESS
+**Status:** ✅ COMPLETE
 
 ### Session 136 Work
 - [x] Reviewed PR #46 merge status (feature/module-eval-implementation → main)
 - [x] Created comprehensive sprint plan: `docs/plans/plan_module-eval-config.md`
 - [x] Updated activeContext.md with new branch tracking
 - [x] Updated context-module-eval.md with new sprint section
-- [ ] Create feature/module-eval-config branch
-- [ ] Begin Milestone 1: Deployment to test project
+- [x] Created feature/module-eval-config branch
+- [x] Committed sprint plan and context updates
 
 ---
 
@@ -202,8 +398,8 @@ Module-eval depends on:
 **Goal:** Org admin can configure document evaluations (doc types, criteria, scoring)
 
 ### Sprint Status
-- **Milestone 1:** Deployment & Provisioning (pending)
-- **Milestone 2:** Org Admin Config Testing (pending)
+- **Milestone 1:** Deployment & Provisioning (✅ COMPLETE - Session 141)
+- **Milestone 2:** Org Admin Config Testing (🔄 READY TO START - Session 142)
 - **Milestone 3:** User Integration Testing (pending)
 - **Milestone 4:** Bug Fixes & Template Updates (pending)
 

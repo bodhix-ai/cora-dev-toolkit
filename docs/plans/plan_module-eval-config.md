@@ -290,13 +290,20 @@ For each bug discovered:
 ## Test Environment
 
 ### Test Project: ai-sec
-**Test Workspace:** TBD (create new workspace: test-ws-XX)
+**Test Workspace:** test-eval
 
 **Paths:**
 ```
-Stack:  ~/code/bodhix/testing/test-ws-XX/ai-sec-stack
-Infra:  ~/code/bodhix/testing/test-ws-XX/ai-sec-infra
+Stack:  ~/code/bodhix/testing/test-eval/ai-sec-stack
+Infra:  ~/code/bodhix/testing/test-eval/ai-sec-infra
 ```
+
+**Project Status (Session 138):**
+- ✅ Created from updated templates with all fixes
+- ✅ Database schema applied (58 tables, 189 indexes)
+- ✅ IDP configured (Okta)
+- ✅ AI provider seeded (AWS Bedrock)
+- ✅ Validation: BRONZE certification
 
 **Test Users:**
 - **Org Admin**: Create test org admin user in test workspace
@@ -381,26 +388,196 @@ Infra:  ~/code/bodhix/testing/test-ws-XX/ai-sec-infra
 
 ## Session Tracking
 
-### Session 1: Deployment & Initial Testing
-**Date**: TBD  
-**Duration**: TBD  
-**Focus**: Milestone 1 + start Milestone 2
+### Session 138: Template Fixes & Test Project Creation
+**Date**: January 18, 2026  
+**Duration**: ~1.5 hours  
+**Focus**: Build scripts, module-voice standardization, fresh project creation
 
 **Completed:**
-- [ ] Module deployed to test project
-- [ ] Infrastructure verified
-- [ ] Database schema applied
-- [ ] Initial admin page testing
+- [x] Created `build.sh` for module-eval template (3 Lambdas)
+- [x] Created `build.sh` for module-voice template (6 Lambdas)
+- [x] Standardized module-voice infrastructure (variables, main.tf, outputs)
+- [x] Verified all 8 modules build successfully (30+ Lambda packages)
+- [x] Deleted old test project
+- [x] Created fresh test project: `~/code/bodhix/testing/test-eval/`
+- [x] Database schema applied (58 tables, 189 indexes, 88 functions, 176 policies)
+- [x] Validation: BRONZE certification
+
+**Validator Notes:**
+- API Tracer: 1 false positive (`{baseURL}{url}` - validator parsing issue, code correct)
+- Accessibility: 49 warnings (placeholders without labels - expected)
+- Portability: 15 warnings (hardcoded region fallbacks - acceptable)
+- 207 orphaned route warnings (internal APIs, webhooks - expected)
 
 **Issues Found:**
-- (Document issues here)
+- None - all template fixes successful
 
 **Next Session:**
-- Continue Milestone 2 testing
+- Build all modules in test project
+- Deploy infrastructure (Terraform)
+- Begin Milestone 1 verification
 
 ---
 
-### Session 2: Configuration Testing
+### Session 139: Deployment & Initial Testing
+**Date**: January 18, 2026  
+**Duration**: ~1 hour  
+**Focus**: Milestone 1 deployment + verification
+
+**Completed:**
+- [x] Built all modules in test project (31 Lambda packages)
+- [x] Fixed critical infrastructure bugs:
+  - Module-voice: Fixed `api_routes` structure (integration + public attributes)
+  - Module-eval: Fixed S3 lifecycle configuration (added filter block)
+- [x] Deployed infrastructure (Terraform) - 420 resources created
+- [x] Verified API Gateway routes (44+ routes registered)
+- [x] Created infrastructure sync script (`scripts/sync-infra-to-project.sh`)
+- [x] Updated `.clinerules` with infrastructure sync documentation
+
+**Deployment Results:**
+- API Gateway ID: `hk5bzq4kv3`
+- API Gateway URL: `https://hk5bzq4kv3.execute-api.us-east-1.amazonaws.com/`
+- Module-eval Lambdas: 3 functions deployed
+- SQS Queue: Created for async processing
+- S3 Bucket: Created for exports (optional)
+
+**Infrastructure Fixes:**
+1. **Module-voice** `outputs.tf` - Changed from `lambda_name`/`description` to `integration`/`public`
+2. **Module-eval** `main.tf` - Added `filter { prefix = \"`` }` to S3 lifecycle rule
+
+**Tooling Created:**
+- `scripts/sync-infra-to-project.sh` - For syncing Terraform infrastructure files
+- Documented in `.clinerules` for future AI agents
+
+**Issues Found:**
+- ⚠️ S3 lifecycle warnings in other modules (module-kb, etc.) - same pattern, can be fixed later
+
+**Next Session:**
+- Verify Milestone 1 checklist items
+- Begin Milestone 2 testing (org admin configuration)
+
+---
+
+### Session 140: Route Creation & Test Environment Preparation
+**Date**: January 18, 2026  
+**Duration**: ~1 hour  
+**Focus**: Complete module-eval routes, prepare for deployment testing
+
+**Completed:**
+- [x] Created 8 module-eval route files in template
+  - `/admin/org/eval/config/page.tsx`
+  - `/admin/org/eval/doc-types/page.tsx`
+  - `/admin/org/eval/criteria/page.tsx`
+  - `/admin/org/eval/prompts/page.tsx`
+  - `/admin/sys/eval/config/page.tsx`
+  - `/admin/sys/eval/prompts/page.tsx`
+  - `/eval/page.tsx`
+  - `/eval/[id]/page.tsx`
+- [x] Recreated test project from updated templates
+- [x] Manually copied routes to test project (workaround)
+- [x] Documented proper test workflow requirements
+
+**Issues Found:**
+1. **CRITICAL:** `create-cora-project.sh` does NOT copy `routes/` directory
+   - Script only copies `frontend/`, `backend/`, `db/`, `infrastructure/`
+   - Routes must be manually copied until script is updated
+   - Workaround: Use `cp -r` commands after project creation
+
+2. **Process Error:** Initially suggested "start dev server" without deployment
+   - Frontend `.env.local` is NOT populated until `deploy-all.sh` runs
+   - Dev server cannot start without API Gateway endpoint configured
+   - Must follow `.cline/workflows/test-module.md` workflow phases
+
+**Lessons Learned:**
+- Infrastructure deployment MUST happen before dev server startup
+- Always check `.cline/workflows/` before suggesting test procedures
+- Follow test-module.md phases: Config → Create → Validate → Deploy → Dev Server
+
+**Next Session:**
+- Follow `.cline/workflows/test-module.md` for proper test environment setup
+- Run phases 0-4 in correct order
+- Begin Milestone 2 testing after deployment completes
+
+---
+
+### Session 141: Infrastructure Redeployment & Frontend Fixes ✅
+**Date**: January 18, 2026  
+**Duration**: ~2 hours  
+**Focus**: Deploy missing routes, fix frontend bugs, achieve first successful page load
+
+**Completed:**
+- [x] **Infrastructure Redeployment:**
+  - Identified that routes were created AFTER Session 139 deployment
+  - All 3 Lambdas exist: eval-config, eval-processor, eval-results
+  - Redeployed infrastructure to register routes
+  - Verified all 44 API routes registered in API Gateway
+  - API calls now return 200 OK with data (not 404)
+
+- [x] **Frontend Bug Fixes (4 files):**
+  1. `useEvalStatusOptions.ts` - Added defensive array check for `sysStatusOptions`
+  2. `module-access/frontend/index.ts` - Added `OrgContext` to exports
+  3. `OrgDelegationManager.tsx` - Added defensive array check for `organizations`
+  4. `ScoringConfigPanel.tsx` - Added `useEffect` to sync state with API response
+
+- [x] **All fixes synced to test project**
+- [x] **🎉 PAGE LOADS FOR FIRST TIME!**
+  - `/admin/sys/eval/config` displays full UI
+  - Scoring Configuration panel visible
+  - Status Options manager visible
+  - Organization Delegation panel visible
+
+**Issues Discovered & Resolved:**
+
+**Bug 1:** `sysStatusOptions.filter is not a function`
+- **Cause:** No defensive check for array type
+- **Fix:** Added `Array.isArray()` guard
+- **Status:** ✅ Fixed in template, synced to test project
+
+**Bug 2:** `OrgContext is undefined`
+- **Cause:** `OrgContext` not exported from module-access package
+- **Fix:** Added `OrgContext` to exports: `export { OrgProvider, OrgContext } from "./contexts/OrgContext"`
+- **Status:** ✅ Fixed in template, synced to test project
+
+**Bug 3:** `organizations.filter is not a function`
+- **Cause:** Same as Bug 1, no defensive array check
+- **Fix:** Added `Array.isArray()` guard
+- **Status:** ✅ Fixed in template, synced to test project
+
+**Bug 4:** Checkbox showing unchecked despite API returning `showNumericalScore: true`
+- **Cause:** Component state initialized on mount, doesn't update when API data loads
+- **Fix:** Added `useEffect` to sync state when config prop changes
+- **Status:** ✅ Fixed in template, synced to test project
+
+**Issues Pending:**
+
+**Issue:** Formatting - checkmark rendering 1/3 page size
+- **Likely Cause:** Tailwind CSS not loading or conflicting styles
+- **Status:** ⚠️ Needs investigation
+- **Recommendation:** Check browser DevTools for CSS errors, verify tailwind.config.js includes module paths
+
+**Clarification:** Org delegation schema
+- **Question:** "Don't see those columns on eval_cfg_sys table"
+- **Answer:** ✅ Correct! Delegation is stored on `organizations` table (`ai_config_delegated` column), not on eval config tables
+- **Design:** Delegation is an organization-level permission, not an eval config setting
+
+**Deployment Results:**
+- API Gateway ID: `hk5bzq4kv3`
+- API Gateway URL: `https://hk5bzq4kv3.execute-api.us-east-1.amazonaws.com/`
+- All 44 module-eval routes registered and returning 200/401 (not 404)
+
+**Milestone Progress:**
+- **Milestone 1:** ✅ COMPLETE - Infrastructure deployed, routes registered, page loads
+- **Milestone 2:** 🔄 READY TO BEGIN - Org admin configuration testing can start
+
+**Next Session:**
+- Investigate Tailwind CSS loading issue (if not resolved by user)
+- Begin Milestone 2 testing: Create status options, doc types, criteria sets
+- Test scoring configuration save/load
+- Test other tabs (Doc Types, Criteria, Prompts)
+
+---
+
+### Session 142: Configuration Testing
 **Date**: TBD  
 **Duration**: TBD  
 **Focus**: Complete Milestone 2
@@ -489,11 +666,13 @@ Infra:  ~/code/bodhix/testing/test-ws-XX/ai-sec-infra
 ## Change Log
 
 | Date | Session | Changes |
-|------|---------|---------|
+|------|---------|------------|
+| Jan 18, 2026 | 138 | Template fixes (build scripts, module-voice standardization), fresh test project created |
 | Jan 18, 2026 | - | Sprint plan created |
 
 ---
 
 **Status**: 🔄 IN PROGRESS  
-**Last Updated**: January 18, 2026  
-**Branch**: feature/module-eval-config
+**Last Updated**: January 18, 2026 (Session 138)  
+**Branch**: feature/module-eval-config  
+**Test Project**: ~/code/bodhix/testing/test-eval/ ✅ CREATED
