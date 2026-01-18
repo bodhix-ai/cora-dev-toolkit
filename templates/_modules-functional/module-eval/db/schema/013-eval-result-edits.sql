@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS eval_result_edits (
     edit_notes TEXT,
     is_current BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
+    created_by BIGINT REFERENCES user_profiles(id) ON DELETE SET NULL,
     
     CONSTRAINT eval_result_edits_result_version_unique 
         UNIQUE (criteria_result_id, version)

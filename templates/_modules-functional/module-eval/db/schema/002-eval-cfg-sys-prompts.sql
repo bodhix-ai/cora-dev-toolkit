@@ -17,8 +17,8 @@ CREATE TABLE IF NOT EXISTS eval_cfg_sys_prompts (
     max_tokens INTEGER NOT NULL DEFAULT 2000,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
-    updated_by UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
+    created_by BIGINT REFERENCES user_profiles(id) ON DELETE SET NULL,
+    updated_by BIGINT REFERENCES user_profiles(id) ON DELETE SET NULL,
     
     CONSTRAINT eval_cfg_sys_prompts_type_unique UNIQUE (prompt_type),
     CONSTRAINT eval_cfg_sys_prompts_type_check 

@@ -16,8 +16,8 @@ CREATE TABLE IF NOT EXISTS eval_criteria_sets (
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
-    updated_by UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
+    created_by BIGINT REFERENCES user_profiles(id) ON DELETE SET NULL,
+    updated_by BIGINT REFERENCES user_profiles(id) ON DELETE SET NULL,
     
     CONSTRAINT eval_criteria_sets_doc_type_name_version_unique 
         UNIQUE (doc_type_id, name, version)

@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS eval_doc_types (
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
-    updated_by UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
+    created_by BIGINT REFERENCES user_profiles(id) ON DELETE SET NULL,
+    updated_by BIGINT REFERENCES user_profiles(id) ON DELETE SET NULL,
     
     CONSTRAINT eval_doc_types_org_name_unique UNIQUE (org_id, name)
 );
