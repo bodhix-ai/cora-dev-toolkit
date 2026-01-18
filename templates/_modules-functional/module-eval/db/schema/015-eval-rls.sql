@@ -227,86 +227,86 @@ CREATE POLICY eval_criteria_items_all ON eval_criteria_items
 -- Evaluation Results Tables
 -- ============================================================================
 
--- eval_doc_summary: Workspace members can access
-ALTER TABLE eval_doc_summary ENABLE ROW LEVEL SECURITY;
+-- eval_doc_summaries: Workspace members can access
+ALTER TABLE eval_doc_summaries ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS eval_doc_summary_select ON eval_doc_summary;
-CREATE POLICY eval_doc_summary_select ON eval_doc_summary
+DROP POLICY IF EXISTS eval_doc_summaries_select ON eval_doc_summaries;
+CREATE POLICY eval_doc_summaries_select ON eval_doc_summaries
     FOR SELECT USING (
         EXISTS (
             SELECT 1 FROM ws_members 
-            WHERE ws_members.workspace_id = eval_doc_summary.workspace_id
+            WHERE ws_members.workspace_id = eval_doc_summaries.workspace_id
             AND ws_members.user_id = auth.uid()
         )
     );
 
-DROP POLICY IF EXISTS eval_doc_summary_insert ON eval_doc_summary;
-CREATE POLICY eval_doc_summary_insert ON eval_doc_summary
+DROP POLICY IF EXISTS eval_doc_summaries_insert ON eval_doc_summaries;
+CREATE POLICY eval_doc_summaries_insert ON eval_doc_summaries
     FOR INSERT WITH CHECK (
         EXISTS (
             SELECT 1 FROM ws_members 
-            WHERE ws_members.workspace_id = eval_doc_summary.workspace_id
+            WHERE ws_members.workspace_id = eval_doc_summaries.workspace_id
             AND ws_members.user_id = auth.uid()
         )
     );
 
-DROP POLICY IF EXISTS eval_doc_summary_update ON eval_doc_summary;
-CREATE POLICY eval_doc_summary_update ON eval_doc_summary
+DROP POLICY IF EXISTS eval_doc_summaries_update ON eval_doc_summaries;
+CREATE POLICY eval_doc_summaries_update ON eval_doc_summaries
     FOR UPDATE USING (
         created_by = auth.uid()
         OR EXISTS (
             SELECT 1 FROM ws_members 
-            WHERE ws_members.workspace_id = eval_doc_summary.workspace_id
+            WHERE ws_members.workspace_id = eval_doc_summaries.workspace_id
             AND ws_members.user_id = auth.uid()
             AND ws_members.ws_role IN ('ws_owner', 'ws_admin')
         )
     );
 
-DROP POLICY IF EXISTS eval_doc_summary_delete ON eval_doc_summary;
-CREATE POLICY eval_doc_summary_delete ON eval_doc_summary
+DROP POLICY IF EXISTS eval_doc_summaries_delete ON eval_doc_summaries;
+CREATE POLICY eval_doc_summaries_delete ON eval_doc_summaries
     FOR DELETE USING (
         created_by = auth.uid()
         OR EXISTS (
             SELECT 1 FROM ws_members 
-            WHERE ws_members.workspace_id = eval_doc_summary.workspace_id
+            WHERE ws_members.workspace_id = eval_doc_summaries.workspace_id
             AND ws_members.user_id = auth.uid()
             AND ws_members.ws_role IN ('ws_owner', 'ws_admin')
         )
     );
 
--- eval_doc_set: Access through eval_doc_summary
-ALTER TABLE eval_doc_set ENABLE ROW LEVEL SECURITY;
+-- eval_doc_sets: Access through eval_doc_summaries
+ALTER TABLE eval_doc_sets ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS eval_doc_set_select ON eval_doc_set;
-CREATE POLICY eval_doc_set_select ON eval_doc_set
+DROP POLICY IF EXISTS eval_doc_sets_select ON eval_doc_sets;
+CREATE POLICY eval_doc_sets_select ON eval_doc_sets
     FOR SELECT USING (
         EXISTS (
-            SELECT 1 FROM eval_doc_summary eds
+            SELECT 1 FROM eval_doc_summaries eds
             JOIN ws_members wm ON wm.workspace_id = eds.workspace_id
-            WHERE eds.id = eval_doc_set.eval_summary_id
+            WHERE eds.id = eval_doc_sets.eval_summary_id
             AND wm.user_id = auth.uid()
         )
     );
 
-DROP POLICY IF EXISTS eval_doc_set_all ON eval_doc_set;
-CREATE POLICY eval_doc_set_all ON eval_doc_set
+DROP POLICY IF EXISTS eval_doc_sets_all ON eval_doc_sets;
+CREATE POLICY eval_doc_sets_all ON eval_doc_sets
     FOR ALL USING (
         EXISTS (
-            SELECT 1 FROM eval_doc_summary eds
+            SELECT 1 FROM eval_doc_summaries eds
             JOIN ws_members wm ON wm.workspace_id = eds.workspace_id
-            WHERE eds.id = eval_doc_set.eval_summary_id
+            WHERE eds.id = eval_doc_sets.eval_summary_id
             AND wm.user_id = auth.uid()
         )
     );
 
--- eval_criteria_results: Access through eval_doc_summary
+-- eval_criteria_results: Access through eval_doc_summaries
 ALTER TABLE eval_criteria_results ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS eval_criteria_results_select ON eval_criteria_results;
 CREATE POLICY eval_criteria_results_select ON eval_criteria_results
     FOR SELECT USING (
         EXISTS (
-            SELECT 1 FROM eval_doc_summary eds
+            SELECT 1 FROM eval_doc_summaries eds
             JOIN ws_members wm ON wm.workspace_id = eds.workspace_id
             WHERE eds.id = eval_criteria_results.eval_summary_id
             AND wm.user_id = auth.uid()
@@ -317,14 +317,14 @@ DROP POLICY IF EXISTS eval_criteria_results_all ON eval_criteria_results;
 CREATE POLICY eval_criteria_results_all ON eval_criteria_results
     FOR ALL USING (
         EXISTS (
-            SELECT 1 FROM eval_doc_summary eds
+            SELECT 1 FROM eval_doc_summaries eds
             JOIN ws_members wm ON wm.workspace_id = eds.workspace_id
             WHERE eds.id = eval_criteria_results.eval_summary_id
             AND wm.user_id = auth.uid()
         )
     );
 
--- eval_result_edits: Access through criteria result and eval_doc_summary
+-- eval_result_edits: Access through criteria result and eval_doc_summaries
 ALTER TABLE eval_result_edits ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS eval_result_edits_select ON eval_result_edits;
@@ -332,7 +332,7 @@ CREATE POLICY eval_result_edits_select ON eval_result_edits
     FOR SELECT USING (
         EXISTS (
             SELECT 1 FROM eval_criteria_results ecr
-            JOIN eval_doc_summary eds ON eds.id = ecr.eval_summary_id
+            JOIN eval_doc_summaries eds ON eds.id = ecr.eval_summary_id
             JOIN ws_members wm ON wm.workspace_id = eds.workspace_id
             WHERE ecr.id = eval_result_edits.criteria_result_id
             AND wm.user_id = auth.uid()
@@ -344,7 +344,7 @@ CREATE POLICY eval_result_edits_all ON eval_result_edits
     FOR ALL USING (
         EXISTS (
             SELECT 1 FROM eval_criteria_results ecr
-            JOIN eval_doc_summary eds ON eds.id = ecr.eval_summary_id
+            JOIN eval_doc_summaries eds ON eds.id = ecr.eval_summary_id
             JOIN ws_members wm ON wm.workspace_id = eds.workspace_id
             WHERE ecr.id = eval_result_edits.criteria_result_id
             AND wm.user_id = auth.uid()
