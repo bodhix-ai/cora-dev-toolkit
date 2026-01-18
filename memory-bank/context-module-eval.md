@@ -8,11 +8,29 @@
 
 ## Current Session
 
+**Session 136: Module-Eval-Config Sprint - Planning**
+
+**Goal:** Create sprint plan and setup branch for org admin config testing
+
+**Status:** 🔄 IN PROGRESS
+
+### Session 136 Work
+- [x] Reviewed PR #46 merge status (feature/module-eval-implementation → main)
+- [x] Created comprehensive sprint plan: `docs/plans/plan_module-eval-config.md`
+- [x] Updated activeContext.md with new branch tracking
+- [x] Updated context-module-eval.md with new sprint section
+- [ ] Create feature/module-eval-config branch
+- [ ] Begin Milestone 1: Deployment to test project
+
+---
+
+## Previous Session
+
 **Session 135: Module-Eval Completion & PR Preparation**
 
 **Goal:** Complete module-eval implementation, document validator improvements, and create PR
 
-**Status:** ✅ COMPLETE - Ready for PR
+**Status:** ✅ COMPLETE - PR #46 MERGED
 
 ### Session 135 Work
 - [x] Reviewed validation results from Session 134
@@ -177,8 +195,28 @@ Module-eval depends on:
 
 ---
 
-## Next Steps (Post-PR)
+## Current Sprint: Module-Eval-Config
 
-1. **Merge PR** - `feature/module-eval-implementation` → `main`
-2. **Validator Improvements** - Implement fixes in `docs/plans/plan_validator-improvements.md`
-3. **End-to-End Testing** - Deploy module-eval to test project and run integration tests
+**Branch:** `feature/module-eval-config`  
+**Plan:** `docs/plans/plan_module-eval-config.md`  
+**Goal:** Org admin can configure document evaluations (doc types, criteria, scoring)
+
+### Sprint Status
+- **Milestone 1:** Deployment & Provisioning (pending)
+- **Milestone 2:** Org Admin Config Testing (pending)
+- **Milestone 3:** User Integration Testing (pending)
+- **Milestone 4:** Bug Fixes & Template Updates (pending)
+
+### Next Steps
+
+1. **Create Branch** - `feature/module-eval-config` from `main`
+2. **Deploy Module** - Use `create-cora-project.sh` with module-eval enabled
+3. **Test Org Admin Flow** - Doc types, criteria import, scoring config
+4. **Test User Integration** - Create evaluation with org config
+5. **Fix Issues** - Update templates, sync to test project
+6. **Create PR** - Merge config testing fixes to `main`
+
+### Future Work (Post-Sprint)
+1. **Validator Improvements** - Implement fixes in `docs/plans/plan_validator-improvements.md`
+2. **Platform Admin Testing** - Separate sprint for sys admin features
+3. **Performance Optimization** - Large criteria sets, export generation

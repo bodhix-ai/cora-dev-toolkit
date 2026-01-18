@@ -12,7 +12,7 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 |--------|--------------|------------|
 | `ws-crud-kbs` | [plan_ws-crud-kbs.md](../docs/plans/plan_ws-crud-kbs.md) | Workspace KB CRUD (Part 1/3: Upload/delete docs, view enabled KBs) |
 | `module-voice-dev` | `context-module-voice.md` | Module-Voice (Phase 1.5: Specifications) |
-| `feature/module-eval-implementation` | `context-module-eval.md` | Module-Eval (Phase 9: Frontend Hooks) |
+| `feature/module-eval-config` | `context-module-eval.md` | Module-Eval Config Testing (Org admin configuration flow) |
 | `feature/module-kb-implementation` | `context-module-kb.md` | Module-KB development |
 | `main` | (this file) | General toolkit work |
 
@@ -29,10 +29,10 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 ## Current Branch Status
 
-### feature/module-eval-implementation
-- **Status:** Phase 9 - Frontend Hooks (🔄 IN PROGRESS)
-- **Progress:** ~65% complete (Phases 1-8 done)
-- **Context:** See `context-module-eval.md`
+### feature/module-eval-config
+- **Status:** Sprint - Org Admin Config Testing (🔄 IN PROGRESS)
+- **Progress:** 0% complete (just started)
+- **Context:** See `context-module-eval.md` and `docs/plans/plan_module-eval-config.md`
 
 ### feature/module-kb-implementation  
 - **Status:** Phase 2 - Database Schema (next)
@@ -65,4 +65,4 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 ---
 
-**Updated:** January 16, 2026
+**Updated:** January 18, 2026
