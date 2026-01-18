@@ -868,6 +868,29 @@ db/schema/
 
 **⚠️ IMPORTANT: Use PLURAL table names per DATABASE-NAMING-STANDARDS.md Rule 1**
 
+**⚠️ CRITICAL: created_by / updated_by Column Standard**
+
+**ALWAYS use:**
+```sql
+created_by UUID REFERENCES auth.users(id),
+updated_by UUID REFERENCES auth.users(id),
+```
+
+**NEVER use:**
+```sql
+created_by BIGINT REFERENCES user_profiles(id),  -- ❌ WRONG!
+```
+
+**Why:**
+- `auth.users.id` is the Supabase user UUID (unique identity)
+- `user_profiles.id` is a BIGINT for profile attributes only
+- RLS policies use `auth.uid()` which returns UUID
+- Type mismatch breaks RLS and all authorization checks
+
+**See:** `docs/standards/cora/standard_DATABASE-NAMING.md` Column Naming Rule 8
+
+---
+
 ```sql
 -- =============================================
 -- MODULE-{MODULE}: {Entity} Table

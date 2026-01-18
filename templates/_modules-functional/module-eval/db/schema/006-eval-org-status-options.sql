@@ -15,8 +15,8 @@ CREATE TABLE IF NOT EXISTS eval_org_status_options (
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by BIGINT REFERENCES user_profiles(id) ON DELETE SET NULL,
-    updated_by BIGINT REFERENCES user_profiles(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    updated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     
     CONSTRAINT eval_org_status_options_org_name_unique UNIQUE (org_id, name)
 );

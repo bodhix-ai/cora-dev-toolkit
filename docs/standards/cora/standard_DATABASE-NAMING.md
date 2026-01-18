@@ -545,6 +545,58 @@ subscription_tier VARCHAR(20) NOT NULL DEFAULT 'basic'
   CHECK (subscription_tier IN ('basic', 'professional', 'enterprise'))
 ```
 
+### Rule 8: User Reference Columns → UUID REFERENCES auth.users(id)
+
+**CRITICAL:** All columns referencing users (`created_by`, `updated_by`, `assigned_to`, etc.) MUST use UUID type and reference `auth.users(id)`, NOT `user_profiles(id)`.
+
+**Why:**
+- `auth.users.id` is the Supabase user UUID - the unique identifier for authentication
+- `user_profiles.id` is a BIGINT used for profile attributes only, not for identifying users
+- RLS policies use `auth.uid()` which returns UUID (from auth.users)
+- Type mismatch breaks RLS policies and all authorization checks
+
+**✅ Correct:**
+```sql
+CREATE TABLE my_table (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  updated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  assigned_to UUID REFERENCES auth.users(id) ON DELETE SET NULL
+);
+```
+
+**❌ WRONG - DO NOT USE:**
+```sql
+CREATE TABLE my_table (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_by BIGINT REFERENCES user_profiles(id) ON DELETE SET NULL,  -- ❌ WRONG!
+  updated_by BIGINT REFERENCES user_profiles(id) ON DELETE SET NULL   -- ❌ WRONG!
+);
+```
+
+**Impact if wrong:**
+- RLS policies that check record ownership will fail with type mismatch errors
+- Authorization checks like `created_by = auth.uid()` will not work
+- Database migration will fail when creating RLS policies
+- 2-8 hours wasted debugging authorization issues
+
+**Common User Reference Columns:**
+- `created_by` - User who created the record
+- `updated_by` - User who last updated the record  
+- `deleted_by` - User who soft-deleted the record
+- `assigned_to` - User assigned to a task/record
+- `reviewed_by` - User who reviewed the record
+- `approved_by` - User who approved the record
+- `shared_with_user_id` - User with whom a resource is shared
+
+**All of these MUST be:** `UUID REFERENCES auth.users(id)`
+
 ---
 
 ## Constraint Naming Standards

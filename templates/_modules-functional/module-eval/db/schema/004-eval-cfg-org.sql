@@ -14,8 +14,8 @@ CREATE TABLE IF NOT EXISTS eval_cfg_org (
     show_numerical_score BOOLEAN,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by BIGINT REFERENCES user_profiles(id) ON DELETE SET NULL,
-    updated_by BIGINT REFERENCES user_profiles(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    updated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     
     CONSTRAINT eval_cfg_org_unique UNIQUE (org_id),
     CONSTRAINT eval_cfg_org_mode_check 

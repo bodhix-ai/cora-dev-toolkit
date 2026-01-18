@@ -23,10 +23,10 @@ CREATE TABLE IF NOT EXISTS eval_doc_summaries (
     is_deleted BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by BIGINT REFERENCES user_profiles(id) ON DELETE SET NULL,
-    updated_by BIGINT REFERENCES user_profiles(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    updated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     
-    CONSTRAINT eval_doc_summaries_status_check 
+    CONSTRAINT eval_doc_summaries_status_check
         CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
     CONSTRAINT eval_doc_summaries_progress_check 
         CHECK (progress >= 0 AND progress <= 100)
