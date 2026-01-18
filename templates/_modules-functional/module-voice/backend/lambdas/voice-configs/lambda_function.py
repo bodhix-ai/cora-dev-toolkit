@@ -14,7 +14,7 @@ Routes - Configs:
 
 import json
 from typing import Any, Dict
-import access_common as access
+import org_common as common
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -27,23 +27,23 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     
     try:
         # Extract user info from authorizer
-        user_info = access.get_user_from_event(event)
+        user_info = common.get_user_from_event(event)
         okta_uid = user_info['user_id']
         
         # Convert external UID to Supabase UUID for database operations
-        supabase_user_id = access.get_supabase_user_id_from_external_uid(okta_uid)
+        supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
         
         # Extract HTTP method
         http_method = event.get('requestContext', {}).get('http', {}).get('method') or event.get('httpMethod')
         if not http_method:
-            return access.bad_request_response('HTTP method not found in request')
+            return common.bad_request_response('HTTP method not found in request')
         
         # Extract path parameters
         path_params = event.get('pathParameters', {}) or {}
         
         # Route based on method
         if http_method == 'OPTIONS':
-            return access.success_response({})
+            return common.success_response({})
         
         # GET /api/voice/configs - List configs
         if http_method == 'GET' and not path_params.get('id'):
@@ -65,22 +65,22 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if http_method == 'DELETE':
             return handle_delete_config(event, supabase_user_id, path_params['id'])
         
-        return access.not_found_response('Route not found')
+        return common.not_found_response('Route not found')
         
     except KeyError as e:
         print(f'KeyError: {str(e)}')
-        return access.unauthorized_response(f'Missing user information: {str(e)}')
-    except access.NotFoundError as e:
-        return access.not_found_response(str(e))
-    except access.ValidationError as e:
-        return access.bad_request_response(str(e))
-    except access.ForbiddenError as e:
-        return access.forbidden_response(str(e))
+        return common.unauthorized_response(f'Missing user information: {str(e)}')
+    except common.NotFoundError as e:
+        return common.not_found_response(str(e))
+    except common.ValidationError as e:
+        return common.bad_request_response(str(e))
+    except common.ForbiddenError as e:
+        return common.forbidden_response(str(e))
     except Exception as e:
         print(f'Error: {str(e)}')
         import traceback
         traceback.print_exc()
-        return access.internal_error_response('Internal server error')
+        return common.internal_error_response('Internal server error')
 
 
 # =============================================================================
@@ -101,16 +101,16 @@ def handle_list_configs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     # Validate required org_id
     org_id = query_params.get('orgId')
     if not org_id:
-        raise access.ValidationError('orgId query parameter is required')
-    org_id = access.validate_uuid(org_id, 'orgId')
+        raise common.ValidationError('orgId query parameter is required')
+    org_id = common.validate_uuid(org_id, 'orgId')
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': org_id, 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this organization')
+        raise common.ForbiddenError('You do not have access to this organization')
     
     # Build filters
     filters = {'org_id': org_id}
@@ -122,7 +122,7 @@ def handle_list_configs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         filters['interview_type'] = query_params['interviewType']
     
     # Query configs
-    configs = access.find_many(
+    configs = common.find_many(
         table='voice_configs',
         filters=filters,
         order='name.asc'
@@ -131,35 +131,35 @@ def handle_list_configs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     # Format response
     result = [_format_config_response(c) for c in configs]
     
-    return access.success_response(result)
+    return common.success_response(result)
 
 
 def handle_get_config(event: Dict[str, Any], user_id: str, config_id: str) -> Dict[str, Any]:
     """
     Get voice config by ID.
     """
-    config_id = access.validate_uuid(config_id, 'id')
+    config_id = common.validate_uuid(config_id, 'id')
     
     # Get config
-    config = access.find_one(
+    config = common.find_one(
         table='voice_configs',
         filters={'id': config_id}
     )
     
     if not config:
-        raise access.NotFoundError('Config not found')
+        raise common.NotFoundError('Config not found')
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': config['org_id'], 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this config')
+        raise common.ForbiddenError('You do not have access to this config')
     
     result = _format_config_response(config)
     
-    return access.success_response(result)
+    return common.success_response(result)
 
 
 def handle_create_config(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
@@ -180,45 +180,45 @@ def handle_create_config(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     # Validate required fields
     org_id = body.get('orgId')
     if not org_id:
-        raise access.ValidationError('orgId is required')
-    org_id = access.validate_uuid(org_id, 'orgId')
+        raise common.ValidationError('orgId is required')
+    org_id = common.validate_uuid(org_id, 'orgId')
     
     name = body.get('name')
     if not name:
-        raise access.ValidationError('name is required')
-    name = access.validate_string_length(name, 'name', max_length=255)
+        raise common.ValidationError('name is required')
+    name = common.validate_string_length(name, 'name', max_length=255)
     
     interview_type = body.get('interviewType')
     if not interview_type:
-        raise access.ValidationError('interviewType is required')
-    interview_type = access.validate_string_length(interview_type, 'interviewType', max_length=100)
+        raise common.ValidationError('interviewType is required')
+    interview_type = common.validate_string_length(interview_type, 'interviewType', max_length=100)
     
     config_json = body.get('configJson')
     if not config_json:
-        raise access.ValidationError('configJson is required')
+        raise common.ValidationError('configJson is required')
     if not isinstance(config_json, dict):
-        raise access.ValidationError('configJson must be a JSON object')
+        raise common.ValidationError('configJson must be a JSON object')
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': org_id, 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this organization')
+        raise common.ForbiddenError('You do not have access to this organization')
     
     # Check for duplicate name
-    existing = access.find_one(
+    existing = common.find_one(
         table='voice_configs',
         filters={'org_id': org_id, 'name': name}
     )
     if existing:
-        raise access.ValidationError(f'A config with name "{name}" already exists')
+        raise common.ValidationError(f'A config with name "{name}" already exists')
     
     # Optional fields
     description = body.get('description')
     if description:
-        description = access.validate_string_length(description, 'description', max_length=1000)
+        description = common.validate_string_length(description, 'description', max_length=1000)
     
     # Create config
     config_data = {
@@ -232,11 +232,11 @@ def handle_create_config(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         'created_by': user_id
     }
     
-    config = access.insert_one(table='voice_configs', data=config_data)
+    config = common.insert_one(table='voice_configs', data=config_data)
     
     result = _format_config_response(config)
     
-    return access.created_response(result)
+    return common.created_response(result)
 
 
 def handle_update_config(event: Dict[str, Any], user_id: str, config_id: str) -> Dict[str, Any]:
@@ -251,53 +251,53 @@ def handle_update_config(event: Dict[str, Any], user_id: str, config_id: str) ->
         "isActive": true
     }
     """
-    config_id = access.validate_uuid(config_id, 'id')
+    config_id = common.validate_uuid(config_id, 'id')
     
     # Get existing config
-    config = access.find_one(
+    config = common.find_one(
         table='voice_configs',
         filters={'id': config_id}
     )
     
     if not config:
-        raise access.NotFoundError('Config not found')
+        raise common.NotFoundError('Config not found')
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': config['org_id'], 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this config')
+        raise common.ForbiddenError('You do not have access to this config')
     
     body = json.loads(event.get('body', '{}'))
     update_data = {}
     
     # Handle updatable fields
     if 'name' in body:
-        name = access.validate_string_length(body['name'], 'name', max_length=255)
+        name = common.validate_string_length(body['name'], 'name', max_length=255)
         # Check for duplicate name (exclude current config)
-        existing = access.find_one(
+        existing = common.find_one(
             table='voice_configs',
             filters={'org_id': config['org_id'], 'name': name}
         )
         if existing and existing['id'] != config_id:
-            raise access.ValidationError(f'A config with name "{name}" already exists')
+            raise common.ValidationError(f'A config with name "{name}" already exists')
         update_data['name'] = name
     
     if 'description' in body:
-        update_data['description'] = access.validate_string_length(
+        update_data['description'] = common.validate_string_length(
             body['description'], 'description', max_length=1000
         ) if body['description'] else None
     
     if 'interviewType' in body:
-        update_data['interview_type'] = access.validate_string_length(
+        update_data['interview_type'] = common.validate_string_length(
             body['interviewType'], 'interviewType', max_length=100
         )
     
     if 'configJson' in body:
         if not isinstance(body['configJson'], dict):
-            raise access.ValidationError('configJson must be a JSON object')
+            raise common.ValidationError('configJson must be a JSON object')
         update_data['config_json'] = body['configJson']
         # Increment version on config_json change
         update_data['version'] = config['version'] + 1
@@ -306,11 +306,11 @@ def handle_update_config(event: Dict[str, Any], user_id: str, config_id: str) ->
         update_data['is_active'] = bool(body['isActive'])
     
     if not update_data:
-        raise access.ValidationError('No valid fields to update')
+        raise common.ValidationError('No valid fields to update')
     
     update_data['updated_by'] = user_id
     
-    updated_config = access.update_one(
+    updated_config = common.update_one(
         table='voice_configs',
         filters={'id': config_id},
         data=update_data
@@ -318,7 +318,7 @@ def handle_update_config(event: Dict[str, Any], user_id: str, config_id: str) ->
     
     result = _format_config_response(updated_config)
     
-    return access.success_response(result)
+    return common.success_response(result)
 
 
 def handle_delete_config(event: Dict[str, Any], user_id: str, config_id: str) -> Dict[str, Any]:
@@ -327,45 +327,45 @@ def handle_delete_config(event: Dict[str, Any], user_id: str, config_id: str) ->
     
     Only configs not referenced by any sessions can be deleted.
     """
-    config_id = access.validate_uuid(config_id, 'id')
+    config_id = common.validate_uuid(config_id, 'id')
     
     # Get config
-    config = access.find_one(
+    config = common.find_one(
         table='voice_configs',
         filters={'id': config_id}
     )
     
     if not config:
-        raise access.NotFoundError('Config not found')
+        raise common.NotFoundError('Config not found')
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': config['org_id'], 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this config')
+        raise common.ForbiddenError('You do not have access to this config')
     
     # Check if config is in use
-    sessions_using = access.find_many(
+    sessions_using = common.find_many(
         table='voice_sessions',
         filters={'config_id': config_id},
         limit=1
     )
     
     if sessions_using:
-        raise access.ValidationError(
+        raise common.ValidationError(
             'Cannot delete config that is in use by sessions. '
             'Deactivate it instead by setting isActive to false.'
         )
     
     # Delete the config
-    access.delete_one(
+    common.delete_one(
         table='voice_configs',
         filters={'id': config_id}
     )
     
-    return access.success_response({
+    return common.success_response({
         'message': 'Config deleted successfully',
         'id': config_id
     })

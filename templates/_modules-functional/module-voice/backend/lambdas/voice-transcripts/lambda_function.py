@@ -15,7 +15,7 @@ import json
 import os
 import boto3
 from typing import Any, Dict
-import access_common as access
+import org_common as common
 
 
 # Environment variables
@@ -35,23 +35,23 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     
     try:
         # Extract user info from authorizer
-        user_info = access.get_user_from_event(event)
+        user_info = common.get_user_from_event(event)
         okta_uid = user_info['user_id']
         
         # Convert external UID to Supabase UUID for database operations
-        supabase_user_id = access.get_supabase_user_id_from_external_uid(okta_uid)
+        supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
         
         # Extract HTTP method
         http_method = event.get('requestContext', {}).get('http', {}).get('method') or event.get('httpMethod')
         if not http_method:
-            return access.bad_request_response('HTTP method not found in request')
+            return common.bad_request_response('HTTP method not found in request')
         
         # Extract path parameters
         path_params = event.get('pathParameters', {}) or {}
         
         # Route based on HTTP method
         if http_method == 'OPTIONS':
-            return access.success_response({})
+            return common.success_response({})
         
         # GET /api/voice/transcripts - List transcripts
         if http_method == 'GET' and not path_params.get('id'):
@@ -65,22 +65,22 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if http_method == 'DELETE':
             return handle_delete_transcript(event, supabase_user_id, path_params['id'])
         
-        return access.not_found_response('Route not found')
+        return common.not_found_response('Route not found')
         
     except KeyError as e:
         print(f'KeyError: {str(e)}')
-        return access.unauthorized_response(f'Missing user information: {str(e)}')
-    except access.NotFoundError as e:
-        return access.not_found_response(str(e))
-    except access.ValidationError as e:
-        return access.bad_request_response(str(e))
-    except access.ForbiddenError as e:
-        return access.forbidden_response(str(e))
+        return common.unauthorized_response(f'Missing user information: {str(e)}')
+    except common.NotFoundError as e:
+        return common.not_found_response(str(e))
+    except common.ValidationError as e:
+        return common.bad_request_response(str(e))
+    except common.ForbiddenError as e:
+        return common.forbidden_response(str(e))
     except Exception as e:
         print(f'Error: {str(e)}')
         import traceback
         traceback.print_exc()
-        return access.internal_error_response('Internal server error')
+        return common.internal_error_response('Internal server error')
 
 
 # =============================================================================
@@ -104,25 +104,25 @@ def handle_list_transcripts(event: Dict[str, Any], user_id: str) -> Dict[str, An
     # Validate required org_id
     org_id = query_params.get('orgId')
     if not org_id:
-        raise access.ValidationError('orgId query parameter is required')
-    org_id = access.validate_uuid(org_id, 'orgId')
+        raise common.ValidationError('orgId query parameter is required')
+    org_id = common.validate_uuid(org_id, 'orgId')
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': org_id, 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this organization')
+        raise common.ForbiddenError('You do not have access to this organization')
     
     # Pagination
-    limit = access.validate_integer(
+    limit = common.validate_integer(
         query_params.get('limit', 50),
         'limit',
         min_value=1,
         max_value=100
     )
-    offset = access.validate_integer(
+    offset = common.validate_integer(
         query_params.get('offset', 0),
         'offset',
         min_value=0
@@ -132,13 +132,13 @@ def handle_list_transcripts(event: Dict[str, Any], user_id: str) -> Dict[str, An
     filters = {'org_id': org_id}
     
     if query_params.get('sessionId'):
-        filters['session_id'] = access.validate_uuid(query_params['sessionId'], 'sessionId')
+        filters['session_id'] = common.validate_uuid(query_params['sessionId'], 'sessionId')
     
     if query_params.get('interviewType'):
         filters['interview_type'] = query_params['interviewType']
     
     # Query transcripts
-    transcripts = access.find_many(
+    transcripts = common.find_many(
         table='voice_transcripts',
         filters=filters,
         order='created_at.desc',
@@ -157,7 +157,7 @@ def handle_list_transcripts(event: Dict[str, Any], user_id: str) -> Dict[str, An
     # Format response (snake_case to camelCase)
     result = [_format_transcript_response(t, include_text=False) for t in transcripts]
     
-    return access.success_response(result)
+    return common.success_response(result)
 
 
 def handle_get_transcript(event: Dict[str, Any], user_id: str, transcript_id: str) -> Dict[str, Any]:
@@ -167,25 +167,25 @@ def handle_get_transcript(event: Dict[str, Any], user_id: str, transcript_id: st
     Query parameters:
     - includeText: Include full transcript text (default: true)
     """
-    transcript_id = access.validate_uuid(transcript_id, 'id')
+    transcript_id = common.validate_uuid(transcript_id, 'id')
     query_params = event.get('queryStringParameters', {}) or {}
     
     # Get transcript
-    transcript = access.find_one(
+    transcript = common.find_one(
         table='voice_transcripts',
         filters={'id': transcript_id}
     )
     
     if not transcript:
-        raise access.NotFoundError('Transcript not found')
+        raise common.NotFoundError('Transcript not found')
     
     # Verify org membership
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': transcript['org_id'], 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this transcript')
+        raise common.ForbiddenError('You do not have access to this transcript')
     
     # Check if we should include full text
     include_text = query_params.get('includeText', 'true').lower() != 'false'
@@ -194,7 +194,7 @@ def handle_get_transcript(event: Dict[str, Any], user_id: str, transcript_id: st
     
     # Include session details if present
     if transcript.get('session_id'):
-        session = access.find_one(
+        session = common.find_one(
             table='voice_sessions',
             filters={'id': transcript['session_id']}
         )
@@ -210,7 +210,7 @@ def handle_get_transcript(event: Dict[str, Any], user_id: str, transcript_id: st
             }
     
     # Include analytics if present
-    analytics = access.find_one(
+    analytics = common.find_one(
         table='voice_analytics',
         filters={'transcript_id': transcript_id}
     )
@@ -223,7 +223,7 @@ def handle_get_transcript(event: Dict[str, Any], user_id: str, transcript_id: st
             'recommendations': analytics.get('recommendations', [])
         }
     
-    return access.success_response(result)
+    return common.success_response(result)
 
 
 def handle_delete_transcript(event: Dict[str, Any], user_id: str, transcript_id: str) -> Dict[str, Any]:
@@ -233,27 +233,27 @@ def handle_delete_transcript(event: Dict[str, Any], user_id: str, transcript_id:
     Also deletes associated S3 object if present.
     Only org admins can delete transcripts.
     """
-    transcript_id = access.validate_uuid(transcript_id, 'id')
+    transcript_id = common.validate_uuid(transcript_id, 'id')
     
     # Get transcript
-    transcript = access.find_one(
+    transcript = common.find_one(
         table='voice_transcripts',
         filters={'id': transcript_id}
     )
     
     if not transcript:
-        raise access.NotFoundError('Transcript not found')
+        raise common.NotFoundError('Transcript not found')
     
     # Verify org membership with admin role
-    membership = access.find_one(
+    membership = common.find_one(
         table='org_members',
         filters={'org_id': transcript['org_id'], 'user_id': user_id}
     )
     if not membership:
-        raise access.ForbiddenError('You do not have access to this transcript')
+        raise common.ForbiddenError('You do not have access to this transcript')
     
     if membership.get('role') not in ['admin', 'owner']:
-        raise access.ForbiddenError('Only org admins can delete transcripts')
+        raise common.ForbiddenError('Only org admins can delete transcripts')
     
     # Delete S3 object if present
     if transcript.get('transcript_s3_url') and S3_BUCKET_NAME:
@@ -267,12 +267,12 @@ def handle_delete_transcript(event: Dict[str, Any], user_id: str, transcript_id:
     
     # Delete associated analytics
     try:
-        analytics = access.find_one(
+        analytics = common.find_one(
             table='voice_analytics',
             filters={'transcript_id': transcript_id}
         )
         if analytics:
-            access.delete_one(
+            common.delete_one(
                 table='voice_analytics',
                 filters={'transcript_id': transcript_id}
             )
@@ -280,12 +280,12 @@ def handle_delete_transcript(event: Dict[str, Any], user_id: str, transcript_id:
         print(f'Warning: Failed to delete analytics: {e}')
     
     # Delete the transcript record
-    access.delete_one(
+    common.delete_one(
         table='voice_transcripts',
         filters={'id': transcript_id}
     )
     
-    return access.success_response({
+    return common.success_response({
         'message': 'Transcript deleted successfully',
         'id': transcript_id
     })
@@ -343,7 +343,7 @@ def create_transcript(
         'created_by': created_by
     }
     
-    transcript = access.insert_one(table='voice_transcripts', data=transcript_data)
+    transcript = common.insert_one(table='voice_transcripts', data=transcript_data)
     
     return transcript
 
