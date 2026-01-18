@@ -337,13 +337,23 @@ def handle_list_available_kbs_for_workspace(user_id: str, workspace_id: str) -> 
         {'p_user_id': user_id, 'p_workspace_id': workspace_id}
     )
     
-    # Format response
+    # Format response - wrap KB fields in 'kb' object to match AvailableKb type
     kbs = []
     for row in result:
         kb_data = {
-            'id': row['kb_id'],
-            'name': row['kb_name'],
-            'scope': row['kb_scope'],
+            'kb': {
+                'id': row['kb_id'],
+                'name': row['kb_name'],
+                'scope': row['kb_scope'],
+                'description': row.get('description'),
+                'orgId': row.get('org_id'),
+                'workspaceId': row.get('workspace_id'),
+                'chatSessionId': row.get('chat_session_id'),
+                'config': row.get('config', {}),
+                'isEnabled': row.get('kb_is_enabled', True),
+                'createdAt': row.get('created_at'),
+                'createdBy': row.get('created_by'),
+            },
             'isEnabled': row['is_enabled'],
             'source': row['source']
         }
@@ -544,7 +554,7 @@ def handle_list_available_kbs_for_chat(user_id: str, chat_id: str) -> Dict[str, 
         {'p_user_id': user_id, 'p_workspace_id': chat['workspace_id']}
     )
     
-    # Add chat-specific toggles
+    # Add chat-specific toggles - wrap KB fields in 'kb' object to match AvailableKb type
     kbs = []
     for row in result:
         # Check if KB is toggled for this chat
@@ -557,9 +567,19 @@ def handle_list_available_kbs_for_chat(user_id: str, chat_id: str) -> Dict[str, 
         )
         
         kb_data = {
-            'id': row['kb_id'],
-            'name': row['kb_name'],
-            'scope': row['kb_scope'],
+            'kb': {
+                'id': row['kb_id'],
+                'name': row['kb_name'],
+                'scope': row['kb_scope'],
+                'description': row.get('description'),
+                'orgId': row.get('org_id'),
+                'workspaceId': row.get('workspace_id'),
+                'chatSessionId': row.get('chat_session_id'),
+                'config': row.get('config', {}),
+                'isEnabled': row.get('kb_is_enabled', True),
+                'createdAt': row.get('created_at'),
+                'createdBy': row.get('created_by'),
+            },
             'isEnabled': chat_toggle['is_enabled'] if chat_toggle else False,
             'source': row['source']
         }
