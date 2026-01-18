@@ -235,7 +235,7 @@ CREATE POLICY eval_doc_summaries_select ON eval_doc_summaries
     FOR SELECT USING (
         EXISTS (
             SELECT 1 FROM ws_members 
-            WHERE ws_members.workspace_id = eval_doc_summaries.workspace_id
+            WHERE ws_members.ws_id = eval_doc_summaries.workspace_id
             AND ws_members.user_id = auth.uid()
         )
     );
@@ -245,7 +245,7 @@ CREATE POLICY eval_doc_summaries_insert ON eval_doc_summaries
     FOR INSERT WITH CHECK (
         EXISTS (
             SELECT 1 FROM ws_members 
-            WHERE ws_members.workspace_id = eval_doc_summaries.workspace_id
+            WHERE ws_members.ws_id = eval_doc_summaries.workspace_id
             AND ws_members.user_id = auth.uid()
         )
     );
@@ -256,7 +256,7 @@ CREATE POLICY eval_doc_summaries_update ON eval_doc_summaries
         created_by = auth.uid()
         OR EXISTS (
             SELECT 1 FROM ws_members 
-            WHERE ws_members.workspace_id = eval_doc_summaries.workspace_id
+            WHERE ws_members.ws_id = eval_doc_summaries.workspace_id
             AND ws_members.user_id = auth.uid()
             AND ws_members.ws_role IN ('ws_owner', 'ws_admin')
         )
@@ -268,7 +268,7 @@ CREATE POLICY eval_doc_summaries_delete ON eval_doc_summaries
         created_by = auth.uid()
         OR EXISTS (
             SELECT 1 FROM ws_members 
-            WHERE ws_members.workspace_id = eval_doc_summaries.workspace_id
+            WHERE ws_members.ws_id = eval_doc_summaries.workspace_id
             AND ws_members.user_id = auth.uid()
             AND ws_members.ws_role IN ('ws_owner', 'ws_admin')
         )
@@ -282,7 +282,7 @@ CREATE POLICY eval_doc_sets_select ON eval_doc_sets
     FOR SELECT USING (
         EXISTS (
             SELECT 1 FROM eval_doc_summaries eds
-            JOIN ws_members wm ON wm.workspace_id = eds.workspace_id
+            JOIN ws_members wm ON wm.ws_id = eds.workspace_id
             WHERE eds.id = eval_doc_sets.eval_summary_id
             AND wm.user_id = auth.uid()
         )
@@ -293,7 +293,7 @@ CREATE POLICY eval_doc_sets_all ON eval_doc_sets
     FOR ALL USING (
         EXISTS (
             SELECT 1 FROM eval_doc_summaries eds
-            JOIN ws_members wm ON wm.workspace_id = eds.workspace_id
+            JOIN ws_members wm ON wm.ws_id = eds.workspace_id
             WHERE eds.id = eval_doc_sets.eval_summary_id
             AND wm.user_id = auth.uid()
         )
@@ -307,7 +307,7 @@ CREATE POLICY eval_criteria_results_select ON eval_criteria_results
     FOR SELECT USING (
         EXISTS (
             SELECT 1 FROM eval_doc_summaries eds
-            JOIN ws_members wm ON wm.workspace_id = eds.workspace_id
+            JOIN ws_members wm ON wm.ws_id = eds.workspace_id
             WHERE eds.id = eval_criteria_results.eval_summary_id
             AND wm.user_id = auth.uid()
         )
@@ -318,7 +318,7 @@ CREATE POLICY eval_criteria_results_all ON eval_criteria_results
     FOR ALL USING (
         EXISTS (
             SELECT 1 FROM eval_doc_summaries eds
-            JOIN ws_members wm ON wm.workspace_id = eds.workspace_id
+            JOIN ws_members wm ON wm.ws_id = eds.workspace_id
             WHERE eds.id = eval_criteria_results.eval_summary_id
             AND wm.user_id = auth.uid()
         )
@@ -333,7 +333,7 @@ CREATE POLICY eval_result_edits_select ON eval_result_edits
         EXISTS (
             SELECT 1 FROM eval_criteria_results ecr
             JOIN eval_doc_summaries eds ON eds.id = ecr.eval_summary_id
-            JOIN ws_members wm ON wm.workspace_id = eds.workspace_id
+            JOIN ws_members wm ON wm.ws_id = eds.workspace_id
             WHERE ecr.id = eval_result_edits.criteria_result_id
             AND wm.user_id = auth.uid()
         )
@@ -345,7 +345,7 @@ CREATE POLICY eval_result_edits_all ON eval_result_edits
         EXISTS (
             SELECT 1 FROM eval_criteria_results ecr
             JOIN eval_doc_summaries eds ON eds.id = ecr.eval_summary_id
-            JOIN ws_members wm ON wm.workspace_id = eds.workspace_id
+            JOIN ws_members wm ON wm.ws_id = eds.workspace_id
             WHERE ecr.id = eval_result_edits.criteria_result_id
             AND wm.user_id = auth.uid()
         )
