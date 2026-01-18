@@ -220,7 +220,7 @@ export function WorkspaceDataKBTab({
 
         {/* Documents Table */}
         <DocumentTable
-          documents={documents}
+          documents={Array.isArray(documents) ? documents : []}
           loading={documentsLoading}
           onDelete={onDeleteDocument || (async () => {})}
           onDownload={onDownloadDocument || (async () => {})}
@@ -229,7 +229,7 @@ export function WorkspaceDataKBTab({
         />
 
         {/* No KB message */}
-        {!kb && documents.length === 0 && !documentsLoading && (
+        {!kb && (Array.isArray(documents) ? documents.length === 0 : true) && !documentsLoading && (
           <Alert severity="info" icon={<KBIcon />}>
             No documents uploaded yet. Upload documents to create a knowledge base.
           </Alert>
