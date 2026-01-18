@@ -46,9 +46,9 @@ interface DocumentTableProps {
   documents: KbDocument[];
   
   /**
-   * Callback to download document (gets presigned URL)
+   * Callback to download document (gets presigned URL and may return it)
    */
-  onDownload: (documentId: string) => Promise<void>;
+  onDownload: (documentId: string) => Promise<string | void>;
   
   /**
    * Callback to delete document

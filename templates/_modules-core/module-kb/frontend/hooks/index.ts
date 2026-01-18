@@ -1,11 +1,14 @@
 /**
- * Module-KB Hooks
- * 
+* Module-KB Hooks
+ *
  * React hooks for knowledge base operations.
  */
 
 // Generic KB hook (workspace/chat scope)
 export { useKnowledgeBase } from './useKnowledgeBase';
+
+// Workspace KB hook (combined KB + documents for workspace pages)
+export { useWorkspaceKB } from './useWorkspaceKB';
 
 // Document management hook
 export { useKbDocuments } from './useKbDocuments';
@@ -34,3 +37,8 @@ export type {
   UseSysKbsOptions,
   UseSysKbsReturn,
 } from './useSysKbs';
+
+export type {
+  UseWorkspaceKBOptions,
+  UseWorkspaceKBReturn,
+} from './useWorkspaceKB';

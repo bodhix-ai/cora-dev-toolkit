@@ -100,9 +100,9 @@ interface WorkspaceDataKBTabProps {
   onDeleteDocument?: (docId: string) => Promise<void>;
   
   /**
-   * Callback to download document
+   * Callback to download document (returns download URL)
    */
-  onDownloadDocument?: (docId: string) => Promise<void>;
+  onDownloadDocument?: (docId: string) => Promise<string | void>;
   
   /**
    * Callback to retry failed document
@@ -175,44 +175,27 @@ export function WorkspaceDataKBTab({
 
   return (
     <Stack spacing={3}>
-      {/* KB Toggle Selector */}
-      <Paper sx={{ p: 3 }}>
-        <Box display="flex" alignItems="center" gap={1} mb={2}>
-          <KBIcon color="primary" />
-          <Typography variant="h6">Knowledge Base Sources</Typography>
-        </Box>
-        <Typography variant="body2" color="text.secondary" mb={2}>
-          Enable knowledge bases to make their content available for AI chat responses in this workspace.
-        </Typography>
-        <KBToggleSelector
-          availableKbs={groupedKbs}
-          loading={availableKbsLoading}
-          onToggle={onToggleKb || (async () => {})}
-        />
-      </Paper>
-
-      <Divider />
-
-      {/* Document Upload Section */}
+      {/* Document Upload Section - Documents at top */}
       <Paper sx={{ p: 3 }}>
         <Box display="flex" alignItems="center" gap={1} mb={2}>
           <DocumentIcon color="primary" />
-          <Typography variant="h6">Workspace Documents</Typography>
+          <Typography variant="h6">📄 Documents</Typography>
         </Box>
         <Typography variant="body2" color="text.secondary" mb={2}>
-          Upload documents to create a workspace-specific knowledge base.
-          Uploaded documents will be processed and indexed for AI chat.
+          Upload documents to add to this knowledge base. 
+          Files will be processed and indexed for AI chat.
         </Typography>
 
-        {/* Stats Card (if KB exists) */}
-        {kb && (
+        {/* Stats Card (if KB exists or documents exist) */}
+        {(kb || documents.length > 0) && (
           <Box mb={3}>
             <KBStatsCard
               stats={{
-                documentCount: kb.documentCount || 0,
-                chunkCount: kb.chunkCount || 0,
-                totalSize: kb.totalSize || 0,
-                processingCount: documents.filter(d => d.status === 'processing').length,
+                // Use kb.stats if available, otherwise calculate from documents
+                documentCount: kb?.stats?.documentCount ?? documents.length,
+                chunkCount: kb?.stats?.chunkCount ?? documents.reduce((sum, d) => sum + (d.chunkCount || 0), 0),
+                totalSize: kb?.stats?.totalSize ?? documents.reduce((sum, d) => sum + (d.fileSize || 0), 0),
+                processingCount: documents.filter(d => d.status === 'processing' || d.status === 'pending').length,
                 failedCount: documents.filter(d => d.status === 'failed').length,
               }}
               compact={true}
@@ -248,9 +231,27 @@ export function WorkspaceDataKBTab({
         {/* No KB message */}
         {!kb && documents.length === 0 && !documentsLoading && (
           <Alert severity="info" icon={<KBIcon />}>
-            No workspace knowledge base yet. Upload documents to create one.
+            No documents uploaded yet. Upload documents to create a knowledge base.
           </Alert>
         )}
+      </Paper>
+
+      <Divider />
+
+      {/* KB Toggle Selector - Knowledge Base Sources below */}
+      <Paper sx={{ p: 3 }}>
+        <Box display="flex" alignItems="center" gap={1} mb={2}>
+          <KBIcon color="primary" />
+          <Typography variant="h6">Knowledge Base Sources</Typography>
+        </Box>
+        <Typography variant="body2" color="text.secondary" mb={2}>
+          Enable additional knowledge bases to expand AI processing context.
+        </Typography>
+        <KBToggleSelector
+          availableKbs={groupedKbs}
+          loading={availableKbsLoading}
+          onToggle={onToggleKb || (async () => {})}
+        />
       </Paper>
     </Stack>
   );

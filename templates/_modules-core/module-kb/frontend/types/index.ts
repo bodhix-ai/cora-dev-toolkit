@@ -31,7 +31,13 @@ export interface KnowledgeBase {
   createdBy: string;
   updatedAt: string;
   updatedBy: string | null;
-  // Stats (computed, not in DB)
+  // Stats (computed, returned from API)
+  stats?: {
+    documentCount: number;
+    chunkCount: number;
+    totalSize: number;
+  };
+  // Legacy flat stats (deprecated, use stats object)
   documentCount?: number;
   chunkCount?: number;
   totalSize?: number;

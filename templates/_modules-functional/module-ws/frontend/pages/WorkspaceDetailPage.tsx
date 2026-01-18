@@ -67,6 +67,14 @@ import { MemberList } from "../components/MemberList";
 import { WorkspaceForm } from "../components/WorkspaceForm";
 import { createWorkspaceApiClient } from "../lib/api";
 import type { WorkspaceApiClient } from "../lib/api";
+import { 
+  WorkspaceDataKBTab,
+  useKnowledgeBase,
+  useKbDocuments,
+  createKbModuleClient,
+  type AvailableKb,
+} from "@{{PROJECT_NAME}}/module-kb";
+import { createAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 
 // ============================================================================
 // MOCK DATA - CJIS IT Security Audit Theme
@@ -99,14 +107,6 @@ interface MockChat {
   lastActivity: string;
   messages: number;
   kbGrounded: boolean;
-}
-
-interface MockDocument {
-  id: string;
-  name: string;
-  workflow: string;
-  status: "pending" | "processing" | "analyzed" | "failed";
-  date: string;
 }
 
 interface MockKBDocument {
@@ -194,37 +194,7 @@ const MOCK_CHATS: MockChat[] = [
   },
 ];
 
-const MOCK_WORKFLOW_DOCS: MockDocument[] = [
-  { id: "1", name: "Physical-Security-Policy.pdf", workflow: "Area 5", status: "analyzed", date: "Jan 10" },
-  { id: "2", name: "Personnel-Screening-Proc.docx", workflow: "Area 5", status: "analyzed", date: "Jan 10" },
-  { id: "3", name: "Access-Control-Matrix.xlsx", workflow: "Area 5", status: "analyzed", date: "Jan 10" },
-  { id: "4", name: "Password-Authentication.pdf", workflow: "Area 6", status: "processing", date: "Jan 12" },
-  { id: "5", name: "MFA-Implementation-Plan.docx", workflow: "Area 6", status: "processing", date: "Jan 12" },
-  { id: "6", name: "Encryption-Standards.pdf", workflow: "Area 10", status: "analyzed", date: "Jan 8" },
-  { id: "7", name: "Network-Security-Policy.pdf", workflow: "Area 10", status: "analyzed", date: "Jan 8" },
-  { id: "8", name: "Firewall-Configuration.docx", workflow: "Area 10", status: "analyzed", date: "Jan 8" },
-];
-
-const MOCK_KB_DOCS: MockKBDocument[] = [
-  { id: "1", name: "CJIS-Security-Policy-v5.9.pdf", category: "CJIS Guidance", indexed: true, size: "8.2 MB" },
-  { id: "2", name: "FBI-CJIS-APB-2024-001.pdf", category: "CJIS Guidance", indexed: true, size: "1.4 MB" },
-  { id: "3", name: "AWS-Security-Best-Practices.pdf", category: "Cloud Security", indexed: true, size: "4.1 MB" },
-  { id: "4", name: "NIST-800-53-Rev5.pdf", category: "Standards", indexed: true, size: "12.3 MB" },
-  { id: "5", name: "State-CJIS-Addendum-2024.pdf", category: "State Policy", indexed: true, size: "892 KB" },
-  { id: "6", name: "Previous-Audit-2023.pdf", category: "Historical", indexed: true, size: "3.8 MB" },
-  { id: "7", name: "Audit-Findings-2023-Q4.docx", category: "Historical", indexed: true, size: "1.2 MB" },
-  { id: "8", name: "Remediation-Plan-2023.pdf", category: "Remediation", indexed: true, size: "645 KB" },
-  { id: "9", name: "Risk-Register-2026.xlsx", category: "Risk", indexed: false, size: "1.8 MB" },
-  { id: "10", name: "CJIS-Compliance-Eval-Guide.pdf", category: "Guidance", indexed: true, size: "2.9 MB" },
-];
-
-const MOCK_KB_STATS = {
-  documents: 37,
-  pages: 1248,
-  embeddings: 15892,
-  lastSync: "2 hours ago",
-  storage: "48.3 MB",
-};
+// MOCK_KB_DOCS and MOCK_KB_STATS removed - now using real data from module-kb
 
 // ============================================================================
 // COMPONENT INTERFACES & HELPERS
@@ -314,6 +284,57 @@ export function WorkspaceDetailPage({
     refetch,
   } = useWorkspace(workspaceId, { autoFetch: true, orgId });
 
+  // Create KB API client
+  const kbApiClient = useMemo(() => {
+    if (session?.accessToken) {
+      const authClient = createAuthenticatedClient(session.accessToken as string);
+      return createKbModuleClient(authClient);
+    }
+    return null;
+  }, [session?.accessToken]);
+
+  // KB hooks for workspace
+  const { 
+    kb, 
+    availableKbs, 
+    loading: kbLoading, 
+    error: kbError, 
+    toggleKb 
+  } = useKnowledgeBase({
+    scope: 'workspace',
+    scopeId: workspaceId,
+    ...(kbApiClient ? { apiClient: { kb: kbApiClient } } : {}),
+    autoFetch: !!kbApiClient,
+  });
+
+  const { 
+    documents, 
+    loading: docsLoading, 
+    uploadDocument, 
+    deleteDocument, 
+    downloadDocument 
+  } = useKbDocuments({
+    scope: 'workspace',
+    scopeId: workspaceId,
+    ...(kbApiClient ? { apiClient: { kb: kbApiClient } } : {}),
+    autoFetch: !!kbApiClient,
+  });
+
+  // Group available KBs for WorkspaceDataKBTab
+  const groupedAvailableKbs = useMemo(() => {
+    // Find workspace KB from available KBs
+    const workspaceKb = availableKbs.find((kb: AvailableKb) => kb.kb.scope === 'workspace');
+    const orgKbs = availableKbs.filter((kb: AvailableKb) => kb.kb.scope === 'org');
+    const globalKbs = availableKbs.filter((kb: AvailableKb) => kb.kb.scope === 'sys');
+
+    return {
+      workspaceKb,
+      chatKb: undefined, // Not used in workspace context
+      orgKbs,
+      globalKbs,
+    };
+  }, [availableKbs]);
+
   if (loading) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -399,19 +420,6 @@ export function WorkspaceDetailPage({
         return <ErrorIcon fontSize="small" />;
       default:
         return <Description fontSize="small" />;
-    }
-  };
-
-  const getDocStatusColor = (status: MockDocument["status"]) => {
-    switch (status) {
-      case "processing":
-        return "info";
-      case "analyzed":
-        return "success";
-      case "failed":
-        return "error";
-      default:
-        return "default";
     }
   };
 
@@ -744,146 +752,26 @@ export function WorkspaceDetailPage({
 
         {/* Tab 1: Data */}
         <TabPanel value={activeTab} index={1}>
-          {/* Workflow Documents Section */}
-          <Box sx={{ mb: 4 }}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-              <Typography variant="h6">📁 Workflow Documents</Typography>
-              {canEdit && (
-                <Button variant="contained" startIcon={<Add />} size="small">
-                  Upload Files
-                </Button>
-              )}
-            </Box>
-
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Workflow</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Date</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {MOCK_WORKFLOW_DOCS.map((doc) => (
-                    <TableRow key={doc.id}>
-                      <TableCell>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                          <Description fontSize="small" />
-                          {doc.name}
-                        </Box>
-                      </TableCell>
-                      <TableCell>{doc.workflow}</TableCell>
-                      <TableCell>
-                        <Chip label={doc.status} size="small" color={getDocStatusColor(doc.status)} />
-                      </TableCell>
-                      <TableCell>{doc.date}</TableCell>
-                      <TableCell align="right">
-                        <Button size="small">Download</Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-
-          {/* Knowledge Base Section */}
-          <Box>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-              <Typography variant="h6">📚 Knowledge Base</Typography>
-              {canEdit && (
-                <Button variant="contained" startIcon={<Add />} size="small">
-                  Add Documents
-                </Button>
-              )}
-            </Box>
-
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Reference documents for grounding AI chat responses
-            </Typography>
-
-            <TableContainer sx={{ mb: 3 }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Category</TableCell>
-                    <TableCell>Indexed</TableCell>
-                    <TableCell>Size</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {MOCK_KB_DOCS.map((doc) => (
-                    <TableRow key={doc.id}>
-                      <TableCell>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                          <Storage fontSize="small" />
-                          {doc.name}
-                        </Box>
-                      </TableCell>
-                      <TableCell>{doc.category}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={doc.indexed ? "Yes" : "Indexing"}
-                          size="small"
-                          color={doc.indexed ? "success" : "warning"}
-                        />
-                      </TableCell>
-                      <TableCell>{doc.size}</TableCell>
-                      <TableCell align="right">
-                        <Button size="small">Download</Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-
-            {/* KB Statistics */}
-            <Card>
-              <CardContent>
-                <Typography variant="subtitle2" gutterBottom>
-                  📊 KB Statistics
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6} md={2.4}>
-                    <Typography variant="body2" color="text.secondary">
-                      Documents
-                    </Typography>
-                    <Typography variant="h6">{MOCK_KB_STATS.documents}</Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={2.4}>
-                    <Typography variant="body2" color="text.secondary">
-                      Pages
-                    </Typography>
-                    <Typography variant="h6">{MOCK_KB_STATS.pages}</Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={2.4}>
-                    <Typography variant="body2" color="text.secondary">
-                      Embeddings
-                    </Typography>
-                    <Typography variant="h6">{MOCK_KB_STATS.embeddings.toLocaleString()}</Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={2.4}>
-                    <Typography variant="body2" color="text.secondary">
-                      Storage
-                    </Typography>
-                    <Typography variant="h6">{MOCK_KB_STATS.storage}</Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={2.4}>
-                    <Typography variant="body2" color="text.secondary">
-                      Last Sync
-                    </Typography>
-                    <Typography variant="h6">{MOCK_KB_STATS.lastSync}</Typography>
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          </Box>
+          {/* Knowledge Base Section - Integrated with module-kb */}
+          <WorkspaceDataKBTab
+            workspaceId={workspaceId}
+            kb={kb}
+            availableKbs={groupedAvailableKbs}
+            documents={documents}
+            kbLoading={kbLoading}
+            documentsLoading={docsLoading}
+            error={kbError}
+            canUpload={canEdit}
+            onToggleKb={toggleKb}
+            onUploadDocument={async (files: File[]) => {
+              for (const file of files) {
+                await uploadDocument(file);
+              }
+            }}
+            onDeleteDocument={deleteDocument}
+            onDownloadDocument={downloadDocument}
+            currentUserId={userId}
+          />
         </TabPanel>
 
         {/* Tab 2: Members */}

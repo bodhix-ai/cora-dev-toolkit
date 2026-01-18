@@ -574,7 +574,7 @@ export const useChatStore = create<ChatState>()(
 
       // === Message Actions ===
 
-      loadMessages: async (token, sessionId, options) => {
+      loadMessages: async (token: string, sessionId: string, options?: ListMessagesOptions) => {
         set({ messagesLoading: true, messagesError: null });
 
         try {
@@ -583,7 +583,7 @@ export const useChatStore = create<ChatState>()(
             ...options,
           });
 
-          set((state) => ({
+          set((state: ChatState) => ({
             messagesBySession: {
               ...state.messagesBySession,
               [sessionId]: response.data,
@@ -610,7 +610,7 @@ export const useChatStore = create<ChatState>()(
         }
       },
 
-      loadMoreMessages: async (token, sessionId) => {
+      loadMoreMessages: async (token: string, sessionId: string) => {
         const { messagesPagination, messagesBySession, messagesLoading } = get();
         const pagination = messagesPagination[sessionId];
 
@@ -624,7 +624,7 @@ export const useChatStore = create<ChatState>()(
             offset: pagination.offset + 50,
           });
 
-          set((state) => ({
+          set((state: ChatState) => ({
             messagesBySession: {
               ...state.messagesBySession,
               [sessionId]: [
@@ -654,7 +654,7 @@ export const useChatStore = create<ChatState>()(
         }
       },
 
-      sendMessage: async (token, sessionId, content, kbIds) => {
+      sendMessage: async (token: string, sessionId: string, content: string, kbIds?: string[]) => {
         const { streaming, sessions } = get();
 
         // Don't allow sending while streaming
@@ -669,7 +669,7 @@ export const useChatStore = create<ChatState>()(
         const abortController = new AbortController();
 
         // Add user message and start streaming state
-        set((state) => ({
+        set((state: ChatState) => ({
           messagesBySession: {
             ...state.messagesBySession,
             [sessionId]: [
@@ -688,7 +688,7 @@ export const useChatStore = create<ChatState>()(
         }));
 
         // Auto-generate title if session is "New Chat"
-        const session = sessions.find((s) => s.id === sessionId);
+        const session = sessions.find((s: ChatSession) => s.id === sessionId);
         if (
           session &&
           (session.title === "New Chat" || session.title === "Untitled Chat")
@@ -696,8 +696,8 @@ export const useChatStore = create<ChatState>()(
           const newTitle = generateTitleFromMessage(content);
           updateChatSession(sessionId, token, { title: newTitle })
             .then(() => {
-              set((state) => ({
-                sessions: state.sessions.map((s) =>
+              set((state: ChatState) => ({
+                sessions: state.sessions.map((s: ChatSession) =>
                   s.id === sessionId ? { ...s, title: newTitle } : s
                 ),
               }));
@@ -708,12 +708,12 @@ export const useChatStore = create<ChatState>()(
         // Set up streaming callbacks
         const callbacks: StreamCallbacks = {
           onToken: (tokenContent) => {
-            set((state) => {
+            set((state: ChatState) => {
               const newContent = state.streaming.content + tokenContent;
 
               // Update streaming message content
               const messages = state.messagesBySession[sessionId] || [];
-              const updatedMessages = messages.map((m) =>
+              const updatedMessages = messages.map((m: ChatMessage) =>
                 m.id === streamingMessage.id ? { ...m, content: newContent } : m
               );
 
@@ -728,7 +728,7 @@ export const useChatStore = create<ChatState>()(
           },
           onCitation: (event) => {
             if (event.type === "citation") {
-              set((state) => ({
+              set((state: ChatState) => ({
                 streaming: {
                   ...state.streaming,
                   citations: [...state.streaming.citations, event.data],
@@ -737,11 +737,11 @@ export const useChatStore = create<ChatState>()(
             }
           },
           onDone: (messageId, usage) => {
-            set((state) => {
+            set((state: ChatState) => {
               const messages = state.messagesBySession[sessionId] || [];
 
               // Replace streaming message with final message
-              const finalMessages = messages.map((m) =>
+              const finalMessages = messages.map((m: ChatMessage) =>
                 m.id === streamingMessage.id
                   ? {
                       ...m,
@@ -771,11 +771,11 @@ export const useChatStore = create<ChatState>()(
           onError: (error) => {
             console.error("Streaming error:", error);
 
-            set((state) => {
+            set((state: ChatState) => {
               // Remove streaming message on error
               const messages = state.messagesBySession[sessionId] || [];
               const filteredMessages = messages.filter(
-                (m) => m.id !== streamingMessage.id
+                (m: ChatMessage) => m.id !== streamingMessage.id
               );
 
               return {
@@ -810,11 +810,11 @@ export const useChatStore = create<ChatState>()(
 
         // Remove streaming message
         if (streaming.sessionId) {
-          set((state) => {
+          set((state: ChatState) => {
             const messages =
               state.messagesBySession[streaming.sessionId!] || [];
             const filtered = messages.filter(
-              (m) => !m.id.startsWith("streaming-")
+              (m: ChatMessage) => !m.id.startsWith("streaming-")
             );
 
             return {
@@ -830,8 +830,8 @@ export const useChatStore = create<ChatState>()(
         }
       },
 
-      clearMessages: (sessionId) => {
-        set((state) => {
+      clearMessages: (sessionId: string) => {
+        set((state: ChatState) => {
           const { [sessionId]: _, ...rest } = state.messagesBySession;
           const { [sessionId]: __, ...restPagination } = state.messagesPagination;
           return {
@@ -843,13 +843,13 @@ export const useChatStore = create<ChatState>()(
 
       // === KB Actions ===
 
-      loadGroundedKbs: async (token, sessionId) => {
+      loadGroundedKbs: async (token: string, sessionId: string) => {
         set({ kbsLoading: true });
 
         try {
           const response = await listGroundedKbs(sessionId, token);
 
-          set((state) => ({
+          set((state: ChatState) => ({
             groundedKbsBySession: {
               ...state.groundedKbsBySession,
               [sessionId]: response.kbs,
@@ -862,7 +862,7 @@ export const useChatStore = create<ChatState>()(
         }
       },
 
-      loadAvailableKbs: async (token, sessionId) => {
+      loadAvailableKbs: async (token: string, sessionId: string) => {
         set({ kbsLoading: true });
 
         try {
@@ -878,11 +878,11 @@ export const useChatStore = create<ChatState>()(
         }
       },
 
-      addKbToSession: async (token, sessionId, kbId) => {
+      addKbToSession: async (token: string, sessionId: string, kbId: string) => {
         try {
           const grounding = await addKbGrounding(sessionId, token, { kbId });
 
-          set((state) => ({
+          set((state: ChatState) => ({
             groundedKbsBySession: {
               ...state.groundedKbsBySession,
               [sessionId]: [
@@ -897,15 +897,15 @@ export const useChatStore = create<ChatState>()(
         }
       },
 
-      removeKbFromSession: async (token, sessionId, kbId) => {
+      removeKbFromSession: async (token: string, sessionId: string, kbId: string) => {
         // Optimistic removal
         const previousKbs = get().groundedKbsBySession[sessionId] || [];
 
-        set((state) => ({
+        set((state: ChatState) => ({
           groundedKbsBySession: {
             ...state.groundedKbsBySession,
             [sessionId]: (state.groundedKbsBySession[sessionId] || []).filter(
-              (kb) => kb.kbId !== kbId
+              (kb: ChatKBGrounding) => kb.kbId !== kbId
             ),
           },
         }));
@@ -915,7 +915,7 @@ export const useChatStore = create<ChatState>()(
         } catch (error) {
           // Revert
           console.error("Failed to remove KB:", error);
-          set((state) => ({
+          set((state: ChatState) => ({
             groundedKbsBySession: {
               ...state.groundedKbsBySession,
               [sessionId]: previousKbs,
@@ -927,13 +927,13 @@ export const useChatStore = create<ChatState>()(
 
       // === Sharing Actions ===
 
-      loadShares: async (token, sessionId) => {
+      loadShares: async (token: string, sessionId: string) => {
         set({ sharesLoading: true });
 
         try {
           const response = await listChatShares(sessionId, token);
 
-          set((state) => ({
+          set((state: ChatState) => ({
             sharesBySession: {
               ...state.sharesBySession,
               [sessionId]: response.shares,
@@ -946,14 +946,14 @@ export const useChatStore = create<ChatState>()(
         }
       },
 
-      shareChatWithUser: async (token, sessionId, email, permission) => {
+      shareChatWithUser: async (token: string, sessionId: string, email: string, permission: "view" | "edit") => {
         try {
           const share = await shareChat(sessionId, token, {
             email,
             permissionLevel: permission,
           });
 
-          set((state) => ({
+          set((state: ChatState) => ({
             sharesBySession: {
               ...state.sharesBySession,
               [sessionId]: [...(state.sharesBySession[sessionId] || []), share],
@@ -965,7 +965,7 @@ export const useChatStore = create<ChatState>()(
         }
       },
 
-      updateShare: async (token, sessionId, shareId, permission) => {
+      updateShare: async (token: string, sessionId: string, shareId: string, permission: "view" | "edit") => {
         try {
           const updated = await updateSharePermission(
             sessionId,
@@ -974,10 +974,10 @@ export const useChatStore = create<ChatState>()(
             permission
           );
 
-          set((state) => ({
+          set((state: ChatState) => ({
             sharesBySession: {
               ...state.sharesBySession,
-              [sessionId]: (state.sharesBySession[sessionId] || []).map((s) =>
+              [sessionId]: (state.sharesBySession[sessionId] || []).map((s: ChatShare) =>
                 s.id === shareId ? updated : s
               ),
             },
@@ -988,15 +988,15 @@ export const useChatStore = create<ChatState>()(
         }
       },
 
-      removeShareFromChat: async (token, sessionId, shareId) => {
+      removeShareFromChat: async (token: string, sessionId: string, shareId: string) => {
         const previousShares = get().sharesBySession[sessionId] || [];
 
         // Optimistic removal
-        set((state) => ({
+        set((state: ChatState) => ({
           sharesBySession: {
             ...state.sharesBySession,
             [sessionId]: (state.sharesBySession[sessionId] || []).filter(
-              (s) => s.id !== shareId
+              (s: ChatShare) => s.id !== shareId
             ),
           },
         }));
@@ -1006,7 +1006,7 @@ export const useChatStore = create<ChatState>()(
         } catch (error) {
           // Revert
           console.error("Failed to remove share:", error);
-          set((state) => ({
+          set((state: ChatState) => ({
             sharesBySession: {
               ...state.sharesBySession,
               [sessionId]: previousShares,
@@ -1020,7 +1020,7 @@ export const useChatStore = create<ChatState>()(
 
       getCurrentSession: () => {
         const { sessions, currentSessionId } = get();
-        return sessions.find((s) => s.id === currentSessionId) || null;
+        return sessions.find((s: ChatSession) => s.id === currentSessionId) || null;
       },
 
       getCurrentMessages: () => {
@@ -1029,8 +1029,8 @@ export const useChatStore = create<ChatState>()(
         return messagesBySession[currentSessionId] || [];
       },
 
-      getSessionById: (sessionId) => {
-        return get().sessions.find((s) => s.id === sessionId) || null;
+      getSessionById: (sessionId: string) => {
+        return get().sessions.find((s: ChatSession) => s.id === sessionId) || null;
       },
 
       clearError: () => {
@@ -1071,7 +1071,7 @@ export const useChatStore = create<ChatState>()(
       name: "module-chat-storage",
       storage: createJSONStorage(() => localStorage),
       // Only persist essential data
-      partialize: (state) => ({
+      partialize: (state: ChatState) => ({
         sessions: state.sessions,
         currentSessionId: state.currentSessionId,
         sessionFilters: state.sessionFilters,
@@ -1079,7 +1079,7 @@ export const useChatStore = create<ChatState>()(
         // Don't persist: loading states, errors, streaming, abortController
       }),
       // Skip hydration of streaming state (always start fresh)
-      onRehydrateStorage: () => (state) => {
+      onRehydrateStorage: () => (state: ChatState | undefined) => {
         if (state) {
           state.streaming = initialStreamingState;
           state.sessionsLoading = false;
@@ -1134,11 +1134,15 @@ export const selectFavoriteSessions = (state: ChatState) =>
 // DEVELOPMENT HELPERS
 // =============================================================================
 
-// Expose store for E2E testing
-if (
-  typeof window !== "undefined" &&
-  (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test")
-) {
-  (window as unknown as { useModuleChatStore: typeof useChatStore }).useModuleChatStore =
-    useChatStore;
+// Expose store for E2E testing (only in browser environment)
+if (typeof window !== "undefined") {
+  // Check environment safely without requiring @types/node
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nodeEnv = typeof (globalThis as any).process !== "undefined" 
+    ? (globalThis as any).process.env?.NODE_ENV 
+    : undefined;
+  if (nodeEnv === "development" || nodeEnv === "test") {
+    (window as unknown as { useModuleChatStore: typeof useChatStore }).useModuleChatStore =
+      useChatStore;
+  }
 }
