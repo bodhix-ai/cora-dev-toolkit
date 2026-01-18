@@ -1,5 +1,5 @@
 {
-  "name": "@{project}/module-voice",
+"name": "@{{PROJECT_NAME}}/module-voice",
   "version": "1.0.0",
   "private": true,
   "description": "CORA Voice Module - AI-powered voice interviews with Daily.co WebRTC, real-time transcription, and ECS-based Pipecat bot orchestration",
@@ -11,7 +11,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@{project}/api-client": "workspace:*",
+    "@{{PROJECT_NAME}}/api-client": "workspace:*",
     "react": "^18.2.0",
     "next": "^14.0.0"
   },
