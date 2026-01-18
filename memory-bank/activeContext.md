@@ -10,9 +10,9 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 | Branch | Context File | Focus Area |
 |--------|--------------|------------|
+| `ws-crud-kbs-embeddings` | `context-module-kb.md` | **ACTIVE** - KB Document Processing Sprint |
 | `module-voice-dev` | `context-module-voice.md` | Module-Voice (Phase 1.5: Specifications) |
 | `feature/module-eval-implementation` | `context-module-eval.md` | Module-Eval (Phase 9: Frontend Hooks) |
-| `feature/module-kb-implementation` | `context-module-kb.md` | Module-KB development |
 | `main` | (this file) | General toolkit work |
 
 ---
@@ -28,15 +28,16 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 ## Current Branch Status
 
+### ws-crud-kbs-embeddings (ACTIVE)
+- **Status:** � IN PROGRESS - KB Document Processing Sprint
+- **Plan:** `docs/plans/plan_ws-kb-processing-fix.md`
+- **Context:** See `context-module-kb.md`
+- **Current:** Fixing Data tab regression + org_id in kb_chunks
+
 ### feature/module-eval-implementation
 - **Status:** Phase 9 - Frontend Hooks (🔄 IN PROGRESS)
 - **Progress:** ~65% complete (Phases 1-8 done)
 - **Context:** See `context-module-eval.md`
-
-### feature/module-kb-implementation  
-- **Status:** Phase 2 - Database Schema (next)
-- **Progress:** Phase 1 complete
-- **Context:** See `context-module-kb.md` (create if needed)
 
 ### main
 - **Status:** Toolkit maintenance and standards
@@ -55,13 +56,13 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 ## Test Environment
 
-**Project:** ai-sec (test-ws-23)
+**Project:** ai-sec (test-ws-25)
 
 | Repo | Path |
 |------|------|
-| Stack | `~/code/bodhix/testing/test-ws-23/ai-sec-stack` |
-| Infra | `~/code/bodhix/testing/test-ws-23/ai-sec-infra` |
+| Stack | `~/code/bodhix/testing/test-ws-25/ai-sec-stack` |
+| Infra | `~/code/bodhix/testing/test-ws-25/ai-sec-infra` |
 
 ---
 
-**Updated:** January 16, 2026
+**Updated:** January 18, 2026

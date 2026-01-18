@@ -86,19 +86,25 @@ module-{purpose}
 
 Where `{purpose}` is a **single word** describing the module's main responsibility.
 
-### Core Modules (Required)
+### Core Modules (Required - Always Included)
+
+Per ADR-013, these are automatically included in all CORA projects:
 
 - `module-access` - Identity & access control (Tier 1)
 - `module-ai` - AI provider management (Tier 2)
 - `module-mgmt` - Platform management & monitoring (Tier 3)
+- `module-kb` - Knowledge base & RAG (Tier 3) - **Core AI Capability**
+- `module-chat` - Chat & messaging (Tier 3) - **Core AI Capability**
 
-### Functional Modules (Per-Feature)
+**Note:** Core modules do NOT need to be listed in setup config files - they are included automatically.
 
-- `module-kb` - Knowledge base
-- `module-chat` - Chat & messaging
-- `module-project` - Project management
-- `module-dashboard` - Analytics dashboard
-- etc.
+### Functional Modules (Optional - Per-Project)
+
+These must be explicitly enabled in the setup config file:
+
+- `module-ws` - Workspace management
+- `module-eval` - Model evaluation
+- `module-voice` - Voice interaction
 
 ## Module Route File Locations
 

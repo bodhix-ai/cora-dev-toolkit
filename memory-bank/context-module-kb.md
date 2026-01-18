@@ -1,12 +1,40 @@
-# Context: Module-KB Development Branch
+a# Context: Module-KB Development Branch
 
-**Branch:** `feature/module-kb-implementation`
+**Branch:** `ws-crud-kbs-embeddings`
 **Workstation:** Primary (Workstation 1)
-**Last Updated:** January 17, 2026
+**Last Updated:** January 18, 2026
 
 ---
 
 ## Current Session Status
+
+**Session 152: KB Processing Sprint - Data Tab Regression Fix** - 🟡 **IN PROGRESS** (January 18, 2026)
+
+**Goal:** Fix Data tab regression (previous session regressed working code) + continue org_id in kb_chunks testing.
+
+**Status:** 🔄 In Progress - Syncing template to test project
+
+**Plan:** See `docs/plans/plan_ws-kb-processing-fix.md` for full sprint details.
+
+### Current Issue
+Previous AI session regressed the working code for workspace Data tab while trying to remove hardcoded data and keep the working documents and KBs sections.
+
+**Required State:**
+1. No hardcoded data
+2. Documents section on top
+3. KB Sources section on bottom
+
+**Template Status:** ✅ Template is CORRECT (`templates/_modules-core/module-kb/frontend/components/WorkspaceDataKBTab.tsx`)
+**Test Project Status:** ❌ Needs sync from template
+
+**Next Steps:**
+1. Sync template to test project (test-ws-25)
+2. Verify Data tab layout
+3. Continue testing org_id addition to kb_chunks table
+
+---
+
+## Previous Session
 
 **Session 151: Database Naming - New Modules Fixed** - ✅ **COMPLETE** (January 17, 2026)
 
