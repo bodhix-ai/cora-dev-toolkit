@@ -16,6 +16,15 @@
 "use client";
 
 import React, { useCallback } from "react";
+import {
+  Box,
+  Typography,
+  Skeleton,
+  Button,
+  Paper,
+  Grid,
+} from "@mui/material";
+import { Error as ErrorIcon } from "@mui/icons-material";
 import { useEvalDocTypes } from "../hooks";
 import { DocTypeManager } from "../components";
 
@@ -40,15 +49,15 @@ export interface OrgEvalDocTypesPageProps {
 
 function PageHeader() {
   return (
-    <div className="mb-8">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+    <Box sx={{ mb: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
         Document Types
-      </h1>
-      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
         Manage document types for your organization. Each document type can have
         associated criteria sets for evaluation.
-      </p>
-    </div>
+      </Typography>
+    </Box>
   );
 }
 
@@ -58,14 +67,16 @@ function PageHeader() {
 
 function LoadingState() {
   return (
-    <div className="space-y-6">
-      <div className="h-20 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <Skeleton variant="rectangular" height={80} sx={{ borderRadius: 1 }} />
+      <Grid container spacing={2}>
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-32 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
+          <Grid item xs={12} md={6} lg={4} key={i}>
+            <Skeleton variant="rectangular" height={128} sx={{ borderRadius: 1 }} />
+          </Grid>
         ))}
-      </div>
-    </div>
+      </Grid>
+    </Box>
   );
 }
 
@@ -80,30 +91,40 @@ interface ErrorStateProps {
 
 function ErrorState({ error, onRetry }: ErrorStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4">
-      <div className="w-16 h-16 mb-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-        <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-          />
-        </svg>
-      </div>
-      <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-        Failed to load document types
-      </h2>
-      <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6 max-w-md">
-        {error.message}
-      </p>
-      <button
-        onClick={onRetry}
-        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        py: 8,
+        px: 2,
+      }}
+    >
+      <Box
+        sx={{
+          width: 64,
+          height: 64,
+          mb: 2,
+          borderRadius: "50%",
+          bgcolor: "error.lighter",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
+        <ErrorIcon sx={{ width: 32, height: 32, color: "error.main" }} />
+      </Box>
+      <Typography variant="h6" gutterBottom>
+        Failed to load document types
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center", mb: 3, maxWidth: "md" }}>
+        {error.message}
+      </Typography>
+      <Button variant="contained" onClick={onRetry}>
         Try Again
-      </button>
-    </div>
+      </Button>
+    </Box>
   );
 }
 
@@ -160,23 +181,23 @@ export function OrgEvalDocTypesPage({
   // Render loading state
   if (isLoading) {
     return (
-      <div className={`p-6 ${className}`}>
+      <Box sx={{ p: 3 }} className={className}>
         {loadingComponent || <LoadingState />}
-      </div>
+      </Box>
     );
   }
 
   // Render error state
   if (error) {
     return (
-      <div className={`p-6 ${className}`}>
+      <Box sx={{ p: 3 }} className={className}>
         <ErrorState error={error} onRetry={refresh} />
-      </div>
+      </Box>
     );
   }
 
   return (
-    <div className={`p-6 ${className}`}>
+    <Box sx={{ p: 3 }} className={className}>
       {/* Page Header */}
       <PageHeader />
 
@@ -190,17 +211,23 @@ export function OrgEvalDocTypesPage({
       />
 
       {/* Help Text */}
-      <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
-        <h2 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+      <Paper variant="outlined" sx={{ mt: 3, p: 2 }}>
+        <Typography variant="subtitle2" gutterBottom>
           About Document Types
-        </h2>
-        <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-disc list-inside">
-          <li>Document types categorize the documents your organization evaluates.</li>
-          <li>Each document type can have multiple criteria sets for different evaluation scenarios.</li>
-          <li>Deactivating a document type hides it from users but preserves existing evaluations.</li>
-        </ul>
-      </div>
-    </div>
+        </Typography>
+        <Box component="ul" sx={{ m: 0, pl: 2.5, "& li": { mb: 0.5 } }}>
+          <Typography component="li" variant="body2" color="text.secondary">
+            Document types categorize the documents your organization evaluates.
+          </Typography>
+          <Typography component="li" variant="body2" color="text.secondary">
+            Each document type can have multiple criteria sets for different evaluation scenarios.
+          </Typography>
+          <Typography component="li" variant="body2" color="text.secondary">
+            Deactivating a document type hides it from users but preserves existing evaluations.
+          </Typography>
+        </Box>
+      </Paper>
+    </Box>
   );
 }
 
