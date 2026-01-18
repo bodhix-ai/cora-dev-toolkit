@@ -82,8 +82,8 @@ export function useKbDocuments({
         response = await kbClient.orgAdmin.listDocuments(scopeId);
       }
 
-      // Extract documents array from response data (response.data IS KbDocument[], not { documents: KbDocument[] })
-      setDocuments(response.data || []);
+      // Extract documents array from response data
+      setDocuments(response.data.documents || []);
       setRetryCount(0); // Reset retry count on success
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch documents';
