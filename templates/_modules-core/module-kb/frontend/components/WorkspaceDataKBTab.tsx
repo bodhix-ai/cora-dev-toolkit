@@ -187,16 +187,16 @@ export function WorkspaceDataKBTab({
         </Typography>
 
         {/* Stats Card (if KB exists or documents exist) */}
-        {(kb || (documents || []).length > 0) && (
+        {(kb || (Array.isArray(documents) && documents.length > 0)) && (
           <Box mb={3}>
             <KBStatsCard
               stats={{
                 // Use kb.stats if available, otherwise calculate from documents
-                documentCount: kb?.stats?.documentCount ?? (documents || []).length,
-                chunkCount: kb?.stats?.chunkCount ?? (documents || []).reduce((sum, d) => sum + (d.chunkCount || 0), 0),
-                totalSize: kb?.stats?.totalSize ?? (documents || []).reduce((sum, d) => sum + (d.fileSize || 0), 0),
-                processingCount: (documents || []).filter(d => d.status === 'processing' || d.status === 'pending').length,
-                failedCount: (documents || []).filter(d => d.status === 'failed').length,
+                documentCount: kb?.stats?.documentCount ?? (Array.isArray(documents) ? documents.length : 0),
+                chunkCount: kb?.stats?.chunkCount ?? (Array.isArray(documents) ? documents.reduce((sum, d) => sum + (d.chunkCount || 0), 0) : 0),
+                totalSize: kb?.stats?.totalSize ?? (Array.isArray(documents) ? documents.reduce((sum, d) => sum + (d.fileSize || 0), 0) : 0),
+                processingCount: Array.isArray(documents) ? documents.filter(d => d.status === 'processing' || d.status === 'pending').length : 0,
+                failedCount: Array.isArray(documents) ? documents.filter(d => d.status === 'failed').length : 0,
               }}
               compact={true}
             />
