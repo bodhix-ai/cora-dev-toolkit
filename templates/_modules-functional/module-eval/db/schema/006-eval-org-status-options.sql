@@ -7,7 +7,7 @@
 -- Create eval_org_status_options table
 CREATE TABLE IF NOT EXISTS eval_org_status_options (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     color TEXT NOT NULL DEFAULT '#9e9e9e',
     score_value DECIMAL(5,2),

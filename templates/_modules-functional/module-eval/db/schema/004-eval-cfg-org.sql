@@ -8,7 +8,7 @@
 -- Create eval_cfg_org table (one row per organization)
 CREATE TABLE IF NOT EXISTS eval_cfg_org (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
     ai_config_delegated BOOLEAN NOT NULL DEFAULT false,
     categorical_mode TEXT,
     show_numerical_score BOOLEAN,

@@ -7,7 +7,7 @@
 -- Create eval_doc_types table
 CREATE TABLE IF NOT EXISTS eval_doc_types (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
     is_active BOOLEAN NOT NULL DEFAULT true,

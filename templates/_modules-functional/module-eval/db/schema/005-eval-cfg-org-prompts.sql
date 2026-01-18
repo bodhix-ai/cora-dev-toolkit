@@ -8,7 +8,7 @@
 -- Create eval_cfg_org_prompts table
 CREATE TABLE IF NOT EXISTS eval_cfg_org_prompts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
     prompt_type TEXT NOT NULL,
     ai_provider_id UUID REFERENCES ai_providers(id) ON DELETE SET NULL,
     ai_model_id UUID REFERENCES ai_models(id) ON DELETE SET NULL,
