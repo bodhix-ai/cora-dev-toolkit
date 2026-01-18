@@ -44,6 +44,29 @@ System admins can delegate AI configuration to individual organizations, allowin
 ### Functional Modules (Required)
 - `module-ws` - Workspace scoping
 
+## Configuration
+
+### Tailwind CSS
+
+Module-eval components use Tailwind CSS for styling. Projects must include module-eval paths in their `tailwind.config.js`:
+
+```javascript
+module.exports = {
+  content: [
+    // ... other paths
+    './modules/module-eval/**/*.{ts,tsx}',
+  ],
+  // ... rest of config
+}
+```
+
+**Without this configuration:**
+- Components will lack CSS styles (missing colors, borders, spacing)
+- UI elements may appear oversized or unstyled
+- Layout and formatting will not render correctly
+
+**Verification:** After adding module-eval paths, restart your dev server and rebuild Tailwind CSS.
+
 ## Database Schema
 
 ### System Configuration (3 tables)

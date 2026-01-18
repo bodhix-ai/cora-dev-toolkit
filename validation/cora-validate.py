@@ -232,6 +232,13 @@ class CoraValidator:
             "supports": ["project", "module"],
             "cli_style": "argparse",
         },
+        "ui_library": {
+            "name": "UI Library Validator",
+            "description": "Validates Material-UI usage and detects Tailwind CSS, Shadcn, styled-components violations",
+            "module": "ui-library-validator",
+            "supports": ["project", "module"],
+            "cli_style": "argparse",
+        },
     }
 
 
