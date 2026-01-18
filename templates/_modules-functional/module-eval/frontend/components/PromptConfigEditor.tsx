@@ -129,13 +129,13 @@ export function PromptPreview({
       {isExpanded && (
         <div className="border-t px-4 py-3 space-y-4">
           <div>
-            <h4 className="text-xs font-medium text-gray-500 mb-1">System Prompt</h4>
+            <h3 className="text-xs font-medium text-gray-500 mb-1">System Prompt</h3>
             <pre className="text-xs bg-white rounded border p-2 overflow-x-auto whitespace-pre-wrap text-gray-700">
               {systemPrompt || "(empty)"}
             </pre>
           </div>
           <div>
-            <h4 className="text-xs font-medium text-gray-500 mb-1">User Prompt Template</h4>
+            <h3 className="text-xs font-medium text-gray-500 mb-1">User Prompt Template</h3>
             <pre className="text-xs bg-white rounded border p-2 overflow-x-auto whitespace-pre-wrap text-gray-700">
               {userPromptTemplate || "(empty)"}
             </pre>
@@ -474,9 +474,9 @@ export function PromptConfigEditor({
                 </div>
                 {testResult && (
                   <div className="rounded border bg-gray-50 p-3">
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">
                       Test Result
-                    </h4>
+                    </h3>
                     <p className="text-sm text-green-700">{testResult.message}</p>
                     {testResult.renderedSystemPrompt && (
                       <div className="mt-2">
@@ -504,9 +504,9 @@ export function PromptConfigEditor({
         {/* System Default Reference (for org level) */}
         {sysConfig && (
           <div className="rounded bg-gray-50 p-3">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">
               System Default
-            </h4>
+            </h3>
             <div className="text-xs text-gray-600 space-y-1">
               <p>
                 <strong>Temperature:</strong> {sysConfig.temperature}

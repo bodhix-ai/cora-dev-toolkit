@@ -575,6 +575,7 @@ cd cora-dev-toolkit
 # - backend/lambdas/{entity}/lambda_function.py
 # - backend/layers/module-common/
 # - db/schema/*.sql
+# - frontend/package.json          # CRITICAL: Required for pnpm workspace
 # - frontend/components/
 # - frontend/hooks/
 # - infrastructure/
@@ -867,6 +868,29 @@ db/schema/
 
 **⚠️ IMPORTANT: Use PLURAL table names per DATABASE-NAMING-STANDARDS.md Rule 1**
 
+**⚠️ CRITICAL: created_by / updated_by Column Standard**
+
+**ALWAYS use:**
+```sql
+created_by UUID REFERENCES auth.users(id),
+updated_by UUID REFERENCES auth.users(id),
+```
+
+**NEVER use:**
+```sql
+created_by BIGINT REFERENCES user_profiles(id),  -- ❌ WRONG!
+```
+
+**Why:**
+- `auth.users.id` is the Supabase user UUID (unique identity)
+- `user_profiles.id` is a BIGINT for profile attributes only
+- RLS policies use `auth.uid()` which returns UUID
+- Type mismatch breaks RLS and all authorization checks
+
+**See:** `docs/standards/cora/standard_DATABASE-NAMING.md` Column Naming Rule 8
+
+---
+
 ```sql
 -- =============================================
 -- MODULE-{MODULE}: {Entity} Table
@@ -1003,6 +1027,77 @@ CREATE TRIGGER {entity}_updated_at
 ### Step 3.4: Frontend Implementation
 
 **AI Implementation Sequence:**
+
+#### 3.4.0: Frontend Package Configuration (CRITICAL)
+
+**⚠️ REQUIRED:** All functional modules MUST have a `frontend/package.json` file.
+
+**Why this is critical:**
+- Without this file, pnpm workspace won't recognize the module
+- `pnpm install` will fail with "package not found" errors
+- The module cannot be imported by other packages
+- This has been a recurring issue in module-voice and module-eval templates
+
+**Required structure:**
+
+```json
+// packages/{module-name}/frontend/package.json
+{
+  "name": "@{{PROJECT_NAME}}/{module-name}",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CORA {Module Name} - {Brief description}",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@{{PROJECT_NAME}}/api-client": "workspace:*",
+    "@{{PROJECT_NAME}}/module-access-frontend": "workspace:*",
+    "@{{PROJECT_NAME}}/shared-types": "workspace:*",
+    "@mui/material": "^5.14.0",
+    "next": "14.2.3",
+    "next-auth": "^4.24.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "typescript": "^5"
+  }
+}
+```
+
+**Critical Details:**
+
+1. **Placeholder Format:** Use `{{PROJECT_NAME}}` (double braces), NOT `{project}` (single braces)
+   - ❌ WRONG: `"name": "@{project}/module-eval"`
+   - ✅ CORRECT: `"name": "@{{PROJECT_NAME}}/module-eval"`
+
+2. **Workspace Dependencies:** Use `"workspace:*"` for internal dependencies
+
+3. **Version Alignment:** Ensure react, next-auth, MUI versions match other modules
+
+**Verification:**
+
+After creating `frontend/package.json`:
+
+```bash
+# From project root
+pnpm install --frozen-lockfile
+
+# Should see:
+# ✓ @{project}/{module-name} linked
+```
+
+**Common Errors:**
+
+- ❌ Missing file entirely → `pnpm install` fails
+- ❌ Wrong placeholder format → Module not found during project creation
+- ❌ Wrong dependency versions → Runtime errors
 
 #### 3.4.1: API Client (Factory Pattern)
 
@@ -1852,12 +1947,23 @@ When adding modules manually (not via `create-cora-project.sh`), ensure `cora-mo
 
 Before deploying any new functional module, verify:
 
+**Backend:**
 - [ ] Lambda runtime is `python3.11` (not 3.12, 3.13, etc.)
 - [ ] Lambda has org-common layer attached
 - [ ] Lambda gets org_id from `queryStringParameters`
 - [ ] All routes have authorizer configured
 - [ ] Lambda has permission for API Gateway
+
+**Frontend:**
+- [ ] `frontend/package.json` exists with correct `{{PROJECT_NAME}}` placeholder
+- [ ] All workspace dependencies use `"workspace:*"`
+- [ ] `pnpm install` succeeds without "package not found" errors
+- [ ] Module recognized by pnpm workspace (`pnpm list` shows it)
+
+**Configuration:**
 - [ ] Module config merged into cora-modules.config.yaml
+- [ ] Navigation config added (if user-facing module)
+- [ ] Admin card config added (recommended)
 
 ---
 

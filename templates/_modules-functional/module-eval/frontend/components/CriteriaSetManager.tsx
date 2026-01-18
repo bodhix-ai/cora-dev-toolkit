@@ -460,7 +460,11 @@ export function CriteriaSetManager({
       {/* Filter */}
       {onFilterChange && docTypes.length > 0 && (
         <div className="mb-4">
+          <label htmlFor="doctype-filter" className="sr-only">
+            Filter by Document Type
+          </label>
           <select
+            id="doctype-filter"
             value={selectedDocTypeId || ""}
             onChange={(e) => onFilterChange(e.target.value || undefined)}
             className="rounded border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"

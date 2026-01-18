@@ -7,7 +7,7 @@
 -- Create eval_criteria_results table (one row per criteria item per evaluation)
 CREATE TABLE IF NOT EXISTS eval_criteria_results (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    eval_summary_id UUID NOT NULL REFERENCES eval_doc_summary(id) ON DELETE CASCADE,
+    eval_summary_id UUID NOT NULL REFERENCES eval_doc_summaries(id) ON DELETE CASCADE,
     criteria_item_id UUID NOT NULL REFERENCES eval_criteria_items(id) ON DELETE RESTRICT,
     ai_result TEXT,
     ai_status_id UUID,

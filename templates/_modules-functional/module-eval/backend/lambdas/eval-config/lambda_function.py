@@ -117,7 +117,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             
             # Sys status options routes
             elif '/admin/sys/eval/status-options' in path:
-                status_id = path_params.get('id')
+                status_id = path_params.get('statusOptionId')
                 if http_method == 'GET':
                     return handle_list_sys_status_options(event)
                 elif http_method == 'POST':
@@ -171,7 +171,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             
             # Org status options routes
             elif '/admin/org/eval/status-options' in path:
-                status_id = path_params.get('id')
+                status_id = path_params.get('statusOptionId')
                 if http_method == 'GET':
                     return handle_list_org_status_options(event, org_id)
                 elif http_method == 'POST':
@@ -199,7 +199,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             
             # Doc types routes
             elif '/admin/org/eval/doc-types' in path:
-                doc_type_id = path_params.get('id')
+                doc_type_id = path_params.get('docTypeId')
                 if http_method == 'GET':
                     if doc_type_id:
                         return handle_get_doc_type(doc_type_id, org_id)
@@ -213,7 +213,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             
             # Criteria sets routes
             elif '/admin/org/eval/criteria-sets' in path:
-                criteria_set_id = path_params.get('id')
+                criteria_set_id = path_params.get('criteriaSetId')
                 
                 # Import route
                 if '/import' in path and http_method == 'POST':
@@ -240,7 +240,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             
             # Criteria items routes (individual item operations)
             elif '/admin/org/eval/criteria-items' in path:
-                item_id = path_params.get('id')
+                item_id = path_params.get('criteriaItemId')
                 if http_method == 'PATCH' and item_id:
                     return handle_update_criteria_item(event, item_id, org_id, supabase_user_id)
                 elif http_method == 'DELETE' and item_id:
@@ -593,7 +593,7 @@ def handle_list_orgs_delegation(event: Dict[str, Any]) -> Dict[str, Any]:
     )
     
     # Get all orgs
-    orgs = common.find_many('organizations', {}, order='name.asc', limit=limit, offset=offset)
+    orgs = common.find_many('orgs', {}, order='name.asc', limit=limit, offset=offset)
     
     # Get delegation status for each org
     result = []
@@ -618,7 +618,7 @@ def handle_toggle_delegation(
     org_id = common.validate_uuid(org_id, 'orgId')
     
     # Verify org exists
-    org = common.find_one('organizations', {'id': org_id})
+    org = common.find_one('orgs', {'id': org_id})
     if not org:
         raise common.NotFoundError('Organization not found')
     

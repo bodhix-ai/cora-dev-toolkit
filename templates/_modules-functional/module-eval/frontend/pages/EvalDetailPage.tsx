@@ -253,9 +253,9 @@ function ErrorState({ error, onRetry, onBack }: ErrorStateProps) {
           />
         </svg>
       </div>
-      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+      <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
         Failed to load evaluation
-      </h3>
+      </h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6 max-w-md">
         {error.message}
       </p>
@@ -317,7 +317,7 @@ function DocumentsTab({ documents }: DocumentsTabProps) {
                 </svg>
               </div>
               <div>
-                <h4 className="font-medium text-gray-900 dark:text-gray-100">{doc.name}</h4>
+                <h2 className="font-medium text-gray-900 dark:text-gray-100">{doc.name}</h2>
                 {doc.pageCount && (
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {doc.pageCount} pages

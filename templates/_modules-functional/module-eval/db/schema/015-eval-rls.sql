@@ -8,32 +8,32 @@
 -- System Configuration Tables - Sys Admin Only
 -- ============================================================================
 
--- eval_sys_config: Only sys_admin can read/write
-ALTER TABLE eval_sys_config ENABLE ROW LEVEL SECURITY;
+-- eval_cfg_sys: Only sys_admin can read/write
+ALTER TABLE eval_cfg_sys ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS eval_sys_config_select ON eval_sys_config;
-CREATE POLICY eval_sys_config_select ON eval_sys_config
+DROP POLICY IF EXISTS eval_cfg_sys_select ON eval_cfg_sys;
+CREATE POLICY eval_cfg_sys_select ON eval_cfg_sys
     FOR SELECT USING (
         auth.jwt() ->> 'sys_role' IN ('sys_owner', 'sys_admin')
     );
 
-DROP POLICY IF EXISTS eval_sys_config_update ON eval_sys_config;
-CREATE POLICY eval_sys_config_update ON eval_sys_config
+DROP POLICY IF EXISTS eval_cfg_sys_update ON eval_cfg_sys;
+CREATE POLICY eval_cfg_sys_update ON eval_cfg_sys
     FOR UPDATE USING (
         auth.jwt() ->> 'sys_role' IN ('sys_owner', 'sys_admin')
     );
 
--- eval_sys_prompt_config: Only sys_admin
-ALTER TABLE eval_sys_prompt_config ENABLE ROW LEVEL SECURITY;
+-- eval_cfg_sys_prompts: Only sys_admin
+ALTER TABLE eval_cfg_sys_prompts ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS eval_sys_prompt_config_select ON eval_sys_prompt_config;
-CREATE POLICY eval_sys_prompt_config_select ON eval_sys_prompt_config
+DROP POLICY IF EXISTS eval_cfg_sys_prompts_select ON eval_cfg_sys_prompts;
+CREATE POLICY eval_cfg_sys_prompts_select ON eval_cfg_sys_prompts
     FOR SELECT USING (
         auth.jwt() ->> 'sys_role' IN ('sys_owner', 'sys_admin')
     );
 
-DROP POLICY IF EXISTS eval_sys_prompt_config_all ON eval_sys_prompt_config;
-CREATE POLICY eval_sys_prompt_config_all ON eval_sys_prompt_config
+DROP POLICY IF EXISTS eval_cfg_sys_prompts_all ON eval_cfg_sys_prompts;
+CREATE POLICY eval_cfg_sys_prompts_all ON eval_cfg_sys_prompts
     FOR ALL USING (
         auth.jwt() ->> 'sys_role' IN ('sys_owner', 'sys_admin')
     );
@@ -55,57 +55,57 @@ CREATE POLICY eval_sys_status_options_all ON eval_sys_status_options
 -- Organization Configuration Tables
 -- ============================================================================
 
--- eval_org_config: Sys admin can read all, org admin can read/write own
-ALTER TABLE eval_org_config ENABLE ROW LEVEL SECURITY;
+-- eval_cfg_org: Sys admin can read all, org admin can read/write own
+ALTER TABLE eval_cfg_org ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS eval_org_config_sys_admin ON eval_org_config;
-CREATE POLICY eval_org_config_sys_admin ON eval_org_config
+DROP POLICY IF EXISTS eval_cfg_org_sys_admin ON eval_cfg_org;
+CREATE POLICY eval_cfg_org_sys_admin ON eval_cfg_org
     FOR ALL USING (
         auth.jwt() ->> 'sys_role' IN ('sys_owner', 'sys_admin')
     );
 
-DROP POLICY IF EXISTS eval_org_config_org_admin_select ON eval_org_config;
-CREATE POLICY eval_org_config_org_admin_select ON eval_org_config
+DROP POLICY IF EXISTS eval_cfg_org_org_admin_select ON eval_cfg_org;
+CREATE POLICY eval_cfg_org_org_admin_select ON eval_cfg_org
     FOR SELECT USING (
         EXISTS (
             SELECT 1 FROM org_members 
-            WHERE org_members.org_id = eval_org_config.org_id
+            WHERE org_members.org_id = eval_cfg_org.org_id
             AND org_members.user_id = auth.uid()
             AND org_members.org_role IN ('org_owner', 'org_admin')
         )
     );
 
-DROP POLICY IF EXISTS eval_org_config_org_admin_update ON eval_org_config;
-CREATE POLICY eval_org_config_org_admin_update ON eval_org_config
+DROP POLICY IF EXISTS eval_cfg_org_org_admin_update ON eval_cfg_org;
+CREATE POLICY eval_cfg_org_org_admin_update ON eval_cfg_org
     FOR UPDATE USING (
         EXISTS (
             SELECT 1 FROM org_members 
-            WHERE org_members.org_id = eval_org_config.org_id
+            WHERE org_members.org_id = eval_cfg_org.org_id
             AND org_members.user_id = auth.uid()
             AND org_members.org_role IN ('org_owner', 'org_admin')
         )
     );
 
--- eval_org_prompt_config: Delegation check for org admin
-ALTER TABLE eval_org_prompt_config ENABLE ROW LEVEL SECURITY;
+-- eval_cfg_org_prompts: Delegation check for org admin
+ALTER TABLE eval_cfg_org_prompts ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS eval_org_prompt_config_sys_admin ON eval_org_prompt_config;
-CREATE POLICY eval_org_prompt_config_sys_admin ON eval_org_prompt_config
+DROP POLICY IF EXISTS eval_cfg_org_prompts_sys_admin ON eval_cfg_org_prompts;
+CREATE POLICY eval_cfg_org_prompts_sys_admin ON eval_cfg_org_prompts
     FOR ALL USING (
         auth.jwt() ->> 'sys_role' IN ('sys_owner', 'sys_admin')
     );
 
-DROP POLICY IF EXISTS eval_org_prompt_config_delegated ON eval_org_prompt_config;
-CREATE POLICY eval_org_prompt_config_delegated ON eval_org_prompt_config
+DROP POLICY IF EXISTS eval_cfg_org_prompts_delegated ON eval_cfg_org_prompts;
+CREATE POLICY eval_cfg_org_prompts_delegated ON eval_cfg_org_prompts
     FOR ALL USING (
         EXISTS (
-            SELECT 1 FROM eval_org_config 
-            WHERE eval_org_config.org_id = eval_org_prompt_config.org_id
-            AND eval_org_config.ai_config_delegated = true
+            SELECT 1 FROM eval_cfg_org 
+            WHERE eval_cfg_org.org_id = eval_cfg_org_prompts.org_id
+            AND eval_cfg_org.ai_config_delegated = true
         )
         AND EXISTS (
             SELECT 1 FROM org_members 
-            WHERE org_members.org_id = eval_org_prompt_config.org_id
+            WHERE org_members.org_id = eval_cfg_org_prompts.org_id
             AND org_members.user_id = auth.uid()
             AND org_members.org_role IN ('org_owner', 'org_admin')
         )
@@ -227,87 +227,87 @@ CREATE POLICY eval_criteria_items_all ON eval_criteria_items
 -- Evaluation Results Tables
 -- ============================================================================
 
--- eval_doc_summary: Workspace members can access
-ALTER TABLE eval_doc_summary ENABLE ROW LEVEL SECURITY;
+-- eval_doc_summaries: Workspace members can access
+ALTER TABLE eval_doc_summaries ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS eval_doc_summary_select ON eval_doc_summary;
-CREATE POLICY eval_doc_summary_select ON eval_doc_summary
+DROP POLICY IF EXISTS eval_doc_summaries_select ON eval_doc_summaries;
+CREATE POLICY eval_doc_summaries_select ON eval_doc_summaries
     FOR SELECT USING (
         EXISTS (
             SELECT 1 FROM ws_members 
-            WHERE ws_members.workspace_id = eval_doc_summary.workspace_id
+            WHERE ws_members.ws_id = eval_doc_summaries.workspace_id
             AND ws_members.user_id = auth.uid()
         )
     );
 
-DROP POLICY IF EXISTS eval_doc_summary_insert ON eval_doc_summary;
-CREATE POLICY eval_doc_summary_insert ON eval_doc_summary
+DROP POLICY IF EXISTS eval_doc_summaries_insert ON eval_doc_summaries;
+CREATE POLICY eval_doc_summaries_insert ON eval_doc_summaries
     FOR INSERT WITH CHECK (
         EXISTS (
             SELECT 1 FROM ws_members 
-            WHERE ws_members.workspace_id = eval_doc_summary.workspace_id
+            WHERE ws_members.ws_id = eval_doc_summaries.workspace_id
             AND ws_members.user_id = auth.uid()
         )
     );
 
-DROP POLICY IF EXISTS eval_doc_summary_update ON eval_doc_summary;
-CREATE POLICY eval_doc_summary_update ON eval_doc_summary
+DROP POLICY IF EXISTS eval_doc_summaries_update ON eval_doc_summaries;
+CREATE POLICY eval_doc_summaries_update ON eval_doc_summaries
     FOR UPDATE USING (
         created_by = auth.uid()
         OR EXISTS (
             SELECT 1 FROM ws_members 
-            WHERE ws_members.workspace_id = eval_doc_summary.workspace_id
+            WHERE ws_members.ws_id = eval_doc_summaries.workspace_id
             AND ws_members.user_id = auth.uid()
             AND ws_members.ws_role IN ('ws_owner', 'ws_admin')
         )
     );
 
-DROP POLICY IF EXISTS eval_doc_summary_delete ON eval_doc_summary;
-CREATE POLICY eval_doc_summary_delete ON eval_doc_summary
+DROP POLICY IF EXISTS eval_doc_summaries_delete ON eval_doc_summaries;
+CREATE POLICY eval_doc_summaries_delete ON eval_doc_summaries
     FOR DELETE USING (
         created_by = auth.uid()
         OR EXISTS (
             SELECT 1 FROM ws_members 
-            WHERE ws_members.workspace_id = eval_doc_summary.workspace_id
+            WHERE ws_members.ws_id = eval_doc_summaries.workspace_id
             AND ws_members.user_id = auth.uid()
             AND ws_members.ws_role IN ('ws_owner', 'ws_admin')
         )
     );
 
--- eval_doc_set: Access through eval_doc_summary
-ALTER TABLE eval_doc_set ENABLE ROW LEVEL SECURITY;
+-- eval_doc_sets: Access through eval_doc_summaries
+ALTER TABLE eval_doc_sets ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS eval_doc_set_select ON eval_doc_set;
-CREATE POLICY eval_doc_set_select ON eval_doc_set
+DROP POLICY IF EXISTS eval_doc_sets_select ON eval_doc_sets;
+CREATE POLICY eval_doc_sets_select ON eval_doc_sets
     FOR SELECT USING (
         EXISTS (
-            SELECT 1 FROM eval_doc_summary eds
-            JOIN ws_members wm ON wm.workspace_id = eds.workspace_id
-            WHERE eds.id = eval_doc_set.eval_summary_id
+            SELECT 1 FROM eval_doc_summaries eds
+            JOIN ws_members wm ON wm.ws_id = eds.workspace_id
+            WHERE eds.id = eval_doc_sets.eval_summary_id
             AND wm.user_id = auth.uid()
         )
     );
 
-DROP POLICY IF EXISTS eval_doc_set_all ON eval_doc_set;
-CREATE POLICY eval_doc_set_all ON eval_doc_set
+DROP POLICY IF EXISTS eval_doc_sets_all ON eval_doc_sets;
+CREATE POLICY eval_doc_sets_all ON eval_doc_sets
     FOR ALL USING (
         EXISTS (
-            SELECT 1 FROM eval_doc_summary eds
-            JOIN ws_members wm ON wm.workspace_id = eds.workspace_id
-            WHERE eds.id = eval_doc_set.eval_summary_id
+            SELECT 1 FROM eval_doc_summaries eds
+            JOIN ws_members wm ON wm.ws_id = eds.workspace_id
+            WHERE eds.id = eval_doc_sets.eval_summary_id
             AND wm.user_id = auth.uid()
         )
     );
 
--- eval_criteria_results: Access through eval_doc_summary
+-- eval_criteria_results: Access through eval_doc_summaries
 ALTER TABLE eval_criteria_results ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS eval_criteria_results_select ON eval_criteria_results;
 CREATE POLICY eval_criteria_results_select ON eval_criteria_results
     FOR SELECT USING (
         EXISTS (
-            SELECT 1 FROM eval_doc_summary eds
-            JOIN ws_members wm ON wm.workspace_id = eds.workspace_id
+            SELECT 1 FROM eval_doc_summaries eds
+            JOIN ws_members wm ON wm.ws_id = eds.workspace_id
             WHERE eds.id = eval_criteria_results.eval_summary_id
             AND wm.user_id = auth.uid()
         )
@@ -317,14 +317,14 @@ DROP POLICY IF EXISTS eval_criteria_results_all ON eval_criteria_results;
 CREATE POLICY eval_criteria_results_all ON eval_criteria_results
     FOR ALL USING (
         EXISTS (
-            SELECT 1 FROM eval_doc_summary eds
-            JOIN ws_members wm ON wm.workspace_id = eds.workspace_id
+            SELECT 1 FROM eval_doc_summaries eds
+            JOIN ws_members wm ON wm.ws_id = eds.workspace_id
             WHERE eds.id = eval_criteria_results.eval_summary_id
             AND wm.user_id = auth.uid()
         )
     );
 
--- eval_result_edits: Access through criteria result and eval_doc_summary
+-- eval_result_edits: Access through criteria result and eval_doc_summaries
 ALTER TABLE eval_result_edits ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS eval_result_edits_select ON eval_result_edits;
@@ -332,8 +332,8 @@ CREATE POLICY eval_result_edits_select ON eval_result_edits
     FOR SELECT USING (
         EXISTS (
             SELECT 1 FROM eval_criteria_results ecr
-            JOIN eval_doc_summary eds ON eds.id = ecr.eval_summary_id
-            JOIN ws_members wm ON wm.workspace_id = eds.workspace_id
+            JOIN eval_doc_summaries eds ON eds.id = ecr.eval_summary_id
+            JOIN ws_members wm ON wm.ws_id = eds.workspace_id
             WHERE ecr.id = eval_result_edits.criteria_result_id
             AND wm.user_id = auth.uid()
         )
@@ -344,8 +344,8 @@ CREATE POLICY eval_result_edits_all ON eval_result_edits
     FOR ALL USING (
         EXISTS (
             SELECT 1 FROM eval_criteria_results ecr
-            JOIN eval_doc_summary eds ON eds.id = ecr.eval_summary_id
-            JOIN ws_members wm ON wm.workspace_id = eds.workspace_id
+            JOIN eval_doc_summaries eds ON eds.id = ecr.eval_summary_id
+            JOIN ws_members wm ON wm.ws_id = eds.workspace_id
             WHERE ecr.id = eval_result_edits.criteria_result_id
             AND wm.user_id = auth.uid()
         )

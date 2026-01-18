@@ -149,9 +149,9 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
           />
         </svg>
       </div>
-      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+      <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
         Failed to load prompts
-      </h3>
+      </h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6 max-w-md">
         {error.message}
       </p>
@@ -253,9 +253,9 @@ export function SysEvalPromptsPage({
 
       {/* Help Text */}
       <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-        <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+        <h2 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
           About AI Prompts
-        </h4>
+        </h2>
         <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1 list-disc list-inside">
           <li>
             <strong>Document Summary:</strong> Used to generate concise summaries of uploaded documents.
