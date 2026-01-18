@@ -91,9 +91,9 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
           />
         </svg>
       </div>
-      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+      <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
         Failed to load document types
-      </h3>
+      </h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6 max-w-md">
         {error.message}
       </p>
@@ -191,9 +191,9 @@ export function OrgEvalDocTypesPage({
 
       {/* Help Text */}
       <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
-        <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+        <h2 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
           About Document Types
-        </h4>
+        </h2>
         <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-disc list-inside">
           <li>Document types categorize the documents your organization evaluates.</li>
           <li>Each document type can have multiple criteria sets for different evaluation scenarios.</li>
