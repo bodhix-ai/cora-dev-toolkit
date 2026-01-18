@@ -8,6 +8,15 @@
 "use client";
 
 import React, { useState } from "react";
+import {
+  Box,
+  Typography,
+  Button,
+  Chip,
+  Collapse,
+  IconButton,
+} from "@mui/material";
+import { ExpandMore as ExpandMoreIcon } from "@mui/icons-material";
 import type { Citation } from "../types";
 
 // =============================================================================
@@ -21,8 +30,8 @@ export interface CitationViewerProps {
   showRelevance?: boolean;
   /** Maximum number of citations to show initially */
   initialLimit?: number;
-  /** Custom class name */
-  className?: string;
+  /** Custom sx prop */
+  sx?: object;
 }
 
 export interface CitationCardProps {
@@ -36,8 +45,8 @@ export interface CitationCardProps {
   expanded?: boolean;
   /** Toggle expand callback */
   onToggleExpand?: () => void;
-  /** Custom class name */
-  className?: string;
+  /** Custom sx prop */
+  sx?: object;
 }
 
 // =============================================================================
@@ -53,7 +62,7 @@ export function CitationCard({
   showRelevance = true,
   expanded = false,
   onToggleExpand,
-  className = "",
+  sx = {},
 }: CitationCardProps) {
   const [isExpanded, setIsExpanded] = useState(expanded);
   const hasToggle = !!onToggleExpand || citation.text.length > 200;
@@ -72,64 +81,100 @@ export function CitationCard({
       ? citation.text
       : citation.text.substring(0, 200) + "...";
 
+  // Get relevance color
+  const getRelevanceColor = (score: number) => {
+    if (score >= 0.8) return "success.main";
+    if (score >= 0.5) return "warning.main";
+    return "text.secondary";
+  };
+
   return (
-    <div
-      className={`
-        rounded-lg border border-gray-200 bg-gray-50 p-3
-        ${className}
-      `}
+    <Box
+      sx={{
+        borderRadius: 2,
+        border: 1,
+        borderColor: "divider",
+        bgcolor: "grey.50",
+        p: 1.5,
+        ...sx,
+      }}
     >
       {/* Header */}
-      <div className="mb-2 flex items-start justify-between">
-        <div className="flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-medium text-blue-700">
-            {index + 1}
-          </span>
+      <Box sx={{ mb: 1, display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Chip
+            label={index + 1}
+            size="small"
+            sx={{
+              height: 24,
+              minWidth: 24,
+              bgcolor: "primary.lighter",
+              color: "primary.main",
+              fontWeight: 500,
+              fontSize: "0.75rem",
+            }}
+          />
           {citation.source && (
-            <span className="text-sm font-medium text-gray-700">{citation.source}</span>
+            <Typography variant="body2" fontWeight={500}>
+              {citation.source}
+            </Typography>
           )}
           {citation.pageNumber !== undefined && (
-            <span className="text-xs text-gray-500">Page {citation.pageNumber}</span>
+            <Typography variant="caption" color="text.secondary">
+              Page {citation.pageNumber}
+            </Typography>
           )}
-        </div>
+        </Box>
 
         {showRelevance && citation.relevanceScore !== undefined && (
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-500">Relevance:</span>
-            <span
-              className={`
-                text-xs font-medium
-                ${citation.relevanceScore >= 0.8 ? "text-green-600" : ""}
-                ${citation.relevanceScore >= 0.5 && citation.relevanceScore < 0.8 ? "text-yellow-600" : ""}
-                ${citation.relevanceScore < 0.5 ? "text-gray-600" : ""}
-              `}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+            <Typography variant="caption" color="text.secondary">
+              Relevance:
+            </Typography>
+            <Typography
+              variant="caption"
+              fontWeight={500}
+              sx={{ color: getRelevanceColor(citation.relevanceScore) }}
             >
               {(citation.relevanceScore * 100).toFixed(0)}%
-            </span>
-          </div>
+            </Typography>
+          </Box>
         )}
-      </div>
+      </Box>
 
       {/* Citation Text */}
-      <blockquote className="border-l-2 border-blue-300 pl-3 text-sm text-gray-700 italic">
-        &ldquo;{displayText}&rdquo;
-      </blockquote>
+      <Box
+        component="blockquote"
+        sx={{
+          borderLeft: 2,
+          borderColor: "primary.light",
+          pl: 1.5,
+          m: 0,
+        }}
+      >
+        <Typography variant="body2" color="text.secondary" fontStyle="italic">
+          &ldquo;{displayText}&rdquo;
+        </Typography>
+      </Box>
 
       {/* Expand/Collapse */}
       {hasToggle && citation.text.length > 200 && (
-        <button
+        <Button
           onClick={toggleExpand}
-          className="mt-2 text-xs text-blue-600 hover:text-blue-800"
+          size="small"
+          sx={{ mt: 1, fontSize: "0.75rem" }}
         >
           {isExpanded ? "Show less" : "Show more"}
-        </button>
+        </Button>
       )}
 
       {/* Chunk info */}
       {citation.chunkIndex !== undefined && (
-        <div className="mt-2 text-xs text-gray-400">Chunk #{citation.chunkIndex}</div>
+        <Typography variant="caption" color="text.disabled" sx={{ mt: 1, display: "block" }}>
+          Chunk #{citation.chunkIndex}
+        </Typography>
       )}
-    </div>
+    </Box>
   );
 }
 
@@ -144,15 +189,15 @@ export function CitationViewer({
   citations,
   showRelevance = true,
   initialLimit = 3,
-  className = "",
+  sx = {},
 }: CitationViewerProps) {
   const [showAll, setShowAll] = useState(false);
 
   if (citations.length === 0) {
     return (
-      <div className={`text-sm text-gray-500 italic ${className}`}>
+      <Typography variant="body2" color="text.secondary" fontStyle="italic" sx={sx}>
         No citations available
-      </div>
+      </Typography>
     );
   }
 
@@ -160,24 +205,25 @@ export function CitationViewer({
   const hasMore = citations.length > initialLimit;
 
   return (
-    <div className={className}>
+    <Box sx={sx}>
       {/* Header */}
-      <div className="mb-3 flex items-center justify-between">
-        <h4 className="text-sm font-medium text-gray-700">
+      <Box sx={{ mb: 1.5, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Typography variant="subtitle2" color="text.primary">
           Citations ({citations.length})
-        </h4>
+        </Typography>
         {hasMore && (
-          <button
+          <Button
             onClick={() => setShowAll(!showAll)}
-            className="text-xs text-blue-600 hover:text-blue-800"
+            size="small"
+            sx={{ fontSize: "0.75rem" }}
           >
             {showAll ? "Show fewer" : `Show all (${citations.length})`}
-          </button>
+          </Button>
         )}
-      </div>
+      </Box>
 
       {/* Citations List */}
-      <div className="space-y-3">
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
         {displayCitations.map((citation, index) => (
           <CitationCard
             key={`citation-${index}`}
@@ -186,21 +232,18 @@ export function CitationViewer({
             showRelevance={showRelevance}
           />
         ))}
-      </div>
+      </Box>
 
       {/* Show More Button (alternative style) */}
       {!showAll && hasMore && (
-        <div className="mt-3 text-center">
-          <button
-            onClick={() => setShowAll(true)}
-            className="text-sm text-blue-600 hover:text-blue-800"
-          >
+        <Box sx={{ mt: 1.5, textAlign: "center" }}>
+          <Button onClick={() => setShowAll(true)} size="small">
             + {citations.length - initialLimit} more citation
             {citations.length - initialLimit !== 1 ? "s" : ""}
-          </button>
-        </div>
+          </Button>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 }
 
@@ -215,8 +258,8 @@ export interface InlineCitationProps {
   citation?: Citation;
   /** Click handler */
   onClick?: () => void;
-  /** Custom class name */
-  className?: string;
+  /** Custom sx prop */
+  sx?: object;
 }
 
 /**
@@ -226,21 +269,36 @@ export function InlineCitation({
   index,
   citation,
   onClick,
-  className = "",
+  sx = {},
 }: InlineCitationProps) {
   return (
-    <button
+    <Box
+      component="button"
       onClick={onClick}
-      className={`
-        inline-flex h-4 min-w-4 items-center justify-center rounded-full
-        bg-blue-100 px-1 text-[10px] font-medium text-blue-700
-        hover:bg-blue-200 align-super
-        ${className}
-      `}
       title={citation?.text?.substring(0, 100)}
+      sx={{
+        display: "inline-flex",
+        height: 16,
+        minWidth: 16,
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: "50%",
+        bgcolor: "primary.lighter",
+        px: 0.5,
+        fontSize: "0.625rem",
+        fontWeight: 500,
+        color: "primary.main",
+        border: "none",
+        cursor: "pointer",
+        verticalAlign: "super",
+        "&:hover": {
+          bgcolor: "primary.light",
+        },
+        ...sx,
+      }}
     >
       {index}
-    </button>
+    </Box>
   );
 }
 
@@ -251,33 +309,62 @@ export function InlineCitation({
 export interface CitationTooltipProps {
   /** Citation data */
   citation: Citation;
-  /** Custom class name */
-  className?: string;
+  /** Custom sx prop */
+  sx?: object;
 }
 
 /**
  * Citation tooltip/popover content
  */
-export function CitationTooltip({ citation, className = "" }: CitationTooltipProps) {
+export function CitationTooltip({ citation, sx = {} }: CitationTooltipProps) {
   return (
-    <div
-      className={`
-        max-w-sm rounded-lg border bg-white p-3 shadow-lg
-        ${className}
-      `}
+    <Box
+      sx={{
+        maxWidth: 400,
+        borderRadius: 2,
+        border: 1,
+        borderColor: "divider",
+        bgcolor: "background.paper",
+        p: 1.5,
+        boxShadow: 3,
+        ...sx,
+      }}
     >
-      <blockquote className="text-sm text-gray-700 italic">
+      <Typography
+        component="blockquote"
+        variant="body2"
+        color="text.secondary"
+        fontStyle="italic"
+        sx={{ m: 0 }}
+      >
         &ldquo;{citation.text.substring(0, 200)}
         {citation.text.length > 200 ? "..." : ""}&rdquo;
-      </blockquote>
-      <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-        {citation.source && <span>{citation.source}</span>}
-        {citation.pageNumber !== undefined && <span>Page {citation.pageNumber}</span>}
-        {citation.relevanceScore !== undefined && (
-          <span>{(citation.relevanceScore * 100).toFixed(0)}% relevance</span>
+      </Typography>
+      <Box
+        sx={{
+          mt: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        {citation.source && (
+          <Typography variant="caption" color="text.secondary">
+            {citation.source}
+          </Typography>
         )}
-      </div>
-    </div>
+        {citation.pageNumber !== undefined && (
+          <Typography variant="caption" color="text.secondary">
+            Page {citation.pageNumber}
+          </Typography>
+        )}
+        {citation.relevanceScore !== undefined && (
+          <Typography variant="caption" color="text.secondary">
+            {(citation.relevanceScore * 100).toFixed(0)}% relevance
+          </Typography>
+        )}
+      </Box>
+    </Box>
   );
 }
 
@@ -290,8 +377,8 @@ export interface CitationSummaryProps {
   citations: Citation[];
   /** Click handler to view all */
   onViewAll?: () => void;
-  /** Custom class name */
-  className?: string;
+  /** Custom sx prop */
+  sx?: object;
 }
 
 /**
@@ -300,7 +387,7 @@ export interface CitationSummaryProps {
 export function CitationSummary({
   citations,
   onViewAll,
-  className = "",
+  sx = {},
 }: CitationSummaryProps) {
   if (citations.length === 0) {
     return null;
@@ -315,30 +402,33 @@ export function CitationSummary({
     citations.reduce((sum, c) => sum + (c.relevanceScore ?? 0), 0) / citations.length;
 
   return (
-    <div
-      className={`
-        flex items-center gap-2 text-xs text-gray-500
-        ${className}
-      `}
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 1,
+        ...sx,
+      }}
     >
-      <span>
+      <Typography variant="caption" color="text.secondary">
         {citations.length} citation{citations.length !== 1 ? "s" : ""} from {sourceCount}{" "}
         source{sourceCount !== 1 ? "s" : ""}
-      </span>
+      </Typography>
       {avgRelevance > 0 && (
-        <span className="text-gray-400">
+        <Typography variant="caption" color="text.disabled">
           ({(avgRelevance * 100).toFixed(0)}% avg relevance)
-        </span>
+        </Typography>
       )}
       {onViewAll && (
-        <button
+        <Button
           onClick={onViewAll}
-          className="text-blue-600 hover:text-blue-800 hover:underline"
+          size="small"
+          sx={{ fontSize: "0.75rem", textDecoration: "underline" }}
         >
           View
-        </button>
+        </Button>
       )}
-    </div>
+    </Box>
   );
 }
 

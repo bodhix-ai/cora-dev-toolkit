@@ -8,6 +8,16 @@
 "use client";
 
 import React, { useState } from "react";
+import {
+  Button,
+  Menu,
+  MenuItem,
+  Box,
+  Select,
+  FormControl,
+  CircularProgress,
+  type SelectChangeEvent,
+} from "@mui/material";
 import type { Evaluation } from "../types";
 
 // =============================================================================
@@ -28,9 +38,9 @@ export interface EvalExportButtonProps {
   /** Button variant */
   variant?: "primary" | "secondary" | "text";
   /** Button size */
-  size?: "sm" | "md" | "lg";
-  /** Custom class name */
-  className?: string;
+  size?: "small" | "medium" | "large";
+  /** Custom sx prop */
+  sx?: object;
 }
 
 export interface ExportDropdownProps {
@@ -40,8 +50,8 @@ export interface ExportDropdownProps {
   onExport: (evaluationId: string, format: ExportFormat) => Promise<void>;
   /** Whether dropdown is disabled */
   disabled?: boolean;
-  /** Custom class name */
-  className?: string;
+  /** Custom sx prop */
+  sx?: object;
 }
 
 // =============================================================================
@@ -54,14 +64,15 @@ export function EvalExportButton({
   disabled = false,
   showMenu = true,
   variant = "secondary",
-  size = "md",
-  className = "",
+  size = "medium",
+  sx = {},
 }: EvalExportButtonProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [exportFormat, setExportFormat] = useState<ExportFormat | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const isDisabled = disabled || evaluation.status !== "completed";
+  const menuOpen = Boolean(anchorEl);
 
   const handleExport = async (format: ExportFormat) => {
     if (isDisabled || isExporting) return;
@@ -69,7 +80,7 @@ export function EvalExportButton({
     try {
       setIsExporting(true);
       setExportFormat(format);
-      setMenuOpen(false);
+      setAnchorEl(null);
       await onExport(evaluation.id, format);
     } finally {
       setIsExporting(false);
@@ -77,97 +88,89 @@ export function EvalExportButton({
     }
   };
 
-  // Size classes
-  const sizeClasses = {
-    sm: "px-2 py-1 text-xs",
-    md: "px-3 py-2 text-sm",
-    lg: "px-4 py-2.5 text-base",
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (showMenu) {
+      setAnchorEl(event.currentTarget);
+    } else {
+      handleExport("pdf");
+    }
   };
 
-  // Variant classes
-  const variantClasses = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700",
-    secondary: "bg-gray-100 text-gray-700 hover:bg-gray-200",
-    text: "text-blue-600 hover:bg-blue-50",
+  const handleClose = () => {
+    setAnchorEl(null);
   };
 
-  const buttonClasses = `
-    relative rounded font-medium transition-colors
-    ${sizeClasses[size]}
-    ${variantClasses[variant]}
-    ${isDisabled ? "opacity-50 cursor-not-allowed" : ""}
-    ${className}
-  `;
+  // Map custom variants to MUI variants
+  const muiVariant =
+    variant === "primary"
+      ? "contained"
+      : variant === "secondary"
+        ? "outlined"
+        : "text";
+
+  const muiColor = variant === "primary" ? "primary" : "inherit";
 
   // Single button (no menu)
   if (!showMenu) {
     return (
-      <button
-        onClick={() => handleExport("pdf")}
+      <Button
+        onClick={handleClick}
         disabled={isDisabled || isExporting}
-        className={buttonClasses}
+        variant={muiVariant}
+        color={muiColor}
+        size={size}
+        sx={sx}
       >
         {isExporting ? "Exporting..." : "Export"}
-      </button>
+      </Button>
     );
   }
 
   // Dropdown button
   return (
-    <div className="relative inline-block">
-      <button
-        onClick={() => setMenuOpen(!menuOpen)}
+    <Box sx={{ display: "inline-block", ...sx }}>
+      <Button
+        onClick={handleClick}
         disabled={isDisabled || isExporting}
-        className={buttonClasses}
+        variant={muiVariant}
+        color={muiColor}
+        size={size}
         aria-expanded={menuOpen}
         aria-haspopup="true"
+        endIcon={!isExporting && "▼"}
       >
-        <span className="flex items-center gap-1">
-          {isExporting ? (
-            <>Exporting {exportFormat?.toUpperCase()}...</>
-          ) : (
-            <>
-              Export
-              <span className="ml-1">▼</span>
-            </>
-          )}
-        </span>
-      </button>
+        {isExporting
+          ? `Exporting ${exportFormat?.toUpperCase()}...`
+          : "Export"}
+      </Button>
 
-      {/* Dropdown Menu */}
-      {menuOpen && !isExporting && (
-        <div
-          className="absolute right-0 z-10 mt-1 w-36 rounded-md border bg-white shadow-lg"
-          role="menu"
-        >
-          <button
-            onClick={() => handleExport("pdf")}
-            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            role="menuitem"
-          >
+      <Menu
+        anchorEl={anchorEl}
+        open={menuOpen}
+        onClose={handleClose}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "right",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+      >
+        <MenuItem onClick={() => handleExport("pdf")}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <span>📄</span>
             <span>PDF Report</span>
-          </button>
-          <button
-            onClick={() => handleExport("xlsx")}
-            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            role="menuitem"
-          >
+          </Box>
+        </MenuItem>
+        <MenuItem onClick={() => handleExport("xlsx")}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <span>📊</span>
             <span>Excel Sheet</span>
-          </button>
-        </div>
-      )}
-
-      {/* Click outside to close */}
-      {menuOpen && (
-        <div
-          className="fixed inset-0 z-0"
-          onClick={() => setMenuOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-    </div>
+          </Box>
+        </MenuItem>
+      </Menu>
+    </Box>
   );
 }
 
@@ -182,8 +185,8 @@ export interface ExportButtonsGroupProps {
   onExport: (evaluationId: string, format: ExportFormat) => Promise<void>;
   /** Whether buttons are disabled */
   disabled?: boolean;
-  /** Custom class name */
-  className?: string;
+  /** Custom sx prop */
+  sx?: object;
 }
 
 /**
@@ -193,7 +196,7 @@ export function ExportButtonsGroup({
   evaluation,
   onExport,
   disabled = false,
-  className = "",
+  sx = {},
 }: ExportButtonsGroupProps) {
   const [isExporting, setIsExporting] = useState<ExportFormat | null>(null);
 
@@ -211,35 +214,41 @@ export function ExportButtonsGroup({
   };
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      <button
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1, ...sx }}>
+      <Button
         onClick={() => handleExport("pdf")}
         disabled={isDisabled || isExporting !== null}
-        className={`
-          flex items-center gap-1 rounded px-3 py-1.5 text-sm font-medium
-          text-red-600 hover:bg-red-50
-          ${isDisabled || isExporting !== null ? "opacity-50 cursor-not-allowed" : ""}
-        `}
+        variant="text"
+        size="small"
         title="Export as PDF"
+        sx={{
+          color: "error.main",
+          "&:hover": {
+            backgroundColor: "error.lighter",
+          },
+        }}
+        startIcon={<span>📄</span>}
       >
-        <span>📄</span>
-        <span>{isExporting === "pdf" ? "Exporting..." : "PDF"}</span>
-      </button>
+        {isExporting === "pdf" ? "Exporting..." : "PDF"}
+      </Button>
 
-      <button
+      <Button
         onClick={() => handleExport("xlsx")}
         disabled={isDisabled || isExporting !== null}
-        className={`
-          flex items-center gap-1 rounded px-3 py-1.5 text-sm font-medium
-          text-green-600 hover:bg-green-50
-          ${isDisabled || isExporting !== null ? "opacity-50 cursor-not-allowed" : ""}
-        `}
+        variant="text"
+        size="small"
         title="Export as Excel"
+        sx={{
+          color: "success.main",
+          "&:hover": {
+            backgroundColor: "success.lighter",
+          },
+        }}
+        startIcon={<span>📊</span>}
       >
-        <span>📊</span>
-        <span>{isExporting === "xlsx" ? "Exporting..." : "Excel"}</span>
-      </button>
-    </div>
+        {isExporting === "xlsx" ? "Exporting..." : "Excel"}
+      </Button>
+    </Box>
   );
 }
 
@@ -252,8 +261,8 @@ export interface ExportStatusProps {
   isExporting: boolean;
   /** Export format */
   format?: ExportFormat;
-  /** Custom class name */
-  className?: string;
+  /** Custom sx prop */
+  sx?: object;
 }
 
 /**
@@ -262,19 +271,26 @@ export interface ExportStatusProps {
 export function ExportStatus({
   isExporting,
   format,
-  className = "",
+  sx = {},
 }: ExportStatusProps) {
   if (!isExporting) return null;
 
   return (
-    <div
-      className={`flex items-center gap-2 text-sm text-gray-600 ${className}`}
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 1,
+        fontSize: "0.875rem",
+        color: "text.secondary",
+        ...sx,
+      }}
     >
-      <span className="animate-spin">⏳</span>
+      <CircularProgress size={16} />
       <span>
         Generating {format === "pdf" ? "PDF report" : "Excel spreadsheet"}...
       </span>
-    </div>
+    </Box>
   );
 }
 
@@ -286,7 +302,7 @@ export function ExportDropdown({
   evaluation,
   onExport,
   disabled = false,
-  className = "",
+  sx = {},
 }: ExportDropdownProps) {
   const [isExporting, setIsExporting] = useState<ExportFormat | null>(null);
 
@@ -303,34 +319,34 @@ export function ExportDropdown({
     }
   };
 
+  const handleChange = (event: SelectChangeEvent<string>) => {
+    const format = event.target.value as ExportFormat;
+    if (format) {
+      handleExport(format);
+    }
+  };
+
   return (
-    <div className={`flex items-center gap-1 ${className}`}>
-      <label htmlFor="export-format-select" className="sr-only">
-        Export Format
-      </label>
-      <select
-        id="export-format-select"
-        onChange={(e) => {
-          const format = e.target.value as ExportFormat;
-          if (format) {
-            handleExport(format);
-            e.target.value = "";
-          }
-        }}
-        disabled={isDisabled || isExporting !== null}
-        className={`
-          rounded border border-gray-300 px-2 py-1 text-sm
-          ${isDisabled || isExporting !== null ? "opacity-50 cursor-not-allowed" : ""}
-        `}
+    <FormControl size="small" sx={{ minWidth: 150, ...sx }}>
+      <Select
         value=""
+        onChange={handleChange}
+        disabled={isDisabled || isExporting !== null}
+        displayEmpty
+        renderValue={() =>
+          isExporting
+            ? `Exporting ${isExporting.toUpperCase()}...`
+            : "Export as..."
+        }
+        aria-label="Export Format"
       >
-        <option value="" disabled>
-          {isExporting ? `Exporting ${isExporting.toUpperCase()}...` : "Export as..."}
-        </option>
-        <option value="pdf">PDF Report</option>
-        <option value="xlsx">Excel Spreadsheet</option>
-      </select>
-    </div>
+        <MenuItem value="" disabled>
+          Export as...
+        </MenuItem>
+        <MenuItem value="pdf">PDF Report</MenuItem>
+        <MenuItem value="xlsx">Excel Spreadsheet</MenuItem>
+      </Select>
+    </FormControl>
   );
 }
 
