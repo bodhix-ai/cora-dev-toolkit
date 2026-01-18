@@ -6,7 +6,8 @@
   "description": "Infrastructure repository for {{PROJECT_NAME}} CORA application",
   "cora": {
     "version": "1.0",
-    "stackRepo": "{{PROJECT_NAME}}-stack"
+    "stackRepo": "{{PROJECT_NAME}}-stack",
+    "configFile": "{{CONFIG_FILE}}"
   },
   "infrastructure": {
     "provider": "aws",

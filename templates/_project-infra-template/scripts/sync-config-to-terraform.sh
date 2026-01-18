@@ -27,15 +27,28 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
 
-# Extract project name from project.json
+# Extract project name and config file from project.json
 PROJECT_NAME=$(jq -r '.name' "${INFRA_ROOT}/project.json" 2>/dev/null || echo "")
 if [[ -z "$PROJECT_NAME" ]]; then
   log_error "Could not determine project name from project.json"
   exit 1
 fi
 
+# Get config file from project.json (set during project creation)
+# This allows projects created with different --input files to work correctly
+CONFIG_FILE_NAME=$(jq -r '.cora.configFile // ""' "${INFRA_ROOT}/project.json" 2>/dev/null || echo "")
+
 STACK_DIR="${INFRA_ROOT}/../${PROJECT_NAME}-stack"
-CONFIG_FILE="${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml"
+
+# Determine config file path - use saved configFile if available, otherwise default
+if [[ -n "$CONFIG_FILE_NAME" && "$CONFIG_FILE_NAME" != "null" ]]; then
+  CONFIG_FILE="${STACK_DIR}/${CONFIG_FILE_NAME}"
+  log_info "Using config file from project.json: ${CONFIG_FILE_NAME}"
+else
+  CONFIG_FILE="${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml"
+  log_info "Using default config file: setup.config.${PROJECT_NAME}.yaml"
+fi
+
 TFVARS_FILE="${INFRA_ROOT}/envs/${ENV}/local-secrets.tfvars"
 
 log_step "Syncing configuration from ${CONFIG_FILE} to ${TFVARS_FILE}..."
