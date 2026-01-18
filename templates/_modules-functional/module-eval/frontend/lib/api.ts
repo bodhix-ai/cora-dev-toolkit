@@ -121,7 +121,20 @@ async function parseResponse<T>(response: Response): Promise<T> {
   }
 
   try {
-    return JSON.parse(responseText) as T;
+    const json = JSON.parse(responseText);
+    
+    // Unwrap standard API response format { success: true, data: <actual_data> }
+    // This handles Lambda responses that use the standard wrapper pattern
+    if (
+      json && 
+      typeof json === 'object' && 
+      'success' in json && 
+      'data' in json
+    ) {
+      return json.data as T;
+    }
+    
+    return json as T;
   } catch {
     throw new EvalApiError(
       `Failed to parse API response: ${responseText}`,
