@@ -232,6 +232,13 @@ class CoraValidator:
             "supports": ["project", "module"],
             "cli_style": "argparse",
         },
+        "typescript": {
+            "name": "TypeScript Type Check",
+            "description": "Validates TypeScript type correctness across all packages",
+            "module": "typescript-validator",
+            "supports": ["project", "module"],
+            "cli_style": "argparse",
+        },
     }
 
 
