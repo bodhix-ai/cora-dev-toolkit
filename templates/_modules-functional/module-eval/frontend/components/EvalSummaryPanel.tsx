@@ -62,6 +62,11 @@ export function ComplianceScore({
   large = false,
   className = "",
 }: ComplianceScoreProps) {
+  // Safety check for null/undefined
+  if (score == null) {
+    return null;
+  }
+
   // Color based on score
   const getColor = () => {
     if (score >= 80) return "success";
@@ -212,7 +217,7 @@ export function EvalSummaryPanel({
   evaluation,
   className = "",
 }: EvalSummaryPanelProps) {
-  const hasScore = evaluation.complianceScore !== undefined;
+  const hasScore = evaluation.complianceScore != null;
   const hasSummary = !!evaluation.evalSummary;
   const hasDocSummary = !!evaluation.docSummary;
 
@@ -381,7 +386,7 @@ export function SummaryStats({
       {/* Compliance Score */}
       <Grid item xs={6} md={3}>
         <Paper sx={{ p: 2, textAlign: "center", bgcolor: "grey.50" }}>
-          {evaluation.complianceScore !== undefined ? (
+          {evaluation.complianceScore != null ? (
             <>
               <Typography variant="h4" fontWeight="bold" color="text.primary">
                 {evaluation.complianceScore.toFixed(0)}%
