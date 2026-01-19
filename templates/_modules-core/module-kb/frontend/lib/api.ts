@@ -144,6 +144,44 @@ export interface KbModuleApiClient {
 }
 
 /**
+ * Create authenticated client from token
+ * @param token - JWT access token
+ * @returns AuthenticatedClient
+ */
+export function createAuthenticatedClient(token: string): AuthenticatedClient {
+  const baseURL = process.env.NEXT_PUBLIC_CORA_API_URL || '';
+
+  const fetchWithAuth = async <T>(
+    method: string,
+    url: string,
+    data?: unknown
+  ): Promise<ApiResponse<T>> => {
+    const response = await fetch(`${baseURL}${url}`, {
+      method,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: data ? JSON.stringify(data) : undefined,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    return response.json();
+  };
+
+  return {
+    get: <T>(url: string) => fetchWithAuth<T>('GET', url),
+    post: <T>(url: string, data?: unknown) => fetchWithAuth<T>('POST', url, data),
+    put: <T>(url: string, data?: unknown) => fetchWithAuth<T>('PUT', url, data),
+    patch: <T>(url: string, data?: unknown) => fetchWithAuth<T>('PATCH', url, data),
+    delete: <T>(url: string) => fetchWithAuth<T>('DELETE', url),
+  };
+}
+
+/**
  * Factory function to create KB module API client
  * @param authenticatedClient - Authenticated client with CORA auth
  * @returns KbModuleApiClient

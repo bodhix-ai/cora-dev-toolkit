@@ -1,0 +1,22 @@
+{
+  "name": "@{{PROJECT_NAME}}/module-eval",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CORA Evaluation Module - AI-powered document evaluation with criteria management and scoring",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "next dev",
+    "build": "tsc -b",
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@{{PROJECT_NAME}}/api-client": "workspace:*",
+    "react": "^18.2.0",
+    "next": "^14.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "typescript": "^5.0.0"
+  }
+}

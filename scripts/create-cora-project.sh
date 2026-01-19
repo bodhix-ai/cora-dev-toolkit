@@ -2298,6 +2298,15 @@ if ! $DRY_RUN; then
   if [[ -n "$INPUT_CONFIG" ]]; then
     CONFIG_FILE="$INPUT_CONFIG"
     log_info "Using --input config file for credentials: $INPUT_CONFIG"
+    
+    # Copy input config to expected location for deploy-all.sh
+    # The deployment scripts expect setup.config.{project}.yaml in the stack directory
+    TARGET_CONFIG="${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml"
+    if [[ ! -f "$TARGET_CONFIG" ]]; then
+      log_info "Copying config to ${TARGET_CONFIG} for deployment scripts..."
+      cp "$INPUT_CONFIG" "$TARGET_CONFIG"
+      log_info "✅ Config copied to setup.config.${PROJECT_NAME}.yaml"
+    fi
   else
     CONFIG_FILE="${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml"
   fi

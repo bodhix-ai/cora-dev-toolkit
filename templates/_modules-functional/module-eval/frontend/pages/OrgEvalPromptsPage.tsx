@@ -51,9 +51,9 @@ function NotDelegatedState() {
           />
         </svg>
       </div>
-      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+      <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
         AI Configuration Not Delegated
-      </h3>
+      </h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-md">
         Your organization does not have AI prompt customization enabled. Contact
         your platform administrator to request delegation of AI configuration.
@@ -155,9 +155,9 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
           />
         </svg>
       </div>
-      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+      <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
         Failed to load prompts
-      </h3>
+      </h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6 max-w-md">
         {error.message}
       </p>

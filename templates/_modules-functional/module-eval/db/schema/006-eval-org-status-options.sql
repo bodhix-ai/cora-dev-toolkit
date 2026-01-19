@@ -7,7 +7,7 @@
 -- Create eval_org_status_options table
 CREATE TABLE IF NOT EXISTS eval_org_status_options (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     color TEXT NOT NULL DEFAULT '#9e9e9e',
     score_value DECIMAL(5,2),
@@ -15,8 +15,8 @@ CREATE TABLE IF NOT EXISTS eval_org_status_options (
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
-    updated_by UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    updated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     
     CONSTRAINT eval_org_status_options_org_name_unique UNIQUE (org_id, name)
 );

@@ -81,7 +81,11 @@ function FilterBar({ filters, onFilterChange, docTypes, onCreateClick }: FilterB
     <div className="flex flex-wrap items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
       {/* Search Input */}
       <div className="flex-1 min-w-[200px]">
+        <label htmlFor="eval-search" className="sr-only">
+          Search evaluations
+        </label>
         <input
+          id="eval-search"
           type="text"
           placeholder="Search evaluations..."
           value={filters.searchQuery || ""}
@@ -92,7 +96,11 @@ function FilterBar({ filters, onFilterChange, docTypes, onCreateClick }: FilterB
 
       {/* Status Filter */}
       <div className="w-40">
+        <label htmlFor="status-filter" className="sr-only">
+          Filter by status
+        </label>
         <select
+          id="status-filter"
           value={filters.status || ""}
           onChange={(e) => onFilterChange({ ...filters, status: e.target.value as EvaluationStatus || undefined })}
           className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -107,7 +115,11 @@ function FilterBar({ filters, onFilterChange, docTypes, onCreateClick }: FilterB
 
       {/* Doc Type Filter */}
       <div className="w-48">
+        <label htmlFor="doc-type-filter" className="sr-only">
+          Filter by document type
+        </label>
         <select
+          id="doc-type-filter"
           value={filters.docTypeId || ""}
           onChange={(e) => onFilterChange({ ...filters, docTypeId: e.target.value || undefined })}
           className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"

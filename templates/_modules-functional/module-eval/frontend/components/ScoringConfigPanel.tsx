@@ -315,6 +315,7 @@ export function ScoringConfigPanel({
             <div className="relative">
               <input
                 type="checkbox"
+                aria-label="Show numerical score"
                 checked={showNumericalScore}
                 onChange={(e) => handleNumericalChange(e.target.checked)}
                 disabled={isSaving}

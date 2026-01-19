@@ -8,18 +8,18 @@
 -- Create eval_cfg_org_prompts table
 CREATE TABLE IF NOT EXISTS eval_cfg_org_prompts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
     prompt_type TEXT NOT NULL,
-    ai_provider_id UUID REFERENCES ai_cfg_providers(id) ON DELETE SET NULL,
-    ai_model_id UUID REFERENCES ai_cfg_models(id) ON DELETE SET NULL,
+    ai_provider_id UUID REFERENCES ai_providers(id) ON DELETE SET NULL,
+    ai_model_id UUID REFERENCES ai_models(id) ON DELETE SET NULL,
     system_prompt TEXT,
     user_prompt_template TEXT,
     temperature DECIMAL(3,2),
     max_tokens INTEGER,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
-    updated_by UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    updated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     
     CONSTRAINT eval_cfg_org_prompts_org_type_unique UNIQUE (org_id, prompt_type),
     CONSTRAINT eval_cfg_org_prompts_type_check 

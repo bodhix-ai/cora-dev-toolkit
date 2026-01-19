@@ -1,0 +1,283 @@
+# =============================================================================
+# Module-Eval Configuration
+# =============================================================================
+# This file defines the default configuration for the Evaluation module.
+# These values are merged into the project's setup.config.yaml when module-eval is enabled.
+
+module_eval:
+  # Module Display Settings
+  display_name: "Document Evaluation"
+  
+  # Navigation Configuration
+  navigation:
+    label_singular: "Evaluation"
+    label_plural: "Evaluations"
+    icon: "ClipboardCheckIcon"
+    show_in_main_nav: true
+    nav_priority: 40  # Lower number = higher in navigation order
+  
+  # Admin Card Configuration
+  # Supports both platform-level and organization-level admin cards
+  admin_cards:
+    platform:
+      enabled: true
+      path: "/admin/sys/eval"
+      title: "Evaluation Configuration"
+      description: "Manage platform-wide evaluation settings and scoring algorithms"
+      icon: "SettingsIcon"
+      priority: 60
+      context: "platform"
+    organization:
+      enabled: true
+      path: "/admin/org/eval"
+      title: "Evaluation Settings"
+      description: "Manage criteria sets, document types, and evaluation workflows"
+      icon: "ClipboardCheckIcon"
+      priority: 60
+      context: "organization"
+  
+  # Evaluation Features
+  features:
+    # Enable AI-powered document evaluation
+    enable_ai_evaluation: true
+    
+    # Enable manual scoring override
+    enable_manual_override: true
+    
+    # Enable criteria import/export
+    enable_criteria_import_export: true
+    
+    # Enable result editing and audit trail
+    enable_result_editing: true
+    
+    # Enable citation tracking
+    enable_citation_tracking: true
+    
+    # Enable bulk evaluation
+    enable_bulk_evaluation: true
+    
+    # Enable KB grounding for evaluation
+    enable_kb_grounding: true
+  
+  # Scoring Settings
+  scoring:
+    # Default scoring mode: boolean | detailed
+    default_categorical_mode: "detailed"
+    
+    # Show numerical compliance scores
+    show_numerical_score: true
+    
+    # Minimum confidence threshold (0-100)
+    min_confidence_threshold: 70
+    
+    # Enable weighted criteria scoring
+    enable_weighted_scoring: true
+    
+    # Default weight for criteria items
+    default_criteria_weight: 1.0
+    
+    # Require citations for scores
+    require_citations: true
+    
+    # Maximum citations per criteria item
+    max_citations_per_item: 10
+  
+  # Criteria Management
+  criteria:
+    # Allow users to create custom criteria sets
+    allow_custom_criteria: true
+    
+    # Require approval for custom criteria
+    require_criteria_approval: false
+    
+    # Enable criteria versioning
+    enable_versioning: true
+    
+    # Maximum criteria items per set
+    max_items_per_set: 100
+    
+    # Enable criteria templates
+    enable_templates: true
+    
+    # Allow criteria delegation to organizations
+    allow_org_delegation: true
+  
+  # Document Types
+  document_types:
+    # Allow custom document types
+    allow_custom_types: true
+    
+    # Default document types (created on module initialization)
+    default_types:
+      - code: "policy"
+        label: "Policy Document"
+        description: "Organizational policies and procedures"
+      - code: "contract"
+        label: "Contract"
+        description: "Legal contracts and agreements"
+      - code: "proposal"
+        label: "Proposal"
+        description: "Business proposals and RFPs"
+      - code: "report"
+        label: "Report"
+        description: "Analysis and research reports"
+  
+  # Evaluation Workflow
+  workflow:
+    # Default status on evaluation creation
+    default_status: "pending"
+    
+    # Auto-start evaluations when created
+    auto_start: false
+    
+    # Require review before finalizing
+    require_review: true
+    
+    # Enable multi-stage evaluation
+    enable_multi_stage: false
+    
+    # Auto-archive completed evaluations after days
+    completed_retention_days: 365
+    
+    # Auto-archive failed evaluations after days
+    failed_retention_days: 30
+  
+  # Status Options
+  status_options:
+    # System-level status options (cannot be modified by orgs)
+    system:
+      - code: "pending"
+        label: "Pending"
+        description: "Evaluation queued for processing"
+      - code: "in_progress"
+        label: "In Progress"
+        description: "Evaluation currently running"
+      - code: "completed"
+        label: "Completed"
+        description: "Evaluation finished successfully"
+      - code: "failed"
+        label: "Failed"
+        description: "Evaluation encountered an error"
+    
+    # Allow organizations to define custom status options
+    allow_org_custom_status: true
+  
+  # Export Settings
+  export:
+    # Supported export formats
+    formats: ["json", "csv", "pdf"]
+    
+    # Default export format
+    default_format: "json"
+    
+    # Include citations in export
+    include_citations: true
+    
+    # Include edit history in export
+    include_edit_history: false
+    
+    # Maximum export size (MB)
+    max_export_size_mb: 50
+  
+  # AI Provider Settings
+  ai:
+    # Default AI provider for evaluation
+    default_provider: "aws_bedrock"
+    
+    # Model selection for evaluation
+    model_preferences:
+      aws_bedrock: "claude-3-5-sonnet-v2"
+      azure_ai_foundry: "gpt-4"
+      google_ai: "gemini-pro"
+    
+    # Maximum tokens for evaluation context
+    max_context_tokens: 100000
+    
+    # Temperature for AI evaluation (0-1)
+    temperature: 0.3
+    
+    # Enable streaming responses
+    enable_streaming: false
+  
+  # Integration Settings
+  integrations:
+    # Enable KB integration for context
+    enable_kb_integration: true
+    
+    # Enable workspace association
+    enable_workspace_integration: true
+    
+    # Enable chat export of results
+    enable_chat_integration: false
+    
+    # Enable webhook notifications
+    enable_webhooks: false
+  
+  # Permissions
+  permissions:
+    # Allow all users to create evaluations
+    allow_user_evaluation_creation: true
+    
+    # Require approval for evaluation creation
+    require_evaluation_approval: false
+    
+    # Role-based access control
+    roles:
+      eval_admin:
+        description: "Full control over evaluations and configurations"
+        can_create_evaluations: true
+        can_manage_criteria: true
+        can_manage_doc_types: true
+        can_view_all_results: true
+        can_edit_results: true
+        can_delete_evaluations: true
+        can_export_results: true
+      eval_reviewer:
+        description: "Can create and review evaluations"
+        can_create_evaluations: true
+        can_manage_criteria: false
+        can_manage_doc_types: false
+        can_view_all_results: true
+        can_edit_results: true
+        can_delete_evaluations: false
+        can_export_results: true
+      eval_viewer:
+        description: "View-only access to evaluations and results"
+        can_create_evaluations: false
+        can_manage_criteria: false
+        can_manage_doc_types: false
+        can_view_all_results: true
+        can_edit_results: false
+        can_delete_evaluations: false
+        can_export_results: true
+  
+  # Performance Settings
+  performance:
+    # Enable result caching
+    enable_caching: true
+    
+    # Cache TTL in seconds
+    cache_ttl_seconds: 3600
+    
+    # Maximum concurrent evaluations per org
+    max_concurrent_evaluations: 5
+    
+    # Evaluation timeout in minutes
+    evaluation_timeout_minutes: 30
+    
+    # Enable background processing
+    enable_background_processing: true
+  
+  # Audit Settings
+  audit:
+    # Track all result edits
+    track_result_edits: true
+    
+    # Require edit justification
+    require_edit_justification: true
+    
+    # Audit log retention days
+    audit_retention_days: 730
+    
+    # Enable detailed logging
+    enable_detailed_logging: true

@@ -434,6 +434,8 @@ export function CriteriaImportDialog({
                 )}
                 <input
                   ref={fileInputRef}
+                  id="import-file-input"
+                  aria-label="Upload spreadsheet file"
                   type="file"
                   accept=".csv,.xlsx"
                   onChange={handleFileSelect}

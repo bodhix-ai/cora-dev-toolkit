@@ -109,7 +109,7 @@ export function ChatInput({
 
   // Handle keydown
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    (e: React.KeyboardEvent) => {
       // Send on Enter (without Shift)
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
