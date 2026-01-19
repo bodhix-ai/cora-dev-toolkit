@@ -24,8 +24,10 @@ import {
   Skeleton,
   Button,
   Alert,
+  Breadcrumbs,
+  Link,
 } from "@mui/material";
-import { Error as ErrorIcon } from "@mui/icons-material";
+import { Error as ErrorIcon, NavigateNext } from "@mui/icons-material";
 import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import {
   useSysEvalConfig,
@@ -47,6 +49,30 @@ export interface SysEvalConfigPageProps {
   className?: string;
   /** Custom loading component */
   loadingComponent?: React.ReactNode;
+}
+
+// =============================================================================
+// BREADCRUMBS COMPONENT
+// =============================================================================
+
+function PageBreadcrumbs() {
+  return (
+    <Breadcrumbs 
+      separator={<NavigateNext fontSize="small" />}
+      aria-label="breadcrumb"
+      sx={{ mb: 2 }}
+    >
+      <Link
+        underline="hover"
+        color="inherit"
+        href="/admin/sys"
+        sx={{ display: "flex", alignItems: "center" }}
+      >
+        Sys Admin
+      </Link>
+      <Typography color="text.primary">Evaluation</Typography>
+    </Breadcrumbs>
+  );
 }
 
 // =============================================================================
@@ -246,6 +272,9 @@ export function SysEvalConfigPage({
 
   return (
     <Box sx={{ p: 3, display: "flex", flexDirection: "column", gap: 3 }} className={className}>
+      {/* Breadcrumbs */}
+      <PageBreadcrumbs />
+      
       {/* Page Header */}
       <PageHeader />
 
