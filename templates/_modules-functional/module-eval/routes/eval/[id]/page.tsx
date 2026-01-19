@@ -3,33 +3,36 @@
 /**
  * Evaluation Detail Route
  * Path: /eval/[id]
+ * 
+ * Supports flat routing pattern with optional workspace context via query params.
+ * Example: /eval/123?workspace=456
  */
 
 import React from 'react';
-import { Box, Typography } from '@mui/material';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { EvalDetailPage } from '@{{PROJECT_NAME}}/module-eval';
 
 export default function Page({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const { currentWorkspace } = useWorkspaceContext();
-
-  if (!currentWorkspace) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
-          Please select a workspace to view evaluation details.
-        </Typography>
-      </Box>
-    );
-  }
+  const searchParams = useSearchParams();
+  const workspaceId = searchParams.get('workspace');
+  const { data: session } = useSession();
 
   return (
     <EvalDetailPage
       evaluationId={params.id}
-      workspaceId={currentWorkspace.id}
-      onBack={() => router.push('/eval')}
+      workspaceId={workspaceId || undefined}
+      token={session?.accessToken as string | null}
+      onBack={() => {
+        // If workspace context exists, go back to workspace
+        if (workspaceId) {
+          router.push(`/ws/${workspaceId}?tab=eval`);
+        } else {
+          // Otherwise go to eval list
+          router.push('/eval');
+        }
+      }}
     />
   );
 }
