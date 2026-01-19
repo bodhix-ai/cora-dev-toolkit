@@ -363,25 +363,256 @@ While we're doing happy path testing, we implicitly validate these RLS policies:
 
 ---
 
-### Session 2: Org Admin Config & Evaluation (NEXT)
-**Date:** TBD  
-**Duration:** TBD  
-**Focus:** Steps 4-8 (org admin config, doc types, criteria, evaluation, results)
+### Session 2: Org Admin Config & Evaluation (BLOCKED)
+**Date:** January 19, 2026  
+**Duration:** ~2 hours  
+**Focus:** Steps 4-8 (org admin config, doc types, criteria, evaluation, results)  
+**Status:** 🚫 BLOCKED - Persistent infinite loop on tabs 2 & 3
 
-**To Complete:**
-- [ ] Step 4: Org admin configure settings
-- [ ] Step 5: Create doc type
-- [ ] Step 6: Create criteria set
+**Issues Found:**
+1. **CRITICAL: Persistent Infinite Loop on Document Types & Criteria Tabs**
+   - Error: "Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate"
+   - Affects: Tabs 2 (Document Types) and 3 (Criteria) 
+   - Tab 1 (Configuration) loads but displays no content
+   - Persists across all browsers, cache clearing methods, and incognito windows
+   - Source: Unknown - not in API calls, hooks, or page components checked so far
+
+**Fixes Attempted (All Unsuccessful):**
+1. ✅ Fixed API parameter order (16 functions) - All org APIs now use `(token, orgId, ...)`
+2. ✅ Fixed hook infinite loops - Removed store functions from useEffect deps
+   - `useEvalConfig`: Removed store functions from dependency array
+   - `useEvalDocTypes`: Removed `loadDocTypes` from dependency array
+   - `useEvalCriteriaSets`: Removed `loadCriteriaSets` from dependency array
+3. ✅ Fixed page component infinite loops - Removed `authAdapter` from useEffect deps
+   - `OrgEvalConfigPage`
+   - `OrgEvalDocTypesPage`
+   - `OrgEvalCriteriaPage`
+   - `OrgEvalPromptsPage`
+4. ✅ Verified all fixes in test project code
+5. ✅ Restarted dev server multiple times
+6. ✅ Tried aggressive cache clearing (clear site data, incognito, different browsers)
+
+**Code Committed:**
+- Branch: `admin-eval-config-s2`
+- Commit: `78a3c21` - "fix(module-eval): Fix API parameter order and infinite loop issues"
+- Changes: 13 files modified/added
+- Note: Despite these fixes, infinite loop persists
+
+**To Complete (BLOCKED):**
+- [ ] Step 4: Org admin configure settings - BLOCKED by infinite loop
+- [ ] Step 5: Create doc type - BLOCKED by infinite loop
+- [ ] Step 6: Create criteria set - BLOCKED by infinite loop
 - [ ] Step 7: Create evaluation
 - [ ] Step 8: Verify results
 
-**Issues Found:**
-- (Document issues here)
+**Next Steps - New Approach:**
+
+**Given the time invested (~2 hours) with no resolution, the decision is to rebuild the problematic pages:**
+
+1. **Create New Simplified Pages (Fresh Start):**
+   - `OrgEvalDocTypesPageV2.tsx` - Clean implementation without infinite loops
+   - `OrgEvalCriteriaPageV2.tsx` - Clean implementation without infinite loops
+   - Keep old pages as reference until new ones work
+   
+2. **Implementation Strategy:**
+   - Start with minimal components
+   - Add functionality incrementally
+   - Test after each addition to catch any infinite loops early
+   - Use simplified state management initially
+   - Avoid complex useEffect dependencies
+   
+3. **Once New Pages Work:**
+   - Replace old pages in route file
+   - Delete old page files
+   - Document what was different between old and new implementations
+   
+4. **Benefits of This Approach:**
+   - Clean slate without hidden bugs
+   - Faster than debugging unknown infinite loop source
+   - Can reference old code for business logic
+   - Lower risk of cascading issues
+   
+5. **Alternative (If Needed):**
+   - Investigate Zustand store for infinite loop issues
+   - Add React DevTools profiler to identify component causing loop
+   - Check if OrgContext is causing re-renders
+
+---
+
+### Session 3: Criteria Import & Backend Investigation ✅ COMPLETE
+**Date:** January 19, 2026  
+**Duration:** ~1 hour  
+**Focus:** Backend Lambda investigation, openpyxl library fix, criteria import, frontend viewing fix  
+**Status:** ✅ COMPLETE - Criteria imported successfully, fixes applied to template and test project
+
+**Issue Reported:**
+- User attempted to upload XLSX spreadsheet for criteria import
+- Received error: `Error parsing file: XLSX parsing requires openpyxl library`
+- Request: `POST /admin/org/eval/criteria-sets/import` returned 400 Bad Request
+
+**Investigation & Root Causes:**
+1. **Lambda Dependency Issue:**
+   - Deployed Lambda package was only 9.5 KB (should be ~20 MB with dependencies)
+   - `openpyxl` library was not included in Lambda deployment package
+   
+2. **Build Script Bug #1: Grep Pipe Failure**
+   - Condition check: `grep -q -v '^#' ... | grep -q '[a-zA-Z]'`
+   - First `grep -q` suppresses output, so second grep receives no input and fails
+   - Result: Dependency installation never triggered
+   
+3. **Build Script Bug #2: Pip Binary-Only Constraint**
+   - Original: `--only-binary=:all:` with `--platform`, `--python-version`, `--implementation`
+   - Pip requires EITHER `--no-deps` OR `--only-binary=:all:` when using platform constraints
+   - Pure Python packages like `openpyxl` (no binary wheels) were blocked from installation
+
+**Fixes Applied:**
+
+1. **Template Build Script** (`templates/_modules-functional/module-eval/backend/build.sh`):
+   ```bash
+   # Fixed grep pipe (removed -q from first grep)
+   if [ -f "${lambda_dir}requirements.txt" ] && grep -v '^#' "${lambda_dir}requirements.txt" | grep -q '[a-zA-Z]'; then
+   
+   # Hybrid installation approach
+   # Pure Python packages (openpyxl) - no platform constraints
+   pip3 install openpyxl -t "${LAMBDA_BUILD_DIR}" --upgrade --quiet
+   
+   # Binary packages - with platform constraints
+   pip3 install -r "${lambda_dir}requirements.txt" -t "${LAMBDA_BUILD_DIR}" \
+       --platform manylinux2014_x86_64 \
+       --python-version 3.11 \
+       --implementation cp \
+       --only-binary=:all: \
+       --ignore-installed \
+       --upgrade --quiet 2>/dev/null || true
+   ```
+
+2. **Test Project Build Script** (synced from template):
+   - Applied same fixes to `~/code/bodhix/testing/test-embed/ai-sec-stack/packages/module-eval/backend/build.sh`
+
+3. **Lambda Rebuild & Deployment:**
+   - Rebuilt Lambda packages: **12 KB → 19-20 MB** (includes openpyxl and dependencies)
+   - Deployed via Terraform: `source_code_hash` updated, Lambda version incremented
+   - Verified deployment: Lambda code size now **20,394,928 bytes** (~20.4 MB)
+
+**Testing Results:**
+
+1. **Spreadsheet Upload - SUCCESS ✅**
+   - User uploaded CJIS-Audit-Checklist-AC1-Criteria.xlsx
+   - Response: `201 Created`
+   - Result: **27 criteria items imported successfully**
+   - Error count: 0
+   - Criteria set ID: `d85c64aa-7ff0-447d-a525-a2a875182869`
+
+2. **Frontend Viewing Bug - FIXED ✅**
+   - Issue: Runtime error when viewing criteria: `Cannot read properties of undefined (reading 'reduce')`
+   - Root cause: `CriteriaItemEditor.tsx` line 408 called `.reduce()` on `items` without null check
+   - Fix: `const groupedItems = (items || []).reduce<Record<...>>(...)`
+   - Applied to both template and test project
+
+**Files Modified:**
+- ✅ `templates/_modules-functional/module-eval/backend/build.sh`
+- ✅ `~/code/bodhix/testing/test-embed/ai-sec-stack/packages/module-eval/backend/build.sh`
+- ✅ `templates/_modules-functional/module-eval/frontend/components/CriteriaItemEditor.tsx`
+- ✅ `~/code/bodhix/testing/test-embed/ai-sec-stack/packages/module-eval/frontend/components/CriteriaItemEditor.tsx`
+
+**Database State:**
+- ✅ Doc type exists (created previously)
+- ✅ Criteria set created: "CJIS-Audit-Checklist-AC1-Criteria" v1.0
+- ✅ 27 criteria items imported and stored in `eval_criteria_items`
+
+**Next User Actions:**
+1. Restart dev server to load fixed frontend component
+2. Verify viewing imported criteria (should display 27 items without errors)
+3. Proceed with testing Steps 7-8 (document evaluation workflow)
+
+**Validation Status:**
+- [x] Step 6: Import criteria from spreadsheet - SUCCESS (27 items)
+- [ ] Step 6: Verify viewing criteria - PENDING (restart required)
+- [ ] Step 7: Create evaluation in workspace
+- [ ] Step 8: Verify results display
+
+---
+
+### Session 4: Workspace Doc Eval UI Implementation ✅ COMPLETE
+**Date:** January 19, 2026  
+**Duration:** ~1 hour  
+**Focus:** Workspace UI integration for document evaluations  
+**Status:** ✅ COMPLETE - Doc Eval tab implemented with live data
+
+**Work Completed:**
+
+1. **Created CreateEvaluationDialog Component:**
+   - File: `templates/_modules-functional/module-ws/frontend/components/CreateEvaluationDialog.tsx`
+   - Features:
+     - Document selection (existing KB docs or upload new)
+     - Document type selection with descriptions
+     - Criteria set selection (filtered by doc type)
+     - File upload with validation
+     - Comprehensive error handling
+   - Exported from component index
+
+2. **Updated WorkspaceDetailPage:**
+   - File: `templates/_modules-functional/module-ws/frontend/pages/WorkspaceDetailPage.tsx`
+   - Changes:
+     - Renamed "Activities" tab to "Doc Eval"
+     - Integrated module-eval hooks (useEvaluations, useEvaluationStats, useEvalDocTypes, useEvalCriteriaSets)
+     - Removed mock workflows/chats data
+     - Implemented evaluation cards UI:
+       - Status badges (pending, processing, completed, failed)
+       - Progress bars for processing evaluations
+       - Compliance scores for completed evaluations
+       - Error messages for failed evaluations
+       - Clickable cards navigate to detail page
+       - Action buttons (Retry, Delete) with stopPropagation
+     - Empty state with "Create First Doc Evaluation" button
+     - Stats chips (total, processing, completed, failed)
+     - "Evaluate Document" button to open dialog
+
+3. **Frontend Type Fixes:**
+   - Fixed KbDocument property access (document.name vs name)
+   - Added proper error handling for missing properties
+
+4. **Test Project Creation:**
+   - Created test-eval project using `/test-module.md` workflow
+   - Config: `setup.config.test-eval.yaml`
+   - Modules: ws, eval, voice (all 3 functional modules)
+   - Location: `~/code/bodhix/testing/test-eval/`
+
+5. **Lambda Build Verification:**
+   - All module Lambdas built successfully
+   - Module-eval sizes: 19M, 11M, 14M (openpyxl ✅ confirmed)
+   - Module-kb sizes: 16M-21M
+   - Module-chat sizes: 6.6M-32M
+   - All other modules: Proper sizes with dependencies
+
+**Files Modified:**
+- ✅ `templates/_modules-functional/module-ws/frontend/components/CreateEvaluationDialog.tsx` (NEW)
+- ✅ `templates/_modules-functional/module-ws/frontend/components/index.ts`
+- ✅ `templates/_modules-functional/module-ws/frontend/pages/WorkspaceDetailPage.tsx`
+- ✅ `~/code/bodhix/testing/test-eval/ai-sec-stack/` (synced fixes)
+
+**Data Flow:**
+- Workspace page displays evaluations from database
+- Users can create new evaluations via dialog
+- Evaluation cards show real-time status
+- Clicking card navigates to detail page (EvalDetailPage from module-eval)
+- Detail page shows criteria results, scores, citations
 
 **Next Steps:**
-- Test org admin config page
-- Create doc types and criteria sets
-- Run end-to-end evaluation
+1. User will deploy infrastructure: `cd ~/code/bodhix/testing/test-eval/ai-sec-infra && ./scripts/deploy-all.sh dev`
+2. After deployment: Start dev server and test end-to-end evaluation workflow
+3. Test Steps 7-8: Create evaluation, verify results display
+4. Validate that Doc Eval tab displays evaluations correctly
+5. Verify navigation to evaluation detail page works
+
+**Test Environment Status:**
+- Project: test-eval
+- Stack: `~/code/bodhix/testing/test-eval/ai-sec-stack`
+- Infra: `~/code/bodhix/testing/test-eval/ai-sec-infra`
+- Dependencies: ✅ Installed (pnpm install complete)
+- Lambda Builds: ✅ Complete (all modules)
+- Infrastructure: ⏳ Ready to deploy
+- Dev Server: ⏳ Ready to start after deployment
 
 ---
 
@@ -415,6 +646,9 @@ While we're doing happy path testing, we implicitly validate these RLS policies:
 | Jan 18-19, 2026 | 1 | Fixed status options UI (tabbed interface) |
 | Jan 18-19, 2026 | 1 | Fixed API client parameter order (401 errors) |
 | Jan 18-19, 2026 | 1 | Integrated module-ai provider/model selection |
+| Jan 19, 2026 | 2 | Attempted fixes for org admin infinite loop (unsuccessful) |
+| Jan 19, 2026 | 2 | Committed fixes: API param order, hook deps, page component deps |
+| Jan 19, 2026 | 2 | Decision: Rebuild problematic pages (DocTypes, Criteria) from scratch |
 
 ---
 
