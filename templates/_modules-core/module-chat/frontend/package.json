@@ -8,7 +8,7 @@
     "dev": "next dev",
     "build": "tsc -b",
     "lint": "eslint .",
-    "type-check": "tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@{{PROJECT_NAME}}/api-client": "workspace:*",

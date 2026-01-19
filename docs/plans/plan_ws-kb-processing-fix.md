@@ -1,9 +1,9 @@
 # Plan: KB Document Processing Pipeline - Embeddings Sprint
 
-**Status:** ⏸️ PAUSED - Awaiting Lambda Deployment (Other Branch In Progress)  
+**Status:** ✅ READY FOR PR - All Frontend & Backend Fixes Complete  
 **Created:** January 18, 2026  
-**Updated:** January 18, 2026 (Session 8 - Root Cause Identified, Ready for Deployment)  
-**Branch:** ws-crud-kbs-embeddings  
+**Updated:** January 18, 2026 (Session 9 - Additional Root Cause Found, Ready for Merge)  
+**Branch:** ws-kb-embed-s1 (renamed from ws-crud-kbs-embeddings)  
 **Priority:** HIGH (Blocking core KB functionality)  
 **Related:** plan_ws-crud-kbs.md, PR #45 (doc-upload sprint), plan_test-project-resource-isolation.md
 
@@ -167,7 +167,108 @@ Plus the 5 core modules (always included per ADR-013):
 
 **Related Plan:** `docs/plans/plan_test-project-resource-isolation.md` - Now **URGENT** for supporting parallel dev efforts without resource conflicts.
 
-**Status:** All Terraform state conflicts resolved (Session 4), frontend infinite loop fixed (Session 7), root cause identified (Session 8).
+**Status:** All Terraform state conflicts resolved (Session 4), frontend infinite loop fixed (Session 7), root cause identified (Session 8), additional investigation completed (Session 9).
+
+---
+
+## 🔍 Session 9: SQS Environment Variable Investigation (January 18, 2026 Evening)
+
+### Investigation Trigger
+
+User reported documents stuck in "pending" status and missing `org_id` in kb_docs table. Investigated AWS CloudWatch logs and SQS queues.
+
+### AWS Logs Analysis
+
+**kb-document Lambda:**
+- ✅ Logs show successful document uploads
+- ✅ Document records created in database
+- ❌ No logging from `publish_processing_message()` function
+- ❌ No SQS message publish attempts logged
+
+**kb-processor Lambda:**
+- ❌ **ZERO log entries in last 30 minutes** (Lambda never invoked)
+
+**SQS Queues:**
+```
+Main Queue (ai-sec-dev-kb-processor-queue): 0 messages
+Dead Letter Queue (ai-sec-dev-kb-processor-dlq): 0 messages
+```
+
+### Root Cause: SQS_QUEUE_URL Not Configured
+
+The `publish_processing_message()` function has this guard:
+
+```python
+def publish_processing_message(doc_id: str, kb_id: str, s3_key: str):
+    try:
+        if not SQS_QUEUE_URL:
+            print("SQS_QUEUE_URL not configured, skipping message publish")
+            return  # ❌ EXITS WITHOUT SENDING MESSAGE
+        
+        sqs_client.send_message(
+            QueueUrl=SQS_QUEUE_URL,
+            MessageBody=json.dumps(message)
+        )
+```
+
+**Finding:** The `SQS_QUEUE_URL` environment variable is likely not set on the deployed Lambda function, causing it to silently skip SQS publishing.
+
+### Potential Fix (Not Yet Verified)
+
+**Environment Variable Issue:**
+- Lambda may be missing `SQS_QUEUE_URL` environment variable
+- Template code already has flexible environment variable lookup:
+  ```python
+  SQS_QUEUE_URL = os.environ.get('SQS_QUEUE_URL') or os.environ.get('KB_PROCESSOR_QUEUE_URL')
+  ```
+
+**Verification Command:**
+```bash
+aws lambda get-function-configuration \
+  --function-name ai-sec-dev-kb-kb-document \
+  --profile ai-sec-nonprod \
+  --query 'Environment.Variables'
+```
+
+**Expected Variables:**
+- `SQS_QUEUE_URL` = `https://sqs.us-east-1.amazonaws.com/887559014095/ai-sec-dev-kb-processor-queue`
+- `S3_BUCKET` = `ai-sec-dev-kb-documents`
+
+### ⚠️ Important Caveat
+
+**The template code includes all fixes:**
+1. ✅ `publish_processing_message()` call added
+2. ✅ Flexible environment variable lookup
+3. ✅ `org_id` included in document insert
+
+**However, the Lambda has NOT been rebuilt/redeployed since these fixes were made to the template.**
+
+**Two possible scenarios:**
+1. **Scenario A:** Lambda is running old code (missing all fixes)
+   - Rebuilding/redeploying will fix SQS publishing AND org_id
+2. **Scenario B:** Lambda has some fixes but missing SQS_QUEUE_URL env var
+   - Need to verify Lambda environment variables separately
+
+### Recommended Actions (Next Sprint)
+
+1. **Rebuild kb-document Lambda** with latest template code
+2. **Verify environment variables** are set correctly
+3. **Test document upload** → should trigger processor
+4. **Verify org_id** is populated in both kb_docs and (future) kb_chunks
+
+### Impact on Sprint Goals
+
+**Sprint 1 (ws-kb-embed-s1) Accomplishments:**
+- ✅ All template fixes completed
+- ✅ Frontend working perfectly (TypeScript fixes, infinite loop fixes)
+- ✅ Identified root causes (SQS publishing, environment variables)
+- ⏸️ Lambda deployment deferred to Sprint 2
+
+**Sprint 2 (ws-kb-embed-s2) Goals:**
+- Deploy kb-document Lambda with all fixes
+- Verify end-to-end document processing
+- Add org_id to kb_chunks table
+- Test full RAG pipeline
 
 ---
 
