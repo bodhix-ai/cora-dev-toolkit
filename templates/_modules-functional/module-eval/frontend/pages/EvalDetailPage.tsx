@@ -60,6 +60,8 @@ export interface EvalDetailPageProps {
   evaluationId: string;
   /** Workspace ID */
   workspaceId: string;
+  /** Auth token */
+  token: string | null;
   /** Optional CSS class */
   className?: string;
   /** Callback to navigate back */
@@ -133,21 +135,19 @@ function TabNavigation({
 interface HeaderProps {
   title: string;
   status: string;
+  evaluation: any;
   onBack?: () => void;
   showBackButton: boolean;
-  onExportPdf: () => void;
-  onExportXlsx: () => void;
-  isExporting: boolean;
+  onExport: (evaluationId: string, format: "pdf" | "xlsx") => Promise<void>;
 }
 
 function Header({
   title,
   status,
+  evaluation,
   onBack,
   showBackButton,
-  onExportPdf,
-  onExportXlsx,
-  isExporting,
+  onExport,
 }: HeaderProps) {
   const statusColors: Record<string, "warning" | "info" | "success" | "error"> = {
     pending: "warning",
@@ -179,9 +179,8 @@ function Header({
       </Box>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         <EvalExportButton
-          onExportPdf={onExportPdf}
-          onExportXlsx={onExportXlsx}
-          isExporting={isExporting}
+          evaluation={evaluation}
+          onExport={onExport}
         />
       </Box>
     </Box>
@@ -382,6 +381,7 @@ function DocumentsTab({ documents }: DocumentsTabProps) {
 export function EvalDetailPage({
   evaluationId,
   workspaceId,
+  token,
   className = "",
   onBack,
   loadingComponent,
@@ -401,7 +401,7 @@ export function EvalDetailPage({
     error,
     refresh,
     editResult,
-  } = useEvaluation(workspaceId, evaluationId);
+  } = useEvaluation(token, workspaceId, evaluationId);
 
   const { progress, isProcessing } = useEvalProgress(evaluationId);
   const { exportPdf, exportXlsx, isExporting } = useEvalExport(workspaceId, evaluationId);
@@ -424,19 +424,13 @@ export function EvalDetailPage({
     setEditingResult(null);
   }, []);
 
-  const handleExportPdf = useCallback(async () => {
-    const result = await exportPdf();
+  const handleExport = useCallback(async (evaluationId: string, format: "pdf" | "xlsx") => {
+    const exportFn = format === "pdf" ? exportPdf : exportXlsx;
+    const result = await exportFn();
     if (result?.downloadUrl) {
       window.open(result.downloadUrl, "_blank");
     }
-  }, [exportPdf]);
-
-  const handleExportXlsx = useCallback(async () => {
-    const result = await exportXlsx();
-    if (result?.downloadUrl) {
-      window.open(result.downloadUrl, "_blank");
-    }
-  }, [exportXlsx]);
+  }, [exportPdf, exportXlsx]);
 
   // Render loading state
   if (isLoading) {
@@ -476,11 +470,10 @@ export function EvalDetailPage({
         <Header
           title={evaluation.docTypeName || "Evaluation"}
           status={evaluation.status}
+          evaluation={evaluation}
           onBack={onBack}
           showBackButton={showBackButton}
-          onExportPdf={handleExportPdf}
-          onExportXlsx={handleExportXlsx}
-          isExporting={isExporting}
+          onExport={handleExport}
         />
         <ProcessingState
           evaluationId={evaluationId}
@@ -500,11 +493,10 @@ export function EvalDetailPage({
       <Header
         title={evaluation.docTypeName || "Evaluation"}
         status={evaluation.status}
+        evaluation={evaluation}
         onBack={onBack}
         showBackButton={showBackButton}
-        onExportPdf={handleExportPdf}
-        onExportXlsx={handleExportXlsx}
-        isExporting={isExporting}
+        onExport={handleExport}
       />
 
       {/* Summary Panel */}
