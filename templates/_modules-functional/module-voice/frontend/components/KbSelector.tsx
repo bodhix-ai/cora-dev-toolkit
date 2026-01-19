@@ -6,6 +6,24 @@
  */
 
 import React, { useState } from "react";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Checkbox,
+  Chip,
+  CircularProgress,
+  Collapse,
+  IconButton,
+  Typography,
+  Alert,
+} from "@mui/material";
+import {
+  Storage as StorageIcon,
+  Close as CloseIcon,
+  ExpandMore as ExpandMoreIcon,
+} from "@mui/icons-material";
 import type { VoiceSessionKb, AvailableKb } from "../types";
 
 // =============================================================================
@@ -32,13 +50,13 @@ export interface KbSelectorProps {
 }
 
 // =============================================================================
-// SCOPE BADGE STYLES
+// SCOPE BADGE COLORS
 // =============================================================================
 
-const scopeStyles: Record<string, { bg: string; text: string }> = {
-  workspace: { bg: "bg-blue-100", text: "text-blue-700" },
-  org: { bg: "bg-purple-100", text: "text-purple-700" },
-  system: { bg: "bg-gray-100", text: "text-gray-700" },
+const scopeColors: Record<string, "primary" | "secondary" | "default"> = {
+  workspace: "primary",
+  org: "secondary",
+  system: "default",
 };
 
 // =============================================================================
@@ -107,179 +125,233 @@ export function KbSelector({
   };
 
   return (
-    <div className={`bg-white rounded-lg border border-gray-200 ${className}`}>
+    <Card variant="outlined" className={className}>
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <svg
-            className="w-4 h-4 text-gray-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-            />
-          </svg>
-          <span className="text-sm font-medium text-gray-700">
+      <Box
+        sx={{
+          px: 2,
+          py: 1.5,
+          borderBottom: 1,
+          borderColor: "divider",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <StorageIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+          <Typography variant="body2" fontWeight="medium">
             Knowledge Bases
-          </span>
-          <span className="text-xs text-gray-400">
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
             ({groundedKbs.length} grounded)
-          </span>
-        </div>
+          </Typography>
+        </Box>
         {loading && (
-          <span className="text-xs text-gray-400">Loading...</span>
+          <Typography variant="caption" color="text.secondary">
+            Loading...
+          </Typography>
         )}
-      </div>
+      </Box>
 
       {/* Grounded KBs */}
-      <div className="p-3 space-y-2">
+      <CardContent sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
         {groundedKbs.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-2">
+          <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 1 }}>
             No knowledge bases grounded.
             {!disabled && " Add one to provide context for the AI."}
-          </p>
+          </Typography>
         ) : (
           groundedKbs.map((kb) => {
-            const scopeStyle = scopeStyles[kb.kbScope || "workspace"] || scopeStyles.workspace;
+            const scopeColor = scopeColors[kb.kbScope || "workspace"] || scopeColors.workspace;
             const isLoading = actionLoading === kb.kbId;
 
             return (
-              <div
+              <Box
                 key={kb.id}
-                className={`flex items-center justify-between p-2 rounded-lg bg-gray-50 ${
-                  !kb.isEnabled ? "opacity-60" : ""
-                }`}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  p: 1,
+                  borderRadius: 1,
+                  bgcolor: "grey.50",
+                  opacity: !kb.isEnabled ? 0.6 : 1,
+                }}
               >
-                <div className="flex items-center gap-2 min-w-0 flex-1">
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, flex: 1 }}>
                   {/* Toggle checkbox */}
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={kb.isEnabled}
                     onChange={() => handleToggle(kb.kbId, kb.isEnabled)}
                     disabled={disabled || isLoading}
+                    size="small"
                     aria-label={`Toggle ${kb.kbName || 'KB'}`}
-                    className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50"
                   />
                   
                   {/* KB info */}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography
+                      variant="body2"
+                      fontWeight="medium"
+                      sx={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       {kb.kbName || "Unknown KB"}
-                    </p>
-                  </div>
+                    </Typography>
+                  </Box>
 
                   {/* Scope badge */}
                   {kb.kbScope && (
-                    <span
-                      className={`text-xs px-1.5 py-0.5 rounded ${scopeStyle.bg} ${scopeStyle.text}`}
-                    >
-                      {kb.kbScope}
-                    </span>
+                    <Chip
+                      label={kb.kbScope}
+                      color={scopeColor}
+                      size="small"
+                      sx={{ fontSize: "0.7rem", height: 20 }}
+                    />
                   )}
-                </div>
+                </Box>
 
                 {/* Remove button */}
                 {!disabled && (
-                  <button
+                  <IconButton
                     onClick={() => handleRemove(kb.kbId)}
                     disabled={isLoading}
-                    className="ml-2 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                    size="small"
+                    sx={{
+                      ml: 1,
+                      color: "text.secondary",
+                      "&:hover": { color: "error.main", bgcolor: "error.50" },
+                    }}
                     title="Remove KB"
                   >
                     {isLoading ? (
-                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
+                      <CircularProgress size={16} />
                     ) : (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
+                      <CloseIcon fontSize="small" />
                     )}
-                  </button>
+                  </IconButton>
                 )}
-              </div>
+              </Box>
             );
           })
         )}
-      </div>
+      </CardContent>
 
       {/* Add KB section */}
       {!disabled && addableKbs.length > 0 && (
-        <div className="border-t border-gray-200">
-          <button
+        <Box sx={{ borderTop: 1, borderColor: "divider" }}>
+          <Button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="w-full px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center justify-center gap-1 transition-colors"
+            fullWidth
+            sx={{
+              py: 1,
+              justifyContent: "center",
+              gap: 0.5,
+            }}
           >
-            <svg
-              className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
+            <ExpandMoreIcon
+              sx={{
+                transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                transition: "transform 0.2s",
+              }}
+            />
             {isExpanded ? "Hide available KBs" : `Add KB (${addableKbs.length} available)`}
-          </button>
+          </Button>
 
-          {isExpanded && (
-            <div className="p-3 bg-gray-50 border-t border-gray-200 space-y-2">
+          <Collapse in={isExpanded}>
+            <Box
+              sx={{
+                p: 1.5,
+                bgcolor: "grey.50",
+                borderTop: 1,
+                borderColor: "divider",
+                display: "flex",
+                flexDirection: "column",
+                gap: 1,
+              }}
+            >
               {addableKbs.map((kb) => {
-                const scopeStyle = scopeStyles[kb.scope] || scopeStyles.workspace;
+                const scopeColor = scopeColors[kb.scope] || scopeColors.workspace;
                 const isLoading = actionLoading === kb.id;
 
                 return (
-                  <div
+                  <Box
                     key={kb.id}
-                    className="flex items-center justify-between p-2 rounded-lg bg-white border border-gray-200"
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      p: 1,
+                      borderRadius: 1,
+                      bgcolor: "background.paper",
+                      border: 1,
+                      borderColor: "divider",
+                    }}
                   >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {kb.name}
-                      </p>
-                      {kb.description && (
-                        <p className="text-xs text-gray-500 truncate">
-                          {kb.description}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2 ml-2">
-                      <span
-                        className={`text-xs px-1.5 py-0.5 rounded ${scopeStyle.bg} ${scopeStyle.text}`}
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography
+                        variant="body2"
+                        fontWeight="medium"
+                        sx={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
                       >
-                        {kb.scope}
-                      </span>
-                      <button
+                        {kb.name}
+                      </Typography>
+                      {kb.description && (
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            display: "block",
+                          }}
+                        >
+                          {kb.description}
+                        </Typography>
+                      )}
+                    </Box>
+
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: 1 }}>
+                      <Chip
+                        label={kb.scope}
+                        color={scopeColor}
+                        size="small"
+                        sx={{ fontSize: "0.7rem", height: 20 }}
+                      />
+                      <Button
                         onClick={() => handleAdd(kb.id)}
                         disabled={isLoading}
-                        className="px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                        variant="contained"
+                        size="small"
+                        sx={{ minWidth: 60 }}
                       >
                         {isLoading ? "Adding..." : "Add"}
-                      </button>
-                    </div>
-                  </div>
+                      </Button>
+                    </Box>
+                  </Box>
                 );
               })}
-            </div>
-          )}
-        </div>
+            </Box>
+          </Collapse>
+        </Box>
       )}
 
       {/* Disabled notice */}
       {disabled && (
-        <div className="px-4 py-2 bg-yellow-50 border-t border-yellow-100">
-          <p className="text-xs text-yellow-700">
-            KB selection is locked while the session is active.
-          </p>
-        </div>
+        <Alert severity="warning" sx={{ borderRadius: 0, borderTop: 1, borderColor: "divider" }}>
+          KB selection is locked while the session is active.
+        </Alert>
       )}
-    </div>
+    </Card>
   );
 }
 

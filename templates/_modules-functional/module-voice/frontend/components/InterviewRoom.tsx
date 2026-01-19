@@ -6,6 +6,19 @@
  */
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import {
+  Box,
+  Button,
+  CircularProgress,
+  IconButton,
+  Typography,
+  Alert,
+} from "@mui/material";
+import {
+  Mic,
+  Videocam,
+  CallEnd,
+} from "@mui/icons-material";
 
 // =============================================================================
 // PROPS
@@ -161,117 +174,224 @@ export function InterviewRoom({
   // Loading state
   if (isLoading) {
     return (
-      <div
-        className={`flex items-center justify-center bg-gray-900 rounded-lg ${className}`}
-        style={{ height }}
+      <Box
+        className={className}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: "grey.900",
+          borderRadius: 1,
+          height,
+        }}
       >
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4" />
-          <p className="text-white text-sm">Connecting to interview room...</p>
-        </div>
-      </div>
+        <Box sx={{ textAlign: "center" }}>
+          <CircularProgress sx={{ mb: 2, color: "common.white" }} />
+          <Typography variant="body2" color="common.white">
+            Connecting to interview room...
+          </Typography>
+        </Box>
+      </Box>
     );
   }
 
   // Error state
   if (error) {
     return (
-      <div
-        className={`flex items-center justify-center bg-gray-900 rounded-lg ${className}`}
-        style={{ height }}
+      <Box
+        className={className}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: "grey.900",
+          borderRadius: 1,
+          height,
+        }}
       >
-        <div className="text-center p-6">
-          <div className="text-red-400 text-4xl mb-4">⚠</div>
-          <p className="text-white text-sm mb-2">Failed to connect to video room</p>
-          <p className="text-gray-400 text-xs mb-4">{error}</p>
-          <button
+        <Box sx={{ textAlign: "center", p: 3 }}>
+          <Typography variant="h3" color="error.light" sx={{ mb: 2 }}>
+            ⚠
+          </Typography>
+          <Typography variant="body2" color="common.white" sx={{ mb: 1 }}>
+            Failed to connect to video room
+          </Typography>
+          <Typography variant="caption" color="grey.400" sx={{ mb: 2, display: "block" }}>
+            {error}
+          </Typography>
+          <Button
             onClick={initializeDaily}
-            className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+            variant="contained"
+            size="small"
           >
             Retry
-          </button>
-        </div>
-      </div>
+          </Button>
+        </Box>
+      </Box>
     );
   }
 
   // Placeholder mode (Daily SDK not available)
   if (!isDailyAvailable) {
     return (
-      <div
-        className={`flex flex-col bg-gray-900 rounded-lg overflow-hidden ${className}`}
-        style={{ height }}
+      <Box
+        className={className}
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          bgcolor: "grey.900",
+          borderRadius: 1,
+          overflow: "hidden",
+          height,
+        }}
       >
         {/* Header */}
-        <div className="bg-gray-800 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500" />
-            </span>
-            <span className="text-white text-sm font-medium">Interview Room</span>
-          </div>
-          <span className="text-gray-400 text-xs">
+        <Box
+          sx={{
+            bgcolor: "grey.800",
+            px: 2,
+            py: 1.5,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box
+              sx={{
+                width: 12,
+                height: 12,
+                borderRadius: "50%",
+                bgcolor: "success.main",
+                animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+                "@keyframes pulse": {
+                  "0%, 100%": { opacity: 1 },
+                  "50%": { opacity: 0.5 },
+                },
+              }}
+            />
+            <Typography variant="body2" color="common.white" fontWeight="medium">
+              Interview Room
+            </Typography>
+          </Box>
+          <Typography variant="caption" color="grey.400">
             Session: {sessionId.slice(0, 8)}...
-          </span>
-        </div>
+          </Typography>
+        </Box>
 
         {/* Video area placeholder */}
-        <div className="flex-1 flex items-center justify-center bg-gray-900">
-          <div className="text-center">
-            <div className="text-gray-500 text-6xl mb-4">🎥</div>
-            <p className="text-white text-lg mb-2">Video Room</p>
-            <p className="text-gray-400 text-sm max-w-xs mx-auto">
+        <Box
+          sx={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            bgcolor: "grey.900",
+          }}
+        >
+          <Box sx={{ textAlign: "center" }}>
+            <Typography variant="h1" sx={{ fontSize: "4rem", mb: 2 }}>
+              🎥
+            </Typography>
+            <Typography variant="h6" color="common.white" sx={{ mb: 1 }}>
+              Video Room
+            </Typography>
+            <Typography
+              variant="body2"
+              color="grey.400"
+              sx={{ maxWidth: 300, mx: "auto" }}
+            >
               Daily.co video embed will appear here when the SDK is loaded.
-            </p>
-            <div className="mt-4 px-4 py-2 bg-gray-800 rounded-lg inline-block">
-              <p className="text-gray-300 text-xs font-mono truncate max-w-xs">
+            </Typography>
+            <Box
+              sx={{
+                mt: 2,
+                px: 2,
+                py: 1,
+                bgcolor: "grey.800",
+                borderRadius: 1,
+                display: "inline-block",
+              }}
+            >
+              <Typography
+                variant="caption"
+                color="grey.300"
+                sx={{
+                  fontFamily: "monospace",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  maxWidth: 300,
+                  display: "block",
+                }}
+              >
                 {roomUrl}
-              </p>
-            </div>
-          </div>
-        </div>
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
 
         {/* Controls placeholder */}
         {showControls && (
-          <div className="bg-gray-800 px-4 py-3 flex items-center justify-center gap-4">
-            <button
-              className="p-3 rounded-full bg-gray-700 text-white hover:bg-gray-600 transition-colors"
+          <Box
+            sx={{
+              bgcolor: "grey.800",
+              px: 2,
+              py: 1.5,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 2,
+            }}
+          >
+            <IconButton
+              sx={{
+                bgcolor: "grey.700",
+                color: "common.white",
+                "&:hover": { bgcolor: "grey.600" },
+              }}
               title="Mute"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-              </svg>
-            </button>
-            <button
-              className="p-3 rounded-full bg-gray-700 text-white hover:bg-gray-600 transition-colors"
+              <Mic />
+            </IconButton>
+            <IconButton
+              sx={{
+                bgcolor: "grey.700",
+                color: "common.white",
+                "&:hover": { bgcolor: "grey.600" },
+              }}
               title="Toggle Video"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-            </button>
-            <button
-              className="p-3 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
+              <Videocam />
+            </IconButton>
+            <IconButton
+              sx={{
+                bgcolor: "error.main",
+                color: "common.white",
+                "&:hover": { bgcolor: "error.dark" },
+              }}
               title="Leave"
               onClick={onMeetingEnd}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M5 3a2 2 0 00-2 2v1c0 8.284 6.716 15 15 15h1a2 2 0 002-2v-3.28a1 1 0 00-.684-.948l-4.493-1.498a1 1 0 00-1.21.502l-1.13 2.257a11.042 11.042 0 01-5.516-5.517l2.257-1.128a1 1 0 00.502-1.21L9.228 3.683A1 1 0 008.279 3H5z" />
-              </svg>
-            </button>
-          </div>
+              <CallEnd />
+            </IconButton>
+          </Box>
         )}
-      </div>
+      </Box>
     );
   }
 
   // Daily.co embed container
   return (
-    <div
+    <Box
       ref={containerRef}
-      className={`bg-gray-900 rounded-lg overflow-hidden ${className}`}
-      style={{ height }}
+      className={className}
+      sx={{
+        bgcolor: "grey.900",
+        borderRadius: 1,
+        overflow: "hidden",
+        height,
+      }}
     />
   );
 }
