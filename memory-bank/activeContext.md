@@ -30,26 +30,23 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 ## Current Branch Status
 
-### feature/module-eval-config
-- **Status:** Sprint - Org Admin Config Testing (🔄 IN PROGRESS)
-- **Progress:** 0% complete (just started)
-- **Context:** See `context-module-eval.md` and `docs/plans/plan_module-eval-config.md`
-### ws-crud-kbs-embeddings (ACTIVE)
-- **Status:** 🔄 IN PROGRESS - Module-KB TypeScript Type Error Fixes
+### admin-eval-config-s2 (ACTIVE)
+- **Status:** Workspace Doc Eval Implementation (🔄 IN PROGRESS)
 - **Plans:** 
-  - `docs/plans/plan_module-kb-type-fixes.md` (ACTIVE - Session 153)
-  - `docs/plans/plan_ws-kb-processing-fix.md` (Previous - Session 152)
-- **Context:** See `context-module-kb.md`
-- **Current:** Fixing TypeScript type errors (16 errors in 6 files)
-
-### feature/module-eval-implementation
-- **Status:** Phase 9 - Frontend Hooks (🔄 IN PROGRESS)
-- **Progress:** ~65% complete (Phases 1-8 done)
+  - `docs/plans/plan_workspace-doc-eval-implementation.md` (ACTIVE)
+  - `docs/plans/plan_admin-eval-config-s2.md` (Sprint tracking)
 - **Context:** See `context-module-eval.md`
+
+### ws-crud-kbs-embeddings
+- **Status:** Module-KB TypeScript Type Error Fixes
+- **Context:** See `context-module-kb.md`
+
+### module-voice-dev
+- **Status:** Module-Voice Specifications
+- **Context:** See `context-module-voice.md`
 
 ### main
 - **Status:** Toolkit maintenance and standards
-- **Last Session:** Session 126 (Module-KB planning)
 
 ---
 
@@ -62,15 +59,6 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 ---
 
-## Test Environment
-
-**Project:** ai-sec (test-ws-25)
-
-| Repo | Path |
-|------|------|
-| Stack | `~/code/bodhix/testing/test-ws-25/ai-sec-stack` |
-| Infra | `~/code/bodhix/testing/test-ws-25/ai-sec-infra` |
-
 ---
 
-**Updated:** January 18, 2026
+**Updated:** January 19, 2026

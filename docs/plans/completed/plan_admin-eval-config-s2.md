@@ -1,11 +1,12 @@
 # Admin Eval Config Validation Plan (Sprint S2)
 
-**Status**: 🔄 IN PROGRESS (Sys Admin ✅ COMPLETE | Org Admin 🔜 NEXT)  
+**Status**: ✅ ADMIN FEATURES COMPLETE (Sys Admin ✅ | Org Admin ✅ | User Testing 🔜 NEXT)  
 **Priority**: HIGH (Module validation & integration testing)  
 **Sprint Goal**: Validate sys and org admin functionality for managing eval config data, ending with document evaluation in workspace  
 **Branch**: `admin-eval-config-s2`  
 **Estimated Duration**: 1-2 sessions (~2-4 hours)  
-**Session 1 Status**: Sys Admin Config ✅ COMPLETE
+**Session 1 Status**: Sys Admin Config ✅ COMPLETE  
+**Session 3 Status**: Org Admin Config ✅ COMPLETE
 
 ---
 
@@ -310,11 +311,13 @@ While we're doing happy path testing, we implicitly validate these RLS policies:
 
 ### Definition of Done:
 - [x] All sys admin validation steps completed (Steps 1-3)
-- [ ] All org admin validation steps completed (Steps 4-6)
-- [ ] At least one document evaluated end-to-end (Steps 7-8)
-- [ ] Results display correctly in UI
-- [ ] No errors in CloudWatch logs
+- [x] All org admin validation steps completed (Steps 4-6) ✅ COMPLETE
+- [ ] At least one document evaluated end-to-end (Steps 7-8) 🔜 NEXT SESSION
+- [ ] Results display correctly in UI (pending Step 7-8)
+- [ ] No errors in CloudWatch logs (pending Step 7-8)
 - [x] Config changes persist across page refreshes (sys admin verified)
+- [x] Criteria import from spreadsheet working (27 items imported)
+- [x] Frontend viewing of imported criteria working
 
 ---
 
@@ -439,11 +442,11 @@ While we're doing happy path testing, we implicitly validate these RLS policies:
 
 ---
 
-### Session 3: Criteria Import & Backend Investigation ✅ COMPLETE
+### Session 3: Org Admin Config & Criteria Import ✅ COMPLETE
 **Date:** January 19, 2026  
 **Duration:** ~1 hour  
-**Focus:** Backend Lambda investigation, openpyxl library fix, criteria import, frontend viewing fix  
-**Status:** ✅ COMPLETE - Criteria imported successfully, fixes applied to template and test project
+**Focus:** Org admin configuration (Steps 4-6), backend Lambda fixes, criteria import  
+**Status:** ✅ COMPLETE - All org admin features validated
 
 **Issue Reported:**
 - User attempted to upload XLSX spreadsheet for criteria import
@@ -526,10 +529,12 @@ While we're doing happy path testing, we implicitly validate these RLS policies:
 3. Proceed with testing Steps 7-8 (document evaluation workflow)
 
 **Validation Status:**
-- [x] Step 6: Import criteria from spreadsheet - SUCCESS (27 items)
-- [ ] Step 6: Verify viewing criteria - PENDING (restart required)
-- [ ] Step 7: Create evaluation in workspace
-- [ ] Step 8: Verify results display
+- [x] Step 4: Org admin configure settings - ✅ COMPLETE
+- [x] Step 5: Create document type - ✅ COMPLETE ("IT Security Policy")
+- [x] Step 6: Import criteria from spreadsheet - ✅ COMPLETE (27 items)
+- [x] Step 6: Verify viewing criteria - ✅ COMPLETE (after frontend fix)
+- [ ] Step 7: Create evaluation in workspace - 🔜 NEXT SESSION
+- [ ] Step 8: Verify results display - 🔜 NEXT SESSION
 
 ---
 
@@ -652,8 +657,10 @@ While we're doing happy path testing, we implicitly validate these RLS policies:
 
 ---
 
-**Status**: 🔄 IN PROGRESS (Sys Admin ✅ COMPLETE | Org Admin 🔜 NEXT)  
+**Status**: ✅ ADMIN FEATURES COMPLETE (Sys Admin ✅ | Org Admin ✅ | User Testing 🔜 NEXT)  
 **Last Updated**: January 19, 2026  
 **Branch**: admin-eval-config-s2  
-**Test Project**: test-embed  
-**Session 1**: Sys Admin Config ✅ COMPLETE
+**Test Project**: test-embed (Session 1-3), test-eval (Session 4+)  
+**Session 1**: Sys Admin Config ✅ COMPLETE  
+**Session 3**: Org Admin Config ✅ COMPLETE  
+**Session 4**: Workspace UI Integration ✅ COMPLETE

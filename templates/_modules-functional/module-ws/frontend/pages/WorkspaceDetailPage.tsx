@@ -1,8 +1,7 @@
 /**
  * WorkspaceDetailPage Component
  *
- * Detail page for a single workspace showing activities, data, members, and settings.
- * Features tab navigation with mocked CJIS audit data for workflows, chats, and knowledge base.
+ * Detail page for a single workspace showing overview, data, members, and settings.
  */
 
 import React, { useState, useMemo } from "react";
@@ -20,23 +19,8 @@ import {
   CircularProgress,
   Alert,
   Divider,
-  Card,
-  CardContent,
   Tabs,
   Tab,
-  LinearProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  InputAdornment,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
 } from "@mui/material";
 import {
   Edit,
@@ -45,17 +29,7 @@ import {
   Star,
   StarBorder,
   ArrowBack,
-  Settings as SettingsIcon,
-  Add,
-  Search,
-  Description,
-  Chat,
-  PlayArrow,
-  CheckCircle,
-  Error as ErrorIcon,
   Group,
-  Public,
-  Lock,
   Folder,
   Storage,
 } from "@mui/icons-material";
@@ -73,19 +47,8 @@ import {
   useKbDocuments,
   createKbModuleClient,
   type AvailableKb,
-  type KbDocument,
 } from "@{{PROJECT_NAME}}/module-kb";
 import { createAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
-import {
-  useEvaluations,
-  useEvaluationStats,
-  useEvalDocTypes,
-  useEvalCriteriaSets,
-  type Evaluation,
-  type EvaluationStatus,
-  createEvalModuleClient,
-} from "@{{PROJECT_NAME}}/module-eval";
-import { CreateEvaluationDialog } from "../components/CreateEvaluationDialog";
 
 
 // ============================================================================
@@ -105,8 +68,6 @@ export interface WorkspaceDetailPageProps {
   onBack?: () => void;
   /** Callback when workspace is deleted */
   onDeleted?: () => void;
-  /** Callback when evaluation is selected for viewing */
-  onViewEvaluation?: (evaluationId: string) => void;
 }
 
 interface TabPanelProps {
@@ -148,7 +109,6 @@ export function WorkspaceDetailPage({
   apiClient: providedApiClient,
   onBack,
   onDeleted,
-  onViewEvaluation,
 }: WorkspaceDetailPageProps): React.ReactElement {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
@@ -292,87 +252,6 @@ export function WorkspaceDetailPage({
     setActiveTab(newValue);
   };
 
-  // Create Eval API client
-  const evalApiClient = useMemo(() => {
-    if (session?.accessToken) {
-      const authClient = createAuthenticatedClient(session.accessToken as string);
-      return createEvalModuleClient(authClient);
-    }
-    return null;
-  }, [session?.accessToken]);
-
-  // Eval hooks for workspace
-  const {
-    evaluations,
-    isLoading: evalsLoading,
-    error: evalsError,
-    create: createEvaluation,
-    remove: deleteEvaluation,
-    refresh: refreshEvaluations,
-  } = useEvaluations(
-    session?.accessToken as string,
-    workspaceId,
-    {}
-  );
-
-  const stats = useEvaluationStats();
-
-  const { docTypes } = useEvalDocTypes(
-    session?.accessToken as string,
-    orgId
-  );
-
-  const { criteriaSets } = useEvalCriteriaSets(
-    session?.accessToken as string,
-    orgId,
-    {}
-  );
-
-  // Create evaluation dialog state
-  const [createEvalDialogOpen, setCreateEvalDialogOpen] = useState(false);
-
-  const handleCreateEvaluation = async (input: any) => {
-    await createEvaluation(input);
-    refreshEvaluations();
-  };
-
-  const handleUploadForEvaluation = async (file: File): Promise<KbDocument> => {
-    const doc = await uploadDocument(file);
-    return doc;
-  };
-
-  // Get evaluation status color
-  const getEvaluationStatusColor = (status: EvaluationStatus) => {
-    switch (status) {
-      case "completed":
-        return "success";
-      case "processing":
-        return "info";
-      case "pending":
-        return "warning";
-      case "failed":
-        return "error";
-      default:
-        return "default";
-    }
-  };
-
-  // Get evaluation status icon
-  const getEvaluationStatusIcon = (status: EvaluationStatus) => {
-    switch (status) {
-      case "completed":
-        return <CheckCircle fontSize="small" />;
-      case "processing":
-        return <PlayArrow fontSize="small" />;
-      case "pending":
-        return <Description fontSize="small" />;
-      case "failed":
-        return <ErrorIcon fontSize="small" />;
-      default:
-        return <Description fontSize="small" />;
-    }
-  };
-
   // ============================================================================
   // RENDER
   // ============================================================================
@@ -484,223 +363,74 @@ export function WorkspaceDetailPage({
       {/* Tabs */}
       <Paper sx={{ mb: 3 }}>
         <Tabs value={activeTab} onChange={handleTabChange} aria-label="workspace tabs">
-          <Tab label="Doc Eval" {...a11yProps(0)} />
+          <Tab label="Overview" {...a11yProps(0)} />
           <Tab label="Data" {...a11yProps(1)} />
           <Tab label="Members" {...a11yProps(2)} />
           <Tab label="Settings" {...a11yProps(3)} />
         </Tabs>
 
-        {/* Tab 0: Doc Eval */}
+        {/* Tab 0: Overview */}
         <TabPanel value={activeTab} index={0}>
           <Box>
-            {/* Header Section */}
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-              <Typography variant="h5">� Document Evaluations</Typography>
-              {canEdit && (
-                <Button
-                  variant="contained"
-                  startIcon={<Add />}
-                  onClick={() => setCreateEvalDialogOpen(true)}
-                >
-                  Evaluate Document
-                </Button>
+            <Typography variant="h5" gutterBottom>
+              Workspace Overview
+            </Typography>
+            
+            {/* Workspace Info Grid */}
+            <Grid container spacing={3} sx={{ mt: 1 }}>
+              {/* Creation Date */}
+              <Grid item xs={12} md={6}>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                    <Folder color="primary" />
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Created
+                    </Typography>
+                  </Box>
+                  <Typography variant="h6">
+                    {workspace?.createdAt 
+                      ? new Date(workspace.createdAt).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })
+                      : 'N/A'}
+                  </Typography>
+                </Paper>
+              </Grid>
+
+              {/* Members Count */}
+              <Grid item xs={12} md={6}>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                    <Group color="primary" />
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Members
+                    </Typography>
+                  </Box>
+                  <Typography variant="h6">
+                    {members?.length || 0}
+                  </Typography>
+                </Paper>
+              </Grid>
+
+              {/* Description */}
+              {workspace?.description && (
+                <Grid item xs={12}>
+                  <Paper variant="outlined" sx={{ p: 2 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                      <Storage color="primary" />
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Description
+                      </Typography>
+                    </Box>
+                    <Typography variant="body1">
+                      {workspace.description}
+                    </Typography>
+                  </Paper>
+                </Grid>
               )}
-            </Box>
-
-            {/* Stats Section */}
-            {stats.total > 0 && (
-              <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
-                <Chip label={`${stats.total} Total`} />
-                {stats.processing > 0 && <Chip label={`${stats.processing} Processing`} color="info" />}
-                {stats.completed > 0 && <Chip label={`${stats.completed} Completed`} color="success" />}
-                {stats.failed > 0 && <Chip label={`${stats.failed} Failed`} color="error" />}
-              </Box>
-            )}
-
-            {/* Error State */}
-            {evalsError && (
-              <Alert severity="error" sx={{ mb: 3 }}>
-                {evalsError}
-              </Alert>
-            )}
-
-            {/* Loading State */}
-            {evalsLoading && evaluations.length === 0 && (
-              <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-                <CircularProgress />
-              </Box>
-            )}
-
-            {/* Empty State */}
-            {!evalsLoading && evaluations.length === 0 && (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  py: 8,
-                  px: 3,
-                  textAlign: "center",
-                }}
-              >
-                <Description sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  No evaluations yet
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Start evaluating documents against your organization's criteria
-                </Typography>
-                {canEdit && (
-                  <Button
-                    variant="contained"
-                    startIcon={<Add />}
-                    onClick={() => setCreateEvalDialogOpen(true)}
-                  >
-                    Create First Doc Evaluation
-                  </Button>
-                )}
-              </Box>
-            )}
-
-            {/* Evaluations List */}
-            {!evalsLoading && evaluations.length > 0 && (
-              <Box>
-                {evaluations.map((evaluation) => (
-                  <Card 
-                    key={evaluation.id} 
-                    sx={{ 
-                      mb: 2,
-                      cursor: onViewEvaluation ? "pointer" : "default",
-                      "&:hover": onViewEvaluation ? {
-                        boxShadow: 2,
-                        backgroundColor: "action.hover",
-                      } : {},
-                    }}
-                    onClick={() => onViewEvaluation?.(evaluation.id)}
-                  >
-                    <CardContent>
-                      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
-                        <Box sx={{ flex: 1 }}>
-                          {/* Evaluation Title & Status */}
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                            <Typography variant="h6">{evaluation.name}</Typography>
-                            <Chip
-                              icon={getEvaluationStatusIcon(evaluation.status)}
-                              label={evaluation.status}
-                              size="small"
-                              color={getEvaluationStatusColor(evaluation.status)}
-                            />
-                          </Box>
-
-                          {/* Metadata */}
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                            Doc Type: {evaluation.docTypeName || "Unknown"} | Criteria:{" "}
-                            {evaluation.criteriaSetName || "Unknown"}
-                          </Typography>
-
-                          {/* Processing State */}
-                          {evaluation.status === "processing" && (
-                            <>
-                              <Box sx={{ mb: 1 }}>
-                                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                                  <Typography variant="caption">Processing...</Typography>
-                                  <Typography variant="caption">{evaluation.progress || 0}%</Typography>
-                                </Box>
-                                <LinearProgress
-                                  variant="determinate"
-                                  value={evaluation.progress || 0}
-                                />
-                              </Box>
-                              <Typography variant="caption" color="text.secondary">
-                                Started: {new Date(evaluation.startedAt || evaluation.createdAt).toLocaleString()}
-                              </Typography>
-                            </>
-                          )}
-
-                          {/* Pending State */}
-                          {evaluation.status === "pending" && (
-                            <Typography variant="caption" color="text.secondary">
-                              Created: {new Date(evaluation.createdAt).toLocaleString()}
-                            </Typography>
-                          )}
-
-                          {/* Completed State */}
-                          {evaluation.status === "completed" && (
-                            <>
-                              {evaluation.complianceScore !== undefined && (
-                                <Box sx={{ mb: 1 }}>
-                                  <Typography variant="body2" fontWeight="bold">
-                                    Score: {evaluation.complianceScore}%
-                                  </Typography>
-                                  <LinearProgress
-                                    variant="determinate"
-                                    value={evaluation.complianceScore}
-                                    color={
-                                      evaluation.complianceScore >= 80
-                                        ? "success"
-                                        : evaluation.complianceScore >= 60
-                                        ? "warning"
-                                        : "error"
-                                    }
-                                  />
-                                </Box>
-                              )}
-                              <Typography variant="caption" color="text.secondary">
-                                Completed: {new Date(evaluation.completedAt || evaluation.createdAt).toLocaleString()}
-                              </Typography>
-                            </>
-                          )}
-
-                          {/* Failed State */}
-                          {evaluation.status === "failed" && (
-                            <>
-                              {evaluation.errorMessage && (
-                                <Alert severity="error" sx={{ mt: 1, mb: 1 }}>
-                                  {evaluation.errorMessage}
-                                </Alert>
-                              )}
-                              <Typography variant="caption" color="text.secondary">
-                                Created: {new Date(evaluation.createdAt).toLocaleString()}
-                              </Typography>
-                            </>
-                          )}
-                        </Box>
-
-                        {/* Action Buttons */}
-                        <Box sx={{ display: "flex", gap: 1 }}>
-                          {evaluation.status === "failed" && canEdit && (
-                            <Button 
-                              variant="outlined" 
-                              size="small"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // TODO: Implement retry logic
-                                console.log("Retry evaluation:", evaluation.id);
-                              }}
-                            >
-                              Retry
-                            </Button>
-                          )}
-                          {canEdit && (
-                            <IconButton
-                              size="small"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteEvaluation(evaluation.id);
-                              }}
-                              aria-label="Delete evaluation"
-                            >
-                              <Delete fontSize="small" />
-                            </IconButton>
-                          )}
-                        </Box>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                ))}
-              </Box>
-            )}
+            </Grid>
           </Box>
         </TabPanel>
 
@@ -787,18 +517,6 @@ export function WorkspaceDetailPage({
           apiClient ? async (wsId, values) => apiClient.updateWorkspace(wsId, values, orgId) : undefined
         }
         onUpdateSuccess={handleUpdateSuccess}
-      />
-
-      {/* Create evaluation dialog */}
-      <CreateEvaluationDialog
-        open={createEvalDialogOpen}
-        onClose={() => setCreateEvalDialogOpen(false)}
-        onCreate={handleCreateEvaluation}
-        docTypes={docTypes || []}
-        criteriaSets={criteriaSets || []}
-        kbDocuments={documents || []}
-        onUploadDocument={handleUploadForEvaluation}
-        loading={evalsLoading}
       />
     </Container>
   );
