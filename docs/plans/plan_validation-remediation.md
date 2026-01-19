@@ -1,18 +1,40 @@
 # CORA Validation Remediation Plan
 
 **Created:** 2026-01-18  
-**Updated:** 2026-01-19 (Reprioritized for Voice/Chat Testing)  
-**Test Project:** test-valid (ai-sec-stack)  
-**Baseline:** 2,236 errors, 343 warnings across 17 validators
+**Updated:** 2026-01-19 (Baseline Established, Voice/Chat Priority)  
+**Branch:** `validation-test-resolution`  
+**Branch Goal:** Eliminate all validation errors NOT associated with module-eval & module-ws  
+**Test Project:** test-valid (ai-sec-stack)
+
+## Starting Baseline (2026-01-19T11:46:58)
+
+**After infrastructure fixes (tsconfig, UI Library validator path):**
+- **Overall Status:** ✗ FAILED (Bronze Certification)
+- **Total Errors:** 2,245 (TypeScript now running - was 76 when TS couldn't run)
+- **Total Warnings:** 343
+- **Duration:** 23.3 seconds
+
+### Error Breakdown by Validator
+
+| Validator | Status | Errors | Notes |
+|-----------|--------|--------|-------|
+| TypeScript Type Check | ❌ | 2,170 | Now visible (was hidden by config issue) |
+| Accessibility | ❌ | 40 | module-voice (4), module-eval (29+), module-chat |
+| Frontend Compliance | ❌ | 29 | All in module-eval (SKIP per strategy) |
+| API Tracer | ❌ | 5 | KB document completion routes |
+| UI Library | ❌ | 1 | Bash script missing (minor tooling issue) |
+| **Passing (10/17)** | ✅ | 0 | Structure, Portability, Import, Schema, External UID, CORA, API Response, Role Naming, RPC, DB Naming |
 
 ## Executive Summary
 
-This plan addresses all validation errors discovered during validation testing, **prioritizing module-voice and module-chat** to prepare them for functional testing. Fixes will be applied to **templates first** (CORA toolkit), then synced to test projects.
+This plan addresses validation errors discovered during testing, **prioritizing module-voice and module-chat** to prepare them for functional testing. Fixes are applied to **templates first** (CORA toolkit), then synced to test projects.
 
 **Prioritization Strategy:**
 - **HIGH PRIORITY:** module-voice, module-chat (untested, need validation cleanup before functional testing)
 - **AVOID:** module-eval, module-ws (active development - workspace integration)
 - **LOW PRIORITY:** module-kb, web app infrastructure (after voice/chat are clean)
+
+**Branch Goal:** Reduce errors from 2,245 to ~200 (voice/chat/kb/infrastructure only, excluding eval/ws)
 
 ## Current Validation Status
 
@@ -366,8 +388,10 @@ setDocuments(result.data.documents)  // Type: KbDocument[]
 
 ## Implementation Sequence (REVISED - Voice/Chat Priority)
 
-### Sprint 0: Foundation (Required - 30 minutes)
-- [ ] Fix web app tsconfig.json (Phase 1.1) → Eliminates ~1,500 TypeScript errors immediately
+### Sprint 0: Foundation (COMPLETE ✅)
+- [x] Fix web app tsconfig.json (Phase 1.1) → TypeScript now runs successfully
+- [x] Fix UI Library validator path (Phase 5.1) → Removed double `/scripts/scripts/` bug
+- [x] Establish baseline (2,245 errors, 343 warnings)
 
 ### Sprint 1: module-voice Validation Cleanup (HIGH PRIORITY - 1 day)
 - [ ] Fix IconButton aria-labels in InterviewRoom.tsx, ConfigForm.tsx, SysVoiceConfigPage.tsx (Phase 2.1)
@@ -451,11 +475,20 @@ python validation/cora-validate.py --validators a11y  # Accessibility validation
 - ⏳ TypeScript now running, revealed 2,165 code errors
 - ⏳ Accessibility errors are template-level, not project-specific
 
-**2026-01-19:**
+**2026-01-19 Morning:**
 - ✅ Reprioritized to focus on module-voice and module-chat validation
 - ✅ Deferring module-eval and module-ws fixes (active workspace integration development)
 - ✅ Created validation-test-resolution branch
 - ✅ Clarified: Core modules (kb, chat) are always included, never listed in config
+
+**2026-01-19 Afternoon (Baseline Established):**
+- ✅ Fixed web app tsconfig.json - added test file exclusions
+- ✅ Fixed UI Library validator CLI - removed double `/scripts/scripts/` path bug
+- ✅ Created test project test-valid with all modules
+- ✅ Established baseline: 2,245 errors, 343 warnings
+- ✅ TypeScript validation now runs successfully (2,170 errors visible)
+- ✅ Committed infrastructure fixes to branch
+- 🎯 **Ready for Sprint 1:** module-voice validation cleanup
 
 ### Open Questions
 
