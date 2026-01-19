@@ -16,8 +16,8 @@ import { OrgContext } from '@{{PROJECT_NAME}}/module-access';
 import { 
   OrgEvalConfigPage,
   OrgEvalPromptsPage,
-  OrgEvalDocTypesPage,
-  OrgEvalCriteriaPage
+  OrgEvalDocTypesPageV2,
+  OrgEvalCriteriaPageV2
 } from '@{{PROJECT_NAME}}/module-eval';
 import { Box, Tabs, Tab, CircularProgress, Alert } from '@mui/material';
 
@@ -55,8 +55,8 @@ export default function OrgEvalAdminPage() {
 
       <Box sx={{ p: 3 }}>
         {activeTab === 'config' && <OrgEvalConfigPage orgId={currentOrg.id} />}
-        {activeTab === 'doc-types' && <OrgEvalDocTypesPage orgId={currentOrg.id} />}
-        {activeTab === 'criteria' && <OrgEvalCriteriaPage orgId={currentOrg.id} />}
+        {activeTab === 'doc-types' && <OrgEvalDocTypesPageV2 orgId={currentOrg.id} />}
+        {activeTab === 'criteria' && <OrgEvalCriteriaPageV2 orgId={currentOrg.id} />}
         {activeTab === 'prompts' && <OrgEvalPromptsPage orgId={currentOrg.id} />}
       </Box>
     </Box>
