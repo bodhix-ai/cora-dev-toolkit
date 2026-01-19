@@ -12,11 +12,24 @@
   },
   "dependencies": {
     "@{{PROJECT_NAME}}/api-client": "workspace:*",
+    "@{{PROJECT_NAME}}/shared-types": "workspace:*",
+    "@daily-co/daily-js": "^0.77.0",
     "react": "^18.2.0",
-    "next": "^14.0.0"
+    "next": "^14.0.0",
+    "swr": "^2.2.4"
+  },
+  "peerDependencies": {
+    "@mui/icons-material": ">=5.0.0",
+    "@mui/material": ">=5.0.0",
+    "next": ">=14.0.0",
+    "next-auth": ">=4.0.0",
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
   },
   "devDependencies": {
+    "@types/node": "^20.14.2",
     "@types/react": "^18.2.0",
+    "eslint": "^8.57.0",
     "typescript": "^5.0.0"
   }
 }
