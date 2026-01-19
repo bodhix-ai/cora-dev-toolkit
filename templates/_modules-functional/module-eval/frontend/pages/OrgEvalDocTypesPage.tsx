@@ -15,7 +15,7 @@
 
 "use client";
 
-import React, { useCallback } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -25,6 +25,7 @@ import {
   Grid,
 } from "@mui/material";
 import { Error as ErrorIcon } from "@mui/icons-material";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { useEvalDocTypes } from "../hooks";
 import { DocTypeManager } from "../components";
 
@@ -138,37 +139,62 @@ export function OrgEvalDocTypesPage({
   loadingComponent,
   onNavigateToCriteria,
 }: OrgEvalDocTypesPageProps) {
+  // Get auth token
+  const { authAdapter } = useUser();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchToken() {
+      try {
+        const t = await authAdapter.getToken();
+        if (mounted) setToken(t);
+      } catch (error) {
+        console.error("Failed to get auth token:", error);
+        if (mounted) setToken(null);
+      }
+    }
+    fetchToken();
+    return () => { mounted = false; };
+  }, [authAdapter]);
+
   // Hooks
   const {
     docTypes,
-    isLoading,
+    isLoading: docTypesLoading,
     error,
-    createDocType,
-    updateDocType,
-    deleteDocType,
+    create: createDocType,
+    update: updateDocType,
+    remove: deleteDocType,
     refresh,
-  } = useEvalDocTypes(orgId);
+  } = useEvalDocTypes(token, orgId);
+
+  // Combined loading state
+  const isLoading = docTypesLoading || !token;
 
   // Handlers
   const handleCreateDocType = useCallback(
     async (data: { name: string; description?: string }) => {
+      if (!token || !orgId) return;
       await createDocType(data);
     },
-    [createDocType]
+    [token, orgId, createDocType]
   );
 
   const handleUpdateDocType = useCallback(
     async (id: string, data: { name?: string; description?: string; isActive?: boolean }) => {
+      if (!token || !orgId) return;
       await updateDocType(id, data);
     },
-    [updateDocType]
+    [token, orgId, updateDocType]
   );
 
   const handleDeleteDocType = useCallback(
     async (id: string) => {
+      if (!token || !orgId) return;
       await deleteDocType(id);
     },
-    [deleteDocType]
+    [token, orgId, deleteDocType]
   );
 
   const handleViewCriteria = useCallback(

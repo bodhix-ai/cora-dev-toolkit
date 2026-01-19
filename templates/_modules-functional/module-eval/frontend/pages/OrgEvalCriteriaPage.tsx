@@ -16,7 +16,7 @@
 
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -30,6 +30,7 @@ import {
   ArrowBack as ArrowBackIcon,
   Error as ErrorIcon,
 } from "@mui/icons-material";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import {
   useEvalCriteriaSets,
   useEvalDocTypes,
@@ -161,24 +162,46 @@ export function OrgEvalCriteriaPage({
   loadingComponent,
   selectedDocTypeId,
 }: OrgEvalCriteriaPageProps) {
+  // Get auth token
+  const { authAdapter } = useUser();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchToken() {
+      try {
+        const t = await authAdapter.getToken();
+        if (mounted) setToken(t);
+      } catch (error) {
+        console.error("Failed to get auth token:", error);
+        if (mounted) setToken(null);
+      }
+    }
+    fetchToken();
+    return () => { mounted = false; };
+  }, [authAdapter]);
+
   // State
   const [filterDocTypeId, setFilterDocTypeId] = useState<string | undefined>(selectedDocTypeId);
   const [selectedSet, setSelectedSet] = useState<EvalCriteriaSet | null>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   // Hooks
-  const { docTypes } = useEvalDocTypes(orgId);
+  const { docTypes } = useEvalDocTypes(token, orgId);
 
   const {
     criteriaSets,
-    isLoading,
+    isLoading: criteriaSetsLoading,
     error,
-    createCriteriaSet,
-    updateCriteriaSet,
-    deleteCriteriaSet,
-    importCriteriaSet,
+    create: createCriteriaSet,
+    update: updateCriteriaSet,
+    remove: deleteCriteriaSet,
+    importSet: importCriteriaSet,
     refresh,
-  } = useEvalCriteriaSets(orgId, { docTypeId: filterDocTypeId });
+  } = useEvalCriteriaSets(token, orgId, { docTypeId: filterDocTypeId });
+
+  // Combined loading state
+  const isLoading = criteriaSetsLoading || !token;
 
   // Handlers
   const handleDocTypeFilterChange = useCallback((docTypeId: string | undefined) => {
@@ -195,26 +218,29 @@ export function OrgEvalCriteriaPage({
 
   const handleCreateSet = useCallback(
     async (data: { name: string; docTypeId: string; description?: string }) => {
+      if (!token || !orgId) return;
       await createCriteriaSet(data);
     },
-    [createCriteriaSet]
+    [token, orgId, createCriteriaSet]
   );
 
   const handleUpdateSet = useCallback(
     async (id: string, data: { name?: string; description?: string; isActive?: boolean }) => {
+      if (!token || !orgId) return;
       await updateCriteriaSet(id, data);
     },
-    [updateCriteriaSet]
+    [token, orgId, updateCriteriaSet]
   );
 
   const handleDeleteSet = useCallback(
     async (id: string) => {
+      if (!token || !orgId) return;
       await deleteCriteriaSet(id);
       if (selectedSet?.id === id) {
         setSelectedSet(null);
       }
     },
-    [deleteCriteriaSet, selectedSet]
+    [token, orgId, deleteCriteriaSet, selectedSet]
   );
 
   const handleOpenImport = useCallback(() => {
@@ -227,10 +253,11 @@ export function OrgEvalCriteriaPage({
 
   const handleImport = useCallback(
     async (data: { docTypeId: string; name: string; file: File }) => {
+      if (!token || !orgId) return;
       await importCriteriaSet(data);
       setIsImportDialogOpen(false);
     },
-    [importCriteriaSet]
+    [token, orgId, importCriteriaSet]
   );
 
   // Render loading state

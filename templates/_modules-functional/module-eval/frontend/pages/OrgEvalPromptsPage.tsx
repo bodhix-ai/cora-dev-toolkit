@@ -16,7 +16,7 @@
 
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -30,6 +30,7 @@ import {
   Error as ErrorIcon,
   Lock as LockIcon,
 } from "@mui/icons-material";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { useOrgEvalPrompts, useOrgEvalConfig } from "../hooks";
 import { PromptConfigEditor } from "../components";
 import type { PromptType } from "../types";
@@ -207,20 +208,39 @@ export function OrgEvalPromptsPage({
   className = "",
   loadingComponent,
 }: OrgEvalPromptsPageProps) {
+  // Get auth token
+  const { authAdapter } = useUser();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchToken() {
+      try {
+        const t = await authAdapter.getToken();
+        if (mounted) setToken(t);
+      } catch (error) {
+        console.error("Failed to get auth token:", error);
+        if (mounted) setToken(null);
+      }
+    }
+    fetchToken();
+    return () => { mounted = false; };
+  }, [authAdapter]);
+
   // State
   const [activeTab, setActiveTab] = useState<PromptType>("doc_summary");
 
   // Hooks
-  const { config, isLoading: isConfigLoading } = useOrgEvalConfig(orgId);
+  const { config, isLoading: isConfigLoading } = useOrgEvalConfig(token, orgId);
 
   const {
     prompts,
     isLoading: isPromptsLoading,
     error,
-    updatePrompt,
-    testPrompt,
+    update: updatePrompt,
+    test: testPrompt,
     refresh,
-  } = useOrgEvalPrompts(orgId);
+  } = useOrgEvalPrompts(token, orgId);
 
   // Check if delegation is enabled
   const isDelegated = config?.aiConfigDelegated === true;
@@ -229,7 +249,7 @@ export function OrgEvalPromptsPage({
   const currentPrompt = prompts?.find((p) => p.promptType === activeTab);
 
   // Combined loading state
-  const isLoading = isConfigLoading || isPromptsLoading;
+  const isLoading = isConfigLoading || isPromptsLoading || !token;
 
   // Handlers
   const handleTabChange = useCallback((tab: PromptType) => {
@@ -244,16 +264,18 @@ export function OrgEvalPromptsPage({
       aiModel?: string;
       temperature?: number;
     }) => {
+      if (!token || !orgId) return;
       await updatePrompt(activeTab, data);
     },
-    [updatePrompt, activeTab]
+    [token, orgId, updatePrompt, activeTab]
   );
 
   const handleTestPrompt = useCallback(
     async (testInput: string) => {
+      if (!token || !orgId) return "";
       return await testPrompt(activeTab, testInput);
     },
-    [testPrompt, activeTab]
+    [token, orgId, testPrompt, activeTab]
   );
 
   // Render loading state

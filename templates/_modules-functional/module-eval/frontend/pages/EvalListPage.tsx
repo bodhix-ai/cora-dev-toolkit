@@ -18,7 +18,7 @@
 
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -40,6 +40,7 @@ import {
   Error as ErrorIcon,
   Description as DescriptionIcon,
 } from "@mui/icons-material";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import {
   useEvaluations,
   useEvalDocTypes,
@@ -389,6 +390,25 @@ export function EvalListPage({
   loadingComponent,
   showProcessingPanel = true,
 }: EvalListPageProps) {
+  // Get auth token
+  const { authAdapter } = useUser();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchToken() {
+      try {
+        const t = await authAdapter.getToken();
+        if (mounted) setToken(t);
+      } catch (error) {
+        console.error("Failed to get auth token:", error);
+        if (mounted) setToken(null);
+      }
+    }
+    fetchToken();
+    return () => { mounted = false; };
+  }, [authAdapter]);
+
   // State
   const [filters, setFilters] = useState<FilterState>({});
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -396,18 +416,21 @@ export function EvalListPage({
   // Hooks
   const {
     evaluations,
-    isLoading,
+    isLoading: evaluationsLoading,
     error,
     refresh,
-    deleteEvaluation,
-  } = useEvaluations(workspaceId, {
+    remove: deleteEvaluation,
+  } = useEvaluations(token, workspaceId, {
     status: filters.status,
     docTypeId: filters.docTypeId,
   });
 
-  const { docTypes } = useEvalDocTypes(orgId);
-  const { isAnyProcessing, processingIds } = useAnyProcessing();
-  const { exportPdf, exportXlsx, isExporting } = useBulkExport(workspaceId);
+  const { docTypes } = useEvalDocTypes(token, orgId);
+  const { isAnyProcessing, processingIds } = useAnyProcessing(token);
+  const { exportPdf, exportXlsx, isExporting } = useBulkExport(token, workspaceId);
+
+  // Combined loading state
+  const isLoading = evaluationsLoading || !token;
 
   // Filter evaluations by search query (client-side)
   const filteredEvaluations = React.useMemo(() => {
@@ -455,12 +478,13 @@ export function EvalListPage({
   }, [exportXlsx, selectedIds]);
 
   const handleDelete = useCallback(async () => {
+    if (!token) return;
     if (!confirm(`Delete ${selectedIds.length} evaluation(s)?`)) return;
     for (const id of selectedIds) {
       await deleteEvaluation(id);
     }
     setSelectedIds([]);
-  }, [deleteEvaluation, selectedIds]);
+  }, [token, deleteEvaluation, selectedIds]);
 
   const handleClearSelection = useCallback(() => {
     setSelectedIds([]);
