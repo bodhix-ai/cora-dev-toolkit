@@ -54,6 +54,10 @@ export interface KbModuleApiClient {
       workspaceId: string,
       documentId: string
     ) => Promise<ApiResponse<void>>;
+    completeUpload: (
+      workspaceId: string,
+      documentId: string
+    ) => Promise<ApiResponse<{ message: string; documentId: string; status: string }>>;
     downloadDocument: (
       workspaceId: string,
       documentId: string
@@ -84,6 +88,10 @@ export interface KbModuleApiClient {
       chatId: string,
       documentId: string
     ) => Promise<ApiResponse<void>>;
+    completeUpload: (
+      chatId: string,
+      documentId: string
+    ) => Promise<ApiResponse<{ message: string; documentId: string; status: string }>>;
     listAvailableKbs: (chatId: string) => Promise<ApiResponse<AvailableKb[]>>;
     toggleKb: (
       chatId: string,
@@ -218,6 +226,11 @@ export function createKbModuleClient(
           `/workspaces/${workspaceId}/kb/documents/${documentId}`
         ),
 
+      completeUpload: (workspaceId, documentId) =>
+        authenticatedClient.put<{ message: string; documentId: string; status: string }>(
+          `/workspaces/${workspaceId}/kb/documents/${documentId}/complete`
+        ),
+
       downloadDocument: (workspaceId, documentId) =>
         authenticatedClient.get<DownloadDocumentResponse>(
           `/workspaces/${workspaceId}/kb/documents/${documentId}/download`
@@ -257,6 +270,11 @@ export function createKbModuleClient(
       deleteDocument: (chatId, documentId) =>
         authenticatedClient.delete<void>(
           `/chats/${chatId}/kb/documents/${documentId}`
+        ),
+
+      completeUpload: (chatId, documentId) =>
+        authenticatedClient.put<{ message: string; documentId: string; status: string }>(
+          `/chats/${chatId}/kb/documents/${documentId}/complete`
         ),
 
       listAvailableKbs: (chatId) =>

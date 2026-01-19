@@ -8,12 +8,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useUser, useApiClient } from '@{{PROJECT_NAME}}/module-access';
+import { useUser } from '@{{PROJECT_NAME}}/module-access';
 import { 
   PlatformAdminKBPage, 
   useSysKbs, 
   useKbDocuments,
-  createKbModuleClient,
 } from '@{{PROJECT_NAME}}/module-kb';
 import type { KnowledgeBase } from '@{{PROJECT_NAME}}/module-kb';
 import { CircularProgress, Box, Alert } from '@mui/material';
@@ -32,8 +31,7 @@ interface OrgInfo {
  * Renders the PlatformAdminKBPage with data from hooks.
  */
 export default function SysKBAdminRoute() {
-  const { profile } = useUser();
-  const apiClient = useApiClient();
+  const { profile, loading, isAuthenticated } = useUser();
   
   // Selected KB state for document management
   const [selectedKb, setSelectedKb] = useState<KnowledgeBase | null>(null);
@@ -41,12 +39,6 @@ export default function SysKBAdminRoute() {
   // Org associations state
   const [allOrgs, setAllOrgs] = useState<OrgInfo[]>([]);
   const [orgsLoading, setOrgsLoading] = useState(false);
-  
-  // Create KB API client
-  const kbClient = React.useMemo(
-    () => apiClient ? createKbModuleClient(apiClient) : null,
-    [apiClient]
-  );
   
   // KB management hook
   const {
@@ -60,8 +52,7 @@ export default function SysKBAdminRoute() {
     removeOrg,
     refresh: refreshKbs,
   } = useSysKbs({
-    apiClient: kbClient,
-    autoFetch: true,
+    autoFetch: isAuthenticated,
   });
   
   // Document management hook (for selected KB)
@@ -75,8 +66,7 @@ export default function SysKBAdminRoute() {
   } = useKbDocuments({
     scope: 'kb',
     kbId: selectedKb?.id || undefined,
-    apiClient: kbClient,
-    autoFetch: !!selectedKb?.id,
+    autoFetch: !!selectedKb?.id && isAuthenticated,
   });
   
   // Calculate org counts
@@ -130,24 +120,35 @@ export default function SysKBAdminRoute() {
     refreshKbs();
   };
 
-  // Check authorization
-  const isAuthorized = profile?.sysRole === 'sys_owner' || 
-                       profile?.sysRole === 'sys_admin';
-  
-  if (!isAuthorized) {
+  // Show loading state while user profile is being fetched
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Check if user is authenticated
+  if (!isAuthenticated || !profile) {
     return (
       <Box p={4}>
         <Alert severity="error">
-          You do not have permission to access this page. Platform admin role required.
+          You must be logged in to access this page.
         </Alert>
       </Box>
     );
   }
+
+  // Check if user has system admin role
+  const isSysAdmin = ['sys_owner', 'sys_admin'].includes(profile.sysRole || '');
   
-  if (!apiClient) {
+  if (!isSysAdmin) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
-        <CircularProgress />
+      <Box p={4}>
+        <Alert severity="error">
+          Access denied. This page is only accessible to system administrators.
+        </Alert>
       </Box>
     );
   }

@@ -130,6 +130,12 @@ export function useKbDocuments({
         }
         
         const uploadResponse = response.data;
+        // Backend returns documentId directly, not a document object
+        const documentId = uploadResponse.documentId || '';
+
+        if (!documentId) {
+          throw new Error('No document ID returned from upload response');
+        }
 
         // Step 2: Upload file directly to S3 using presigned URL
         const uploadResult = await fetch(uploadResponse.uploadUrl, {
@@ -144,10 +150,99 @@ export function useKbDocuments({
           throw new Error(`Failed to upload file to S3: ${uploadResult.statusText}`);
         }
 
-        // Step 3: Refresh document list to show new document
+        // Step 3: Notify backend that upload is complete
+        try {
+          if (scope === 'workspace') {
+            await kbClient.workspace.completeUpload(scopeId, documentId);
+          } else if (scope === 'chat') {
+            await kbClient.chat.completeUpload(scopeId, documentId);
+          }
+          console.log(`Upload completed for document ${documentId}, processing started`);
+        } catch (completeErr) {
+          console.error('Failed to complete upload:', completeErr);
+          throw new Error('Upload succeeded but failed to start processing');
+        }
+
+        // Step 4: Start polling for status updates
+        const pollInterval = 5000; // 5 seconds
+        const maxPolls = 60; // Stop after 5 minutes
+        let pollCount = 0;
+
+        const pollStatus = async (): Promise<void> => {
+          try {
+            let docResponse;
+            if (scope === 'workspace') {
+              docResponse = await kbClient.workspace.getDocument(scopeId, documentId);
+            } else if (scope === 'chat') {
+              docResponse = await kbClient.chat.getDocument(scopeId, documentId);
+            } else {
+              // Refresh the full list for admin view
+              await fetchDocuments();
+              return;
+            }
+
+            // Backend returns { document: {...} } inside data, extract it
+            const doc = docResponse.data.document;
+            const status = doc.status;
+
+            console.log(`Document ${documentId} status: ${status}`);
+
+            // Update document in list
+            setDocuments(prev => 
+              prev.map(d => d.id === documentId ? doc : d)
+            );
+
+            // Stop polling if final state reached
+            if (status === 'indexed' || status === 'failed') {
+              console.log(`Document ${documentId} reached final status: ${status}`);
+              await fetchDocuments(); // Final refresh
+              return;
+            }
+
+            // Continue polling if still processing
+            const activeStatuses = ['pending', 'uploaded', 'processing'];
+            if (pollCount < maxPolls && activeStatuses.includes(status)) {
+              pollCount++;
+              setTimeout(pollStatus, pollInterval);
+            } else if (pollCount >= maxPolls) {
+              console.warn(`Max polling attempts reached for document ${documentId}`);
+              await fetchDocuments();
+            }
+          } catch (pollErr) {
+            console.error('Error polling document status:', pollErr);
+            // Don't throw - just stop polling and refresh
+            await fetchDocuments();
+          }
+        };
+
+        // Start polling immediately
+        setTimeout(pollStatus, pollInterval);
+
+        // Step 5: Initial refresh to show the new document
         await fetchDocuments();
 
-        return uploadResponse.document;
+        // Return a minimal document object (will be updated by polling)
+        const newDocument: KbDocument = {
+          id: documentId,
+          kbId: scopeId,
+          filename: file.name,
+          s3Key: uploadResponse.s3Key,
+          s3Bucket: 'unknown', // Will be updated on next fetch
+          fileSize: file.size,
+          mimeType: file.type,
+          status: 'uploaded',
+          errorMessage: null,
+          chunkCount: 0,
+          metadata: {},
+          isDeleted: false,
+          deletedAt: null,
+          deletedBy: null,
+          createdAt: new Date().toISOString(),
+          createdBy: 'current-user',
+          updatedAt: new Date().toISOString(),
+        };
+
+        return newDocument;
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to upload document';
         console.error('Failed to upload document:', err);

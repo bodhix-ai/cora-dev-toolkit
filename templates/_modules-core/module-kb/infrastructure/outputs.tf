@@ -251,6 +251,12 @@ output "api_routes" {
       integration = aws_lambda_function.kb_document.invoke_arn
       public      = false
     },
+    {
+      method      = "PUT"
+      path        = "/workspaces/{workspaceId}/kb/documents/{docId}/complete"
+      integration = aws_lambda_function.kb_document.invoke_arn
+      public      = false
+    },
     # kb-document: Chat-scoped document routes
     {
       method      = "GET"
@@ -276,6 +282,12 @@ output "api_routes" {
       integration = aws_lambda_function.kb_document.invoke_arn
       public      = false
     },
+    {
+      method      = "PUT"
+      path        = "/chats/{chatId}/kb/documents/{docId}/complete"
+      integration = aws_lambda_function.kb_document.invoke_arn
+      public      = false
+    },
     # kb-document: Org admin document routes
     {
       method      = "POST"
@@ -295,6 +307,12 @@ output "api_routes" {
       integration = aws_lambda_function.kb_document.invoke_arn
       public      = false
     },
+    {
+      method      = "PUT"
+      path        = "/admin/org/kbs/{kbId}/documents/{docId}/complete"
+      integration = aws_lambda_function.kb_document.invoke_arn
+      public      = false
+    },
     # kb-document: Platform admin document routes
     {
       method      = "POST"
@@ -305,6 +323,12 @@ output "api_routes" {
     {
       method      = "GET"
       path        = "/admin/sys/kbs/{kbId}/documents"
+      integration = aws_lambda_function.kb_document.invoke_arn
+      public      = false
+    },
+    {
+      method      = "PUT"
+      path        = "/admin/sys/kbs/{kbId}/documents/{docId}/complete"
       integration = aws_lambda_function.kb_document.invoke_arn
       public      = false
     }

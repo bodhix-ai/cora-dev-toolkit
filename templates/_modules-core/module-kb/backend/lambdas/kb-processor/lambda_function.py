@@ -139,10 +139,11 @@ def process_document(document_id: str, kb_id: str, s3_bucket: str, s3_key: str):
         
         print(f"Extracted {len(text)} characters from document")
         
-        # Step 4: Get KB config for chunking parameters (with org_id filter)
-        kb_config = get_kb_config(kb_id, org_id)
-        chunk_size = kb_config.get('chunkSize', DEFAULT_CHUNK_SIZE)
-        chunk_overlap = kb_config.get('chunkOverlap', DEFAULT_CHUNK_OVERLAP)
+        # Step 4: Get embedding configuration (includes chunking parameters from ai_cfg_sys_rag)
+        embedding_config = get_embedding_config()
+        chunk_size = embedding_config.get('chunkSize', DEFAULT_CHUNK_SIZE)
+        chunk_overlap = embedding_config.get('chunkOverlap', DEFAULT_CHUNK_OVERLAP)
+        embedding_model = embedding_config.get('model', DEFAULT_EMBEDDING_MODEL)
         
         # Step 5: Chunk text
         print(f"Chunking text (size: {chunk_size}, overlap: {chunk_overlap})")
@@ -150,12 +151,8 @@ def process_document(document_id: str, kb_id: str, s3_bucket: str, s3_key: str):
         
         print(f"Created {len(chunks)} chunks")
         
-        # Step 6: Get embedding configuration
-        embedding_config = get_embedding_config()
-        embedding_model = embedding_config.get('model', DEFAULT_EMBEDDING_MODEL)
-        
-        # Step 7: Generate embeddings
-        print(f"Generating embeddings with model: {embedding_model})")
+        # Step 6: Generate embeddings
+        print(f"Generating embeddings with model: {embedding_model}")
         embeddings = generate_embeddings(chunks, embedding_model)
         
         if len(embeddings) != len(chunks):
@@ -426,17 +423,88 @@ def chunk_text(text: str, chunk_size: int, overlap: int) -> List[Dict[str, Any]]
 
 def get_embedding_config() -> Dict[str, Any]:
     """
-    Get embedding configuration from AI config.
+    Get embedding configuration from ai_cfg_sys_rag + ai_cfg_models tables.
     
-    In production, this would call module-ai API.
-    For now, return defaults.
+    Uses foreign key relation to look up model details.
+    Falls back to defaults if config not found or on error.
     """
-    # TODO: Call module-ai endpoint: GET /platform/ai-config/embedding
-    # For now, use AWS Bedrock defaults
+    try:
+        # Step 1: Get system-level RAG configuration
+        sys_config = common.find_one(
+            table='ai_cfg_sys_rag',
+            filters={}  # Only one row exists (sys-level config)
+        )
+        
+        if not sys_config:
+            print("WARNING: No ai_cfg_sys_rag config found, using hardcoded defaults")
+            return _default_embedding_config()
+        
+        # Step 2: Get embedding model ID
+        embedding_model_id = sys_config.get('default_embedding_model_id')
+        
+        if not embedding_model_id:
+            print("WARNING: No default_embedding_model_id in ai_cfg_sys_rag, using defaults")
+            return _default_embedding_config()
+        
+        # Step 3: Look up model details in ai_models
+        model_config = common.find_one(
+            table='ai_models',
+            filters={'id': embedding_model_id}
+        )
+        
+        if not model_config:
+            print(f"ERROR: Model {embedding_model_id} not found in ai_models, using defaults")
+            return _default_embedding_config()
+        
+        # Step 4: Extract model details
+        model_id = model_config.get('model_id')  # e.g., "amazon.titan-embed-text-v2:0"
+        
+        # Parse capabilities JSON to get embedding dimensions
+        capabilities = model_config.get('capabilities', {})
+        if isinstance(capabilities, str):
+            import json
+            capabilities = json.loads(capabilities)
+        
+        embedding_dimension = capabilities.get('embeddingDimensions', DEFAULT_EMBEDDING_DIMENSION)
+        
+        # Step 5: Get chunking parameters
+        max_chunk_tokens = sys_config.get('max_chunk_size_tokens', 500)
+        min_chunk_tokens = sys_config.get('min_chunk_size_tokens', 100)
+        
+        # Convert tokens to characters (rough estimate: 1 token ≈ 4 chars)
+        chunk_size = max_chunk_tokens * 4
+        chunk_overlap = min_chunk_tokens * 4  # Use min as overlap
+        
+        print(f"Loaded config from ai_cfg_sys_rag + ai_models:")
+        print(f"  - Model ID: {embedding_model_id}")
+        print(f"  - Model: {model_id}")
+        print(f"  - Embedding dimensions: {embedding_dimension}")
+        print(f"  - Chunk size: {chunk_size} chars ({max_chunk_tokens} tokens)")
+        print(f"  - Chunk overlap: {chunk_overlap} chars ({min_chunk_tokens} tokens)")
+        
+        return {
+            'provider': 'bedrock',  # Inferred from model_id prefix
+            'model': model_id,
+            'dimension': embedding_dimension,
+            'chunkSize': chunk_size,
+            'chunkOverlap': chunk_overlap
+        }
+    
+    except Exception as e:
+        print(f"ERROR loading embedding config: {str(e)}")
+        print(traceback.format_exc())
+        print("Falling back to hardcoded defaults")
+        return _default_embedding_config()
+
+
+def _default_embedding_config() -> Dict[str, Any]:
+    """Return default embedding configuration."""
     return {
         'provider': 'bedrock',
         'model': DEFAULT_EMBEDDING_MODEL,
-        'dimension': DEFAULT_EMBEDDING_DIMENSION
+        'dimension': DEFAULT_EMBEDDING_DIMENSION,
+        'chunkSize': DEFAULT_CHUNK_SIZE,
+        'chunkOverlap': DEFAULT_CHUNK_OVERLAP
     }
 
 

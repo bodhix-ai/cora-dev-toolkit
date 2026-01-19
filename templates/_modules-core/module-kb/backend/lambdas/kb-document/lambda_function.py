@@ -86,6 +86,10 @@ def lambda_handler(event, context):
             return handle_org_admin_documents(http_method, path, path_params, event, user_id)
         elif '/admin/sys/kbs/' in path and '/documents' in path:
             return handle_sys_admin_documents(http_method, path, path_params, event, user_id)
+        elif '/kb/documents/' in path and '/complete' in path:
+            # Generic complete endpoint (not scope-specific)
+            doc_id = path_params.get('docId')
+            return handle_complete_upload(user_id, doc_id) if doc_id else common.bad_request_response("Missing docId")
         else:
             return common.not_found_response("Endpoint not found")
     
@@ -118,7 +122,9 @@ def handle_workspace_documents(method: str, path: str, path_params: Dict, event:
     if not check_workspace_access(user_id, workspace_id):
         return common.forbidden_response("Access denied to workspace")
     
-    if method == 'GET' and doc_id and '/download' in path:
+    if method == 'PUT' and doc_id and '/complete' in path:
+        return handle_complete_upload(user_id, doc_id)
+    elif method == 'GET' and doc_id and '/download' in path:
         return handle_get_download_url(user_id, workspace_id, doc_id, 'workspace')
     elif method == 'GET' and doc_id:
         return handle_get_document(user_id, doc_id, 'workspace')
@@ -144,7 +150,9 @@ def handle_chat_documents(method: str, path: str, path_params: Dict, event: Dict
     if not check_chat_access(user_id, chat_id):
         return common.forbidden_response("Access denied to chat")
     
-    if method == 'GET' and doc_id:
+    if method == 'PUT' and doc_id and '/complete' in path:
+        return handle_complete_upload(user_id, doc_id)
+    elif method == 'GET' and doc_id:
         return handle_get_document(user_id, doc_id, 'chat')
     elif method == 'GET':
         return handle_list_documents(user_id, None, chat_id, 'chat')
@@ -336,15 +344,15 @@ def handle_get_upload_url(user_id: str, workspace_id: Optional[str], chat_id: Op
             }
         )
         
-        # Publish SQS message for processing
-        publish_processing_message(doc_id, kb_id, s3_key)
+        # Don't publish SQS message yet - wait for frontend to confirm upload
+        # Frontend will call PUT /documents/{docId}/complete after uploading to S3
         
         return common.success_response({
             "uploadUrl": presigned_url,
             "documentId": doc_id,
             "expiresIn": PRESIGNED_URL_EXPIRATION,
             "s3Key": s3_key,
-            "message": "Upload document to the presigned URL, then call complete endpoint"
+            "message": "Upload document to presigned URL, then call PUT /documents/{docId}/complete"
         })
     
     except Exception as e:
@@ -408,15 +416,14 @@ def handle_admin_upload_url(user_id: str, kb_id: str, event: Dict):
             }
         )
         
-        # Publish SQS message for processing
-        publish_processing_message(doc_id, kb_id, s3_key)
+        # Don't publish SQS message yet - wait for frontend to confirm upload
         
         return common.success_response({
             "uploadUrl": presigned_url,
             "documentId": doc_id,
             "expiresIn": PRESIGNED_URL_EXPIRATION,
             "s3Key": s3_key,
-            "message": "Upload document to presigned URL - processing will begin automatically"
+            "message": "Upload document to presigned URL, then call PUT /kb/documents/{docId}/complete"
         })
     
     except Exception as e:
@@ -461,6 +468,56 @@ def handle_get_download_url(user_id: str, workspace_id: str, doc_id: str, scope:
         return common.internal_error_response("Failed to generate download URL")
 
 
+def handle_complete_upload(user_id: str, doc_id: str):
+    """Called by frontend after S3 upload completes."""
+    try:
+        # Get document
+        doc = common.find_one(
+            table='kb_docs',
+            filters={'id': doc_id, 'is_deleted': False}
+        )
+        
+        if not doc:
+            return common.not_found_response("Document not found")
+        
+        # Verify user has permission
+        if not verify_upload_permission(user_id, doc['kb_id']):
+            return common.forbidden_response("Upload permission denied")
+        
+        # Verify file exists in S3
+        try:
+            s3_client.head_object(
+                Bucket=doc['s3_bucket'],
+                Key=doc['s3_key']
+            )
+        except s3_client.exceptions.NoSuchKey:
+            return common.bad_request_response("File not found in S3 - upload may have failed")
+        except Exception as e:
+            print(f"Error checking S3 file: {str(e)}")
+            return common.bad_request_response("Could not verify file upload")
+        
+        # Update status to 'uploaded'
+        common.update_one(
+            table='kb_docs',
+            filters={'id': doc_id},
+            data={'status': 'uploaded'}
+        )
+        
+        # NOW publish SQS message to trigger processing
+        publish_processing_message(doc_id, doc['kb_id'], doc['s3_key'])
+        
+        return common.success_response({
+            "message": "Upload confirmed, processing started",
+            "documentId": doc_id,
+            "status": "uploaded"
+        })
+    
+    except Exception as e:
+        print(f"Error completing upload: {str(e)}")
+        print(traceback.format_exc())
+        return common.internal_error_response("Failed to complete upload")
+
+
 def handle_delete_document(user_id: str, doc_id: str, scope: str):
     """Soft delete document."""
     try:
@@ -479,12 +536,14 @@ def handle_delete_document(user_id: str, doc_id: str, scope: str):
         if not verify_upload_permission(user_id, kb_id):
             return common.forbidden_response("Delete permission denied")
         
-        # Soft delete document
+        # Soft delete document (with deleted_at timestamp!)
+        from datetime import datetime
         common.update_one(
             table='kb_docs',
             filters={'id': doc_id},
             data={
                 'is_deleted': True,
+                'deleted_at': datetime.utcnow().isoformat(),
                 'deleted_by': user_id
             }
         )

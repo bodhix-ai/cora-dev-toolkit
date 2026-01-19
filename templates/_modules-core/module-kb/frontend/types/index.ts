@@ -8,7 +8,7 @@ export type KbScope = "sys" | "org" | "workspace" | "chat";
 /**
  * Document processing status
  */
-export type DocumentStatus = "pending" | "processing" | "indexed" | "failed";
+export type DocumentStatus = "pending" | "uploaded" | "processing" | "indexed" | "failed";
 
 /**
  * Knowledge Base entity (kb_bases)
@@ -240,9 +240,13 @@ export interface UploadDocumentInput {
  * Document upload response with presigned URL
  */
 export interface UploadDocumentResponse {
-  document: KbDocument;
   uploadUrl: string;
+  documentId: string;
   expiresIn: number; // seconds
+  s3Key: string;
+  message: string;
+  // Legacy: some responses may still include full document object
+  document?: KbDocument;
 }
 
 /**
