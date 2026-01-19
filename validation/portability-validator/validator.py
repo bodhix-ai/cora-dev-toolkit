@@ -83,6 +83,33 @@ class PortabilityValidator:
 
     # Default patterns to detect
     DEFAULT_PATTERNS = {
+        # Incorrect placeholder formats (single braces, bash-style, lowercase)
+        "placeholder_single_brace_import": {
+            "pattern": r'@\{project\}/',
+            "severity": "error",
+            "message": "Incorrect placeholder format in import path",
+            "suggestion": "Use @{{PROJECT_NAME}}/ (uppercase, double braces)",
+        },
+        "placeholder_single_brace": {
+            "pattern": r'(?<!\{)\{(?:PROJECT_NAME|project|project_name)\}(?!\})',
+            "severity": "error",
+            "message": "Incorrect placeholder format (single braces)",
+            "suggestion": "Use {{PROJECT_NAME}} (uppercase, double braces)",
+            "exclude_files": ["*.md", "*.sh"],  # Shell scripts may use ${var}
+        },
+        "placeholder_bash_style_non_shell": {
+            "pattern": r'\$\{(?:project|project_name|PROJECT_NAME)\}',
+            "severity": "error",
+            "message": "Bash-style placeholder in non-shell file",
+            "suggestion": "Use {{PROJECT_NAME}} format instead of ${project}",
+            "exclude_files": ["*.sh", "*.bash"],  # Shell scripts can use ${var}
+        },
+        "placeholder_lowercase": {
+            "pattern": r'\{\{(?:project|project_name)\}\}',
+            "severity": "error",
+            "message": "Lowercase placeholder detected",
+            "suggestion": "Use {{PROJECT_NAME}} (uppercase)",
+        },
         # AWS Account IDs (12 digit numbers)
         "aws_account_id": {
             "pattern": r'\b\d{12}\b',
