@@ -100,10 +100,9 @@ interface WorkspaceDataKBTabProps {
   onDeleteDocument?: (docId: string) => Promise<void>;
   
   /**
-   * Callback to download document
-   * Returns the download URL for the document
+   * Callback to download document (returns download URL)
    */
-  onDownloadDocument?: (docId: string) => Promise<string>;
+  onDownloadDocument?: (docId: string) => Promise<string | void>;
   
   /**
    * Callback to retry failed document
@@ -144,9 +143,6 @@ export function WorkspaceDataKBTab({
 }: WorkspaceDataKBTabProps) {
   const [uploadError, setUploadError] = useState<string | null>(null);
   
-  // Ensure documents is always an array
-  const safeDocuments = Array.isArray(documents) ? documents : [];
-  
   // Default grouped KBs structure
   const groupedKbs: GroupedAvailableKbs = availableKbs || {
     workspaceKb: undefined,
@@ -179,45 +175,28 @@ export function WorkspaceDataKBTab({
 
   return (
     <Stack spacing={3}>
-      {/* KB Toggle Selector */}
-      <Paper sx={{ p: 3 }}>
-        <Box display="flex" alignItems="center" gap={1} mb={2}>
-          <KBIcon color="primary" />
-          <Typography variant="h6">Knowledge Base Sources</Typography>
-        </Box>
-        <Typography variant="body2" color="text.secondary" mb={2}>
-          Enable knowledge bases to make their content available for AI chat responses in this workspace.
-        </Typography>
-        <KBToggleSelector
-          availableKbs={groupedKbs}
-          loading={availableKbsLoading}
-          onToggle={onToggleKb || (async () => {})}
-        />
-      </Paper>
-
-      <Divider />
-
-      {/* Document Upload Section */}
+      {/* Document Upload Section - Documents at top */}
       <Paper sx={{ p: 3 }}>
         <Box display="flex" alignItems="center" gap={1} mb={2}>
           <DocumentIcon color="primary" />
-          <Typography variant="h6">Workspace Documents</Typography>
+          <Typography variant="h6">📄 Documents</Typography>
         </Box>
         <Typography variant="body2" color="text.secondary" mb={2}>
-          Upload documents to create a workspace-specific knowledge base.
-          Uploaded documents will be processed and indexed for AI chat.
+          Upload documents to add to this knowledge base. 
+          Files will be processed and indexed for AI chat.
         </Typography>
 
-        {/* Stats Card (if KB exists) */}
-        {kb && (
+        {/* Stats Card (if KB exists or documents exist) */}
+        {(kb || (Array.isArray(documents) && documents.length > 0)) && (
           <Box mb={3}>
             <KBStatsCard
               stats={{
-                documentCount: kb.documentCount || 0,
-                chunkCount: kb.chunkCount || 0,
-                totalSize: kb.totalSize || 0,
-                processingCount: safeDocuments.filter(d => d.status === 'processing').length,
-                failedCount: safeDocuments.filter(d => d.status === 'failed').length,
+                // Use kb.stats if available, otherwise calculate from documents
+                documentCount: kb?.stats?.documentCount ?? (Array.isArray(documents) ? documents.length : 0),
+                chunkCount: kb?.stats?.chunkCount ?? (Array.isArray(documents) ? documents.reduce((sum, d) => sum + (d.chunkCount || 0), 0) : 0),
+                totalSize: kb?.stats?.totalSize ?? (Array.isArray(documents) ? documents.reduce((sum, d) => sum + (d.fileSize || 0), 0) : 0),
+                processingCount: Array.isArray(documents) ? documents.filter(d => d.status === 'processing' || d.status === 'pending').length : 0,
+                failedCount: Array.isArray(documents) ? documents.filter(d => d.status === 'failed').length : 0,
               }}
               compact={true}
             />
@@ -241,20 +220,38 @@ export function WorkspaceDataKBTab({
 
         {/* Documents Table */}
         <DocumentTable
-          documents={safeDocuments}
+          documents={Array.isArray(documents) ? documents : []}
           loading={documentsLoading}
           onDelete={onDeleteDocument || (async () => {})}
-          onDownload={onDownloadDocument || (async () => '')}
+          onDownload={onDownloadDocument || (async () => {})}
           onRetry={onRetryDocument}
           currentUserId={currentUserId}
         />
 
         {/* No KB message */}
-        {!kb && safeDocuments.length === 0 && !documentsLoading && (
+        {!kb && (Array.isArray(documents) ? documents.length === 0 : true) && !documentsLoading && (
           <Alert severity="info" icon={<KBIcon />}>
-            No workspace knowledge base yet. Upload documents to create one.
+            No documents uploaded yet. Upload documents to create a knowledge base.
           </Alert>
         )}
+      </Paper>
+
+      <Divider />
+
+      {/* KB Toggle Selector - Knowledge Base Sources below */}
+      <Paper sx={{ p: 3 }}>
+        <Box display="flex" alignItems="center" gap={1} mb={2}>
+          <KBIcon color="primary" />
+          <Typography variant="h6">Knowledge Base Sources</Typography>
+        </Box>
+        <Typography variant="body2" color="text.secondary" mb={2}>
+          Enable additional knowledge bases to expand AI processing context.
+        </Typography>
+        <KBToggleSelector
+          availableKbs={groupedKbs}
+          loading={availableKbsLoading}
+          onToggle={onToggleKb || (async () => {})}
+        />
       </Paper>
     </Stack>
   );

@@ -72,9 +72,9 @@ import {
   useKnowledgeBase,
   useKbDocuments,
   createKbModuleClient,
-  createAuthenticatedClient,
   type AvailableKb,
 } from "@{{PROJECT_NAME}}/module-kb";
+import { createAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 
 // ============================================================================
 // MOCK DATA - CJIS IT Security Audit Theme
@@ -107,14 +107,6 @@ interface MockChat {
   lastActivity: string;
   messages: number;
   kbGrounded: boolean;
-}
-
-interface MockDocument {
-  id: string;
-  name: string;
-  workflow: string;
-  status: "pending" | "processing" | "analyzed" | "failed";
-  date: string;
 }
 
 interface MockKBDocument {
@@ -200,17 +192,6 @@ const MOCK_CHATS: MockChat[] = [
     messages: 6,
     kbGrounded: true,
   },
-];
-
-const MOCK_WORKFLOW_DOCS: MockDocument[] = [
-  { id: "1", name: "Physical-Security-Policy.pdf", workflow: "Area 5", status: "analyzed", date: "Jan 10" },
-  { id: "2", name: "Personnel-Screening-Proc.docx", workflow: "Area 5", status: "analyzed", date: "Jan 10" },
-  { id: "3", name: "Access-Control-Matrix.xlsx", workflow: "Area 5", status: "analyzed", date: "Jan 10" },
-  { id: "4", name: "Password-Authentication.pdf", workflow: "Area 6", status: "processing", date: "Jan 12" },
-  { id: "5", name: "MFA-Implementation-Plan.docx", workflow: "Area 6", status: "processing", date: "Jan 12" },
-  { id: "6", name: "Encryption-Standards.pdf", workflow: "Area 10", status: "analyzed", date: "Jan 8" },
-  { id: "7", name: "Network-Security-Policy.pdf", workflow: "Area 10", status: "analyzed", date: "Jan 8" },
-  { id: "8", name: "Firewall-Configuration.docx", workflow: "Area 10", status: "analyzed", date: "Jan 8" },
 ];
 
 // MOCK_KB_DOCS and MOCK_KB_STATS removed - now using real data from module-kb
@@ -322,7 +303,7 @@ export function WorkspaceDetailPage({
   } = useKnowledgeBase({
     scope: 'workspace',
     scopeId: workspaceId,
-    ...(kbApiClient ? { apiClient: { kb: kbApiClient } } : {}),
+    apiClient: kbApiClient ? { kb: kbApiClient } : undefined,
     autoFetch: !!kbApiClient,
   });
 
@@ -335,7 +316,7 @@ export function WorkspaceDetailPage({
   } = useKbDocuments({
     scope: 'workspace',
     scopeId: workspaceId,
-    ...(kbApiClient ? { apiClient: { kb: kbApiClient } } : {}),
+    apiClient: kbApiClient ? { kb: kbApiClient } : undefined,
     autoFetch: !!kbApiClient,
   });
 
@@ -439,19 +420,6 @@ export function WorkspaceDetailPage({
         return <ErrorIcon fontSize="small" />;
       default:
         return <Description fontSize="small" />;
-    }
-  };
-
-  const getDocStatusColor = (status: MockDocument["status"]) => {
-    switch (status) {
-      case "processing":
-        return "info";
-      case "analyzed":
-        return "success";
-      case "failed":
-        return "error";
-      default:
-        return "default";
     }
   };
 
@@ -784,52 +752,6 @@ export function WorkspaceDetailPage({
 
         {/* Tab 1: Data */}
         <TabPanel value={activeTab} index={1}>
-          {/* Workflow Documents Section */}
-          <Box sx={{ mb: 4 }}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-              <Typography variant="h6">📁 Workflow Documents</Typography>
-              {canEdit && (
-                <Button variant="contained" startIcon={<Add />} size="small">
-                  Upload Files
-                </Button>
-              )}
-            </Box>
-
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Workflow</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Date</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {MOCK_WORKFLOW_DOCS.map((doc) => (
-                    <TableRow key={doc.id}>
-                      <TableCell>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                          <Description fontSize="small" />
-                          {doc.name}
-                        </Box>
-                      </TableCell>
-                      <TableCell>{doc.workflow}</TableCell>
-                      <TableCell>
-                        <Chip label={doc.status} size="small" color={getDocStatusColor(doc.status)} />
-                      </TableCell>
-                      <TableCell>{doc.date}</TableCell>
-                      <TableCell align="right">
-                        <Button size="small">Download</Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-
           {/* Knowledge Base Section - Integrated with module-kb */}
           <WorkspaceDataKBTab
             workspaceId={workspaceId}

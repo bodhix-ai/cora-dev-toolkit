@@ -15,6 +15,14 @@ import {
 } from "../types";
 
 /**
+ * List documents response wrapper
+ * API returns nested structure: { documents: KbDocument[] }
+ */
+export interface ListDocumentsResponse {
+  documents: KbDocument[];
+}
+
+/**
  * Authenticated client interface
  * Matches CORA authentication pattern
  */
@@ -33,7 +41,7 @@ export interface KbModuleApiClient {
   // Workspace KB endpoints
   workspace: {
     getKb: (workspaceId: string) => Promise<ApiResponse<KnowledgeBase | null>>;
-    listDocuments: (workspaceId: string) => Promise<ApiResponse<KbDocument[]>>;
+    listDocuments: (workspaceId: string) => Promise<ApiResponse<ListDocumentsResponse>>;
     uploadDocument: (
       workspaceId: string,
       data: UploadDocumentInput
@@ -63,7 +71,7 @@ export interface KbModuleApiClient {
   // Chat KB endpoints
   chat: {
     getKb: (chatId: string) => Promise<ApiResponse<KnowledgeBase | null>>;
-    listDocuments: (chatId: string) => Promise<ApiResponse<KbDocument[]>>;
+    listDocuments: (chatId: string) => Promise<ApiResponse<ListDocumentsResponse>>;
     uploadDocument: (
       chatId: string,
       data: UploadDocumentInput
@@ -94,7 +102,7 @@ export interface KbModuleApiClient {
       data: UpdateKbInput
     ) => Promise<ApiResponse<KnowledgeBase>>;
     deleteKb: (kbId: string) => Promise<ApiResponse<void>>;
-    listDocuments: (kbId: string) => Promise<ApiResponse<KbDocument[]>>;
+    listDocuments: (kbId: string) => Promise<ApiResponse<ListDocumentsResponse>>;
     uploadDocument: (
       kbId: string,
       data: UploadDocumentInput
@@ -120,7 +128,7 @@ export interface KbModuleApiClient {
       data: AssociateOrgInput
     ) => Promise<ApiResponse<void>>;
     removeOrg: (kbId: string, orgId: string) => Promise<ApiResponse<void>>;
-    listDocuments: (kbId: string) => Promise<ApiResponse<KbDocument[]>>;
+    listDocuments: (kbId: string) => Promise<ApiResponse<ListDocumentsResponse>>;
     uploadDocument: (
       kbId: string,
       data: UploadDocumentInput
@@ -190,7 +198,7 @@ export function createKbModuleClient(
         ),
 
       listDocuments: (workspaceId) =>
-        authenticatedClient.get<KbDocument[]>(
+        authenticatedClient.get<ListDocumentsResponse>(
           `/workspaces/${workspaceId}/kb/documents`
         ),
 
@@ -233,7 +241,7 @@ export function createKbModuleClient(
         authenticatedClient.get<KnowledgeBase | null>(`/chats/${chatId}/kb`),
 
       listDocuments: (chatId) =>
-        authenticatedClient.get<KbDocument[]>(`/chats/${chatId}/kb/documents`),
+        authenticatedClient.get<ListDocumentsResponse>(`/chats/${chatId}/kb/documents`),
 
       uploadDocument: (chatId, data) =>
         authenticatedClient.post<UploadDocumentResponse>(
@@ -275,7 +283,7 @@ export function createKbModuleClient(
         authenticatedClient.delete<void>(`/admin/org/kbs/${kbId}`),
 
       listDocuments: (kbId) =>
-        authenticatedClient.get<KbDocument[]>(`/admin/org/kbs/${kbId}/documents`),
+        authenticatedClient.get<ListDocumentsResponse>(`/admin/org/kbs/${kbId}/documents`),
 
       uploadDocument: (kbId, data) =>
         authenticatedClient.post<UploadDocumentResponse>(
@@ -312,7 +320,7 @@ export function createKbModuleClient(
         authenticatedClient.delete<void>(`/admin/sys/kbs/${kbId}/orgs/${orgId}`),
 
       listDocuments: (kbId) =>
-        authenticatedClient.get<KbDocument[]>(`/admin/sys/kbs/${kbId}/documents`),
+        authenticatedClient.get<ListDocumentsResponse>(`/admin/sys/kbs/${kbId}/documents`),
 
       uploadDocument: (kbId, data) =>
         authenticatedClient.post<UploadDocumentResponse>(

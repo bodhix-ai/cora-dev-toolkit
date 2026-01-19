@@ -129,3 +129,29 @@ DROP POLICY IF EXISTS "kb_access_chats_all" ON public.kb_access_chats;
 CREATE POLICY "kb_access_chats_all" ON public.kb_access_chats
     FOR ALL TO authenticated
     USING (public.can_view_chat(auth.uid(), chat_session_id));
+
+-- ========================================
+-- kb_chunks Policies
+-- ========================================
+-- Uses direct org_id column for efficient RLS filtering on high-volume RAG queries
+-- Avoids JOIN to kb_docs which would be slow for millions of chunks
+
+DROP POLICY IF EXISTS "kb_chunks_org_isolation" ON public.kb_chunks;
+CREATE POLICY "kb_chunks_org_isolation" ON public.kb_chunks
+    FOR ALL TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.org_members
+            WHERE org_id = kb_chunks.org_id
+            AND user_id = auth.uid()
+        )
+    );
+
+-- Sys admins can access all chunks
+DROP POLICY IF EXISTS "kb_chunks_sys_admin_all" ON public.kb_chunks;
+CREATE POLICY "kb_chunks_sys_admin_all" ON public.kb_chunks
+    FOR ALL TO authenticated
+    USING (EXISTS (
+        SELECT 1 FROM public.user_profiles
+        WHERE user_id = auth.uid() AND sys_role = 'sys_admin'
+    ));

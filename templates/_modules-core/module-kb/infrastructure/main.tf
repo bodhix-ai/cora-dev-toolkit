@@ -19,6 +19,16 @@ locals {
 }
 
 # =============================================================================
+# Lambda Layer - org-common (Reused from module-access)
+# =============================================================================
+
+# Note: org-common layer is shared across modules and should be deployed by module-access
+# This data source references the existing layer from module-access
+data "aws_lambda_layer_version" "org_common" {
+  layer_name = "${var.project_name}-${var.environment}-access-common"
+}
+
+# =============================================================================
 # S3 Bucket for Document Storage
 # =============================================================================
 
@@ -209,6 +219,27 @@ resource "aws_iam_role_policy" "sqs" {
   })
 }
 
+# Policy for Bedrock access (embedding generation for kb-processor)
+resource "aws_iam_role_policy" "bedrock" {
+  name = "${local.prefix}-bedrock-access"
+  role = aws_iam_role.lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "bedrock:InvokeModel"
+      ]
+      Resource = [
+        "arn:aws:bedrock:${var.aws_region}::foundation-model/amazon.titan-embed-text-v2:0",
+        "arn:aws:bedrock:${var.aws_region}::foundation-model/amazon.titan-embed-text-v1",
+        "arn:aws:bedrock:${var.aws_region}::foundation-model/*"
+      ]
+    }]
+  })
+}
+
 # =============================================================================
 # Lambda Function - kb-base
 # =============================================================================
@@ -227,7 +258,7 @@ resource "aws_lambda_function" "kb_base" {
   filename         = "${local.build_dir}/kb-base.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/kb-base.zip")
 
-  layers = [var.org_common_layer_arn]
+  layers = [data.aws_lambda_layer_version.org_common.arn]
 
   environment {
     variables = {
@@ -274,7 +305,7 @@ resource "aws_lambda_function" "kb_document" {
   filename         = "${local.build_dir}/kb-document.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/kb-document.zip")
 
-  layers = [var.org_common_layer_arn]
+  layers = [data.aws_lambda_layer_version.org_common.arn]
 
   environment {
     variables = {
@@ -323,7 +354,7 @@ resource "aws_lambda_function" "kb_processor" {
   filename         = "${local.build_dir}/kb-processor.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/kb-processor.zip")
 
-  layers = [var.org_common_layer_arn]
+  layers = [data.aws_lambda_layer_version.org_common.arn]
 
   environment {
     variables = {

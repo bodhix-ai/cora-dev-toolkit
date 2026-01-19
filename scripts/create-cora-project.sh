@@ -753,6 +753,17 @@ CONFIGHEADER
 # Run dependency check early (after functions are defined)
 check_dependencies
 
+# --- Compute Config File Basename ---
+# This is used by deploy scripts to find the correct config file
+if [[ -n "$INPUT_CONFIG" ]]; then
+  # Extract just the filename from the input config path
+  CONFIG_FILE_BASENAME=$(basename "$INPUT_CONFIG")
+  log_info "Config file basename: ${CONFIG_FILE_BASENAME}"
+else
+  # Default to project-name based config
+  CONFIG_FILE_BASENAME="setup.config.${PROJECT_NAME}.yaml"
+fi
+
 # --- Create Parent Directory (if specified) ---
 if [[ -n "$PROJECT_FOLDER" ]] && ! $DRY_RUN; then
   log_step "Creating parent directory: ${PARENT_DIR}"
@@ -785,9 +796,20 @@ replace_placeholders() {
       if [[ -n "$GITHUB_ORG" ]]; then
         sed -i '' "s/{{GITHUB_ORG}}/${GITHUB_ORG}/g" "$file" 2>/dev/null || \
         sed -i "s/{{GITHUB_ORG}}/${GITHUB_ORG}/g" "$file"
-        
+
         sed -i '' "s/{{ORGANIZATION_NAME}}/${GITHUB_ORG}/g" "$file" 2>/dev/null || \
         sed -i "s/{{ORGANIZATION_NAME}}/${GITHUB_ORG}/g" "$file"
+      fi
+
+      # Replace config file name (for deploy scripts to find the right config)
+      # This is the basename of the input config file used during project creation
+      if [[ -n "$CONFIG_FILE_BASENAME" ]]; then
+        sed -i '' "s/{{CONFIG_FILE}}/${CONFIG_FILE_BASENAME}/g" "$file" 2>/dev/null || \
+        sed -i "s/{{CONFIG_FILE}}/${CONFIG_FILE_BASENAME}/g" "$file"
+      else
+        # Default to project-name based config
+        sed -i '' "s/{{CONFIG_FILE}}/setup.config.${PROJECT_NAME}.yaml/g" "$file" 2>/dev/null || \
+        sed -i "s/{{CONFIG_FILE}}/setup.config.${PROJECT_NAME}.yaml/g" "$file"
       fi
     fi
   done
