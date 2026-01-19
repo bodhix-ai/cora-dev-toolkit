@@ -50,7 +50,8 @@ export function useEvalDocTypes(
       if (!token || !orgId) throw new Error("No auth token or org ID");
       return createDocType(token, orgId, input);
     },
-    [token, orgId, createDocType]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [token, orgId]
   );
 
   const update = useCallback(
@@ -58,7 +59,8 @@ export function useEvalDocTypes(
       if (!token || !orgId) throw new Error("No auth token or org ID");
       await updateDocType(token, orgId, id, input);
     },
-    [token, orgId, updateDocType]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [token, orgId]
   );
 
   const remove = useCallback(
@@ -66,7 +68,8 @@ export function useEvalDocTypes(
       if (!token || !orgId) throw new Error("No auth token or org ID");
       await deleteDocType(token, orgId, id);
     },
-    [token, orgId, deleteDocType]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [token, orgId]
   );
 
   const refresh = useCallback(async () => {
@@ -121,7 +124,8 @@ export function useEvalDocType(
     return () => {
       clearSelectedDocType();
     };
-  }, [token, orgId, docTypeId, selectDocType, clearSelectedDocType]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId, docTypeId]);
 
   return {
     docType: selectedDocType,

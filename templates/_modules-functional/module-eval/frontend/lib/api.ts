@@ -810,8 +810,8 @@ export async function deleteCriteriaItem(
  * POST /workspaces/{wsId}/eval
  */
 export async function createEvaluation(
-  workspaceId: string,
   token: string,
+  workspaceId: string,
   input: CreateEvaluationInput
 ): Promise<Evaluation> {
   return apiRequest<Evaluation>(`/workspaces/${workspaceId}/eval`, token, {
@@ -825,8 +825,8 @@ export async function createEvaluation(
  * GET /workspaces/{wsId}/eval
  */
 export async function listEvaluations(
-  workspaceId: string,
   token: string,
+  workspaceId: string,
   options?: ListEvaluationsOptions
 ): Promise<ListEvaluationsResponse> {
   const params: Record<string, string | number | boolean | undefined> = {
@@ -845,9 +845,9 @@ export async function listEvaluations(
  * GET /workspaces/{wsId}/eval/{id}
  */
 export async function getEvaluation(
+  token: string,
   workspaceId: string,
-  evaluationId: string,
-  token: string
+  evaluationId: string
 ): Promise<Evaluation> {
   return apiRequest<Evaluation>(
     `/workspaces/${workspaceId}/eval/${evaluationId}`,
@@ -860,9 +860,9 @@ export async function getEvaluation(
  * GET /workspaces/{wsId}/eval/{id}/status
  */
 export async function getEvaluationStatus(
+  token: string,
   workspaceId: string,
-  evaluationId: string,
-  token: string
+  evaluationId: string
 ): Promise<EvaluationStatusResponse> {
   return apiRequest<EvaluationStatusResponse>(
     `/workspaces/${workspaceId}/eval/${evaluationId}/status`,
@@ -875,9 +875,9 @@ export async function getEvaluationStatus(
  * DELETE /workspaces/{wsId}/eval/{id}
  */
 export async function deleteEvaluation(
+  token: string,
   workspaceId: string,
-  evaluationId: string,
-  token: string
+  evaluationId: string
 ): Promise<{ message: string; id: string }> {
   return apiRequest<{ message: string; id: string }>(
     `/workspaces/${workspaceId}/eval/${evaluationId}`,
@@ -895,10 +895,10 @@ export async function deleteEvaluation(
  * PATCH /workspaces/{wsId}/eval/{id}/results/{resultId}
  */
 export async function editResult(
+  token: string,
   workspaceId: string,
   evaluationId: string,
   resultId: string,
-  token: string,
   input: EditResultInput
 ): Promise<{
   edit: EvalResultEdit;
@@ -921,10 +921,10 @@ export async function editResult(
  * GET /workspaces/{wsId}/eval/{id}/results/{resultId}/history
  */
 export async function getEditHistory(
+  token: string,
   workspaceId: string,
   evaluationId: string,
-  resultId: string,
-  token: string
+  resultId: string
 ): Promise<EditHistoryResponse> {
   return apiRequest<EditHistoryResponse>(
     `/workspaces/${workspaceId}/eval/${evaluationId}/results/${resultId}/history`,
@@ -941,9 +941,9 @@ export async function getEditHistory(
  * GET /workspaces/{wsId}/eval/{id}/export/pdf
  */
 export async function exportPdf(
+  token: string,
   workspaceId: string,
-  evaluationId: string,
-  token: string
+  evaluationId: string
 ): Promise<ExportResponse> {
   return apiRequest<ExportResponse>(
     `/workspaces/${workspaceId}/eval/${evaluationId}/export/pdf`,
@@ -956,9 +956,9 @@ export async function exportPdf(
  * GET /workspaces/{wsId}/eval/{id}/export/xlsx
  */
 export async function exportXlsx(
+  token: string,
   workspaceId: string,
-  evaluationId: string,
-  token: string
+  evaluationId: string
 ): Promise<ExportResponse> {
   return apiRequest<ExportResponse>(
     `/workspaces/${workspaceId}/eval/${evaluationId}/export/xlsx`,
@@ -1006,9 +1006,9 @@ export async function downloadExport(
  * Poll evaluation status until complete or failed
  */
 export async function pollEvaluationStatus(
+  token: string,
   workspaceId: string,
   evaluationId: string,
-  token: string,
   options?: {
     intervalMs?: number;
     maxAttempts?: number;
@@ -1021,7 +1021,7 @@ export async function pollEvaluationStatus(
   let attempts = 0;
 
   while (attempts < maxAttempts) {
-    const status = await getEvaluationStatus(workspaceId, evaluationId, token);
+    const status = await getEvaluationStatus(token, workspaceId, evaluationId);
 
     options?.onProgress?.(status);
 

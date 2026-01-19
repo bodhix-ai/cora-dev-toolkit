@@ -228,14 +228,16 @@ export function useWorkspaceKB({
     if (autoFetch && apiClient && workspaceId) {
       refetch();
     }
-  }, [autoFetch, apiClient, workspaceId, refetch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFetch, apiClient, workspaceId]);
 
   // Fetch documents when KB changes
   useEffect(() => {
     if (kb?.id && apiClient) {
       fetchDocuments();
     }
-  }, [kb?.id, apiClient, fetchDocuments]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kb?.id, apiClient]);
 
   return {
     kb,
