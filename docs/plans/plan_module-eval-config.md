@@ -768,10 +768,10 @@ Frontend API client expects raw data directly. The `parseResponse()` function in
 
 ---
 
-### Session 145: Material-UI Conversion - Module-Eval & Module-Voice (In Progress)
+### Session 145: Material-UI Conversion - Module-Eval Components ✅
 **Date**: January 18, 2026  
-**Duration**: ~1 hour (in progress)  
-**Focus**: Convert all remaining Tailwind components to Material-UI in module-eval and module-voice
+**Duration**: ~2 hours  
+**Focus**: Convert ALL module-eval components from Tailwind to Material-UI
 
 **User Request:**
 - Focus on fixing MUI issues in module-eval and module-voice only
@@ -782,19 +782,19 @@ Frontend API client expects raw data directly. The `parseResponse()` function in
 
 **module-eval: 20 files** (3 already converted in Session 143 = 17 remaining)
 
-**Components (10 files):**
+**Components (10 files):** ✅ ALL COMPLETE
 1. ~~EvalExportButton.tsx~~ ✅
 2. ~~CitationViewer.tsx~~ ✅
 3. ~~EvalProgressCard.tsx~~ ✅
 4. ~~EvalQAList.tsx~~ ✅
-5. EvalResultsTable.tsx
-6. EvalSummaryPanel.tsx
-7. ResultEditDialog.tsx
-8. CriteriaImportDialog.tsx
-9. CriteriaItemEditor.tsx
-10. CriteriaSetManager.tsx
+5. ~~EvalResultsTable.tsx~~ ✅
+6. ~~EvalSummaryPanel.tsx~~ ✅
+7. ~~ResultEditDialog.tsx~~ ✅
+8. ~~CriteriaImportDialog.tsx~~ ✅
+9. ~~CriteriaItemEditor.tsx~~ ✅
+10. ~~CriteriaSetManager.tsx~~ ✅
 
-**Pages (8 files):**
+**Pages (8 files):** 🔜 REMAINING
 1. EvalDetailPage.tsx
 2. EvalListPage.tsx
 3. OrgEvalConfigPage.tsx
@@ -804,11 +804,11 @@ Frontend API client expects raw data directly. The `parseResponse()` function in
 7. SysEvalConfigPage.tsx
 8. SysEvalPromptsPage.tsx
 
-**Routes (2 files):**
+**Routes (2 files):** 🔜 REMAINING
 1. routes/eval/[id]/page.tsx
 2. routes/eval/page.tsx
 
-**module-voice: 7 files**
+**module-voice: 7 files** 🔜 REMAINING
 
 **Components (5 files):**
 1. ConfigForm.tsx
@@ -822,28 +822,18 @@ Frontend API client expects raw data directly. The `parseResponse()` function in
 2. SysVoiceConfigPage.tsx
 
 **Total Files to Convert: 27**
+**Progress: 10/27 files (37% complete)**
+- ✅ module-eval components: 10/10 COMPLETE
+- 🔜 module-eval pages: 0/8 remaining
+- 🔜 module-eval routes: 0/2 remaining
+- 🔜 module-voice: 0/7 remaining
 
 **Conversion Strategy:**
-1. Convert smaller utility components first (export buttons, cards)
-2. Convert larger components (dialogs, managers, tables)
-3. Convert pages last (they import components)
-4. Test with validator after each module is complete
-5. Sync all changes to test project
-
-**Progress (4/27 files - 15% complete):**
-- [x] module-eval components (4/10 files complete)
-  - [x] EvalExportButton.tsx ✅
-  - [x] CitationViewer.tsx ✅
-  - [x] EvalProgressCard.tsx ✅
-  - [x] EvalQAList.tsx ✅
-- [ ] module-eval components (6 remaining)
-- [ ] module-eval pages (8 files)
-- [ ] module-eval routes (2 files)
-- [ ] module-voice components (5 files)
-- [ ] module-voice pages (2 files)
-- [ ] Run validator to verify 0 violations
-- [ ] Sync all changes to test project
-- [ ] Update plan with results
+1. ✅ Convert smaller utility components first (export buttons, cards)
+2. ✅ Convert larger components (dialogs, managers, tables)
+3. 🔜 Convert pages next (they import components)
+4. 🔜 Test with validator after each module is complete
+5. 🔜 Sync all changes to test project
 
 **Files Converted:**
 
@@ -867,30 +857,358 @@ Frontend API client expects raw data directly. The `parseResponse()` function in
    - Used: Card, Chip, Button, Collapse, Grid, ExpandMore/ExpandLess icons
    - ~550 lines converted
 
-**Patterns Established:**
+5. **EvalResultsTable.tsx** ✅
+   - Converted table with sorting, filtering, pagination
+   - Used: Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, Checkbox
+   - ~450 lines converted
+
+6. **EvalSummaryPanel.tsx** ✅
+   - Converted 4 summary components (compliance score, doc summary, eval summary, stats)
+   - Used: Card, CardContent, Typography, Chip, Grid, Paper, Divider
+   - ~400 lines converted
+
+7. **ResultEditDialog.tsx** ✅
+   - Converted 2 dialog components (result edit, confirm dialog)
+   - Used: Dialog, DialogTitle, DialogContent, DialogActions, TextField, Select, Alert
+   - ~320 lines converted
+
+8. **CriteriaImportDialog.tsx** ✅
+   - Converted 4 import components (file preview, error list, result display, import dialog)
+   - Used: Dialog, TextField, FormControl, Select, Alert, List, Grid, Paper
+   - ~500 lines converted
+
+9. **CriteriaItemEditor.tsx** ✅
+   - Converted 4 editor components (form, row, category group, editor manager)
+   - Used: TextField, Paper, IconButton, Dialog, Accordion, ToggleButtonGroup
+   - ~500 lines converted
+
+10. **CriteriaSetManager.tsx** ✅
+    - Converted 3 manager components (form, card, manager)
+    - Used: TextField, Card, CardContent, FormControl, Select, Dialog
+    - ~450 lines converted
+
+**Conversion Patterns Established:**
 - **className → sx prop:** All Tailwind classes converted to MUI sx objects
 - **Color mapping:** Tailwind colors → theme colors (success.main, error.main, etc.)
 - **Layout:** Flexbox → Box with display: flex, Grid for responsive layouts
 - **Progress bars:** Custom divs → LinearProgress component
 - **Badges:** Custom styled spans → Chip component
 - **Cards:** Custom divs → Card + CardContent
-- **Collapsible sections:** Custom state → Collapse component
+- **Dialogs:** Custom modals → Dialog + DialogTitle + DialogContent + DialogActions
+- **Tables:** Custom tables → Table + TableHead + TableBody + TableCell + TableSortLabel
+- **Forms:** Custom inputs → TextField, Select, FormControl
+- **Collapsible sections:** Custom state → Collapse/Accordion components
 - **Icons:** Material Icons imported from @mui/icons-material
 
 **Issues Found:**
 - TypeScript errors in template context (expected - resolve when used in project)
 - No functional issues discovered
 
-**Next Steps:**
-- Commit current progress (4 files)
-- Continue with remaining 23 files or pause for review
+**Success Metrics:**
+- ✅ All 10 module-eval components successfully converted
+- ✅ Consistent Material-UI patterns established
+- ✅ All files saved to templates (not synced to test project yet)
+- ⚠️ TypeScript errors expected until copied to project with dependencies
 
 **Next Session:**
-- Complete remaining module-eval components (6 files)
 - Convert module-eval pages (8 files)
 - Convert module-eval routes (2 files)
 - Convert module-voice files (7 files)
-- Verify with validator
+- Run validator to verify 0 violations
+- Sync ALL changes to test project
+- Test converted components in browser
+
+---
+
+### Session 146: Material-UI Conversion - Module-Eval Pages & Routes ✅
+**Date**: January 18, 2026  
+**Duration**: ~1 hour  
+**Focus**: Complete module-eval Material-UI conversion (all pages + routes)
+
+**User Request:**
+- Continue Material-UI conversion from Session 145
+- Convert remaining module-eval pages (8 files)
+- Convert module-eval routes (2 files)
+- Complete module-eval to 100% Material-UI compliance
+
+**Scope:**
+
+**Module-Eval Pages (8 files):** ✅ ALL COMPLETE
+1. EvalDetailPage.tsx ✅
+2. EvalListPage.tsx ✅
+3. OrgEvalConfigPage.tsx ✅
+4. OrgEvalCriteriaPage.tsx ✅
+5. OrgEvalDocTypesPage.tsx ✅
+6. OrgEvalPromptsPage.tsx ✅
+7. SysEvalConfigPage.tsx ✅
+8. SysEvalPromptsPage.tsx ✅
+
+**Module-Eval Routes (2 files):** ✅ ALL COMPLETE
+1. routes/eval/page.tsx ✅
+2. routes/eval/[id]/page.tsx ✅
+
+**Completed:**
+- [x] Converted all 8 module-eval page files from Tailwind → Material-UI
+- [x] Converted both module-eval route files from Tailwind → Material-UI
+- [x] Applied consistent Material-UI patterns (Box, Typography, Tabs, Paper, Skeleton, Button, Alert)
+- [x] Converted all loading states, error states, and empty states
+- [x] All files saved to templates (ready for sync)
+
+**Conversion Patterns Used:**
+- **Page layouts:** Box with sx prop for spacing/layout
+- **Typography:** variant prop for semantic HTML (h1, h2, body1, body2)
+- **Loading states:** Skeleton components with variant="rectangular"
+- **Error states:** Box + ErrorIcon + Typography + Button
+- **Empty states:** Box + Typography with textAlign center
+- **Tab navigation:** Tabs + Tab components with proper accessibility
+- **Sections:** Paper variant="outlined" for card-like sections
+- **Colors:** theme.palette colors (text.secondary, error.main, etc.)
+
+**Files Modified:**
+- 8 page files in `templates/_modules-functional/module-eval/frontend/pages/`
+- 2 route files in `templates/_modules-functional/module-eval/routes/`
+
+**Progress Metrics:**
+- **Session 145:** 10/27 files (37%) - All components
+- **Session 146:** 20/27 files (74%) - All pages + routes
+- **Module-Eval:** ✅ 20/20 files complete (100%)
+  - 10 components (Session 145)
+  - 8 pages (Session 146)
+  - 2 routes (Session 146)
+
+**Remaining Work:**
+- Module-voice files (7 files) - Components + Pages
+- Validation & testing
+- Sync all changes to test project
+
+**TypeScript Errors:**
+- All TypeScript errors are expected in template context
+- Missing dependencies (react, @mui/material, etc.)
+- Will resolve when files are copied to project with node_modules
+
+**Success Metrics:**
+- ✅ All 20 module-eval files successfully converted
+- ✅ Consistent Material-UI patterns across all files
+- ✅ Professional UI styling matching CORA standards
+- ✅ All files saved to templates (not synced yet)
+
+**Next Session:**
+- Option A: Continue with module-voice conversion (7 files)
+- Option B: Validate module-eval work with UI library validator
+- Option C: Sync all changes to test project and test in browser
+
+---
+
+### Session 147: Module-Eval Validation Success ✅
+**Date**: January 18, 2026  
+**Duration**: ~15 minutes  
+**Focus**: Validate Material-UI conversion work with UI library validator
+
+**User Request:**
+- Validate module-eval Material-UI conversion work
+- Confirm 0 Tailwind violations
+- Update plan with validation results
+- Continue with module-voice conversion
+
+**Completed:**
+- [x] Ran UI library validator on module-eval templates
+- [x] Confirmed 100% Material-UI compliance (0 violations)
+- [x] Documented validation success
+
+**Validation Results:**
+
+✅ **PASSED: All UI library compliance checks**
+
+**Checks Passed:**
+- ✅ No Tailwind CSS classes found (was: 18 violations in Session 144 baseline)
+- ✅ No Tailwind configuration files
+- ✅ No @tailwind directives
+- ✅ No Shadcn UI imports
+- ✅ No custom UI package imports
+- ✅ No styled-components usage
+- ✅ Material-UI imports found (27 files)
+
+**Impact:**
+- **Before (Session 144 baseline):** 18 module-eval files with Tailwind violations
+- **After (Sessions 145-146 conversion):** 0 violations - 100% CORA compliant
+- All 20 converted files now follow CORA Material-UI standard
+- Module-eval ready for deployment and testing
+
+**Success Metrics:**
+- ✅ Module-eval: 20/20 files converted and validated
+- ✅ 100% CORA UI library compliance achieved
+- ✅ Professional Material-UI styling throughout
+- 🔜 Module-voice: 7 files remaining for conversion
+
+**Next Session:**
+- Continue with module-voice Material-UI conversion (7 files)
+- Validate module-voice after conversion
+- Sync all changes to test project
+
+---
+
+### Session 149: Route Placeholder Fix ✅
+**Date**: January 18, 2026  
+**Duration**: ~30 minutes  
+**Focus**: Fix incorrect placeholder format in module-eval route files
+
+**User Issue:**
+- Compilation error: `Module not found: Can't resolve '@{project}/module-eval'`
+- Error occurred in `/app/admin/sys/eval/page.tsx` and other route files
+
+**Root Cause:**
+- Route files created in Session 140 used **incorrect placeholder format**
+- Used: `@{project}/module-eval` (single braces, lowercase)
+- Should use: `@{{PROJECT_NAME}}/module-eval` (double braces, uppercase)
+- `create-cora-project.sh` expects `{{PROJECT_NAME}}` format for substitution
+
+**Impact:**
+- Module resolution failed in test project
+- TypeScript compilation errors prevented dev server from starting
+- Routes couldn't import components from module-eval package
+
+**Completed:**
+- [x] Investigated module resolution error
+- [x] Identified root cause: wrong placeholder syntax in templates
+- [x] Fixed all 4 route files in templates:
+  - `routes/admin/org/eval/page.tsx`
+  - `routes/admin/sys/eval/page.tsx`
+  - `routes/eval/[id]/page.tsx`
+  - `routes/eval/page.tsx`
+- [x] Changed `@{project}` → `@{{PROJECT_NAME}}` in templates
+- [x] Fixed test project: Changed `@{project}` → `@ai-sec` in test project route files
+- [x] Committed template fixes to feature/module-eval-config branch
+- [x] Verified no other modules have same issue
+
+**Files Fixed:**
+- **Templates:** 4 route files with corrected placeholder format
+- **Test Project:** 4 route files with actual project name substituted
+
+**Commit:**
+- `1adc825` - "fix(module-eval): correct placeholder format in route files"
+
+**Key Lesson:**
+- CORA template placeholders must use `{{PROJECT_NAME}}` format (double braces)
+- Single-brace format `{project}` is not recognized by project creation script
+- Always verify placeholder format matches script expectations
+
+**Next Session:**
+- Verify compilation succeeds in test project
+- Resume Milestone 2 testing (org admin configuration)
+
+---
+
+### Session 148: Material-UI Conversion - Module-Voice Complete ✅
+**Date**: January 18, 2026  
+**Duration**: ~2 hours  
+**Focus**: Convert all module-voice files from Tailwind to Material-UI + validate all modules
+
+**User Request:**
+- Continue Material-UI conversion from Session 147
+- Convert all 7 module-voice files to Material-UI
+- Validate both modules with UI library validator
+- Assess remaining non-compliance across all templates
+- Create plan for addressing remaining violations
+
+**Completed:**
+- [x] Converted all 7 module-voice files from Tailwind → Material-UI
+- [x] Validated module-voice (0 violations)
+- [x] Validated module-eval (0 violations - already done in Session 147)
+- [x] Ran full validation on all templates
+- [x] Documented remaining non-compliance (12 files in module-access + module-mgmt)
+- [x] Created new plan for remaining UI library compliance work
+
+**Files Converted (7/7):**
+
+**Components (5 files):**
+1. ✅ ConfigForm.tsx - Voice interview configuration form with TextField, Select, Slider, Grid
+2. ✅ InterviewRoom.tsx - Daily.co video room embed with CircularProgress, IconButton, animations
+3. ✅ KbSelector.tsx - Knowledge base selector with Card, Checkbox, Chip, Collapse, Alert
+4. ✅ SessionCard.tsx - Voice session cards with Card, Chip, Typography, Divider, CardActions
+5. ✅ TranscriptViewer.tsx - Live transcript viewer with Paper, Chip, Button, scroll animations
+
+**Pages (2 files):**
+6. ✅ OrgVoiceConfigPage.tsx - Org admin page with Dialog, Skeleton, IconButton, Section components
+7. ✅ SysVoiceConfigPage.tsx - System admin page with Dialog, TextField, Alert, credential management
+
+**Validation Results:**
+
+**Module-Voice:** ✅ PASSED (0 violations)
+- ✅ No Tailwind CSS classes
+- ✅ No Tailwind config files
+- ✅ No @tailwind directives
+- ✅ Material-UI imports found (9 files)
+
+**Module-Eval:** ✅ PASSED (0 violations - validated in Session 147)
+- ✅ No Tailwind CSS classes
+- ✅ No Tailwind config files
+- ✅ No @tailwind directives
+- ✅ Material-UI imports found (27 files)
+
+**Full Template Validation:**
+
+**Status:** ❌ 12 files with Tailwind violations remaining (down from 39 baseline)
+
+**Violations by Module:**
+- ✅ module-eval: 0 violations (was: 18) - **100% COMPLETE**
+- ✅ module-voice: 0 violations (was: 7) - **100% COMPLETE**
+- ❌ module-access: 11 violations (core module - layout & admin components)
+- ❌ module-mgmt: 1 violation (core module - admin dashboard)
+
+**Module-Access Violations (11 files):**
+1. `frontend/components/admin/OrgDetailsTab.tsx`
+2. `frontend/components/layout/Dashboard.tsx`
+3. `frontend/components/layout/NavLink.tsx`
+4. `frontend/components/layout/ResizeHandle.tsx`
+5. `frontend/components/layout/Sidebar.tsx`
+6. `frontend/components/layout/SidebarUserMenu.tsx`
+7. `frontend/components/onboarding/CreateOrganization.tsx`
+8. `frontend/components/org/InviteMemberDialog.tsx`
+9. `frontend/components/org/OrgMembersList.tsx`
+10. `frontend/components/org/OrgSelector.tsx`
+11. `frontend/components/profile/ProfileCard.tsx`
+
+**Module-Mgmt Violations (1 file):**
+1. `frontend/components/ModuleAdminDashboard.tsx`
+
+**Material-UI Adoption Progress:**
+- **Total Files with MUI:** 195 files
+- **Conversion Progress:** 27 of 39 violations fixed (69% complete)
+- **Remaining Work:** 12 files in core modules (module-access, module-mgmt)
+
+**Impact Assessment:**
+
+**Functional Modules:** ✅ 100% CORA UI Library Compliant
+- module-eval: 20 files converted
+- module-voice: 7 files converted
+- module-ws: Already Material-UI compliant
+- module-kb: Already Material-UI compliant
+- module-chat: Already Material-UI compliant
+
+**Core Modules:** ⚠️ Partial Compliance
+- module-access: 11 files need conversion (layout, admin, org components)
+- module-mgmt: 1 file needs conversion (admin dashboard)
+- module-ai: Already Material-UI compliant
+
+**Next Steps:**
+
+Created new plan: `docs/plans/plan_ui-library-compliance.md`
+- Branch: `feature/ui-library-compliance`
+- Focus: Convert remaining 12 files in module-access and module-mgmt
+- Scope: Layout components (Dashboard, Sidebar, NavLink, etc.) + Admin components
+- Estimated Duration: 2-3 hours
+
+**Success Metrics:**
+- ✅ Module-eval: 20/20 files converted and validated
+- ✅ Module-voice: 7/7 files converted and validated
+- ✅ Both modules 100% CORA UI library compliant
+- 📋 New plan created for remaining 12 violations
+
+**Next Session:**
+- Await user decision on priority
+- Option A: Continue with module-access/module-mgmt conversion (new plan)
+- Option B: Sync module-eval and module-voice to test project for browser testing
+- Option C: Begin Milestone 2 testing with current progress
 
 ---
 
@@ -972,6 +1290,8 @@ Frontend API client expects raw data directly. The `parseResponse()` function in
 ---
 
 **Status**: 🔄 IN PROGRESS  
-**Last Updated**: January 18, 2026 (Session 138)  
+**Last Updated**: January 18, 2026 (Session 148)  
 **Branch**: feature/module-eval-config  
-**Test Project**: ~/code/bodhix/testing/test-eval/ ✅ CREATED
+**Test Project**: ~/code/bodhix/testing/test-eval/ ✅ CREATED  
+**Material-UI Conversion**: Module-Eval ✅ VALIDATED (20/20, 0 violations) | Module-Voice ✅ VALIDATED (7/7, 0 violations)  
+**Remaining Work**: 12 files in module-access (11) + module-mgmt (1) → See `docs/plans/plan_ui-library-compliance.md`
