@@ -139,7 +139,7 @@ export function OrgEvalDocTypesPage({
   loadingComponent,
   onNavigateToCriteria,
 }: OrgEvalDocTypesPageProps) {
-  // Get auth token
+  // Get auth token (same pattern as working SysEvalConfigPage)
   const { authAdapter } = useUser();
   const [token, setToken] = useState<string | null>(null);
 
@@ -156,7 +156,7 @@ export function OrgEvalDocTypesPage({
     }
     fetchToken();
     return () => { mounted = false; };
-  }, [authAdapter]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Hooks
   const {
@@ -230,10 +230,10 @@ export function OrgEvalDocTypesPage({
       {/* Doc Type Manager */}
       <DocTypeManager
         docTypes={docTypes || []}
-        onCreateDocType={handleCreateDocType}
-        onUpdateDocType={handleUpdateDocType}
-        onDeleteDocType={handleDeleteDocType}
-        onViewCriteria={onNavigateToCriteria ? handleViewCriteria : undefined}
+        onCreate={handleCreateDocType}
+        onUpdate={handleUpdateDocType}
+        onDelete={handleDeleteDocType}
+        onRefresh={refresh}
       />
 
       {/* Help Text */}

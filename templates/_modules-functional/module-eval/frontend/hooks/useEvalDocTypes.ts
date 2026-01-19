@@ -41,9 +41,9 @@ export function useEvalDocTypes(
     if (token && orgId && docTypes.length === 0 && !docTypesLoading) {
       loadDocTypes(token, orgId, options);
     }
-    // Note: options is intentionally excluded from deps to prevent infinite loops
+    // Note: options and loadDocTypes are intentionally excluded from deps to prevent infinite loops
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, orgId, docTypes.length, docTypesLoading, loadDocTypes]);
+  }, [token, orgId, docTypes.length, docTypesLoading]);
 
   const create = useCallback(
     async (input: CreateDocTypeInput): Promise<EvalDocType> => {
@@ -72,9 +72,9 @@ export function useEvalDocTypes(
   const refresh = useCallback(async () => {
     if (!token || !orgId) return;
     await loadDocTypes(token, orgId, options);
-    // Note: options is intentionally excluded from deps to prevent infinite loops
+    // Note: options and loadDocTypes are intentionally excluded from deps to prevent infinite loops
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, orgId, loadDocTypes]);
+  }, [token, orgId]);
 
   // Filter active doc types
   const activeDocTypes = useEvalStore(selectActiveDocTypes);
@@ -147,7 +147,9 @@ export function useDocTypeSelect(
     if (token && orgId && docTypes.length === 0 && !docTypesLoading) {
       loadDocTypes(token, orgId, { includeInactive: !activeOnly });
     }
-  }, [token, orgId, docTypes.length, docTypesLoading, loadDocTypes, activeOnly]);
+    // Note: loadDocTypes is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId, docTypes.length, docTypesLoading, activeOnly]);
 
   // Filter to active only if requested
   const selectOptions = useMemo(() => {

@@ -262,14 +262,14 @@ export function PromptConfigEditor({
   onResetToDefault,
   className = "",
 }: PromptConfigEditorProps) {
-  const [aiProviderId, setAiProviderId] = useState(config.aiProviderId || "");
-  const [aiModelId, setAiModelId] = useState(config.aiModelId || "");
-  const [systemPrompt, setSystemPrompt] = useState(config.systemPrompt || "");
+  const [aiProviderId, setAiProviderId] = useState(config?.aiProviderId || "");
+  const [aiModelId, setAiModelId] = useState(config?.aiModelId || "");
+  const [systemPrompt, setSystemPrompt] = useState(config?.systemPrompt || "");
   const [userPromptTemplate, setUserPromptTemplate] = useState(
-    config.userPromptTemplate || ""
+    config?.userPromptTemplate || ""
   );
-  const [temperature, setTemperature] = useState(config.temperature.toString());
-  const [maxTokens, setMaxTokens] = useState(config.maxTokens.toString());
+  const [temperature, setTemperature] = useState((config?.temperature ?? 0.7).toString());
+  const [maxTokens, setMaxTokens] = useState((config?.maxTokens ?? 2000).toString());
   const [localError, setLocalError] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [testVariables, setTestVariables] = useState<Record<string, string>>(
@@ -279,12 +279,13 @@ export function PromptConfigEditor({
 
   // Sync state when config prop changes (e.g., when switching between prompt types)
   useEffect(() => {
+    if (!config) return;
     setAiProviderId(config.aiProviderId || "");
     setAiModelId(config.aiModelId || "");
     setSystemPrompt(config.systemPrompt || "");
     setUserPromptTemplate(config.userPromptTemplate || "");
-    setTemperature(config.temperature.toString());
-    setMaxTokens(config.maxTokens.toString());
+    setTemperature((config.temperature ?? 0.7).toString());
+    setMaxTokens((config.maxTokens ?? 2000).toString());
     setTestVariables(DEFAULT_TEST_VARIABLES[promptType] || {});
   }, [config, promptType]);
 
@@ -336,6 +337,17 @@ export function PromptConfigEditor({
   };
 
   const displayError = error || localError;
+
+  // Handle undefined config (happens when loading or no config exists)
+  if (!config) {
+    return (
+      <Box className={className} sx={{ p: 3 }}>
+        <Alert severity="info">
+          Loading prompt configuration...
+        </Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box className={className}>

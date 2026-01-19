@@ -232,9 +232,11 @@ export function StatusOptionForm({
         orderIndex: orderNum,
       };
 
-      if (isSystemLevel) {
-        input.mode = mode;
-      } else {
+      // Always include mode
+      input.mode = mode;
+      
+      // Include isActive for org level
+      if (!isSystemLevel) {
         input.isActive = isActive;
       }
 
@@ -289,23 +291,21 @@ export function StatusOptionForm({
         </Grid>
       </Grid>
 
-      {isSystemLevel && (
-        <FormControl fullWidth>
-          <InputLabel>Applies To</InputLabel>
-          <Select
-            value={mode}
-            onChange={(e) => setMode(e.target.value as StatusOptionMode)}
-            disabled={isSaving}
-            label="Applies To"
-          >
-            {MODE_OPTIONS.map((opt) => (
-              <MenuItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      )}
+      <FormControl fullWidth>
+        <InputLabel>Applies To</InputLabel>
+        <Select
+          value={mode}
+          onChange={(e) => setMode(e.target.value as StatusOptionMode)}
+          disabled={isSaving}
+          label="Applies To"
+        >
+          {MODE_OPTIONS.map((opt) => (
+            <MenuItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
 
       {!isSystemLevel && (
         <FormControlLabel
@@ -482,10 +482,8 @@ export function StatusOptionManager({
   const handleCreate = async (input: StatusOptionInput) => {
     try {
       setIsSaving(true);
-      // Set mode based on selected tab for system-level options
-      if (isSystemLevel) {
-        input.mode = selectedTab;
-      }
+      // Set mode based on selected tab
+      input.mode = selectedTab;
       await onCreate(input);
       setIsCreating(false);
     } finally {
@@ -553,31 +551,29 @@ export function StatusOptionManager({
           </Box>
         </Box>
 
-        {/* Tabs */}
-        {isSystemLevel && (
-          <Tabs
-            value={selectedTab}
-            onChange={(_, newValue) => setSelectedTab(newValue)}
-            sx={{ borderBottom: 1, borderColor: "divider" }}
-          >
-            <Tab
-              value="boolean"
-              label={
-                <Badge badgeContent={booleanOptions.length} color="primary">
-                  <Box sx={{ pr: 2 }}>Boolean Mode</Box>
-                </Badge>
-              }
-            />
-            <Tab
-              value="detailed"
-              label={
-                <Badge badgeContent={detailedOptions.length} color="primary">
-                  <Box sx={{ pr: 2 }}>Detailed Mode</Box>
-                </Badge>
-              }
-            />
-          </Tabs>
-        )}
+        {/* Tabs - Show for both system and org level */}
+        <Tabs
+          value={selectedTab}
+          onChange={(_, newValue) => setSelectedTab(newValue)}
+          sx={{ borderBottom: 1, borderColor: "divider" }}
+        >
+          <Tab
+            value="boolean"
+            label={
+              <Badge badgeContent={booleanOptions.length} color="primary">
+                <Box sx={{ pr: 2 }}>Boolean Mode</Box>
+              </Badge>
+            }
+          />
+          <Tab
+            value="detailed"
+            label={
+              <Badge badgeContent={detailedOptions.length} color="primary">
+                <Box sx={{ pr: 2 }}>Detailed Mode</Box>
+              </Badge>
+            }
+          />
+        </Tabs>
       </Box>
 
       {/* Error */}

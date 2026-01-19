@@ -496,8 +496,8 @@ export async function deleteOrgStatusOption(
  * GET /admin/org/eval/prompts
  */
 export async function listOrgPrompts(
-  orgId: string,
-  token: string
+  token: string,
+  orgId: string
 ): Promise<EvalMergedPromptConfig[]> {
   const url = buildUrl("/admin/org/eval/prompts", { orgId });
   return apiRequest<EvalMergedPromptConfig[]>(url, token);
@@ -508,9 +508,9 @@ export async function listOrgPrompts(
  * PATCH /admin/org/eval/prompts/{type}
  */
 export async function updateOrgPrompt(
-  promptType: PromptType,
-  orgId: string,
   token: string,
+  orgId: string,
+  promptType: PromptType,
   input: PromptConfigInput
 ): Promise<EvalMergedPromptConfig> {
   const url = buildUrl(`/admin/org/eval/prompts/${promptType}`, { orgId });
@@ -546,8 +546,8 @@ export async function testOrgPrompt(
  * GET /admin/org/eval/doc-types
  */
 export async function listDocTypes(
-  orgId: string,
   token: string,
+  orgId: string,
   options?: ListDocTypesOptions
 ): Promise<EvalDocType[]> {
   const params: Record<string, string | boolean | undefined> = {
@@ -563,9 +563,9 @@ export async function listDocTypes(
  * GET /admin/org/eval/doc-types/{id}
  */
 export async function getDocType(
-  docTypeId: string,
+  token: string,
   orgId: string,
-  token: string
+  docTypeId: string
 ): Promise<EvalDocType> {
   const url = buildUrl(`/admin/org/eval/doc-types/${docTypeId}`, { orgId });
   return apiRequest<EvalDocType>(url, token);
@@ -576,8 +576,8 @@ export async function getDocType(
  * POST /admin/org/eval/doc-types
  */
 export async function createDocType(
-  orgId: string,
   token: string,
+  orgId: string,
   input: CreateDocTypeInput
 ): Promise<EvalDocType> {
   const url = buildUrl("/admin/org/eval/doc-types", { orgId });
@@ -592,9 +592,9 @@ export async function createDocType(
  * PATCH /admin/org/eval/doc-types/{id}
  */
 export async function updateDocType(
-  docTypeId: string,
-  orgId: string,
   token: string,
+  orgId: string,
+  docTypeId: string,
   input: UpdateDocTypeInput
 ): Promise<EvalDocType> {
   const url = buildUrl(`/admin/org/eval/doc-types/${docTypeId}`, { orgId });
@@ -609,9 +609,9 @@ export async function updateDocType(
  * DELETE /admin/org/eval/doc-types/{id}
  */
 export async function deleteDocType(
-  docTypeId: string,
+  token: string,
   orgId: string,
-  token: string
+  docTypeId: string
 ): Promise<{ message: string; id: string }> {
   const url = buildUrl(`/admin/org/eval/doc-types/${docTypeId}`, { orgId });
   return apiRequest<{ message: string; id: string }>(url, token, {
@@ -628,8 +628,8 @@ export async function deleteDocType(
  * GET /admin/org/eval/criteria-sets
  */
 export async function listCriteriaSets(
-  orgId: string,
   token: string,
+  orgId: string,
   options?: ListCriteriaSetsOptions
 ): Promise<EvalCriteriaSet[]> {
   const params: Record<string, string | boolean | undefined> = {
@@ -646,9 +646,9 @@ export async function listCriteriaSets(
  * GET /admin/org/eval/criteria-sets/{id}
  */
 export async function getCriteriaSet(
-  criteriaSetId: string,
+  token: string,
   orgId: string,
-  token: string
+  criteriaSetId: string
 ): Promise<EvalCriteriaSet> {
   const url = buildUrl(`/admin/org/eval/criteria-sets/${criteriaSetId}`, {
     orgId,
@@ -661,8 +661,8 @@ export async function getCriteriaSet(
  * POST /admin/org/eval/criteria-sets
  */
 export async function createCriteriaSet(
-  orgId: string,
   token: string,
+  orgId: string,
   input: CreateCriteriaSetInput
 ): Promise<EvalCriteriaSet> {
   const url = buildUrl("/admin/org/eval/criteria-sets", { orgId });
@@ -677,9 +677,9 @@ export async function createCriteriaSet(
  * PATCH /admin/org/eval/criteria-sets/{id}
  */
 export async function updateCriteriaSet(
-  criteriaSetId: string,
-  orgId: string,
   token: string,
+  orgId: string,
+  criteriaSetId: string,
   input: UpdateCriteriaSetInput
 ): Promise<EvalCriteriaSet> {
   const url = buildUrl(`/admin/org/eval/criteria-sets/${criteriaSetId}`, {
@@ -696,9 +696,9 @@ export async function updateCriteriaSet(
  * DELETE /admin/org/eval/criteria-sets/{id}
  */
 export async function deleteCriteriaSet(
-  criteriaSetId: string,
+  token: string,
   orgId: string,
-  token: string
+  criteriaSetId: string
 ): Promise<{ message: string; id: string }> {
   const url = buildUrl(`/admin/org/eval/criteria-sets/${criteriaSetId}`, {
     orgId,
@@ -713,8 +713,8 @@ export async function deleteCriteriaSet(
  * POST /admin/org/eval/criteria-sets/import
  */
 export async function importCriteriaSet(
-  orgId: string,
   token: string,
+  orgId: string,
   input: ImportCriteriaSetInput
 ): Promise<ImportCriteriaSetResult> {
   const url = buildUrl("/admin/org/eval/criteria-sets/import", { orgId });
@@ -733,9 +733,9 @@ export async function importCriteriaSet(
  * GET /admin/org/eval/criteria-sets/{id}/items
  */
 export async function listCriteriaItems(
-  criteriaSetId: string,
-  orgId: string,
   token: string,
+  orgId: string,
+  criteriaSetId: string,
   options?: ListCriteriaItemsOptions
 ): Promise<EvalCriteriaItem[]> {
   const params: Record<string, string | boolean | undefined> = {
@@ -755,9 +755,9 @@ export async function listCriteriaItems(
  * POST /admin/org/eval/criteria-sets/{id}/items
  */
 export async function addCriteriaItem(
-  criteriaSetId: string,
-  orgId: string,
   token: string,
+  orgId: string,
+  criteriaSetId: string,
   input: CreateCriteriaItemInput
 ): Promise<EvalCriteriaItem> {
   const url = buildUrl(`/admin/org/eval/criteria-sets/${criteriaSetId}/items`, {
@@ -774,9 +774,9 @@ export async function addCriteriaItem(
  * PATCH /admin/org/eval/criteria-items/{id}
  */
 export async function updateCriteriaItem(
-  itemId: string,
-  orgId: string,
   token: string,
+  orgId: string,
+  itemId: string,
   input: UpdateCriteriaItemInput
 ): Promise<EvalCriteriaItem> {
   const url = buildUrl(`/admin/org/eval/criteria-items/${itemId}`, { orgId });
@@ -791,9 +791,9 @@ export async function updateCriteriaItem(
  * DELETE /admin/org/eval/criteria-items/{id}
  */
 export async function deleteCriteriaItem(
-  itemId: string,
+  token: string,
   orgId: string,
-  token: string
+  itemId: string
 ): Promise<{ message: string; id: string }> {
   const url = buildUrl(`/admin/org/eval/criteria-items/${itemId}`, { orgId });
   return apiRequest<{ message: string; id: string }>(url, token, {

@@ -162,7 +162,7 @@ export function OrgEvalCriteriaPage({
   loadingComponent,
   selectedDocTypeId,
 }: OrgEvalCriteriaPageProps) {
-  // Get auth token
+  // Get auth token (same pattern as working SysEvalConfigPage)
   const { authAdapter } = useUser();
   const [token, setToken] = useState<string | null>(null);
 
@@ -179,7 +179,7 @@ export function OrgEvalCriteriaPage({
     }
     fetchToken();
     return () => { mounted = false; };
-  }, [authAdapter]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // State
   const [filterDocTypeId, setFilterDocTypeId] = useState<string | undefined>(selectedDocTypeId);

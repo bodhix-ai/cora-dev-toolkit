@@ -47,7 +47,9 @@ export function useEvalCriteriaSets(
     if (token && orgId && criteriaSets.length === 0 && !criteriaSetsLoading) {
       loadCriteriaSets(token, orgId, options);
     }
-  }, [token, orgId, criteriaSets.length, criteriaSetsLoading, loadCriteriaSets, options]);
+    // Note: options and loadCriteriaSets are intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId, criteriaSets.length, criteriaSetsLoading]);
 
   const create = useCallback(
     async (input: CreateCriteriaSetInput): Promise<EvalCriteriaSet> => {
@@ -84,7 +86,9 @@ export function useEvalCriteriaSets(
   const refresh = useCallback(async () => {
     if (!token || !orgId) return;
     await loadCriteriaSets(token, orgId, options);
-  }, [token, orgId, loadCriteriaSets, options]);
+    // Note: options and loadCriteriaSets are intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId]);
 
   // Get criteria sets by doc type
   const getByDocType = useCallback(
@@ -127,7 +131,9 @@ export function useEvalCriteriaSetsByDocType(
     if (token && orgId && docTypeId) {
       loadCriteriaSets(token, orgId, { docTypeId });
     }
-  }, [token, orgId, docTypeId, loadCriteriaSets]);
+    // Note: loadCriteriaSets is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId, docTypeId]);
 
   // Filter criteria sets by doc type using selector
   const filteredSets = useEvalStore(
@@ -191,7 +197,9 @@ export function useCriteriaSetSelect(
     if (token && orgId && docTypeId) {
       loadCriteriaSets(token, orgId, { docTypeId, includeInactive: !activeOnly });
     }
-  }, [token, orgId, docTypeId, loadCriteriaSets, activeOnly]);
+    // Note: loadCriteriaSets is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId, docTypeId, activeOnly]);
 
   // Filter to doc type and active
   const selectOptions = useMemo(() => {
@@ -241,7 +249,9 @@ export function useEvalCriteriaItems(
     if (token && orgId && criteriaSetId) {
       selectCriteriaSet(token, orgId, criteriaSetId);
     }
-  }, [token, orgId, criteriaSetId, selectCriteriaSet]);
+    // Note: selectCriteriaSet is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId, criteriaSetId]);
 
   const items = selectedCriteriaSet?.items ?? [];
 
