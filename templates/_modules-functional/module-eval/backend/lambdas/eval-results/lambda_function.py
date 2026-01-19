@@ -204,7 +204,12 @@ def handle_create_evaluation(
     """
     Create a new evaluation and trigger async processing.
     
-    Request body:
+    Request body (DRAFT MODE - only name required):
+    {
+        "name": "Evaluation Name"
+    }
+    
+    OR (FULL MODE - create and process immediately):
     {
         "name": "Evaluation Name",
         "docTypeId": "uuid",
@@ -220,19 +225,40 @@ def handle_create_evaluation(
         raise common.ValidationError('name is required')
     name = common.validate_string_length(name, 'name', max_length=200)
     
+    # Check if this is draft mode (missing config fields)
     doc_type_id = body.get('docTypeId')
-    if not doc_type_id:
-        raise common.ValidationError('docTypeId is required')
-    doc_type_id = common.validate_uuid(doc_type_id, 'docTypeId')
-    
     criteria_set_id = body.get('criteriaSetId')
-    if not criteria_set_id:
-        raise common.ValidationError('criteriaSetId is required')
-    criteria_set_id = common.validate_uuid(criteria_set_id, 'criteriaSetId')
-    
     doc_ids = body.get('docIds', [])
-    if not doc_ids:
-        raise common.ValidationError('docIds is required (at least one document)')
+    
+    is_draft = not doc_type_id or not criteria_set_id or not doc_ids
+    
+    if is_draft:
+        # DRAFT MODE: Create incomplete evaluation for later configuration
+        evaluation_data = {
+            'workspace_id': workspace_id,
+            'doc_type_id': None,
+            'criteria_set_id': None,
+            'name': name,
+            'status': 'draft',
+            'progress': 0,
+            'is_deleted': False,
+            'created_by': user_id,
+            'updated_by': user_id
+        }
+        
+        evaluation = common.insert_one('eval_doc_summaries', evaluation_data)
+        
+        # Return draft evaluation (no doc type or criteria set info)
+        result = common.format_record(evaluation)
+        result['docType'] = None
+        result['criteriaSet'] = None
+        result['docIds'] = []
+        
+        return common.created_response(result)
+    
+    # FULL MODE: Validate all required fields
+    doc_type_id = common.validate_uuid(doc_type_id, 'docTypeId')
+    criteria_set_id = common.validate_uuid(criteria_set_id, 'criteriaSetId')
     
     # Validate doc_ids are UUIDs
     validated_doc_ids = []
