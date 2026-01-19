@@ -168,7 +168,7 @@ class PortabilityValidator:
     # Directories to skip
     SKIP_DIRECTORIES = {
         "node_modules", ".git", "dist", "build", ".next", "__pycache__",
-        ".terraform", "coverage", ".cache", "vendor",
+        ".terraform", "coverage", ".cache", "vendor", "validation-results",
     }
 
     # Files to skip
