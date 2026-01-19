@@ -162,14 +162,18 @@ fi
 # --- Find Template File ---
 log_step "Searching for template file: $TEMPLATE_FILE"
 
+# Escape brackets for find command (brackets are glob patterns in shell)
+SEARCH_PATTERN="${TEMPLATE_FILE//\[/\\[}"
+SEARCH_PATTERN="${SEARCH_PATTERN//\]/\\]}"
+
 # Search for the file in templates directory
 # Use -path if input contains slash, otherwise use -name
 if [[ "$TEMPLATE_FILE" == *"/"* ]]; then
   # Path-based search (e.g., "orgs/lambda_function.py" or "module-access/invites")
-  FOUND_FILES=$(find "${TOOLKIT_ROOT}/templates" -type f -path "*${TEMPLATE_FILE}*" 2>/dev/null | head -10)
+  FOUND_FILES=$(find "${TOOLKIT_ROOT}/templates" -type f -path "*${SEARCH_PATTERN}*" 2>/dev/null | head -10)
 else
   # Filename-based search
-  FOUND_FILES=$(find "${TOOLKIT_ROOT}/templates" -name "*${TEMPLATE_FILE}*" -type f 2>/dev/null | head -10)
+  FOUND_FILES=$(find "${TOOLKIT_ROOT}/templates" -name "*${SEARCH_PATTERN}*" -type f 2>/dev/null | head -10)
 fi
 
 if [[ -z "$FOUND_FILES" ]]; then
@@ -232,7 +236,19 @@ elif [[ "$REL_PATH" =~ ^_modules-core/(module-[^/]+)/routes/(.+)$ ]]; then
 elif [[ "$REL_PATH" =~ ^_modules-functional/(module-[^/]+)/routes/(.+)$ ]]; then
   MODULE_NAME="${BASH_REMATCH[1]}"
   ROUTE_PATH="${BASH_REMATCH[2]}"
-  DEST_FILE="${PROJECT_PATH}/apps/web/app/${ROUTE_PATH}"
+  
+  # Check if project uses route groups by looking for (workspace) directory
+  if [[ -d "${PROJECT_PATH}/apps/web/app/(workspace)" ]]; then
+    # Route groups exist - map workspace routes to (workspace) group
+    if [[ "$ROUTE_PATH" == ws/* ]]; then
+      DEST_FILE="${PROJECT_PATH}/apps/web/app/(workspace)/${ROUTE_PATH}"
+    else
+      DEST_FILE="${PROJECT_PATH}/apps/web/app/${ROUTE_PATH}"
+    fi
+  else
+    # No route groups - direct mapping
+    DEST_FILE="${PROJECT_PATH}/apps/web/app/${ROUTE_PATH}"
+  fi
 
 # Core module backend Lambda - map based on repo type
 elif [[ "$REL_PATH" =~ ^_modules-core/(module-[^/]+)/backend/lambdas/(.+)$ ]]; then
