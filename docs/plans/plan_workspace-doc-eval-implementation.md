@@ -43,26 +43,28 @@ This document outlines the **AGREED-UPON INCREMENTAL APPROACH** for adding docum
 
 ---
 
-### Phase B: Doc Eval Tab (Minimal Hooks)
+### Phase B: Doc Eval Tab (Minimal Hooks) ✅ COMPLETE
 
 **Goal:** Add Doc Eval tab with **only** `useEvaluations` hook. **NO create button yet.**
 
 **Changes to `WorkspaceDetailPage.tsx`:**
-1. Add "Doc Eval" as second tab (after Overview)
-2. Import `useEvaluations` from module-eval
-3. Display evaluation cards:
+1. ✅ Add "Doc Eval" as second tab (after Overview)
+2. ✅ Import `useEvaluations` and `useEvaluationStats` from module-eval
+3. ✅ Display evaluation cards:
    - Status badges (pending/processing/completed/failed)
    - Progress bars for processing evaluations
    - Compliance scores for completed evaluations
    - Click card → Navigate to detail page
-4. Stats chips (from `useEvaluationStats`)
-5. Empty state message (no create button)
+4. ✅ Stats chips (from `useEvaluationStats`)
+5. ✅ Empty state message (no create button)
 
 **Test:** Verify:
 - Workspace page still loads
 - Tab navigation works
 - Evaluations list displays (or empty state)
 - **No infinite loops**
+
+**Status:** ✅ Code complete, synced to test project, ready for user testing
 
 **Duration:** ~30 minutes
 
@@ -389,8 +391,8 @@ const evaluations = useEvalStore((s) => s.evaluations); // Only this field
 
 ---
 
-**Document Status:** ✅ Phase A Complete, Ready for Phase B  
+**Document Status:** ✅ Phase B Complete, Ready for User Testing  
 **Last Updated:** January 19, 2026  
-**Current Phase:** Phase A Complete - Ready for Phase B  
+**Current Phase:** Phase B Complete - User Testing Required  
 **Branch:** admin-eval-config-s2  
-**Session Progress:** Phase A tested and confirmed working
+**Session Progress:** Phase A & D committed, Phase B code complete and synced

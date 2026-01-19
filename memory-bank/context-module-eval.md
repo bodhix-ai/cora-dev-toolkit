@@ -35,13 +35,14 @@
 - [x] Created route: `routes/ws/[id]/eval/[evalId]/page.tsx`
 - [x] Wraps EvalDetailPage from module-eval with proper params
 
-**Phase B: Doc Eval Tab (Minimal Hooks)** ⏳ NEXT SESSION
-- [ ] Add "Doc Eval" as second tab (after Overview)
-- [ ] Import `useEvaluations` hook from module-eval
-- [ ] Display evaluation cards (status badges, progress, scores)
-- [ ] Display stats chips (from `useEvaluationStats`)
-- [ ] Empty state message (no create button yet)
-- [ ] Sync to test project and user testing
+**Phase B: Doc Eval Tab (Minimal Hooks)** ✅ COMPLETE (Current Session)
+- [x] Add "Doc Eval" as second tab (after Overview)
+- [x] Import `useEvaluations` and `useEvaluationStats` hooks from module-eval
+- [x] Display evaluation cards (status badges, progress, scores)
+- [x] Display stats chips (from `useEvaluationStats`)
+- [x] Empty state message (no create button yet)
+- [x] Sync to test project
+- [ ] User testing (READY)
 
 **Phase C: Full Integration** ⏳ PENDING
 - [ ] Import remaining hooks (useEvalDocTypes, useEvalCriteriaSets)
@@ -57,10 +58,13 @@
 - [ ] Verify detail page displays correctly
 
 ### Next Session Actions
-1. Implement Phase B: Doc Eval tab with minimal hooks
-2. Sync changes to test-eval project
-3. User testing of Phase B
-4. If successful, proceed to Phase C
+1. ✅ Phase B implemented and synced to test project
+2. **USER TESTING REQUIRED:** Test Phase B in dev server
+   - Start dev server: `cd ~/code/bodhix/testing/test-eval/ai-sec-stack && ./scripts/start-dev.sh`
+   - Navigate to a workspace
+   - Check Doc Eval tab displays correctly
+   - Verify no infinite loops in console
+3. If Phase B testing passes, proceed to Phase C
 
 ---
 

@@ -48,7 +48,13 @@ import {
   createKbModuleClient,
   type AvailableKb,
 } from "@{{PROJECT_NAME}}/module-kb";
+import {
+  useEvaluations,
+  useEvaluationStats,
+  type Evaluation,
+} from "@{{PROJECT_NAME}}/module-eval";
 import { createAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
+import { useRouter } from "next/navigation";
 
 
 // ============================================================================
@@ -115,6 +121,7 @@ export function WorkspaceDetailPage({
 
   // Get session for API client creation
   const { data: session } = useSession();
+  const router = useRouter();
 
   // Create API client if not provided
   const apiClient = useMemo(() => {
@@ -174,6 +181,17 @@ export function WorkspaceDetailPage({
     apiClient: kbApiClient ? { kb: kbApiClient } : undefined,
     autoFetch: !!kbApiClient,
   });
+
+  // Evaluation hooks - minimal for Phase B
+  const { 
+    evaluations, 
+    isLoading: evalLoading, 
+    error: evalError 
+  } = useEvaluations(
+    session?.accessToken as string | null,
+    workspaceId
+  );
+  const evalStats = useEvaluationStats();
 
   // Group available KBs for WorkspaceDataKBTab
   const groupedAvailableKbs = useMemo(() => {
@@ -364,9 +382,10 @@ export function WorkspaceDetailPage({
       <Paper sx={{ mb: 3 }}>
         <Tabs value={activeTab} onChange={handleTabChange} aria-label="workspace tabs">
           <Tab label="Overview" {...a11yProps(0)} />
-          <Tab label="Data" {...a11yProps(1)} />
-          <Tab label="Members" {...a11yProps(2)} />
-          <Tab label="Settings" {...a11yProps(3)} />
+          <Tab label="Doc Eval" {...a11yProps(1)} />
+          <Tab label="Data" {...a11yProps(2)} />
+          <Tab label="Members" {...a11yProps(3)} />
+          <Tab label="Settings" {...a11yProps(4)} />
         </Tabs>
 
         {/* Tab 0: Overview */}
@@ -434,8 +453,155 @@ export function WorkspaceDetailPage({
           </Box>
         </TabPanel>
 
-        {/* Tab 1: Data */}
+        {/* Tab 1: Doc Eval */}
         <TabPanel value={activeTab} index={1}>
+          <Box>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+              <Typography variant="h5">Document Evaluations</Typography>
+            </Box>
+
+            {/* Stats Chips */}
+            <Box sx={{ display: "flex", gap: 1, mb: 3, flexWrap: "wrap" }}>
+              <Chip 
+                label={`Total: ${evalStats.total}`} 
+                color="default"
+              />
+              <Chip 
+                label={`Processing: ${evalStats.processing}`} 
+                color="info"
+              />
+              <Chip 
+                label={`Completed: ${evalStats.completed}`} 
+                color="success"
+              />
+              <Chip 
+                label={`Failed: ${evalStats.failed}`} 
+                color="error"
+              />
+            </Box>
+
+            {/* Loading State */}
+            {evalLoading && (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+                <CircularProgress />
+              </Box>
+            )}
+
+            {/* Error State */}
+            {evalError && (
+              <Alert severity="error" sx={{ mb: 3 }}>
+                {evalError}
+              </Alert>
+            )}
+
+            {/* Evaluations List */}
+            {!evalLoading && !evalError && evaluations.length > 0 && (
+              <Grid container spacing={2}>
+                {evaluations.map((evaluation) => (
+                  <Grid item xs={12} md={6} key={evaluation.id}>
+                    <Paper 
+                      sx={{ 
+                        p: 2, 
+                        cursor: "pointer",
+                        "&:hover": { boxShadow: 3 }
+                      }}
+                      onClick={() => router.push(`/ws/${workspaceId}/eval/${evaluation.id}`)}
+                    >
+                      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+                        <Typography variant="subtitle1" fontWeight="medium">
+                          {evaluation.docType?.name || "Unknown Doc Type"}
+                        </Typography>
+                        <Chip
+                          label={evaluation.status}
+                          size="small"
+                          color={
+                            evaluation.status === "completed"
+                              ? "success"
+                              : evaluation.status === "processing"
+                              ? "info"
+                              : evaluation.status === "failed"
+                              ? "error"
+                              : "default"
+                          }
+                        />
+                      </Box>
+
+                      {/* Progress Bar for Processing */}
+                      {evaluation.status === "processing" && evaluation.progress !== undefined && (
+                        <Box sx={{ mb: 1 }}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                            <Box sx={{ flex: 1 }}>
+                              <Box 
+                                sx={{ 
+                                  height: 8, 
+                                  borderRadius: 1,
+                                  bgcolor: "grey.200",
+                                  overflow: "hidden"
+                                }}
+                              >
+                                <Box 
+                                  sx={{ 
+                                    height: "100%",
+                                    width: `${evaluation.progress}%`,
+                                    bgcolor: "info.main",
+                                    transition: "width 0.3s ease"
+                                  }}
+                                />
+                              </Box>
+                            </Box>
+                            <Typography variant="caption" color="text.secondary">
+                              {evaluation.progress}%
+                            </Typography>
+                          </Box>
+                        </Box>
+                      )}
+
+                      {/* Compliance Score for Completed */}
+                      {evaluation.status === "completed" && evaluation.complianceScore !== undefined && (
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Compliance Score:
+                          </Typography>
+                          <Chip
+                            label={`${evaluation.complianceScore}%`}
+                            size="small"
+                            color={
+                              evaluation.complianceScore >= 90
+                                ? "success"
+                                : evaluation.complianceScore >= 70
+                                ? "warning"
+                                : "error"
+                            }
+                          />
+                        </Box>
+                      )}
+
+                      {/* Document Count */}
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                        {evaluation.documentCount || 0} document(s)
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+
+            {/* Empty State */}
+            {!evalLoading && !evalError && evaluations.length === 0 && (
+              <Paper variant="outlined" sx={{ p: 4, textAlign: "center" }}>
+                <Typography variant="h6" gutterBottom>
+                  No evaluations yet
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Document evaluations will appear here once created.
+                </Typography>
+              </Paper>
+            )}
+          </Box>
+        </TabPanel>
+
+        {/* Tab 2: Data */}
+        <TabPanel value={activeTab} index={2}>
           {/* Knowledge Base Section - Integrated with module-kb */}
           <WorkspaceDataKBTab
             workspaceId={workspaceId}
@@ -458,8 +624,8 @@ export function WorkspaceDetailPage({
           />
         </TabPanel>
 
-        {/* Tab 2: Members */}
-        <TabPanel value={activeTab} index={2}>
+        {/* Tab 3: Members */}
+        <TabPanel value={activeTab} index={3}>
           <MemberList
             members={members || []}
             currentUserRole={userRole}
@@ -473,8 +639,8 @@ export function WorkspaceDetailPage({
           />
         </TabPanel>
 
-        {/* Tab 3: Settings */}
-        <TabPanel value={activeTab} index={3}>
+        {/* Tab 4: Settings */}
+        <TabPanel value={activeTab} index={4}>
           <Box>
             <Typography variant="h6" gutterBottom>
               Workspace Settings
