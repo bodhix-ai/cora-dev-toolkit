@@ -9,76 +9,76 @@ output "voice_lambda_functions" {
   } : {}
 }
 
-output "voice_api_routes" {
+output "api_routes" {
   description = "API routes for voice module (for APIGW integration)"
   value = var.module_voice_enabled ? [
     # Sessions routes
     {
       method      = "GET"
       path        = "/api/voice/sessions"
-      lambda_name = "voice-sessions"
-      description = "List voice sessions"
+      integration = aws_lambda_function.voice_sessions[0].invoke_arn
+      public      = false
     },
     {
       method      = "GET"
       path        = "/api/voice/sessions/{id}"
-      lambda_name = "voice-sessions"
-      description = "Get voice session by ID"
+      integration = aws_lambda_function.voice_sessions[0].invoke_arn
+      public      = false
     },
     {
       method      = "POST"
       path        = "/api/voice/sessions"
-      lambda_name = "voice-sessions"
-      description = "Create voice session"
+      integration = aws_lambda_function.voice_sessions[0].invoke_arn
+      public      = false
     },
     {
       method      = "PUT"
       path        = "/api/voice/sessions/{id}"
-      lambda_name = "voice-sessions"
-      description = "Update voice session"
+      integration = aws_lambda_function.voice_sessions[0].invoke_arn
+      public      = false
     },
     {
       method      = "DELETE"
       path        = "/api/voice/sessions/{id}"
-      lambda_name = "voice-sessions"
-      description = "Delete voice session"
+      integration = aws_lambda_function.voice_sessions[0].invoke_arn
+      public      = false
     },
     {
       method      = "POST"
       path        = "/api/voice/sessions/{id}/start"
-      lambda_name = "voice-sessions"
-      description = "Start bot for voice session"
+      integration = aws_lambda_function.voice_sessions[0].invoke_arn
+      public      = false
     },
     # Configs routes
     {
       method      = "GET"
       path        = "/api/voice/configs"
-      lambda_name = "voice-configs"
-      description = "List voice configs"
+      integration = aws_lambda_function.voice_configs[0].invoke_arn
+      public      = false
     },
     {
       method      = "GET"
       path        = "/api/voice/configs/{id}"
-      lambda_name = "voice-configs"
-      description = "Get voice config by ID"
+      integration = aws_lambda_function.voice_configs[0].invoke_arn
+      public      = false
     },
     {
       method      = "POST"
       path        = "/api/voice/configs"
-      lambda_name = "voice-configs"
-      description = "Create voice config"
+      integration = aws_lambda_function.voice_configs[0].invoke_arn
+      public      = false
     },
     {
       method      = "PUT"
       path        = "/api/voice/configs/{id}"
-      lambda_name = "voice-configs"
-      description = "Update voice config"
+      integration = aws_lambda_function.voice_configs[0].invoke_arn
+      public      = false
     },
     {
       method      = "DELETE"
       path        = "/api/voice/configs/{id}"
-      lambda_name = "voice-configs"
-      description = "Delete voice config"
+      integration = aws_lambda_function.voice_configs[0].invoke_arn
+      public      = false
     }
   ] : []
 }

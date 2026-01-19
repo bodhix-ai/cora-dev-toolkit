@@ -8,6 +8,21 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Chip,
+  Button,
+  Collapse,
+  IconButton,
+  Grid,
+} from "@mui/material";
+import {
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+} from "@mui/icons-material";
 import type {
   CriteriaResultWithItem,
   StatusOption,
@@ -31,8 +46,8 @@ export interface EvalQAListProps {
   onEdit?: (result: CriteriaResultWithItem) => void;
   /** Callback when viewing citations */
   onViewCitations?: (citations: Citation[]) => void;
-  /** Custom class name */
-  className?: string;
+  /** Custom sx prop */
+  sx?: object;
 }
 
 export interface EvalQACardProps {
@@ -48,8 +63,8 @@ export interface EvalQACardProps {
   onEdit?: () => void;
   /** Callback when viewing citations */
   onViewCitations?: (citations: Citation[]) => void;
-  /** Custom class name */
-  className?: string;
+  /** Custom sx prop */
+  sx?: object;
 }
 
 // =============================================================================
@@ -68,29 +83,26 @@ function getStatusOption(
 }
 
 /**
- * Get status badge color
+ * Get status chip color from hex
  */
-function getStatusColor(status?: StatusOption): { bg: string; text: string } {
-  if (!status?.color) {
-    return { bg: "bg-gray-100", text: "text-gray-700" };
-  }
+function getStatusColor(status?: StatusOption): "success" | "error" | "warning" | "info" | "default" {
+  if (!status?.color) return "default";
 
-  // Convert hex to tailwind-like classes (simplified)
   const color = status.color.toLowerCase();
   if (color.includes("green") || color === "#22c55e" || color === "#10b981") {
-    return { bg: "bg-green-100", text: "text-green-700" };
+    return "success";
   }
   if (color.includes("red") || color === "#ef4444" || color === "#dc2626") {
-    return { bg: "bg-red-100", text: "text-red-700" };
+    return "error";
   }
   if (color.includes("yellow") || color === "#eab308" || color === "#f59e0b") {
-    return { bg: "bg-yellow-100", text: "text-yellow-700" };
+    return "warning";
   }
   if (color.includes("blue") || color === "#3b82f6" || color === "#2563eb") {
-    return { bg: "bg-blue-100", text: "text-blue-700" };
+    return "info";
   }
 
-  return { bg: "bg-gray-100", text: "text-gray-700" };
+  return "default";
 }
 
 // =============================================================================
@@ -104,7 +116,7 @@ export function EvalQACard({
   editable = false,
   onEdit,
   onViewCitations,
-  className = "",
+  sx = {},
 }: EvalQACardProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -113,145 +125,171 @@ export function EvalQACard({
   const effectiveStatusId = result.currentEdit?.editedStatusId ?? result.aiResult?.statusId;
   const effectiveStatus =
     result.effectiveStatus ?? getStatusOption(effectiveStatusId, statusOptions);
-  const statusColors = getStatusColor(effectiveStatus);
+  const statusColor = getStatusColor(effectiveStatus);
 
   // Citations
   const citations = result.aiResult?.citations ?? [];
   const hasCitations = citations.length > 0;
 
   return (
-    <div
-      className={`
-        rounded-lg border bg-white p-4 transition-shadow hover:shadow-sm
-        ${className}
-      `}
+    <Card
+      sx={{
+        transition: "box-shadow 0.2s",
+        "&:hover": {
+          boxShadow: 2,
+        },
+        ...sx,
+      }}
     >
-      {/* Header */}
-      <div className="mb-3 flex items-start justify-between">
-        <div className="flex items-start gap-3">
-          {/* Index badge */}
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-medium text-gray-600">
-            {index + 1}
-          </span>
+      <CardContent>
+        {/* Header */}
+        <Box sx={{ mb: 1.5, display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
+            {/* Index badge */}
+            <Chip
+              label={index + 1}
+              size="small"
+              sx={{
+                height: 28,
+                minWidth: 28,
+                bgcolor: "grey.100",
+                color: "text.secondary",
+                fontWeight: 500,
+              }}
+            />
 
-          {/* Criteria Info */}
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-gray-900">
-                {result.criteriaItem.criteriaId}
-              </span>
-              {result.criteriaItem.category && (
-                <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                  {result.criteriaItem.category}
-                </span>
+            {/* Criteria Info */}
+            <Box>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography variant="body2" fontWeight={500}>
+                  {result.criteriaItem.criteriaId}
+                </Typography>
+                {result.criteriaItem.category && (
+                  <Chip
+                    label={result.criteriaItem.category}
+                    size="small"
+                    sx={{ height: 20, fontSize: "0.75rem" }}
+                  />
+                )}
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                {result.criteriaItem.requirement}
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* Status Badge */}
+          {effectiveStatus && (
+            <Chip
+              label={
+                <>
+                  {effectiveStatus.name}
+                  {result.hasEdit && (
+                    <Box component="span" sx={{ ml: 0.5, fontSize: "0.625rem" }} title="Edited">
+                      ✎
+                    </Box>
+                  )}
+                </>
+              }
+              color={statusColor}
+              size="small"
+              sx={{ flexShrink: 0 }}
+            />
+          )}
+        </Box>
+
+        {/* Result */}
+        {effectiveResult && (
+          <Box sx={{ mb: 1.5, bgcolor: "grey.50", borderRadius: 1, p: 1.5 }}>
+            <Box sx={{ mb: 0.5, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                {result.hasEdit ? "Edited Response" : "AI Response"}
+              </Typography>
+              {result.aiResult?.confidence !== undefined && !result.hasEdit && (
+                <Typography variant="caption" color="text.secondary">
+                  Confidence: {result.aiResult.confidence}%
+                </Typography>
               )}
-            </div>
-            <p className="mt-1 text-sm text-gray-700">
-              {result.criteriaItem.requirement}
-            </p>
-          </div>
-        </div>
-
-        {/* Status Badge */}
-        {effectiveStatus && (
-          <div
-            className={`
-              shrink-0 rounded-full px-3 py-1 text-xs font-medium
-              ${statusColors.bg} ${statusColors.text}
-            `}
-          >
-            {effectiveStatus.name}
-            {result.hasEdit && (
-              <span className="ml-1 text-[10px]" title="Edited">
-                ✎
-              </span>
+            </Box>
+            <Typography
+              variant="body2"
+              color="text.primary"
+              sx={{
+                ...((!expanded && effectiveResult.length > 300) && {
+                  display: "-webkit-box",
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                }),
+              }}
+            >
+              {effectiveResult}
+            </Typography>
+            {effectiveResult.length > 300 && (
+              <Button
+                onClick={() => setExpanded(!expanded)}
+                size="small"
+                sx={{ mt: 0.5, fontSize: "0.75rem" }}
+              >
+                {expanded ? "Show less" : "Show more"}
+              </Button>
             )}
-          </div>
+          </Box>
         )}
-      </div>
 
-      {/* Result */}
-      {effectiveResult && (
-        <div className="mb-3 rounded bg-gray-50 p-3">
-          <div className="mb-1 flex items-center justify-between">
-            <span className="text-xs font-medium text-gray-500">
-              {result.hasEdit ? "Edited Response" : "AI Response"}
-            </span>
-            {result.aiResult?.confidence !== undefined && !result.hasEdit && (
-              <span className="text-xs text-gray-500">
-                Confidence: {result.aiResult.confidence}%
-              </span>
-            )}
-          </div>
-          <p
-            className={`
-              text-sm text-gray-700
-              ${!expanded && effectiveResult.length > 300 ? "line-clamp-3" : ""}
-            `}
-          >
-            {effectiveResult}
-          </p>
-          {effectiveResult.length > 300 && (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="mt-1 text-xs text-blue-600 hover:text-blue-800"
-            >
-              {expanded ? "Show less" : "Show more"}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Footer */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          {/* Citations */}
-          {hasCitations && (
-            <button
-              onClick={() => onViewCitations?.(citations)}
-              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
-            >
-              <span>📎</span>
-              <span>
+        {/* Footer */}
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            {/* Citations */}
+            {hasCitations && (
+              <Button
+                onClick={() => onViewCitations?.(citations)}
+                size="small"
+                startIcon={<span>📎</span>}
+                sx={{ fontSize: "0.75rem" }}
+              >
                 {citations.length} citation{citations.length !== 1 ? "s" : ""}
-              </span>
-            </button>
-          )}
-
-          {/* Weight */}
-          {result.criteriaItem.weight !== 1 && (
-            <span className="text-xs text-gray-500">
-              Weight: {result.criteriaItem.weight}
-            </span>
-          )}
-        </div>
-
-        {/* Edit Button */}
-        {editable && onEdit && (
-          <button
-            onClick={onEdit}
-            className="rounded px-2 py-1 text-xs text-blue-600 hover:bg-blue-50"
-          >
-            {result.hasEdit ? "Edit Again" : "Edit"}
-          </button>
-        )}
-      </div>
-
-      {/* Edit History Indicator */}
-      {result.hasEdit && result.currentEdit && (
-        <div className="mt-3 border-t pt-3">
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>
-              Edited by {result.currentEdit.editorName || "Unknown"} on{" "}
-              {new Date(result.currentEdit.createdAt).toLocaleDateString()}
-            </span>
-            {result.currentEdit.editNotes && (
-              <span className="italic">Note: {result.currentEdit.editNotes}</span>
+              </Button>
             )}
-          </div>
-        </div>
-      )}
-    </div>
+
+            {/* Weight */}
+            {result.criteriaItem.weight !== 1 && (
+              <Typography variant="caption" color="text.secondary">
+                Weight: {result.criteriaItem.weight}
+              </Typography>
+            )}
+          </Box>
+
+          {/* Edit Button */}
+          {editable && onEdit && (
+            <Button
+              onClick={onEdit}
+              size="small"
+              sx={{ fontSize: "0.75rem" }}
+            >
+              {result.hasEdit ? "Edit Again" : "Edit"}
+            </Button>
+          )}
+        </Box>
+
+        {/* Edit History Indicator */}
+        {result.hasEdit && result.currentEdit && (
+          <Box sx={{ mt: 1.5, borderTop: 1, borderColor: "divider", pt: 1.5 }}>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Typography variant="caption" color="text.secondary">
+                Edited by {result.currentEdit.editorName || "Unknown"} on{" "}
+                {new Date(result.currentEdit.createdAt).toLocaleDateString()}
+              </Typography>
+              {result.currentEdit.editNotes && (
+                <Typography variant="caption" color="text.secondary" fontStyle="italic">
+                  Note: {result.currentEdit.editNotes}
+                </Typography>
+              )}
+            </Box>
+          </Box>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -266,7 +304,7 @@ export function EvalQAList({
   editable = false,
   onEdit,
   onViewCitations,
-  className = "",
+  sx = {},
 }: EvalQAListProps) {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set()
@@ -305,16 +343,18 @@ export function EvalQAList({
 
   if (results.length === 0) {
     return (
-      <div className={`text-center text-gray-500 py-8 ${className}`}>
-        No criteria results available
-      </div>
+      <Box sx={{ textAlign: "center", py: 4, ...sx }}>
+        <Typography variant="body2" color="text.secondary">
+          No criteria results available
+        </Typography>
+      </Box>
     );
   }
 
   // Flat list (no grouping)
   if (!groupByCategory) {
     return (
-      <div className={`space-y-4 ${className}`}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, ...sx }}>
         {results.map((result, index) => (
           <EvalQACard
             key={result.criteriaItem.id}
@@ -326,7 +366,7 @@ export function EvalQAList({
             onViewCitations={onViewCitations}
           />
         ))}
-      </div>
+      </Box>
     );
   }
 
@@ -334,7 +374,7 @@ export function EvalQAList({
   const categories = Object.keys(groupedResults).sort();
 
   return (
-    <div className={`space-y-6 ${className}`}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3, ...sx }}>
       {categories.map((category) => {
         const categoryResults = groupedResults[category];
         const isExpanded = expandedCategories.has(category) || expandedCategories.size === 0;
@@ -345,27 +385,46 @@ export function EvalQAList({
         ).length;
 
         return (
-          <div key={category} className="rounded-lg border">
+          <Card key={category}>
             {/* Category Header */}
-            <button
+            <Box
+              component="button"
               onClick={() => toggleCategory(category)}
-              className="flex w-full items-center justify-between bg-gray-50 p-4 text-left hover:bg-gray-100"
+              sx={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                bgcolor: "grey.50",
+                p: 2,
+                border: "none",
+                cursor: "pointer",
+                textAlign: "left",
+                transition: "background-color 0.2s",
+                "&:hover": {
+                  bgcolor: "grey.100",
+                },
+              }}
             >
-              <div className="flex items-center gap-3">
-                <span className="text-lg">{isExpanded ? "▼" : "▶"}</span>
-                <h3 className="font-medium text-gray-900">{category}</h3>
-                <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
-                  {categoryResults.length} item{categoryResults.length !== 1 ? "s" : ""}
-                </span>
-              </div>
-              <div className="text-xs text-gray-500">
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                <Typography variant="subtitle1" fontWeight={500}>
+                  {category}
+                </Typography>
+                <Chip
+                  label={`${categoryResults.length} item${categoryResults.length !== 1 ? "s" : ""}`}
+                  size="small"
+                  sx={{ height: 20, fontSize: "0.75rem" }}
+                />
+              </Box>
+              <Typography variant="caption" color="text.secondary">
                 {completedCount}/{categoryResults.length} evaluated
-              </div>
-            </button>
+              </Typography>
+            </Box>
 
             {/* Category Results */}
-            {isExpanded && (
-              <div className="space-y-4 p-4">
+            <Collapse in={isExpanded}>
+              <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
                 {categoryResults.map((result, index) => (
                   <EvalQACard
                     key={result.criteriaItem.id}
@@ -377,12 +436,12 @@ export function EvalQAList({
                     onViewCitations={onViewCitations}
                   />
                 ))}
-              </div>
-            )}
-          </div>
+              </Box>
+            </Collapse>
+          </Card>
         );
       })}
-    </div>
+    </Box>
   );
 }
 
@@ -395,8 +454,8 @@ export interface EvalQAStatsProps {
   results: CriteriaResultWithItem[];
   /** Status options */
   statusOptions?: StatusOption[];
-  /** Custom class name */
-  className?: string;
+  /** Custom sx prop */
+  sx?: object;
 }
 
 /**
@@ -405,7 +464,7 @@ export interface EvalQAStatsProps {
 export function EvalQAStats({
   results,
   statusOptions,
-  className = "",
+  sx = {},
 }: EvalQAStatsProps) {
   const stats = useMemo(() => {
     const total = results.length;
@@ -434,50 +493,78 @@ export function EvalQAStats({
   }, [results]);
 
   return (
-    <div className={`grid grid-cols-2 gap-4 md:grid-cols-4 ${className}`}>
-      <div className="rounded-lg bg-gray-50 p-3">
-        <div className="text-2xl font-semibold text-gray-900">{stats.total}</div>
-        <div className="text-xs text-gray-500">Total Criteria</div>
-      </div>
+    <Box sx={sx}>
+      <Grid container spacing={2}>
+        <Grid item xs={6} md={3}>
+          <Box sx={{ bgcolor: "grey.50", borderRadius: 2, p: 1.5 }}>
+            <Typography variant="h4" fontWeight={600}>
+              {stats.total}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Total Criteria
+            </Typography>
+          </Box>
+        </Grid>
 
-      <div className="rounded-lg bg-gray-50 p-3">
-        <div className="text-2xl font-semibold text-gray-900">{stats.withResults}</div>
-        <div className="text-xs text-gray-500">Evaluated</div>
-      </div>
+        <Grid item xs={6} md={3}>
+          <Box sx={{ bgcolor: "grey.50", borderRadius: 2, p: 1.5 }}>
+            <Typography variant="h4" fontWeight={600}>
+              {stats.withResults}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Evaluated
+            </Typography>
+          </Box>
+        </Grid>
 
-      <div className="rounded-lg bg-gray-50 p-3">
-        <div className="text-2xl font-semibold text-gray-900">{stats.edited}</div>
-        <div className="text-xs text-gray-500">Manually Edited</div>
-      </div>
+        <Grid item xs={6} md={3}>
+          <Box sx={{ bgcolor: "grey.50", borderRadius: 2, p: 1.5 }}>
+            <Typography variant="h4" fontWeight={600}>
+              {stats.edited}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Manually Edited
+            </Typography>
+          </Box>
+        </Grid>
 
-      <div className="rounded-lg bg-gray-50 p-3">
-        <div className="text-2xl font-semibold text-gray-900">
-          {stats.avgConfidence !== null ? `${stats.avgConfidence.toFixed(0)}%` : "—"}
-        </div>
-        <div className="text-xs text-gray-500">Avg Confidence</div>
-      </div>
+        <Grid item xs={6} md={3}>
+          <Box sx={{ bgcolor: "grey.50", borderRadius: 2, p: 1.5 }}>
+            <Typography variant="h4" fontWeight={600}>
+              {stats.avgConfidence !== null ? `${stats.avgConfidence.toFixed(0)}%` : "—"}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Avg Confidence
+            </Typography>
+          </Box>
+        </Grid>
 
-      {/* Status breakdown */}
-      {statusOptions && stats.byStatus.size > 0 && (
-        <div className="col-span-full mt-2">
-          <div className="text-xs font-medium text-gray-700 mb-2">By Status:</div>
-          <div className="flex flex-wrap gap-2">
-            {Array.from(stats.byStatus.entries()).map(([statusId, count]) => {
-              const status = statusOptions.find((s) => s.id === statusId);
-              const colors = getStatusColor(status);
-              return (
-                <span
-                  key={statusId}
-                  className={`rounded-full px-2 py-1 text-xs font-medium ${colors.bg} ${colors.text}`}
-                >
-                  {status?.name || "Unknown"}: {count}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
+        {/* Status breakdown */}
+        {statusOptions && stats.byStatus.size > 0 && (
+          <Grid item xs={12}>
+            <Box sx={{ mt: 1 }}>
+              <Typography variant="caption" fontWeight={500} color="text.primary" sx={{ mb: 1, display: "block" }}>
+                By Status:
+              </Typography>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                {Array.from(stats.byStatus.entries()).map(([statusId, count]) => {
+                  const status = statusOptions.find((s) => s.id === statusId);
+                  const color = getStatusColor(status);
+                  return (
+                    <Chip
+                      key={statusId}
+                      label={`${status?.name || "Unknown"}: ${count}`}
+                      color={color}
+                      size="small"
+                    />
+                  );
+                })}
+              </Box>
+            </Box>
+          </Grid>
+        )}
+      </Grid>
+    </Box>
   );
 }
 

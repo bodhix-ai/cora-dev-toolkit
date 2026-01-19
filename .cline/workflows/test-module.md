@@ -71,8 +71,10 @@ The create-cora-project.sh script runs validation automatically. Capture and ana
 ```bash
 PROJECT_PATH="~/code/bodhix/testing/test-ws-${WS_NUMBER}"
 cd ${PROJECT_PATH}/ai-sec-stack
-pnpm install --frozen-lockfile 2>&1
+pnpm install 2>&1
 ```
+
+**Note:** Fresh projects don't have a lockfile yet, so we use `pnpm install` (not `--frozen-lockfile`).
 
 ### Step 2.2: TypeScript Type Check
 

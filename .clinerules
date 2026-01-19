@@ -388,6 +388,10 @@ After fixing template, automatically sync to user's test project:
 
 # Backend Lambda fix  
 ./scripts/sync-fix-to-project.sh ~/code/bodhix/testing/test-ws-23/ai-sec-infra "<lambda>/lambda_function.py" --dry-run
+
+# Infrastructure fix (Terraform .tf files)
+./scripts/sync-infra-to-project.sh ~/code/bodhix/testing/test-ws-23/ai-sec-stack module-eval/infrastructure/main.tf --dry-run
+# If dry-run looks good, run without --dry-run
 ```
 
 ### Step 3: Deploy if Backend Change
@@ -407,7 +411,8 @@ Tell the user:
 
 | Script | When to Use |
 |--------|-------------|
-| `./scripts/sync-fix-to-project.sh <stack-path> <file>` | After any template fix |
+| `./scripts/sync-fix-to-project.sh <stack-path> <file>` | Frontend/backend files (lambdas, components, hooks) |
+| `./scripts/sync-infra-to-project.sh <stack-path> <file>` | **Infrastructure files (Terraform .tf files)** |
 | `./scripts/deploy-lambda.sh <module>/<lambda>` | After backend Lambda fix |
 
 ### Path Patterns for sync-fix-to-project.sh
@@ -415,6 +420,13 @@ Tell the user:
 - **Filename only**: `InviteMemberDialog.tsx` (works if unique)
 - **With parent dir**: `"orgs/lambda_function.py"` (for Lambdas)
 - **Module path**: `"module-access/invites"` (narrows search)
+
+### Path Patterns for sync-infra-to-project.sh
+
+- **Module infrastructure**: `module-eval/infrastructure/main.tf`
+- **Specific file**: `module-voice/infrastructure/outputs.tf`
+- **By filename**: `module-kb/main.tf` (searches infrastructure directories)
+- **Dry run first**: Add `--dry-run` to preview changes
 
 ### User's Test Project Paths
 

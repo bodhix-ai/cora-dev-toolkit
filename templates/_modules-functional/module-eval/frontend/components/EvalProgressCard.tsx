@@ -8,6 +8,16 @@
 "use client";
 
 import React from "react";
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  LinearProgress,
+  Chip,
+  Alert,
+  Grid,
+} from "@mui/material";
 import type { Evaluation, EvaluationStatus } from "../types";
 
 // =============================================================================
@@ -21,8 +31,8 @@ export interface EvalProgressCardProps {
   showDetails?: boolean;
   /** Callback when card is clicked */
   onClick?: (evaluation: Evaluation) => void;
-  /** Custom class name */
-  className?: string;
+  /** Custom sx prop */
+  sx?: object;
 }
 
 // =============================================================================
@@ -31,30 +41,26 @@ export interface EvalProgressCardProps {
 
 const statusConfig: Record<
   EvaluationStatus,
-  { label: string; color: string; bgColor: string; icon: string }
+  { label: string; color: "warning" | "info" | "success" | "error"; icon: string }
 > = {
   pending: {
     label: "Pending",
-    color: "text-yellow-700",
-    bgColor: "bg-yellow-100",
+    color: "warning",
     icon: "⏳",
   },
   processing: {
     label: "Processing",
-    color: "text-blue-700",
-    bgColor: "bg-blue-100",
+    color: "info",
     icon: "⚙️",
   },
   completed: {
     label: "Completed",
-    color: "text-green-700",
-    bgColor: "bg-green-100",
+    color: "success",
     icon: "✓",
   },
   failed: {
     label: "Failed",
-    color: "text-red-700",
-    bgColor: "bg-red-100",
+    color: "error",
     icon: "✗",
   },
 };
@@ -100,6 +106,15 @@ function getEstimatedRemaining(progress: number, startedAt?: string): string {
   return formatDuration(remaining);
 }
 
+/**
+ * Get score color
+ */
+function getScoreColor(score: number): string {
+  if (score >= 80) return "success.main";
+  if (score >= 60) return "warning.main";
+  return "error.main";
+}
+
 // =============================================================================
 // COMPONENT
 // =============================================================================
@@ -108,19 +123,24 @@ export function EvalProgressCard({
   evaluation,
   showDetails = true,
   onClick,
-  className = "",
+  sx = {},
 }: EvalProgressCardProps) {
   const status = statusConfig[evaluation.status];
   const isActive = evaluation.status === "pending" || evaluation.status === "processing";
   const isClickable = !!onClick;
 
   return (
-    <div
-      className={`
-        rounded-lg border p-4 transition-shadow
-        ${isClickable ? "cursor-pointer hover:shadow-md" : ""}
-        ${className}
-      `}
+    <Card
+      sx={{
+        cursor: isClickable ? "pointer" : "default",
+        transition: "box-shadow 0.2s",
+        "&:hover": isClickable
+          ? {
+              boxShadow: 4,
+            }
+          : {},
+        ...sx,
+      }}
       onClick={() => onClick?.(evaluation)}
       role={isClickable ? "button" : undefined}
       tabIndex={isClickable ? 0 : undefined}
@@ -131,106 +151,126 @@ export function EvalProgressCard({
         }
       }}
     >
-      {/* Header */}
-      <div className="mb-3 flex items-start justify-between">
-        <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-gray-900 truncate">{evaluation.name}</h3>
-          <p className="text-sm text-gray-500 truncate">
-            {evaluation.docTypeName || "Unknown Document Type"}
-          </p>
-        </div>
-        <div
-          className={`
-            ml-3 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium
-            ${status.bgColor} ${status.color}
-          `}
-        >
-          <span>{status.icon}</span>
-          <span>{status.label}</span>
-        </div>
-      </div>
+      <CardContent>
+        {/* Header */}
+        <Box sx={{ mb: 1.5, display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="subtitle1" fontWeight={500} noWrap>
+              {evaluation.name}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" noWrap>
+              {evaluation.docTypeName || "Unknown Document Type"}
+            </Typography>
+          </Box>
+          <Chip
+            icon={<span>{status.icon}</span>}
+            label={status.label}
+            color={status.color}
+            size="small"
+            sx={{ ml: 1.5 }}
+          />
+        </Box>
 
-      {/* Progress Bar */}
-      {isActive && (
-        <div className="mb-3">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
-            <div
-              className={`
-                h-full transition-all duration-300 ease-out
-                ${evaluation.status === "processing" ? "bg-blue-500" : "bg-yellow-500"}
-              `}
-              style={{ width: `${evaluation.progress}%` }}
+        {/* Progress Bar */}
+        {isActive && (
+          <Box sx={{ mb: 1.5 }}>
+            <LinearProgress
+              variant="determinate"
+              value={evaluation.progress}
+              color={evaluation.status === "processing" ? "primary" : "warning"}
+              sx={{ height: 8, borderRadius: 1 }}
             />
-          </div>
-          <div className="mt-1 flex justify-between text-xs text-gray-500">
-            <span>{evaluation.progress}% complete</span>
-            {evaluation.status === "processing" && (
-              <span>
-                Est. remaining: {getEstimatedRemaining(evaluation.progress, evaluation.startedAt)}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
+            <Box sx={{ mt: 0.5, display: "flex", justifyContent: "space-between" }}>
+              <Typography variant="caption" color="text.secondary">
+                {evaluation.progress}% complete
+              </Typography>
+              {evaluation.status === "processing" && (
+                <Typography variant="caption" color="text.secondary">
+                  Est. remaining: {getEstimatedRemaining(evaluation.progress, evaluation.startedAt)}
+                </Typography>
+              )}
+            </Box>
+          </Box>
+        )}
 
-      {/* Completed Score */}
-      {evaluation.status === "completed" && evaluation.complianceScore !== undefined && (
-        <div className="mb-3 flex items-center gap-2">
-          <span className="text-sm text-gray-600">Compliance Score:</span>
-          <span
-            className={`
-              font-semibold
-              ${evaluation.complianceScore >= 80 ? "text-green-600" : ""}
-              ${evaluation.complianceScore >= 60 && evaluation.complianceScore < 80 ? "text-yellow-600" : ""}
-              ${evaluation.complianceScore < 60 ? "text-red-600" : ""}
-            `}
-          >
-            {evaluation.complianceScore.toFixed(1)}%
-          </span>
-        </div>
-      )}
+        {/* Completed Score */}
+        {evaluation.status === "completed" && evaluation.complianceScore !== undefined && (
+          <Box sx={{ mb: 1.5, display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              Compliance Score:
+            </Typography>
+            <Typography
+              variant="body2"
+              fontWeight={600}
+              sx={{ color: getScoreColor(evaluation.complianceScore) }}
+            >
+              {evaluation.complianceScore.toFixed(1)}%
+            </Typography>
+          </Box>
+        )}
 
-      {/* Error Message */}
-      {evaluation.status === "failed" && evaluation.errorMessage && (
-        <div className="mb-3 rounded bg-red-50 p-2 text-sm text-red-700">
-          {evaluation.errorMessage}
-        </div>
-      )}
+        {/* Error Message */}
+        {evaluation.status === "failed" && evaluation.errorMessage && (
+          <Alert severity="error" sx={{ mb: 1.5 }}>
+            {evaluation.errorMessage}
+          </Alert>
+        )}
 
-      {/* Details */}
-      {showDetails && (
-        <div className="border-t pt-3 mt-3">
-          <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
-            <div>
-              <span className="font-medium">Documents:</span>{" "}
-              {evaluation.documentCount ?? evaluation.documents?.length ?? 0}
-            </div>
-            <div>
-              <span className="font-medium">Criteria Set:</span>{" "}
-              {evaluation.criteriaSetName || "N/A"}
-            </div>
-            {isActive && evaluation.startedAt && (
-              <>
-                <div>
-                  <span className="font-medium">Elapsed:</span>{" "}
-                  {getElapsedTime(evaluation.startedAt)}
-                </div>
-                <div>
-                  <span className="font-medium">Started:</span>{" "}
-                  {new Date(evaluation.startedAt).toLocaleTimeString()}
-                </div>
-              </>
-            )}
-            {evaluation.status === "completed" && evaluation.completedAt && (
-              <div className="col-span-2">
-                <span className="font-medium">Completed:</span>{" "}
-                {new Date(evaluation.completedAt).toLocaleString()}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+        {/* Details */}
+        {showDetails && (
+          <Box sx={{ borderTop: 1, borderColor: "divider", pt: 1.5, mt: 1.5 }}>
+            <Grid container spacing={1}>
+              <Grid item xs={6}>
+                <Typography variant="caption" color="text.secondary">
+                  <Box component="span" fontWeight={500}>
+                    Documents:
+                  </Box>{" "}
+                  {evaluation.documentCount ?? evaluation.documents?.length ?? 0}
+                </Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="caption" color="text.secondary">
+                  <Box component="span" fontWeight={500}>
+                    Criteria Set:
+                  </Box>{" "}
+                  {evaluation.criteriaSetName || "N/A"}
+                </Typography>
+              </Grid>
+              {isActive && evaluation.startedAt && (
+                <>
+                  <Grid item xs={6}>
+                    <Typography variant="caption" color="text.secondary">
+                      <Box component="span" fontWeight={500}>
+                        Elapsed:
+                      </Box>{" "}
+                      {getElapsedTime(evaluation.startedAt)}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="caption" color="text.secondary">
+                      <Box component="span" fontWeight={500}>
+                        Started:
+                      </Box>{" "}
+                      {new Date(evaluation.startedAt).toLocaleTimeString()}
+                    </Typography>
+                  </Grid>
+                </>
+              )}
+              {evaluation.status === "completed" && evaluation.completedAt && (
+                <Grid item xs={12}>
+                  <Typography variant="caption" color="text.secondary">
+                    <Box component="span" fontWeight={500}>
+                      Completed:
+                    </Box>{" "}
+                    {new Date(evaluation.completedAt).toLocaleString()}
+                  </Typography>
+                </Grid>
+              )}
+            </Grid>
+          </Box>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -243,8 +283,8 @@ export interface EvalProgressCardCompactProps {
   evaluation: Evaluation;
   /** Callback when card is clicked */
   onClick?: (evaluation: Evaluation) => void;
-  /** Custom class name */
-  className?: string;
+  /** Custom sx prop */
+  sx?: object;
 }
 
 /**
@@ -253,19 +293,31 @@ export interface EvalProgressCardCompactProps {
 export function EvalProgressCardCompact({
   evaluation,
   onClick,
-  className = "",
+  sx = {},
 }: EvalProgressCardCompactProps) {
   const status = statusConfig[evaluation.status];
   const isActive = evaluation.status === "pending" || evaluation.status === "processing";
   const isClickable = !!onClick;
 
   return (
-    <div
-      className={`
-        flex items-center gap-3 rounded border p-2 transition-colors
-        ${isClickable ? "cursor-pointer hover:bg-gray-50" : ""}
-        ${className}
-      `}
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 1.5,
+        border: 1,
+        borderColor: "divider",
+        borderRadius: 1,
+        p: 1,
+        cursor: isClickable ? "pointer" : "default",
+        transition: "background-color 0.2s",
+        "&:hover": isClickable
+          ? {
+              bgcolor: "action.hover",
+            }
+          : {},
+        ...sx,
+      }}
       onClick={() => onClick?.(evaluation)}
       role={isClickable ? "button" : undefined}
       tabIndex={isClickable ? 0 : undefined}
@@ -277,38 +329,45 @@ export function EvalProgressCardCompact({
       }}
     >
       {/* Status Icon */}
-      <div
-        className={`
-          flex h-8 w-8 items-center justify-center rounded-full text-sm
-          ${status.bgColor} ${status.color}
-        `}
-      >
-        {status.icon}
-      </div>
+      <Chip
+        icon={<span>{status.icon}</span>}
+        label=""
+        color={status.color}
+        size="small"
+        sx={{
+          height: 32,
+          width: 32,
+          "& .MuiChip-label": { display: "none" },
+        }}
+      />
 
       {/* Name and Progress */}
-      <div className="flex-1 min-w-0">
-        <div className="font-medium text-gray-900 truncate">{evaluation.name}</div>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography variant="body2" fontWeight={500} noWrap>
+          {evaluation.name}
+        </Typography>
         {isActive && (
-          <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-gray-200">
-            <div
-              className="h-full bg-blue-500 transition-all duration-300"
-              style={{ width: `${evaluation.progress}%` }}
-            />
-          </div>
+          <LinearProgress
+            variant="determinate"
+            value={evaluation.progress}
+            color="primary"
+            sx={{ mt: 0.5, height: 4, borderRadius: 1 }}
+          />
         )}
         {evaluation.status === "completed" && evaluation.complianceScore !== undefined && (
-          <div className="text-xs text-gray-500">
+          <Typography variant="caption" color="text.secondary">
             Score: {evaluation.complianceScore.toFixed(1)}%
-          </div>
+          </Typography>
         )}
-      </div>
+      </Box>
 
       {/* Progress Percentage */}
       {isActive && (
-        <div className="text-sm font-medium text-gray-600">{evaluation.progress}%</div>
+        <Typography variant="body2" fontWeight={500} color="text.secondary">
+          {evaluation.progress}%
+        </Typography>
       )}
-    </div>
+    </Box>
   );
 }
 
@@ -325,8 +384,8 @@ export interface EvalProgressListProps {
   onEvaluationClick?: (evaluation: Evaluation) => void;
   /** Empty state message */
   emptyMessage?: string;
-  /** Custom class name */
-  className?: string;
+  /** Custom sx prop */
+  sx?: object;
 }
 
 /**
@@ -337,18 +396,20 @@ export function EvalProgressList({
   compact = false,
   onEvaluationClick,
   emptyMessage = "No evaluations",
-  className = "",
+  sx = {},
 }: EvalProgressListProps) {
   if (evaluations.length === 0) {
     return (
-      <div className={`text-center text-gray-500 py-8 ${className}`}>
-        {emptyMessage}
-      </div>
+      <Box sx={{ textAlign: "center", py: 4, ...sx }}>
+        <Typography variant="body2" color="text.secondary">
+          {emptyMessage}
+        </Typography>
+      </Box>
     );
   }
 
   return (
-    <div className={`space-y-3 ${className}`}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, ...sx }}>
       {evaluations.map((evaluation) =>
         compact ? (
           <EvalProgressCardCompact
@@ -364,7 +425,7 @@ export function EvalProgressList({
           />
         )
       )}
-    </div>
+    </Box>
   );
 }
 

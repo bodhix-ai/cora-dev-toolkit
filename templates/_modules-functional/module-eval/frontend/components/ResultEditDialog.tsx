@@ -8,6 +8,24 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Typography,
+  Box,
+  Alert,
+  IconButton,
+  Paper,
+} from "@mui/material";
+import { Close as CloseIcon } from "@mui/icons-material";
 import type {
   CriteriaResultWithItem,
   StatusOption,
@@ -89,185 +107,154 @@ export function ResultEditDialog({
     }
   };
 
-  // Handle close with escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen && !isSaving) {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, isSaving, onClose]);
-
-  if (!isOpen || !result) return null;
+  if (!result) return null;
 
   const hasChanges =
     editedResult !== (result.currentEdit?.editedResult ?? result.aiResult?.result ?? "") ||
     editedStatusId !== (result.currentEdit?.editedStatusId ?? result.aiResult?.statusId);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !isSaving) onClose();
+    <Dialog
+      open={isOpen}
+      onClose={(_event, reason) => {
+        if (reason === "backdropClick" && isSaving) return;
+        onClose();
       }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="edit-dialog-title"
+      maxWidth="md"
+      fullWidth
+      className={className}
     >
-      <div
-        className={`
-          max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg bg-white shadow-xl
-          ${className}
-        `}
-      >
-        {/* Header */}
-        <div className="border-b px-6 py-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 id="edit-dialog-title" className="text-lg font-semibold text-gray-900">
-                Edit Result
-              </h2>
-              <p className="mt-1 text-sm text-gray-600">
-                {result.criteriaItem.criteriaId} - {result.criteriaItem.requirement}
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              disabled={isSaving}
-              className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
-              aria-label="Close dialog"
-            >
-              <span className="text-2xl">×</span>
-            </button>
-          </div>
-        </div>
+      {/* Header */}
+      <DialogTitle>
+        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <Box>
+            <Typography variant="h6" component="div">
+              Edit Result
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              {result.criteriaItem.criteriaId} - {result.criteriaItem.requirement}
+            </Typography>
+          </Box>
+          <IconButton
+            onClick={onClose}
+            disabled={isSaving}
+            size="small"
+            aria-label="Close dialog"
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      </DialogTitle>
 
-        {/* Body */}
-        <div className="px-6 py-4 space-y-4">
+      {/* Body */}
+      <DialogContent dividers>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {/* Original AI Result (read-only) */}
           {result.aiResult?.result && (
-            <div className="rounded-lg bg-gray-50 p-4">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500">
+            <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+                <Typography variant="caption" color="text.secondary" fontWeight="medium">
                   Original AI Response
-                </span>
+                </Typography>
                 {result.aiResult.confidence !== undefined && (
-                  <span className="text-xs text-gray-500">
+                  <Typography variant="caption" color="text.secondary">
                     Confidence: {result.aiResult.confidence}%
-                  </span>
+                  </Typography>
                 )}
-              </div>
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">
+              </Box>
+              <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
                 {result.aiResult.result}
-              </p>
-            </div>
+              </Typography>
+            </Paper>
           )}
 
           {/* Edited Result */}
-          <div>
-            <label
-              htmlFor="edited-result"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Edited Response
-            </label>
-            <textarea
-              id="edited-result"
-              value={editedResult}
-              onChange={(e) => setEditedResult(e.target.value)}
-              disabled={isSaving}
-              rows={6}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-              placeholder="Enter your edited response..."
-            />
-          </div>
+          <TextField
+            id="edited-result"
+            label="Edited Response"
+            value={editedResult}
+            onChange={(e) => setEditedResult(e.target.value)}
+            disabled={isSaving}
+            multiline
+            rows={6}
+            fullWidth
+            placeholder="Enter your edited response..."
+          />
 
           {/* Status Selection */}
-          <div>
-            <label
-              htmlFor="edited-status"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Status
-            </label>
-            <select
+          <FormControl fullWidth>
+            <InputLabel id="edited-status-label">Status</InputLabel>
+            <Select
+              labelId="edited-status-label"
               id="edited-status"
               value={editedStatusId || ""}
+              label="Status"
               onChange={(e) => setEditedStatusId(e.target.value || undefined)}
               disabled={isSaving}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
             >
-              <option value="">Select status...</option>
+              <MenuItem value="">
+                <em>Select status...</em>
+              </MenuItem>
               {statusOptions.map((option) => (
-                <option key={option.id} value={option.id}>
+                <MenuItem key={option.id} value={option.id}>
                   {option.name}
-                </option>
+                </MenuItem>
               ))}
-            </select>
-          </div>
+            </Select>
+          </FormControl>
 
           {/* Edit Notes */}
-          <div>
-            <label
-              htmlFor="edit-notes"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Edit Notes <span className="font-normal text-gray-500">(optional)</span>
-            </label>
-            <textarea
-              id="edit-notes"
-              value={editNotes}
-              onChange={(e) => setEditNotes(e.target.value)}
-              disabled={isSaving}
-              rows={2}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-              placeholder="Why are you making this edit?"
-            />
-          </div>
+          <TextField
+            id="edit-notes"
+            label="Edit Notes (optional)"
+            value={editNotes}
+            onChange={(e) => setEditNotes(e.target.value)}
+            disabled={isSaving}
+            multiline
+            rows={2}
+            fullWidth
+            placeholder="Why are you making this edit?"
+          />
 
           {/* Error Message */}
           {error && (
-            <div className="rounded bg-red-50 p-3 text-sm text-red-700">
+            <Alert severity="error">
               {error}
-            </div>
+            </Alert>
           )}
 
           {/* Previous Edit Info */}
           {result.hasEdit && result.currentEdit && (
-            <div className="rounded bg-yellow-50 p-3 text-sm text-yellow-800">
-              <span className="font-medium">Previous edit:</span> by{" "}
-              {result.currentEdit.editorName || "Unknown"} on{" "}
-              {new Date(result.currentEdit.createdAt).toLocaleDateString()}
+            <Alert severity="warning">
+              <Typography variant="body2">
+                <strong>Previous edit:</strong> by{" "}
+                {result.currentEdit.editorName || "Unknown"} on{" "}
+                {new Date(result.currentEdit.createdAt).toLocaleDateString()}
+              </Typography>
               {result.currentEdit.editNotes && (
-                <span className="block mt-1 italic">
+                <Typography variant="body2" fontStyle="italic" sx={{ mt: 0.5 }}>
                   Note: {result.currentEdit.editNotes}
-                </span>
+                </Typography>
               )}
-            </div>
+            </Alert>
           )}
-        </div>
+        </Box>
+      </DialogContent>
 
-        {/* Footer */}
-        <div className="border-t px-6 py-4 flex items-center justify-end gap-3">
-          <button
-            onClick={onClose}
-            disabled={isSaving}
-            className="rounded px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving || !hasChanges}
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {isSaving ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
-      </div>
-    </div>
+      {/* Footer */}
+      <DialogActions>
+        <Button onClick={onClose} disabled={isSaving}>
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSave}
+          disabled={isSaving || !hasChanges}
+          variant="contained"
+        >
+          {isSaving ? "Saving..." : "Save Changes"}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 
@@ -310,55 +297,34 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen && !isLoading) {
-        onCancel();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, isLoading, onCancel]);
-
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !isLoading) onCancel();
+    <Dialog
+      open={isOpen}
+      onClose={(_event, reason) => {
+        if (reason === "backdropClick" && isLoading) return;
+        onCancel();
       }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-dialog-title"
+      maxWidth="sm"
+      fullWidth
     >
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-        <h2 id="confirm-dialog-title" className="text-lg font-semibold text-gray-900">
-          {title}
-        </h2>
-        <p className="mt-2 text-sm text-gray-600">{message}</p>
-
-        <div className="mt-6 flex items-center justify-end gap-3">
-          <button
-            onClick={onCancel}
-            disabled={isLoading}
-            className="rounded px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
-          >
-            {cancelText}
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={isLoading}
-            className={`
-              rounded px-4 py-2 text-sm font-medium text-white disabled:opacity-50
-              ${destructive ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"}
-            `}
-          >
-            {isLoading ? "Loading..." : confirmText}
-          </button>
-        </div>
-      </div>
-    </div>
+      <DialogTitle>{title}</DialogTitle>
+      <DialogContent>
+        <Typography>{message}</Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onCancel} disabled={isLoading}>
+          {cancelText}
+        </Button>
+        <Button
+          onClick={onConfirm}
+          disabled={isLoading}
+          variant="contained"
+          color={destructive ? "error" : "primary"}
+        >
+          {isLoading ? "Loading..." : confirmText}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 

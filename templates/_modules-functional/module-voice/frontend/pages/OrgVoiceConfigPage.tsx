@@ -16,6 +16,29 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Typography,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  Skeleton,
+  Chip,
+  Alert,
+  Divider,
+} from "@mui/material";
+import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Warning as WarningIcon,
+  Mic as MicIcon,
+  Close as CloseIcon,
+} from "@mui/icons-material";
 import { useVoiceConfigs } from "../hooks";
 import { ConfigForm } from "../components";
 import type { VoiceConfig, VoiceConfigInput } from "../types";
@@ -39,22 +62,23 @@ export interface OrgVoiceConfigPageProps {
 
 function PageHeader({ onCreateNew }: { onCreateNew: () => void }) {
   return (
-    <div className="flex items-center justify-between mb-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 4 }}>
+      <Box>
+        <Typography variant="h4" component="h1" fontWeight="bold">
           Voice Interview Settings
-        </h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           Manage interview configurations and view analytics for your organization.
-        </p>
-      </div>
-      <button
+        </Typography>
+      </Box>
+      <Button
         onClick={onCreateNew}
-        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+        variant="contained"
+        startIcon={<AddIcon />}
       >
         New Configuration
-      </button>
-    </div>
+      </Button>
+    </Box>
   );
 }
 
@@ -71,22 +95,32 @@ interface SectionProps {
 
 function Section({ title, description, children, action }: SectionProps) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+    <Card variant="outlined">
+      <Box
+        sx={{
+          px: 3,
+          py: 2,
+          borderBottom: 1,
+          borderColor: "divider",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Box>
+          <Typography variant="h6" component="h2" fontWeight="semibold">
             {title}
-          </h2>
+          </Typography>
           {description && (
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
               {description}
-            </p>
+            </Typography>
           )}
-        </div>
+        </Box>
         {action}
-      </div>
-      <div className="p-6">{children}</div>
-    </div>
+      </Box>
+      <CardContent>{children}</CardContent>
+    </Card>
   );
 }
 
@@ -96,11 +130,11 @@ function Section({ title, description, children, action }: SectionProps) {
 
 function LoadingState() {
   return (
-    <div className="space-y-6">
-      <div className="h-20 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
-      <div className="h-48 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
-      <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
-    </div>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <Skeleton variant="rectangular" height={80} sx={{ borderRadius: 1 }} />
+      <Skeleton variant="rectangular" height={192} sx={{ borderRadius: 1 }} />
+      <Skeleton variant="rectangular" height={256} sx={{ borderRadius: 1 }} />
+    </Box>
   );
 }
 
@@ -115,30 +149,45 @@ interface ErrorStateProps {
 
 function ErrorState({ error, onRetry }: ErrorStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4">
-      <div className="w-16 h-16 mb-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-        <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-          />
-        </svg>
-      </div>
-      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-        Failed to load configuration
-      </h3>
-      <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6 max-w-md">
-        {error.message}
-      </p>
-      <button
-        onClick={onRetry}
-        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        py: 8,
+        px: 2,
+      }}
+    >
+      <Box
+        sx={{
+          width: 64,
+          height: 64,
+          mb: 2,
+          borderRadius: "50%",
+          bgcolor: "error.lighter",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
+        <WarningIcon sx={{ fontSize: 32, color: "error.main" }} />
+      </Box>
+      <Typography variant="h6" sx={{ mb: 1 }}>
+        Failed to load configuration
+      </Typography>
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        textAlign="center"
+        sx={{ mb: 3, maxWidth: 400 }}
+      >
+        {error.message}
+      </Typography>
+      <Button onClick={onRetry} variant="contained">
         Try Again
-      </button>
-    </div>
+      </Button>
+    </Box>
   );
 }
 
@@ -155,86 +204,84 @@ interface ConfigListProps {
 function ConfigList({ configs, onEdit, onDelete }: ConfigListProps) {
   if (configs.length === 0) {
     return (
-      <div className="text-center py-12">
-        <svg
-          className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-          />
-        </svg>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+      <Box sx={{ textAlign: "center", py: 6 }}>
+        <MicIcon sx={{ fontSize: 48, color: "text.disabled", mb: 2 }} />
+        <Typography variant="body2" color="text.secondary">
           No interview configurations yet. Create one to get started.
-        </p>
-      </div>
+        </Typography>
+      </Box>
     );
   }
 
   return (
-    <div className="divide-y divide-gray-200 dark:divide-gray-700">
-      {configs.map((config) => (
-        <div
-          key={config.id}
-          className="flex items-center justify-between py-4 first:pt-0 last:pb-0"
-        >
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                {config.name}
-              </h3>
-              <span
-                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                  config.isActive
-                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                    : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
-                }`}
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
+      {configs.map((config, index) => (
+        <Box key={config.id}>
+          {index > 0 && <Divider />}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              py: 2,
+            }}
+          >
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <Typography
+                  variant="body2"
+                  fontWeight="medium"
+                  sx={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {config.name}
+                </Typography>
+                <Chip
+                  label={config.isActive ? "Active" : "Inactive"}
+                  color={config.isActive ? "success" : "default"}
+                  size="small"
+                  sx={{ fontSize: "0.7rem", height: 20 }}
+                />
+              </Box>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
+                  mt: 0.5,
+                  display: "block",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
               >
-                {config.isActive ? "Active" : "Inactive"}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 truncate">
-              Type: {config.interviewType} {config.description && `• ${config.description}`}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 ml-4">
-            <button
-              onClick={() => onEdit(config)}
-              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              title="Edit configuration"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                />
-              </svg>
-            </button>
-            <button
-              onClick={() => onDelete(config.id)}
-              className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-              title="Delete configuration"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
+                Type: {config.interviewType}
+                {config.description && ` • ${config.description}`}
+              </Typography>
+            </Box>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: 2 }}>
+              <IconButton
+                onClick={() => onEdit(config)}
+                size="small"
+                title="Edit configuration"
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                onClick={() => onDelete(config.id)}
+                size="small"
+                color="error"
+                title="Delete configuration"
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          </Box>
+        </Box>
       ))}
-    </div>
+    </Box>
   );
 }
 
@@ -250,40 +297,41 @@ interface ConfigDialogProps {
 }
 
 function ConfigDialog({ isOpen, config, onSave, onClose }: ConfigDialogProps) {
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={onClose}
-      />
-      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl m-4">
-        <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            {config ? "Edit Configuration" : "New Configuration"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div className="p-6">
-          <ConfigForm
-            initialData={config || undefined}
-            onSubmit={async (data) => {
-              await onSave(data);
-              onClose();
-            }}
-            onCancel={onClose}
-          />
-        </div>
-      </div>
-    </div>
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      scroll="paper"
+    >
+      <DialogTitle
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderBottom: 1,
+          borderColor: "divider",
+        }}
+      >
+        <Typography variant="h6" component="span">
+          {config ? "Edit Configuration" : "New Configuration"}
+        </Typography>
+        <IconButton onClick={onClose} size="small">
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3 }}>
+        <ConfigForm
+          initialData={config || undefined}
+          onSubmit={async (data) => {
+            await onSave(data);
+            onClose();
+          }}
+          onCancel={onClose}
+        />
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -350,23 +398,23 @@ export function OrgVoiceConfigPage({
   // Render loading state
   if (isLoading) {
     return (
-      <div className={`p-6 ${className}`}>
+      <Box className={className} sx={{ p: 3 }}>
         {loadingComponent || <LoadingState />}
-      </div>
+      </Box>
     );
   }
 
   // Render error state
   if (error) {
     return (
-      <div className={`p-6 ${className}`}>
+      <Box className={className} sx={{ p: 3 }}>
         <ErrorState error={error} onRetry={refresh} />
-      </div>
+      </Box>
     );
   }
 
   return (
-    <div className={`p-6 space-y-6 ${className}`}>
+    <Box className={className} sx={{ p: 3, display: "flex", flexDirection: "column", gap: 3 }}>
       {/* Page Header */}
       <PageHeader onCreateNew={handleCreateNew} />
 
@@ -383,14 +431,13 @@ export function OrgVoiceConfigPage({
       </Section>
 
       {/* Info Banner */}
-      <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          <strong className="text-gray-900 dark:text-gray-200">Note:</strong>{" "}
-          Interview configurations define the settings used by the AI interviewer,
-          including voice settings, transcription options, and interview structure.
+      <Alert severity="info" variant="outlined">
+        <Typography variant="body2">
+          <strong>Note:</strong> Interview configurations define the settings used by the AI
+          interviewer, including voice settings, transcription options, and interview structure.
           Each configuration can be used for multiple interview sessions.
-        </p>
-      </div>
+        </Typography>
+      </Alert>
 
       {/* Config Dialog */}
       <ConfigDialog
@@ -399,7 +446,7 @@ export function OrgVoiceConfigPage({
         onSave={handleSave}
         onClose={handleCloseDialog}
       />
-    </div>
+    </Box>
   );
 }
 

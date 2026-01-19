@@ -84,6 +84,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "exports" {
     id     = "expire-exports"
     status = "Enabled"
 
+    filter {
+      prefix = ""  # Apply to all objects in bucket
+    }
+
     expiration {
       days = 7  # Auto-delete exports after 7 days
     }

@@ -18,6 +18,27 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Typography,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  TextField,
+  Skeleton,
+  Chip,
+  Alert,
+} from "@mui/material";
+import {
+  Warning as WarningIcon,
+  Delete as DeleteIcon,
+  Close as CloseIcon,
+  Info as InfoIcon,
+} from "@mui/icons-material";
 import type { VoiceCredential } from "../types";
 
 // =============================================================================
@@ -68,15 +89,15 @@ const VOICE_SERVICES = [
 
 function PageHeader() {
   return (
-    <div className="mb-8">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+    <Box sx={{ mb: 4 }}>
+      <Typography variant="h4" component="h1" fontWeight="bold">
         Voice Service Configuration
-      </h1>
-      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
         Manage platform-wide voice service credentials. These credentials are used
         by all organizations unless they configure their own.
-      </p>
-    </div>
+      </Typography>
+    </Box>
   );
 }
 
@@ -92,19 +113,26 @@ interface SectionProps {
 
 function Section({ title, description, children }: SectionProps) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+    <Card variant="outlined">
+      <Box
+        sx={{
+          px: 3,
+          py: 2,
+          borderBottom: 1,
+          borderColor: "divider",
+        }}
+      >
+        <Typography variant="h6" component="h2" fontWeight="semibold">
           {title}
-        </h2>
+        </Typography>
         {description && (
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             {description}
-          </p>
+          </Typography>
         )}
-      </div>
-      <div className="p-6">{children}</div>
-    </div>
+      </Box>
+      <CardContent>{children}</CardContent>
+    </Card>
   );
 }
 
@@ -114,11 +142,11 @@ function Section({ title, description, children }: SectionProps) {
 
 function LoadingState() {
   return (
-    <div className="space-y-6">
-      <div className="h-20 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
-      <div className="h-48 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
-      <div className="h-48 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
-    </div>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <Skeleton variant="rectangular" height={80} sx={{ borderRadius: 1 }} />
+      <Skeleton variant="rectangular" height={192} sx={{ borderRadius: 1 }} />
+      <Skeleton variant="rectangular" height={192} sx={{ borderRadius: 1 }} />
+    </Box>
   );
 }
 
@@ -133,30 +161,45 @@ interface ErrorStateProps {
 
 function ErrorState({ error, onRetry }: ErrorStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4">
-      <div className="w-16 h-16 mb-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-        <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-          />
-        </svg>
-      </div>
-      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-        Failed to load credentials
-      </h3>
-      <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6 max-w-md">
-        {error.message}
-      </p>
-      <button
-        onClick={onRetry}
-        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        py: 8,
+        px: 2,
+      }}
+    >
+      <Box
+        sx={{
+          width: 64,
+          height: 64,
+          mb: 2,
+          borderRadius: "50%",
+          bgcolor: "error.lighter",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
+        <WarningIcon sx={{ fontSize: 32, color: "error.main" }} />
+      </Box>
+      <Typography variant="h6" sx={{ mb: 1 }}>
+        Failed to load credentials
+      </Typography>
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        textAlign="center"
+        sx={{ mb: 3, maxWidth: 400 }}
+      >
+        {error.message}
+      </Typography>
+      <Button onClick={onRetry} variant="contained">
         Try Again
-      </button>
-    </div>
+      </Button>
+    </Box>
   );
 }
 
@@ -184,68 +227,83 @@ function CredentialCard({
   const isConfigured = !!credential?.isActive;
 
   return (
-    <div className="flex items-start gap-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-      <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center text-2xl bg-gray-100 dark:bg-gray-700 rounded-lg">
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 2,
+        p: 2,
+        border: 1,
+        borderColor: "divider",
+        borderRadius: 1,
+      }}
+    >
+      <Box
+        sx={{
+          flexShrink: 0,
+          width: 48,
+          height: 48,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "1.5rem",
+          bgcolor: "grey.100",
+          borderRadius: 1,
+        }}
+      >
         {service.icon}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+      </Box>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Typography variant="body2" fontWeight="medium">
             {service.name}
-          </h3>
-          <span
-            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-              isConfigured
-                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-            }`}
-          >
-            {isConfigured ? "Configured" : "Not Configured"}
-          </span>
-        </div>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          </Typography>
+          <Chip
+            label={isConfigured ? "Configured" : "Not Configured"}
+            color={isConfigured ? "success" : "warning"}
+            size="small"
+            sx={{ fontSize: "0.7rem", height: 20 }}
+          />
+        </Box>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           {service.description}
-        </p>
+        </Typography>
         {credential && (
-          <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
+          <Typography variant="caption" color="text.disabled" sx={{ mt: 1, display: "block" }}>
             Last updated: {new Date(credential.updatedAt).toLocaleDateString()}
-          </p>
+          </Typography>
         )}
-      </div>
-      <div className="flex items-center gap-2">
+      </Box>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         {isConfigured && (
           <>
-            <button
+            <Button
               onClick={onValidate}
               disabled={isValidating}
-              className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+              variant="outlined"
+              size="small"
             >
               {isValidating ? "Validating..." : "Validate"}
-            </button>
-            <button
+            </Button>
+            <IconButton
               onClick={onDelete}
-              className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+              size="small"
+              color="error"
               title="Remove credential"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </button>
+              <DeleteIcon fontSize="small" />
+            </IconButton>
           </>
         )}
-        <button
+        <Button
           onClick={onConfigure}
-          className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+          variant="contained"
+          size="small"
         >
           {isConfigured ? "Update" : "Configure"}
-        </button>
-      </div>
-    </div>
+        </Button>
+      </Box>
+    </Box>
   );
 }
 
@@ -286,70 +344,65 @@ function CredentialDialog({ isOpen, service, onSave, onClose }: CredentialDialog
     }
   };
 
-  if (!isOpen || !service) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl m-4">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Configure {service.name}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label
-              htmlFor="apiKey"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-            >
-              API Key
-            </label>
-            <input
-              id="apiKey"
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter API key..."
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              required
-            />
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              The API key will be stored securely in AWS Secrets Manager.
-            </p>
-          </div>
+    <Dialog
+      open={isOpen && !!service}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+    >
+      <DialogTitle
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderBottom: 1,
+          borderColor: "divider",
+        }}
+      >
+        <Typography variant="h6" component="span">
+          Configure {service?.name}
+        </Typography>
+        <IconButton onClick={onClose} size="small">
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent>
+        <Box component="form" onSubmit={handleSubmit} sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+          <TextField
+            id="apiKey"
+            label="API Key"
+            type="password"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="Enter API key..."
+            helperText="The API key will be stored securely in AWS Secrets Manager."
+            required
+            fullWidth
+            size="small"
+          />
           {error && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            </div>
+            <Alert severity="error">{error}</Alert>
           )}
-          <div className="flex justify-end gap-3 pt-2">
-            <button
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, pt: 1 }}>
+            <Button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              variant="outlined"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={isSaving || !apiKey.trim()}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
+              variant="contained"
             >
               {isSaving ? "Saving..." : "Save Credential"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+            </Button>
+          </Box>
+        </Box>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -435,23 +488,23 @@ export function SysVoiceConfigPage({
   // Render loading state
   if (isLoading) {
     return (
-      <div className={`p-6 ${className}`}>
+      <Box className={className} sx={{ p: 3 }}>
         {loadingComponent || <LoadingState />}
-      </div>
+      </Box>
     );
   }
 
   // Render error state
   if (error) {
     return (
-      <div className={`p-6 ${className}`}>
+      <Box className={className} sx={{ p: 3 }}>
         <ErrorState error={error} onRetry={loadCredentials} />
-      </div>
+      </Box>
     );
   }
 
   return (
-    <div className={`p-6 space-y-6 ${className}`}>
+    <Box className={className} sx={{ p: 3, display: "flex", flexDirection: "column", gap: 3 }}>
       {/* Page Header */}
       <PageHeader />
 
@@ -460,7 +513,7 @@ export function SysVoiceConfigPage({
         title="Service Credentials"
         description="Configure API keys for external voice services."
       >
-        <div className="space-y-4">
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {VOICE_SERVICES.map((service) => (
             <CredentialCard
               key={service.id}
@@ -472,7 +525,7 @@ export function SysVoiceConfigPage({
               isValidating={validatingService === service.id}
             />
           ))}
-        </div>
+        </Box>
       </Section>
 
       {/* ECS Configuration */}
@@ -480,35 +533,21 @@ export function SysVoiceConfigPage({
         title="Bot Runtime Configuration"
         description="Configure the ECS/Fargate settings for Pipecat bot instances."
       >
-        <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Bot runtime configuration is managed through Terraform infrastructure.
-            See the deployment documentation for details on configuring ECS clusters,
-            task definitions, and scaling policies.
-          </p>
-        </div>
+        <Alert severity="info" variant="outlined">
+          Bot runtime configuration is managed through Terraform infrastructure.
+          See the deployment documentation for details on configuring ECS clusters,
+          task definitions, and scaling policies.
+        </Alert>
       </Section>
 
       {/* Info Banner */}
-      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-        <div className="flex gap-3">
-          <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          <div>
-            <p className="text-sm text-blue-700 dark:text-blue-300">
-              <strong>Platform Credentials:</strong> These credentials serve as defaults
-              for all organizations. Individual organizations can configure their own
-              credentials through their Voice Settings page.
-            </p>
-          </div>
-        </div>
-      </div>
+      <Alert severity="info" icon={<InfoIcon />}>
+        <Typography variant="body2">
+          <strong>Platform Credentials:</strong> These credentials serve as defaults
+          for all organizations. Individual organizations can configure their own
+          credentials through their Voice Settings page.
+        </Typography>
+      </Alert>
 
       {/* Credential Dialog */}
       <CredentialDialog
@@ -517,7 +556,7 @@ export function SysVoiceConfigPage({
         onSave={handleSaveCredential}
         onClose={() => setConfigureService(null)}
       />
-    </div>
+    </Box>
   );
 }
 

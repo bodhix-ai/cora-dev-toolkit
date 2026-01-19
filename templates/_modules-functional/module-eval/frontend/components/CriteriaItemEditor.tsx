@@ -8,6 +8,35 @@
 "use client";
 
 import React, { useState } from "react";
+import {
+  Box,
+  Button,
+  TextField,
+  Paper,
+  Typography,
+  IconButton,
+  Chip,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Grid,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  ToggleButtonGroup,
+  ToggleButton,
+} from "@mui/material";
+import {
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  ArrowBack as BackIcon,
+  Refresh as RefreshIcon,
+  ExpandMore as ExpandMoreIcon,
+  ViewList as ListIcon,
+  ViewModule as GroupedIcon,
+} from "@mui/icons-material";
 import type {
   EvalCriteriaItem,
   EvalCriteriaSet,
@@ -139,123 +168,91 @@ export function CriteriaItemForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label
-            htmlFor="item-criteria-id"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Criteria ID <span className="text-red-500">*</span>
-          </label>
-          <input
+    <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <Grid container spacing={2}>
+        <Grid item xs={6}>
+          <TextField
             id="item-criteria-id"
-            type="text"
+            label="Criteria ID"
             value={criteriaId}
             onChange={(e) => setCriteriaId(e.target.value)}
             disabled={isSaving}
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+            fullWidth
+            required
             placeholder="e.g., AC-1, SI-3"
           />
-        </div>
-        <div>
-          <label
-            htmlFor="item-category"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Category
-          </label>
-          <input
+        </Grid>
+        <Grid item xs={6}>
+          <TextField
             id="item-category"
-            type="text"
+            label="Category"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             disabled={isSaving}
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+            fullWidth
             placeholder="e.g., Access Control"
           />
-        </div>
-      </div>
+        </Grid>
+      </Grid>
 
-      <div>
-        <label
-          htmlFor="item-requirement"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
-          Requirement <span className="text-red-500">*</span>
-        </label>
-        <textarea
-          id="item-requirement"
-          value={requirement}
-          onChange={(e) => setRequirement(e.target.value)}
-          disabled={isSaving}
-          rows={2}
-          className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-          placeholder="The requirement text..."
-        />
-      </div>
+      <TextField
+        id="item-requirement"
+        label="Requirement"
+        value={requirement}
+        onChange={(e) => setRequirement(e.target.value)}
+        disabled={isSaving}
+        multiline
+        rows={2}
+        fullWidth
+        required
+        placeholder="The requirement text..."
+      />
 
-      <div>
-        <label
-          htmlFor="item-description"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
-          Description
-        </label>
-        <textarea
-          id="item-description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          disabled={isSaving}
-          rows={2}
-          className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-          placeholder="Additional details about the requirement..."
-        />
-      </div>
+      <TextField
+        id="item-description"
+        label="Description"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        disabled={isSaving}
+        multiline
+        rows={2}
+        fullWidth
+        placeholder="Additional details about the requirement..."
+      />
 
       {useWeightedScoring && (
-        <div className="w-32">
-          <label
-            htmlFor="item-weight"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Weight
-          </label>
-          <input
-            id="item-weight"
-            type="number"
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-            disabled={isSaving}
-            min="0.1"
-            step="0.1"
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-          />
-        </div>
+        <TextField
+          id="item-weight"
+          label="Weight"
+          type="number"
+          value={weight}
+          onChange={(e) => setWeight(e.target.value)}
+          disabled={isSaving}
+          sx={{ width: 120 }}
+          inputProps={{ min: "0.1", step: "0.1" }}
+        />
       )}
 
       {error && (
-        <div className="rounded bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        <Alert severity="error">{error}</Alert>
       )}
 
-      <div className="flex items-center justify-end gap-3 pt-2">
-        <button
-          type="button"
+      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, pt: 1 }}>
+        <Button
           onClick={onCancel}
           disabled={isSaving}
-          className="rounded px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
           disabled={isSaving}
-          className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          variant="contained"
         >
           {isSaving ? "Saving..." : isEdit ? "Update" : "Add"}
-        </button>
-      </div>
-    </form>
+        </Button>
+      </Box>
+    </Box>
   );
 }
 
@@ -271,67 +268,72 @@ export function CriteriaItemRow({
   className = "",
 }: CriteriaItemRowProps) {
   return (
-    <div
-      className={`
-        flex items-start gap-4 rounded border p-3 bg-white hover:bg-gray-50
-        ${!item.isActive ? "opacity-60" : ""}
-        ${className}
-      `}
+    <Paper
+      variant="outlined"
+      className={className}
+      sx={{
+        p: 2,
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 2,
+        opacity: item.isActive ? 1 : 0.6,
+        "&:hover": {
+          bgcolor: "action.hover",
+        },
+      }}
     >
       {/* Criteria ID */}
-      <div className="w-20 flex-shrink-0">
-        <span className="font-mono text-sm font-medium text-blue-600">
+      <Box sx={{ width: 80, flexShrink: 0 }}>
+        <Typography variant="body2" fontFamily="monospace" fontWeight="medium" color="primary">
           {item.criteriaId}
-        </span>
-      </div>
+        </Typography>
+      </Box>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-900">{item.requirement}</p>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography variant="body2">{item.requirement}</Typography>
         {item.description && (
-          <p className="mt-1 text-xs text-gray-500 line-clamp-2">
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{
+              mt: 0.5,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
             {item.description}
-          </p>
+          </Typography>
         )}
-      </div>
+      </Box>
 
       {/* Category & Weight */}
-      <div className="flex items-center gap-3 flex-shrink-0">
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
         {item.category && (
-          <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-            {item.category}
-          </span>
+          <Chip label={item.category} size="small" />
         )}
         {useWeightedScoring && (
-          <span className="text-xs text-gray-500" title="Weight">
+          <Typography variant="caption" color="text.secondary" title="Weight">
             ⚖️ {item.weight}
-          </span>
+          </Typography>
         )}
         {!item.isActive && (
-          <span className="rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
-            Inactive
-          </span>
+          <Chip label="Inactive" size="small" color="default" />
         )}
-      </div>
+      </Box>
 
       {/* Actions */}
-      <div className="flex items-center gap-1 flex-shrink-0">
-        <button
-          onClick={onEdit}
-          className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-          title="Edit"
-        >
-          ✏️
-        </button>
-        <button
-          onClick={onDelete}
-          className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"
-          title="Delete"
-        >
-          🗑️
-        </button>
-      </div>
-    </div>
+      <Box sx={{ display: "flex", gap: 0.5, flexShrink: 0 }}>
+        <IconButton size="small" onClick={onEdit} title="Edit">
+          <EditIcon fontSize="small" />
+        </IconButton>
+        <IconButton size="small" onClick={onDelete} title="Delete" color="error">
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      </Box>
+    </Paper>
   );
 }
 
@@ -349,24 +351,19 @@ export function CategoryGroup({
   onToggle,
 }: CategoryGroupProps) {
   return (
-    <div className="border rounded-lg overflow-hidden">
-      {/* Header */}
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center justify-between bg-gray-50 px-4 py-2 text-left hover:bg-gray-100"
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-sm">{isExpanded ? "▼" : "▶"}</span>
-          <span className="font-medium text-gray-900">
+    <Accordion expanded={isExpanded} onChange={onToggle}>
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Typography fontWeight="medium">
             {category || "Uncategorized"}
-          </span>
-          <span className="text-sm text-gray-500">({items.length})</span>
-        </div>
-      </button>
-
-      {/* Items */}
-      {isExpanded && (
-        <div className="p-2 space-y-2 bg-gray-50/50">
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            ({items.length})
+          </Typography>
+        </Box>
+      </AccordionSummary>
+      <AccordionDetails sx={{ bgcolor: "grey.50" }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
           {items.map((item) => (
             <CriteriaItemRow
               key={item.id}
@@ -376,9 +373,9 @@ export function CategoryGroup({
               onDelete={() => onDelete(item)}
             />
           ))}
-        </div>
-      )}
-    </div>
+        </Box>
+      </AccordionDetails>
+    </Accordion>
   );
 }
 
@@ -403,9 +400,6 @@ export function CriteriaItemEditor({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "grouped">("list");
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set()
-  );
 
   const editingItem = editingId ? items.find((i) => i.id === editingId) : null;
   const deletingItem = deletingId ? items.find((i) => i.id === deletingId) : null;
@@ -426,16 +420,6 @@ export function CriteriaItemEditor({
     if (!b) return -1;
     return a.localeCompare(b);
   });
-
-  const toggleCategory = (category: string) => {
-    const next = new Set(expandedCategories);
-    if (next.has(category)) {
-      next.delete(category);
-    } else {
-      next.add(category);
-    }
-    setExpandedCategories(next);
-  };
 
   const handleAdd = async (input: CreateCriteriaItemInput) => {
     try {
@@ -470,100 +454,91 @@ export function CriteriaItemEditor({
   };
 
   return (
-    <div className={className}>
+    <Box className={className}>
       {/* Header */}
-      <div className="mb-4">
-        <div className="flex items-center gap-3 mb-2">
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
           {onBack && (
-            <button
-              onClick={onBack}
-              className="rounded p-1 text-gray-500 hover:bg-gray-100"
-              title="Back"
-            >
-              ← Back
-            </button>
+            <IconButton onClick={onBack} title="Back">
+              <BackIcon />
+            </IconButton>
           )}
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              {criteriaSet.name}
-            </h2>
-            <p className="text-sm text-gray-500">
+          <Box>
+            <Typography variant="h6">{criteriaSet.name}</Typography>
+            <Typography variant="body2" color="text.secondary">
               v{criteriaSet.version} • {items.length} criteria items
-            </p>
-          </div>
-        </div>
+            </Typography>
+          </Box>
+        </Box>
 
-        <div className="flex items-center justify-between flex-wrap gap-3">
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 2 }}>
           {/* View Toggle */}
-          <div className="flex items-center gap-1 rounded border bg-gray-100 p-0.5">
-            <button
-              onClick={() => setViewMode("list")}
-              className={`rounded px-3 py-1 text-xs font-medium ${
-                viewMode === "list"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={(_e, newMode) => newMode && setViewMode(newMode)}
+            size="small"
+          >
+            <ToggleButton value="list">
+              <ListIcon fontSize="small" sx={{ mr: 0.5 }} />
               List
-            </button>
-            <button
-              onClick={() => setViewMode("grouped")}
-              className={`rounded px-3 py-1 text-xs font-medium ${
-                viewMode === "grouped"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
+            </ToggleButton>
+            <ToggleButton value="grouped">
+              <GroupedIcon fontSize="small" sx={{ mr: 0.5 }} />
               Grouped
-            </button>
-          </div>
+            </ToggleButton>
+          </ToggleButtonGroup>
 
           {/* Actions */}
-          <div className="flex items-center gap-2">
+          <Box sx={{ display: "flex", gap: 1 }}>
             {onRefresh && (
-              <button
+              <Button
                 onClick={onRefresh}
                 disabled={isLoading}
-                className="rounded px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                startIcon={<RefreshIcon />}
               >
                 Refresh
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               onClick={() => setIsAdding(true)}
               disabled={isLoading || isAdding}
-              className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              variant="contained"
             >
               + Add Item
-            </button>
-          </div>
-        </div>
-      </div>
+            </Button>
+          </Box>
+        </Box>
+      </Box>
 
       {/* Error */}
       {error && (
-        <div className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">
+        <Alert severity="error" sx={{ mb: 2 }}>
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Add Form */}
       {isAdding && (
-        <div className="mb-4 rounded-lg border bg-white p-4">
-          <h3 className="mb-3 font-medium text-gray-900">Add Criteria Item</h3>
+        <Paper sx={{ p: 3, mb: 2 }}>
+          <Typography variant="subtitle1" gutterBottom>
+            Add Criteria Item
+          </Typography>
           <CriteriaItemForm
             isSaving={isSaving}
             useWeightedScoring={criteriaSet.useWeightedScoring}
             onSubmit={handleAdd}
             onCancel={() => setIsAdding(false)}
           />
-        </div>
+        </Paper>
       )}
 
       {/* Edit Form */}
       {editingItem && (
-        <div className="mb-4 rounded-lg border bg-white p-4">
-          <h3 className="mb-3 font-medium text-gray-900">Edit Criteria Item</h3>
+        <Paper sx={{ p: 3, mb: 2 }}>
+          <Typography variant="subtitle1" gutterBottom>
+            Edit Criteria Item
+          </Typography>
           <CriteriaItemForm
             item={editingItem}
             isSaving={isSaving}
@@ -571,26 +546,30 @@ export function CriteriaItemEditor({
             onSubmit={handleUpdate}
             onCancel={() => setEditingId(null)}
           />
-        </div>
+        </Paper>
       )}
 
       {/* Loading */}
       {isLoading && items.length === 0 && (
-        <div className="py-8 text-center text-gray-500">
-          Loading criteria items...
-        </div>
+        <Box sx={{ py: 4, textAlign: "center" }}>
+          <Typography color="text.secondary">
+            Loading criteria items...
+          </Typography>
+        </Box>
       )}
 
       {/* Empty State */}
       {!isLoading && items.length === 0 && (
-        <div className="py-8 text-center text-gray-500">
-          No criteria items yet. Add one manually or import from spreadsheet.
-        </div>
+        <Box sx={{ py: 4, textAlign: "center" }}>
+          <Typography color="text.secondary">
+            No criteria items yet. Add one manually or import from spreadsheet.
+          </Typography>
+        </Box>
       )}
 
       {/* Items - List View */}
       {viewMode === "list" && items.length > 0 && (
-        <div className="space-y-2">
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
           {items.map((item) => (
             <CriteriaItemRow
               key={item.id}
@@ -600,12 +579,12 @@ export function CriteriaItemEditor({
               onDelete={() => setDeletingId(item.id)}
             />
           ))}
-        </div>
+        </Box>
       )}
 
       {/* Items - Grouped View */}
       {viewMode === "grouped" && items.length > 0 && (
-        <div className="space-y-3">
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {categories.map((cat) => (
             <CategoryGroup
               key={cat || "__uncategorized"}
@@ -614,50 +593,44 @@ export function CriteriaItemEditor({
               useWeightedScoring={criteriaSet.useWeightedScoring}
               onEdit={(item) => setEditingId(item.id)}
               onDelete={(item) => setDeletingId(item.id)}
-              isExpanded={expandedCategories.has(cat || "__uncategorized")}
-              onToggle={() => toggleCategory(cat || "__uncategorized")}
+              isExpanded
             />
           ))}
-        </div>
+        </Box>
       )}
 
       {/* Delete Confirmation */}
-      {deletingId && deletingItem && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !isSaving) setDeletingId(null);
-          }}
-        >
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Delete Criteria Item?
-            </h3>
-            <p className="mt-2 text-sm text-gray-600">
+      <Dialog
+        open={!!deletingId && !!deletingItem}
+        onClose={() => !isSaving && setDeletingId(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Delete Criteria Item?</DialogTitle>
+        <DialogContent>
+          {deletingItem && (
+            <Typography>
               This will delete <strong>{deletingItem.criteriaId}</strong>:{" "}
               {deletingItem.requirement.substring(0, 50)}
               {deletingItem.requirement.length > 50 ? "..." : ""}
-            </p>
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button
-                onClick={() => setDeletingId(null)}
-                disabled={isSaving}
-                className="rounded px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={isSaving}
-                className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-              >
-                {isSaving ? "Deleting..." : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeletingId(null)} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDelete}
+            disabled={isSaving}
+            color="error"
+            variant="contained"
+          >
+            {isSaving ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 }
 

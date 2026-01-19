@@ -6,6 +6,16 @@
  */
 
 import React from "react";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  CardActions,
+  Chip,
+  Typography,
+  Divider,
+} from "@mui/material";
 import type { VoiceSessionSummary, VoiceSessionStatus } from "../types";
 
 // =============================================================================
@@ -28,16 +38,16 @@ export interface SessionCardProps {
 }
 
 // =============================================================================
-// STATUS BADGE STYLES
+// STATUS BADGE COLORS
 // =============================================================================
 
-const statusStyles: Record<VoiceSessionStatus, { bg: string; text: string; label: string }> = {
-  pending: { bg: "bg-gray-100", text: "text-gray-700", label: "Pending" },
-  ready: { bg: "bg-blue-100", text: "text-blue-700", label: "Ready" },
-  active: { bg: "bg-green-100", text: "text-green-700", label: "Active" },
-  completed: { bg: "bg-purple-100", text: "text-purple-700", label: "Completed" },
-  failed: { bg: "bg-red-100", text: "text-red-700", label: "Failed" },
-  cancelled: { bg: "bg-orange-100", text: "text-orange-700", label: "Cancelled" },
+const statusConfig: Record<VoiceSessionStatus, { color: "default" | "primary" | "success" | "secondary" | "error" | "warning"; label: string }> = {
+  pending: { color: "default", label: "Pending" },
+  ready: { color: "primary", label: "Ready" },
+  active: { color: "success", label: "Active" },
+  completed: { color: "secondary", label: "Completed" },
+  failed: { color: "error", label: "Failed" },
+  cancelled: { color: "warning", label: "Cancelled" },
 };
 
 // =============================================================================
@@ -65,7 +75,7 @@ export function SessionCard({
   isSelected = false,
   className = "",
 }: SessionCardProps) {
-  const statusStyle = statusStyles[session.status] || statusStyles.pending;
+  const statusConf = statusConfig[session.status] || statusConfig.pending;
 
   const formatDuration = (seconds: number | null | undefined): string => {
     if (!seconds) return "--";
@@ -102,13 +112,21 @@ export function SessionCard({
   const canDelete = session.status === "pending" || session.status === "cancelled" || session.status === "failed";
 
   return (
-    <div
+    <Card
       onClick={handleCardClick}
-      className={`
-        relative p-4 bg-white rounded-lg border transition-all cursor-pointer
-        ${isSelected ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-200 hover:border-gray-300"}
-        ${className}
-      `}
+      className={className}
+      variant="outlined"
+      sx={{
+        cursor: "pointer",
+        transition: "all 0.2s",
+        ...(isSelected && {
+          borderColor: "primary.main",
+          boxShadow: (theme) => `0 0 0 2px ${theme.palette.primary.light}`,
+        }),
+        "&:hover": {
+          borderColor: isSelected ? "primary.main" : "grey.300",
+        },
+      }}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -117,68 +135,102 @@ export function SessionCard({
         }
       }}
     >
-      {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-medium text-gray-900 truncate">
-            {session.candidateName || "Unnamed Session"}
-          </h3>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {session.interviewType}
-          </p>
-        </div>
-        <span
-          className={`
-            inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
-            ${statusStyle.bg} ${statusStyle.text}
-          `}
+      <CardContent>
+        {/* Header */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            mb: 2,
+          }}
         >
-          {statusStyle.label}
-        </span>
-      </div>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography
+              variant="body2"
+              fontWeight="medium"
+              sx={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {session.candidateName || "Unnamed Session"}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
+              {session.interviewType}
+            </Typography>
+          </Box>
+          <Chip
+            label={statusConf.label}
+            color={statusConf.color}
+            size="small"
+            sx={{ ml: 1, fontSize: "0.7rem" }}
+          />
+        </Box>
 
-      {/* Details */}
-      <div className="space-y-1 text-xs text-gray-600">
-        <div className="flex justify-between">
-          <span>Created</span>
-          <span>{formatDate(session.createdAt)}</span>
-        </div>
-        {session.startedAt && (
-          <div className="flex justify-between">
-            <span>Started</span>
-            <span>{formatDate(session.startedAt)}</span>
-          </div>
-        )}
-        {session.status === "completed" && (
-          <div className="flex justify-between">
-            <span>Duration</span>
-            <span>{formatDuration(session.durationSeconds)}</span>
-          </div>
-        )}
-      </div>
+        {/* Details */}
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Typography variant="caption" color="text.secondary">
+              Created
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {formatDate(session.createdAt)}
+            </Typography>
+          </Box>
+          {session.startedAt && (
+            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+              <Typography variant="caption" color="text.secondary">
+                Started
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {formatDate(session.startedAt)}
+              </Typography>
+            </Box>
+          )}
+          {session.status === "completed" && (
+            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+              <Typography variant="caption" color="text.secondary">
+                Duration
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {formatDuration(session.durationSeconds)}
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      </CardContent>
 
       {/* Actions */}
       {(canStart || canDelete) && (
-        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-          {canStart && onStart && (
-            <button
-              onClick={handleStartClick}
-              className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
-            >
-              Start Interview
-            </button>
-          )}
-          {canDelete && onDelete && (
-            <button
-              onClick={handleDeleteClick}
-              className="px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-            >
-              Delete
-            </button>
-          )}
-        </div>
+        <>
+          <Divider />
+          <CardActions sx={{ p: 2, pt: 1.5, gap: 1 }}>
+            {canStart && onStart && (
+              <Button
+                onClick={handleStartClick}
+                variant="contained"
+                size="small"
+                fullWidth={!canDelete}
+                sx={{ flex: canDelete ? 1 : undefined }}
+              >
+                Start Interview
+              </Button>
+            )}
+            {canDelete && onDelete && (
+              <Button
+                onClick={handleDeleteClick}
+                color="error"
+                size="small"
+              >
+                Delete
+              </Button>
+            )}
+          </CardActions>
+        </>
       )}
-    </div>
+    </Card>
   );
 }
 

@@ -92,7 +92,8 @@ export function useSysEvalPrompts(token: string | null) {
 
   const getPromptByType = useCallback(
     (type: PromptType) => {
-      return sysPrompts.find((p) => p.promptType === type);
+      const promptsArray = Array.isArray(sysPrompts) ? sysPrompts : [];
+      return promptsArray.find((p) => p.promptType === type);
     },
     [sysPrompts]
   );

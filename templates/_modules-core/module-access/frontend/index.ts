@@ -27,7 +27,7 @@ export { SessionTracking } from "./components/SessionTracking";
 // Contexts
 export { UserProvider, useUser } from "./contexts/UserContext";
 export { UserProviderWrapper } from "./components/UserProviderWrapper";
-export { OrgProvider } from "./contexts/OrgContext";
+export { OrgProvider, OrgContext } from "./contexts/OrgContext";
 
 // Hooks
 export { useProfile } from "./hooks/useProfile";

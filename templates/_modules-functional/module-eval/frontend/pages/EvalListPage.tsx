@@ -18,7 +18,29 @@
 
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
+import {
+  Box,
+  Typography,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Button,
+  Paper,
+  Skeleton,
+  Grid,
+  Alert,
+  CircularProgress,
+  IconButton,
+} from "@mui/material";
+import {
+  Add as AddIcon,
+  Error as ErrorIcon,
+  Description as DescriptionIcon,
+} from "@mui/icons-material";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import {
   useEvaluations,
   useEvalDocTypes,
@@ -78,74 +100,66 @@ function FilterBar({ filters, onFilterChange, docTypes, onCreateClick }: FilterB
   ];
 
   return (
-    <div className="flex flex-wrap items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-      {/* Search Input */}
-      <div className="flex-1 min-w-[200px]">
-        <label htmlFor="eval-search" className="sr-only">
-          Search evaluations
-        </label>
-        <input
-          id="eval-search"
-          type="text"
-          placeholder="Search evaluations..."
-          value={filters.searchQuery || ""}
-          onChange={(e) => onFilterChange({ ...filters, searchQuery: e.target.value || undefined })}
-          className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-      </div>
+    <Paper variant="outlined" sx={{ p: 2 }}>
+      <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 2 }}>
+        {/* Search Input */}
+        <Box sx={{ flex: 1, minWidth: 200 }}>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Search evaluations..."
+            value={filters.searchQuery || ""}
+            onChange={(e) => onFilterChange({ ...filters, searchQuery: e.target.value || undefined })}
+            aria-label="Search evaluations"
+          />
+        </Box>
 
-      {/* Status Filter */}
-      <div className="w-40">
-        <label htmlFor="status-filter" className="sr-only">
-          Filter by status
-        </label>
-        <select
-          id="status-filter"
-          value={filters.status || ""}
-          onChange={(e) => onFilterChange({ ...filters, status: e.target.value as EvaluationStatus || undefined })}
-          className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        {/* Status Filter */}
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel id="status-filter-label">Status</InputLabel>
+          <Select
+            labelId="status-filter-label"
+            value={filters.status || ""}
+            onChange={(e) => onFilterChange({ ...filters, status: e.target.value as EvaluationStatus || undefined })}
+            label="Status"
+          >
+            {statusOptions.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        {/* Doc Type Filter */}
+        <FormControl size="small" sx={{ minWidth: 192 }}>
+          <InputLabel id="doc-type-filter-label">Document Type</InputLabel>
+          <Select
+            labelId="doc-type-filter-label"
+            value={filters.docTypeId || ""}
+            onChange={(e) => onFilterChange({ ...filters, docTypeId: e.target.value || undefined })}
+            label="Document Type"
+          >
+            <MenuItem value="">All Document Types</MenuItem>
+            {docTypes.map((docType) => (
+              <MenuItem key={docType.id} value={docType.id}>
+                {docType.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        {/* Create Button */}
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={onCreateClick}
+          sx={{ whiteSpace: "nowrap" }}
         >
-          {statusOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Doc Type Filter */}
-      <div className="w-48">
-        <label htmlFor="doc-type-filter" className="sr-only">
-          Filter by document type
-        </label>
-        <select
-          id="doc-type-filter"
-          value={filters.docTypeId || ""}
-          onChange={(e) => onFilterChange({ ...filters, docTypeId: e.target.value || undefined })}
-          className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          <option value="">All Document Types</option>
-          {docTypes.map((docType) => (
-            <option key={docType.id} value={docType.id}>
-              {docType.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Create Button */}
-      <button
-        onClick={onCreateClick}
-        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-      >
-        <span className="flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
           New Evaluation
-        </span>
-      </button>
-    </div>
+        </Button>
+      </Box>
+    </Paper>
   );
 }
 
@@ -162,25 +176,26 @@ function ProcessingPanel({ evaluations, onSelect }: ProcessingPanelProps) {
   if (evaluations.length === 0) return null;
 
   return (
-    <div className="mb-6">
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+    <Box sx={{ mb: 3 }}>
+      <Typography variant="h6" gutterBottom>
         Processing ({evaluations.length})
-      </h2>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      </Typography>
+      <Grid container spacing={2}>
         {evaluations.map((evaluation) => (
-          <EvalProgressCard
-            key={evaluation.id}
-            evaluationId={evaluation.id}
-            title={evaluation.docTypeName || "Evaluation"}
-            status={evaluation.status}
-            progress={evaluation.progress}
-            createdAt={evaluation.createdAt}
-            onClick={() => onSelect(evaluation)}
-            showTimeEstimate
-          />
+          <Grid item xs={12} md={6} lg={4} key={evaluation.id}>
+            <EvalProgressCard
+              evaluationId={evaluation.id}
+              title={evaluation.docTypeName || "Evaluation"}
+              status={evaluation.status}
+              progress={evaluation.progress}
+              createdAt={evaluation.createdAt}
+              onClick={() => onSelect(evaluation)}
+              showTimeEstimate
+            />
+          </Grid>
         ))}
-      </div>
-    </div>
+      </Grid>
+    </Box>
   );
 }
 
@@ -208,38 +223,43 @@ function BulkActionsBar({
   if (selectedIds.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mb-4">
-      <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-        {selectedIds.length} selected
-      </span>
-      <div className="flex-1" />
-      <button
-        onClick={onExportPdf}
-        disabled={isExporting}
-        className="px-3 py-1.5 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-800/30 rounded-md transition-colors disabled:opacity-50"
-      >
-        Export PDF
-      </button>
-      <button
-        onClick={onExportXlsx}
-        disabled={isExporting}
-        className="px-3 py-1.5 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-800/30 rounded-md transition-colors disabled:opacity-50"
-      >
-        Export XLSX
-      </button>
-      <button
-        onClick={onDelete}
-        className="px-3 py-1.5 text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-800/30 rounded-md transition-colors"
-      >
-        Delete
-      </button>
-      <button
-        onClick={onClearSelection}
-        className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
-      >
-        Clear
-      </button>
-    </div>
+    <Alert
+      severity="info"
+      sx={{ mb: 2 }}
+      action={
+        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+          <Button
+            size="small"
+            onClick={onExportPdf}
+            disabled={isExporting}
+          >
+            Export PDF
+          </Button>
+          <Button
+            size="small"
+            onClick={onExportXlsx}
+            disabled={isExporting}
+          >
+            Export XLSX
+          </Button>
+          <Button
+            size="small"
+            color="error"
+            onClick={onDelete}
+          >
+            Delete
+          </Button>
+          <Button
+            size="small"
+            onClick={onClearSelection}
+          >
+            Clear
+          </Button>
+        </Box>
+      }
+    >
+      {selectedIds.length} selected
+    </Alert>
   );
 }
 
@@ -253,31 +273,41 @@ interface EmptyStateProps {
 
 function EmptyState({ onCreateClick }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4">
-      <div className="w-16 h-16 mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-          />
-        </svg>
-      </div>
-      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        py: 8,
+        px: 2,
+      }}
+    >
+      <Box
+        sx={{
+          width: 64,
+          height: 64,
+          mb: 2,
+          borderRadius: "50%",
+          bgcolor: "action.hover",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <DescriptionIcon sx={{ width: 32, height: 32, color: "text.secondary" }} />
+      </Box>
+      <Typography variant="h6" gutterBottom>
         No evaluations yet
-      </h3>
-      <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6 max-w-md">
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center", mb: 3, maxWidth: "md" }}>
         Get started by creating your first document evaluation. Upload documents
         and evaluate them against your compliance criteria.
-      </p>
-      <button
-        onClick={onCreateClick}
-        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-      >
+      </Typography>
+      <Button variant="contained" onClick={onCreateClick}>
         Create Your First Evaluation
-      </button>
-    </div>
+      </Button>
+    </Box>
   );
 }
 
@@ -287,14 +317,14 @@ function EmptyState({ onCreateClick }: EmptyStateProps) {
 
 function LoadingState() {
   return (
-    <div className="space-y-4">
-      <div className="h-16 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
-      <div className="space-y-2">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <Skeleton variant="rectangular" height={64} sx={{ borderRadius: 1 }} />
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-20 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
+          <Skeleton key={i} variant="rectangular" height={80} sx={{ borderRadius: 1 }} />
         ))}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }
 
@@ -309,30 +339,40 @@ interface ErrorStateProps {
 
 function ErrorState({ error, onRetry }: ErrorStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4">
-      <div className="w-16 h-16 mb-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-        <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-          />
-        </svg>
-      </div>
-      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-        Failed to load evaluations
-      </h3>
-      <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6 max-w-md">
-        {error.message}
-      </p>
-      <button
-        onClick={onRetry}
-        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        py: 8,
+        px: 2,
+      }}
+    >
+      <Box
+        sx={{
+          width: 64,
+          height: 64,
+          mb: 2,
+          borderRadius: "50%",
+          bgcolor: "error.lighter",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
+        <ErrorIcon sx={{ width: 32, height: 32, color: "error.main" }} />
+      </Box>
+      <Typography variant="h6" gutterBottom>
+        Failed to load evaluations
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center", mb: 3, maxWidth: "md" }}>
+        {error.message}
+      </Typography>
+      <Button variant="contained" onClick={onRetry}>
         Try Again
-      </button>
-    </div>
+      </Button>
+    </Box>
   );
 }
 
@@ -350,6 +390,25 @@ export function EvalListPage({
   loadingComponent,
   showProcessingPanel = true,
 }: EvalListPageProps) {
+  // Get auth token
+  const { authAdapter } = useUser();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchToken() {
+      try {
+        const t = await authAdapter.getToken();
+        if (mounted) setToken(t);
+      } catch (error) {
+        console.error("Failed to get auth token:", error);
+        if (mounted) setToken(null);
+      }
+    }
+    fetchToken();
+    return () => { mounted = false; };
+  }, [authAdapter]);
+
   // State
   const [filters, setFilters] = useState<FilterState>({});
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -357,18 +416,21 @@ export function EvalListPage({
   // Hooks
   const {
     evaluations,
-    isLoading,
+    isLoading: evaluationsLoading,
     error,
     refresh,
-    deleteEvaluation,
-  } = useEvaluations(workspaceId, {
+    remove: deleteEvaluation,
+  } = useEvaluations(token, workspaceId, {
     status: filters.status,
     docTypeId: filters.docTypeId,
   });
 
-  const { docTypes } = useEvalDocTypes(orgId);
-  const { isAnyProcessing, processingIds } = useAnyProcessing();
-  const { exportPdf, exportXlsx, isExporting } = useBulkExport(workspaceId);
+  const { docTypes } = useEvalDocTypes(token, orgId);
+  const { isAnyProcessing, processingIds } = useAnyProcessing(token);
+  const { exportPdf, exportXlsx, isExporting } = useBulkExport(token, workspaceId);
+
+  // Combined loading state
+  const isLoading = evaluationsLoading || !token;
 
   // Filter evaluations by search query (client-side)
   const filteredEvaluations = React.useMemo(() => {
@@ -416,12 +478,13 @@ export function EvalListPage({
   }, [exportXlsx, selectedIds]);
 
   const handleDelete = useCallback(async () => {
+    if (!token) return;
     if (!confirm(`Delete ${selectedIds.length} evaluation(s)?`)) return;
     for (const id of selectedIds) {
       await deleteEvaluation(id);
     }
     setSelectedIds([]);
-  }, [deleteEvaluation, selectedIds]);
+  }, [token, deleteEvaluation, selectedIds]);
 
   const handleClearSelection = useCallback(() => {
     setSelectedIds([]);
@@ -430,63 +493,51 @@ export function EvalListPage({
   // Render loading state
   if (isLoading) {
     return (
-      <div className={`p-6 ${className}`}>
+      <Box sx={{ p: 3 }} className={className}>
         {loadingComponent || <LoadingState />}
-      </div>
+      </Box>
     );
   }
 
   // Render error state
   if (error) {
     return (
-      <div className={`p-6 ${className}`}>
+      <Box sx={{ p: 3 }} className={className}>
         <ErrorState error={error} onRetry={refresh} />
-      </div>
+      </Box>
     );
   }
 
   // Render empty state
   if (evaluations.length === 0) {
     return (
-      <div className={`p-6 ${className}`}>
+      <Box sx={{ p: 3 }} className={className}>
         {emptyState || <EmptyState onCreateClick={handleCreateClick} />}
-      </div>
+      </Box>
     );
   }
 
   return (
-    <div className={`p-6 space-y-6 ${className}`}>
+    <Box sx={{ p: 3, display: "flex", flexDirection: "column", gap: 3 }} className={className}>
       {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Box>
+          <Typography variant="h4" component="h1" gutterBottom>
             Evaluations
-          </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
             Manage and review document compliance evaluations
-          </p>
-        </div>
+          </Typography>
+        </Box>
         {isAnyProcessing && (
-          <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
-            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-            {processingIds.length} processing
-          </div>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "info.main" }}>
+            <CircularProgress size={16} />
+            <Typography variant="body2">
+              {processingIds.length} processing
+            </Typography>
+          </Box>
         )}
-      </div>
+      </Box>
 
       {/* Filter Bar */}
       <FilterBar
@@ -524,7 +575,7 @@ export function EvalListPage({
         showDocType
         showProgress
       />
-    </div>
+    </Box>
   );
 }
 

@@ -222,6 +222,18 @@ elif [[ "$REL_PATH" =~ ^_modules-functional/(module-[^/]+)/frontend/(.+)$ ]]; th
   FILE_PATH="${BASH_REMATCH[2]}"
   DEST_FILE="${PROJECT_PATH}/packages/${MODULE_NAME}/frontend/${FILE_PATH}"
 
+# Core module routes: _modules-core/module-{name}/routes/... → apps/web/app/...
+elif [[ "$REL_PATH" =~ ^_modules-core/(module-[^/]+)/routes/(.+)$ ]]; then
+  MODULE_NAME="${BASH_REMATCH[1]}"
+  ROUTE_PATH="${BASH_REMATCH[2]}"
+  DEST_FILE="${PROJECT_PATH}/apps/web/app/${ROUTE_PATH}"
+
+# Functional module routes: _modules-functional/module-{name}/routes/... → apps/web/app/...
+elif [[ "$REL_PATH" =~ ^_modules-functional/(module-[^/]+)/routes/(.+)$ ]]; then
+  MODULE_NAME="${BASH_REMATCH[1]}"
+  ROUTE_PATH="${BASH_REMATCH[2]}"
+  DEST_FILE="${PROJECT_PATH}/apps/web/app/${ROUTE_PATH}"
+
 # Core module backend Lambda - map based on repo type
 elif [[ "$REL_PATH" =~ ^_modules-core/(module-[^/]+)/backend/lambdas/(.+)$ ]]; then
   MODULE_NAME="${BASH_REMATCH[1]}"
@@ -262,8 +274,10 @@ else
   log_info ""
   log_info "Supported patterns:"
   log_info "  • _modules-core/module-{name}/frontend/..."
+  log_info "  • _modules-core/module-{name}/routes/..."
   log_info "  • _modules-core/module-{name}/backend/lambdas/..."
   log_info "  • _modules-functional/module-{name}/frontend/..."
+  log_info "  • _modules-functional/module-{name}/routes/..."
   log_info "  • _modules-functional/module-{name}/backend/lambdas/..."
   log_info "  • _project-stack-template/..."
   log_info "  • _project-infra-template/..."
@@ -322,6 +336,13 @@ if [[ -n "$PROJECT_NAME" ]] && file "$DEST_FILE" | grep -q "text"; then
     sed -i '' "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$DEST_FILE" 2>/dev/null || \
     sed -i "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$DEST_FILE"
     log_info "  Replaced {{PROJECT_NAME}} with $PROJECT_NAME"
+  fi
+  
+  # Replace {project} placeholder (used in TypeScript imports like '@{project}/module-name')
+  if grep -q "{project}" "$DEST_FILE" 2>/dev/null; then
+    sed -i '' "s/{project}/${PROJECT_NAME}/g" "$DEST_FILE" 2>/dev/null || \
+    sed -i "s/{project}/${PROJECT_NAME}/g" "$DEST_FILE"
+    log_info "  Replaced {project} with $PROJECT_NAME"
   fi
   
   # Note: Other placeholders like {{AWS_REGION}}, {{GITHUB_ORG}} are typically

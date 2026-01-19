@@ -16,7 +16,17 @@
 
 "use client";
 
-import React, { useCallback } from "react";
+import React, { useCallback, useState, useEffect } from "react";
+import {
+  Box,
+  Typography,
+  Paper,
+  Skeleton,
+  Button,
+  Alert,
+} from "@mui/material";
+import { Error as ErrorIcon } from "@mui/icons-material";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import {
   useSysEvalConfig,
   useSysStatusOptions,
@@ -45,14 +55,14 @@ export interface SysEvalConfigPageProps {
 
 function PageHeader() {
   return (
-    <div className="mb-8">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+    <Box sx={{ mb: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
         Evaluation Configuration
-      </h1>
-      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
         Configure platform-level evaluation settings, scoring options, and organization delegation.
-      </p>
-    </div>
+      </Typography>
+    </Box>
   );
 }
 
@@ -68,19 +78,19 @@ interface SectionProps {
 
 function Section({ title, description, children }: SectionProps) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+    <Paper variant="outlined">
+      <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
+        <Typography variant="h6" component="h2">
           {title}
-        </h2>
+        </Typography>
         {description && (
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             {description}
-          </p>
+          </Typography>
         )}
-      </div>
-      <div className="p-6">{children}</div>
-    </div>
+      </Box>
+      <Box sx={{ p: 3 }}>{children}</Box>
+    </Paper>
   );
 }
 
@@ -90,12 +100,12 @@ function Section({ title, description, children }: SectionProps) {
 
 function LoadingState() {
   return (
-    <div className="space-y-6">
-      <div className="h-20 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
-      <div className="h-48 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
-      <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
-      <div className="h-48 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
-    </div>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <Skeleton variant="rectangular" height={80} sx={{ borderRadius: 1 }} />
+      <Skeleton variant="rectangular" height={192} sx={{ borderRadius: 1 }} />
+      <Skeleton variant="rectangular" height={256} sx={{ borderRadius: 1 }} />
+      <Skeleton variant="rectangular" height={192} sx={{ borderRadius: 1 }} />
+    </Box>
   );
 }
 
@@ -110,30 +120,40 @@ interface ErrorStateProps {
 
 function ErrorState({ error, onRetry }: ErrorStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4">
-      <div className="w-16 h-16 mb-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-        <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-          />
-        </svg>
-      </div>
-      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-        Failed to load configuration
-      </h3>
-      <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6 max-w-md">
-        {error.message}
-      </p>
-      <button
-        onClick={onRetry}
-        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        py: 8,
+        px: 2,
+      }}
+    >
+      <Box
+        sx={{
+          width: 64,
+          height: 64,
+          mb: 2,
+          borderRadius: "50%",
+          bgcolor: "error.lighter",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
+        <ErrorIcon sx={{ width: 32, height: 32, color: "error.main" }} />
+      </Box>
+      <Typography variant="h6" gutterBottom>
+        Failed to load configuration
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center", mb: 3, maxWidth: "md" }}>
+        {error.message}
+      </Typography>
+      <Button variant="contained" onClick={onRetry}>
         Try Again
-      </button>
-    </div>
+      </Button>
+    </Box>
   );
 }
 
@@ -145,36 +165,52 @@ export function SysEvalConfigPage({
   className = "",
   loadingComponent,
 }: SysEvalConfigPageProps) {
+  // Get auth token
+  const { authAdapter } = useUser();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchToken() {
+      try {
+        const t = await authAdapter.getToken();
+        if (mounted) setToken(t);
+      } catch (error) {
+        console.error("Failed to get auth token:", error);
+        if (mounted) setToken(null);
+      }
+    }
+    fetchToken();
+    return () => { mounted = false; };
+  }, [authAdapter]);
+
   // Hooks
   const {
     config,
     isLoading: isConfigLoading,
     error: configError,
-    updateConfig,
+    update: updateConfig,
     refresh: refreshConfig,
-  } = useSysEvalConfig();
+  } = useSysEvalConfig(token);
 
   const {
-    statusOptions,
+    options: statusOptions,
     isLoading: isStatusLoading,
-    error: statusError,
-    createOption,
-    updateOption,
-    deleteOption,
+    create: createOption,
+    update: updateOption,
+    remove: deleteOption,
     refresh: refreshStatus,
-  } = useSysStatusOptions();
+  } = useSysStatusOptions(token);
 
   const {
     orgs,
-    isLoading: isOrgsLoading,
-    error: orgsError,
-    toggleDelegation,
+    toggle: toggleDelegation,
     refresh: refreshOrgs,
-  } = useOrgsDelegation();
+  } = useOrgsDelegation(token);
 
   // Combined loading and error states
-  const isLoading = isConfigLoading || isStatusLoading || isOrgsLoading;
-  const error = configError || statusError || orgsError;
+  const isLoading = isConfigLoading || isStatusLoading || !token;
+  const error = configError;
 
   // Handlers
   const handleRefresh = useCallback(() => {
@@ -191,25 +227,25 @@ export function SysEvalConfigPage({
   );
 
   // Render loading state
-  if (isLoading) {
+  if (isLoading || !config) {
     return (
-      <div className={`p-6 ${className}`}>
+      <Box sx={{ p: 3 }} className={className}>
         {loadingComponent || <LoadingState />}
-      </div>
+      </Box>
     );
   }
 
   // Render error state
   if (error) {
     return (
-      <div className={`p-6 ${className}`}>
+      <Box sx={{ p: 3 }} className={className}>
         <ErrorState error={error} onRetry={handleRefresh} />
-      </div>
+      </Box>
     );
   }
 
   return (
-    <div className={`p-6 space-y-6 ${className}`}>
+    <Box sx={{ p: 3, display: "flex", flexDirection: "column", gap: 3 }} className={className}>
       {/* Page Header */}
       <PageHeader />
 
@@ -219,9 +255,11 @@ export function SysEvalConfigPage({
         description="Configure how evaluations are scored across the platform."
       >
         <ScoringConfigPanel
-          categoricalMode={config?.categoricalMode || "boolean"}
-          showNumericalScore={config?.showNumericalScore || false}
-          onChange={handleScoringUpdate}
+          config={{
+            categoricalMode: config?.categoricalMode || "boolean",
+            showNumericalScore: config?.showNumericalScore || false,
+          }}
+          onSave={handleScoringUpdate}
           isSystemLevel
         />
       </Section>
@@ -250,7 +288,7 @@ export function SysEvalConfigPage({
           onToggleDelegation={toggleDelegation}
         />
       </Section>
-    </div>
+    </Box>
   );
 }
 

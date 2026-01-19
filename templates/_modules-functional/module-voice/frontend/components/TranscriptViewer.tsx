@@ -6,6 +6,18 @@
  */
 
 import React, { useState, useMemo, useRef, useEffect } from "react";
+import {
+  Box,
+  Button,
+  Paper,
+  Typography,
+  Chip,
+  Alert,
+} from "@mui/material";
+import {
+  Warning as WarningIcon,
+  KeyboardArrowDown as ArrowDownIcon,
+} from "@mui/icons-material";
 import type { SpeakerSegment, VoiceTranscript } from "../types";
 
 // =============================================================================
@@ -35,16 +47,16 @@ export interface TranscriptViewerProps {
 
 const speakerStyles = {
   bot: {
-    bg: "bg-blue-50",
-    text: "text-blue-900",
+    bgcolor: "primary.50",
+    color: "primary.900",
     label: "AI Interviewer",
-    labelBg: "bg-blue-100",
+    chipBg: "primary.100",
   },
   candidate: {
-    bg: "bg-gray-50",
-    text: "text-gray-900",
+    bgcolor: "grey.50",
+    color: "grey.900",
     label: "Candidate",
-    labelBg: "bg-gray-100",
+    chipBg: "grey.100",
   },
 };
 
@@ -123,9 +135,17 @@ export function TranscriptViewer({
     
     return parts.map((part, i) =>
       regex.test(part) ? (
-        <mark key={i} className="bg-yellow-200 px-0.5 rounded">
+        <Box
+          key={i}
+          component="mark"
+          sx={{
+            bgcolor: "warning.light",
+            px: 0.5,
+            borderRadius: 0.5,
+          }}
+        >
           {part}
-        </mark>
+        </Box>
       ) : (
         part
       )
@@ -134,107 +154,193 @@ export function TranscriptViewer({
 
   if (allSegments.length === 0) {
     return (
-      <div
-        className={`flex items-center justify-center bg-gray-50 rounded-lg border border-gray-200 ${className}`}
-        style={{ height }}
+      <Box
+        className={className}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: "grey.50",
+          borderRadius: 1,
+          border: 1,
+          borderColor: "divider",
+          height,
+        }}
       >
-        <div className="text-center text-gray-500">
-          <p className="text-sm">No transcript available</p>
-          <p className="text-xs mt-1">
+        <Box sx={{ textAlign: "center" }}>
+          <Typography variant="body2" color="text.secondary">
+            No transcript available
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
             Transcript will appear when the interview starts
-          </p>
-        </div>
-      </div>
+          </Typography>
+        </Box>
+      </Box>
     );
   }
 
   return (
-    <div
-      ref={containerRef}
-      onScroll={handleScroll}
-      className={`overflow-y-auto bg-white rounded-lg border border-gray-200 ${className}`}
-      style={{ height }}
-    >
-      <div className="p-4 space-y-4">
-        {filteredSegments.map((segment, index) => {
-          const style = speakerStyles[segment.speaker] || speakerStyles.candidate;
-          const isLive = index >= (transcript?.speakerSegments?.length || 0);
+    <Box sx={{ position: "relative" }}>
+      <Box
+        ref={containerRef}
+        onScroll={handleScroll}
+        className={className}
+        sx={{
+          overflowY: "auto",
+          bgcolor: "background.paper",
+          borderRadius: 1,
+          border: 1,
+          borderColor: "divider",
+          height,
+        }}
+      >
+        <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+          {filteredSegments.map((segment, index) => {
+            const style = speakerStyles[segment.speaker] || speakerStyles.candidate;
+            const isLive = index >= (transcript?.speakerSegments?.length || 0);
 
-          return (
-            <div
-              key={`${segment.start_time}-${index}`}
-              className={`rounded-lg p-3 ${style.bg} ${isLive ? "animate-pulse" : ""}`}
-            >
-              {/* Speaker header */}
-              <div className="flex items-center justify-between mb-2">
-                <span
-                  className={`text-xs font-medium px-2 py-0.5 rounded ${style.labelBg} ${style.text}`}
+            return (
+              <Paper
+                key={`${segment.start_time}-${index}`}
+                variant="outlined"
+                sx={{
+                  p: 1.5,
+                  bgcolor: style.bgcolor,
+                  ...(isLive && {
+                    animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+                    "@keyframes pulse": {
+                      "0%, 100%": { opacity: 1 },
+                      "50%": { opacity: 0.8 },
+                    },
+                  }),
+                }}
+              >
+                {/* Speaker header */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    mb: 1,
+                  }}
                 >
-                  {style.label}
-                </span>
-                {showTimestamps && (
-                  <span className="text-xs text-gray-400">
-                    {formatTime(segment.start_time)}
-                    {segment.end_time !== segment.start_time && (
-                      <> - {formatTime(segment.end_time)}</>
-                    )}
-                  </span>
+                  <Chip
+                    label={style.label}
+                    size="small"
+                    sx={{
+                      bgcolor: style.chipBg,
+                      color: style.color,
+                      fontSize: "0.7rem",
+                      height: 20,
+                      fontWeight: "medium",
+                    }}
+                  />
+                  {showTimestamps && (
+                    <Typography variant="caption" color="text.secondary">
+                      {formatTime(segment.start_time)}
+                      {segment.end_time !== segment.start_time && (
+                        <> - {formatTime(segment.end_time)}</>
+                      )}
+                    </Typography>
+                  )}
+                </Box>
+
+                {/* Text content */}
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: style.color,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {highlightText(segment.text, searchQuery)}
+                </Typography>
+
+                {/* Confidence indicator (if available) */}
+                {segment.confidence !== undefined && segment.confidence < 0.8 && (
+                  <Box sx={{ mt: 1 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "warning.main",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.5,
+                      }}
+                    >
+                      <WarningIcon sx={{ fontSize: 12 }} />
+                      Low confidence ({Math.round(segment.confidence * 100)}%)
+                    </Typography>
+                  </Box>
                 )}
-              </div>
+              </Paper>
+            );
+          })}
 
-              {/* Text content */}
-              <p className={`text-sm ${style.text} leading-relaxed`}>
-                {highlightText(segment.text, searchQuery)}
-              </p>
-
-              {/* Confidence indicator (if available) */}
-              {segment.confidence !== undefined && segment.confidence < 0.8 && (
-                <div className="mt-1">
-                  <span className="text-xs text-orange-500 flex items-center gap-1">
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Low confidence ({Math.round(segment.confidence * 100)}%)
-                  </span>
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Live indicator */}
-        {liveSegments.length > 0 && (
-          <div className="flex items-center justify-center py-2">
-            <span className="flex items-center gap-2 text-xs text-green-600">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-              </span>
-              Live transcription
-            </span>
-          </div>
-        )}
-      </div>
+          {/* Live indicator */}
+          {liveSegments.length > 0 && (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                py: 1,
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "success.main",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    bgcolor: "success.main",
+                    animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+                    "@keyframes pulse": {
+                      "0%, 100%": { opacity: 1 },
+                      "50%": { opacity: 0.5 },
+                    },
+                  }}
+                />
+                Live transcription
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      </Box>
 
       {/* Scroll to bottom button */}
       {userScrolled && (
-        <button
+        <Button
           onClick={() => {
             if (containerRef.current) {
               containerRef.current.scrollTop = containerRef.current.scrollHeight;
               setUserScrolled(false);
             }
           }}
-          className="sticky bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-full shadow-lg hover:bg-blue-700 transition-colors"
+          variant="contained"
+          size="small"
+          endIcon={<ArrowDownIcon />}
+          sx={{
+            position: "sticky",
+            bottom: 16,
+            left: "50%",
+            transform: "translateX(-50%)",
+            borderRadius: 20,
+            boxShadow: 3,
+          }}
         >
-          ↓ Scroll to bottom
-        </button>
+          Scroll to bottom
+        </Button>
       )}
-    </div>
+    </Box>
   );
 }
 

@@ -29,6 +29,12 @@ The following UI libraries are **PROHIBITED** in CORA modules:
 - `@{{PROJECT_NAME}}/ui` imports
 - Project-specific UI component packages
 
+❌ **Tailwind CSS**
+- Tailwind utility classes in `className` attributes
+- Tailwind configuration files (`tailwind.config.js`, etc.)
+- `@tailwind` directives in CSS files
+- Use Material-UI's `sx` prop instead
+
 ❌ **styled-components**
 - Direct styled-components usage
 - ESLint rule enforces this: `"no-styled-components": "error"`
@@ -111,13 +117,19 @@ import styled from 'styled-components';                  // styled-components
 The UI library compliance is enforced through:
 
 1. **Validation Script**: `scripts/validate-ui-library.sh`
-   - Checks for prohibited imports
-   - Ensures Material-UI usage
+   - **NEW (v2.0.0)**: Detects Tailwind CSS usage (10 regex patterns)
+   - **NEW (v2.0.0)**: Detects Tailwind configuration files
+   - **NEW (v2.0.0)**: Detects @tailwind directives in CSS
+   - Checks for Shadcn UI imports
+   - Checks for custom UI packages
+   - Checks for styled-components usage
+   - Verifies Material-UI usage
    - Runs during project creation
 
 2. **Python CLI**: `validation/ui-library-validator/cli.py`
-   - Integration with validation orchestrator
+   - Integration with validation orchestrator (`cora-validate.py`)
    - Part of CORA compliance suite
+   - Supports JSON/text output formats
 
 3. **ESLint Rules**:
    ```json
@@ -126,22 +138,45 @@ The UI library compliance is enforced through:
    }
    ```
 
+**Validator Detects 8 Types of Violations:**
+- ✅ Tailwind CSS classes in `className` attributes
+- ✅ Tailwind configuration files (`tailwind.config.*`)
+- ✅ `@tailwind` directives in CSS files
+- ✅ Shadcn UI imports (`@/components/ui/*`)
+- ✅ Custom UI package imports (`@{project}/ui`)
+- ✅ styled-components usage
+- ✅ Custom UI package directories
+- ✅ Missing Material-UI imports (warning)
+
+**Documentation**: See `validation/ui-library-validator/README.md` for complete details.
+
 ### Manual Validation
 
 To manually validate a module:
 
 ```bash
+# Standalone validator
 ./scripts/validate-ui-library.sh templates/_modules-core/module-name
+
+# Integrated with validation suite
+python validation/cora-validate.py project /path/to/project --validators ui_library
+
+# Run on entire templates directory
+./scripts/validate-ui-library.sh templates
 ```
 
 Expected output:
 ```
 ✅ PASSED: All UI library compliance checks passed
 
+✅ No Tailwind CSS classes found
+✅ No Tailwind configuration files found
+✅ No @tailwind directives found
 ✅ No Shadcn UI imports found
 ✅ No custom UI package imports found
 ✅ No styled-components usage found
-✅ Material-UI imports found (X files)
+✅ No custom UI package directory found
+✅ Material-UI imports found (168 files)
 ```
 
 ## Accessibility

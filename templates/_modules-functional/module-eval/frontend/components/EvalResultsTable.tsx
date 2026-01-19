@@ -8,6 +8,33 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import {
+  Box,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Checkbox,
+  TableSortLabel,
+  Chip,
+  Button,
+  IconButton,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Typography,
+  Alert,
+} from "@mui/material";
+import {
+  FileDownload as FileDownloadIcon,
+  Delete as DeleteIcon,
+  PictureAsPdf as PdfIcon,
+  TableChart as ExcelIcon,
+} from "@mui/icons-material";
 import type {
   Evaluation,
   EvaluationStatus,
@@ -57,12 +84,12 @@ type SortDirection = "asc" | "desc";
 
 const statusConfig: Record<
   EvaluationStatus,
-  { label: string; color: string; bgColor: string }
+  { label: string; color: "warning" | "info" | "success" | "error" }
 > = {
-  pending: { label: "Pending", color: "text-yellow-700", bgColor: "bg-yellow-100" },
-  processing: { label: "Processing", color: "text-blue-700", bgColor: "bg-blue-100" },
-  completed: { label: "Completed", color: "text-green-700", bgColor: "bg-green-100" },
-  failed: { label: "Failed", color: "text-red-700", bgColor: "bg-red-100" },
+  pending: { label: "Pending", color: "warning" },
+  processing: { label: "Processing", color: "info" },
+  completed: { label: "Completed", color: "success" },
+  failed: { label: "Failed", color: "error" },
 };
 
 // =============================================================================
@@ -139,308 +166,321 @@ export function EvalResultsTable({
     }
   };
 
-  // Sort icon component
-  const SortIcon = ({ field }: { field: SortField }) => (
-    <span className="ml-1 inline-block">
-      {sortField === field ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}
-    </span>
-  );
+  // Get score color
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return "success.main";
+    if (score >= 60) return "warning.main";
+    return "error.main";
+  };
 
   return (
-    <div className={`flex flex-col ${className}`}>
+    <Box className={className}>
       {/* Filters */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      <Box sx={{ mb: 3, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 2 }}>
         {/* Status Filter */}
-        <div className="flex items-center gap-2">
-          <label htmlFor="status-filter" className="text-sm font-medium text-gray-700">
-            Status:
-          </label>
-          <select
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          <InputLabel id="status-filter-label">Status</InputLabel>
+          <Select
+            labelId="status-filter-label"
             id="status-filter"
             value={filters?.status || ""}
+            label="Status"
             onChange={(e) =>
               onFilterChange?.({ status: e.target.value as EvaluationStatus || undefined })
             }
-            className="rounded border border-gray-300 px-2 py-1 text-sm"
           >
-            <option value="">All</option>
-            <option value="pending">Pending</option>
-            <option value="processing">Processing</option>
-            <option value="completed">Completed</option>
-            <option value="failed">Failed</option>
-          </select>
-        </div>
+            <MenuItem value="">All</MenuItem>
+            <MenuItem value="pending">Pending</MenuItem>
+            <MenuItem value="processing">Processing</MenuItem>
+            <MenuItem value="completed">Completed</MenuItem>
+            <MenuItem value="failed">Failed</MenuItem>
+          </Select>
+        </FormControl>
 
         {/* Doc Type Filter */}
         {docTypes.length > 0 && (
-          <div className="flex items-center gap-2">
-            <label htmlFor="doctype-filter" className="text-sm font-medium text-gray-700">
-              Doc Type:
-            </label>
-            <select
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel id="doctype-filter-label">Doc Type</InputLabel>
+            <Select
+              labelId="doctype-filter-label"
               id="doctype-filter"
               value={filters?.docTypeId || ""}
+              label="Doc Type"
               onChange={(e) =>
                 onFilterChange?.({ docTypeId: e.target.value || undefined })
               }
-              className="rounded border border-gray-300 px-2 py-1 text-sm"
             >
-              <option value="">All</option>
+              <MenuItem value="">All</MenuItem>
               {docTypes.map((dt) => (
-                <option key={dt.id} value={dt.id}>
+                <MenuItem key={dt.id} value={dt.id}>
                   {dt.name}
-                </option>
+                </MenuItem>
               ))}
-            </select>
-          </div>
+            </Select>
+          </FormControl>
         )}
 
         {/* Results count */}
-        <div className="ml-auto text-sm text-gray-500">
+        <Typography variant="body2" color="text.secondary" sx={{ ml: "auto" }}>
           {pagination
             ? `Showing ${evaluations.length} of ${pagination.total}`
             : `${evaluations.length} evaluations`}
-        </div>
-      </div>
+        </Typography>
+      </Box>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
               {/* Selection checkbox */}
-              <th className="w-10 px-3 py-3">
-                <input
-                  type="checkbox"
+              <TableCell padding="checkbox">
+                <Checkbox
                   checked={selectedIds.size === evaluations.length && evaluations.length > 0}
+                  indeterminate={selectedIds.size > 0 && selectedIds.size < evaluations.length}
                   onChange={toggleSelectAll}
-                  className="h-4 w-4 rounded border-gray-300"
-                  aria-label="Select all evaluations"
+                  inputProps={{ "aria-label": "Select all evaluations" }}
                 />
-              </th>
+              </TableCell>
 
               {/* Name */}
-              <th
-                className="cursor-pointer px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
-                onClick={() => handleSort("name")}
-              >
-                Name <SortIcon field="name" />
-              </th>
+              <TableCell>
+                <TableSortLabel
+                  active={sortField === "name"}
+                  direction={sortField === "name" ? sortDirection : "asc"}
+                  onClick={() => handleSort("name")}
+                >
+                  Name
+                </TableSortLabel>
+              </TableCell>
 
               {/* Doc Type */}
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                Doc Type
-              </th>
+              <TableCell>Doc Type</TableCell>
 
               {/* Status */}
-              <th
-                className="cursor-pointer px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
-                onClick={() => handleSort("status")}
-              >
-                Status <SortIcon field="status" />
-              </th>
+              <TableCell>
+                <TableSortLabel
+                  active={sortField === "status"}
+                  direction={sortField === "status" ? sortDirection : "asc"}
+                  onClick={() => handleSort("status")}
+                >
+                  Status
+                </TableSortLabel>
+              </TableCell>
 
               {/* Score */}
-              <th
-                className="cursor-pointer px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
-                onClick={() => handleSort("complianceScore")}
-              >
-                Score <SortIcon field="complianceScore" />
-              </th>
+              <TableCell>
+                <TableSortLabel
+                  active={sortField === "complianceScore"}
+                  direction={sortField === "complianceScore" ? sortDirection : "asc"}
+                  onClick={() => handleSort("complianceScore")}
+                >
+                  Score
+                </TableSortLabel>
+              </TableCell>
 
               {/* Created */}
-              <th
-                className="cursor-pointer px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
-                onClick={() => handleSort("createdAt")}
-              >
-                Created <SortIcon field="createdAt" />
-              </th>
+              <TableCell>
+                <TableSortLabel
+                  active={sortField === "createdAt"}
+                  direction={sortField === "createdAt" ? sortDirection : "asc"}
+                  onClick={() => handleSort("createdAt")}
+                >
+                  Created
+                </TableSortLabel>
+              </TableCell>
 
               {/* Actions */}
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                Actions
-              </th>
-            </tr>
-          </thead>
+              <TableCell align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
 
-          <tbody className="divide-y divide-gray-200 bg-white">
+          <TableBody>
             {isLoading && evaluations.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                  Loading evaluations...
-                </td>
-              </tr>
+              <TableRow>
+                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                  <Typography color="text.secondary">Loading evaluations...</Typography>
+                </TableCell>
+              </TableRow>
             ) : evaluations.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                  No evaluations found
-                </td>
-              </tr>
+              <TableRow>
+                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                  <Typography color="text.secondary">No evaluations found</Typography>
+                </TableCell>
+              </TableRow>
             ) : (
               sortedEvaluations.map((evaluation) => {
                 const status = statusConfig[evaluation.status];
                 const isSelected = selectedIds.has(evaluation.id);
 
                 return (
-                  <tr
+                  <TableRow
                     key={evaluation.id}
-                    className={`
-                      transition-colors
-                      ${onRowClick ? "cursor-pointer hover:bg-gray-50" : ""}
-                      ${isSelected ? "bg-blue-50" : ""}
-                    `}
+                    hover={!!onRowClick}
+                    selected={isSelected}
                     onClick={() => onRowClick?.(evaluation)}
+                    sx={{
+                      cursor: onRowClick ? "pointer" : "default",
+                    }}
                   >
                     {/* Selection */}
-                    <td className="px-3 py-4" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
+                    <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
                         checked={isSelected}
                         onChange={() => toggleSelect(evaluation.id)}
-                        className="h-4 w-4 rounded border-gray-300"
-                        aria-label={`Select ${evaluation.name}`}
+                        inputProps={{ "aria-label": `Select ${evaluation.name}` }}
                       />
-                    </td>
+                    </TableCell>
 
                     {/* Name */}
-                    <td className="px-4 py-4">
-                      <div className="font-medium text-gray-900">{evaluation.name}</div>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight="medium">
+                        {evaluation.name}
+                      </Typography>
                       {evaluation.documentCount !== undefined && (
-                        <div className="text-xs text-gray-500">
+                        <Typography variant="caption" color="text.secondary">
                           {evaluation.documentCount} document{evaluation.documentCount !== 1 ? "s" : ""}
-                        </div>
+                        </Typography>
                       )}
-                    </td>
+                    </TableCell>
 
                     {/* Doc Type */}
-                    <td className="px-4 py-4 text-sm text-gray-600">
-                      {evaluation.docTypeName || "—"}
-                    </td>
+                    <TableCell>
+                      <Typography variant="body2" color="text.secondary">
+                        {evaluation.docTypeName || "—"}
+                      </Typography>
+                    </TableCell>
 
                     {/* Status */}
-                    <td className="px-4 py-4">
-                      <span
-                        className={`
-                          inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium
-                          ${status.bgColor} ${status.color}
-                        `}
-                      >
-                        {status.label}
-                        {evaluation.status === "processing" && (
-                          <span className="ml-1">{evaluation.progress}%</span>
-                        )}
-                      </span>
-                    </td>
+                    <TableCell>
+                      <Chip
+                        label={
+                          evaluation.status === "processing" && evaluation.progress !== undefined
+                            ? `${status.label} (${evaluation.progress}%)`
+                            : status.label
+                        }
+                        color={status.color}
+                        size="small"
+                      />
+                    </TableCell>
 
                     {/* Score */}
-                    <td className="px-4 py-4">
+                    <TableCell>
                       {evaluation.complianceScore !== undefined ? (
-                        <span
-                          className={`
-                            font-medium
-                            ${evaluation.complianceScore >= 80 ? "text-green-600" : ""}
-                            ${evaluation.complianceScore >= 60 && evaluation.complianceScore < 80 ? "text-yellow-600" : ""}
-                            ${evaluation.complianceScore < 60 ? "text-red-600" : ""}
-                          `}
+                        <Typography
+                          variant="body2"
+                          fontWeight="medium"
+                          sx={{ color: getScoreColor(evaluation.complianceScore) }}
                         >
                           {evaluation.complianceScore.toFixed(1)}%
-                        </span>
+                        </Typography>
                       ) : (
-                        <span className="text-gray-400">—</span>
+                        <Typography variant="body2" color="text.disabled">
+                          —
+                        </Typography>
                       )}
-                    </td>
+                    </TableCell>
 
                     {/* Created */}
-                    <td className="px-4 py-4 text-sm text-gray-600">
-                      {new Date(evaluation.createdAt).toLocaleDateString()}
-                    </td>
+                    <TableCell>
+                      <Typography variant="body2" color="text.secondary">
+                        {new Date(evaluation.createdAt).toLocaleDateString()}
+                      </Typography>
+                    </TableCell>
 
                     {/* Actions */}
-                    <td
-                      className="px-4 py-4 text-right"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="flex items-center justify-end gap-2">
+                    <TableCell align="right" onClick={(e) => e.stopPropagation()}>
+                      <Box sx={{ display: "flex", gap: 0.5, justifyContent: "flex-end" }}>
                         {onExport && evaluation.status === "completed" && (
                           <>
-                            <button
+                            <IconButton
+                              size="small"
                               onClick={() => onExport(evaluation, "pdf")}
-                              className="rounded px-2 py-1 text-xs text-blue-600 hover:bg-blue-50"
                               title="Export PDF"
+                              color="primary"
                             >
-                              PDF
-                            </button>
-                            <button
+                              <PdfIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
                               onClick={() => onExport(evaluation, "xlsx")}
-                              className="rounded px-2 py-1 text-xs text-green-600 hover:bg-green-50"
                               title="Export Excel"
+                              color="success"
                             >
-                              Excel
-                            </button>
+                              <ExcelIcon fontSize="small" />
+                            </IconButton>
                           </>
                         )}
                         {onDelete && (
-                          <button
+                          <IconButton
+                            size="small"
                             onClick={() => onDelete(evaluation)}
-                            className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50"
                             title="Delete"
+                            color="error"
                           >
-                            Delete
-                          </button>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
                         )}
-                      </div>
-                    </td>
-                  </tr>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
                 );
               })
             )}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       {/* Load More */}
       {pagination?.hasMore && onLoadMore && (
-        <div className="mt-4 flex justify-center">
-          <button
+        <Box sx={{ mt: 3, display: "flex", justifyContent: "center" }}>
+          <Button
             onClick={onLoadMore}
             disabled={isLoading}
-            className="rounded bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+            variant="outlined"
           >
             {isLoading ? "Loading..." : "Load More"}
-          </button>
-        </div>
+          </Button>
+        </Box>
       )}
 
       {/* Bulk Actions */}
       {selectedIds.size > 0 && (
-        <div className="mt-4 flex items-center gap-3 rounded-lg bg-blue-50 p-3">
-          <span className="text-sm font-medium text-blue-700">
-            {selectedIds.size} selected
-          </span>
-          <button
-            onClick={() => setSelectedIds(new Set())}
-            className="text-sm text-blue-600 hover:underline"
-          >
-            Clear selection
-          </button>
-          {onDelete && (
-            <button
-              onClick={() => {
-                // Handle bulk delete
-                selectedIds.forEach((id) => {
-                  const eval_ = evaluations.find((e) => e.id === id);
-                  if (eval_) onDelete(eval_);
-                });
-                setSelectedIds(new Set());
-              }}
-              className="ml-auto rounded bg-red-100 px-3 py-1 text-sm font-medium text-red-700 hover:bg-red-200"
-            >
-              Delete Selected
-            </button>
-          )}
-        </div>
+        <Alert
+          severity="info"
+          sx={{ mt: 3 }}
+          action={
+            <>
+              <Button
+                size="small"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Clear
+              </Button>
+              {onDelete && (
+                <Button
+                  size="small"
+                  color="error"
+                  startIcon={<DeleteIcon />}
+                  onClick={() => {
+                    // Handle bulk delete
+                    selectedIds.forEach((id) => {
+                      const eval_ = evaluations.find((e) => e.id === id);
+                      if (eval_) onDelete(eval_);
+                    });
+                    setSelectedIds(new Set());
+                  }}
+                >
+                  Delete Selected
+                </Button>
+              )}
+            </>
+          }
+        >
+          {selectedIds.size} evaluation{selectedIds.size !== 1 ? "s" : ""} selected
+        </Alert>
       )}
-    </div>
+    </Box>
   );
 }
 

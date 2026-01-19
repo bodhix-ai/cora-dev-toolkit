@@ -421,7 +421,9 @@ export const useEvalStore = create<EvalState>()(
         set({ sysConfigLoading: true, sysConfigError: null });
 
         try {
-          const config = await api.getSysConfig(token);
+          const response = await api.getSysConfig(token);
+          // Defensive unwrapping: handle { data: ... } wrapper if API client didn't unwrap
+          const config = 'data' in response ? response.data : response;
           set({ sysConfig: config, sysConfigLoading: false });
         } catch (error) {
           console.error("Failed to load sys config:", error);
@@ -465,8 +467,10 @@ export const useEvalStore = create<EvalState>()(
         set({ sysConfigLoading: true });
 
         try {
-          const prompts = await api.listSysPrompts(token);
-          set({ sysPrompts: prompts, sysConfigLoading: false });
+          const response = await api.listSysPrompts(token);
+          // Defensive unwrapping: handle { data: [...] } wrapper if API client didn't unwrap
+          const prompts = 'data' in response ? response.data : response;
+          set({ sysPrompts: Array.isArray(prompts) ? prompts : [], sysConfigLoading: false });
         } catch (error) {
           console.error("Failed to load sys prompts:", error);
           set({ sysConfigLoading: false });
@@ -490,8 +494,10 @@ export const useEvalStore = create<EvalState>()(
 
       loadSysStatusOptions: async (token) => {
         try {
-          const options = await api.listSysStatusOptions(token);
-          set({ sysStatusOptions: options });
+          const response = await api.listSysStatusOptions(token);
+          // Defensive unwrapping: handle { data: [...] } wrapper if API client didn't unwrap
+          const options = 'data' in response ? response.data : response;
+          set({ sysStatusOptions: Array.isArray(options) ? options : [] });
         } catch (error) {
           console.error("Failed to load sys status options:", error);
         }

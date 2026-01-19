@@ -41,7 +41,9 @@ export function useEvalDocTypes(
     if (token && orgId && docTypes.length === 0 && !docTypesLoading) {
       loadDocTypes(token, orgId, options);
     }
-  }, [token, orgId, docTypes.length, docTypesLoading, loadDocTypes, options]);
+    // Note: options is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId, docTypes.length, docTypesLoading, loadDocTypes]);
 
   const create = useCallback(
     async (input: CreateDocTypeInput): Promise<EvalDocType> => {
@@ -70,7 +72,9 @@ export function useEvalDocTypes(
   const refresh = useCallback(async () => {
     if (!token || !orgId) return;
     await loadDocTypes(token, orgId, options);
-  }, [token, orgId, loadDocTypes, options]);
+    // Note: options is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId, loadDocTypes]);
 
   // Filter active doc types
   const activeDocTypes = useEvalStore(selectActiveDocTypes);
