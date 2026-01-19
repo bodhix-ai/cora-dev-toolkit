@@ -1,10 +1,11 @@
 # Admin Eval Config Validation Plan (Sprint S2)
 
-**Status**: 🔄 IN PROGRESS  
+**Status**: 🔄 IN PROGRESS (Sys Admin ✅ COMPLETE | Org Admin 🔜 NEXT)  
 **Priority**: HIGH (Module validation & integration testing)  
 **Sprint Goal**: Validate sys and org admin functionality for managing eval config data, ending with document evaluation in workspace  
 **Branch**: `admin-eval-config-s2`  
-**Estimated Duration**: 1-2 sessions (~2-4 hours)
+**Estimated Duration**: 1-2 sessions (~2-4 hours)  
+**Session 1 Status**: Sys Admin Config ✅ COMPLETE
 
 ---
 
@@ -308,11 +309,12 @@ While we're doing happy path testing, we implicitly validate these RLS policies:
 6. ✅ Results display in UI with dynamic config applied
 
 ### Definition of Done:
-- [ ] All 8 validation steps completed
-- [ ] At least one document evaluated end-to-end
+- [x] All sys admin validation steps completed (Steps 1-3)
+- [ ] All org admin validation steps completed (Steps 4-6)
+- [ ] At least one document evaluated end-to-end (Steps 7-8)
 - [ ] Results display correctly in UI
 - [ ] No errors in CloudWatch logs
-- [ ] Config changes persist across page refreshes
+- [x] Config changes persist across page refreshes (sys admin verified)
 
 ---
 
@@ -324,31 +326,50 @@ While we're doing happy path testing, we implicitly validate these RLS policies:
 
 ## Session Tracking
 
-### Session 1: Initial Validation
-**Date:** TBD  
-**Duration:** TBD  
-**Focus:** Steps 1-4 (sys admin config + org admin config)
+### Session 1: Sys Admin Config Validation ✅ COMPLETE
+**Date:** January 18-19, 2026  
+**Duration:** ~2 hours  
+**Focus:** Steps 1-3 (sys admin config, prompts, delegation)
 
 **Completed:**
-- [ ] Step 1: Verify test environment
-- [ ] Step 2: Sys admin platform defaults
-- [ ] Step 3: Org delegation (optional)
-- [ ] Step 4: Org admin configure settings
+- [x] Step 1: Verify test environment (test-embed project)
+- [x] Step 2: Sys admin platform defaults
+  - [x] Configuration tab (scoring mode, numerical score, status options, delegation)
+  - [x] Prompts tab (AI provider/model selection, prompt configs)
+- [x] Step 3: Org delegation (tested in Step 2)
 
-**Issues Found:**
-- (Document issues here)
+**Fixes Applied:**
+1. ✅ **Tabbed Status Options UI** - Implemented Boolean/Detailed mode tabs with badge counts
+2. ✅ **Prop Name Mismatches** - Fixed onCreate/onUpdate/onDelete handlers
+3. ✅ **Org Delegation Display** - Fixed organizations not displaying
+4. ✅ **401 Unauthorized Errors** - Fixed API client parameter order (token first)
+5. ✅ **AI Provider/Model Selection** - Integrated module-ai useProviders hook
+
+**Issues Found & Resolved:**
+- ✅ Status options - onCreate error (prop name mismatch) → FIXED
+- ✅ Status options - Edit/Delete 401 errors (JWT in URL) → FIXED (parameter order)
+- ✅ Prompts - Only "default" model option → FIXED (integrated module-ai)
+- ✅ Org delegation - Organizations not displaying → FIXED (prop name mismatch)
+
+**Database Verification:**
+- ✅ Status option changes persist to database
+- ✅ Prompt config changes persist to database
+- ✅ Org delegation toggles persist to database
 
 **Next Session:**
-- Continue with Step 5 (doc types)
+- Step 4: Org admin configure settings
+- Step 5: Create doc types
+- Step 6: Create criteria sets
 
 ---
 
-### Session 2: Doc Types, Criteria, Evaluation
+### Session 2: Org Admin Config & Evaluation (NEXT)
 **Date:** TBD  
 **Duration:** TBD  
-**Focus:** Steps 5-8 (doc types, criteria, evaluation, results)
+**Focus:** Steps 4-8 (org admin config, doc types, criteria, evaluation, results)
 
-**Completed:**
+**To Complete:**
+- [ ] Step 4: Org admin configure settings
 - [ ] Step 5: Create doc type
 - [ ] Step 6: Create criteria set
 - [ ] Step 7: Create evaluation
@@ -358,8 +379,9 @@ While we're doing happy path testing, we implicitly validate these RLS policies:
 - (Document issues here)
 
 **Next Steps:**
-- Document lessons learned
-- Update templates if needed
+- Test org admin config page
+- Create doc types and criteria sets
+- Run end-to-end evaluation
 
 ---
 
@@ -387,12 +409,17 @@ While we're doing happy path testing, we implicitly validate these RLS policies:
 ## Change Log
 
 | Date | Session | Changes |
-|------|---------|---------|
+|------|---------|------------|
 | Jan 18, 2026 | - | Sprint plan created |
+| Jan 18-19, 2026 | 1 | Sys admin config validation complete (Steps 1-3) |
+| Jan 18-19, 2026 | 1 | Fixed status options UI (tabbed interface) |
+| Jan 18-19, 2026 | 1 | Fixed API client parameter order (401 errors) |
+| Jan 18-19, 2026 | 1 | Integrated module-ai provider/model selection |
 
 ---
 
-**Status**: 🔄 IN PROGRESS  
-**Last Updated**: January 18, 2026  
+**Status**: 🔄 IN PROGRESS (Sys Admin ✅ COMPLETE | Org Admin 🔜 NEXT)  
+**Last Updated**: January 19, 2026  
 **Branch**: admin-eval-config-s2  
-**Test Project**: test-embed
+**Test Project**: test-embed  
+**Session 1**: Sys Admin Config ✅ COMPLETE
