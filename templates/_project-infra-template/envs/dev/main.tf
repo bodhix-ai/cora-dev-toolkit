@@ -241,7 +241,15 @@ module "modular_api_gateway" {
   environment = "dev"
 
   # Collect routes from all CORA modules
-  # Add module routes here as modules are developed
+  # Core modules (always included per ADR-013):
+  # - module_access (Tier 1)
+  # - module_ai (Tier 2)
+  # - module_mgmt (Tier 3)
+  # - module_kb (Tier 3 - Core AI Capability)
+  # - module_chat (Tier 3 - Core AI Capability)
+  #
+  # Functional modules are added dynamically by create-cora-project.sh
+  # based on the modules.enabled list in the input config file.
   module_routes = concat(
     module.module_access.api_routes,
     module.module_ai.api_routes,

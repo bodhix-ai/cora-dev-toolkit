@@ -236,6 +236,10 @@ class CoraValidator:
             "name": "UI Library Validator",
             "description": "Validates Material-UI usage and detects Tailwind CSS, Shadcn, styled-components violations",
             "module": "ui-library-validator",
+        "typescript": {
+            "name": "TypeScript Type Check",
+            "description": "Validates TypeScript type correctness across all packages",
+            "module": "typescript-validator",
             "supports": ["project", "module"],
             "cli_style": "argparse",
         },

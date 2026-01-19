@@ -49,6 +49,7 @@ export {
   useKbDocuments,
   useOrgKbs,
   useSysKbs,
+  useWorkspaceKB,
 } from './hooks';
 
 // Hook Types
@@ -61,6 +62,8 @@ export type {
   UseOrgKbsReturn,
   UseSysKbsOptions,
   UseSysKbsReturn,
+  UseWorkspaceKBOptions,
+  UseWorkspaceKBReturn,
 } from './hooks';
 
 // Components

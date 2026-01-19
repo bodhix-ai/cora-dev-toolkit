@@ -6,12 +6,12 @@
  */
 
 import React from 'react';
-import { Chip, Tooltip } from '@mui/material';
+import { Chip, Tooltip, CircularProgress } from '@mui/material';
 import {
   Schedule as ClockIcon,
   CheckCircle as CheckCircleIcon,
   Cancel as XCircleIcon,
-  HourglassEmpty as Loader2Icon,
+  Autorenew as Loader2Icon,
 } from '@mui/icons-material';
 import type { DocumentStatus } from '../types';
 
