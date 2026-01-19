@@ -66,3 +66,5 @@ test-voice-*/
 test-ws-*/
 *.swp
 .DS_Store
+validation-latest.txt
+validation-results-current.txt
