@@ -8,6 +8,17 @@
 "use client";
 
 import React from "react";
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  Chip,
+  Grid,
+  Divider,
+  Paper,
+} from "@mui/material";
+import { CheckCircle as CheckCircleIcon } from "@mui/icons-material";
 import type { Evaluation, EvaluationDocument } from "../types";
 
 // =============================================================================
@@ -52,42 +63,54 @@ export function ComplianceScore({
   className = "",
 }: ComplianceScoreProps) {
   // Color based on score
-  const getColors = () => {
-    if (score >= 80) return { bg: "bg-green-100", text: "text-green-700", ring: "ring-green-500" };
-    if (score >= 60) return { bg: "bg-yellow-100", text: "text-yellow-700", ring: "ring-yellow-500" };
-    return { bg: "bg-red-100", text: "text-red-700", ring: "ring-red-500" };
+  const getColor = () => {
+    if (score >= 80) return "success";
+    if (score >= 60) return "warning";
+    return "error";
   };
 
-  const colors = getColors();
+  const color = getColor();
 
   if (large) {
     return (
-      <div className={`text-center ${className}`}>
-        <div
-          className={`
-            inline-flex h-24 w-24 items-center justify-center rounded-full
-            ${colors.bg} ring-4 ${colors.ring}
-          `}
+      <Box className={className} sx={{ textAlign: "center" }}>
+        <Box
+          sx={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 96,
+            height: 96,
+            borderRadius: "50%",
+            bgcolor: `${color}.lighter`,
+            border: 4,
+            borderColor: `${color}.main`,
+          }}
         >
-          <span className={`text-3xl font-bold ${colors.text}`}>
+          <Typography
+            variant="h3"
+            sx={{
+              fontWeight: "bold",
+              color: `${color}.dark`,
+            }}
+          >
             {score.toFixed(0)}%
-          </span>
-        </div>
-        <p className="mt-2 text-sm font-medium text-gray-600">Compliance Score</p>
-      </div>
+          </Typography>
+        </Box>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          Compliance Score
+        </Typography>
+      </Box>
     );
   }
 
   return (
-    <span
-      className={`
-        inline-flex items-center rounded-full px-3 py-1 text-sm font-medium
-        ${colors.bg} ${colors.text}
-        ${className}
-      `}
-    >
-      {score.toFixed(1)}%
-    </span>
+    <Chip
+      label={`${score.toFixed(1)}%`}
+      color={color as "success" | "warning" | "error"}
+      size="small"
+      className={className}
+    />
   );
 }
 
@@ -105,58 +128,76 @@ export function DocSummaryPanel({
 }: DocSummaryPanelProps) {
   if (documents.length === 0 && !combinedSummary) {
     return (
-      <div className={`text-sm text-gray-500 italic ${className}`}>
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        fontStyle="italic"
+        className={className}
+      >
         No document summaries available
-      </div>
+      </Typography>
     );
   }
 
   return (
-    <div className={className}>
+    <Box className={className}>
       {/* Combined Summary */}
       {combinedSummary && (
-        <div className="mb-4">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             Combined Document Summary
-          </h4>
-          <div className="rounded-lg bg-gray-50 p-4">
-            <p className="text-sm text-gray-700 whitespace-pre-wrap">
+          </Typography>
+          <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
+            <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
               {combinedSummary}
-            </p>
-          </div>
-        </div>
+            </Typography>
+          </Paper>
+        </Box>
       )}
 
       {/* Individual Document Summaries */}
       {documents.length > 0 && (
-        <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">
+        <Box>
+          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             Document Summaries ({documents.length})
-          </h4>
-          <div className="space-y-3">
+          </Typography>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
             {documents.map((doc) => (
-              <div key={doc.id} className="rounded-lg border p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="font-medium text-gray-900">
+              <Paper key={doc.id} variant="outlined" sx={{ p: 1.5 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    mb: 1,
+                  }}
+                >
+                  <Typography variant="body2" fontWeight="medium">
                     {doc.name || doc.fileName || "Untitled Document"}
-                  </span>
+                  </Typography>
                   {doc.isPrimary && (
-                    <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
-                      Primary
-                    </span>
+                    <Chip label="Primary" color="primary" size="small" />
                   )}
-                </div>
+                </Box>
                 {doc.summary ? (
-                  <p className="text-sm text-gray-600">{doc.summary}</p>
+                  <Typography variant="body2" color="text.secondary">
+                    {doc.summary}
+                  </Typography>
                 ) : (
-                  <p className="text-sm text-gray-400 italic">No summary available</p>
+                  <Typography
+                    variant="body2"
+                    color="text.disabled"
+                    fontStyle="italic"
+                  >
+                    No summary available
+                  </Typography>
                 )}
-              </div>
+              </Paper>
             ))}
-          </div>
-        </div>
+          </Box>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 }
 
@@ -177,103 +218,124 @@ export function EvalSummaryPanel({
 
   if (!hasScore && !hasSummary && !hasDocSummary) {
     return (
-      <div className={`rounded-lg border p-6 text-center ${className}`}>
-        <p className="text-gray-500">
-          {evaluation.status === "completed"
-            ? "No summary available for this evaluation"
-            : "Summary will be available after evaluation completes"}
-        </p>
-      </div>
+      <Card className={className}>
+        <CardContent>
+          <Box sx={{ textAlign: "center", py: 3 }}>
+            <Typography color="text.secondary">
+              {evaluation.status === "completed"
+                ? "No summary available for this evaluation"
+                : "Summary will be available after evaluation completes"}
+            </Typography>
+          </Box>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className={`rounded-lg border bg-white ${className}`}>
+    <Card className={className}>
       {/* Header with Score */}
-      <div className="border-b p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">
+      <CardContent>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            mb: 3,
+          }}
+        >
+          <Box>
+            <Typography variant="h6" gutterBottom>
               Evaluation Summary
-            </h3>
-            <p className="mt-1 text-sm text-gray-500">
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
               {evaluation.name}
-            </p>
-          </div>
+            </Typography>
+          </Box>
           {hasScore && (
             <ComplianceScore score={evaluation.complianceScore!} large />
           )}
-        </div>
-      </div>
+        </Box>
 
-      {/* Summary Content */}
-      <div className="p-6 space-y-6">
-        {/* Evaluation Summary */}
-        {hasSummary && (
-          <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">
-              Overall Assessment
-            </h4>
-            <div className="rounded-lg bg-gray-50 p-4">
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                {evaluation.evalSummary}
-              </p>
-            </div>
-          </div>
-        )}
+        <Divider sx={{ mb: 3 }} />
 
-        {/* Document Summary */}
-        {hasDocSummary && (
-          <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">
-              Document Summary
-            </h4>
-            <div className="rounded-lg bg-gray-50 p-4">
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                {evaluation.docSummary}
-              </p>
-            </div>
-          </div>
-        )}
+        {/* Summary Content */}
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          {/* Evaluation Summary */}
+          {hasSummary && (
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Overall Assessment
+              </Typography>
+              <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
+                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                  {evaluation.evalSummary}
+                </Typography>
+              </Paper>
+            </Box>
+          )}
 
-        {/* Document Details */}
-        {evaluation.documents && evaluation.documents.length > 0 && (
-          <DocSummaryPanel documents={evaluation.documents} />
-        )}
+          {/* Document Summary */}
+          {hasDocSummary && (
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Document Summary
+              </Typography>
+              <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
+                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                  {evaluation.docSummary}
+                </Typography>
+              </Paper>
+            </Box>
+          )}
 
-        {/* Metadata */}
-        <div className="border-t pt-4">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-gray-500">Document Type:</span>
-              <span className="ml-2 font-medium text-gray-900">
-                {evaluation.docTypeName || evaluation.docType?.name || "N/A"}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-500">Criteria Set:</span>
-              <span className="ml-2 font-medium text-gray-900">
-                {evaluation.criteriaSetName || evaluation.criteriaSet?.name || "N/A"}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-500">Documents:</span>
-              <span className="ml-2 font-medium text-gray-900">
-                {evaluation.documentCount ?? evaluation.documents?.length ?? 0}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-500">Completed:</span>
-              <span className="ml-2 font-medium text-gray-900">
-                {evaluation.completedAt
-                  ? new Date(evaluation.completedAt).toLocaleString()
-                  : "N/A"}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+          {/* Document Details */}
+          {evaluation.documents && evaluation.documents.length > 0 && (
+            <DocSummaryPanel documents={evaluation.documents} />
+          )}
+
+          {/* Metadata */}
+          <Box sx={{ pt: 2, borderTop: 1, borderColor: "divider" }}>
+            <Grid container spacing={2}>
+              <Grid item xs={6}>
+                <Typography variant="body2" color="text.secondary" component="span">
+                  Document Type:{" "}
+                </Typography>
+                <Typography variant="body2" fontWeight="medium" component="span">
+                  {evaluation.docTypeName || evaluation.docType?.name || "N/A"}
+                </Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="body2" color="text.secondary" component="span">
+                  Criteria Set:{" "}
+                </Typography>
+                <Typography variant="body2" fontWeight="medium" component="span">
+                  {evaluation.criteriaSetName || evaluation.criteriaSet?.name || "N/A"}
+                </Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="body2" color="text.secondary" component="span">
+                  Documents:{" "}
+                </Typography>
+                <Typography variant="body2" fontWeight="medium" component="span">
+                  {evaluation.documentCount ?? evaluation.documents?.length ?? 0}
+                </Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="body2" color="text.secondary" component="span">
+                  Completed:{" "}
+                </Typography>
+                <Typography variant="body2" fontWeight="medium" component="span">
+                  {evaluation.completedAt
+                    ? new Date(evaluation.completedAt).toLocaleString()
+                    : "N/A"}
+                </Typography>
+              </Grid>
+            </Grid>
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -303,56 +365,80 @@ export function SummaryStats({
 
   if (compact) {
     return (
-      <div className={`flex items-center gap-4 text-sm ${className}`}>
+      <Box className={className} sx={{ display: "flex", alignItems: "center", gap: 2 }}>
         {evaluation.complianceScore !== undefined && (
           <ComplianceScore score={evaluation.complianceScore} />
         )}
-        <span className="text-gray-500">
+        <Typography variant="body2" color="text.secondary">
           {criteriaCount} criteria • {editedCount} edited
-        </span>
-      </div>
+        </Typography>
+      </Box>
     );
   }
 
   return (
-    <div className={`grid grid-cols-2 gap-4 md:grid-cols-4 ${className}`}>
+    <Grid container spacing={2} className={className}>
       {/* Compliance Score */}
-      <div className="rounded-lg bg-gray-50 p-4 text-center">
-        {evaluation.complianceScore !== undefined ? (
-          <>
-            <div className="text-2xl font-bold text-gray-900">
-              {evaluation.complianceScore.toFixed(0)}%
-            </div>
-            <div className="text-xs text-gray-500">Compliance</div>
-          </>
-        ) : (
-          <>
-            <div className="text-2xl font-bold text-gray-400">—</div>
-            <div className="text-xs text-gray-500">Compliance</div>
-          </>
-        )}
-      </div>
+      <Grid item xs={6} md={3}>
+        <Paper sx={{ p: 2, textAlign: "center", bgcolor: "grey.50" }}>
+          {evaluation.complianceScore !== undefined ? (
+            <>
+              <Typography variant="h4" fontWeight="bold" color="text.primary">
+                {evaluation.complianceScore.toFixed(0)}%
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Compliance
+              </Typography>
+            </>
+          ) : (
+            <>
+              <Typography variant="h4" fontWeight="bold" color="text.disabled">
+                —
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Compliance
+              </Typography>
+            </>
+          )}
+        </Paper>
+      </Grid>
 
       {/* Documents */}
-      <div className="rounded-lg bg-gray-50 p-4 text-center">
-        <div className="text-2xl font-bold text-gray-900">
-          {evaluation.documentCount ?? evaluation.documents?.length ?? 0}
-        </div>
-        <div className="text-xs text-gray-500">Documents</div>
-      </div>
+      <Grid item xs={6} md={3}>
+        <Paper sx={{ p: 2, textAlign: "center", bgcolor: "grey.50" }}>
+          <Typography variant="h4" fontWeight="bold" color="text.primary">
+            {evaluation.documentCount ?? evaluation.documents?.length ?? 0}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Documents
+          </Typography>
+        </Paper>
+      </Grid>
 
       {/* Criteria */}
-      <div className="rounded-lg bg-gray-50 p-4 text-center">
-        <div className="text-2xl font-bold text-gray-900">{criteriaCount}</div>
-        <div className="text-xs text-gray-500">Criteria</div>
-      </div>
+      <Grid item xs={6} md={3}>
+        <Paper sx={{ p: 2, textAlign: "center", bgcolor: "grey.50" }}>
+          <Typography variant="h4" fontWeight="bold" color="text.primary">
+            {criteriaCount}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Criteria
+          </Typography>
+        </Paper>
+      </Grid>
 
       {/* Edited */}
-      <div className="rounded-lg bg-gray-50 p-4 text-center">
-        <div className="text-2xl font-bold text-gray-900">{editedCount}</div>
-        <div className="text-xs text-gray-500">Edited</div>
-      </div>
-    </div>
+      <Grid item xs={6} md={3}>
+        <Paper sx={{ p: 2, textAlign: "center", bgcolor: "grey.50" }}>
+          <Typography variant="h4" fontWeight="bold" color="text.primary">
+            {editedCount}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Edited
+          </Typography>
+        </Paper>
+      </Grid>
+    </Grid>
   );
 }
 

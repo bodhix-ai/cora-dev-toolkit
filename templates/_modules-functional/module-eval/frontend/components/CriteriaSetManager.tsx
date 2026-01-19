@@ -8,6 +8,36 @@
 "use client";
 
 import React, { useState } from "react";
+import {
+  Box,
+  Button,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Paper,
+  Typography,
+  IconButton,
+  Chip,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Grid,
+  FormControlLabel,
+  Checkbox,
+  Card,
+  CardContent,
+} from "@mui/material";
+import {
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Refresh as RefreshIcon,
+  CloudUpload as ImportIcon,
+  Assignment as ViewIcon,
+} from "@mui/icons-material";
 import type {
   EvalCriteriaSet,
   EvalDocType,
@@ -139,126 +169,93 @@ export function CriteriaSetForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {!isEdit && (
-        <div>
-          <label
-            htmlFor="criteriaset-doctype"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Document Type <span className="text-red-500">*</span>
-          </label>
-          <select
+        <FormControl fullWidth required>
+          <InputLabel id="criteriaset-doctype-label">Document Type</InputLabel>
+          <Select
+            labelId="criteriaset-doctype-label"
             id="criteriaset-doctype"
             value={docTypeId}
+            label="Document Type"
             onChange={(e) => setDocTypeId(e.target.value)}
             disabled={isSaving}
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
           >
-            <option value="">Select a document type...</option>
+            <MenuItem value="">
+              <em>Select a document type...</em>
+            </MenuItem>
             {activeDocTypes.map((dt) => (
-              <option key={dt.id} value={dt.id}>
+              <MenuItem key={dt.id} value={dt.id}>
                 {dt.name}
-              </option>
+              </MenuItem>
             ))}
-          </select>
-        </div>
+          </Select>
+        </FormControl>
       )}
 
-      <div>
-        <label
-          htmlFor="criteriaset-name"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
-          Name <span className="text-red-500">*</span>
-        </label>
-        <input
-          id="criteriaset-name"
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          disabled={isSaving}
-          className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-          placeholder="e.g., NIST 800-53 Controls"
-        />
-      </div>
+      <TextField
+        id="criteriaset-name"
+        label="Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        disabled={isSaving}
+        fullWidth
+        required
+        placeholder="e.g., NIST 800-53 Controls"
+      />
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label
-            htmlFor="criteriaset-version"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Version
-          </label>
-          <input
+      <Grid container spacing={2}>
+        <Grid item xs={6}>
+          <TextField
             id="criteriaset-version"
-            type="text"
+            label="Version"
             value={version}
             onChange={(e) => setVersion(e.target.value)}
             disabled={isSaving}
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+            fullWidth
             placeholder="e.g., 1.0"
           />
-        </div>
-        <div className="flex items-center pt-6">
-          <input
-            id="criteriaset-weighted"
-            type="checkbox"
-            checked={useWeightedScoring}
-            onChange={(e) => setUseWeightedScoring(e.target.checked)}
-            disabled={isSaving}
-            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        </Grid>
+        <Grid item xs={6} sx={{ display: "flex", alignItems: "center" }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                id="criteriaset-weighted"
+                checked={useWeightedScoring}
+                onChange={(e) => setUseWeightedScoring(e.target.checked)}
+                disabled={isSaving}
+              />
+            }
+            label="Use weighted scoring"
           />
-          <label
-            htmlFor="criteriaset-weighted"
-            className="ml-2 text-sm text-gray-700"
-          >
-            Use weighted scoring
-          </label>
-        </div>
-      </div>
+        </Grid>
+      </Grid>
 
-      <div>
-        <label
-          htmlFor="criteriaset-description"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
-          Description
-        </label>
-        <textarea
-          id="criteriaset-description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          disabled={isSaving}
-          rows={3}
-          className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-          placeholder="Brief description of this criteria set..."
-        />
-      </div>
+      <TextField
+        id="criteriaset-description"
+        label="Description"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        disabled={isSaving}
+        multiline
+        rows={3}
+        fullWidth
+        placeholder="Brief description of this criteria set..."
+      />
 
       {error && (
-        <div className="rounded bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        <Alert severity="error">{error}</Alert>
       )}
 
-      <div className="flex items-center justify-end gap-3 pt-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={isSaving}
-          className="rounded px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
-        >
+      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, pt: 1 }}>
+        <Button onClick={onCancel} disabled={isSaving}>
           Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={isSaving}
-          className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
+        </Button>
+        <Button type="submit" disabled={isSaving} variant="contained">
           {isSaving ? "Saving..." : isEdit ? "Update" : "Create"}
-        </button>
-      </div>
-    </form>
+        </Button>
+      </Box>
+    </Box>
   );
 }
 
@@ -274,79 +271,74 @@ export function CriteriaSetCard({
   className = "",
 }: CriteriaSetCardProps) {
   return (
-    <div
-      className={`
-        rounded-lg border p-4 transition-shadow hover:shadow-sm
-        ${!criteriaSet.isActive ? "opacity-60 bg-gray-50" : "bg-white"}
-        ${className}
-      `}
+    <Card
+      className={className}
+      sx={{
+        opacity: criteriaSet.isActive ? 1 : 0.6,
+        bgcolor: criteriaSet.isActive ? "background.paper" : "grey.50",
+      }}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-medium text-gray-900">{criteriaSet.name}</h3>
-            <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-              v{criteriaSet.version}
-            </span>
-            {criteriaSet.useWeightedScoring && (
-              <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
-                Weighted
-              </span>
+      <CardContent>
+        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", mb: 1 }}>
+              <Typography variant="subtitle1" fontWeight="medium">
+                {criteriaSet.name}
+              </Typography>
+              <Chip label={`v${criteriaSet.version}`} size="small" />
+              {criteriaSet.useWeightedScoring && (
+                <Chip label="Weighted" color="primary" size="small" />
+              )}
+              {!criteriaSet.isActive && (
+                <Chip label="Inactive" size="small" />
+              )}
+            </Box>
+            {criteriaSet.description && (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                }}
+              >
+                {criteriaSet.description}
+              </Typography>
             )}
-            {!criteriaSet.isActive && (
-              <span className="rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
-                Inactive
-              </span>
-            )}
-          </div>
-          {criteriaSet.description && (
-            <p className="mt-1 text-sm text-gray-600 line-clamp-2">
-              {criteriaSet.description}
-            </p>
-          )}
-          <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
-            <span>
-              {criteriaSet.itemCount ?? 0} criteria item
-              {criteriaSet.itemCount !== 1 ? "s" : ""}
-            </span>
-            {criteriaSet.sourceFileName && (
-              <span title="Imported from file">
-                📄 {criteriaSet.sourceFileName}
-              </span>
-            )}
-            <span>
-              Created {new Date(criteriaSet.createdAt).toLocaleDateString()}
-            </span>
-          </div>
-        </div>
+            <Box sx={{ mt: 1, display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+              <Typography variant="caption" color="text.secondary">
+                {criteriaSet.itemCount ?? 0} criteria item
+                {criteriaSet.itemCount !== 1 ? "s" : ""}
+              </Typography>
+              {criteriaSet.sourceFileName && (
+                <Typography variant="caption" color="text.secondary" title="Imported from file">
+                  📄 {criteriaSet.sourceFileName}
+                </Typography>
+              )}
+              <Typography variant="caption" color="text.secondary">
+                Created {new Date(criteriaSet.createdAt).toLocaleDateString()}
+              </Typography>
+            </Box>
+          </Box>
 
-        <div className="ml-4 flex items-center gap-1">
-          {onViewItems && (
-            <button
-              onClick={onViewItems}
-              className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-              title="View Criteria Items"
-            >
-              📋
-            </button>
-          )}
-          <button
-            onClick={onEdit}
-            className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-            title="Edit"
-          >
-            ✏️
-          </button>
-          <button
-            onClick={onDelete}
-            className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
-            title="Delete"
-          >
-            🗑️
-          </button>
-        </div>
-      </div>
-    </div>
+          <Box sx={{ ml: 2, display: "flex", gap: 0.5, flexShrink: 0 }}>
+            {onViewItems && (
+              <IconButton size="small" onClick={onViewItems} title="View Criteria Items">
+                <ViewIcon fontSize="small" />
+              </IconButton>
+            )}
+            <IconButton size="small" onClick={onEdit} title="Edit">
+              <EditIcon fontSize="small" />
+            </IconButton>
+            <IconButton size="small" onClick={onDelete} title="Delete" color="error">
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -419,79 +411,81 @@ export function CriteriaSetManager({
     : null;
 
   return (
-    <div className={className}>
+    <Box className={className}>
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Criteria Sets</h2>
-          <p className="text-sm text-gray-500">
+      <Box sx={{ mb: 3, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 2 }}>
+        <Box>
+          <Typography variant="h6">Criteria Sets</Typography>
+          <Typography variant="body2" color="text.secondary">
             Manage evaluation criteria for document types
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+          </Typography>
+        </Box>
+        <Box sx={{ display: "flex", gap: 1 }}>
           {onRefresh && (
-            <button
+            <Button
               onClick={onRefresh}
               disabled={isLoading}
-              className="rounded px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+              startIcon={<RefreshIcon />}
             >
               Refresh
-            </button>
+            </Button>
           )}
           {onImport && (
-            <button
+            <Button
               onClick={onImport}
               disabled={isLoading || isCreating}
-              className="rounded border border-blue-600 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+              variant="outlined"
+              startIcon={<ImportIcon />}
             >
-              📥 Import
-            </button>
+              Import
+            </Button>
           )}
-          <button
+          <Button
             onClick={() => setIsCreating(true)}
             disabled={isLoading || isCreating}
-            className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            variant="contained"
           >
             + New Criteria Set
-          </button>
-        </div>
-      </div>
+          </Button>
+        </Box>
+      </Box>
 
       {/* Filter */}
       {onFilterChange && docTypes.length > 0 && (
-        <div className="mb-4">
-          <label htmlFor="doctype-filter" className="sr-only">
-            Filter by Document Type
-          </label>
-          <select
+        <FormControl size="small" sx={{ minWidth: 200, mb: 2 }}>
+          <InputLabel id="doctype-filter-label">Filter by Document Type</InputLabel>
+          <Select
+            labelId="doctype-filter-label"
             id="doctype-filter"
             value={selectedDocTypeId || ""}
+            label="Filter by Document Type"
             onChange={(e) => onFilterChange(e.target.value || undefined)}
-            className="rounded border border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
-            <option value="">All Document Types</option>
+            <MenuItem value="">All Document Types</MenuItem>
             {docTypes
               .filter((dt) => dt.isActive)
               .map((dt) => (
-                <option key={dt.id} value={dt.id}>
+                <MenuItem key={dt.id} value={dt.id}>
                   {dt.name}
-                </option>
+                </MenuItem>
               ))}
-          </select>
-        </div>
+          </Select>
+        </FormControl>
       )}
 
       {/* Error */}
       {error && (
-        <div className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">
+        <Alert severity="error" sx={{ mb: 2 }}>
           {error}
-        </div>
+        </Alert>
       )}
 
       {/* Create Form */}
       {isCreating && (
-        <div className="mb-4 rounded-lg border bg-white p-4">
-          <h3 className="mb-3 font-medium text-gray-900">New Criteria Set</h3>
+        <Paper sx={{ p: 3, mb: 2 }}>
+          <Typography variant="subtitle1" gutterBottom>
+            New Criteria Set
+          </Typography>
           <CriteriaSetForm
             docTypes={docTypes}
             defaultDocTypeId={selectedDocTypeId}
@@ -499,13 +493,15 @@ export function CriteriaSetManager({
             onSubmit={handleCreate}
             onCancel={() => setIsCreating(false)}
           />
-        </div>
+        </Paper>
       )}
 
       {/* Edit Form */}
       {editingCriteriaSet && (
-        <div className="mb-4 rounded-lg border bg-white p-4">
-          <h3 className="mb-3 font-medium text-gray-900">Edit Criteria Set</h3>
+        <Paper sx={{ p: 3, mb: 2 }}>
+          <Typography variant="subtitle1" gutterBottom>
+            Edit Criteria Set
+          </Typography>
           <CriteriaSetForm
             criteriaSet={editingCriteriaSet}
             docTypes={docTypes}
@@ -513,28 +509,32 @@ export function CriteriaSetManager({
             onSubmit={handleUpdate}
             onCancel={() => setEditingId(null)}
           />
-        </div>
+        </Paper>
       )}
 
       {/* Loading */}
       {isLoading && criteriaSets.length === 0 && (
-        <div className="py-8 text-center text-gray-500">
-          Loading criteria sets...
-        </div>
+        <Box sx={{ py: 4, textAlign: "center" }}>
+          <Typography color="text.secondary">
+            Loading criteria sets...
+          </Typography>
+        </Box>
       )}
 
       {/* Empty State */}
       {!isLoading && filteredCriteriaSets.length === 0 && (
-        <div className="py-8 text-center text-gray-500">
-          {selectedDocTypeId
-            ? "No criteria sets for this document type. Create one or import from spreadsheet."
-            : "No criteria sets yet. Create one to get started."}
-        </div>
+        <Box sx={{ py: 4, textAlign: "center" }}>
+          <Typography color="text.secondary">
+            {selectedDocTypeId
+              ? "No criteria sets for this document type. Create one or import from spreadsheet."
+              : "No criteria sets yet. Create one to get started."}
+          </Typography>
+        </Box>
       )}
 
       {/* Criteria Set List */}
       {filteredCriteriaSets.length > 0 && (
-        <div className="space-y-3">
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {filteredCriteriaSets.map((criteriaSet) => (
             <CriteriaSetCard
               key={criteriaSet.id}
@@ -544,46 +544,41 @@ export function CriteriaSetManager({
               onViewItems={onViewItems ? () => onViewItems(criteriaSet) : undefined}
             />
           ))}
-        </div>
+        </Box>
       )}
 
       {/* Delete Confirmation */}
-      {deletingId && deletingCriteriaSet && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !isSaving) setDeletingId(null);
-          }}
-        >
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Delete Criteria Set?
-            </h3>
-            <p className="mt-2 text-sm text-gray-600">
+      <Dialog
+        open={!!deletingId && !!deletingCriteriaSet}
+        onClose={() => !isSaving && setDeletingId(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Delete Criteria Set?</DialogTitle>
+        <DialogContent>
+          {deletingCriteriaSet && (
+            <Typography>
               This will delete <strong>{deletingCriteriaSet.name}</strong> and
               all its {deletingCriteriaSet.itemCount ?? 0} criteria items. This
               action cannot be undone.
-            </p>
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button
-                onClick={() => setDeletingId(null)}
-                disabled={isSaving}
-                className="rounded px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={isSaving}
-                className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-              >
-                {isSaving ? "Deleting..." : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeletingId(null)} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDelete}
+            disabled={isSaving}
+            color="error"
+            variant="contained"
+          >
+            {isSaving ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 }
 
