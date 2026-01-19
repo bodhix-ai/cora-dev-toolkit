@@ -25,7 +25,7 @@ def run_validation(scan_path: str, output_format: str = "json") -> int:
     """
     # Get path to bash validation script
     script_dir = Path(__file__).parent.parent.parent
-    bash_script = script_dir / "scripts" / "validate-ui-library.sh"
+    bash_script = script_dir / "validate-ui-library.sh"
     
     if not bash_script.exists():
         error_msg = f"Validation script not found: {bash_script}"

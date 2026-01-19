@@ -1,12 +1,18 @@
 # CORA Validation Remediation Plan
 
 **Created:** 2026-01-18  
-**Test Project:** test-embed (ai-sec-stack)  
+**Updated:** 2026-01-19 (Reprioritized for Voice/Chat Testing)  
+**Test Project:** test-valid (ai-sec-stack)  
 **Baseline:** 2,236 errors, 343 warnings across 17 validators
 
 ## Executive Summary
 
-This plan addresses all validation errors discovered during the test-embed project creation, sequenced by criticality and impact. Fixes will be applied to **templates first** (CORA toolkit), then synced to test projects.
+This plan addresses all validation errors discovered during validation testing, **prioritizing module-voice and module-chat** to prepare them for functional testing. Fixes will be applied to **templates first** (CORA toolkit), then synced to test projects.
+
+**Prioritization Strategy:**
+- **HIGH PRIORITY:** module-voice, module-chat (untested, need validation cleanup before functional testing)
+- **AVOID:** module-eval, module-ws (active development - workspace integration)
+- **LOW PRIORITY:** module-kb, web app infrastructure (after voice/chat are clean)
 
 ## Current Validation Status
 
@@ -358,26 +364,37 @@ setDocuments(result.data.documents)  // Type: KbDocument[]
 
 ---
 
-## Implementation Sequence
+## Implementation Sequence (REVISED - Voice/Chat Priority)
 
-### Week 1: Critical TypeScript Fixes
-- [ ] Day 1-2: Fix module-kb type errors (Phase 1.1)
-- [ ] Day 3: Fix module-eval route type errors (Phase 1.2)
-- [ ] Day 4-5: Fix module-voice type errors (Phase 1.3)
-- [ ] Validate: `pnpm -r run type-check` passes
+### Sprint 0: Foundation (Required - 30 minutes)
+- [ ] Fix web app tsconfig.json (Phase 1.1) → Eliminates ~1,500 TypeScript errors immediately
 
-### Week 2: Accessibility Compliance
-- [ ] Day 1-2: Bulk add aria-labels to IconButtons (Phase 2.1)
-- [ ] Day 3: Fix heading hierarchy (Phase 2.2)
-- [ ] Day 4: Fix form validation accessibility (Phase 2.3)
-- [ ] Day 5: Fix placeholder/label issues (Phase 2.4)
-- [ ] Validate: A11y validator passes
+### Sprint 1: module-voice Validation Cleanup (HIGH PRIORITY - 1 day)
+- [ ] Fix IconButton aria-labels in InterviewRoom.tsx, ConfigForm.tsx, SysVoiceConfigPage.tsx (Phase 2.1)
+- [ ] Fix heading hierarchy in InterviewRoom.tsx (Phase 2.2)
+- [ ] Fix form validation accessibility in ConfigForm.tsx (Phase 2.3)
+- [ ] Fix module-voice route import paths (Phase 1.2)
+- [ ] Fix module-voice TypeScript type errors (Phase 1.3)
+- [ ] **Validation:** Run accessibility and TypeScript validators on voice module
 
-### Week 3: API & Cleanup
-- [ ] Day 1: Fix API route mismatch (Phase 4.1)
-- [ ] Day 2-3: Audit and clean orphaned routes (Phase 4.2)
-- [ ] Day 4: Fix tooling path issue (Phase 5.1)
-- [ ] Day 5: Address high-priority warnings (Phase 6.1)
+### Sprint 2: module-chat Validation Cleanup (HIGH PRIORITY - 1 day)
+- [ ] Fix IconButton aria-labels in chat components (Phase 2.1)
+- [ ] Fix module-chat route import paths (Phase 1.2)
+- [ ] Fix module-chat TypeScript type errors (Phase 1.3)
+- [ ] Fix hardcoded AWS regions in chat-stream Lambda (Phase 6.1)
+- [ ] **Validation:** Run accessibility and TypeScript validators on chat module
+
+### Sprint 3: Infrastructure & Supporting Modules (1 day)
+- [ ] Fix UI Library validator path issue (Phase 5.1)
+- [ ] Fix module-ai hardcoded AWS regions (Phase 6.1)
+- [ ] Fix module-kb ListDocumentsResponse type (Phase 1.3.1)
+- [ ] Fix User sys_role type in sys/kb page (Phase 1.3.3)
+- [ ] **Validation:** Full validation suite
+
+### Sprint 4: module-eval & module-ws (DEFERRED - Active Development)
+- [ ] **SKIP:** module-eval fixes (workspace integration in progress)
+- [ ] **SKIP:** module-ws fixes (workspace integration in progress)
+- [ ] Note: These will be addressed after workspace integration branch merges
 
 ---
 
@@ -388,10 +405,10 @@ setDocuments(result.data.documents)  // Type: KbDocument[]
 ### Fix Locations
 
 | Error Type | Template Location | Test Project |
-|------------|------------------|--------------|
-| TypeScript errors | `templates/_modules-*/frontend/` | `~/code/bodhix/testing/test-embed/ai-sec-stack/packages/module-*/` |
+|------------|------------------|-----------------|
+| TypeScript errors | `templates/_modules-*/frontend/` | `~/code/bodhix/testing/test-valid/ai-sec-stack/packages/module-*/` |
 | Accessibility | `templates/_modules-*/frontend/components/` | Same as above |
-| API routes | `templates/_modules-*/backend/lambdas/` | `~/code/bodhix/testing/test-embed/ai-sec-infra/lambdas/` |
+| API routes | `templates/_modules-*/backend/lambdas/` | `~/code/bodhix/testing/test-valid/ai-sec-infra/lambdas/` |
 | Lambda code | `templates/_modules-*/backend/` | Same as above |
 
 ### Sync Workflow
@@ -399,11 +416,13 @@ setDocuments(result.data.documents)  // Type: KbDocument[]
 After each template fix:
 ```bash
 # Use the sync script
-./scripts/sync-fix-to-project.sh ~/code/bodhix/testing/test-embed/ai-sec-stack <filename>
+./scripts/sync-fix-to-project.sh ~/code/bodhix/testing/test-valid/ai-sec-stack <filename>
 
 # Verify in test project
-cd ~/code/bodhix/testing/test-embed/ai-sec-stack
-./scripts/validation/run-validators.sh
+cd ~/code/bodhix/testing/test-valid/ai-sec-stack
+pnpm -r run type-check  # TypeScript validation
+# OR
+python validation/cora-validate.py --validators a11y  # Accessibility validation
 ```
 
 ---
@@ -431,6 +450,12 @@ cd ~/code/bodhix/testing/test-embed/ai-sec-stack
 - ✅ Fixed tsconfig.json module path mappings (toolkit bug identified)
 - ⏳ TypeScript now running, revealed 2,165 code errors
 - ⏳ Accessibility errors are template-level, not project-specific
+
+**2026-01-19:**
+- ✅ Reprioritized to focus on module-voice and module-chat validation
+- ✅ Deferring module-eval and module-ws fixes (active workspace integration development)
+- ✅ Created validation-test-resolution branch
+- ✅ Clarified: Core modules (kb, chat) are always included, never listed in config
 
 ### Open Questions
 
