@@ -1120,7 +1120,7 @@ def _discover_bedrock_models(credentials: Dict[str, Any]) -> List[Dict[str, Any]
     Discover available models from AWS Bedrock.
     Includes both foundation models and inference profiles.
     """
-    region = credentials.get('region', 'us-east-1')
+    region = credentials.get('region', os.environ.get('AWS_REGION', 'us-east-1'))
     use_iam_role = credentials.get('useIamRole', True)
     
     # Initialize Bedrock client
@@ -1562,7 +1562,7 @@ def _test_bedrock_model_converse_api(model_id: str, credentials: Dict[str, Any],
     import time
     from botocore.config import Config
     
-    region = credentials.get('region', 'us-east-1')
+    region = credentials.get('region', os.environ.get('AWS_REGION', 'us-east-1'))
     use_iam_role = credentials.get('useIamRole', True)
     
     boto_config = Config(
@@ -1636,7 +1636,7 @@ def _test_bedrock_titan_text_model(model_id: str, credentials: Dict[str, Any], p
     import time
     from botocore.config import Config
     
-    region = credentials.get('region', 'us-east-1')
+    region = credentials.get('region', os.environ.get('AWS_REGION', 'us-east-1'))
     use_iam_role = credentials.get('useIamRole', True)
     
     boto_config = Config(
@@ -1712,7 +1712,7 @@ def _test_bedrock_llama_model(model_id: str, credentials: Dict[str, Any], prompt
     import time
     from botocore.config import Config
     
-    region = credentials.get('region', 'us-east-1')
+    region = credentials.get('region', os.environ.get('AWS_REGION', 'us-east-1'))
     use_iam_role = credentials.get('useIamRole', True)
     
     boto_config = Config(
@@ -1782,7 +1782,7 @@ def _test_bedrock_mistral_model(model_id: str, credentials: Dict[str, Any], prom
     import time
     from botocore.config import Config
     
-    region = credentials.get('region', 'us-east-1')
+    region = credentials.get('region', os.environ.get('AWS_REGION', 'us-east-1'))
     use_iam_role = credentials.get('useIamRole', True)
     
     boto_config = Config(
@@ -1853,7 +1853,7 @@ def _test_bedrock_embedding_model(model_id: str, credentials: Dict[str, Any], pr
     import time
     from botocore.config import Config
     
-    region = credentials.get('region', 'us-east-1')
+    region = credentials.get('region', os.environ.get('AWS_REGION', 'us-east-1'))
     use_iam_role = credentials.get('useIamRole', True)
     
     # Configure timeout - 30 seconds per model test to prevent hanging
@@ -1940,7 +1940,7 @@ def _test_bedrock_model_messages_format(model_id: str, credentials: Dict[str, An
     import time
     from botocore.config import Config
     
-    region = credentials.get('region', 'us-east-1')
+    region = credentials.get('region', os.environ.get('AWS_REGION', 'us-east-1'))
     use_iam_role = credentials.get('useIamRole', True)
     
     # Configure timeout - 30 seconds per model test to prevent hanging
@@ -2028,7 +2028,7 @@ def _test_bedrock_model(model_id: str, credentials: Dict[str, Any], prompt: str)
     import time
     from botocore.config import Config
     
-    region = credentials.get('region', 'us-east-1')
+    region = credentials.get('region', os.environ.get('AWS_REGION', 'us-east-1'))
     use_iam_role = credentials.get('useIamRole', True)
     
     # Configure timeout - 30 seconds per model test to prevent hanging

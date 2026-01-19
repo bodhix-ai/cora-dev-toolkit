@@ -24,11 +24,26 @@ def run_validation(scan_path: str, output_format: str = "json") -> int:
         Exit code (0 = pass, 1 = fail)
     """
     # Get path to bash validation script
-    script_dir = Path(__file__).parent.parent.parent
-    bash_script = script_dir / "validate-ui-library.sh"
+    # Handle both Toolkit and Project structures:
+    # - Toolkit: validation/ui-library-validator/cli.py → scripts/validate-ui-library.sh
+    # - Project: scripts/validation/ui-library-validator/cli.py → scripts/validate-ui-library.sh
     
+    current_file = Path(__file__)
+    
+    # Detect structure by checking if we're in scripts/validation/ or just validation/
+    if current_file.parts[-4] == "scripts":
+        # Project structure: scripts/validation/ui-library-validator/cli.py
+        # Go up 3 levels to scripts/, then look for validate-ui-library.sh in same dir
+        scripts_dir = current_file.parent.parent.parent
+        bash_script = scripts_dir / "validate-ui-library.sh"
+    else:
+        # Toolkit structure: validation/ui-library-validator/cli.py
+        # Go up 3 levels to root, then into scripts/
+        base_dir = current_file.parent.parent.parent
+        bash_script = base_dir / "scripts" / "validate-ui-library.sh"
+        
     if not bash_script.exists():
-        error_msg = f"Validation script not found: {bash_script}"
+        error_msg = f"Validation script not found at: {bash_script}"
         if output_format == "json":
             print(json.dumps({
                 "passed": False,
