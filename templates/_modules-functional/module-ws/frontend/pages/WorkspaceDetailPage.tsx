@@ -118,6 +118,8 @@ export function WorkspaceDetailPage({
 }: WorkspaceDetailPageProps): React.ReactElement {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  const [creatingEval, setCreatingEval] = useState(false);
+  const [evalError, setEvalError] = useState<string | null>(null);
 
   // Get session for API client creation
   const { data: session } = useSession();
@@ -182,16 +184,49 @@ export function WorkspaceDetailPage({
     autoFetch: !!kbApiClient,
   });
 
-  // Evaluation hooks - minimal for Phase B
+  // Evaluation hooks - Phase C Alternative (create draft first)
   const { 
     evaluations, 
     isLoading: evalLoading, 
-    error: evalError 
+    error: evalLoadError,
+    create,  // <-- Correct function name from hook!
   } = useEvaluations(
     session?.accessToken as string | null,
     workspaceId
   );
   const evalStats = useEvaluationStats();
+
+  // Handler for creating draft evaluation
+  const handleCreateEvaluation = async () => {
+    setCreatingEval(true);
+    setEvalError(null);
+    
+    try {
+      console.log("Creating evaluation for workspace:", workspaceId);
+      
+      // Create draft evaluation (no dialog, no problematic hooks!)
+      const newEval = await create({
+        name: `${workspace?.name} Evaluation - ${new Date().toLocaleDateString()}`,
+        workspaceId: workspaceId,
+      });
+      
+      console.log("Evaluation created:", newEval);
+      
+      // Navigate to detail page where user can configure it
+      if (newEval?.id) {
+        console.log("Navigating to eval detail:", `/eval/${newEval.id}?workspace=${workspaceId}`);
+        router.push(`/eval/${newEval.id}?workspace=${workspaceId}`);
+      } else {
+        console.error("No evaluation ID returned:", newEval);
+        setEvalError("Failed to create evaluation: No ID returned");
+      }
+    } catch (error) {
+      console.error("Failed to create evaluation:", error);
+      setEvalError(error instanceof Error ? error.message : "Failed to create evaluation");
+    } finally {
+      setCreatingEval(false);
+    }
+  };
 
   // Group available KBs for WorkspaceDataKBTab
   const groupedAvailableKbs = useMemo(() => {
@@ -458,7 +493,24 @@ export function WorkspaceDetailPage({
           <Box>
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
               <Typography variant="h5">Document Evaluations</Typography>
+              {canEdit && (
+                <Button
+                  variant="contained"
+                  onClick={handleCreateEvaluation}
+                  disabled={evalLoading || creatingEval}
+                  startIcon={creatingEval ? <CircularProgress size={20} color="inherit" /> : undefined}
+                >
+                  {creatingEval ? "Creating..." : "+ Document Evaluation"}
+                </Button>
+              )}
             </Box>
+
+            {/* Error Alert */}
+            {evalError && (
+              <Alert severity="error" onClose={() => setEvalError(null)} sx={{ mb: 3 }}>
+                {evalError}
+              </Alert>
+            )}
 
             {/* Stats Chips */}
             <Box sx={{ display: "flex", gap: 1, mb: 3, flexWrap: "wrap" }}>
@@ -488,9 +540,9 @@ export function WorkspaceDetailPage({
             )}
 
             {/* Error State */}
-            {evalError && (
+            {evalLoadError && (
               <Alert severity="error" sx={{ mb: 3 }}>
-                {evalError}
+                {evalLoadError}
               </Alert>
             )}
 
@@ -505,7 +557,7 @@ export function WorkspaceDetailPage({
                         cursor: "pointer",
                         "&:hover": { boxShadow: 3 }
                       }}
-                      onClick={() => router.push(`/ws/${workspaceId}/eval/${evaluation.id}`)}
+                      onClick={() => router.push(`/eval/${evaluation.id}?workspace=${workspaceId}`)}
                     >
                       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
                         <Typography variant="subtitle1" fontWeight="medium">
