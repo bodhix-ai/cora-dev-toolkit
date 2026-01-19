@@ -73,128 +73,20 @@ import {
   useKbDocuments,
   createKbModuleClient,
   type AvailableKb,
+  type KbDocument,
 } from "@{{PROJECT_NAME}}/module-kb";
 import { createAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
+import {
+  useEvaluations,
+  useEvaluationStats,
+  useEvalDocTypes,
+  useEvalCriteriaSets,
+  type Evaluation,
+  type EvaluationStatus,
+  createEvalModuleClient,
+} from "@{{PROJECT_NAME}}/module-eval";
+import { CreateEvaluationDialog } from "../components/CreateEvaluationDialog";
 
-// ============================================================================
-// MOCK DATA - CJIS IT Security Audit Theme
-// ============================================================================
-
-interface MockWorkflow {
-  id: string;
-  name: string;
-  type: "IT Policy Review" | "Network Diagram Review" | "Proof Artifact Review";
-  status: "draft" | "running" | "complete" | "failed";
-  progress: number;
-  docsProcessed: number;
-  docsTotal: number;
-  findings: {
-    critical: number;
-    nonCompliant: number;
-    warning: number;
-    compliant: number;
-  };
-  startedAt?: string;
-  completedAt?: string;
-  description?: string;
-}
-
-interface MockChat {
-  id: string;
-  name: string;
-  visibility: "workspace" | "private";
-  lastUser: string;
-  lastActivity: string;
-  messages: number;
-  kbGrounded: boolean;
-}
-
-interface MockKBDocument {
-  id: string;
-  name: string;
-  category: string;
-  indexed: boolean;
-  size: string;
-}
-
-const MOCK_WORKFLOWS: MockWorkflow[] = [
-  {
-    id: "1",
-    name: "CJIS Security Policy Area 5: Access Control",
-    type: "IT Policy Review",
-    status: "running",
-    progress: 67,
-    docsProcessed: 12,
-    docsTotal: 18,
-    findings: { critical: 0, nonCompliant: 8, warning: 4, compliant: 15 },
-    startedAt: "3 hours ago",
-  },
-  {
-    id: "2",
-    name: "Data Center Network Architecture Assessment",
-    type: "Network Diagram Review",
-    status: "complete",
-    progress: 100,
-    docsProcessed: 6,
-    docsTotal: 6,
-    findings: { critical: 2, nonCompliant: 3, warning: 5, compliant: 12 },
-    completedAt: "Jan 10, 2026",
-  },
-  {
-    id: "3",
-    name: "MFA Implementation Evidence Collection",
-    type: "Proof Artifact Review",
-    status: "running",
-    progress: 45,
-    docsProcessed: 9,
-    docsTotal: 20,
-    findings: { critical: 0, nonCompliant: 2, warning: 3, compliant: 8 },
-    startedAt: "1 hour ago",
-    description: "AI-evaluated screenshots and config files demonstrating MFA implementation",
-  },
-  {
-    id: "4",
-    name: "Encryption Policy Compliance Review",
-    type: "IT Policy Review",
-    status: "draft",
-    progress: 0,
-    docsProcessed: 0,
-    docsTotal: 0,
-    findings: { critical: 0, nonCompliant: 0, warning: 0, compliant: 0 },
-  },
-];
-
-const MOCK_CHATS: MockChat[] = [
-  {
-    id: "1",
-    name: "Access Control Compliance Questions",
-    visibility: "workspace",
-    lastUser: "Sarah Chen",
-    lastActivity: "15 min ago",
-    messages: 18,
-    kbGrounded: true,
-  },
-  {
-    id: "2",
-    name: "Remediation Planning for Encryption Gaps",
-    visibility: "workspace",
-    lastUser: "Michael Torres",
-    lastActivity: "2 hours ago",
-    messages: 12,
-    kbGrounded: true,
-  },
-  {
-    id: "3",
-    name: "Incident Response Plan Review",
-    visibility: "private",
-    lastUser: "You",
-    lastActivity: "yesterday",
-    messages: 6,
-    kbGrounded: true,
-  },
-];
-
-// MOCK_KB_DOCS and MOCK_KB_STATS removed - now using real data from module-kb
 
 // ============================================================================
 // COMPONENT INTERFACES & HELPERS
@@ -213,6 +105,8 @@ export interface WorkspaceDetailPageProps {
   onBack?: () => void;
   /** Callback when workspace is deleted */
   onDeleted?: () => void;
+  /** Callback when evaluation is selected for viewing */
+  onViewEvaluation?: (evaluationId: string) => void;
 }
 
 interface TabPanelProps {
@@ -254,6 +148,7 @@ export function WorkspaceDetailPage({
   apiClient: providedApiClient,
   onBack,
   onDeleted,
+  onViewEvaluation,
 }: WorkspaceDetailPageProps): React.ReactElement {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
@@ -397,12 +292,64 @@ export function WorkspaceDetailPage({
     setActiveTab(newValue);
   };
 
-  const getWorkflowStatusColor = (status: MockWorkflow["status"]) => {
+  // Create Eval API client
+  const evalApiClient = useMemo(() => {
+    if (session?.accessToken) {
+      const authClient = createAuthenticatedClient(session.accessToken as string);
+      return createEvalModuleClient(authClient);
+    }
+    return null;
+  }, [session?.accessToken]);
+
+  // Eval hooks for workspace
+  const {
+    evaluations,
+    isLoading: evalsLoading,
+    error: evalsError,
+    create: createEvaluation,
+    remove: deleteEvaluation,
+    refresh: refreshEvaluations,
+  } = useEvaluations(
+    session?.accessToken as string,
+    workspaceId,
+    {}
+  );
+
+  const stats = useEvaluationStats();
+
+  const { docTypes } = useEvalDocTypes(
+    session?.accessToken as string,
+    orgId
+  );
+
+  const { criteriaSets } = useEvalCriteriaSets(
+    session?.accessToken as string,
+    orgId,
+    {}
+  );
+
+  // Create evaluation dialog state
+  const [createEvalDialogOpen, setCreateEvalDialogOpen] = useState(false);
+
+  const handleCreateEvaluation = async (input: any) => {
+    await createEvaluation(input);
+    refreshEvaluations();
+  };
+
+  const handleUploadForEvaluation = async (file: File): Promise<KbDocument> => {
+    const doc = await uploadDocument(file);
+    return doc;
+  };
+
+  // Get evaluation status color
+  const getEvaluationStatusColor = (status: EvaluationStatus) => {
     switch (status) {
-      case "running":
-        return "info";
-      case "complete":
+      case "completed":
         return "success";
+      case "processing":
+        return "info";
+      case "pending":
+        return "warning";
       case "failed":
         return "error";
       default:
@@ -410,12 +357,15 @@ export function WorkspaceDetailPage({
     }
   };
 
-  const getWorkflowStatusIcon = (status: MockWorkflow["status"]) => {
+  // Get evaluation status icon
+  const getEvaluationStatusIcon = (status: EvaluationStatus) => {
     switch (status) {
-      case "running":
-        return <PlayArrow fontSize="small" />;
-      case "complete":
+      case "completed":
         return <CheckCircle fontSize="small" />;
+      case "processing":
+        return <PlayArrow fontSize="small" />;
+      case "pending":
+        return <Description fontSize="small" />;
       case "failed":
         return <ErrorIcon fontSize="small" />;
       default:
@@ -534,219 +484,223 @@ export function WorkspaceDetailPage({
       {/* Tabs */}
       <Paper sx={{ mb: 3 }}>
         <Tabs value={activeTab} onChange={handleTabChange} aria-label="workspace tabs">
-          <Tab label="Activities" {...a11yProps(0)} />
+          <Tab label="Doc Eval" {...a11yProps(0)} />
           <Tab label="Data" {...a11yProps(1)} />
           <Tab label="Members" {...a11yProps(2)} />
           <Tab label="Settings" {...a11yProps(3)} />
         </Tabs>
 
-        {/* Tab 0: Activities */}
+        {/* Tab 0: Doc Eval */}
         <TabPanel value={activeTab} index={0}>
-          {/* Workflows Section */}
-          <Box sx={{ mb: 4 }}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-              <Typography variant="h5">📋 Workflows</Typography>
+          <Box>
+            {/* Header Section */}
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+              <Typography variant="h5">� Document Evaluations</Typography>
               {canEdit && (
-                <Button variant="contained" startIcon={<Add />} size="small">
-                  New Workflow
+                <Button
+                  variant="contained"
+                  startIcon={<Add />}
+                  onClick={() => setCreateEvalDialogOpen(true)}
+                >
+                  Evaluate Document
                 </Button>
               )}
             </Box>
 
-            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-              <FormControl size="small" sx={{ minWidth: 150 }}>
-                <InputLabel>Type</InputLabel>
-                <Select label="Type" defaultValue="all">
-                  <MenuItem value="all">All</MenuItem>
-                  <MenuItem value="it-policy">IT Policy Review</MenuItem>
-                  <MenuItem value="network">Network Diagram Review</MenuItem>
-                  <MenuItem value="proof">Proof Artifact Review</MenuItem>
-                </Select>
-              </FormControl>
-              <FormControl size="small" sx={{ minWidth: 150 }}>
-                <InputLabel>Status</InputLabel>
-                <Select label="Status" defaultValue="all">
-                  <MenuItem value="all">All</MenuItem>
-                  <MenuItem value="running">Running</MenuItem>
-                  <MenuItem value="complete">Complete</MenuItem>
-                  <MenuItem value="draft">Draft</MenuItem>
-                </Select>
-              </FormControl>
-              <TextField
-                size="small"
-                placeholder="Search workflows..."
-                aria-label="Search workflows"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{ flex: 1 }}
-              />
-            </Box>
+            {/* Stats Section */}
+            {stats.total > 0 && (
+              <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+                <Chip label={`${stats.total} Total`} />
+                {stats.processing > 0 && <Chip label={`${stats.processing} Processing`} color="info" />}
+                {stats.completed > 0 && <Chip label={`${stats.completed} Completed`} color="success" />}
+                {stats.failed > 0 && <Chip label={`${stats.failed} Failed`} color="error" />}
+              </Box>
+            )}
 
-            {MOCK_WORKFLOWS.map((workflow) => (
-              <Card key={workflow.id} sx={{ mb: 2 }}>
-                <CardContent>
-                  <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
-                    <Box sx={{ flex: 1 }}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                        <Typography variant="h6">{workflow.name}</Typography>
-                        <Chip
-                          icon={getWorkflowStatusIcon(workflow.status)}
-                          label={workflow.status}
-                          size="small"
-                          color={getWorkflowStatusColor(workflow.status)}
-                        />
-                      </Box>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        Type: {workflow.type}
-                      </Typography>
-                      {workflow.description && (
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                          {workflow.description}
-                        </Typography>
-                      )}
-                      {workflow.status === "running" && (
-                        <>
-                          <Box sx={{ mb: 1 }}>
-                            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                              <Typography variant="caption">
-                                {workflow.docsProcessed}/{workflow.docsTotal} documents processed
-                              </Typography>
-                              <Typography variant="caption">{workflow.progress}%</Typography>
-                            </Box>
-                            <LinearProgress variant="determinate" value={workflow.progress} />
+            {/* Error State */}
+            {evalsError && (
+              <Alert severity="error" sx={{ mb: 3 }}>
+                {evalsError}
+              </Alert>
+            )}
+
+            {/* Loading State */}
+            {evalsLoading && evaluations.length === 0 && (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+                <CircularProgress />
+              </Box>
+            )}
+
+            {/* Empty State */}
+            {!evalsLoading && evaluations.length === 0 && (
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  py: 8,
+                  px: 3,
+                  textAlign: "center",
+                }}
+              >
+                <Description sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
+                <Typography variant="h6" gutterBottom>
+                  No evaluations yet
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  Start evaluating documents against your organization's criteria
+                </Typography>
+                {canEdit && (
+                  <Button
+                    variant="contained"
+                    startIcon={<Add />}
+                    onClick={() => setCreateEvalDialogOpen(true)}
+                  >
+                    Create First Doc Evaluation
+                  </Button>
+                )}
+              </Box>
+            )}
+
+            {/* Evaluations List */}
+            {!evalsLoading && evaluations.length > 0 && (
+              <Box>
+                {evaluations.map((evaluation) => (
+                  <Card 
+                    key={evaluation.id} 
+                    sx={{ 
+                      mb: 2,
+                      cursor: onViewEvaluation ? "pointer" : "default",
+                      "&:hover": onViewEvaluation ? {
+                        boxShadow: 2,
+                        backgroundColor: "action.hover",
+                      } : {},
+                    }}
+                    onClick={() => onViewEvaluation?.(evaluation.id)}
+                  >
+                    <CardContent>
+                      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                        <Box sx={{ flex: 1 }}>
+                          {/* Evaluation Title & Status */}
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                            <Typography variant="h6">{evaluation.name}</Typography>
+                            <Chip
+                              icon={getEvaluationStatusIcon(evaluation.status)}
+                              label={evaluation.status}
+                              size="small"
+                              color={getEvaluationStatusColor(evaluation.status)}
+                            />
                           </Box>
-                          <Typography variant="caption" color="text.secondary">
-                            Started: {workflow.startedAt}
+
+                          {/* Metadata */}
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            Doc Type: {evaluation.docTypeName || "Unknown"} | Criteria:{" "}
+                            {evaluation.criteriaSetName || "Unknown"}
                           </Typography>
-                        </>
-                      )}
-                      {workflow.status === "complete" && (
-                        <Typography variant="caption" color="text.secondary">
-                          Completed: {workflow.completedAt}
-                        </Typography>
-                      )}
-                      {(workflow.status === "running" || workflow.status === "complete") && (
-                        <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
-                          <Chip
-                            label={`${workflow.findings.critical} Critical`}
-                            size="small"
-                            color="error"
-                            variant={workflow.findings.critical > 0 ? "filled" : "outlined"}
-                          />
-                          <Chip
-                            label={`${workflow.findings.nonCompliant} Non-Compliant`}
-                            size="small"
-                            color="warning"
-                            variant={workflow.findings.nonCompliant > 0 ? "filled" : "outlined"}
-                          />
-                          <Chip
-                            label={`${workflow.findings.warning} Warning`}
-                            size="small"
-                            color="info"
-                            variant={workflow.findings.warning > 0 ? "filled" : "outlined"}
-                          />
-                          <Chip
-                            label={`${workflow.findings.compliant} Compliant`}
-                            size="small"
-                            color="success"
-                            variant={workflow.findings.compliant > 0 ? "filled" : "outlined"}
-                          />
+
+                          {/* Processing State */}
+                          {evaluation.status === "processing" && (
+                            <>
+                              <Box sx={{ mb: 1 }}>
+                                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                                  <Typography variant="caption">Processing...</Typography>
+                                  <Typography variant="caption">{evaluation.progress || 0}%</Typography>
+                                </Box>
+                                <LinearProgress
+                                  variant="determinate"
+                                  value={evaluation.progress || 0}
+                                />
+                              </Box>
+                              <Typography variant="caption" color="text.secondary">
+                                Started: {new Date(evaluation.startedAt || evaluation.createdAt).toLocaleString()}
+                              </Typography>
+                            </>
+                          )}
+
+                          {/* Pending State */}
+                          {evaluation.status === "pending" && (
+                            <Typography variant="caption" color="text.secondary">
+                              Created: {new Date(evaluation.createdAt).toLocaleString()}
+                            </Typography>
+                          )}
+
+                          {/* Completed State */}
+                          {evaluation.status === "completed" && (
+                            <>
+                              {evaluation.complianceScore !== undefined && (
+                                <Box sx={{ mb: 1 }}>
+                                  <Typography variant="body2" fontWeight="bold">
+                                    Score: {evaluation.complianceScore}%
+                                  </Typography>
+                                  <LinearProgress
+                                    variant="determinate"
+                                    value={evaluation.complianceScore}
+                                    color={
+                                      evaluation.complianceScore >= 80
+                                        ? "success"
+                                        : evaluation.complianceScore >= 60
+                                        ? "warning"
+                                        : "error"
+                                    }
+                                  />
+                                </Box>
+                              )}
+                              <Typography variant="caption" color="text.secondary">
+                                Completed: {new Date(evaluation.completedAt || evaluation.createdAt).toLocaleString()}
+                              </Typography>
+                            </>
+                          )}
+
+                          {/* Failed State */}
+                          {evaluation.status === "failed" && (
+                            <>
+                              {evaluation.errorMessage && (
+                                <Alert severity="error" sx={{ mt: 1, mb: 1 }}>
+                                  {evaluation.errorMessage}
+                                </Alert>
+                              )}
+                              <Typography variant="caption" color="text.secondary">
+                                Created: {new Date(evaluation.createdAt).toLocaleString()}
+                              </Typography>
+                            </>
+                          )}
                         </Box>
-                      )}
-                    </Box>
-                    <Box sx={{ display: "flex", gap: 1 }}>
-                      {workflow.status === "running" && (
-                        <Button variant="outlined" size="small">
-                          View Progress
-                        </Button>
-                      )}
-                      {workflow.status === "complete" && (
-                        <>
-                          <Button variant="outlined" size="small">
-                            View Report
-                          </Button>
-                          <Button variant="outlined" size="small">
-                            Export PDF
-                          </Button>
-                        </>
-                      )}
-                      {workflow.status === "draft" && (
-                        <>
-                          <Button variant="outlined" size="small">
-                            Configure
-                          </Button>
-                          <Button variant="contained" size="small">
-                            Start Analysis
-                          </Button>
-                        </>
-                      )}
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-            ))}
-          </Box>
 
-          {/* Chats Section */}
-          <Box>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-              <Typography variant="h6">💬 Chats</Typography>
-              <Button variant="contained" startIcon={<Add />} size="small">
-                New Chat
-              </Button>
-            </Box>
-
-            <Box sx={{ mb: 2 }}>
-              <TextField
-                size="small"
-                placeholder="Search chats..."
-                aria-label="Search chats"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Box>
-
-            {MOCK_CHATS.map((chat) => (
-              <Card key={chat.id} sx={{ mb: 2 }}>
-                <CardContent>
-                  <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
-                    <Box sx={{ flex: 1 }}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                        <Typography variant="h6">{chat.name}</Typography>
-                        <Chip
-                          icon={chat.visibility === "workspace" ? <Group /> : <Lock />}
-                          label={chat.visibility === "workspace" ? "Shared" : "Private"}
-                          size="small"
-                          variant="outlined"
-                        />
+                        {/* Action Buttons */}
+                        <Box sx={{ display: "flex", gap: 1 }}>
+                          {evaluation.status === "failed" && canEdit && (
+                            <Button 
+                              variant="outlined" 
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // TODO: Implement retry logic
+                                console.log("Retry evaluation:", evaluation.id);
+                              }}
+                            >
+                              Retry
+                            </Button>
+                          )}
+                          {canEdit && (
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteEvaluation(evaluation.id);
+                              }}
+                              aria-label="Delete evaluation"
+                            >
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          )}
+                        </Box>
                       </Box>
-                      {chat.kbGrounded && (
-                        <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1 }}>
-                          📚 Grounded with: CJIS Audit 2026 KB (37 documents)
-                        </Typography>
-                      )}
-                      <Typography variant="body2" color="text.secondary">
-                        Last: {chat.lastUser} ({chat.lastActivity}) • {chat.messages} messages
-                      </Typography>
-                    </Box>
-                    <Button variant="outlined" size="small">
-                      Continue Chat
-                    </Button>
-                  </Box>
-                </CardContent>
-              </Card>
-            ))}
+                    </CardContent>
+                  </Card>
+                ))}
+              </Box>
+            )}
           </Box>
         </TabPanel>
 
@@ -833,6 +787,18 @@ export function WorkspaceDetailPage({
           apiClient ? async (wsId, values) => apiClient.updateWorkspace(wsId, values, orgId) : undefined
         }
         onUpdateSuccess={handleUpdateSuccess}
+      />
+
+      {/* Create evaluation dialog */}
+      <CreateEvaluationDialog
+        open={createEvalDialogOpen}
+        onClose={() => setCreateEvalDialogOpen(false)}
+        onCreate={handleCreateEvaluation}
+        docTypes={docTypes || []}
+        criteriaSets={criteriaSets || []}
+        kbDocuments={documents || []}
+        onUploadDocument={handleUploadForEvaluation}
+        loading={evalsLoading}
       />
     </Container>
   );
