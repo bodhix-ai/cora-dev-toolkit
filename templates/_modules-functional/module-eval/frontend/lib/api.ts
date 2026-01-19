@@ -265,8 +265,8 @@ export async function createSysStatusOption(
  * PATCH /admin/sys/eval/status-options/{id}
  */
 export async function updateSysStatusOption(
-  statusId: string,
   token: string,
+  statusId: string,
   input: Partial<StatusOptionInput>
 ): Promise<EvalSysStatusOption> {
   return apiRequest<EvalSysStatusOption>(
@@ -284,8 +284,8 @@ export async function updateSysStatusOption(
  * DELETE /admin/sys/eval/status-options/{id}
  */
 export async function deleteSysStatusOption(
-  statusId: string,
-  token: string
+  token: string,
+  statusId: string
 ): Promise<{ message: string; id: string }> {
   return apiRequest<{ message: string; id: string }>(
     `/admin/sys/eval/status-options/${statusId}`,
@@ -313,8 +313,8 @@ export async function listSysPrompts(
  * PATCH /admin/sys/eval/prompts/{type}
  */
 export async function updateSysPrompt(
-  promptType: PromptType,
   token: string,
+  promptType: PromptType,
   input: PromptConfigInput
 ): Promise<EvalSysPromptConfig> {
   return apiRequest<EvalSysPromptConfig>(
@@ -332,8 +332,8 @@ export async function updateSysPrompt(
  * POST /admin/sys/eval/prompts/{type}/test
  */
 export async function testSysPrompt(
-  promptType: PromptType,
   token: string,
+  promptType: PromptType,
   input: TestPromptInput
 ): Promise<PromptTestResult> {
   return apiRequest<PromptTestResult>(
@@ -371,8 +371,8 @@ export async function listOrgsDelegation(
  * PATCH /admin/sys/eval/orgs/{orgId}/delegation
  */
 export async function toggleOrgDelegation(
-  orgId: string,
   token: string,
+  orgId: string,
   input: ToggleDelegationInput
 ): Promise<DelegationToggleResult> {
   return apiRequest<DelegationToggleResult>(
@@ -394,8 +394,8 @@ export async function toggleOrgDelegation(
  * GET /admin/org/eval/config
  */
 export async function getOrgConfig(
-  orgId: string,
-  token: string
+  token: string,
+  orgId: string
 ): Promise<EvalOrgConfig> {
   const url = buildUrl("/admin/org/eval/config", { orgId });
   return apiRequest<EvalOrgConfig>(url, token);
@@ -406,8 +406,8 @@ export async function getOrgConfig(
  * PATCH /admin/org/eval/config
  */
 export async function updateOrgConfig(
-  orgId: string,
   token: string,
+  orgId: string,
   input: UpdateOrgConfigInput
 ): Promise<EvalOrgConfig> {
   const url = buildUrl("/admin/org/eval/config", { orgId });
@@ -426,8 +426,8 @@ export async function updateOrgConfig(
  * GET /admin/org/eval/status-options
  */
 export async function listOrgStatusOptions(
-  orgId: string,
   token: string,
+  orgId: string,
   options?: ListStatusOptionsOptions
 ): Promise<EvalOrgStatusOption[]> {
   const params: Record<string, string | boolean | undefined> = {
@@ -444,8 +444,8 @@ export async function listOrgStatusOptions(
  * POST /admin/org/eval/status-options
  */
 export async function createOrgStatusOption(
-  orgId: string,
   token: string,
+  orgId: string,
   input: StatusOptionInput
 ): Promise<EvalOrgStatusOption> {
   const url = buildUrl("/admin/org/eval/status-options", { orgId });
@@ -460,9 +460,9 @@ export async function createOrgStatusOption(
  * PATCH /admin/org/eval/status-options/{id}
  */
 export async function updateOrgStatusOption(
-  statusId: string,
-  orgId: string,
   token: string,
+  orgId: string,
+  statusId: string,
   input: Partial<StatusOptionInput>
 ): Promise<EvalOrgStatusOption> {
   const url = buildUrl(`/admin/org/eval/status-options/${statusId}`, { orgId });
@@ -477,9 +477,9 @@ export async function updateOrgStatusOption(
  * DELETE /admin/org/eval/status-options/{id}
  */
 export async function deleteOrgStatusOption(
-  statusId: string,
+  token: string,
   orgId: string,
-  token: string
+  statusId: string
 ): Promise<{ message: string; id: string }> {
   const url = buildUrl(`/admin/org/eval/status-options/${statusId}`, { orgId });
   return apiRequest<{ message: string; id: string }>(url, token, {
