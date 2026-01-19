@@ -263,6 +263,7 @@ export function DocumentTable({
           >
             <MenuItem value="all">All</MenuItem>
             <MenuItem value="pending">Pending</MenuItem>
+            <MenuItem value="uploaded">Uploaded</MenuItem>
             <MenuItem value="processing">Processing</MenuItem>
             <MenuItem value="indexed">Indexed</MenuItem>
             <MenuItem value="failed">Failed</MenuItem>

@@ -12,6 +12,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Cancel as XCircleIcon,
   Autorenew as Loader2Icon,
+  CloudUpload as CloudUploadIcon,
 } from '@mui/icons-material';
 import type { DocumentStatus } from '../types';
 
@@ -49,6 +50,11 @@ const STATUS_CONFIG: Record<
     label: 'Pending',
     color: 'warning',
     Icon: ClockIcon,
+  },
+  uploaded: {
+    label: 'Uploaded',
+    color: 'info',
+    Icon: CloudUploadIcon,
   },
   processing: {
     label: 'Processing',
@@ -111,6 +117,7 @@ export function DocumentStatusBadge({
   // Show tooltip with status description for other statuses
   const tooltipTitles: Record<DocumentStatus, string> = {
     pending: 'Document is queued for processing',
+    uploaded: 'Document uploaded successfully, waiting for processing',
     processing: 'Document is being parsed and indexed',
     indexed: 'Document is indexed and ready for search',
     failed: errorMessage || 'Document processing failed',
