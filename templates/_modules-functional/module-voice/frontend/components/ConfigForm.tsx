@@ -200,6 +200,11 @@ export function ConfigForm({
             placeholder="e.g., Technical Interview - Senior"
             error={!!errors.name}
             helperText={errors.name}
+            aria-invalid={!!errors.name}
+            aria-describedby={errors.name ? "config-name-error" : undefined}
+            FormHelperTextProps={{
+              id: "config-name-error"
+            }}
             fullWidth
             size="small"
           />
@@ -266,6 +271,11 @@ export function ConfigForm({
             placeholder="Define how the AI should behave during the interview..."
             error={!!errors.systemPrompt}
             helperText={errors.systemPrompt}
+            aria-invalid={!!errors.systemPrompt}
+            aria-describedby={errors.systemPrompt ? "system-prompt-error" : undefined}
+            FormHelperTextProps={{
+              id: "system-prompt-error"
+            }}
             fullWidth
             size="small"
           />
