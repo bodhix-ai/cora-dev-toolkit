@@ -8,6 +8,7 @@ Routes - Evaluation CRUD:
 - POST /workspaces/{wsId}/eval - Create evaluation
 - GET /workspaces/{wsId}/eval - List evaluations
 - GET /workspaces/{wsId}/eval/{id} - Get evaluation detail
+- PATCH /workspaces/{wsId}/eval/{id} - Update draft evaluation (configure and trigger processing)
 - GET /workspaces/{wsId}/eval/{id}/status - Get progress status
 - DELETE /workspaces/{wsId}/eval/{id} - Delete evaluation
 
@@ -121,6 +122,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if eval_id:
             if http_method == 'GET':
                 return handle_get_evaluation(eval_id, ws_id, org_id)
+            elif http_method == 'PATCH':
+                return handle_update_evaluation(event, eval_id, ws_id, org_id, supabase_user_id)
             elif http_method == 'DELETE':
                 return handle_delete_evaluation(eval_id, ws_id, supabase_user_id)
         else:
@@ -281,9 +284,14 @@ def handle_create_evaluation(
     if not criteria_set.get('is_active'):
         raise common.ValidationError('Criteria set is inactive')
     
-    # Verify documents exist in workspace
+    # Get workspace KB for document verification
+    workspace_kb = common.find_one('kb_bases', {'workspace_id': workspace_id})
+    if not workspace_kb:
+        raise common.NotFoundError('Workspace knowledge base not found')
+    
+    # Verify documents exist in workspace KB
     for doc_id in validated_doc_ids:
-        doc = common.find_one('kb_docs', {'id': doc_id, 'ws_id': workspace_id})
+        doc = common.find_one('kb_docs', {'id': doc_id, 'kb_id': workspace_kb['id']})
         if not doc:
             raise common.NotFoundError(f'Document not found: {doc_id}')
     
@@ -554,6 +562,130 @@ def handle_get_status(eval_id: str, workspace_id: str) -> Dict[str, Any]:
         'startedAt': evaluation.get('started_at'),
         'completedAt': evaluation.get('completed_at')
     })
+
+
+def handle_update_evaluation(
+    event: Dict[str, Any],
+    eval_id: str,
+    workspace_id: str,
+    org_id: str,
+    user_id: str
+) -> Dict[str, Any]:
+    """
+    Update a draft evaluation with configuration and trigger processing.
+    
+    Request body:
+    {
+        "docTypeId": "uuid",
+        "criteriaSetId": "uuid",
+        "docIds": ["uuid1", "uuid2"]
+    }
+    """
+    eval_id = common.validate_uuid(eval_id, 'id')
+    
+    # Verify evaluation exists and belongs to workspace
+    evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'workspace_id': workspace_id})
+    if not evaluation:
+        raise common.NotFoundError('Evaluation not found')
+    
+    # Verify evaluation is in draft status
+    if evaluation.get('status') != 'draft':
+        raise common.ValidationError('Only draft evaluations can be updated')
+    
+    body = json.loads(event.get('body', '{}'))
+    
+    # Validate required fields
+    doc_type_id = body.get('docTypeId')
+    criteria_set_id = body.get('criteriaSetId')
+    doc_ids = body.get('docIds', [])
+    
+    if not doc_type_id or not criteria_set_id or not doc_ids:
+        raise common.ValidationError('docTypeId, criteriaSetId, and docIds are required')
+    
+    doc_type_id = common.validate_uuid(doc_type_id, 'docTypeId')
+    criteria_set_id = common.validate_uuid(criteria_set_id, 'criteriaSetId')
+    
+    # Validate doc_ids are UUIDs
+    validated_doc_ids = []
+    for doc_id in doc_ids:
+        validated_doc_ids.append(common.validate_uuid(doc_id, 'docId'))
+    
+    # Verify doc type exists and belongs to org
+    doc_type = common.find_one('eval_doc_types', {'id': doc_type_id, 'org_id': org_id})
+    if not doc_type:
+        raise common.NotFoundError('Document type not found')
+    
+    if not doc_type.get('is_active'):
+        raise common.ValidationError('Document type is inactive')
+    
+    # Verify criteria set exists and belongs to doc type
+    criteria_set = common.find_one('eval_criteria_sets', {'id': criteria_set_id, 'doc_type_id': doc_type_id})
+    if not criteria_set:
+        raise common.NotFoundError('Criteria set not found')
+    
+    if not criteria_set.get('is_active'):
+        raise common.ValidationError('Criteria set is inactive')
+    
+    # Get workspace KB for document verification
+    workspace_kb = common.find_one('kb_bases', {'workspace_id': workspace_id})
+    if not workspace_kb:
+        raise common.NotFoundError('Workspace knowledge base not found')
+    
+    # Verify documents exist in workspace KB
+    for doc_id in validated_doc_ids:
+        doc = common.find_one('kb_docs', {'id': doc_id, 'kb_id': workspace_kb['id']})
+        if not doc:
+            raise common.NotFoundError(f'Document not found: {doc_id}')
+    
+    # Update evaluation record
+    common.update_one(
+        'eval_doc_summaries',
+        {'id': eval_id},
+        {
+            'doc_type_id': doc_type_id,
+            'criteria_set_id': criteria_set_id,
+            'status': 'pending',
+            'updated_by': user_id
+        }
+    )
+    
+    # Delete any existing doc set entries (in case of re-configuration)
+    existing_doc_sets = common.find_many('eval_doc_sets', {'eval_summary_id': eval_id})
+    for doc_set in existing_doc_sets:
+        common.delete_one('eval_doc_sets', {'id': doc_set['id']})
+    
+    # Create new doc set entries
+    for idx, doc_id in enumerate(validated_doc_ids):
+        common.insert_one('eval_doc_sets', {
+            'eval_summary_id': eval_id,
+            'kb_doc_id': doc_id,
+            'order_index': idx,
+            'is_primary': idx == 0
+        })
+    
+    # Send SQS message to trigger processing
+    send_processing_message(
+        eval_id=eval_id,
+        org_id=org_id,
+        workspace_id=workspace_id,
+        doc_ids=validated_doc_ids,
+        criteria_set_id=criteria_set_id
+    )
+    
+    # Get updated evaluation for response
+    updated_evaluation = common.find_one('eval_doc_summaries', {'id': eval_id})
+    
+    # Return updated evaluation
+    result = common.format_record(updated_evaluation)
+    result['docType'] = common.format_record(doc_type)
+    result['criteriaSet'] = {
+        'id': criteria_set['id'],
+        'name': criteria_set['name'],
+        'version': criteria_set.get('version')
+    }
+    result['docIds'] = validated_doc_ids
+    
+    return common.success_response(result)
 
 
 def handle_delete_evaluation(eval_id: str, workspace_id: str, user_id: str) -> Dict[str, Any]:
@@ -1054,11 +1186,17 @@ def send_processing_message(
             'action': 'evaluate'
         }
         
-        sqs.send_message(
-            QueueUrl=SQS_QUEUE_URL,
-            MessageBody=json.dumps(message),
-            MessageGroupId=workspace_id if '.fifo' in SQS_QUEUE_URL else None
-        )
+        # Build SQS params conditionally (boto3 rejects None for optional params)
+        sqs_params = {
+            'QueueUrl': SQS_QUEUE_URL,
+            'MessageBody': json.dumps(message)
+        }
+        
+        # Only add MessageGroupId for FIFO queues
+        if '.fifo' in SQS_QUEUE_URL:
+            sqs_params['MessageGroupId'] = workspace_id
+        
+        sqs.send_message(**sqs_params)
         
         logger.info(f"Sent processing message for eval {eval_id}")
         
