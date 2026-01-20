@@ -114,7 +114,7 @@ CREATE POLICY "kb_access_ws_admin" ON public.kb_access_ws
     FOR ALL TO authenticated
     USING (EXISTS (
         SELECT 1 FROM public.ws_members
-        WHERE ws_id = kb_access_ws.workspace_id
+        WHERE ws_id = kb_access_ws.ws_id
         AND user_id = auth.uid()
         AND ws_role IN ('ws_owner', 'ws_admin')
     ));
