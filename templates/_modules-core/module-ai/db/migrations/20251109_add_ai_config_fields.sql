@@ -6,7 +6,7 @@
 --          settings tables to support centralized AI configuration management
 --
 -- Related Documents:
---   - ${project}-stack/docs/implementation/platform-ai-config-module-plan.md
+--   - {{PROJECT_NAME}}-stack/docs/implementation/platform-ai-config-module-plan.md
 --
 -- Date: November 9, 2025
 -- Status: Ready for execution

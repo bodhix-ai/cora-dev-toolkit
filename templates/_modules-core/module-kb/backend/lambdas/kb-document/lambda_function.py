@@ -5,6 +5,7 @@ Routes - Workspace Scoped:
 - GET /workspaces/{workspaceId}/kb/documents - List documents
 - POST /workspaces/{workspaceId}/kb/documents - Get presigned upload URL
 - GET /workspaces/{workspaceId}/kb/documents/{docId} - Get document metadata
+- PUT /workspaces/{workspaceId}/kb/documents/{docId}/complete - Complete document upload
 - DELETE /workspaces/{workspaceId}/kb/documents/{docId} - Delete document
 - GET /workspaces/{workspaceId}/kb/documents/{docId}/download - Get presigned download URL
 
@@ -12,16 +13,19 @@ Routes - Chat Scoped:
 - GET /chats/{chatId}/kb/documents - List documents
 - POST /chats/{chatId}/kb/documents - Get presigned upload URL
 - GET /chats/{chatId}/kb/documents/{docId} - Get document metadata
+- PUT /chats/{chatId}/kb/documents/{docId}/complete - Complete document upload
 - DELETE /chats/{chatId}/kb/documents/{docId} - Delete document
 
 Routes - Org Admin:
 - POST /admin/org/kbs/{kbId}/documents - Upload to org KB
 - GET /admin/org/kbs/{kbId}/documents - List org KB documents
+- PUT /admin/org/kbs/{kbId}/documents/{docId}/complete - Complete org KB document upload
 - DELETE /admin/org/kbs/{kbId}/documents/{docId} - Delete from org KB
 
 Routes - Platform Admin:
 - POST /admin/sys/kbs/{kbId}/documents - Upload to system KB
 - GET /admin/sys/kbs/{kbId}/documents - List system KB documents
+- PUT /admin/sys/kbs/{kbId}/documents/{docId}/complete - Complete system KB document upload
 - DELETE /admin/sys/kbs/{kbId}/documents/{docId} - Delete from system KB
 """
 

@@ -30,8 +30,8 @@ import {
 } from '@mui/icons-material';
 import { useRouter, useParams } from 'next/navigation';
 import { useOrgContext } from '@/contexts/OrgContext';
-import { useVoiceSession, TranscriptViewer, KbSelector } from '../../../frontend';
-import type { VoiceSessionStatus } from '../../../frontend/types';
+import { useVoiceSession, TranscriptViewer, KbSelector } from '@{{PROJECT_NAME}}/module-voice';
+import type { VoiceSessionStatus } from '@{{PROJECT_NAME}}/module-voice';
 
 const statusColors: Record<VoiceSessionStatus, 'default' | 'primary' | 'success' | 'error' | 'warning'> = {
   pending: 'default',

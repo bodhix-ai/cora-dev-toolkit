@@ -955,7 +955,7 @@ def _stream_bedrock(
     """
     import boto3
     
-    region = provider.get('region', 'us-east-1')
+    region = provider.get('region', os.environ.get('AWS_REGION', 'us-east-1'))
     client = boto3.client('bedrock-runtime', region_name=region)
     
     # Build request based on model
@@ -1140,7 +1140,7 @@ def _call_bedrock_sync(
     """
     import boto3
     
-    region = provider.get('region', 'us-east-1')
+    region = provider.get('region', os.environ.get('AWS_REGION', 'us-east-1'))
     client = boto3.client('bedrock-runtime', region_name=region)
     
     if model.startswith('anthropic.'):

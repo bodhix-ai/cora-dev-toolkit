@@ -181,8 +181,8 @@ export function useKbDocuments({
               return;
             }
 
-            // Backend returns { document: {...} } inside data, extract it
-            const doc = docResponse.data.document;
+            // Backend returns document directly in data field
+            const doc = docResponse.data;
             const status = doc.status;
 
             console.log(`Document ${documentId} status: ${status}`);

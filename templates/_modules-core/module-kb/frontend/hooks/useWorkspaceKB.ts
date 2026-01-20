@@ -111,7 +111,7 @@ export function useWorkspaceKB({
 
     try {
       const response = await apiClient.kb.workspace.listDocuments(workspaceId);
-      setDocuments(response.data || []);
+      setDocuments(response.data?.documents || []);
     } catch (err) {
       console.error('Failed to fetch documents:', err);
       setDocuments([]);

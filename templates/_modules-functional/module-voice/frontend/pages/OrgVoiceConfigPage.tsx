@@ -108,9 +108,9 @@ function Section({ title, description, children, action }: SectionProps) {
         }}
       >
         <Box>
-          <Typography variant="h6" component="h2" fontWeight="semibold">
-            {title}
-          </Typography>
+        <Typography variant="h5" component="h2" fontWeight="semibold">
+          {title}
+        </Typography>
           {description && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
               {description}
@@ -317,7 +317,7 @@ function ConfigDialog({ isOpen, config, onSave, onClose }: ConfigDialogProps) {
         <Typography variant="h6" component="span">
           {config ? "Edit Configuration" : "New Configuration"}
         </Typography>
-        <IconButton onClick={onClose} size="small">
+        <IconButton onClick={onClose} size="small" aria-label="Close dialog">
           <CloseIcon />
         </IconButton>
       </DialogTitle>
