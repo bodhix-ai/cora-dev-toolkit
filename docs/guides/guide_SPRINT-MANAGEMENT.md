@@ -16,18 +16,46 @@ When a sprint goal is achieved, follow these steps to close the sprint and prepa
     *   Ensure "Success Criteria" checklist is fully checked.
     *   Add a "Completion Summary" section if needed.
 
-### Step 1.2: Branch Management
-1.  **Rename** the current working branch to a descriptive final name:
+### Step 1.2: Branch Archiving
+1.  **Create Archive Tags** before switching branches:
+    ```bash
+    # Archive tag (always create)
+    git tag archive/<current-branch> <current-branch>
+    git push origin archive/<current-branch>
+    
+    # Module-focus tag (for module-specific work)
+    # Determine the primary module: access, ai, mgmt, kb, chat, ws, eval, voice
+    git tag module/<module-name>/<description> <current-branch>
+    git push origin module/<module-name>/<description>
+    
+    # Example: For eval optimization work
+    # git tag archive/admin-eval-config-s2 admin-eval-config-s2
+    # git tag module/eval/admin-config-sprint admin-eval-config-s2
+    # git push origin archive/admin-eval-config-s2 module/eval/admin-config-sprint
+    ```
+
+2.  **Optional: Rename Branch** to a more descriptive final name (if not already descriptive):
     ```bash
     git branch -m <current-branch> <feature>-<sprint-goal>
-    # Example: git branch -m ws-crud-kbs ws-crud-kbs-doc-upload
-    ```
-2.  **Push** the renamed branch:
-    ```bash
     git push -u origin <feature>-<sprint-goal>
     ```
 
-### Step 1.3: Archive Plan
+**Note:** See [Branching Strategy Standard](../standards/standard_BRANCHING-STRATEGY.md#branch-archiving) for complete tag naming conventions.
+
+### Step 1.3: Update Active Context
+1.  **Update** `memory-bank/activeContext.md`:
+    *   Move the completed branch from "Active Branches" table to a "Recently Completed" section
+    *   Mark status as "✅ Archived" with completion date
+    *   Remove context file reference if using branch-specific context files
+    
+    ```bash
+    # Edit memory-bank/activeContext.md
+    # Then commit the change
+    git add memory-bank/activeContext.md
+    git commit -m "docs: mark <branch-name> as archived in activeContext"
+    ```
+
+### Step 1.4: Archive Plan
 1.  **Move and Rename** the plan file to the completed directory:
     ```bash
     mv docs/plans/plan_<old-name>.md docs/plans/completed/plan_<feature>-<sprint-goal>.md
@@ -41,7 +69,7 @@ When a sprint goal is achieved, follow these steps to close the sprint and prepa
     git push
     ```
 
-### Step 1.4: Create Pull Request
+### Step 1.5: Create Pull Request
 1.  Create a PR merging the sprint branch into `main`.
 2.  Include a summary of completed features and verification steps.
 3.  Reference the archived plan file location.
@@ -76,10 +104,23 @@ Start a new sprint for the next phase of work.
     *   **Implementation Steps:** Checklist of tasks.
     *   **Success Criteria:** Verifiable goals.
 
-### Step 2.3: Initial Commit
-1.  Commit the new plan file to the new branch:
+### Step 2.3: Update Active Context
+1.  **Update** `memory-bank/activeContext.md`:
+    *   Add the new branch to the "Active Branches" table
+    *   Mark it as **ACTIVE** with the focus area description
+    *   Reference the new plan file and context file (if using branch-specific context)
+    
     ```bash
-    git add docs/plans/plan_<feature>-<next-goal>.md
+    # Edit memory-bank/activeContext.md
+    # Then commit the change
+    git add memory-bank/activeContext.md
+    git commit -m "docs: add <branch-name> to activeContext"
+    ```
+
+### Step 2.4: Initial Commit
+1.  Commit the plan file and context updates:
+    ```bash
+    git add docs/plans/plan_<feature>-<next-goal>.md memory-bank/activeContext.md
     git commit -m "docs: create plan for <next-goal> sprint"
     git push -u origin <feature>-<next-goal>
     ```
