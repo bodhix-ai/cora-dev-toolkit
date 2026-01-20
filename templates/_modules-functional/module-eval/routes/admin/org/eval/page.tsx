@@ -11,7 +11,7 @@
  * - Evaluation Criteria
  */
 
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { OrgContext } from '@{{PROJECT_NAME}}/module-access';
 import { 
   OrgEvalConfigPage,
@@ -28,7 +28,16 @@ export default function OrgEvalAdminPage() {
   const currentOrg = context?.currentOrg;
   const [activeTab, setActiveTab] = useState<TabValue>('config');
 
+  // 🔍 DEBUG LOGGING
+  useEffect(() => {
+    console.log('[OrgEvalAdminPage] Mounted');
+    console.log('[OrgEvalAdminPage] context:', context);
+    console.log('[OrgEvalAdminPage] currentOrg:', currentOrg);
+    console.log('[OrgEvalAdminPage] activeTab:', activeTab);
+  }, [context, currentOrg, activeTab]);
+
   if (!currentOrg) {
+    console.error('[OrgEvalAdminPage] NO currentOrg - showing warning');
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="warning">
@@ -38,12 +47,17 @@ export default function OrgEvalAdminPage() {
     );
   }
 
+  console.log('[OrgEvalAdminPage] Rendering with orgId:', currentOrg.orgId);
+
   return (
     <Box sx={{ width: '100%' }}>
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs 
           value={activeTab} 
-          onChange={(_, newValue) => setActiveTab(newValue)}
+          onChange={(_, newValue) => {
+            console.log('[OrgEvalAdminPage] Tab change:', activeTab, '→', newValue);
+            setActiveTab(newValue);
+          }}
           aria-label="Evaluation admin tabs"
         >
           <Tab label="Configuration" value="config" />
@@ -54,10 +68,30 @@ export default function OrgEvalAdminPage() {
       </Box>
 
       <Box sx={{ p: 3 }}>
-        {activeTab === 'config' && <OrgEvalConfigPage orgId={currentOrg.id} />}
-        {activeTab === 'doc-types' && <OrgEvalDocTypesPageV2 orgId={currentOrg.id} />}
-        {activeTab === 'criteria' && <OrgEvalCriteriaPageV2 orgId={currentOrg.id} />}
-        {activeTab === 'prompts' && <OrgEvalPromptsPage orgId={currentOrg.id} />}
+        {activeTab === 'config' && (
+          <>
+            {console.log('[OrgEvalAdminPage] Rendering CONFIG tab with orgId:', currentOrg.orgId)}
+            <OrgEvalConfigPage orgId={currentOrg.orgId} />
+          </>
+        )}
+        {activeTab === 'doc-types' && (
+          <>
+            {console.log('[OrgEvalAdminPage] Rendering DOC-TYPES tab with orgId:', currentOrg.orgId)}
+            <OrgEvalDocTypesPageV2 orgId={currentOrg.orgId} />
+          </>
+        )}
+        {activeTab === 'criteria' && (
+          <>
+            {console.log('[OrgEvalAdminPage] Rendering CRITERIA tab with orgId:', currentOrg.orgId)}
+            <OrgEvalCriteriaPageV2 orgId={currentOrg.orgId} />
+          </>
+        )}
+        {activeTab === 'prompts' && (
+          <>
+            {console.log('[OrgEvalAdminPage] Rendering PROMPTS tab with orgId:', currentOrg.orgId)}
+            <OrgEvalPromptsPage orgId={currentOrg.orgId} />
+          </>
+        )}
       </Box>
     </Box>
   );
