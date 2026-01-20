@@ -41,16 +41,17 @@ export function useEvalDocTypes(
     if (token && orgId && docTypes.length === 0 && !docTypesLoading) {
       loadDocTypes(token, orgId, options);
     }
-    // Note: options is intentionally excluded from deps to prevent infinite loops
+    // Note: options and loadDocTypes are intentionally excluded from deps to prevent infinite loops
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, orgId, docTypes.length, docTypesLoading, loadDocTypes]);
+  }, [token, orgId, docTypes.length, docTypesLoading]);
 
   const create = useCallback(
     async (input: CreateDocTypeInput): Promise<EvalDocType> => {
       if (!token || !orgId) throw new Error("No auth token or org ID");
       return createDocType(token, orgId, input);
     },
-    [token, orgId, createDocType]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [token, orgId]
   );
 
   const update = useCallback(
@@ -58,7 +59,8 @@ export function useEvalDocTypes(
       if (!token || !orgId) throw new Error("No auth token or org ID");
       await updateDocType(token, orgId, id, input);
     },
-    [token, orgId, updateDocType]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [token, orgId]
   );
 
   const remove = useCallback(
@@ -66,15 +68,16 @@ export function useEvalDocTypes(
       if (!token || !orgId) throw new Error("No auth token or org ID");
       await deleteDocType(token, orgId, id);
     },
-    [token, orgId, deleteDocType]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [token, orgId]
   );
 
   const refresh = useCallback(async () => {
     if (!token || !orgId) return;
     await loadDocTypes(token, orgId, options);
-    // Note: options is intentionally excluded from deps to prevent infinite loops
+    // Note: options and loadDocTypes are intentionally excluded from deps to prevent infinite loops
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, orgId, loadDocTypes]);
+  }, [token, orgId]);
 
   // Filter active doc types
   const activeDocTypes = useEvalStore(selectActiveDocTypes);
@@ -121,7 +124,8 @@ export function useEvalDocType(
     return () => {
       clearSelectedDocType();
     };
-  }, [token, orgId, docTypeId, selectDocType, clearSelectedDocType]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId, docTypeId]);
 
   return {
     docType: selectedDocType,
@@ -147,7 +151,9 @@ export function useDocTypeSelect(
     if (token && orgId && docTypes.length === 0 && !docTypesLoading) {
       loadDocTypes(token, orgId, { includeInactive: !activeOnly });
     }
-  }, [token, orgId, docTypes.length, docTypesLoading, loadDocTypes, activeOnly]);
+    // Note: loadDocTypes is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId, docTypes.length, docTypesLoading, activeOnly]);
 
   // Filter to active only if requested
   const selectOptions = useMemo(() => {

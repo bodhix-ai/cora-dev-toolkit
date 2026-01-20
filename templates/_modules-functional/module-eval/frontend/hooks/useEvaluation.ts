@@ -12,6 +12,7 @@ import type {
   CriteriaResultWithItem,
   EvalResultEdit,
   EditResultInput,
+  UpdateEvaluationInput,
   StatusOption,
 } from "../types";
 
@@ -33,6 +34,7 @@ export function useEvaluation(
     evaluationsError,
     selectEvaluation,
     clearSelectedEvaluation,
+    updateEvaluation,
     editResult,
     getEditHistory,
     startPolling,
@@ -69,6 +71,16 @@ export function useEvaluation(
     [token, workspaceId, evaluationId, getEditHistory]
   );
 
+  // Update evaluation (for draft configuration)
+  const update = useCallback(
+    async (input: UpdateEvaluationInput): Promise<Evaluation> => {
+      if (!token || !workspaceId || !evaluationId)
+        throw new Error("No auth token, workspace ID, or evaluation ID");
+      return updateEvaluation(token, workspaceId, evaluationId, input);
+    },
+    [token, workspaceId, evaluationId, updateEvaluation]
+  );
+
   // Refresh evaluation
   const refresh = useCallback(async () => {
     if (!token || !workspaceId || !evaluationId) return;
@@ -97,6 +109,7 @@ export function useEvaluation(
     isProcessing,
     isCompleted,
     isFailed,
+    update,
     edit,
     getHistory,
     refresh,

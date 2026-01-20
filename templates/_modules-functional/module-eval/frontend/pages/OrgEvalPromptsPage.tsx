@@ -225,7 +225,9 @@ export function OrgEvalPromptsPage({
     }
     fetchToken();
     return () => { mounted = false; };
-  }, [authAdapter]);
+    // Note: authAdapter is intentionally omitted from deps - it's a stable reference
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // State
   const [activeTab, setActiveTab] = useState<PromptType>("doc_summary");

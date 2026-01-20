@@ -1,87 +1,118 @@
 # Context: Module-Eval Development
 
-**Branch:** `feature/module-eval-config`  
-**Workstation:** WS-135  
-**Last Updated:** January 18, 2026
+**Branch:** `admin-eval-config-s2`  
+**Last Updated:** January 19, 2026
 
 ---
 
 ## Current Session
 
-**Session 141: Infrastructure Redeployment & Frontend Fixes**
+**Session: Workspace Doc Eval Implementation**
 
-**Goal:** Deploy missing routes, fix frontend bugs, achieve first successful page load
+**Goal:** Implement document evaluation workflow within workspace context
+
+**Status:** 🔄 IN PROGRESS
+
+**Plan:** `docs/plans/plan_workspace-doc-eval-implementation.md`  
+**Sprint:** `docs/plans/plan_admin-eval-config-s2.md`
+
+### Current Test Environment
+- **Project:** test-eval
+- **Stack:** `~/code/bodhix/testing/test-eval/ai-sec-stack`
+- **Infra:** `~/code/bodhix/testing/test-eval/ai-sec-infra`
+
+### Implementation Status
+
+**Phase A: Overview Tab** ✅ COMPLETE (Current Session)
+- [x] Renamed first tab from "Activities" to "Overview"
+- [x] Removed all mock workflow/chat data
+- [x] Removed evaluation imports and hooks (zero new hooks)
+- [x] Added clean overview UI (creation date, member count, description)
+- [x] Synced to test project
+- [x] User testing confirmed working (all tabs accessible, no errors)
+
+**Phase D: Evaluation Detail Route** ✅ COMPLETE (Current Session)
+- [x] Created route: `routes/ws/[id]/eval/[evalId]/page.tsx`
+- [x] Wraps EvalDetailPage from module-eval with proper params
+
+**Phase B: Doc Eval Tab (Minimal Hooks)** ✅ COMPLETE (Current Session)
+- [x] Add "Doc Eval" as second tab (after Overview)
+- [x] Import `useEvaluations` and `useEvaluationStats` hooks from module-eval
+- [x] Display evaluation cards (status badges, progress, scores)
+- [x] Display stats chips (from `useEvaluationStats`)
+- [x] Empty state message (no create button yet)
+- [x] Sync to test project
+- [ ] User testing (READY)
+
+**Phase C: Full Integration** ⏳ PENDING
+- [ ] Import remaining hooks (useEvalDocTypes, useEvalCriteriaSets)
+- [ ] Import CreateEvaluationDialog component
+- [ ] Add "Evaluate Document" button
+- [ ] Integrate create dialog with handlers
+- [ ] Add progress polling for processing evaluations
+
+**Phase E: End-to-End Testing** ⏳ PENDING
+- [ ] Deploy infrastructure
+- [ ] Start dev server  
+- [ ] Test full evaluation workflow
+- [ ] Verify detail page displays correctly
+
+### Next Session Actions
+1. ✅ Phase B implemented and synced to test project
+2. **USER TESTING REQUIRED:** Test Phase B in dev server
+   - Start dev server: `cd ~/code/bodhix/testing/test-eval/ai-sec-stack && ./scripts/start-dev.sh`
+   - Navigate to a workspace
+   - Check Doc Eval tab displays correctly
+   - Verify no infinite loops in console
+3. If Phase B testing passes, proceed to Phase C
+
+---
+
+## Previous Session
+
+**Session 4: Workspace Doc Eval UI Implementation**
+
+**Goal:** Integrate document evaluation functionality into workspace UI
 
 **Status:** ✅ COMPLETE
 
-### Session 141 Accomplishments
-### Session 141 Accomplishments
-- [x] **Infrastructure Redeployment:**
-  - Identified that routes were created AFTER Session 139 deployment
-  - All 3 Lambdas exist: eval-config, eval-processor, eval-results
-  - Redeployed infrastructure to register routes created in Session 140
-  - Verified all 44 API routes registered in API Gateway
-  - API calls now return 200 OK with data (not 404)
+### Session 4 Accomplishments
+- [x] Created `CreateEvaluationDialog.tsx` component in module-ws
+- [x] Updated `WorkspaceDetailPage.tsx`:
+  - Renamed "Activities" tab to "Doc Eval"
+  - Integrated module-eval hooks
+  - Removed mock workflows/chats data
+  - Implemented evaluation cards UI with status, progress, scores
+  - Empty state with "Create First Doc Evaluation" button
+  - Stats chips (total, processing, completed, failed)
+  - "Evaluate Document" button to open dialog
+- [x] Fixed frontend type issues (KbDocument properties)
+- [x] Created test-eval project (modules: ws, eval, voice)
+- [x] Lambda builds verified (all modules built successfully)
+- [x] All changes synced to test project
 
-- [x] **Frontend Bug Fixes (4 files):**
-  1. `useEvalStatusOptions.ts` - Added defensive array check for `sysStatusOptions`
-  2. `module-access/frontend/index.ts` - Added `OrgContext` to exports
-  3. `OrgDelegationManager.tsx` - Added defensive array check for `organizations`
-  4. `ScoringConfigPanel.tsx` - Added `useEffect` to sync state with API response
+**Reference:** `docs/plans/plan_admin-eval-config-s2.md` - Session 4 documented
 
-- [x] **All fixes synced to test project**
-- [x] **🎉 PAGE LOADS FOR FIRST TIME!**
-  - `/admin/sys/eval/config` displays full UI
-  - Scoring Configuration panel visible
-  - Status Options manager visible
-  - Organization Delegation panel visible
+---
 
-### Issues Discovered & Resolved
+## Previous Session
 
-**Bug 1:** `sysStatusOptions.filter is not a function`
-- **Cause:** No defensive check for array type
-- **Fix:** Added `Array.isArray()` guard
-- **Status:** ✅ Fixed in template, synced to test project
+**Session 3: Criteria Import & Backend Investigation**
 
-**Bug 2:** `OrgContext is undefined`
-- **Cause:** `OrgContext` not exported from module-access package
-- **Fix:** Added `OrgContext` to exports: `export { OrgProvider, OrgContext } from "./contexts/OrgContext"`
-- **Status:** ✅ Fixed in template, synced to test project
+**Goal:** Fix Lambda dependency issues, enable spreadsheet import
 
-**Bug 3:** `organizations.filter is not a function`
-- **Cause:** Same as Bug 1, no defensive array check
-- **Fix:** Added `Array.isArray()` guard
-- **Status:** ✅ Fixed in template, synced to test project
+**Status:** ✅ COMPLETE
 
-**Bug 4:** Checkbox showing unchecked despite API returning `showNumericalScore: true`
-- **Cause:** Component state initialized on mount, doesn't update when API data loads
-- **Fix:** Added `useEffect` to sync state when config prop changes
-- **Status:** ✅ Fixed in template, synced to test project (requires dev server restart)
+### Session 3 Accomplishments
+- [x] Fixed build script grep pipe failure (dependency installation never triggered)
+- [x] Fixed pip binary-only constraint (blocked pure Python packages like openpyxl)
+- [x] Implemented hybrid installation approach in build.sh
+- [x] Rebuilt Lambda packages (12 KB → 19-20 MB with openpyxl)
+- [x] Deployed updated Lambdas via Terraform
+- [x] Verified spreadsheet import (27 criteria items uploaded successfully)
+- [x] Fixed frontend viewing bug (CriteriaItemEditor null check)
 
-### Issues Pending
-
-**Issue:** Formatting - checkmark rendering 1/3 page size
-- **Likely Cause:** Tailwind CSS not loading or conflicting styles
-- **Status:** ⚠️ Needs investigation
-- **Recommendation:** Check browser DevTools for CSS errors, verify tailwind.config.js includes module paths
-
-**Clarification:** Org delegation schema
-- **Question:** "Don't see those columns on eval_cfg_sys table"
-- **Answer:** ✅ Correct! Delegation is stored on `organizations` table (`ai_config_delegated` column), not on eval config tables
-- **Design:** Delegation is an organization-level permission, not an eval config setting
-
-### Milestone Progress
-- **Milestone 1:** ✅ COMPLETE - Infrastructure deployed, routes registered, page loads
-- **Milestone 2:** 🔄 READY TO BEGIN - Org admin configuration testing can start
-
-### Next Actions (Session 142)
-- [ ] **User to restart dev server** to pick up ScoringConfigPanel.tsx state sync fix
-- [ ] Investigate Tailwind CSS loading issue (if not resolved)
-- [ ] Begin Milestone 2 testing: Create status options, doc types, criteria sets
-- [ ] Test scoring configuration save/load
-- [ ] Test other tabs (Doc Types, Criteria, Prompts)
-
-**Reference:** `docs/plans/plan_module-eval-config.md` - Session 141 documented
+**Reference:** `docs/plans/plan_admin-eval-config-s2.md` - Session 3 documented
 
 ---
 

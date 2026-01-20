@@ -133,6 +133,47 @@ Functional modules are OPTIONAL and can be enabled based on project needs:
 - `module-voice` - Voice interaction capabilities
 - (Future functional modules as needed)
 
+## Module Build Script Locations
+
+**CRITICAL:** CORA module Lambda build scripts are in the **STACK REPO**, NOT the infra repo.
+
+### The Correct Location:
+
+✅ **CORRECT:** `{project}-stack/packages/module-{name}/backend/build.sh`
+❌ **WRONG:** `{project}-infra/lambdas/module-{name}/{lambda}/build.sh`
+
+### Why This Matters:
+
+**Stack repo** = Lambda SOURCE CODE + BUILD SCRIPTS
+**Infra repo** = Lambda DEPLOYMENT + Terraform configs
+
+The `build-cora-modules.sh` script:
+1. Finds modules in stack repo: `{project}-stack/packages/module-*/`
+2. Runs their build scripts: `{module}/backend/build.sh`
+3. Outputs to: `{module}/backend/.build/*.zip`
+4. Copies zips to: `{project}-infra/build/{module-name}/`
+
+**Example:**
+```bash
+# Module build script location (STACK REPO):
+~/code/bodhix/testing/test-eval/ai-sec-stack/packages/module-eval/backend/build.sh
+
+# NOT in infra repo:
+~/code/bodhix/testing/test-eval/ai-sec-infra/lambdas/module-eval/eval-results/build.sh  ❌
+```
+
+### When Deploying a Single Lambda:
+
+The `deploy-lambda.sh` script must:
+1. Find the module in the **stack repo**
+2. Run `{stack-repo}/packages/{module}/backend/build.sh`
+3. Find the built zip in `{module}/backend/.build/{lambda-name}.zip`
+4. Upload to S3 and deploy via Terraform
+
+**Impact:** If you look for build.sh in the infra repo, it won't exist and deployment fails. Always build from stack repo.
+
+---
+
 ## Module Route File Locations
 
 **CRITICAL:** CORA functional modules have routes at the **MODULE ROOT** level, NOT in `frontend/`.

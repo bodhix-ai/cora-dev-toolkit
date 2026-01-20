@@ -1,22 +1,23 @@
 /**
- * OrgEvalCriteriaPage - Organization Criteria Management Page
+ * OrgEvalCriteriaPageV2 - Organization Criteria Management Page (Simplified)
  *
- * Org admin page for managing evaluation criteria:
- * - Create, edit, delete criteria sets
- * - Import criteria from spreadsheets
- * - Manage criteria items
+ * Simplified version that avoids infinite loops by:
+ * - Using direct API calls (no Zustand store)
+ * - Simple useState for local state management
+ * - Controlled useEffect with stable dependencies
+ * - Reusing the working CriteriaSetManager component
  *
  * @example
  * // In Next.js app router: app/(admin)/admin/org/eval/criteria/page.tsx
- * import { OrgEvalCriteriaPage } from '@/modules/module-eval/frontend/pages';
+ * import { OrgEvalCriteriaPageV2 } from '@/modules/module-eval/frontend/pages';
  * export default function Page() {
- *   return <OrgEvalCriteriaPage orgId={orgId} />;
+ *   return <OrgEvalCriteriaPageV2 orgId={orgId} />;
  * }
  */
 
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -24,7 +25,6 @@ import {
   Skeleton,
   Button,
   Paper,
-  Alert,
 } from "@mui/material";
 import {
   ArrowBack as ArrowBackIcon,
@@ -32,21 +32,31 @@ import {
 } from "@mui/icons-material";
 import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import {
-  useEvalCriteriaSets,
-  useEvalDocTypes,
-} from "../hooks";
-import {
   CriteriaSetManager,
   CriteriaImportDialog,
   CriteriaItemEditor,
 } from "../components";
-import type { EvalCriteriaSet } from "../types";
+import {
+  listCriteriaSets,
+  createCriteriaSet,
+  updateCriteriaSet,
+  deleteCriteriaSet,
+  importCriteriaSet,
+  listDocTypes,
+} from "../lib/api";
+import type {
+  EvalCriteriaSet,
+  EvalDocType,
+  CreateCriteriaSetInput,
+  UpdateCriteriaSetInput,
+  ImportCriteriaSetInput,
+} from "../types";
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
-export interface OrgEvalCriteriaPageProps {
+export interface OrgEvalCriteriaPageV2Props {
   /** Organization ID */
   orgId: string;
   /** Optional CSS class */
@@ -156,52 +166,84 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
 // MAIN COMPONENT
 // =============================================================================
 
-export function OrgEvalCriteriaPage({
+export function OrgEvalCriteriaPageV2({
   orgId,
   className = "",
   loadingComponent,
   selectedDocTypeId,
-}: OrgEvalCriteriaPageProps) {
-  // Get auth token (same pattern as working SysEvalConfigPage)
-  const { authAdapter } = useUser();
+}: OrgEvalCriteriaPageV2Props) {
+  // Local state (no store)
+  const [criteriaSets, setCriteriaSets] = useState<EvalCriteriaSet[]>([]);
+  const [docTypes, setDocTypes] = useState<EvalDocType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [token, setToken] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    async function fetchToken() {
-      try {
-        const t = await authAdapter.getToken();
-        if (mounted) setToken(t);
-      } catch (error) {
-        console.error("Failed to get auth token:", error);
-        if (mounted) setToken(null);
-      }
-    }
-    fetchToken();
-    return () => { mounted = false; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // State
   const [filterDocTypeId, setFilterDocTypeId] = useState<string | undefined>(selectedDocTypeId);
   const [selectedSet, setSelectedSet] = useState<EvalCriteriaSet | null>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
-  // Hooks
-  const { docTypes } = useEvalDocTypes(token, orgId);
+  // Get auth adapter
+  const { authAdapter } = useUser();
 
-  const {
-    criteriaSets,
-    isLoading: criteriaSetsLoading,
-    error,
-    create: createCriteriaSet,
-    update: updateCriteriaSet,
-    remove: deleteCriteriaSet,
-    importSet: importCriteriaSet,
-    refresh,
-  } = useEvalCriteriaSets(token, orgId, { docTypeId: filterDocTypeId });
+  // Fetch token once on mount
+  useEffect(() => {
+    let mounted = true;
+    
+    async function fetchToken() {
+      try {
+        const t = await authAdapter.getToken();
+        if (mounted) {
+          setToken(t);
+        }
+      } catch (err) {
+        console.error("Failed to get auth token:", err);
+        if (mounted) {
+          setError(err instanceof Error ? err : new Error("Failed to get auth token"));
+          setIsLoading(false);
+        }
+      }
+    }
 
-  // Combined loading state
-  const isLoading = criteriaSetsLoading || !token;
+    fetchToken();
+
+    return () => {
+      mounted = false;
+    };
+  }, []); // Only run once on mount
+
+  // Load data when token is available
+  const loadData = useCallback(async () => {
+    if (!token || !orgId) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Load both criteria sets and doc types in parallel
+      const [criteriaData, docTypesData] = await Promise.all([
+        listCriteriaSets(token, orgId, { 
+          docTypeId: filterDocTypeId,
+          includeInactive: false 
+        }),
+        listDocTypes(token, orgId, { includeInactive: false }),
+      ]);
+      
+      setCriteriaSets(criteriaData);
+      setDocTypes(docTypesData);
+    } catch (err) {
+      console.error("Failed to load criteria data:", err);
+      setError(err instanceof Error ? err : new Error("Failed to load criteria data"));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [token, orgId, filterDocTypeId]);
+
+  // Load data when token or filter changes
+  useEffect(() => {
+    if (token && orgId) {
+      loadData();
+    }
+  }, [token, orgId, loadData]);
 
   // Handlers
   const handleDocTypeFilterChange = useCallback((docTypeId: string | undefined) => {
@@ -217,30 +259,45 @@ export function OrgEvalCriteriaPage({
   }, []);
 
   const handleCreateSet = useCallback(
-    async (data: { name: string; docTypeId: string; description?: string }) => {
-      if (!token || !orgId) return;
-      await createCriteriaSet(data);
+    async (data: CreateCriteriaSetInput) => {
+      if (!token || !orgId) {
+        throw new Error("No auth token or org ID");
+      }
+
+      const newSet = await createCriteriaSet(token, orgId, data);
+      setCriteriaSets((prev) => [...prev, newSet]);
     },
-    [token, orgId, createCriteriaSet]
+    [token, orgId]
   );
 
   const handleUpdateSet = useCallback(
-    async (id: string, data: { name?: string; description?: string; isActive?: boolean }) => {
-      if (!token || !orgId) return;
-      await updateCriteriaSet(id, data);
+    async (id: string, data: UpdateCriteriaSetInput) => {
+      if (!token || !orgId) {
+        throw new Error("No auth token or org ID");
+      }
+
+      const updatedSet = await updateCriteriaSet(token, orgId, id, data);
+      setCriteriaSets((prev) =>
+        prev.map((set) => (set.id === id ? updatedSet : set))
+      );
     },
-    [token, orgId, updateCriteriaSet]
+    [token, orgId]
   );
 
   const handleDeleteSet = useCallback(
     async (id: string) => {
-      if (!token || !orgId) return;
-      await deleteCriteriaSet(id);
+      if (!token || !orgId) {
+        throw new Error("No auth token or org ID");
+      }
+
+      await deleteCriteriaSet(token, orgId, id);
+      setCriteriaSets((prev) => prev.filter((set) => set.id !== id));
+      
       if (selectedSet?.id === id) {
         setSelectedSet(null);
       }
     },
-    [token, orgId, deleteCriteriaSet, selectedSet]
+    [token, orgId, selectedSet]
   );
 
   const handleOpenImport = useCallback(() => {
@@ -252,12 +309,16 @@ export function OrgEvalCriteriaPage({
   }, []);
 
   const handleImport = useCallback(
-    async (data: { docTypeId: string; name: string; file: File }) => {
-      if (!token || !orgId) return;
-      await importCriteriaSet(data);
+    async (input: ImportCriteriaSetInput) => {
+      if (!token || !orgId) {
+        throw new Error("No auth token or org ID");
+      }
+
+      await importCriteriaSet(token, orgId, input);
       setIsImportDialogOpen(false);
+      await loadData(); // Reload to show imported set
     },
-    [token, orgId, importCriteriaSet]
+    [token, orgId, loadData]
   );
 
   // Render loading state
@@ -273,7 +334,7 @@ export function OrgEvalCriteriaPage({
   if (error) {
     return (
       <Box sx={{ p: 3 }} className={className}>
-        <ErrorState error={error} onRetry={refresh} />
+        <ErrorState error={error} onRetry={loadData} />
       </Box>
     );
   }
@@ -306,15 +367,15 @@ export function OrgEvalCriteriaPage({
 
       {/* Criteria Set Manager */}
       <CriteriaSetManager
-        criteriaSets={criteriaSets || []}
-        docTypes={docTypes || []}
-        onCreateSet={handleCreateSet}
-        onUpdateSet={handleUpdateSet}
-        onDeleteSet={handleDeleteSet}
-        onSelectSet={handleSelectSet}
-        onImportClick={handleOpenImport}
+        criteriaSets={criteriaSets}
+        docTypes={docTypes}
+        onCreate={handleCreateSet}
+        onUpdate={handleUpdateSet}
+        onDelete={handleDeleteSet}
+        onViewItems={handleSelectSet}
+        onImport={handleOpenImport}
+        onFilterChange={handleDocTypeFilterChange}
         selectedDocTypeId={filterDocTypeId}
-        onDocTypeFilterChange={handleDocTypeFilterChange}
       />
 
       {/* Import Dialog */}
@@ -322,7 +383,7 @@ export function OrgEvalCriteriaPage({
         isOpen={isImportDialogOpen}
         onClose={handleCloseImport}
         onImport={handleImport}
-        docTypes={docTypes || []}
+        docTypes={docTypes}
       />
 
       {/* Help Text */}
@@ -349,4 +410,4 @@ export function OrgEvalCriteriaPage({
   );
 }
 
-export default OrgEvalCriteriaPage;
+export default OrgEvalCriteriaPageV2;

@@ -165,7 +165,7 @@ export function OrgEvalConfigPage({
   className = "",
   loadingComponent,
 }: OrgEvalConfigPageProps) {
-  // Get auth token
+  // Get auth token (same pattern as working SysEvalConfigPage)
   const { authAdapter } = useUser();
   const [token, setToken] = useState<string | null>(null);
 
@@ -264,9 +264,10 @@ export function OrgEvalConfigPage({
       >
         <StatusOptionManager
           statusOptions={statusOptions || []}
-          onCreateOption={createOption}
-          onUpdateOption={updateOption}
-          onDeleteOption={deleteOption}
+          onCreate={createOption}
+          onUpdate={updateOption}
+          onDelete={deleteOption}
+          onRefresh={refreshStatus}
           isSystemLevel={false}
         />
       </Section>

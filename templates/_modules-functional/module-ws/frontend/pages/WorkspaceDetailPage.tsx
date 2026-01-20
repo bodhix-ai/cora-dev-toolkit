@@ -1,8 +1,7 @@
 /**
  * WorkspaceDetailPage Component
  *
- * Detail page for a single workspace showing activities, data, members, and settings.
- * Features tab navigation with mocked CJIS audit data for workflows, chats, and knowledge base.
+ * Detail page for a single workspace showing overview, data, members, and settings.
  */
 
 import React, { useState, useMemo } from "react";
@@ -20,23 +19,8 @@ import {
   CircularProgress,
   Alert,
   Divider,
-  Card,
-  CardContent,
   Tabs,
   Tab,
-  LinearProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  InputAdornment,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
 } from "@mui/material";
 import {
   Edit,
@@ -45,17 +29,7 @@ import {
   Star,
   StarBorder,
   ArrowBack,
-  Settings as SettingsIcon,
-  Add,
-  Search,
-  Description,
-  Chat,
-  PlayArrow,
-  CheckCircle,
-  Error as ErrorIcon,
   Group,
-  Public,
-  Lock,
   Folder,
   Storage,
 } from "@mui/icons-material";
@@ -74,127 +48,14 @@ import {
   createKbModuleClient,
   type AvailableKb,
 } from "@{{PROJECT_NAME}}/module-kb";
+import {
+  useEvaluations,
+  useEvaluationStats,
+  type Evaluation,
+} from "@{{PROJECT_NAME}}/module-eval";
 import { createAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
+import { useRouter } from "next/navigation";
 
-// ============================================================================
-// MOCK DATA - CJIS IT Security Audit Theme
-// ============================================================================
-
-interface MockWorkflow {
-  id: string;
-  name: string;
-  type: "IT Policy Review" | "Network Diagram Review" | "Proof Artifact Review";
-  status: "draft" | "running" | "complete" | "failed";
-  progress: number;
-  docsProcessed: number;
-  docsTotal: number;
-  findings: {
-    critical: number;
-    nonCompliant: number;
-    warning: number;
-    compliant: number;
-  };
-  startedAt?: string;
-  completedAt?: string;
-  description?: string;
-}
-
-interface MockChat {
-  id: string;
-  name: string;
-  visibility: "workspace" | "private";
-  lastUser: string;
-  lastActivity: string;
-  messages: number;
-  kbGrounded: boolean;
-}
-
-interface MockKBDocument {
-  id: string;
-  name: string;
-  category: string;
-  indexed: boolean;
-  size: string;
-}
-
-const MOCK_WORKFLOWS: MockWorkflow[] = [
-  {
-    id: "1",
-    name: "CJIS Security Policy Area 5: Access Control",
-    type: "IT Policy Review",
-    status: "running",
-    progress: 67,
-    docsProcessed: 12,
-    docsTotal: 18,
-    findings: { critical: 0, nonCompliant: 8, warning: 4, compliant: 15 },
-    startedAt: "3 hours ago",
-  },
-  {
-    id: "2",
-    name: "Data Center Network Architecture Assessment",
-    type: "Network Diagram Review",
-    status: "complete",
-    progress: 100,
-    docsProcessed: 6,
-    docsTotal: 6,
-    findings: { critical: 2, nonCompliant: 3, warning: 5, compliant: 12 },
-    completedAt: "Jan 10, 2026",
-  },
-  {
-    id: "3",
-    name: "MFA Implementation Evidence Collection",
-    type: "Proof Artifact Review",
-    status: "running",
-    progress: 45,
-    docsProcessed: 9,
-    docsTotal: 20,
-    findings: { critical: 0, nonCompliant: 2, warning: 3, compliant: 8 },
-    startedAt: "1 hour ago",
-    description: "AI-evaluated screenshots and config files demonstrating MFA implementation",
-  },
-  {
-    id: "4",
-    name: "Encryption Policy Compliance Review",
-    type: "IT Policy Review",
-    status: "draft",
-    progress: 0,
-    docsProcessed: 0,
-    docsTotal: 0,
-    findings: { critical: 0, nonCompliant: 0, warning: 0, compliant: 0 },
-  },
-];
-
-const MOCK_CHATS: MockChat[] = [
-  {
-    id: "1",
-    name: "Access Control Compliance Questions",
-    visibility: "workspace",
-    lastUser: "Sarah Chen",
-    lastActivity: "15 min ago",
-    messages: 18,
-    kbGrounded: true,
-  },
-  {
-    id: "2",
-    name: "Remediation Planning for Encryption Gaps",
-    visibility: "workspace",
-    lastUser: "Michael Torres",
-    lastActivity: "2 hours ago",
-    messages: 12,
-    kbGrounded: true,
-  },
-  {
-    id: "3",
-    name: "Incident Response Plan Review",
-    visibility: "private",
-    lastUser: "You",
-    lastActivity: "yesterday",
-    messages: 6,
-    kbGrounded: true,
-  },
-];
-
-// MOCK_KB_DOCS and MOCK_KB_STATS removed - now using real data from module-kb
 
 // ============================================================================
 // COMPONENT INTERFACES & HELPERS
@@ -257,9 +118,12 @@ export function WorkspaceDetailPage({
 }: WorkspaceDetailPageProps): React.ReactElement {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  const [creatingEval, setCreatingEval] = useState(false);
+  const [evalError, setEvalError] = useState<string | null>(null);
 
   // Get session for API client creation
   const { data: session } = useSession();
+  const router = useRouter();
 
   // Create API client if not provided
   const apiClient = useMemo(() => {
@@ -319,6 +183,50 @@ export function WorkspaceDetailPage({
     apiClient: kbApiClient ? { kb: kbApiClient } : undefined,
     autoFetch: !!kbApiClient,
   });
+
+  // Evaluation hooks - Phase C Alternative (create draft first)
+  const { 
+    evaluations, 
+    isLoading: evalLoading, 
+    error: evalLoadError,
+    create,  // <-- Correct function name from hook!
+  } = useEvaluations(
+    session?.accessToken as string | null,
+    workspaceId
+  );
+  const evalStats = useEvaluationStats();
+
+  // Handler for creating draft evaluation
+  const handleCreateEvaluation = async () => {
+    setCreatingEval(true);
+    setEvalError(null);
+    
+    try {
+      console.log("Creating evaluation for workspace:", workspaceId);
+      
+      // Create draft evaluation (no dialog, no problematic hooks!)
+      const newEval = await create({
+        name: `${workspace?.name} Evaluation - ${new Date().toLocaleDateString()}`,
+        workspaceId: workspaceId,
+      });
+      
+      console.log("Evaluation created:", newEval);
+      
+      // Navigate to detail page where user can configure it
+      if (newEval?.id) {
+        console.log("Navigating to eval detail:", `/eval/${newEval.id}?workspace=${workspaceId}`);
+        router.push(`/eval/${newEval.id}?workspace=${workspaceId}`);
+      } else {
+        console.error("No evaluation ID returned:", newEval);
+        setEvalError("Failed to create evaluation: No ID returned");
+      }
+    } catch (error) {
+      console.error("Failed to create evaluation:", error);
+      setEvalError(error instanceof Error ? error.message : "Failed to create evaluation");
+    } finally {
+      setCreatingEval(false);
+    }
+  };
 
   // Group available KBs for WorkspaceDataKBTab
   const groupedAvailableKbs = useMemo(() => {
@@ -395,32 +303,6 @@ export function WorkspaceDetailPage({
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
-  };
-
-  const getWorkflowStatusColor = (status: MockWorkflow["status"]) => {
-    switch (status) {
-      case "running":
-        return "info";
-      case "complete":
-        return "success";
-      case "failed":
-        return "error";
-      default:
-        return "default";
-    }
-  };
-
-  const getWorkflowStatusIcon = (status: MockWorkflow["status"]) => {
-    switch (status) {
-      case "running":
-        return <PlayArrow fontSize="small" />;
-      case "complete":
-        return <CheckCircle fontSize="small" />;
-      case "failed":
-        return <ErrorIcon fontSize="small" />;
-      default:
-        return <Description fontSize="small" />;
-    }
   };
 
   // ============================================================================
@@ -534,224 +416,244 @@ export function WorkspaceDetailPage({
       {/* Tabs */}
       <Paper sx={{ mb: 3 }}>
         <Tabs value={activeTab} onChange={handleTabChange} aria-label="workspace tabs">
-          <Tab label="Activities" {...a11yProps(0)} />
-          <Tab label="Data" {...a11yProps(1)} />
-          <Tab label="Members" {...a11yProps(2)} />
-          <Tab label="Settings" {...a11yProps(3)} />
+          <Tab label="Overview" {...a11yProps(0)} />
+          <Tab label="Doc Eval" {...a11yProps(1)} />
+          <Tab label="Data" {...a11yProps(2)} />
+          <Tab label="Members" {...a11yProps(3)} />
+          <Tab label="Settings" {...a11yProps(4)} />
         </Tabs>
 
-        {/* Tab 0: Activities */}
+        {/* Tab 0: Overview */}
         <TabPanel value={activeTab} index={0}>
-          {/* Workflows Section */}
-          <Box sx={{ mb: 4 }}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-              <Typography variant="h5">📋 Workflows</Typography>
+          <Box>
+            <Typography variant="h5" gutterBottom>
+              Workspace Overview
+            </Typography>
+            
+            {/* Workspace Info Grid */}
+            <Grid container spacing={3} sx={{ mt: 1 }}>
+              {/* Creation Date */}
+              <Grid item xs={12} md={6}>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                    <Folder color="primary" />
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Created
+                    </Typography>
+                  </Box>
+                  <Typography variant="h6">
+                    {workspace?.createdAt 
+                      ? new Date(workspace.createdAt).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })
+                      : 'N/A'}
+                  </Typography>
+                </Paper>
+              </Grid>
+
+              {/* Members Count */}
+              <Grid item xs={12} md={6}>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                    <Group color="primary" />
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Members
+                    </Typography>
+                  </Box>
+                  <Typography variant="h6">
+                    {members?.length || 0}
+                  </Typography>
+                </Paper>
+              </Grid>
+
+              {/* Description */}
+              {workspace?.description && (
+                <Grid item xs={12}>
+                  <Paper variant="outlined" sx={{ p: 2 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                      <Storage color="primary" />
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Description
+                      </Typography>
+                    </Box>
+                    <Typography variant="body1">
+                      {workspace.description}
+                    </Typography>
+                  </Paper>
+                </Grid>
+              )}
+            </Grid>
+          </Box>
+        </TabPanel>
+
+        {/* Tab 1: Doc Eval */}
+        <TabPanel value={activeTab} index={1}>
+          <Box>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+              <Typography variant="h5">Document Evaluations</Typography>
               {canEdit && (
-                <Button variant="contained" startIcon={<Add />} size="small">
-                  New Workflow
+                <Button
+                  variant="contained"
+                  onClick={handleCreateEvaluation}
+                  disabled={evalLoading || creatingEval}
+                  startIcon={creatingEval ? <CircularProgress size={20} color="inherit" /> : undefined}
+                >
+                  {creatingEval ? "Creating..." : "+ Document Evaluation"}
                 </Button>
               )}
             </Box>
 
-            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-              <FormControl size="small" sx={{ minWidth: 150 }}>
-                <InputLabel>Type</InputLabel>
-                <Select label="Type" defaultValue="all">
-                  <MenuItem value="all">All</MenuItem>
-                  <MenuItem value="it-policy">IT Policy Review</MenuItem>
-                  <MenuItem value="network">Network Diagram Review</MenuItem>
-                  <MenuItem value="proof">Proof Artifact Review</MenuItem>
-                </Select>
-              </FormControl>
-              <FormControl size="small" sx={{ minWidth: 150 }}>
-                <InputLabel>Status</InputLabel>
-                <Select label="Status" defaultValue="all">
-                  <MenuItem value="all">All</MenuItem>
-                  <MenuItem value="running">Running</MenuItem>
-                  <MenuItem value="complete">Complete</MenuItem>
-                  <MenuItem value="draft">Draft</MenuItem>
-                </Select>
-              </FormControl>
-              <TextField
-                size="small"
-                placeholder="Search workflows..."
-                aria-label="Search workflows"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{ flex: 1 }}
+            {/* Error Alert */}
+            {evalError && (
+              <Alert severity="error" onClose={() => setEvalError(null)} sx={{ mb: 3 }}>
+                {evalError}
+              </Alert>
+            )}
+
+            {/* Stats Chips */}
+            <Box sx={{ display: "flex", gap: 1, mb: 3, flexWrap: "wrap" }}>
+              <Chip 
+                label={`Total: ${evalStats.total}`} 
+                color="default"
+              />
+              <Chip 
+                label={`Processing: ${evalStats.processing}`} 
+                color="info"
+              />
+              <Chip 
+                label={`Completed: ${evalStats.completed}`} 
+                color="success"
+              />
+              <Chip 
+                label={`Failed: ${evalStats.failed}`} 
+                color="error"
               />
             </Box>
 
-            {MOCK_WORKFLOWS.map((workflow) => (
-              <Card key={workflow.id} sx={{ mb: 2 }}>
-                <CardContent>
-                  <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
-                    <Box sx={{ flex: 1 }}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                        <Typography variant="h6">{workflow.name}</Typography>
+            {/* Loading State */}
+            {evalLoading && (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+                <CircularProgress />
+              </Box>
+            )}
+
+            {/* Error State */}
+            {evalLoadError && (
+              <Alert severity="error" sx={{ mb: 3 }}>
+                {evalLoadError}
+              </Alert>
+            )}
+
+            {/* Evaluations List */}
+            {!evalLoading && !evalError && evaluations.length > 0 && (
+              <Grid container spacing={2}>
+                {evaluations.map((evaluation) => (
+                  <Grid item xs={12} md={6} key={evaluation.id}>
+                    <Paper 
+                      sx={{ 
+                        p: 2, 
+                        cursor: "pointer",
+                        "&:hover": { boxShadow: 3 }
+                      }}
+                      onClick={() => router.push(`/eval/${evaluation.id}?workspace=${workspaceId}`)}
+                    >
+                      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+                        <Typography variant="subtitle1" fontWeight="medium">
+                          {evaluation.docType?.name || "Unknown Doc Type"}
+                        </Typography>
                         <Chip
-                          icon={getWorkflowStatusIcon(workflow.status)}
-                          label={workflow.status}
+                          label={evaluation.status}
                           size="small"
-                          color={getWorkflowStatusColor(workflow.status)}
+                          color={
+                            evaluation.status === "completed"
+                              ? "success"
+                              : evaluation.status === "processing"
+                              ? "info"
+                              : evaluation.status === "failed"
+                              ? "error"
+                              : "default"
+                          }
                         />
                       </Box>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        Type: {workflow.type}
-                      </Typography>
-                      {workflow.description && (
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                          {workflow.description}
-                        </Typography>
-                      )}
-                      {workflow.status === "running" && (
-                        <>
-                          <Box sx={{ mb: 1 }}>
-                            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                              <Typography variant="caption">
-                                {workflow.docsProcessed}/{workflow.docsTotal} documents processed
-                              </Typography>
-                              <Typography variant="caption">{workflow.progress}%</Typography>
+
+                      {/* Progress Bar for Processing */}
+                      {evaluation.status === "processing" && evaluation.progress !== undefined && (
+                        <Box sx={{ mb: 1 }}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                            <Box sx={{ flex: 1 }}>
+                              <Box 
+                                sx={{ 
+                                  height: 8, 
+                                  borderRadius: 1,
+                                  bgcolor: "grey.200",
+                                  overflow: "hidden"
+                                }}
+                              >
+                                <Box 
+                                  sx={{ 
+                                    height: "100%",
+                                    width: `${evaluation.progress}%`,
+                                    bgcolor: "info.main",
+                                    transition: "width 0.3s ease"
+                                  }}
+                                />
+                              </Box>
                             </Box>
-                            <LinearProgress variant="determinate" value={workflow.progress} />
+                            <Typography variant="caption" color="text.secondary">
+                              {evaluation.progress}%
+                            </Typography>
                           </Box>
-                          <Typography variant="caption" color="text.secondary">
-                            Started: {workflow.startedAt}
+                        </Box>
+                      )}
+
+                      {/* Compliance Score for Completed */}
+                      {evaluation.status === "completed" && evaluation.complianceScore !== undefined && (
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Compliance Score:
                           </Typography>
-                        </>
-                      )}
-                      {workflow.status === "complete" && (
-                        <Typography variant="caption" color="text.secondary">
-                          Completed: {workflow.completedAt}
-                        </Typography>
-                      )}
-                      {(workflow.status === "running" || workflow.status === "complete") && (
-                        <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
                           <Chip
-                            label={`${workflow.findings.critical} Critical`}
+                            label={`${evaluation.complianceScore}%`}
                             size="small"
-                            color="error"
-                            variant={workflow.findings.critical > 0 ? "filled" : "outlined"}
-                          />
-                          <Chip
-                            label={`${workflow.findings.nonCompliant} Non-Compliant`}
-                            size="small"
-                            color="warning"
-                            variant={workflow.findings.nonCompliant > 0 ? "filled" : "outlined"}
-                          />
-                          <Chip
-                            label={`${workflow.findings.warning} Warning`}
-                            size="small"
-                            color="info"
-                            variant={workflow.findings.warning > 0 ? "filled" : "outlined"}
-                          />
-                          <Chip
-                            label={`${workflow.findings.compliant} Compliant`}
-                            size="small"
-                            color="success"
-                            variant={workflow.findings.compliant > 0 ? "filled" : "outlined"}
+                            color={
+                              evaluation.complianceScore >= 90
+                                ? "success"
+                                : evaluation.complianceScore >= 70
+                                ? "warning"
+                                : "error"
+                            }
                           />
                         </Box>
                       )}
-                    </Box>
-                    <Box sx={{ display: "flex", gap: 1 }}>
-                      {workflow.status === "running" && (
-                        <Button variant="outlined" size="small">
-                          View Progress
-                        </Button>
-                      )}
-                      {workflow.status === "complete" && (
-                        <>
-                          <Button variant="outlined" size="small">
-                            View Report
-                          </Button>
-                          <Button variant="outlined" size="small">
-                            Export PDF
-                          </Button>
-                        </>
-                      )}
-                      {workflow.status === "draft" && (
-                        <>
-                          <Button variant="outlined" size="small">
-                            Configure
-                          </Button>
-                          <Button variant="contained" size="small">
-                            Start Analysis
-                          </Button>
-                        </>
-                      )}
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-            ))}
-          </Box>
 
-          {/* Chats Section */}
-          <Box>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-              <Typography variant="h6">💬 Chats</Typography>
-              <Button variant="contained" startIcon={<Add />} size="small">
-                New Chat
-              </Button>
-            </Box>
-
-            <Box sx={{ mb: 2 }}>
-              <TextField
-                size="small"
-                placeholder="Search chats..."
-                aria-label="Search chats"
-                fullWidth
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Box>
-
-            {MOCK_CHATS.map((chat) => (
-              <Card key={chat.id} sx={{ mb: 2 }}>
-                <CardContent>
-                  <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
-                    <Box sx={{ flex: 1 }}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                        <Typography variant="h6">{chat.name}</Typography>
-                        <Chip
-                          icon={chat.visibility === "workspace" ? <Group /> : <Lock />}
-                          label={chat.visibility === "workspace" ? "Shared" : "Private"}
-                          size="small"
-                          variant="outlined"
-                        />
-                      </Box>
-                      {chat.kbGrounded && (
-                        <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1 }}>
-                          📚 Grounded with: CJIS Audit 2026 KB (37 documents)
-                        </Typography>
-                      )}
-                      <Typography variant="body2" color="text.secondary">
-                        Last: {chat.lastUser} ({chat.lastActivity}) • {chat.messages} messages
+                      {/* Document Count */}
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                        {evaluation.documentCount || 0} document(s)
                       </Typography>
-                    </Box>
-                    <Button variant="outlined" size="small">
-                      Continue Chat
-                    </Button>
-                  </Box>
-                </CardContent>
-              </Card>
-            ))}
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+
+            {/* Empty State */}
+            {!evalLoading && !evalError && evaluations.length === 0 && (
+              <Paper variant="outlined" sx={{ p: 4, textAlign: "center" }}>
+                <Typography variant="h6" gutterBottom>
+                  No evaluations yet
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Document evaluations will appear here once created.
+                </Typography>
+              </Paper>
+            )}
           </Box>
         </TabPanel>
 
-        {/* Tab 1: Data */}
-        <TabPanel value={activeTab} index={1}>
+        {/* Tab 2: Data */}
+        <TabPanel value={activeTab} index={2}>
           {/* Knowledge Base Section - Integrated with module-kb */}
           <WorkspaceDataKBTab
             workspaceId={workspaceId}
@@ -774,8 +676,8 @@ export function WorkspaceDetailPage({
           />
         </TabPanel>
 
-        {/* Tab 2: Members */}
-        <TabPanel value={activeTab} index={2}>
+        {/* Tab 3: Members */}
+        <TabPanel value={activeTab} index={3}>
           <MemberList
             members={members || []}
             currentUserRole={userRole}
@@ -789,8 +691,8 @@ export function WorkspaceDetailPage({
           />
         </TabPanel>
 
-        {/* Tab 3: Settings */}
-        <TabPanel value={activeTab} index={3}>
+        {/* Tab 4: Settings */}
+        <TabPanel value={activeTab} index={4}>
           <Box>
             <Typography variant="h6" gutterBottom>
               Workspace Settings

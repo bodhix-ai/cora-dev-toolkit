@@ -149,7 +149,7 @@ export function useKnowledgeBase({
   );
 
   useEffect(() => {
-    if (autoFetch && retryCount < MAX_FETCH_RETRIES) {
+    if (autoFetch) {
       refresh();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

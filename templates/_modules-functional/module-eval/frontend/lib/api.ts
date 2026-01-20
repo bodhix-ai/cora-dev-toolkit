@@ -41,6 +41,7 @@ import type {
   CreateCriteriaItemInput,
   UpdateCriteriaItemInput,
   CreateEvaluationInput,
+  UpdateEvaluationInput,
   EditResultInput,
   EditHistoryResponse,
   ExportResponse,
@@ -265,8 +266,8 @@ export async function createSysStatusOption(
  * PATCH /admin/sys/eval/status-options/{id}
  */
 export async function updateSysStatusOption(
-  statusId: string,
   token: string,
+  statusId: string,
   input: Partial<StatusOptionInput>
 ): Promise<EvalSysStatusOption> {
   return apiRequest<EvalSysStatusOption>(
@@ -284,8 +285,8 @@ export async function updateSysStatusOption(
  * DELETE /admin/sys/eval/status-options/{id}
  */
 export async function deleteSysStatusOption(
-  statusId: string,
-  token: string
+  token: string,
+  statusId: string
 ): Promise<{ message: string; id: string }> {
   return apiRequest<{ message: string; id: string }>(
     `/admin/sys/eval/status-options/${statusId}`,
@@ -313,8 +314,8 @@ export async function listSysPrompts(
  * PATCH /admin/sys/eval/prompts/{type}
  */
 export async function updateSysPrompt(
-  promptType: PromptType,
   token: string,
+  promptType: PromptType,
   input: PromptConfigInput
 ): Promise<EvalSysPromptConfig> {
   return apiRequest<EvalSysPromptConfig>(
@@ -332,8 +333,8 @@ export async function updateSysPrompt(
  * POST /admin/sys/eval/prompts/{type}/test
  */
 export async function testSysPrompt(
-  promptType: PromptType,
   token: string,
+  promptType: PromptType,
   input: TestPromptInput
 ): Promise<PromptTestResult> {
   return apiRequest<PromptTestResult>(
@@ -371,8 +372,8 @@ export async function listOrgsDelegation(
  * PATCH /admin/sys/eval/orgs/{orgId}/delegation
  */
 export async function toggleOrgDelegation(
-  orgId: string,
   token: string,
+  orgId: string,
   input: ToggleDelegationInput
 ): Promise<DelegationToggleResult> {
   return apiRequest<DelegationToggleResult>(
@@ -394,8 +395,8 @@ export async function toggleOrgDelegation(
  * GET /admin/org/eval/config
  */
 export async function getOrgConfig(
-  orgId: string,
-  token: string
+  token: string,
+  orgId: string
 ): Promise<EvalOrgConfig> {
   const url = buildUrl("/admin/org/eval/config", { orgId });
   return apiRequest<EvalOrgConfig>(url, token);
@@ -406,8 +407,8 @@ export async function getOrgConfig(
  * PATCH /admin/org/eval/config
  */
 export async function updateOrgConfig(
-  orgId: string,
   token: string,
+  orgId: string,
   input: UpdateOrgConfigInput
 ): Promise<EvalOrgConfig> {
   const url = buildUrl("/admin/org/eval/config", { orgId });
@@ -426,8 +427,8 @@ export async function updateOrgConfig(
  * GET /admin/org/eval/status-options
  */
 export async function listOrgStatusOptions(
-  orgId: string,
   token: string,
+  orgId: string,
   options?: ListStatusOptionsOptions
 ): Promise<EvalOrgStatusOption[]> {
   const params: Record<string, string | boolean | undefined> = {
@@ -444,8 +445,8 @@ export async function listOrgStatusOptions(
  * POST /admin/org/eval/status-options
  */
 export async function createOrgStatusOption(
-  orgId: string,
   token: string,
+  orgId: string,
   input: StatusOptionInput
 ): Promise<EvalOrgStatusOption> {
   const url = buildUrl("/admin/org/eval/status-options", { orgId });
@@ -460,9 +461,9 @@ export async function createOrgStatusOption(
  * PATCH /admin/org/eval/status-options/{id}
  */
 export async function updateOrgStatusOption(
-  statusId: string,
-  orgId: string,
   token: string,
+  orgId: string,
+  statusId: string,
   input: Partial<StatusOptionInput>
 ): Promise<EvalOrgStatusOption> {
   const url = buildUrl(`/admin/org/eval/status-options/${statusId}`, { orgId });
@@ -477,9 +478,9 @@ export async function updateOrgStatusOption(
  * DELETE /admin/org/eval/status-options/{id}
  */
 export async function deleteOrgStatusOption(
-  statusId: string,
+  token: string,
   orgId: string,
-  token: string
+  statusId: string
 ): Promise<{ message: string; id: string }> {
   const url = buildUrl(`/admin/org/eval/status-options/${statusId}`, { orgId });
   return apiRequest<{ message: string; id: string }>(url, token, {
@@ -496,8 +497,8 @@ export async function deleteOrgStatusOption(
  * GET /admin/org/eval/prompts
  */
 export async function listOrgPrompts(
-  orgId: string,
-  token: string
+  token: string,
+  orgId: string
 ): Promise<EvalMergedPromptConfig[]> {
   const url = buildUrl("/admin/org/eval/prompts", { orgId });
   return apiRequest<EvalMergedPromptConfig[]>(url, token);
@@ -508,9 +509,9 @@ export async function listOrgPrompts(
  * PATCH /admin/org/eval/prompts/{type}
  */
 export async function updateOrgPrompt(
-  promptType: PromptType,
-  orgId: string,
   token: string,
+  orgId: string,
+  promptType: PromptType,
   input: PromptConfigInput
 ): Promise<EvalMergedPromptConfig> {
   const url = buildUrl(`/admin/org/eval/prompts/${promptType}`, { orgId });
@@ -546,8 +547,8 @@ export async function testOrgPrompt(
  * GET /admin/org/eval/doc-types
  */
 export async function listDocTypes(
-  orgId: string,
   token: string,
+  orgId: string,
   options?: ListDocTypesOptions
 ): Promise<EvalDocType[]> {
   const params: Record<string, string | boolean | undefined> = {
@@ -563,9 +564,9 @@ export async function listDocTypes(
  * GET /admin/org/eval/doc-types/{id}
  */
 export async function getDocType(
-  docTypeId: string,
+  token: string,
   orgId: string,
-  token: string
+  docTypeId: string
 ): Promise<EvalDocType> {
   const url = buildUrl(`/admin/org/eval/doc-types/${docTypeId}`, { orgId });
   return apiRequest<EvalDocType>(url, token);
@@ -576,8 +577,8 @@ export async function getDocType(
  * POST /admin/org/eval/doc-types
  */
 export async function createDocType(
-  orgId: string,
   token: string,
+  orgId: string,
   input: CreateDocTypeInput
 ): Promise<EvalDocType> {
   const url = buildUrl("/admin/org/eval/doc-types", { orgId });
@@ -592,9 +593,9 @@ export async function createDocType(
  * PATCH /admin/org/eval/doc-types/{id}
  */
 export async function updateDocType(
-  docTypeId: string,
-  orgId: string,
   token: string,
+  orgId: string,
+  docTypeId: string,
   input: UpdateDocTypeInput
 ): Promise<EvalDocType> {
   const url = buildUrl(`/admin/org/eval/doc-types/${docTypeId}`, { orgId });
@@ -609,9 +610,9 @@ export async function updateDocType(
  * DELETE /admin/org/eval/doc-types/{id}
  */
 export async function deleteDocType(
-  docTypeId: string,
+  token: string,
   orgId: string,
-  token: string
+  docTypeId: string
 ): Promise<{ message: string; id: string }> {
   const url = buildUrl(`/admin/org/eval/doc-types/${docTypeId}`, { orgId });
   return apiRequest<{ message: string; id: string }>(url, token, {
@@ -628,8 +629,8 @@ export async function deleteDocType(
  * GET /admin/org/eval/criteria-sets
  */
 export async function listCriteriaSets(
-  orgId: string,
   token: string,
+  orgId: string,
   options?: ListCriteriaSetsOptions
 ): Promise<EvalCriteriaSet[]> {
   const params: Record<string, string | boolean | undefined> = {
@@ -646,9 +647,9 @@ export async function listCriteriaSets(
  * GET /admin/org/eval/criteria-sets/{id}
  */
 export async function getCriteriaSet(
-  criteriaSetId: string,
+  token: string,
   orgId: string,
-  token: string
+  criteriaSetId: string
 ): Promise<EvalCriteriaSet> {
   const url = buildUrl(`/admin/org/eval/criteria-sets/${criteriaSetId}`, {
     orgId,
@@ -661,8 +662,8 @@ export async function getCriteriaSet(
  * POST /admin/org/eval/criteria-sets
  */
 export async function createCriteriaSet(
-  orgId: string,
   token: string,
+  orgId: string,
   input: CreateCriteriaSetInput
 ): Promise<EvalCriteriaSet> {
   const url = buildUrl("/admin/org/eval/criteria-sets", { orgId });
@@ -677,9 +678,9 @@ export async function createCriteriaSet(
  * PATCH /admin/org/eval/criteria-sets/{id}
  */
 export async function updateCriteriaSet(
-  criteriaSetId: string,
-  orgId: string,
   token: string,
+  orgId: string,
+  criteriaSetId: string,
   input: UpdateCriteriaSetInput
 ): Promise<EvalCriteriaSet> {
   const url = buildUrl(`/admin/org/eval/criteria-sets/${criteriaSetId}`, {
@@ -696,9 +697,9 @@ export async function updateCriteriaSet(
  * DELETE /admin/org/eval/criteria-sets/{id}
  */
 export async function deleteCriteriaSet(
-  criteriaSetId: string,
+  token: string,
   orgId: string,
-  token: string
+  criteriaSetId: string
 ): Promise<{ message: string; id: string }> {
   const url = buildUrl(`/admin/org/eval/criteria-sets/${criteriaSetId}`, {
     orgId,
@@ -713,8 +714,8 @@ export async function deleteCriteriaSet(
  * POST /admin/org/eval/criteria-sets/import
  */
 export async function importCriteriaSet(
-  orgId: string,
   token: string,
+  orgId: string,
   input: ImportCriteriaSetInput
 ): Promise<ImportCriteriaSetResult> {
   const url = buildUrl("/admin/org/eval/criteria-sets/import", { orgId });
@@ -733,9 +734,9 @@ export async function importCriteriaSet(
  * GET /admin/org/eval/criteria-sets/{id}/items
  */
 export async function listCriteriaItems(
-  criteriaSetId: string,
-  orgId: string,
   token: string,
+  orgId: string,
+  criteriaSetId: string,
   options?: ListCriteriaItemsOptions
 ): Promise<EvalCriteriaItem[]> {
   const params: Record<string, string | boolean | undefined> = {
@@ -755,9 +756,9 @@ export async function listCriteriaItems(
  * POST /admin/org/eval/criteria-sets/{id}/items
  */
 export async function addCriteriaItem(
-  criteriaSetId: string,
-  orgId: string,
   token: string,
+  orgId: string,
+  criteriaSetId: string,
   input: CreateCriteriaItemInput
 ): Promise<EvalCriteriaItem> {
   const url = buildUrl(`/admin/org/eval/criteria-sets/${criteriaSetId}/items`, {
@@ -774,9 +775,9 @@ export async function addCriteriaItem(
  * PATCH /admin/org/eval/criteria-items/{id}
  */
 export async function updateCriteriaItem(
-  itemId: string,
-  orgId: string,
   token: string,
+  orgId: string,
+  itemId: string,
   input: UpdateCriteriaItemInput
 ): Promise<EvalCriteriaItem> {
   const url = buildUrl(`/admin/org/eval/criteria-items/${itemId}`, { orgId });
@@ -791,9 +792,9 @@ export async function updateCriteriaItem(
  * DELETE /admin/org/eval/criteria-items/{id}
  */
 export async function deleteCriteriaItem(
-  itemId: string,
+  token: string,
   orgId: string,
-  token: string
+  itemId: string
 ): Promise<{ message: string; id: string }> {
   const url = buildUrl(`/admin/org/eval/criteria-items/${itemId}`, { orgId });
   return apiRequest<{ message: string; id: string }>(url, token, {
@@ -810,8 +811,8 @@ export async function deleteCriteriaItem(
  * POST /workspaces/{wsId}/eval
  */
 export async function createEvaluation(
-  workspaceId: string,
   token: string,
+  workspaceId: string,
   input: CreateEvaluationInput
 ): Promise<Evaluation> {
   return apiRequest<Evaluation>(`/workspaces/${workspaceId}/eval`, token, {
@@ -825,8 +826,8 @@ export async function createEvaluation(
  * GET /workspaces/{wsId}/eval
  */
 export async function listEvaluations(
-  workspaceId: string,
   token: string,
+  workspaceId: string,
   options?: ListEvaluationsOptions
 ): Promise<ListEvaluationsResponse> {
   const params: Record<string, string | number | boolean | undefined> = {
@@ -845,9 +846,9 @@ export async function listEvaluations(
  * GET /workspaces/{wsId}/eval/{id}
  */
 export async function getEvaluation(
+  token: string,
   workspaceId: string,
-  evaluationId: string,
-  token: string
+  evaluationId: string
 ): Promise<Evaluation> {
   return apiRequest<Evaluation>(
     `/workspaces/${workspaceId}/eval/${evaluationId}`,
@@ -860,9 +861,9 @@ export async function getEvaluation(
  * GET /workspaces/{wsId}/eval/{id}/status
  */
 export async function getEvaluationStatus(
+  token: string,
   workspaceId: string,
-  evaluationId: string,
-  token: string
+  evaluationId: string
 ): Promise<EvaluationStatusResponse> {
   return apiRequest<EvaluationStatusResponse>(
     `/workspaces/${workspaceId}/eval/${evaluationId}/status`,
@@ -871,13 +872,33 @@ export async function getEvaluationStatus(
 }
 
 /**
+ * Update draft evaluation with configuration and trigger processing
+ * PATCH /workspaces/{wsId}/eval/{id}
+ */
+export async function updateEvaluation(
+  token: string,
+  workspaceId: string,
+  evaluationId: string,
+  input: UpdateEvaluationInput
+): Promise<Evaluation> {
+  return apiRequest<Evaluation>(
+    `/workspaces/${workspaceId}/eval/${evaluationId}`,
+    token,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }
+  );
+}
+
+/**
  * Delete (soft) an evaluation
  * DELETE /workspaces/{wsId}/eval/{id}
  */
 export async function deleteEvaluation(
+  token: string,
   workspaceId: string,
-  evaluationId: string,
-  token: string
+  evaluationId: string
 ): Promise<{ message: string; id: string }> {
   return apiRequest<{ message: string; id: string }>(
     `/workspaces/${workspaceId}/eval/${evaluationId}`,
@@ -895,10 +916,10 @@ export async function deleteEvaluation(
  * PATCH /workspaces/{wsId}/eval/{id}/results/{resultId}
  */
 export async function editResult(
+  token: string,
   workspaceId: string,
   evaluationId: string,
   resultId: string,
-  token: string,
   input: EditResultInput
 ): Promise<{
   edit: EvalResultEdit;
@@ -921,10 +942,10 @@ export async function editResult(
  * GET /workspaces/{wsId}/eval/{id}/results/{resultId}/history
  */
 export async function getEditHistory(
+  token: string,
   workspaceId: string,
   evaluationId: string,
-  resultId: string,
-  token: string
+  resultId: string
 ): Promise<EditHistoryResponse> {
   return apiRequest<EditHistoryResponse>(
     `/workspaces/${workspaceId}/eval/${evaluationId}/results/${resultId}/history`,
@@ -941,9 +962,9 @@ export async function getEditHistory(
  * GET /workspaces/{wsId}/eval/{id}/export/pdf
  */
 export async function exportPdf(
+  token: string,
   workspaceId: string,
-  evaluationId: string,
-  token: string
+  evaluationId: string
 ): Promise<ExportResponse> {
   return apiRequest<ExportResponse>(
     `/workspaces/${workspaceId}/eval/${evaluationId}/export/pdf`,
@@ -956,9 +977,9 @@ export async function exportPdf(
  * GET /workspaces/{wsId}/eval/{id}/export/xlsx
  */
 export async function exportXlsx(
+  token: string,
   workspaceId: string,
-  evaluationId: string,
-  token: string
+  evaluationId: string
 ): Promise<ExportResponse> {
   return apiRequest<ExportResponse>(
     `/workspaces/${workspaceId}/eval/${evaluationId}/export/xlsx`,
@@ -1006,9 +1027,9 @@ export async function downloadExport(
  * Poll evaluation status until complete or failed
  */
 export async function pollEvaluationStatus(
+  token: string,
   workspaceId: string,
   evaluationId: string,
-  token: string,
   options?: {
     intervalMs?: number;
     maxAttempts?: number;
@@ -1021,7 +1042,7 @@ export async function pollEvaluationStatus(
   let attempts = 0;
 
   while (attempts < maxAttempts) {
-    const status = await getEvaluationStatus(workspaceId, evaluationId, token);
+    const status = await getEvaluationStatus(token, workspaceId, evaluationId);
 
     options?.onProgress?.(status);
 

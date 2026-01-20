@@ -37,5 +37,11 @@ export type { OrgEvalPromptsPageProps } from "./OrgEvalPromptsPage";
 export { OrgEvalDocTypesPage } from "./OrgEvalDocTypesPage";
 export type { OrgEvalDocTypesPageProps } from "./OrgEvalDocTypesPage";
 
+export { OrgEvalDocTypesPageV2 } from "./OrgEvalDocTypesPageV2";
+export type { OrgEvalDocTypesPageV2Props } from "./OrgEvalDocTypesPageV2";
+
 export { OrgEvalCriteriaPage } from "./OrgEvalCriteriaPage";
 export type { OrgEvalCriteriaPageProps } from "./OrgEvalCriteriaPage";
+
+export { OrgEvalCriteriaPageV2 } from "./OrgEvalCriteriaPageV2";
+export type { OrgEvalCriteriaPageV2Props } from "./OrgEvalCriteriaPageV2";

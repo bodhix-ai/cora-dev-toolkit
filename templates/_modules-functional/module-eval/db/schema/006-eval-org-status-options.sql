@@ -12,13 +12,16 @@ CREATE TABLE IF NOT EXISTS eval_org_status_options (
     color TEXT NOT NULL DEFAULT '#9e9e9e',
     score_value DECIMAL(5,2),
     order_index INTEGER NOT NULL DEFAULT 0,
+    mode TEXT NOT NULL DEFAULT 'detailed',
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     updated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-    
-    CONSTRAINT eval_org_status_options_org_name_unique UNIQUE (org_id, name)
+
+    CONSTRAINT eval_org_status_options_org_name_mode_unique UNIQUE (org_id, name, mode),
+    CONSTRAINT eval_org_status_options_mode_check
+        CHECK (mode IN ('boolean', 'detailed', 'both'))
 );
 
 -- Add table comment
@@ -28,13 +31,16 @@ COMMENT ON COLUMN eval_org_status_options.name IS 'Status display name';
 COMMENT ON COLUMN eval_org_status_options.color IS 'Hex color code for UI display';
 COMMENT ON COLUMN eval_org_status_options.score_value IS 'Numerical score (0-100) for aggregation';
 COMMENT ON COLUMN eval_org_status_options.order_index IS 'Display order (lower = first)';
+COMMENT ON COLUMN eval_org_status_options.mode IS 'Which scoring mode uses this option: boolean, detailed, or both';
 COMMENT ON COLUMN eval_org_status_options.is_active IS 'Soft delete flag';
 
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_eval_org_status_options_org 
     ON eval_org_status_options(org_id);
-CREATE INDEX IF NOT EXISTS idx_eval_org_status_options_active 
+CREATE INDEX IF NOT EXISTS idx_eval_org_status_options_active
     ON eval_org_status_options(org_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_eval_org_status_options_mode
+    ON eval_org_status_options(org_id, mode);
 
 -- Create updated_at trigger
 CREATE OR REPLACE FUNCTION update_eval_org_status_options_updated_at()

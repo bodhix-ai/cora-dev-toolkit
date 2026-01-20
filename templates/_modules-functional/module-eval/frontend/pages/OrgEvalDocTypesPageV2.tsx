@@ -1,21 +1,23 @@
 /**
- * OrgEvalDocTypesPage - Organization Document Types Page
+ * OrgEvalDocTypesPageV2 - Organization Document Types Page (Simplified)
  *
- * Org admin page for managing document types:
- * - Create, edit, delete document types
- * - View associated criteria sets
+ * Simplified version that avoids infinite loops by:
+ * - Using direct API calls (no Zustand store)
+ * - Simple useState for local state management
+ * - Controlled useEffect with stable dependencies
+ * - Reusing the working DocTypeManager component
  *
  * @example
  * // In Next.js app router: app/(admin)/admin/org/eval/doc-types/page.tsx
- * import { OrgEvalDocTypesPage } from '@/modules/module-eval/frontend/pages';
+ * import { OrgEvalDocTypesPageV2 } from '@/modules/module-eval/frontend/pages';
  * export default function Page() {
- *   return <OrgEvalDocTypesPage orgId={orgId} />;
+ *   return <OrgEvalDocTypesPageV2 orgId={orgId} />;
  * }
  */
 
 "use client";
 
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -26,14 +28,24 @@ import {
 } from "@mui/material";
 import { Error as ErrorIcon } from "@mui/icons-material";
 import { useUser } from "@{{PROJECT_NAME}}/module-access";
-import { useEvalDocTypes } from "../hooks";
 import { DocTypeManager } from "../components";
+import {
+  listDocTypes,
+  createDocType,
+  updateDocType,
+  deleteDocType,
+} from "../lib/api";
+import type {
+  EvalDocType,
+  CreateDocTypeInput,
+  UpdateDocTypeInput,
+} from "../types";
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
-export interface OrgEvalDocTypesPageProps {
+export interface OrgEvalDocTypesPageV2Props {
   /** Organization ID */
   orgId: string;
   /** Optional CSS class */
@@ -133,75 +145,111 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
 // MAIN COMPONENT
 // =============================================================================
 
-export function OrgEvalDocTypesPage({
+export function OrgEvalDocTypesPageV2({
   orgId,
   className = "",
   loadingComponent,
   onNavigateToCriteria,
-}: OrgEvalDocTypesPageProps) {
-  // Get auth token (same pattern as working SysEvalConfigPage)
-  const { authAdapter } = useUser();
+}: OrgEvalDocTypesPageV2Props) {
+  // Local state (no store)
+  const [docTypes, setDocTypes] = useState<EvalDocType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
+  // Get auth adapter
+  const { authAdapter } = useUser();
+
+  // Fetch token once on mount
   useEffect(() => {
     let mounted = true;
+    
     async function fetchToken() {
       try {
         const t = await authAdapter.getToken();
-        if (mounted) setToken(t);
-      } catch (error) {
-        console.error("Failed to get auth token:", error);
-        if (mounted) setToken(null);
+        if (mounted) {
+          setToken(t);
+        }
+      } catch (err) {
+        console.error("Failed to get auth token:", err);
+        if (mounted) {
+          setError(err instanceof Error ? err : new Error("Failed to get auth token"));
+          setIsLoading(false);
+        }
       }
     }
+
     fetchToken();
-    return () => { mounted = false; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Hooks
-  const {
-    docTypes,
-    isLoading: docTypesLoading,
-    error,
-    create: createDocType,
-    update: updateDocType,
-    remove: deleteDocType,
-    refresh,
-  } = useEvalDocTypes(token, orgId);
+    return () => {
+      mounted = false;
+    };
+  }, []); // Only run once on mount
 
-  // Combined loading state
-  const isLoading = docTypesLoading || !token;
+  // Load doc types when token is available
+  const loadDocTypes = useCallback(async () => {
+    if (!token || !orgId) return;
 
-  // Handlers
-  const handleCreateDocType = useCallback(
-    async (data: { name: string; description?: string }) => {
-      if (!token || !orgId) return;
-      await createDocType(data);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const data = await listDocTypes(token, orgId, { includeInactive: false });
+      setDocTypes(data);
+    } catch (err) {
+      console.error("Failed to load doc types:", err);
+      setError(err instanceof Error ? err : new Error("Failed to load doc types"));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [token, orgId]);
+
+  // Load doc types when token becomes available
+  useEffect(() => {
+    if (token && orgId) {
+      loadDocTypes();
+    }
+  }, [token, orgId, loadDocTypes]);
+
+  // Create handler
+  const handleCreate = useCallback(
+    async (input: CreateDocTypeInput) => {
+      if (!token || !orgId) {
+        throw new Error("No auth token or org ID");
+      }
+
+      const newDocType = await createDocType(token, orgId, input);
+      setDocTypes((prev) => [...prev, newDocType]);
     },
-    [token, orgId, createDocType]
+    [token, orgId]
   );
 
-  const handleUpdateDocType = useCallback(
-    async (id: string, data: { name?: string; description?: string; isActive?: boolean }) => {
-      if (!token || !orgId) return;
-      await updateDocType(id, data);
+  // Update handler
+  const handleUpdate = useCallback(
+    async (id: string, input: UpdateDocTypeInput) => {
+      if (!token || !orgId) {
+        throw new Error("No auth token or org ID");
+      }
+
+      const updatedDocType = await updateDocType(token, orgId, id, input);
+      setDocTypes((prev) =>
+        prev.map((dt) => (dt.id === id ? updatedDocType : dt))
+      );
     },
-    [token, orgId, updateDocType]
+    [token, orgId]
   );
 
-  const handleDeleteDocType = useCallback(
+  // Delete handler
+  const handleDelete = useCallback(
     async (id: string) => {
-      if (!token || !orgId) return;
-      await deleteDocType(id);
-    },
-    [token, orgId, deleteDocType]
-  );
+      if (!token || !orgId) {
+        throw new Error("No auth token or org ID");
+      }
 
-  const handleViewCriteria = useCallback(
-    (docTypeId: string) => {
-      onNavigateToCriteria?.(docTypeId);
+      await deleteDocType(token, orgId, id);
+      setDocTypes((prev) => prev.filter((dt) => dt.id !== id));
     },
-    [onNavigateToCriteria]
+    [token, orgId]
   );
 
   // Render loading state
@@ -217,7 +265,7 @@ export function OrgEvalDocTypesPage({
   if (error) {
     return (
       <Box sx={{ p: 3 }} className={className}>
-        <ErrorState error={error} onRetry={refresh} />
+        <ErrorState error={error} onRetry={loadDocTypes} />
       </Box>
     );
   }
@@ -229,11 +277,11 @@ export function OrgEvalDocTypesPage({
 
       {/* Doc Type Manager */}
       <DocTypeManager
-        docTypes={docTypes || []}
-        onCreate={handleCreateDocType}
-        onUpdate={handleUpdateDocType}
-        onDelete={handleDeleteDocType}
-        onRefresh={refresh}
+        docTypes={docTypes}
+        onCreate={handleCreate}
+        onUpdate={handleUpdate}
+        onDelete={handleDelete}
+        onRefresh={loadDocTypes}
       />
 
       {/* Help Text */}
@@ -257,4 +305,4 @@ export function OrgEvalDocTypesPage({
   );
 }
 
-export default OrgEvalDocTypesPage;
+export default OrgEvalDocTypesPageV2;

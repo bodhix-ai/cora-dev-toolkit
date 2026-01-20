@@ -820,7 +820,13 @@ def handle_update_org_status_option(
     
     if 'isActive' in body:
         update_data['is_active'] = bool(body['isActive'])
-    
+
+    if 'mode' in body:
+        mode = body['mode']
+        if mode not in ['boolean', 'detailed', 'both']:
+            raise common.ValidationError('mode must be "boolean", "detailed", or "both"')
+        update_data['mode'] = mode
+
     if len(update_data) == 1:  # Only updated_by
         raise common.ValidationError('No valid fields to update')
     

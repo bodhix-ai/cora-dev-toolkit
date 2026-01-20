@@ -405,7 +405,7 @@ export function CriteriaItemEditor({
   const deletingItem = deletingId ? items.find((i) => i.id === deletingId) : null;
 
   // Group items by category
-  const groupedItems = items.reduce<Record<string, EvalCriteriaItem[]>>(
+  const groupedItems = (items || []).reduce<Record<string, EvalCriteriaItem[]>>(
     (acc, item) => {
       const cat = item.category || "";
       if (!acc[cat]) acc[cat] = [];

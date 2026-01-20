@@ -356,6 +356,12 @@ output "api_routes" {
       public      = false
     },
     {
+      method      = "PATCH"
+      path        = "/workspaces/{wsId}/eval/{evalId}"
+      integration = aws_lambda_function.eval_results.invoke_arn
+      public      = false
+    },
+    {
       method      = "GET"
       path        = "/workspaces/{wsId}/eval/{evalId}/status"
       integration = aws_lambda_function.eval_results.invoke_arn

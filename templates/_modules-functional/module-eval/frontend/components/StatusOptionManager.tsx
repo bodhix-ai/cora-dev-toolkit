@@ -29,6 +29,9 @@ import {
   IconButton,
   Chip,
   Grid,
+  Tabs,
+  Tab,
+  Badge,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -229,9 +232,11 @@ export function StatusOptionForm({
         orderIndex: orderNum,
       };
 
-      if (isSystemLevel) {
-        input.mode = mode;
-      } else {
+      // Always include mode
+      input.mode = mode;
+      
+      // Include isActive for org level
+      if (!isSystemLevel) {
         input.isActive = isActive;
       }
 
@@ -286,23 +291,21 @@ export function StatusOptionForm({
         </Grid>
       </Grid>
 
-      {isSystemLevel && (
-        <FormControl fullWidth>
-          <InputLabel>Applies To</InputLabel>
-          <Select
-            value={mode}
-            onChange={(e) => setMode(e.target.value as StatusOptionMode)}
-            disabled={isSaving}
-            label="Applies To"
-          >
-            {MODE_OPTIONS.map((opt) => (
-              <MenuItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      )}
+      <FormControl fullWidth>
+        <InputLabel>Applies To</InputLabel>
+        <Select
+          value={mode}
+          onChange={(e) => setMode(e.target.value as StatusOptionMode)}
+          disabled={isSaving}
+          label="Applies To"
+        >
+          {MODE_OPTIONS.map((opt) => (
+            <MenuItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
 
       {!isSystemLevel && (
         <FormControlLabel
@@ -448,6 +451,7 @@ export function StatusOptionManager({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedTab, setSelectedTab] = useState<"boolean" | "detailed">("boolean");
 
   const editingOption = editingId
     ? statusOptions.find((o) => o.id === editingId)
@@ -457,14 +461,29 @@ export function StatusOptionManager({
     ? statusOptions.find((o) => o.id === deletingId)
     : null;
 
-  // Sort by order index
-  const sortedOptions = [...statusOptions].sort(
+  // Filter and sort by mode and order index
+  const filterByMode = (mode: "boolean" | "detailed") => {
+    return statusOptions.filter((opt) => {
+      const optMode = (opt as EvalSysStatusOption).mode;
+      return optMode === mode || optMode === "both";
+    });
+  };
+
+  const booleanOptions = filterByMode("boolean").sort(
     (a, b) => a.orderIndex - b.orderIndex
   );
+
+  const detailedOptions = filterByMode("detailed").sort(
+    (a, b) => a.orderIndex - b.orderIndex
+  );
+
+  const currentTabOptions = selectedTab === "boolean" ? booleanOptions : detailedOptions;
 
   const handleCreate = async (input: StatusOptionInput) => {
     try {
       setIsSaving(true);
+      // Set mode based on selected tab
+      input.mode = selectedTab;
       await onCreate(input);
       setIsCreating(false);
     } finally {
@@ -497,38 +516,64 @@ export function StatusOptionManager({
   return (
     <Box className={className}>
       {/* Header */}
-      <Box sx={{ mb: 3, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Box>
-          <Typography variant="h6" gutterBottom>
-            {isSystemLevel ? "System Status Options" : "Organization Status Options"}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {isSystemLevel
-              ? "Default status options for all organizations"
-              : "Status options for your organization"}
-          </Typography>
-        </Box>
-        <Box sx={{ display: "flex", gap: 1 }}>
-          {onRefresh && (
-            <IconButton
-              onClick={onRefresh}
-              disabled={isLoading}
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              {isSystemLevel ? "System Status Options" : "Organization Status Options"}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {isSystemLevel
+                ? "Default status options for all organizations"
+                : "Status options for your organization"}
+            </Typography>
+          </Box>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            {onRefresh && (
+              <IconButton
+                onClick={onRefresh}
+                disabled={isLoading}
+                size="small"
+                title="Refresh"
+              >
+                <RefreshIcon />
+              </IconButton>
+            )}
+            <Button
+              onClick={() => setIsCreating(true)}
+              disabled={isLoading || isCreating}
+              variant="contained"
+              startIcon={<AddIcon />}
               size="small"
-              title="Refresh"
             >
-              <RefreshIcon />
-            </IconButton>
-          )}
-          <Button
-            onClick={() => setIsCreating(true)}
-            disabled={isLoading || isCreating}
-            variant="contained"
-            startIcon={<AddIcon />}
-            size="small"
-          >
-            Add Option
-          </Button>
+              Add Option
+            </Button>
+          </Box>
         </Box>
+
+        {/* Tabs - Show for both system and org level */}
+        <Tabs
+          value={selectedTab}
+          onChange={(_, newValue) => setSelectedTab(newValue)}
+          sx={{ borderBottom: 1, borderColor: "divider" }}
+        >
+          <Tab
+            value="boolean"
+            label={
+              <Badge badgeContent={booleanOptions.length} color="primary">
+                <Box sx={{ pr: 2 }}>Boolean Mode</Box>
+              </Badge>
+            }
+          />
+          <Tab
+            value="detailed"
+            label={
+              <Badge badgeContent={detailedOptions.length} color="primary">
+                <Box sx={{ pr: 2 }}>Detailed Mode</Box>
+              </Badge>
+            }
+          />
+        </Tabs>
       </Box>
 
       {/* Error */}
@@ -583,18 +628,18 @@ export function StatusOptionManager({
       )}
 
       {/* Empty State */}
-      {!isLoading && statusOptions.length === 0 && (
+      {!isLoading && currentTabOptions.length === 0 && (
         <Box sx={{ py: 8, textAlign: "center" }}>
           <Typography color="text.secondary">
-            No status options yet. Create one to get started.
+            No {selectedTab} mode status options yet. Create one to get started.
           </Typography>
         </Box>
       )}
 
       {/* Status Option List */}
-      {sortedOptions.length > 0 && (
+      {currentTabOptions.length > 0 && (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {sortedOptions.map((option) => (
+          {currentTabOptions.map((option) => (
             <StatusOptionCard
               key={option.id}
               statusOption={option}

@@ -145,20 +145,20 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         # Route-aware org_id handling
         org_id = None
         if not is_sys_route(path):
-            # Org routes require org_id
+            # Org routes require orgId (camelCase in query params, snake_case internally)
             query_params = event.get('queryStringParameters') or {}
-            org_id = query_params.get('org_id')
+            org_id = query_params.get('orgId')  # Note: camelCase in query params
             
-            # For POST/PUT, also check request body
+            # For POST/PUT, also check request body (accept both formats)
             if not org_id and http_method in ('POST', 'PUT'):
                 try:
                     body = json.loads(event.get('body', '{}'))
-                    org_id = body.get('org_id')
+                    org_id = body.get('orgId') or body.get('org_id')  # Accept both formats in body
                 except json.JSONDecodeError:
                     pass
             
             if not org_id:
-                return common.bad_request_response('org_id is required for org routes')
+                return common.bad_request_response('orgId is required for org routes')
         
         # Route dispatcher
         # ... dispatch to handlers

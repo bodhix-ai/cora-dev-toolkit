@@ -271,9 +271,10 @@ export function SysEvalConfigPage({
       >
         <StatusOptionManager
           statusOptions={statusOptions || []}
-          onCreateOption={createOption}
-          onUpdateOption={updateOption}
-          onDeleteOption={deleteOption}
+          onCreate={createOption}
+          onUpdate={updateOption}
+          onDelete={deleteOption}
+          onRefresh={refreshStatus}
           isSystemLevel
         />
       </Section>
@@ -284,8 +285,9 @@ export function SysEvalConfigPage({
         description="Control which organizations can customize their own AI prompts and models."
       >
         <OrgDelegationManager
-          orgs={orgs || []}
-          onToggleDelegation={toggleDelegation}
+          organizations={orgs || []}
+          onToggle={toggleDelegation}
+          onRefresh={refreshOrgs}
         />
       </Section>
     </Box>

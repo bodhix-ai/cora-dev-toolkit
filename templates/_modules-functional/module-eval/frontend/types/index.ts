@@ -20,7 +20,7 @@ export type StatusOptionMode = "boolean" | "detailed" | "both";
 export type PromptType = "doc_summary" | "evaluation" | "eval_summary";
 
 /** Evaluation processing status */
-export type EvaluationStatus = "pending" | "processing" | "completed" | "failed";
+export type EvaluationStatus = "draft" | "pending" | "processing" | "completed" | "failed";
 
 // =============================================================================
 // SYSTEM CONFIGURATION TYPES
@@ -538,6 +538,18 @@ export interface EvaluationDocument {
 export interface CreateEvaluationInput {
   /** Evaluation name */
   name: string;
+  /** Document type ID (optional for draft mode) */
+  docTypeId?: string;
+  /** Criteria set ID (optional for draft mode) */
+  criteriaSetId?: string;
+  /** Document IDs from knowledge base (optional for draft mode) */
+  docIds?: string[];
+}
+
+/**
+ * Input for updating draft evaluation with configuration
+ */
+export interface UpdateEvaluationInput {
   /** Document type ID */
   docTypeId: string;
   /** Criteria set ID */

@@ -47,14 +47,17 @@ export function useEvalCriteriaSets(
     if (token && orgId && criteriaSets.length === 0 && !criteriaSetsLoading) {
       loadCriteriaSets(token, orgId, options);
     }
-  }, [token, orgId, criteriaSets.length, criteriaSetsLoading, loadCriteriaSets, options]);
+    // Note: options and loadCriteriaSets are intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId, criteriaSets.length, criteriaSetsLoading]);
 
   const create = useCallback(
     async (input: CreateCriteriaSetInput): Promise<EvalCriteriaSet> => {
       if (!token || !orgId) throw new Error("No auth token or org ID");
       return createCriteriaSet(token, orgId, input);
     },
-    [token, orgId, createCriteriaSet]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [token, orgId]
   );
 
   const update = useCallback(
@@ -62,7 +65,8 @@ export function useEvalCriteriaSets(
       if (!token || !orgId) throw new Error("No auth token or org ID");
       await updateCriteriaSet(token, orgId, id, input);
     },
-    [token, orgId, updateCriteriaSet]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [token, orgId]
   );
 
   const remove = useCallback(
@@ -70,7 +74,8 @@ export function useEvalCriteriaSets(
       if (!token || !orgId) throw new Error("No auth token or org ID");
       await deleteCriteriaSet(token, orgId, id);
     },
-    [token, orgId, deleteCriteriaSet]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [token, orgId]
   );
 
   const importFromFile = useCallback(
@@ -78,13 +83,16 @@ export function useEvalCriteriaSets(
       if (!token || !orgId) throw new Error("No auth token or org ID");
       return importCriteriaSet(token, orgId, input);
     },
-    [token, orgId, importCriteriaSet]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [token, orgId]
   );
 
   const refresh = useCallback(async () => {
     if (!token || !orgId) return;
     await loadCriteriaSets(token, orgId, options);
-  }, [token, orgId, loadCriteriaSets, options]);
+    // Note: options and loadCriteriaSets are intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId]);
 
   // Get criteria sets by doc type
   const getByDocType = useCallback(
@@ -127,7 +135,9 @@ export function useEvalCriteriaSetsByDocType(
     if (token && orgId && docTypeId) {
       loadCriteriaSets(token, orgId, { docTypeId });
     }
-  }, [token, orgId, docTypeId, loadCriteriaSets]);
+    // Note: loadCriteriaSets is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId, docTypeId]);
 
   // Filter criteria sets by doc type using selector
   const filteredSets = useEvalStore(
@@ -163,7 +173,8 @@ export function useEvalCriteriaSet(
     return () => {
       clearSelectedCriteriaSet();
     };
-  }, [token, orgId, criteriaSetId, selectCriteriaSet, clearSelectedCriteriaSet]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId, criteriaSetId]);
 
   return {
     criteriaSet: selectedCriteriaSet,
@@ -191,7 +202,9 @@ export function useCriteriaSetSelect(
     if (token && orgId && docTypeId) {
       loadCriteriaSets(token, orgId, { docTypeId, includeInactive: !activeOnly });
     }
-  }, [token, orgId, docTypeId, loadCriteriaSets, activeOnly]);
+    // Note: loadCriteriaSets is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId, docTypeId, activeOnly]);
 
   // Filter to doc type and active
   const selectOptions = useMemo(() => {
@@ -241,7 +254,9 @@ export function useEvalCriteriaItems(
     if (token && orgId && criteriaSetId) {
       selectCriteriaSet(token, orgId, criteriaSetId);
     }
-  }, [token, orgId, criteriaSetId, selectCriteriaSet]);
+    // Note: selectCriteriaSet is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId, criteriaSetId]);
 
   const items = selectedCriteriaSet?.items ?? [];
 
@@ -251,7 +266,8 @@ export function useEvalCriteriaItems(
         throw new Error("No auth token, org ID, or criteria set ID");
       await addCriteriaItem(token, orgId, criteriaSetId, input);
     },
-    [token, orgId, criteriaSetId, addCriteriaItem]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [token, orgId, criteriaSetId]
   );
 
   const update = useCallback(
@@ -259,7 +275,8 @@ export function useEvalCriteriaItems(
       if (!token || !orgId) throw new Error("No auth token or org ID");
       await updateCriteriaItem(token, orgId, id, input);
     },
-    [token, orgId, updateCriteriaItem]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [token, orgId]
   );
 
   const remove = useCallback(
@@ -267,7 +284,8 @@ export function useEvalCriteriaItems(
       if (!token || !orgId) throw new Error("No auth token or org ID");
       await deleteCriteriaItem(token, orgId, id);
     },
-    [token, orgId, deleteCriteriaItem]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [token, orgId]
   );
 
   // Get items by category

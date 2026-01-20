@@ -114,12 +114,13 @@ export function useWorkspace(
     }
   }, [session?.accessToken, workspaceId, orgId, includeMembers]);
 
-  // Auto-fetch on mount
+  // Auto-fetch on mount - only run once on mount or when key deps change
   useEffect(() => {
-    if (autoFetch) {
+    if (autoFetch && session?.accessToken && workspaceId && orgId) {
       fetchWorkspace();
     }
-  }, [fetchWorkspace, autoFetch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.accessToken, workspaceId, orgId, autoFetch]);
 
   // Update workspace
   const updateWorkspace = useCallback(

@@ -246,6 +246,13 @@ class CoraValidator:
             "supports": ["project", "module"],
             "cli_style": "argparse",
         },
+        "nextjs_routing": {
+            "name": "Next.js Routing Validator",
+            "description": "Validates Next.js App Router routes against CORA routing standards (parent routes, route groups, placeholders)",
+            "module": "nextjs-routing-validator",
+            "supports": ["project"],
+            "cli_style": "argparse",
+        },
     }
 
 

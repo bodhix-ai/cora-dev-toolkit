@@ -315,7 +315,7 @@ export function useKbDocuments({
   );
 
   useEffect(() => {
-    if (autoFetch && retryCount < MAX_FETCH_RETRIES) {
+    if (autoFetch) {
       fetchDocuments();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

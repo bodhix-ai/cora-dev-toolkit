@@ -9,8 +9,8 @@
 CREATE TABLE IF NOT EXISTS eval_doc_summaries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-    doc_type_id UUID NOT NULL REFERENCES eval_doc_types(id) ON DELETE RESTRICT,
-    criteria_set_id UUID NOT NULL REFERENCES eval_criteria_sets(id) ON DELETE RESTRICT,
+    doc_type_id UUID REFERENCES eval_doc_types(id) ON DELETE RESTRICT,
+    criteria_set_id UUID REFERENCES eval_criteria_sets(id) ON DELETE RESTRICT,
     name TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
     progress INTEGER NOT NULL DEFAULT 0,
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS eval_doc_summaries (
     updated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     
     CONSTRAINT eval_doc_summaries_status_check
-        CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
+        CHECK (status IN ('draft', 'pending', 'processing', 'completed', 'failed')),
     CONSTRAINT eval_doc_summaries_progress_check 
         CHECK (progress >= 0 AND progress <= 100)
 );
@@ -35,10 +35,10 @@ CREATE TABLE IF NOT EXISTS eval_doc_summaries (
 -- Add table comment
 COMMENT ON TABLE eval_doc_summaries IS 'Main evaluation record with summaries and status';
 COMMENT ON COLUMN eval_doc_summaries.workspace_id IS 'Workspace this evaluation belongs to';
-COMMENT ON COLUMN eval_doc_summaries.doc_type_id IS 'Document type being evaluated';
-COMMENT ON COLUMN eval_doc_summaries.criteria_set_id IS 'Criteria set used for evaluation';
+COMMENT ON COLUMN eval_doc_summaries.doc_type_id IS 'Document type being evaluated (nullable for draft)';
+COMMENT ON COLUMN eval_doc_summaries.criteria_set_id IS 'Criteria set used for evaluation (nullable for draft)';
 COMMENT ON COLUMN eval_doc_summaries.name IS 'Evaluation name/title';
-COMMENT ON COLUMN eval_doc_summaries.status IS 'Processing status: pending, processing, completed, failed';
+COMMENT ON COLUMN eval_doc_summaries.status IS 'Processing status: draft, pending, processing, completed, failed';
 COMMENT ON COLUMN eval_doc_summaries.progress IS 'Processing progress (0-100)';
 COMMENT ON COLUMN eval_doc_summaries.doc_summary IS 'AI-generated document summary';
 COMMENT ON COLUMN eval_doc_summaries.eval_summary IS 'AI-generated evaluation summary';

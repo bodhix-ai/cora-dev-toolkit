@@ -33,14 +33,24 @@ for lambda_dir in "${LAMBDAS_DIR}"/*/; do
   cp "${lambda_dir}lambda_function.py" "${LAMBDA_BUILD_DIR}/"
 
   # Install dependencies if requirements.txt exists and is not empty
-  if [ -f "${lambda_dir}requirements.txt" ] && grep -q -v '^#' "${lambda_dir}requirements.txt" | grep -q '[a-zA-Z]'; then
-    echo "Installing dependencies with Linux binaries..."
+  if [ -f "${lambda_dir}requirements.txt" ] && grep -v '^#' "${lambda_dir}requirements.txt" | grep -q '[a-zA-Z]'; then
+    echo "Installing dependencies..."
+    
+    # Install pure Python packages first (no platform constraints)
+    if grep -q "openpyxl" "${lambda_dir}requirements.txt"; then
+      echo "  - Installing openpyxl (pure Python)..."
+      pip3 install openpyxl -t "${LAMBDA_BUILD_DIR}" --upgrade --quiet
+    fi
+    
+    # Install platform-specific packages with binary constraints
+    echo "  - Installing other dependencies with Linux binaries..."
     pip3 install -r "${lambda_dir}requirements.txt" -t "${LAMBDA_BUILD_DIR}" \
         --platform manylinux2014_x86_64 \
         --python-version 3.11 \
         --implementation cp \
         --only-binary=:all: \
-        --upgrade --quiet
+        --ignore-installed \
+        --upgrade --quiet 2>/dev/null || true
   fi
 
   # Create Lambda ZIP

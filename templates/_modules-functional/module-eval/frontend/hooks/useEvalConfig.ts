@@ -35,7 +35,9 @@ export function useSysEvalConfig(token: string | null) {
     if (token && !sysConfig && !sysConfigLoading) {
       loadSysConfig(token);
     }
-  }, [token, sysConfig, sysConfigLoading, loadSysConfig]);
+    // Note: loadSysConfig is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, sysConfig, sysConfigLoading]);
 
   const update = useCallback(
     async (input: UpdateSysConfigInput) => {
@@ -48,7 +50,9 @@ export function useSysEvalConfig(token: string | null) {
   const refresh = useCallback(async () => {
     if (!token) return;
     await loadSysConfig(token);
-  }, [token, loadSysConfig]);
+    // Note: loadSysConfig is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   return {
     config: sysConfig,
@@ -75,7 +79,9 @@ export function useSysEvalPrompts(token: string | null) {
     if (token && sysPrompts.length === 0 && !sysConfigLoading) {
       loadSysPrompts(token);
     }
-  }, [token, sysPrompts.length, sysConfigLoading, loadSysPrompts]);
+    // Note: loadSysPrompts is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, sysPrompts.length, sysConfigLoading]);
 
   const update = useCallback(
     async (promptType: PromptType, input: PromptConfigInput) => {
@@ -88,7 +94,9 @@ export function useSysEvalPrompts(token: string | null) {
   const refresh = useCallback(async () => {
     if (!token) return;
     await loadSysPrompts(token);
-  }, [token, loadSysPrompts]);
+    // Note: loadSysPrompts is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const getPromptByType = useCallback(
     (type: PromptType) => {
@@ -122,7 +130,9 @@ export function useOrgsDelegation(token: string | null) {
     if (token && orgsDelegation.length === 0) {
       loadOrgsDelegation(token);
     }
-  }, [token, orgsDelegation.length, loadOrgsDelegation]);
+    // Note: loadOrgsDelegation is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgsDelegation.length]);
 
   const toggle = useCallback(
     async (orgId: string, delegated: boolean) => {
@@ -135,7 +145,9 @@ export function useOrgsDelegation(token: string | null) {
   const refresh = useCallback(async () => {
     if (!token) return;
     await loadOrgsDelegation(token);
-  }, [token, loadOrgsDelegation]);
+    // Note: loadOrgsDelegation is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const getOrgStatus = useCallback(
     (orgId: string) => {
@@ -173,7 +185,9 @@ export function useOrgEvalConfig(token: string | null, orgId: string | null) {
     if (token && orgId && (!orgConfig || orgConfig.orgId !== orgId)) {
       loadOrgConfig(token, orgId);
     }
-  }, [token, orgId, orgConfig, loadOrgConfig]);
+    // Note: loadOrgConfig is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId, orgConfig]);
 
   const update = useCallback(
     async (input: UpdateOrgConfigInput) => {
@@ -186,7 +200,9 @@ export function useOrgEvalConfig(token: string | null, orgId: string | null) {
   const refresh = useCallback(async () => {
     if (!token || !orgId) return;
     await loadOrgConfig(token, orgId);
-  }, [token, orgId, loadOrgConfig]);
+    // Note: loadOrgConfig is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId]);
 
   return {
     config: orgConfig,
@@ -214,7 +230,9 @@ export function useOrgEvalPrompts(token: string | null, orgId: string | null) {
     if (token && orgId && orgPrompts.length === 0 && !orgConfigLoading) {
       loadOrgPrompts(token, orgId);
     }
-  }, [token, orgId, orgPrompts.length, orgConfigLoading, loadOrgPrompts]);
+    // Note: loadOrgPrompts is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId, orgPrompts.length, orgConfigLoading]);
 
   const update = useCallback(
     async (promptType: PromptType, input: PromptConfigInput) => {
@@ -227,7 +245,9 @@ export function useOrgEvalPrompts(token: string | null, orgId: string | null) {
   const refresh = useCallback(async () => {
     if (!token || !orgId) return;
     await loadOrgPrompts(token, orgId);
-  }, [token, orgId, loadOrgPrompts]);
+    // Note: loadOrgPrompts is intentionally excluded from deps to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, orgId]);
 
   const getPromptByType = useCallback(
     (type: PromptType) => {

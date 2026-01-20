@@ -51,14 +51,16 @@ export function useEvaluations(
     if (token && workspaceId) {
       loadEvaluations(token, workspaceId, options);
     }
-  }, [token, workspaceId, loadEvaluations]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, workspaceId]);
 
   const create = useCallback(
     async (input: CreateEvaluationInput): Promise<Evaluation> => {
       if (!token || !workspaceId) throw new Error("No auth token or workspace ID");
       return createEvaluation(token, workspaceId, input);
     },
-    [token, workspaceId, createEvaluation]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [token, workspaceId]
   );
 
   const remove = useCallback(
@@ -66,18 +68,21 @@ export function useEvaluations(
       if (!token || !workspaceId) throw new Error("No auth token or workspace ID");
       await deleteEvaluation(token, workspaceId, id);
     },
-    [token, workspaceId, deleteEvaluation]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [token, workspaceId]
   );
 
   const loadMore = useCallback(async () => {
     if (!token || !workspaceId) return;
     await loadMoreEvaluations(token, workspaceId);
-  }, [token, workspaceId, loadMoreEvaluations]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, workspaceId]);
 
   const refresh = useCallback(async () => {
     if (!token || !workspaceId) return;
     await loadEvaluations(token, workspaceId, options);
-  }, [token, workspaceId, loadEvaluations, options]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, workspaceId, options]);
 
   // Set filters
   const setFilters = useCallback(
@@ -87,7 +92,8 @@ export function useEvaluations(
         loadEvaluations(token, workspaceId, { ...options, ...filters });
       }
     },
-    [token, workspaceId, loadEvaluations, setEvaluationFilters, options]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [token, workspaceId, options]
   );
 
   // Filter by status

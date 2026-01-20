@@ -31,6 +31,7 @@ import {
 } from "@mui/material";
 import { Error as ErrorIcon } from "@mui/icons-material";
 import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useProviders } from "@{{PROJECT_NAME}}/module-ai";
 import { useSysEvalPrompts } from "../hooks";
 import { PromptConfigEditor } from "../components";
 import type { PromptType } from "../types";
@@ -191,7 +192,7 @@ export function SysEvalPromptsPage({
   className = "",
   loadingComponent,
 }: SysEvalPromptsPageProps) {
-  // Get auth token
+  // Get auth
   const { authAdapter } = useUser();
   const [token, setToken] = useState<string | null>(null);
 
@@ -212,6 +213,8 @@ export function SysEvalPromptsPage({
 
   // State
   const [activeTab, setActiveTab] = useState<PromptType>("doc_summary");
+  const [selectedProviderId, setSelectedProviderId] = useState<string>("");
+  const [aiModels, setAiModels] = useState<{ id: string; name: string }[]>([]);
 
   // Hooks
   const {
@@ -222,21 +225,54 @@ export function SysEvalPromptsPage({
     getPromptByType,
   } = useSysEvalPrompts(token);
 
+  // Load AI providers from module-ai
+  const { providers, getModels } = useProviders(authAdapter);
+
   // Get current prompt config
   const currentPrompt = getPromptByType(activeTab);
+
+  // Load models when provider changes
+  useEffect(() => {
+    async function loadModels() {
+      if (selectedProviderId && getModels) {
+        const models = await getModels(selectedProviderId);
+        setAiModels(
+          models.map((m) => ({
+            id: m.id,
+            name: m.displayName || m.modelId,
+          }))
+        );
+      } else {
+        setAiModels([]);
+      }
+    }
+    loadModels();
+  }, [selectedProviderId, getModels]);
+
+  // Set initial provider when prompt loads
+  useEffect(() => {
+    if (currentPrompt?.aiProviderId) {
+      setSelectedProviderId(currentPrompt.aiProviderId);
+    }
+  }, [currentPrompt?.aiProviderId]);
 
   // Handlers
   const handleTabChange = useCallback((tab: PromptType) => {
     setActiveTab(tab);
   }, []);
 
+  const handleProviderChange = useCallback((providerId: string) => {
+    setSelectedProviderId(providerId);
+  }, []);
+
   const handleUpdatePrompt = useCallback(
     async (data: {
+      aiProviderId?: string;
+      aiModelId?: string;
       systemPrompt?: string;
       userPromptTemplate?: string;
-      aiProvider?: string;
-      aiModel?: string;
       temperature?: number;
+      maxTokens?: number;
     }) => {
       await update(activeTab, data);
     },
@@ -265,7 +301,13 @@ export function SysEvalPromptsPage({
         <PromptConfigEditor
           promptType={activeTab}
           config={currentPrompt}
+          aiProviders={providers.map((p) => ({
+            id: p.id,
+            name: p.displayName || p.name,
+          }))}
+          aiModels={aiModels}
           onSave={handleUpdatePrompt}
+          onProviderChange={handleProviderChange}
         />
       </Paper>
 

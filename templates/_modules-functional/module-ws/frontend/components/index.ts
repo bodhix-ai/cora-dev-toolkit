@@ -27,3 +27,6 @@ export type { WorkspaceFormProps } from "./WorkspaceForm";
 
 export { AddMemberDialog } from "./AddMemberDialog";
 export type { AddMemberDialogProps } from "./AddMemberDialog";
+
+export { CreateEvaluationDialog } from "./CreateEvaluationDialog";
+export type { CreateEvaluationDialogProps } from "./CreateEvaluationDialog";
