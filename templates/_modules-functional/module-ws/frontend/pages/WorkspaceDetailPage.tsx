@@ -21,6 +21,10 @@ import {
   Divider,
   Tabs,
   Tab,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from "@mui/material";
 import {
   Edit,
@@ -32,11 +36,15 @@ import {
   Group,
   Folder,
   Storage,
+  MoreVert,
+  Description,
+  Assessment,
 } from "@mui/icons-material";
 import { useSession } from "next-auth/react";
 import type { Workspace, WorkspaceRole } from "../types";
 import { WORKSPACE_ROLE_DISPLAY_NAMES, STATUS_DISPLAY_NAMES } from "../types";
 import { useWorkspace } from "../hooks/useWorkspace";
+import { useWorkspaceConfig } from "../hooks/useWorkspaceConfig";
 import { MemberList } from "../components/MemberList";
 import { WorkspaceForm } from "../components/WorkspaceForm";
 import { createWorkspaceApiClient } from "../lib/api";
@@ -120,10 +128,14 @@ export function WorkspaceDetailPage({
   const [activeTab, setActiveTab] = useState(0);
   const [creatingEval, setCreatingEval] = useState(false);
   const [evalError, setEvalError] = useState<string | null>(null);
+  const [evalMenuAnchor, setEvalMenuAnchor] = useState<{ [key: string]: HTMLElement | null }>({});
 
   // Get session for API client creation
   const { data: session } = useSession();
   const router = useRouter();
+
+  // Get workspace config for dynamic labels
+  const { navLabelPlural } = useWorkspaceConfig({ orgId });
 
   // Create API client if not provided
   const apiClient = useMemo(() => {
@@ -195,6 +207,29 @@ export function WorkspaceDetailPage({
     workspaceId
   );
   const evalStats = useEvaluationStats();
+
+  // Calculate evaluation stats from evaluations array
+  const calculatedEvalStats = useMemo(() => {
+    const stats = {
+      total: evaluations.length,
+      draft: 0,
+      pending: 0,
+      processing: 0,
+      completed: 0,
+      failed: 0,
+    };
+    
+    evaluations.forEach((evaluation: Evaluation) => {
+      const status = evaluation.status?.toLowerCase();
+      if (status === 'draft') stats.draft++;
+      else if (status === 'pending') stats.pending++;
+      else if (status === 'processing') stats.processing++;
+      else if (status === 'completed') stats.completed++;
+      else if (status === 'failed') stats.failed++;
+    });
+    
+    return stats;
+  }, [evaluations]);
 
   // Handler for creating draft evaluation
   const handleCreateEvaluation = async () => {
@@ -305,6 +340,40 @@ export function WorkspaceDetailPage({
     setActiveTab(newValue);
   };
 
+  const handleOpenEvalMenu = (evalId: string, event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
+    setEvalMenuAnchor({ ...evalMenuAnchor, [evalId]: event.currentTarget });
+  };
+
+  const handleCloseEvalMenu = (evalId: string) => {
+    setEvalMenuAnchor({ ...evalMenuAnchor, [evalId]: null });
+  };
+
+  const handleDeleteEvaluation = async (evalId: string) => {
+    handleCloseEvalMenu(evalId);
+    const confirmed = window.confirm("Are you sure you want to delete this evaluation? This action cannot be undone.");
+    if (confirmed) {
+      try {
+        // TODO: Implement delete evaluation API call
+        console.log("Delete evaluation:", evalId);
+        // After delete, refetch evaluations
+        window.location.reload();
+      } catch (error) {
+        console.error("Failed to delete evaluation:", error);
+      }
+    }
+  };
+
+  // Calculate days active for an evaluation
+  const calculateDaysActive = (createdAt: string | Date) => {
+    if (!createdAt) return 0;
+    const created = new Date(createdAt);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - created.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
   // ============================================================================
   // RENDER
   // ============================================================================
@@ -317,11 +386,11 @@ export function WorkspaceDetailPage({
           component="button"
           variant="body2"
           onClick={onBack}
-          aria-label="Back to workspaces list"
+          aria-label={`Back to ${navLabelPlural.toLowerCase()} list`}
           sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
         >
           <ArrowBack fontSize="small" sx={{ mr: 0.5 }} />
-          Workspaces
+          {navLabelPlural}
         </Link>
         <Typography variant="body2" color="text.primary">
           {workspace?.name || "Workspace"}
@@ -417,21 +486,49 @@ export function WorkspaceDetailPage({
       <Paper sx={{ mb: 3 }}>
         <Tabs value={activeTab} onChange={handleTabChange} aria-label="workspace tabs">
           <Tab label="Overview" {...a11yProps(0)} />
-          <Tab label="Doc Eval" {...a11yProps(1)} />
-          <Tab label="Data" {...a11yProps(2)} />
-          <Tab label="Members" {...a11yProps(3)} />
-          <Tab label="Settings" {...a11yProps(4)} />
+          <Tab label="Docs" {...a11yProps(1)} />
+          <Tab label="Evaluations" {...a11yProps(2)} />
+          <Tab label="Settings" {...a11yProps(3)} />
         </Tabs>
 
         {/* Tab 0: Overview */}
         <TabPanel value={activeTab} index={0}>
           <Box>
-            <Typography variant="h5" gutterBottom>
-              Workspace Overview
-            </Typography>
-            
             {/* Workspace Info Grid */}
-            <Grid container spacing={3} sx={{ mt: 1 }}>
+            <Grid container spacing={3}>
+              {/* Docs Summary */}
+              <Grid item xs={12} md={6}>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+                    <Description color="primary" />
+                    <Typography variant="h6">Documents</Typography>
+                  </Box>
+                  <Typography variant="h4" sx={{ mb: 1 }}>
+                    {documents?.length || 0}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Total documents in workspace
+                  </Typography>
+                </Paper>
+              </Grid>
+
+              {/* Evaluation Summary */}
+              <Grid item xs={12} md={6}>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+                    <Assessment color="primary" />
+                    <Typography variant="h6">Evaluations</Typography>
+                  </Box>
+                  <Typography variant="h4" sx={{ mb: 1 }}>
+                    {calculatedEvalStats.total}
+                  </Typography>
+                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                    <Chip label={`Draft: ${calculatedEvalStats.draft}`} size="small" variant="outlined" />
+                    <Chip label={`Processing: ${calculatedEvalStats.processing}`} size="small" color="info" />
+                    <Chip label={`Completed: ${calculatedEvalStats.completed}`} size="small" color="success" />
+                  </Box>
+                </Paper>
+              </Grid>
               {/* Creation Date */}
               <Grid item xs={12} md={6}>
                 <Paper variant="outlined" sx={{ p: 2 }}>
@@ -488,11 +585,34 @@ export function WorkspaceDetailPage({
           </Box>
         </TabPanel>
 
-        {/* Tab 1: Doc Eval */}
+        {/* Tab 1: Docs */}
         <TabPanel value={activeTab} index={1}>
+          {/* Knowledge Base Section - Integrated with module-kb */}
+          <WorkspaceDataKBTab
+            workspaceId={workspaceId}
+            kb={kb}
+            availableKbs={groupedAvailableKbs}
+            documents={documents}
+            kbLoading={kbLoading}
+            documentsLoading={docsLoading}
+            error={kbError}
+            canUpload={canEdit}
+            onToggleKb={toggleKb}
+            onUploadDocument={async (files: File[]) => {
+              for (const file of files) {
+                await uploadDocument(file);
+              }
+            }}
+            onDeleteDocument={deleteDocument}
+            onDownloadDocument={downloadDocument}
+            currentUserId={userId}
+          />
+        </TabPanel>
+
+        {/* Tab 2: Evaluations */}
+        <TabPanel value={activeTab} index={2}>
           <Box>
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
-              <Typography variant="h5">Document Evaluations</Typography>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", mb: 3 }}>
               {canEdit && (
                 <Button
                   variant="contained"
@@ -500,7 +620,7 @@ export function WorkspaceDetailPage({
                   disabled={evalLoading || creatingEval}
                   startIcon={creatingEval ? <CircularProgress size={20} color="inherit" /> : undefined}
                 >
-                  {creatingEval ? "Creating..." : "+ Document Evaluation"}
+                  {creatingEval ? "Creating..." : "+ Evaluation"}
                 </Button>
               )}
             </Box>
@@ -515,19 +635,24 @@ export function WorkspaceDetailPage({
             {/* Stats Chips */}
             <Box sx={{ display: "flex", gap: 1, mb: 3, flexWrap: "wrap" }}>
               <Chip 
-                label={`Total: ${evalStats.total}`} 
+                label={`Total: ${calculatedEvalStats.total}`} 
                 color="default"
               />
               <Chip 
-                label={`Processing: ${evalStats.processing}`} 
+                label={`Draft: ${calculatedEvalStats.draft}`} 
+                color="default"
+                variant="outlined"
+              />
+              <Chip 
+                label={`Processing: ${calculatedEvalStats.processing}`} 
                 color="info"
               />
               <Chip 
-                label={`Completed: ${evalStats.completed}`} 
+                label={`Completed: ${calculatedEvalStats.completed}`} 
                 color="success"
               />
               <Chip 
-                label={`Failed: ${evalStats.failed}`} 
+                label={`Failed: ${calculatedEvalStats.failed}`} 
                 color="error"
               />
             </Box>
@@ -561,21 +686,75 @@ export function WorkspaceDetailPage({
                     >
                       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
                         <Typography variant="subtitle1" fontWeight="medium">
-                          {evaluation.docType?.name || "Unknown Doc Type"}
+                          {evaluation.name || evaluation.docType?.name || "Evaluation"}
                         </Typography>
-                        <Chip
-                          label={evaluation.status}
-                          size="small"
-                          color={
-                            evaluation.status === "completed"
-                              ? "success"
-                              : evaluation.status === "processing"
-                              ? "info"
-                              : evaluation.status === "failed"
-                              ? "error"
-                              : "default"
-                          }
-                        />
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <Chip
+                            label={evaluation.status}
+                            size="small"
+                            color={
+                              evaluation.status === "completed"
+                                ? "success"
+                                : evaluation.status === "processing"
+                                ? "info"
+                                : evaluation.status === "failed"
+                                ? "error"
+                                : "default"
+                            }
+                          />
+                          <IconButton
+                            size="small"
+                            onClick={(e) => handleOpenEvalMenu(evaluation.id, e)}
+                            aria-label="evaluation actions"
+                          >
+                            <MoreVert fontSize="small" />
+                          </IconButton>
+                          <Menu
+                            anchorEl={evalMenuAnchor[evaluation.id]}
+                            open={Boolean(evalMenuAnchor[evaluation.id])}
+                            onClose={() => handleCloseEvalMenu(evaluation.id)}
+                          >
+                            <MenuItem onClick={() => handleDeleteEvaluation(evaluation.id)}>
+                              <ListItemIcon>
+                                <Delete fontSize="small" color="error" />
+                              </ListItemIcon>
+                              <ListItemText>Delete</ListItemText>
+                            </MenuItem>
+                          </Menu>
+                        </Box>
+                      </Box>
+
+                      {/* Evaluation Details */}
+                      <Box sx={{ mb: 1 }}>
+                        {evaluation.createdAt && (
+                          <>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                              Created: {new Date(evaluation.createdAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                              Days Active: {calculateDaysActive(evaluation.createdAt)}
+                            </Typography>
+                          </>
+                        )}
+                        {(evaluation.docType?.name || evaluation.docTypeName) && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                            Document Type: {evaluation.docType?.name || evaluation.docTypeName}
+                          </Typography>
+                        )}
+                        {(evaluation.criteriaSet?.name || evaluation.criteriaSetName) && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                            Criteria Set: {evaluation.criteriaSet?.name || evaluation.criteriaSetName}
+                          </Typography>
+                        )}
+                        {(evaluation.documents && evaluation.documents.length > 0) && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                            Documents: {evaluation.documents.map((d: any) => d.fileName || d.name || d.documentId).filter(Boolean).join(', ') || `${evaluation.documents.length} document(s)`}
+                          </Typography>
+                        )}
                       </Box>
 
                       {/* Progress Bar for Processing */}
@@ -630,7 +809,7 @@ export function WorkspaceDetailPage({
 
                       {/* Document Count */}
                       <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-                        {evaluation.documentCount || 0} document(s)
+                        doc count: {evaluation.documentCount || 0}
                       </Typography>
                     </Paper>
                   </Grid>
@@ -652,56 +831,35 @@ export function WorkspaceDetailPage({
           </Box>
         </TabPanel>
 
-        {/* Tab 2: Data */}
-        <TabPanel value={activeTab} index={2}>
-          {/* Knowledge Base Section - Integrated with module-kb */}
-          <WorkspaceDataKBTab
-            workspaceId={workspaceId}
-            kb={kb}
-            availableKbs={groupedAvailableKbs}
-            documents={documents}
-            kbLoading={kbLoading}
-            documentsLoading={docsLoading}
-            error={kbError}
-            canUpload={canEdit}
-            onToggleKb={toggleKb}
-            onUploadDocument={async (files: File[]) => {
-              for (const file of files) {
-                await uploadDocument(file);
-              }
-            }}
-            onDeleteDocument={deleteDocument}
-            onDownloadDocument={downloadDocument}
-            currentUserId={userId}
-          />
-        </TabPanel>
-
-        {/* Tab 3: Members */}
+        {/* Tab 3: Settings */}
         <TabPanel value={activeTab} index={3}>
-          <MemberList
-            members={members || []}
-            currentUserRole={userRole}
-            currentUserId={userId}
-            onUpdateRole={handleUpdateMemberRole}
-            onRemoveMember={removeMember}
-            onAddMember={() => {
-              // TODO: Implement add member dialog
-              console.log("Add member clicked");
-            }}
-          />
-        </TabPanel>
-
-        {/* Tab 4: Settings */}
-        <TabPanel value={activeTab} index={4}>
           <Box>
             <Typography variant="h6" gutterBottom>
-              Workspace Settings
+              Settings
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Additional settings and danger zone actions.
+              Manage membership and settings.
             </Typography>
 
-            <Divider sx={{ my: 3 }} />
+            {/* Members Section */}
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+                Membership
+              </Typography>
+              <MemberList
+                members={members || []}
+                currentUserRole={userRole}
+                currentUserId={userId}
+                onUpdateRole={handleUpdateMemberRole}
+                onRemoveMember={removeMember}
+                onAddMember={() => {
+                  // TODO: Implement add member dialog
+                  console.log("Add member clicked");
+                }}
+              />
+            </Box>
+
+            <Divider sx={{ my: 4 }} />
 
             {/* Danger Zone */}
             <Box>
@@ -718,7 +876,7 @@ export function WorkspaceDetailPage({
                   startIcon={<Delete />}
                   onClick={handleDeleteClick}
                 >
-                  Delete Workspace
+                  Delete
                 </Button>
               )}
             </Box>

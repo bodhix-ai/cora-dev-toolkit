@@ -142,8 +142,8 @@ export function FilterBar({
       <TextField
         value={filters.search}
         onChange={handleSearchChange}
-        placeholder="Search workspaces..."
-        aria-label="Search workspaces"
+        placeholder="Search..."
+        aria-label="Search"
         size="small"
         disabled={loading}
         sx={{ minWidth: 250, flex: { md: 1 }, maxWidth: { md: 400 } }}

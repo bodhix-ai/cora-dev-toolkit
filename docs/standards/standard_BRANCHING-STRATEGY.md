@@ -112,6 +112,76 @@ Fixing validation errors or bugs, often grouped by Sprint or Category.
 
 ---
 
+## Branch Archiving
+
+When a branch is completed and merged, or when transitioning to a new sprint, archive the branch using Git tags for future reference.
+
+### Tag Naming Convention
+
+**Archive Tag Format:** `archive/<branch-name>`
+
+**Module-Focus Tag Format:** `module/<module-name>/<description>`
+
+**Examples:**
+```bash
+# Archive tag (always create)
+git tag archive/admin-eval-config-s2 admin-eval-config-s2
+git push origin archive/admin-eval-config-s2
+
+# Module-focus tag (for module-specific work)
+git tag module/eval/optimization-sprint admin-eval-config-s2
+git push origin module/eval/optimization-sprint
+
+# Multi-module tag (when core module changes affect others)
+git tag module/shared/api-client-refactor feature/api-client-update
+git push origin module/shared/api-client-refactor
+```
+
+### Module-Focus Tags
+
+Most CORA development work is focused on specific modules. Use module-focus tags to categorize work by the primary module(s) affected.
+
+**Module Tag Prefixes:**
+
+| Tag Prefix | Scope | When to Use | Example |
+|------------|-------|-------------|---------|
+| `module/access/*` | module-access | Auth, roles, invites | `module/access/invite-flow` |
+| `module/ai/*` | module-ai | AI provider management | `module/ai/bedrock-integration` |
+| `module/mgmt/*` | module-mgmt | Platform monitoring | `module/mgmt/dashboard-metrics` |
+| `module/kb/*` | module-kb | Knowledge base, RAG | `module/kb/embeddings-fix` |
+| `module/chat/*` | module-chat | Chat & messaging | `module/chat/streaming-support` |
+| `module/ws/*` | module-ws | Workspace management | `module/ws/member-permissions` |
+| `module/eval/*` | module-eval | Evaluation & testing | `module/eval/optimization` |
+| `module/voice/*` | module-voice | Voice interviews | `module/voice/recording-controls` |
+| `module/shared/*` | Cross-module | Core changes affecting multiple modules | `module/shared/api-patterns` |
+| `core/infra/*` | Infrastructure | Terraform, deployment, AWS | `core/infra/lambda-layers` |
+| `core/auth/*` | Authentication | Okta, NextAuth, authorizer | `core/auth/jwt-validation` |
+
+**Guidelines:**
+- **Always create both tags** when archiving module-specific work (archive + module-focus)
+- **Use `module/shared/*`** when a core module change requires updates to other modules
+- **Use descriptive names** for the tag suffix (e.g., `/embeddings-fix`, not `/sprint-3`)
+- **Tag completed milestones** to mark progress within long-running feature branches
+
+### When to Archive
+
+*   **Sprint completion**: When closing a sprint and starting the next one
+*   **Feature merge**: After a feature branch is merged to `main`
+*   **Branch retirement**: When abandoning a branch that's no longer needed
+
+### Benefits
+
+*   **Immutable reference**: Tags cannot be accidentally deleted like branches
+*   **Easy discovery**: List all archived branches with `git tag -l 'archive/*'`
+*   **Historical context**: Preserve branch names even after deletion
+*   **Clean repository**: Delete branches while maintaining references
+
+### Archiving Workflow
+
+See [Sprint Management Guide](../guides/guide_SPRINT-MANAGEMENT.md) for the complete sprint closure workflow, or use the `.cline/workflows/sprint-close.md` workflow for automated archiving.
+
+---
+
 ## Pull Request Standards
 
 Every PR must have:

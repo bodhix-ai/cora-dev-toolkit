@@ -136,6 +136,107 @@ def get_supabase_user_id_from_okta_uid(okta_uid: str) -> str:
     return get_supabase_user_id_from_external_uid(okta_uid)
 
 
+def log_ai_error(
+    provider_id: str,
+    model_id: str,
+    request_source: str,
+    operation_type: str,
+    error: Exception,
+    model_id_attempted: str,
+    validation_category: str = None,
+    request_params: dict = None,
+    user_id: str = None,
+    org_id: str = None,
+    ws_id: str = None
+) -> None:
+    """
+    Log AI API error for operations tracking.
+    
+    Args:
+        provider_id: AI provider UUID
+        model_id: AI model UUID
+        request_source: Source Lambda/service (e.g., 'eval-processor')
+        operation_type: Type of operation (e.g., 'text_generation')
+        error: The exception that occurred
+        model_id_attempted: The model_id that was attempted
+        validation_category: Validation category from ai_models table
+        request_params: Sanitized request parameters (no sensitive data)
+        user_id: User who triggered the request (if applicable)
+        org_id: Organization context (if applicable)
+        ws_id: Workspace context (if applicable)
+    """
+    import traceback
+    
+    # Categorize error type
+    error_message = str(error)
+    error_type = _categorize_ai_error_type(error_message)
+    
+    # Sanitize request params (remove sensitive data)
+    sanitized_params = None
+    if request_params:
+        sanitized_params = {
+            'temperature': request_params.get('temperature'),
+            'max_tokens': request_params.get('max_tokens'),
+            'prompt_length': len(request_params.get('prompt', '')) if 'prompt' in request_params else None
+        }
+    
+    try:
+        insert_one(
+            table='ai_log_error',
+            data={
+                'provider_id': provider_id,
+                'model_id': model_id,
+                'request_source': request_source,
+                'operation_type': operation_type,
+                'error_type': error_type,
+                'error_message': error_message[:1000],  # Truncate long messages
+                'error_raw': {
+                    'type': type(error).__name__,
+                    'message': error_message,
+                    'traceback': traceback.format_exc()[:2000]
+                },
+                'model_id_attempted': model_id_attempted,
+                'validation_category': validation_category,
+                'request_params': sanitized_params,
+                'user_id': user_id,
+                'org_id': org_id,
+                'ws_id': ws_id,  # Fixed: was 'workspace_id'
+                'retry_count': 0
+            }
+        )
+        print(f"✅ Logged AI error: {error_type} for model {model_id_attempted}")
+    except Exception as log_error:
+        # Don't fail the main operation if logging fails
+        print(f"⚠️ Failed to log AI error: {log_error}")
+
+
+def _categorize_ai_error_type(error_message: str) -> str:
+    """Categorize error for easier filtering."""
+    if not error_message:
+        return 'unknown_error'
+    
+    error_lower = error_message.lower()
+    
+    if 'inference profile' in error_lower:
+        return 'inference_profile_required'
+    elif 'rate limit' in error_lower or 'throttl' in error_lower:
+        return 'rate_limit_exceeded'
+    elif 'not found' in error_lower or 'does not exist' in error_lower:
+        return 'model_not_found'
+    elif 'access denied' in error_lower or 'unauthorized' in error_lower:
+        return 'access_denied'
+    elif 'malformed' in error_lower or 'validation' in error_lower:
+        return 'api_format_error'
+    elif 'timeout' in error_lower:
+        return 'timeout'
+    elif 'quota' in error_lower:
+        return 'quota_exceeded'
+    elif 'marketplace' in error_lower:
+        return 'marketplace_subscription_required'
+    else:
+        return 'unknown_error'
+
+
 __all__ = [
     # Supabase client
     'get_supabase_client',
@@ -218,4 +319,7 @@ __all__ = [
     'ORG_MEMBER_FIELDS',
     'WORKSPACE_CONFIG_FIELDS',
     'LAMBDA_CONFIG_FIELDS',
+    
+    # AI Operations Monitoring
+    'log_ai_error',
 ]
