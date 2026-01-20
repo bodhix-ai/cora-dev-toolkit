@@ -516,7 +516,7 @@ def get_document_content(workspace_id: str, doc_id: str) -> Optional[str]:
     """
     try:
         # First try to get from kb_docs table directly
-        doc = common.find_one('kb_docs', {'id': doc_id, 'workspace_id': workspace_id})
+        doc = common.find_one('kb_docs', {'id': doc_id, 'ws_id': workspace_id})
         
         if doc:
             # If we have extracted text, return it
@@ -895,50 +895,87 @@ def call_ai_provider(
     Call AI provider API to generate response.
     
     Integrates with module-ai for provider management.
+    Uses validation_category to determine how to invoke the model.
     """
     # Get provider config from database
     provider = common.find_one('ai_providers', {'id': provider_id})
     if not provider:
         logger.error(f"AI provider not found: {provider_id}")
         return None
-    
+
     model = common.find_one('ai_models', {'id': model_id})
     if not model:
         logger.error(f"AI model not found: {model_id}")
         return None
-    
+
     provider_type = provider.get('provider_type', '').lower()
+    validation_category = model.get('validation_category')
     
-    # Route to appropriate provider
-    if provider_type == 'openai':
-        return call_openai(
-            api_key=provider.get('api_key'),
-            model_name=model.get('model_name'),
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            temperature=temperature,
-            max_tokens=max_tokens
-        )
-    elif provider_type == 'anthropic':
-        return call_anthropic(
-            api_key=provider.get('api_key'),
-            model_name=model.get('model_name'),
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            temperature=temperature,
-            max_tokens=max_tokens
-        )
-    elif provider_type == 'bedrock':
-        return call_bedrock(
-            model_id=model.get('model_name'),
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            temperature=temperature,
-            max_tokens=max_tokens
-        )
-    else:
-        logger.error(f"Unsupported provider type: {provider_type}")
-        return None
+    # Get model_id from database (system of record, never modified)
+    bedrock_model_id = model.get('model_id')
+    
+    # For Bedrock models requiring inference profile, transform the model_id for API call
+    if provider_type in ['bedrock', 'aws_bedrock'] and validation_category == 'requires_inference_profile':
+        # Transform model_id by prepending region prefix
+        bedrock_model_id = f"us.{bedrock_model_id}"
+        logger.info(f"Model requires inference profile. Using: {bedrock_model_id}")
+    
+    # Route to appropriate provider with error logging
+    try:
+        if provider_type == 'openai':
+            response = call_openai(
+                api_key=provider.get('api_key'),
+                model_name=model.get('model_name'),
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+            return response
+        elif provider_type == 'anthropic':
+            response = call_anthropic(
+                api_key=provider.get('api_key'),
+                model_name=model.get('model_name'),
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+            return response
+        elif provider_type in ['bedrock', 'aws_bedrock']:
+            # Use transformed model_id (with region prefix if needed)
+            response = call_bedrock(
+                model_id=bedrock_model_id,  # Uses transformed ID
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+            return response
+        else:
+            logger.error(f"Unsupported provider type: {provider_type}")
+            return None
+    except Exception as e:
+        # Log the error for ops team
+        try:
+            common.log_ai_error(
+                provider_id=provider_id,
+                model_id=model_id,
+                request_source='eval-processor',
+                operation_type='text_generation',
+                error=e,
+                model_id_attempted=bedrock_model_id if provider_type in ['bedrock', 'aws_bedrock'] else model.get('model_id'),
+                validation_category=validation_category,
+                request_params={
+                    'temperature': temperature,
+                    'max_tokens': max_tokens
+                }
+            )
+        except Exception as log_err:
+            logger.error(f"Failed to log error: {log_err}")
+        
+        logger.error(f"AI API error: {e}")
+        raise  # Re-raise to be handled by caller
 
 
 def call_openai(
@@ -1010,22 +1047,58 @@ def call_bedrock(
     temperature: float,
     max_tokens: int
 ) -> Optional[str]:
-    """Call AWS Bedrock API."""
+    """
+    Call AWS Bedrock API with model-specific formatting.
+    
+    Supports:
+    - Anthropic Claude models (anthropic.*)
+    - Amazon Nova models (amazon.nova-*)
+    - Amazon Titan models (amazon.titan-*)
+    """
     try:
         import boto3
         
         client = boto3.client('bedrock-runtime')
         
-        # Format for Claude models on Bedrock
-        body = json.dumps({
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": max_tokens,
-            "system": system_prompt,
-            "messages": [
-                {"role": "user", "content": user_prompt}
-            ],
-            "temperature": temperature
-        })
+        # Detect model family from model_id and format request accordingly
+        model_id_lower = model_id.lower()
+        
+        if 'anthropic' in model_id_lower:
+            # Claude format (Messages API)
+            body = json.dumps({
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": max_tokens,
+                "system": system_prompt,
+                "messages": [
+                    {"role": "user", "content": user_prompt}
+                ],
+                "temperature": temperature
+            })
+        elif 'nova' in model_id_lower:
+            # Amazon Nova format
+            body = json.dumps({
+                "messages": [{
+                    "role": "user",
+                    "content": [{"text": user_prompt}]  # Array of content objects
+                }],
+                "system": [{"text": system_prompt}],    # Array format
+                "inferenceConfig": {
+                    "max_new_tokens": max_tokens,
+                    "temperature": temperature
+                }
+            })
+        elif 'titan' in model_id_lower:
+            # Amazon Titan format
+            combined_prompt = f"{system_prompt}\n\n{user_prompt}"
+            body = json.dumps({
+                "inputText": combined_prompt,
+                "textGenerationConfig": {
+                    "maxTokenCount": max_tokens,
+                    "temperature": temperature
+                }
+            })
+        else:
+            raise ValueError(f"Unsupported Bedrock model family: {model_id}")
         
         response = client.invoke_model(
             modelId=model_id,
@@ -1035,7 +1108,19 @@ def call_bedrock(
         )
         
         result = json.loads(response['body'].read())
-        return result.get('content', [{}])[0].get('text', '')
+        
+        # Parse response based on model family
+        if 'anthropic' in model_id_lower:
+            # Claude response format
+            return result.get('content', [{}])[0].get('text', '')
+        elif 'nova' in model_id_lower:
+            # Nova response format
+            return result.get('output', {}).get('message', {}).get('content', [{}])[0].get('text', '')
+        elif 'titan' in model_id_lower:
+            # Titan response format
+            return result.get('results', [{}])[0].get('outputText', '')
+        
+        return None
         
     except Exception as e:
         logger.error(f"Bedrock API error: {e}")
