@@ -13,6 +13,9 @@ import IconButton from "@mui/material/IconButton";
 import Avatar from "@mui/material/Avatar";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Alert from "@mui/material/Alert";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useOrgMembers } from "../../hooks/useOrgMembers";
@@ -82,26 +85,26 @@ export function OrgMembersList({ orgId }: OrgMembersListProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 6 }}>
         <CircularProgress />
-      </div>
+      </Box>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
-        <p className="text-red-800 dark:text-red-200">Error: {error}</p>
-      </div>
+      <Alert severity="error" sx={{ borderRadius: 2 }}>
+        Error: {error}
+      </Alert>
     );
   }
 
   if (members.length === 0) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500 dark:text-gray-400 mb-4">
+      <Box sx={{ textAlign: 'center', py: 6 }}>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
           No members found in this organization
-        </p>
+        </Typography>
         {canManage && (
           <>
             <Button
@@ -122,17 +125,17 @@ export function OrgMembersList({ orgId }: OrgMembersListProps) {
             />
           </>
         )}
-      </div>
+      </Box>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {/* Header with Invite Button */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="h6" fontWeight="semibold">
           Organization Members ({members.length})
-        </h2>
+        </Typography>
         {canManage && (
           <Button
             variant="contained"
@@ -146,7 +149,7 @@ export function OrgMembersList({ orgId }: OrgMembersListProps) {
             Invite Member
           </Button>
         )}
-      </div>
+      </Box>
 
       {/* Members Table */}
       <TableContainer
@@ -173,14 +176,14 @@ export function OrgMembersList({ orgId }: OrgMembersListProps) {
                 sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
               >
                 <TableCell>
-                  <div className="flex items-center gap-3">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <Avatar
                       sx={{
                         width: 40,
                         height: 40,
                         fontSize: "0.875rem",
-                        bgcolor: "rgb(59, 130, 246)",
-                        color: "white",
+                        bgcolor: "primary.main",
+                        color: "primary.contrastText",
                       }}
                     >
                       {getUserInitials(
@@ -188,15 +191,15 @@ export function OrgMembersList({ orgId }: OrgMembersListProps) {
                         member.profile?.fullName
                       )}
                     </Avatar>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                    <Box>
+                      <Typography variant="body2" fontWeight="medium">
                         {member.profile?.fullName || "Unknown User"}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
                         {member.profile?.email || "No email"}
-                      </div>
-                    </div>
-                  </div>
+                      </Typography>
+                    </Box>
+                  </Box>
                 </TableCell>
                 <TableCell>
                   <Chip
@@ -213,9 +216,9 @@ export function OrgMembersList({ orgId }: OrgMembersListProps) {
                   />
                 </TableCell>
                 <TableCell>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                  <Typography variant="body2" color="text.secondary">
                     {formatDate(member.joinedAt || member.createdAt)}
-                  </span>
+                  </Typography>
                 </TableCell>
                 {canManage && (
                   <TableCell align="right">
@@ -248,6 +251,6 @@ export function OrgMembersList({ orgId }: OrgMembersListProps) {
         onClose={() => setInviteDialogOpen(false)}
         orgId={orgId}
       />
-    </div>
+    </Box>
   );
 }

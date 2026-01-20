@@ -24,8 +24,7 @@ import {
   InputLabel,
   Slider,
 } from "@mui/material";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
 
 interface KBSystemConfig {
   system_prompt: string;
@@ -39,32 +38,19 @@ interface KBSystemConfig {
 }
 
 export default function SystemKBConfigPage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+  const { profile, loading: userLoading, isAuthenticated } = useUser();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [config, setConfig] = useState<KBSystemConfig | null>(null);
 
-  // Permission check
+  // Load config when user is authenticated
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/api/auth/signin");
-    } else if (status === "authenticated") {
-      const sysRole = session?.user?.sys_role;
-      if (!["sys_owner", "sys_admin"].includes(sysRole || "")) {
-        router.push("/");
-      }
-    }
-  }, [status, session, router]);
-
-  // Load config from ai_cfg_sys_rag
-  useEffect(() => {
-    if (status === "authenticated") {
+    if (isAuthenticated && profile) {
       loadConfig();
     }
-  }, [status]);
+  }, [isAuthenticated, profile]);
 
   const loadConfig = async () => {
     try {
@@ -124,10 +110,37 @@ export default function SystemKBConfigPage() {
     }
   };
 
-  if (loading) {
+  // Show loading state while user profile is being fetched
+  if (userLoading || loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
         <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Check if user is authenticated
+  if (!isAuthenticated || !profile) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          You must be logged in to access this page.
+        </Alert>
+      </Box>
+    );
+  }
+
+  // Check if user has system admin role
+  const isSysAdmin = ["sys_owner", "sys_admin"].includes(
+    profile.sysRole || ""
+  );
+
+  if (!isSysAdmin) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          Access denied. This page is only accessible to system administrators.
+        </Alert>
       </Box>
     );
   }

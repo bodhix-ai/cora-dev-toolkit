@@ -290,10 +290,10 @@ export function InterviewRoom({
           }}
         >
           <Box sx={{ textAlign: "center" }}>
-            <Typography variant="h1" sx={{ fontSize: "4rem", mb: 2 }}>
+            <Box sx={{ fontSize: "4rem", mb: 2 }} role="img" aria-label="Video camera">
               🎥
-            </Typography>
-            <Typography variant="h6" color="common.white" sx={{ mb: 1 }}>
+            </Box>
+            <Typography variant="h2" color="common.white" sx={{ mb: 1 }}>
               Video Room
             </Typography>
             <Typography
@@ -350,6 +350,7 @@ export function InterviewRoom({
                 color: "common.white",
                 "&:hover": { bgcolor: "grey.600" },
               }}
+              aria-label="Mute microphone"
               title="Mute"
             >
               <Mic />
@@ -360,6 +361,7 @@ export function InterviewRoom({
                 color: "common.white",
                 "&:hover": { bgcolor: "grey.600" },
               }}
+              aria-label="Toggle video camera"
               title="Toggle Video"
             >
               <Videocam />
@@ -370,6 +372,7 @@ export function InterviewRoom({
                 color: "common.white",
                 "&:hover": { bgcolor: "error.dark" },
               }}
+              aria-label="Leave meeting"
               title="Leave"
               onClick={onMeetingEnd}
             >

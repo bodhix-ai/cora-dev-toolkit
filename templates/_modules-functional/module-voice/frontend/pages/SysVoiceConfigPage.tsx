@@ -122,7 +122,7 @@ function Section({ title, description, children }: SectionProps) {
           borderColor: "divider",
         }}
       >
-        <Typography variant="h6" component="h2" fontWeight="semibold">
+        <Typography variant="h5" component="h2" fontWeight="semibold">
           {title}
         </Typography>
         {description && (
@@ -289,6 +289,7 @@ function CredentialCard({
               onClick={onDelete}
               size="small"
               color="error"
+              aria-label="Remove credential"
               title="Remove credential"
             >
               <DeleteIcon fontSize="small" />
@@ -363,7 +364,7 @@ function CredentialDialog({ isOpen, service, onSave, onClose }: CredentialDialog
         <Typography variant="h6" component="span">
           Configure {service?.name}
         </Typography>
-        <IconButton onClick={onClose} size="small">
+        <IconButton onClick={onClose} size="small" aria-label="Close dialog">
           <CloseIcon />
         </IconButton>
       </DialogTitle>

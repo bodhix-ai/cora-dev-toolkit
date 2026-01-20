@@ -29,8 +29,8 @@ import {
 import { useRouter } from 'next/navigation';
 import { useOrgContext } from '@/contexts/OrgContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useVoiceSessions, SessionCard } from '../../frontend';
-import type { VoiceSessionStatus } from '../../frontend/types';
+import { useVoiceSessions, SessionCard } from '@{{PROJECT_NAME}}/module-voice';
+import type { VoiceSessionStatus } from '@{{PROJECT_NAME}}/module-voice';
 
 const STATUS_OPTIONS: { value: VoiceSessionStatus | ''; label: string }[] = [
   { value: '', label: 'All Statuses' },
