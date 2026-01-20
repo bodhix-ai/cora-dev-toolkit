@@ -1,27 +1,50 @@
 # Schema Naming Compliance Audit & Remediation Plan
 
-**Status**: 📋 Planning - Ready for Analysis  
+**Status**: 🟡 IN PROGRESS  
+**Branch**: `schema-naming-audit`  
 **Priority**: 🟡 Medium-High (Blocks future development, causes bugs)  
 **Created**: January 20, 2026  
+**Started**: January 20, 2026  
 **Owner**: Engineering Team  
 
 ---
 
 ## Executive Summary
 
-A comprehensive audit of all database schema objects, RLS policies, and application code to identify and remediate naming standard violations per `docs/standards/cora/standard_DATABASE-NAMING.md`.
+**SCOPE:** This audit focuses ONLY on **newly introduced modules** (kb, chat, eval, voice, ws). Legacy core modules (access, ai, mgmt) are excluded and covered by `docs/plans/backlog/plan_db-naming-migration.md`.
+
+**BLOCKER FOR:** `docs/plans/plan_eval-inference-profile-fix.md` - Must complete this audit before fixing eval inference profile issues.
+
+A focused audit of newly introduced module database schema objects, RLS policies, and application code to identify and remediate naming standard violations per `docs/standards/cora/standard_DATABASE-NAMING.md`.
+
+**Modules in Scope:**
+- ✅ `module-kb` - Knowledge Base
+- ✅ `module-chat` - Chat & Messaging  
+- ✅ `module-eval` - Evaluation
+- ✅ `module-voice` - Voice Interaction
+- ✅ `module-ws` - Workspace Management
+
+**Modules EXCLUDED (Legacy - See Backlog Plan):**
+- ❌ `module-access` - Identity & Access (see backlog plan Phase 1)
+- ❌ `module-ai` - AI Provider Management (see backlog plan Phase 4)
+- ❌ `module-mgmt` - Platform Management (see backlog plan Phase 2)
 
 **Discovered Issues:**
 - `kb_access_ws` table uses `workspace_id` column (should be `ws_id` per Rule 3)
-- Unknown number of other tables with similar issues
+- Unknown number of other tables with similar issues in new modules
 - RLS policies reference non-standard column names
 - Lambda functions use inconsistent column references
 
 **Impact if Not Fixed:**
+- ❌ **BLOCKS eval-inference-profile-fix** - Cannot proceed until naming is compliant
 - Continued 406 errors on database queries
 - RLS policy failures
 - Developer confusion and maintenance burden
 - Future bugs when adding features
+
+**Related Plans:**
+- **Legacy Modules:** `docs/plans/backlog/plan_db-naming-migration.md` - Deferred lower-priority work
+- **Blocked Plan:** `docs/plans/plan_eval-inference-profile-fix.md` - Requires this audit complete
 
 ---
 
@@ -29,25 +52,45 @@ A comprehensive audit of all database schema objects, RLS policies, and applicat
 
 ### 1.1: Table Column Name Audit
 
-**Objective**: Find all column name violations of abbreviated foreign key standards.
+**Objective**: Find all column name violations of abbreviated foreign key standards in NEW modules only.
 
 **Process:**
 ```bash
-# Search for columns that should use abbreviations
+# Search ONLY in new modules (kb, chat, eval, voice, ws)
 cd templates/_modules-core
 cd templates/_modules-functional
 
-# Find workspace_id columns (should be ws_id)
-grep -r "workspace_id" --include="*.sql" .
+# Find workspace_id columns (should be ws_id) - NEW MODULES ONLY
+grep -r "workspace_id" --include="*.sql" \
+  templates/_modules-core/module-kb/ \
+  templates/_modules-core/module-chat/ \
+  templates/_modules-functional/module-eval/ \
+  templates/_modules-functional/module-voice/ \
+  templates/_modules-functional/module-ws/
 
-# Find knowledge_base_id columns (should be kb_id)  
-grep -r "knowledge_base_id" --include="*.sql" .
+# Find knowledge_base_id columns (should be kb_id) - NEW MODULES ONLY
+grep -r "knowledge_base_id" --include="*.sql" \
+  templates/_modules-core/module-kb/ \
+  templates/_modules-core/module-chat/ \
+  templates/_modules-functional/module-eval/ \
+  templates/_modules-functional/module-voice/ \
+  templates/_modules-functional/module-ws/
 
-# Find workflow_id columns (should be wf_id)
-grep -r "workflow_id" --include="*.sql" .
+# Find workflow_id columns (should be wf_id) - NEW MODULES ONLY
+grep -r "workflow_id" --include="*.sql" \
+  templates/_modules-core/module-kb/ \
+  templates/_modules-core/module-chat/ \
+  templates/_modules-functional/module-eval/ \
+  templates/_modules-functional/module-voice/ \
+  templates/_modules-functional/module-ws/
 
-# Find organization_id columns (should be org_id)
-grep -r "organization_id" --include="*.sql" .
+# Find organization_id columns (should be org_id) - NEW MODULES ONLY
+grep -r "organization_id" --include="*.sql" \
+  templates/_modules-core/module-kb/ \
+  templates/_modules-core/module-chat/ \
+  templates/_modules-functional/module-eval/ \
+  templates/_modules-functional/module-voice/ \
+  templates/_modules-functional/module-ws/
 ```
 
 **Output**: `findings_table-column-names.md`
@@ -62,21 +105,32 @@ grep -r "organization_id" --include="*.sql" .
 
 ### 1.2: RLS Policy Audit
 
-**Objective**: Find RLS policies referencing non-standard column names.
+**Objective**: Find RLS policies referencing non-standard column names in NEW modules only.
 
 **Process:**
 ```bash
-# Find all RLS policy files
-find templates -name "*rls*.sql" -type f
+# Find RLS policy files in NEW modules only
+find templates/_modules-core/module-kb -name "*rls*.sql" -type f
+find templates/_modules-core/module-chat -name "*rls*.sql" -type f
+find templates/_modules-functional/module-eval -name "*rls*.sql" -type f
+find templates/_modules-functional/module-voice -name "*rls*.sql" -type f
+find templates/_modules-functional/module-ws -name "*rls*.sql" -type f
 
-# Extract policy definitions
-grep -A 20 "CREATE POLICY" templates/**/*rls*.sql
+# Check for workspace_id references in NEW modules
+grep -B 5 -A 5 "workspace_id" \
+  templates/_modules-core/module-kb/**/*rls*.sql \
+  templates/_modules-core/module-chat/**/*rls*.sql \
+  templates/_modules-functional/module-eval/**/*rls*.sql \
+  templates/_modules-functional/module-voice/**/*rls*.sql \
+  templates/_modules-functional/module-ws/**/*rls*.sql
 
-# Check for workspace_id references in policies
-grep -B 5 -A 5 "workspace_id" templates/**/*rls*.sql
-
-# Check for knowledge_base_id references
-grep -B 5 -A 5 "knowledge_base_id" templates/**/*rls*.sql
+# Check for knowledge_base_id references in NEW modules
+grep -B 5 -A 5 "knowledge_base_id" \
+  templates/_modules-core/module-kb/**/*rls*.sql \
+  templates/_modules-core/module-chat/**/*rls*.sql \
+  templates/_modules-functional/module-eval/**/*rls*.sql \
+  templates/_modules-functional/module-voice/**/*rls*.sql \
+  templates/_modules-functional/module-ws/**/*rls*.sql
 ```
 
 **Output**: `findings_rls-policies.md`
@@ -165,25 +219,33 @@ grep -r "CREATE TRIGGER" --include="*.sql" templates/
 
 ### 2.1: Lambda Database Call Audit
 
-**Objective**: Find all Lambda code using non-standard column names in queries.
+**Objective**: Find all Lambda code using non-standard column names in NEW modules only.
 
 **Process:**
 ```bash
-# Search Lambda Python files for workspace_id
+# Search Lambda Python files for workspace_id in NEW modules only
 grep -r "workspace_id" --include="*.py" \
-  templates/_modules-core/*/backend/lambdas/ \
-  templates/_modules-functional/*/backend/lambdas/ \
-  templates/_project-stack-template/packages/org-common/
+  templates/_modules-core/module-kb/backend/lambdas/ \
+  templates/_modules-core/module-chat/backend/lambdas/ \
+  templates/_modules-functional/module-eval/backend/lambdas/ \
+  templates/_modules-functional/module-voice/backend/lambdas/ \
+  templates/_modules-functional/module-ws/backend/lambdas/
 
-# Search for knowledge_base_id
+# Search for knowledge_base_id in NEW modules only
 grep -r "knowledge_base_id" --include="*.py" \
-  templates/_modules-core/*/backend/lambdas/ \
-  templates/_modules-functional/*/backend/lambdas/
+  templates/_modules-core/module-kb/backend/lambdas/ \
+  templates/_modules-core/module-chat/backend/lambdas/ \
+  templates/_modules-functional/module-eval/backend/lambdas/ \
+  templates/_modules-functional/module-voice/backend/lambdas/ \
+  templates/_modules-functional/module-ws/backend/lambdas/
 
-# Find all database queries (org_common calls)
+# Find all database queries (org_common calls) in NEW modules only
 grep -r "find_one\|find_many\|insert_one\|update_one" --include="*.py" \
-  templates/_modules-core/*/backend/lambdas/ \
-  templates/_modules-functional/*/backend/lambdas/
+  templates/_modules-core/module-kb/backend/lambdas/ \
+  templates/_modules-core/module-chat/backend/lambdas/ \
+  templates/_modules-functional/module-eval/backend/lambdas/ \
+  templates/_modules-functional/module-voice/backend/lambdas/ \
+  templates/_modules-functional/module-ws/backend/lambdas/
 ```
 
 **Output**: `findings_lambda-queries.md`
@@ -197,19 +259,25 @@ grep -r "find_one\|find_many\|insert_one\|update_one" --include="*.py" \
 
 ### 2.2: Frontend API Call Audit
 
-**Objective**: Find frontend code using non-standard column names.
+**Objective**: Find frontend code using non-standard column names in NEW modules only.
 
 **Process:**
 ```bash
-# Search TypeScript/JavaScript for workspace_id
+# Search TypeScript/JavaScript for workspace_id in NEW modules only
 grep -r "workspace_id" --include="*.ts" --include="*.tsx" \
-  templates/_project-stack-template/apps/web/ \
-  templates/_modules-core/*/frontend/ \
-  templates/_modules-functional/*/frontend/
+  templates/_modules-core/module-kb/frontend/ \
+  templates/_modules-core/module-chat/frontend/ \
+  templates/_modules-functional/module-eval/frontend/ \
+  templates/_modules-functional/module-voice/frontend/ \
+  templates/_modules-functional/module-ws/frontend/
 
-# Check API request payloads
-grep -r "workspace_id" --include="*.ts" --include="*.tsx" \
-  templates/_project-stack-template/apps/web/lib/api/
+# Check for knowledge_base_id in NEW modules
+grep -r "knowledge_base_id" --include="*.ts" --include="*.tsx" \
+  templates/_modules-core/module-kb/frontend/ \
+  templates/_modules-core/module-chat/frontend/ \
+  templates/_modules-functional/module-eval/frontend/ \
+  templates/_modules-functional/module-voice/frontend/ \
+  templates/_modules-functional/module-ws/frontend/
 ```
 
 **Output**: `findings_frontend-code.md`
