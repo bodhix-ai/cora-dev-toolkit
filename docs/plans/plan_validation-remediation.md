@@ -21,7 +21,8 @@
 | **After root tsconfig paths** | **124** | **405** | **-79** | **Module path mappings added** |
 | **After Portability fix** | **106** | **405** | **-18** | **Excluded validation-results/** |
 | **After API Tracer fix** | **102** | **353** | **-4** | **KB document completion routes** |
-| **🎯 Current Status** | **102** | **353** | **-2,143 total** | **🎉 95.5% from baseline!** |
+| **After UI Library fix** | **101** | **353** | **-1** | **Tailwind CSS → MUI components** |
+| **🎯 Current Status** | **101** | **353** | **-2,144 total** | **🎉 95.5% from baseline!** |
 
 ### Error Reduction by Category
 
@@ -32,9 +33,9 @@
 | **Frontend Compliance** | 29 | 23 | **-6** | **21%** ✅ |
 | **Portability** | 0 | **0** | **0** | **100%** ✅ |
 | **API Tracer** | 5 | **1** | **-4** | **80%** ✅ |
-| **UI Library** | 1 | 1 | 0 | 0% |
+| **UI Library** | 1 | **0** | **-1** | **100%** ✅ |
 | **Database Naming** | 0 | 2 | +2 | ⚠️ *Deferred* |
-| **TOTAL** | **2,245** | **106** | **-2,139** | **🎉 95.3%** ✅ |
+| **TOTAL** | **2,245** | **101** | **-2,144** | **🎉 95.5%** ✅ |
 
 ### Sprint Completion Status
 
@@ -548,6 +549,210 @@ setDocuments(result.data.documents)  // Type: KbDocument[]
 
 ---
 
+## Sprint 5: Final Non-Deferred Cleanup (EOD 2026-01-19) 🎯
+
+**Goal:** Eliminate ALL remaining errors in non-deferred modules (NOT eval/ws)  
+**Target:** Push to PR before end of day  
+**Current Status:** 101 total errors → Target: ~11-18 actionable errors  
+**Estimated Time:** 2.5-4 hours
+
+### Step 1: Investigate Error Distribution (15 min) 🔍
+
+**Objective:** Determine which errors are in deferred vs non-deferred modules
+
+**Actions:**
+```bash
+# 1a. Get TypeScript error locations
+cd ~/code/bodhix/testing/test-valid/ai-sec-stack
+pnpm -r run type-check 2>&1 | grep "error TS" > ~/code/bodhix/cora-dev-toolkit/typescript-errors.txt
+
+# 1b. Check which modules have TypeScript errors
+cat ~/code/bodhix/cora-dev-toolkit/typescript-errors.txt | grep -oE "packages/[^/]+/[^/]+" | sort | uniq -c
+
+# 1c. Get accessibility error locations  
+cd ~/code/bodhix/testing/test-valid/ai-sec-stack
+python3 scripts/validation/cora-validate.py project . --validators a11y 2>&1 | grep "file:" | grep -v "module-eval" | grep -v "module-ws"
+```
+
+**Expected Findings:**
+- TypeScript: ~30-35 errors in eval/ws (skip), ~8-13 errors elsewhere (fix)
+- Accessibility: ~28-30 errors in eval (skip), ~2-4 errors elsewhere (fix)
+- **Total Actionable:** ~11-18 errors
+
+**Deliverable:** List of files with non-deferred errors
+
+---
+
+### Step 2: Fix Non-Deferred TypeScript Errors (1-2 hours) ⚙️
+
+**Based on Step 1 findings - estimate 8-13 errors**
+
+**Process:**
+1. Group errors by file/module
+2. Identify common patterns (e.g., missing types, incorrect type usage)
+3. Fix template files first
+4. Sync to test project
+5. Verify with `pnpm -r run type-check`
+
+**Common Patterns to Look For:**
+- Missing type imports
+- Incorrect property access (like the KB document issues we fixed)
+- Event handler parameter types (e.g., `e: React.ChangeEvent<HTMLInputElement>`)
+- Optional chaining needed (`?.`)
+
+**Files NOT to fix (deferred):**
+- Anything in `module-eval/`
+- Anything in `module-ws/`
+
+**Time:** 1-2 hours depending on error complexity
+
+---
+
+### Step 3: Fix Non-Deferred Accessibility Errors (30 min - 1 hour) ♿
+
+**Based on Step 1 findings - estimate 2-4 errors**
+
+**Most Likely Issues:**
+- IconButton missing aria-label (if any remain in voice)
+- Heading hierarchy issues (if any remain in voice)
+
+**Process:**
+1. Identify files with errors (from Step 1)
+2. Apply standard fixes:
+   ```tsx
+   // IconButton aria-label
+   <IconButton aria-label="Action description" title="...">
+   
+   // Heading hierarchy
+   // Ensure h1→h2→h3, no skipping levels
+   ```
+3. Fix template files first
+4. Sync to test project
+5. Verify with accessibility validator
+
+**Files NOT to fix (deferred):**
+- Anything in `module-eval/`
+
+**Time:** 30 minutes - 1 hour
+
+---
+
+### Step 4: Investigate API Tracer Dynamic Route (30 min - 1 hour) 🔎
+
+**Error:** Frontend calls `GET {baseURL}{url}` but route doesn't exist
+
+**File:** `templates/_modules-core/module-kb/frontend/lib/api.ts:159`
+
+**Investigation Steps:**
+1. Read the file and identify the dynamic route call
+2. Determine if it's:
+   - A legitimate issue (route needs to be added)
+   - A false positive (dynamic pattern the validator can't handle)
+   - Dead code that should be removed
+3. If fixable: Apply fix to template and sync
+4. If false positive: Document for validator improvement
+
+**Possible Outcomes:**
+- **Quick fix:** Remove dead code or fix route (15 min)
+- **Complex fix:** Requires route addition to API Gateway (1 hour)
+- **False positive:** Document and move on (30 min)
+
+**Time:** 30 minutes - 1 hour
+
+---
+
+### Step 5: Run Final Validation & Update Plan (30 min) 📊
+
+**Actions:**
+```bash
+# Run full validation suite
+cd ~/code/bodhix/testing/test-valid/ai-sec-stack
+python3 scripts/validation/cora-validate.py project . 2>&1 | tee ~/code/bodhix/cora-dev-toolkit/validation-final.txt
+
+# Generate summary
+cd ~/code/bodhix/cora-dev-toolkit
+cat validation-final.txt | grep -A 5 "Overall Status"
+```
+
+**Update Plan Document:**
+1. Add "Sprint 5 Complete" entry to Decision Log
+2. Update progress summary table with final numbers
+3. Document any remaining deferred errors
+4. Mark completion status
+
+**Expected Final Status:**
+- TypeScript: ~30-35 errors (all in eval/ws - deferred)
+- Accessibility: ~28-30 errors (all in eval - deferred)
+- Frontend Compliance: 23 errors (all in eval - deferred)
+- Database Naming: 2 errors (in ws/eval - deferred)
+- API Tracer: 0-1 errors (depending on Step 4 outcome)
+- **Total:** ~83-90 errors (ALL deferred - eval/ws only)
+
+**Non-Deferred Status:** ✅ 0 errors (100% complete!)
+
+---
+
+### Step 6: Commit, Push, and Create PR (15 min) 🚀
+
+**Git Operations:**
+```bash
+cd ~/code/bodhix/cora-dev-toolkit
+
+# Check status
+git status
+
+# Add all changes
+git add .
+
+# Commit with comprehensive message
+git commit -m "feat: validation remediation - 95.5% error reduction (non-deferred modules)
+
+- Fixed Tailwind CSS violations in module-access (UI Library 100% compliant)
+- Fixed TypeScript errors in non-deferred modules (98% reduction overall)
+- Fixed accessibility errors in module-voice (WCAG Level A compliant)
+- Fixed API Tracer errors (KB route documentation)
+- Fixed portability errors (100% compliant)
+
+Total: 2,245 → ~90 errors (95.5% reduction)
+Remaining: All errors in deferred modules (eval/ws)
+
+Closes #XXX"
+
+# Push to branch
+git push origin validation-test-resolution
+
+# Create PR (via gh CLI or web)
+gh pr create --title "Validation Remediation: 95.5% Error Reduction (Non-Deferred)" \
+  --body "See docs/plans/plan_validation-remediation.md for full details"
+```
+
+**PR Checklist:**
+- [ ] All template changes committed
+- [ ] Plan document updated with final status
+- [ ] No changes to eval/ws modules (deferred)
+- [ ] Test project synced and validated
+- [ ] Ready for review
+
+---
+
+## Sprint 5 Success Criteria
+
+**Definition of Done:**
+- [ ] All TypeScript errors in non-deferred modules resolved
+- [ ] All accessibility errors in non-deferred modules resolved  
+- [ ] API Tracer dynamic route investigated and resolved (or documented)
+- [ ] Final validation run completed and documented
+- [ ] Plan updated with final status
+- [ ] All changes committed and pushed
+- [ ] PR created for review
+
+**Target Achievement:**
+- Non-deferred modules: 0 errors ✅
+- Deferred modules (eval/ws): ~83-90 errors (acceptable - active development)
+- **Overall: 96%+ error reduction from baseline**
+
+---
+
 ## Template-First Workflow Enforcement
 
 **CRITICAL RULE:** All fixes MUST be applied to templates FIRST.
@@ -829,6 +1034,29 @@ python validation/cora-validate.py --validators a11y  # Accessibility validation
 - ✅ **Template updated and synced to test-valid project**
 - 🎯 **Current State:** 102 total errors, 353 warnings (95.5% reduction from baseline!)
 - 💡 **Key Insight:** Lambda route documentation standard works! Proper docstrings enable API Tracer validation.
+
+**2026-01-19 Evening (UI Library Compliance Fix - Tailwind CSS → MUI Components):**
+- ✅ **Eliminated UI Library error: Tailwind CSS violations in module-access**
+- 🔍 **Root Cause:**
+  - Found 18+ Tailwind CSS class usages in module-access core module (not deferred)
+  - InviteMemberDialog.tsx: 6 Tailwind class violations
+  - OrgMembersList.tsx: 12+ Tailwind class violations
+  - CORA standard requires MUI components with `sx` prop, not Tailwind CSS
+- 💡 **Solution:**
+  - Replaced all `className="..."` with MUI `Box`, `Typography`, `Alert` components
+  - Converted all styling to MUI `sx` prop (theme-aware, responsive)
+  - Maintained dark mode support using MUI theme palette
+  - Improved accessibility with semantic components
+- 📊 **Impact:**
+  - **BEFORE:** 1 error (102 total errors)
+  - **AFTER:** 0 errors (101 total errors)
+  - **Status:** ✓ PASSED
+  - **UI Library Validator:** 100% compliance achieved
+- ✅ **Files fixed and synced to test-valid project:**
+  - `templates/_modules-core/module-access/frontend/components/org/InviteMemberDialog.tsx`
+  - `templates/_modules-core/module-access/frontend/components/org/OrgMembersList.tsx`
+- 🎯 **Current State:** 101 total errors (43 TypeScript + 58 other validators)
+- 💡 **Key Insight:** Core modules must use MUI components exclusively - no Tailwind CSS allowed
 
 **2026-01-19 Afternoon (Portability Validator Fix - validation-results/ exclusion):**
 - ✅ **Eliminated 18 Portability false positive errors**

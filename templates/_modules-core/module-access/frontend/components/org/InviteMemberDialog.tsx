@@ -13,6 +13,8 @@ import InputLabel from "@mui/material/InputLabel";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 import { useOrgMembers } from "../../hooks/useOrgMembers";
 import { validateEmail } from "../../lib/validation";
 import { getRoleDisplayName } from "../../lib/permissions";
@@ -137,16 +139,16 @@ export function InviteMemberDialog({
     >
       <form onSubmit={handleSubmit}>
         <DialogTitle>
-          <span className="text-xl font-semibold text-gray-900 dark:text-white">
+          <Typography variant="h6" component="span" fontWeight="semibold">
             Invite New Member
-          </span>
+          </Typography>
         </DialogTitle>
 
         <DialogContent>
-          <div className="space-y-4 pt-2">
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
             {/* Error Alert */}
             {error && (
-              <Alert severity="error" sx={{ borderRadius: "8px" }}>
+              <Alert severity="error" sx={{ borderRadius: 2 }}>
                 {error}
               </Alert>
             )}
@@ -192,23 +194,29 @@ export function InviteMemberDialog({
                   )
                 }
                 sx={{
-                  borderRadius: "8px",
+                  borderRadius: 2,
                 }}
               >
                 {roles.map((roleValue) => (
                   <MenuItem key={roleValue} value={roleValue}>
-                    <div>
-                      <div className="font-medium">
+                    <Box>
+                      <Typography fontWeight="medium">
                         {getRoleDisplayName(roleValue)}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                      </Typography>
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          color: 'text.secondary',
+                          display: 'block'
+                        }}
+                      >
                         {roleValue === "org_owner" &&
                           "Full control over organization"}
                         {roleValue === "org_admin" &&
                           "Can manage members and settings"}
                         {roleValue === "org_user" && "Basic member access"}
-                      </div>
-                    </div>
+                      </Typography>
+                    </Box>
                   </MenuItem>
                 ))}
               </Select>
@@ -237,12 +245,34 @@ export function InviteMemberDialog({
             />
 
             {/* Info Box */}
-            <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
+            <Box
+              sx={{
+                borderRadius: 2,
+                bgcolor: (theme) => 
+                  theme.palette.mode === 'dark' 
+                    ? 'rgba(33, 150, 243, 0.15)' 
+                    : 'rgba(33, 150, 243, 0.08)',
+                border: 1,
+                borderColor: (theme) =>
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(33, 150, 243, 0.3)'
+                    : 'rgba(33, 150, 243, 0.2)',
+                p: 1.5,
+              }}
+            >
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: (theme) =>
+                    theme.palette.mode === 'dark'
+                      ? 'rgba(33, 150, 243, 0.9)'
+                      : 'rgba(25, 118, 210, 1)'
+                }}
+              >
                 💡 An invitation email will be sent to the specified address.
-              </p>
-            </div>
-          </div>
+              </Typography>
+            </Box>
+          </Box>
         </DialogContent>
 
         <DialogActions sx={{ px: 3, pb: 3 }}>

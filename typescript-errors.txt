@@ -1,0 +1,43 @@
+packages/module-voice/frontend type-check: components/ConfigForm.tsx(23,8): error TS2307: Cannot find module '@mui/material' or its corresponding type declarations.
+packages/module-voice/frontend type-check: components/ConfigForm.tsx(199,24): error TS7006: Parameter 'e' implicitly has an 'any' type.
+packages/module-voice/frontend type-check: components/ConfigForm.tsx(219,26): error TS7006: Parameter 'e' implicitly has an 'any' type.
+packages/module-voice/frontend type-check: components/ConfigForm.tsx(235,24): error TS7006: Parameter 'e' implicitly has an 'any' type.
+packages/module-voice/frontend type-check: components/ConfigForm.tsx(257,24): error TS7006: Parameter 'e' implicitly has an 'any' type.
+packages/module-voice/frontend type-check: components/ConfigForm.tsx(268,24): error TS7006: Parameter 'e' implicitly has an 'any' type.
+packages/module-voice/frontend type-check: components/ConfigForm.tsx(288,24): error TS7006: Parameter 'e' implicitly has an 'any' type.
+packages/module-voice/frontend type-check: components/ConfigForm.tsx(314,30): error TS7006: Parameter 'e' implicitly has an 'any' type.
+packages/module-voice/frontend type-check: components/ConfigForm.tsx(315,48): error TS2345: Argument of type '{ provider: any; voice_id?: string | undefined; speed?: number; }' is not assignable to parameter of type '{ provider: string; voice_id: string; speed?: number | undefined; }'.
+packages/module-voice/frontend type-check: components/ConfigForm.tsx(336,28): error TS7006: Parameter '_' implicitly has an 'any' type.
+packages/module-voice/frontend type-check: components/ConfigForm.tsx(336,31): error TS7006: Parameter 'value' implicitly has an 'any' type.
+packages/module-voice/frontend type-check: components/ConfigForm.tsx(337,46): error TS2345: Argument of type '{ speed: number; provider?: string | undefined; voice_id?: string | undefined; }' is not assignable to parameter of type '{ provider: string; voice_id: string; speed?: number | undefined; }'.
+packages/module-voice/frontend type-check: components/ConfigForm.tsx(366,24): error TS7006: Parameter 'e' implicitly has an 'any' type.
+packages/module-voice/frontend type-check: components/InterviewRoom.tsx(16,8): error TS2307: Cannot find module '@mui/material' or its corresponding type declarations.
+packages/module-voice/frontend type-check: components/InterviewRoom.tsx(21,8): error TS2307: Cannot find module '@mui/icons-material' or its corresponding type declarations.
+packages/module-voice/frontend type-check: components/InterviewRoom.tsx(109,28): error TS18046: 'DailyIframe' is of type 'unknown'.
+packages/module-voice/frontend type-check: components/KbSelector.tsx(21,8): error TS2307: Cannot find module '@mui/material' or its corresponding type declarations.
+packages/module-voice/frontend type-check: components/KbSelector.tsx(26,8): error TS2307: Cannot find module '@mui/icons-material' or its corresponding type declarations.
+packages/module-voice/frontend type-check: components/SessionCard.tsx(18,8): error TS2307: Cannot find module '@mui/material' or its corresponding type declarations.
+packages/module-voice/frontend type-check: components/SessionCard.tsx(124,23): error TS7006: Parameter 'theme' implicitly has an 'any' type.
+packages/module-voice/frontend type-check: components/SessionCard.tsx(132,19): error TS7006: Parameter 'e' implicitly has an 'any' type.
+packages/module-voice/frontend type-check: components/TranscriptViewer.tsx(16,8): error TS2307: Cannot find module '@mui/material' or its corresponding type declarations.
+packages/module-voice/frontend type-check: components/TranscriptViewer.tsx(20,8): error TS2307: Cannot find module '@mui/icons-material' or its corresponding type declarations.
+packages/module-voice/frontend type-check: hooks/useVoiceConfigs.ts(8,28): error TS2307: Cannot find module 'next-auth/react' or its corresponding type declarations.
+packages/module-voice/frontend type-check: hooks/useVoiceSession.ts(9,28): error TS2307: Cannot find module 'next-auth/react' or its corresponding type declarations.
+packages/module-voice/frontend type-check: hooks/useVoiceSessions.ts(8,28): error TS2307: Cannot find module 'next-auth/react' or its corresponding type declarations.
+packages/module-voice/frontend type-check: lib/api.ts(38,7): error TS2580: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+packages/module-voice/frontend type-check: lib/api.ts(39,7): error TS2580: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+packages/module-voice/frontend type-check: lib/api.ts(43,10): error TS2580: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+packages/module-voice/frontend type-check: lib/api.ts(624,18): error TS2580: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+packages/module-voice/frontend type-check: pages/OrgVoiceConfigPage.tsx(33,8): error TS2307: Cannot find module '@mui/material' or its corresponding type declarations.
+packages/module-voice/frontend type-check: pages/OrgVoiceConfigPage.tsx(41,8): error TS2307: Cannot find module '@mui/icons-material' or its corresponding type declarations.
+packages/module-voice/frontend type-check: pages/OrgVoiceConfigPage.tsx(44,28): error TS2724: '"../types"' has no exported member named 'VoiceConfigInput'. Did you mean 'VoiceConfig'?
+packages/module-voice/frontend type-check: pages/OrgVoiceConfigPage.tsx(326,11): error TS2322: Type '{ initialData: VoiceConfig | undefined; onSubmit: (data: CreateVoiceConfigRequest | UpdateVoiceConfigRequest) => Promise<...>; onCancel: () => void; }' is not assignable to type 'IntrinsicAttributes & ConfigFormProps'.
+packages/module-voice/frontend type-check: pages/OrgVoiceConfigPage.tsx(354,5): error TS2339: Property 'isLoading' does not exist on type 'UseVoiceConfigsReturn'.
+packages/module-voice/frontend type-check: pages/OrgVoiceConfigPage.tsx(356,5): error TS2339: Property 'createConfig' does not exist on type 'UseVoiceConfigsReturn'.
+packages/module-voice/frontend type-check: pages/OrgVoiceConfigPage.tsx(357,5): error TS2339: Property 'updateConfig' does not exist on type 'UseVoiceConfigsReturn'.
+packages/module-voice/frontend type-check: pages/OrgVoiceConfigPage.tsx(358,5): error TS2339: Property 'deleteConfig' does not exist on type 'UseVoiceConfigsReturn'.
+packages/module-voice/frontend type-check: pages/OrgVoiceConfigPage.tsx(360,23): error TS2345: Argument of type 'string' is not assignable to parameter of type 'UseVoiceConfigsOptions'.
+packages/module-voice/frontend type-check: pages/OrgVoiceConfigPage.tsx(411,21): error TS2322: Type 'string' is not assignable to type 'Error'.
+packages/module-voice/frontend type-check: pages/SysVoiceConfigPage.tsx(35,8): error TS2307: Cannot find module '@mui/material' or its corresponding type declarations.
+packages/module-voice/frontend type-check: pages/SysVoiceConfigPage.tsx(41,8): error TS2307: Cannot find module '@mui/icons-material' or its corresponding type declarations.
+packages/module-voice/frontend type-check: pages/SysVoiceConfigPage.tsx(378,24): error TS7006: Parameter 'e' implicitly has an 'any' type.

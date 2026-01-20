@@ -20,6 +20,7 @@ import {
   FormHelperText,
   Slider,
   Grid,
+  SelectChangeEvent,
 } from "@mui/material";
 import type {
   VoiceConfig,
@@ -196,7 +197,7 @@ export function ConfigForm({
             id="config-name"
             label="Configuration Name *"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
             placeholder="e.g., Technical Interview - Senior"
             error={!!errors.name}
             helperText={errors.name}
@@ -216,7 +217,7 @@ export function ConfigForm({
               labelId="interview-type-label"
               id="interview-type"
               value={interviewType}
-              onChange={(e) => setInterviewType(e.target.value)}
+              onChange={(e: SelectChangeEvent) => setInterviewType(e.target.value)}
               label="Interview Type *"
             >
               <MenuItem value="general">General</MenuItem>
@@ -232,7 +233,7 @@ export function ConfigForm({
             id="description"
             label="Description"
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDescription(e.target.value)}
             multiline
             rows={2}
             placeholder="Optional description of this configuration"
@@ -254,7 +255,7 @@ export function ConfigForm({
             id="bot-name"
             label="Bot Name"
             value={configJson.bot_name || ""}
-            onChange={(e) => updateConfigField("bot_name", e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateConfigField("bot_name", e.target.value)}
             placeholder="AI Interviewer"
             fullWidth
             size="small"
@@ -265,7 +266,7 @@ export function ConfigForm({
             id="system-prompt"
             label="System Prompt *"
             value={configJson.system_prompt || ""}
-            onChange={(e) => updateConfigField("system_prompt", e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateConfigField("system_prompt", e.target.value)}
             multiline
             rows={4}
             placeholder="Define how the AI should behave during the interview..."
@@ -285,7 +286,7 @@ export function ConfigForm({
             id="initial-message"
             label="Initial Message"
             value={configJson.initial_message || ""}
-            onChange={(e) => updateConfigField("initial_message", e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateConfigField("initial_message", e.target.value)}
             multiline
             rows={2}
             placeholder="The first message the bot will say..."
@@ -311,7 +312,7 @@ export function ConfigForm({
                   labelId="voice-provider-label"
                   id="voice-provider"
                   value={configJson.voice?.provider || "cartesia"}
-                  onChange={(e) =>
+                  onChange={(e: SelectChangeEvent) =>
                     updateConfigField("voice", {
                       ...configJson.voice,
                       provider: e.target.value,
@@ -333,7 +334,7 @@ export function ConfigForm({
               <Slider
                 id="voice-speed"
                 value={configJson.voice?.speed || 1.0}
-                onChange={(_, value) =>
+                onChange={(_event: Event, value: number | number[]) =>
                   updateConfigField("voice", {
                     ...configJson.voice,
                     speed: value as number,
@@ -363,7 +364,7 @@ export function ConfigForm({
             label="Max Duration (minutes)"
             type="number"
             value={configJson.interview?.max_duration_minutes || 30}
-            onChange={(e) =>
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               updateConfigField("interview", {
                 ...configJson.interview,
                 max_duration_minutes: parseInt(e.target.value, 10),

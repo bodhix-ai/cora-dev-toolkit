@@ -1,0 +1,130 @@
+================================================================================
+[1mValidation Test Suite Report[0m
+================================================================================
+
+--------------------------------------------------------------------------------
+Results - Individual Validator Tests
+--------------------------------------------------------------------------------
+
+[1mStructure Validator[0m: [32m✓ PASSED[0m
+  Duration: 30ms
+
+[1mPortability Validator[0m: [32m✓ PASSED[0m
+  Duration: 1561ms
+  Warnings (71):
+    - {'message': 'Hardcoded AWS region detected', 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/validation-results/summary.json', 'line': 50, 'line_content': '          "line_content": "            \'region\': os.environ.get(\'AWS_REGION\', \'us-east-1\')",', 'pattern': 'aws_region', 'matched_value': "'us-east-1'", 'suggestion': 'Use environment variable AWS_REGION or configurable variable'}
+    - {'message': 'Hardcoded AWS region detected', 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/validation-results/summary.json', 'line': 52, 'line_content': '          "matched_value": "\'us-east-1\'",', 'pattern': 'aws_region', 'matched_value': "'us-east-1'", 'suggestion': 'Use environment variable AWS_REGION or configurable variable'}
+    - {'message': 'Hardcoded AWS region detected', 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/validation-results/summary.json', 'line': 59, 'line_content': '          "line_content": "    region = provider.get(\'region\', os.environ.get(\'AWS_REGION\', \'us-east...', 'pattern': 'aws_region', 'matched_value': "'us-east-1'", 'suggestion': 'Use environment variable AWS_REGION or configurable variable'}
+    - {'message': 'Hardcoded AWS region detected', 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/validation-results/summary.json', 'line': 61, 'line_content': '          "matched_value": "\'us-east-1\'",', 'pattern': 'aws_region', 'matched_value': "'us-east-1'", 'suggestion': 'Use environment variable AWS_REGION or configurable variable'}
+    - {'message': 'Hardcoded AWS region detected', 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/validation-results/summary.json', 'line': 68, 'line_content': '          "line_content": "    region = provider.get(\'region\', os.environ.get(\'AWS_REGION\', \'us-east...', 'pattern': 'aws_region', 'matched_value': "'us-east-1'", 'suggestion': 'Use environment variable AWS_REGION or configurable variable'}
+    ... and 66 more
+
+[1mAccessibility Validator[0m: [31m✗ FAILED[0m
+  Duration: 877ms
+  Errors (32):
+    - {'baseline_test_id': '13.A-HeadingLevel', 'baseline_test': '13.A', 'baseline_name': 'Content Structure - Headings', 'wcag_sc': '1.3.1', 'wcag_level': 'A', 'severity': 'error', 'rule_name': 'heading_skip_level', 'message': 'Heading level skipped (h4 → h6, skipped 1 level(s))', 'suggestion': "Heading levels should increase by one (h1 → h2 → h3). Don't skip from h1 to h3", 'element_type': 'Typography', 'line': 125, 'column': 9, 'code_snippet': '<Typography variant="h6" component="h2" fontWeight="semibold">', 'attributes': {'variant': 'h6', 'component': 'h2', 'fontWeight': 'semibold'}, 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/packages/module-voice/frontend/pages/SysVoiceConfigPage.tsx'}
+    - {'baseline_test_id': '6.A-IconButton', 'baseline_test': '6.A', 'baseline_name': 'Images - Meaningful Image', 'wcag_sc': '1.1.1', 'wcag_level': 'A', 'severity': 'error', 'rule_name': 'iconbutton_missing_label', 'message': 'IconButton missing accessible label', 'suggestion': 'Add aria-label describing the button\'s action (e.g., aria-label="Close dialog")', 'element_type': 'IconButton', 'line': 324, 'column': 11, 'code_snippet': '<IconButton', 'attributes': {'onClick': 'onRefresh', 'disabled': 'isLoading', 'size': 'small', 'title': 'Refresh'}, 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/packages/module-eval/frontend/components/OrgDelegationManager.tsx'}
+    - {'baseline_test_id': '10.A-FormLabel', 'baseline_test': '10.A', 'baseline_name': 'Forms - Label in Name', 'wcag_sc': '1.3.1', 'wcag_level': 'A', 'severity': 'error', 'rule_name': 'input_missing_label', 'message': 'Form input missing label', 'suggestion': 'Add <label> with htmlFor, or use aria-label/aria-labelledby', 'element_type': 'Switch', 'line': 185, 'column': 13, 'code_snippet': '<Switch', 'attributes': {'checked': 'org.aiConfigDelegated', 'onChange': '(e) => onToggle(e.target.checked)', 'disabled': 'isToggling', 'color': 'primary', 'title': ' org.aiConfigDelegated ? "Disable AI config delegation" : "Enable AI config delegation" '}, 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/packages/module-eval/frontend/components/OrgDelegationManager.tsx'}
+    - {'baseline_test_id': '10.A-FormLabel', 'baseline_test': '10.A', 'baseline_name': 'Forms - Label in Name', 'wcag_sc': '1.3.1', 'wcag_level': 'A', 'severity': 'error', 'rule_name': 'input_missing_label', 'message': 'Form input missing label', 'suggestion': 'Add <label> with htmlFor, or use aria-label/aria-labelledby', 'element_type': 'TextField', 'line': 299, 'column': 9, 'code_snippet': '<TextField', 'attributes': {'size': 'small', 'value': 'searchQuery', 'onChange': '(e) => setSearchQuery(e.target.value)', 'placeholder': 'Search organizations...', 'sx': '{ flexGrow: 1, minWidth: 200 }', 'InputProps': '{ startAdornment: ( <InputAdornment position="start"> <SearchIcon fontSize="small" /> </InputAdornment> ), }'}, 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/packages/module-eval/frontend/components/OrgDelegationManager.tsx'}
+    - {'baseline_test_id': '13.A-HeadingLevel', 'baseline_test': '13.A', 'baseline_name': 'Content Structure - Headings', 'wcag_sc': '1.3.1', 'wcag_level': 'A', 'severity': 'error', 'rule_name': 'heading_skip_level', 'message': 'Heading level skipped (h4 → h6, skipped 1 level(s))', 'suggestion': "Heading levels should increase by one (h1 → h2 → h3). Don't skip from h1 to h3", 'element_type': 'Typography', 'line': 262, 'column': 9, 'code_snippet': '<Typography variant="h6" gutterBottom>', 'attributes': {'variant': 'h6', 'gutterBottom': 'true'}, 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/packages/module-eval/frontend/components/OrgDelegationManager.tsx'}
+    ... and 27 more
+  Warnings (27):
+    - {'baseline_test_id': '10.C-FormValidation', 'baseline_test': '10.C', 'baseline_name': 'Forms - Error Identification', 'wcag_sc': '3.3.1', 'wcag_level': 'A', 'severity': 'warning', 'rule_name': 'form_error_missing_aria', 'message': 'Form validation error may not be accessible', 'suggestion': 'Use aria-invalid and aria-describedby to associate error messages with inputs', 'element_type': 'TextField', 'line': 195, 'column': 11, 'code_snippet': '<TextField', 'attributes': {'id': 'config-name', 'label': 'Configuration Name *', 'value': 'name', 'onChange': '(e) => setName(e.target.value)', 'placeholder': 'e.g., Technical Interview - Senior', 'error': '!!errors.name', 'helperText': 'errors.name', 'aria-invalid': '!!errors.name', 'aria-describedby': 'errors.name ? "config-name-error" : undefined', 'FormHelperTextProps': '{ id: "config-name-error" }', 'fullWidth': 'true', 'size': 'small'}, 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/packages/module-voice/frontend/components/ConfigForm.tsx'}
+    - {'baseline_test_id': '10.C-FormValidation', 'baseline_test': '10.C', 'baseline_name': 'Forms - Error Identification', 'wcag_sc': '3.3.1', 'wcag_level': 'A', 'severity': 'warning', 'rule_name': 'form_error_missing_aria', 'message': 'Form validation error may not be accessible', 'suggestion': 'Use aria-invalid and aria-describedby to associate error messages with inputs', 'element_type': 'TextField', 'line': 264, 'column': 11, 'code_snippet': '<TextField', 'attributes': {'id': 'system-prompt', 'label': 'System Prompt *', 'value': 'configJson.system_prompt || ""', 'onChange': '(e) => updateConfigField("system_prompt", e.target.value)', 'multiline': 'true', 'rows': '4', 'placeholder': 'Define how the AI should behave during the interview...', 'error': '!!errors.systemPrompt', 'helperText': 'errors.systemPrompt', 'aria-invalid': '!!errors.systemPrompt', 'aria-describedby': 'errors.systemPrompt ? "system-prompt-error" : undefined', 'FormHelperTextProps': '{ id: "system-prompt-error" }', 'fullWidth': 'true', 'size': 'small'}, 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/packages/module-voice/frontend/components/ConfigForm.tsx'}
+    - {'baseline_test_id': '10.B-FormLabel-Placeholder', 'baseline_test': '10.A', 'baseline_name': 'Forms - Label in Name', 'wcag_sc': '1.3.1', 'wcag_level': 'A', 'severity': 'warning', 'rule_name': 'placeholder_not_label', 'message': 'Input has placeholder but no visible label', 'suggestion': 'Placeholder is not a substitute for label. Add visible <label> or TextField label prop', 'element_type': 'TextField', 'line': 343, 'column': 9, 'code_snippet': '<TextField', 'attributes': {'placeholder': 'Search chats...', 'value': 'searchInput', 'onChange': '(e) => setSearchInput(e.target.value)', 'size': 'small', 'fullWidth': 'true', 'aria-label': 'Search chats', 'InputProps': '{ startAdornment: ( <InputAdornment position="start"> <Search size={16} /> </InputAdornment> ), }'}, 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/packages/module-chat/frontend/components/ChatSessionList.tsx'}
+    - {'baseline_test_id': '10.B-FormLabel-Placeholder', 'baseline_test': '10.A', 'baseline_name': 'Forms - Label in Name', 'wcag_sc': '1.3.1', 'wcag_level': 'A', 'severity': 'warning', 'rule_name': 'placeholder_not_label', 'message': 'Input has placeholder but no visible label', 'suggestion': 'Placeholder is not a substitute for label. Add visible <label> or TextField label prop', 'element_type': 'TextField', 'line': 374, 'column': 9, 'code_snippet': '<TextField', 'attributes': {'placeholder': 'Search knowledge bases...', 'value': 'search', 'onChange': '(e) => setSearch(e.target.value)', 'fullWidth': 'true', 'size': 'small', 'aria-label': 'Search knowledge bases', 'sx': '{ mb: 2 }', 'InputProps': '{ startAdornment: ( <InputAdornment position="start"> <Search size={16} /> </InputAdornment> ), }'}, 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/packages/module-chat/frontend/components/KBGroundingSelector.tsx'}
+    - {'baseline_test_id': '10.B-FormLabel-Placeholder', 'baseline_test': '10.A', 'baseline_name': 'Forms - Label in Name', 'wcag_sc': '1.3.1', 'wcag_level': 'A', 'severity': 'warning', 'rule_name': 'placeholder_not_label', 'message': 'Input has placeholder but no visible label', 'suggestion': 'Placeholder is not a substitute for label. Add visible <label> or TextField label prop', 'element_type': 'TextField', 'line': 372, 'column': 13, 'code_snippet': '<TextField', 'attributes': {'type': 'email', 'placeholder': 'Enter email address', 'value': 'email', 'onChange': '(e) => setEmail(e.target.value)', 'onKeyDown': '(e) => { if (e.key === "Enter") { e.preventDefault(); handleShare(); } }', 'disabled': 'isSubmitting', 'size': 'small', 'fullWidth': 'true', 'aria-label': 'Enter email address to share with'}, 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/packages/module-chat/frontend/components/ShareChatDialog.tsx'}
+    ... and 22 more
+
+[1mAPI Tracer[0m: [31m✗ FAILED[0m
+  Duration: 363ms
+  Errors (1):
+    - {'severity': 'error', 'mismatch_type': 'route_not_found', 'endpoint': '{baseURL}{url}', 'method': 'GET', 'frontend_file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/packages/module-kb/frontend/lib/api.ts', 'frontend_line': 167, 'gateway_file': None, 'lambda_file': None, 'lambda_line': None, 'issue': "Frontend calls GET {baseURL}{url} but route doesn't exist in API Gateway", 'suggestion': 'Add route to API Gateway or fix frontend endpoint'}
+  Warnings (211):
+    - {'severity': 'warning', 'mismatch_type': 'orphaned_route', 'endpoint': '/api/voice/configs', 'method': 'GET', 'issue': 'Lambda handler for GET /api/voice/configs exists but no frontend calls found', 'suggestion': 'This might be intentional (webhooks, internal APIs) or dead code to remove'}
+    - {'severity': 'warning', 'mismatch_type': 'orphaned_route', 'endpoint': '/api/voice/configs/{param}', 'method': 'GET', 'issue': 'Lambda handler for GET /api/voice/configs/{param} exists but no frontend calls found', 'suggestion': 'This might be intentional (webhooks, internal APIs) or dead code to remove'}
+    - {'severity': 'warning', 'mismatch_type': 'orphaned_route', 'endpoint': '/api/voice/configs', 'method': 'POST', 'issue': 'Lambda handler for POST /api/voice/configs exists but no frontend calls found', 'suggestion': 'This might be intentional (webhooks, internal APIs) or dead code to remove'}
+    - {'severity': 'warning', 'mismatch_type': 'orphaned_route', 'endpoint': '/api/voice/configs/{param}', 'method': 'PUT', 'issue': 'Lambda handler for PUT /api/voice/configs/{param} exists but no frontend calls found', 'suggestion': 'This might be intentional (webhooks, internal APIs) or dead code to remove'}
+    - {'severity': 'warning', 'mismatch_type': 'orphaned_route', 'endpoint': '/api/voice/configs/{param}', 'method': 'DELETE', 'issue': 'Lambda handler for DELETE /api/voice/configs/{param} exists but no frontend calls found', 'suggestion': 'This might be intentional (webhooks, internal APIs) or dead code to remove'}
+    ... and 206 more
+
+[1mImport Validator[0m: [32m✓ PASSED[0m
+  Duration: 5676ms
+
+[1mSchema Validator[0m: [32m✓ PASSED[0m
+  Duration: 1204ms
+  Warnings (73):
+    - {'severity': 'warning', 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/scripts/validation/run_a11y_validator.py', 'line': 11, 'table': None, 'column': None, 'issue': 'Could not extract table name from query', 'suggestion': "Ensure query uses .table('table_name') pattern"}
+    - {'severity': 'warning', 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/scripts/validation/typescript-validator/cli.py', 'line': 16, 'table': None, 'column': None, 'issue': 'Could not extract table name from query', 'suggestion': "Ensure query uses .table('table_name') pattern"}
+    - {'severity': 'warning', 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/scripts/validation/typescript-validator/cli.py', 'line': 17, 'table': None, 'column': None, 'issue': 'Could not extract table name from query', 'suggestion': "Ensure query uses .table('table_name') pattern"}
+    - {'severity': 'warning', 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/scripts/validation/schema-validator/query_parser.py', 'line': 348, 'table': None, 'column': None, 'issue': 'Could not extract table name from query', 'suggestion': "Ensure query uses .table('table_name') pattern"}
+    - {'severity': 'warning', 'file': '/Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/scripts/validation/schema-validator/schema_inspector.py', 'line': 107, 'table': None, 'column': None, 'issue': 'Could not extract table name from query', 'suggestion': "Ensure query uses .table('table_name') pattern"}
+    ... and 68 more
+
+[1mExternal UID Validator[0m: [32m✓ PASSED[0m
+  Duration: 353ms
+
+[1mCORA Compliance[0m: [32m✓ PASSED[0m
+  Duration: 1522ms
+  Warnings (20):
+    - identities-management: Batch Operations - ✗ No batch processing detected (may not be needed)
+    - idp-config: Batch Operations - ✗ No batch processing detected (may not be needed)
+    - invites: Batch Operations - ✗ No batch processing detected (may not be needed)
+    - members: Batch Operations - ✗ No batch processing detected (may not be needed)
+    - org-email-domains: Batch Operations - ✗ No batch processing detected (may not be needed)
+    ... and 15 more
+
+[1mFrontend Compliance[0m: [31m✗ FAILED[0m
+  Duration: 102ms
+  Errors (23):
+    - packages/module-eval/frontend/components/CriteriaImportDialog.tsx:151: missing_aria_label - Add aria-label to IconButton: <IconButton aria-label="description">
+    - packages/module-eval/frontend/components/CriteriaImportDialog.tsx:418: missing_aria_label - Add aria-label to IconButton: <IconButton aria-label="description">
+    - packages/module-eval/frontend/components/CriteriaItemEditor.tsx:329: missing_aria_label - Add aria-label to IconButton: <IconButton aria-label="description">
+    - packages/module-eval/frontend/components/CriteriaItemEditor.tsx:332: missing_aria_label - Add aria-label to IconButton: <IconButton aria-label="description">
+    - packages/module-eval/frontend/components/CriteriaItemEditor.tsx:462: missing_aria_label - Add aria-label to IconButton: <IconButton aria-label="description">
+    ... and 18 more
+
+[1mAPI Response Validator[0m: [32m✓ PASSED[0m
+  Duration: 201ms
+
+[1mRole Naming Validator[0m: [32m✓ PASSED[0m
+  Duration: 7837ms
+
+[1mRPC Function Validator[0m: [32m✓ PASSED[0m
+  Duration: 26ms
+
+[1mDatabase Naming Validator[0m: [32m✓ PASSED[0m
+  Duration: 517ms
+
+[1mUI Library Validator[0m: [31m✗ FAILED[0m
+  Duration: 23ms
+  Errors (1):
+    - Validation script not found: /Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack/scripts/validate-ui-library.sh
+
+[1mTypeScript Type Check[0m: [31m✗ FAILED[0m
+  Duration: 2618ms
+  Errors (43):
+    - {'file': 'components/ConfigForm.tsx', 'line': 23, 'column': 8, 'code': 'TS2307', 'message': "Cannot find module '@mui/material' or its corresponding type declarations."}
+    - {'file': 'components/ConfigForm.tsx', 'line': 199, 'column': 24, 'code': 'TS7006', 'message': "Parameter 'e' implicitly has an 'any' type."}
+    - {'file': 'components/ConfigForm.tsx', 'line': 219, 'column': 26, 'code': 'TS7006', 'message': "Parameter 'e' implicitly has an 'any' type."}
+    - {'file': 'components/ConfigForm.tsx', 'line': 235, 'column': 24, 'code': 'TS7006', 'message': "Parameter 'e' implicitly has an 'any' type."}
+    - {'file': 'components/ConfigForm.tsx', 'line': 257, 'column': 24, 'code': 'TS7006', 'message': "Parameter 'e' implicitly has an 'any' type."}
+    ... and 38 more
+  Warnings (1):
+    - ⚠️  pnpm stopped after first package failure. Some packages may not have been type-checked. Fix errors and re-run to validate all packages.
+
+================================================================================
+[1mResults - Validation Test Suite Summary[0m
+================================================================================
+
+Target: /Users/aaron/code/bodhix/testing/test-valid/ai-sec-stack
+Type: project
+Timestamp: 2026-01-19T19:14:52.587173
+Duration: 22943ms
+
+Overall Status: [31m✗ FAILED[0m
+Certification: [33mBRONZE[0m
+Total Errors: [31m100[0m
+Total Warnings: [33m403[0m
+
+================================================================================

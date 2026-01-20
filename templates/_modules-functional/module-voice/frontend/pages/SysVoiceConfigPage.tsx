@@ -122,7 +122,7 @@ function Section({ title, description, children }: SectionProps) {
           borderColor: "divider",
         }}
       >
-        <Typography variant="h6" component="h2" fontWeight="semibold">
+        <Typography variant="h5" component="h2" fontWeight="semibold">
           {title}
         </Typography>
         {description && (
