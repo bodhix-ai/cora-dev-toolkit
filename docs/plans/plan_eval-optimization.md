@@ -25,6 +25,95 @@ This plan validates and optimizes the document evaluation processing pipeline. T
 
 ---
 
+## ⚠️ BLOCKER: Org Admin Page Not Rendering
+
+**Status**: 🔴 BLOCKING - Must resolve before proceeding  
+**Impact**: Prevents access to org-level eval configuration UI
+
+### Issue Description
+
+The org admin page for module-eval (`/admin/org/eval`) is not rendering - no error displayed, just blank/not showing page content or tabs. However, the sys admin page (`/admin/sys/eval`) renders correctly.
+
+### Root Cause Analysis
+
+**Investigation completed**: 2026-01-20 08:19 AM
+
+1. **Routes exist correctly**: Both `/admin/org/eval/page.tsx` and `/admin/sys/eval/page.tsx` are present in the test project
+2. **Key difference identified**:
+   - **Sys admin page**: No dependencies, renders immediately
+   - **Org admin page**: Depends on `OrgContext.currentOrg` to render
+
+**Code comparison**:
+```typescript
+// Org admin page (NOT WORKING)
+const context = useContext(OrgContext);
+const currentOrg = context?.currentOrg;
+
+if (!currentOrg) {
+  return (
+    <Alert severity="warning">
+      Please select an organization to manage evaluation settings.
+    </Alert>
+  );
+}
+
+// Sys admin page (WORKING)
+export default function SysEvalAdminPage() {
+  const [activeTab, setActiveTab] = useState<TabValue>('config');
+  return (/* renders immediately */)
+}
+```
+
+### Root Cause Hypothesis
+
+**OrgContext is not providing `currentOrg`**, causing the org admin page to:
+1. Show the warning "Please select an organization to manage evaluation settings"
+2. Never render the tabs or actual content
+3. Appear as "not rendering" to the user
+
+### Possible Causes
+
+1. **OrgContext not initialized properly** in the app layout
+2. **User hasn't selected an organization** in the current session
+3. **OrgSelector component not working** correctly
+4. **Context provider missing** from layout hierarchy
+5. **Race condition** - page renders before context loads
+
+### Resolution Steps
+
+**Before proceeding with eval optimization, must resolve:**
+
+1. **Verify OrgContext provider exists in layout**:
+   - Check `apps/web/app/layout.tsx` or `apps/web/app/admin/layout.tsx`
+   - Ensure `OrgContextProvider` wraps the admin routes
+
+2. **Test org selection**:
+   - Navigate to `/admin/org/eval`
+   - Check browser console for errors
+   - Check if OrgSelector component is visible/functional
+   - Try selecting an org and see if page renders
+
+3. **Add debugging**:
+   - Add console.log in org admin page to check `currentOrg` value
+   - Verify OrgContext is being provided correctly
+   - Check if other org admin pages work (e.g., `/admin/org/kb`)
+
+4. **Compare with working pages**:
+   - Check if `/admin/org/kb` or `/admin/org/ws` render correctly
+   - If they work, the issue may be specific to eval page
+   - If they don't work, the issue is with OrgContext provision
+
+### Next Actions
+
+**Do NOT proceed with AI provider configuration until this is resolved**, as the org admin page is needed to:
+- View organization-level eval configuration
+- Test org-specific prompt overrides
+- Manage org eval settings
+
+**Priority**: Resolve this blocker FIRST, then proceed with Phase 1.
+
+---
+
 ## Phase 1: AI Provider Configuration (1-2 hours)
 
 ### Step 1.1: Database Schema Validation
