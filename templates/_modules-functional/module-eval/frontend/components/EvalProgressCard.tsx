@@ -43,6 +43,11 @@ const statusConfig: Record<
   EvaluationStatus,
   { label: string; color: "warning" | "info" | "success" | "error"; icon: string }
 > = {
+  draft: {
+    label: "Draft",
+    color: "info",
+    icon: "📝",
+  },
   pending: {
     label: "Pending",
     color: "warning",
@@ -125,7 +130,8 @@ export function EvalProgressCard({
   onClick,
   sx = {},
 }: EvalProgressCardProps) {
-  const status = statusConfig[evaluation.status];
+  // Handle missing or undefined status gracefully
+  const status = evaluation.status ? statusConfig[evaluation.status] : statusConfig["draft"];
   const isActive = evaluation.status === "pending" || evaluation.status === "processing";
   const isClickable = !!onClick;
 
@@ -295,7 +301,8 @@ export function EvalProgressCardCompact({
   onClick,
   sx = {},
 }: EvalProgressCardCompactProps) {
-  const status = statusConfig[evaluation.status];
+  // Handle missing or undefined status gracefully
+  const status = evaluation.status ? statusConfig[evaluation.status] : statusConfig["draft"];
   const isActive = evaluation.status === "pending" || evaluation.status === "processing";
   const isClickable = !!onClick;
 

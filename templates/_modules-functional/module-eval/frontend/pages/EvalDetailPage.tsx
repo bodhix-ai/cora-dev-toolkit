@@ -30,11 +30,17 @@ import {
   Paper,
   Skeleton,
   Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  CircularProgress,
 } from "@mui/material";
 import {
   ArrowBack as ArrowBackIcon,
   Error as ErrorIcon,
   Description as DescriptionIcon,
+  PlayArrow as PlayArrowIcon,
 } from "@mui/icons-material";
 import {
   useEvaluation,
@@ -149,7 +155,8 @@ function Header({
   showBackButton,
   onExport,
 }: HeaderProps) {
-  const statusColors: Record<string, "warning" | "info" | "success" | "error"> = {
+  const statusColors: Record<string, "warning" | "info" | "success" | "error" | "default"> = {
+    draft: "default",
     pending: "warning",
     processing: "info",
     completed: "success",
@@ -177,13 +184,362 @@ function Header({
           </Box>
         </Box>
       </Box>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <EvalExportButton
-          evaluation={evaluation}
-          onExport={onExport}
-        />
-      </Box>
+      {status === "completed" && (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <EvalExportButton
+            evaluation={evaluation}
+            onExport={onExport}
+          />
+        </Box>
+      )}
     </Box>
+  );
+}
+
+// =============================================================================
+// DRAFT CONFIGURATION COMPONENT
+// =============================================================================
+
+interface DraftConfigurationProps {
+  evaluationId: string;
+  evaluationName: string;
+  workspaceId: string;
+  token: string | null;
+  onConfigure: (config: { docTypeId: string; criteriaSetId: string; docIds: string[] }) => Promise<void>;
+}
+
+function DraftConfiguration({
+  evaluationId,
+  evaluationName,
+  workspaceId,
+  token,
+  onConfigure,
+}: DraftConfigurationProps) {
+  const [selectedDocTypeId, setSelectedDocTypeId] = useState<string>("");
+  const [selectedCriteriaSetId, setSelectedCriteriaSetId] = useState<string>("");
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Direct API call state - replaces problematic hooks
+  const [docTypes, setDocTypes] = useState<any[]>([]);
+  const [criteriaSets, setCriteriaSets] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [loadingDocTypes, setLoadingDocTypes] = useState(true);
+  const [loadingDocuments, setLoadingDocuments] = useState(true);
+  const [orgId, setOrgId] = useState<string | null>(null);
+
+  // Fetch user's current org ID first
+  React.useEffect(() => {
+    async function fetchUserOrg() {
+      if (!token) return;
+      
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_CORA_API_URL;
+        
+        console.log('[DraftConfig] Fetching user profile from:', apiUrl);
+        
+        const meRes = await fetch(`${apiUrl}/profiles/me`, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!meRes.ok) {
+          console.error('[DraftConfig] Failed to fetch user org:', meRes.status);
+          return;
+        }
+        
+        const meData = await meRes.json();
+        console.log('[DraftConfig] User org response:', meData);
+        
+        const currentOrgId = meData.data?.currentOrgId || meData.currentOrgId;
+        console.log('[DraftConfig] Current org ID:', currentOrgId);
+        
+        setOrgId(currentOrgId);
+      } catch (err) {
+        console.error('[DraftConfig] Error fetching user org:', err);
+      }
+    }
+    
+    fetchUserOrg();
+  }, [token]);
+
+  // Fetch doc types and criteria sets after we have orgId
+  React.useEffect(() => {
+    async function fetchConfigData() {
+      if (!token || !orgId) return;
+      
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_CORA_API_URL;
+        
+        console.log('[DraftConfig] Fetching config data for org:', orgId);
+        
+        // Pass orgId as query parameter (camelCase per Lambda expectation)
+        const [docTypesRes, criteriaSetsRes] = await Promise.all([
+          fetch(`${apiUrl}/admin/org/eval/doc-types?orgId=${orgId}`, {
+            headers: { 
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }),
+          fetch(`${apiUrl}/admin/org/eval/criteria-sets?orgId=${orgId}`, {
+            headers: { 
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          })
+        ]);
+        
+        if (!docTypesRes.ok || !criteriaSetsRes.ok) {
+          console.error('[DraftConfig] API error:', {
+            docTypesStatus: docTypesRes.status,
+            criteriaSetsStatus: criteriaSetsRes.status
+          });
+          throw new Error('Failed to fetch configuration data');
+        }
+        
+        const docTypesData = await docTypesRes.json();
+        const criteriaSetsData = await criteriaSetsRes.json();
+        
+        console.log('[DraftConfig] Doc types response:', docTypesData);
+        console.log('[DraftConfig] Criteria sets response:', criteriaSetsData);
+        
+        // Lambda returns array directly in data field
+        const docTypesArray = Array.isArray(docTypesData) ? docTypesData : (docTypesData.data || []);
+        const criteriaSetsArray = Array.isArray(criteriaSetsData) ? criteriaSetsData : (criteriaSetsData.data || []);
+        
+        console.log('[DraftConfig] Parsed doc types:', docTypesArray.length);
+        console.log('[DraftConfig] Parsed criteria sets:', criteriaSetsArray.length);
+        
+        setDocTypes(docTypesArray);
+        setCriteriaSets(criteriaSetsArray);
+      } catch (err) {
+        console.error('[DraftConfig] Error fetching config:', err);
+        setError('Failed to load configuration data');
+      } finally {
+        setLoadingDocTypes(false);
+      }
+    }
+    
+    fetchConfigData();
+  }, [token, orgId]); // Re-run when orgId is fetched
+
+  // Fetch workspace documents from KB
+  React.useEffect(() => {
+    async function fetchDocuments() {
+      if (!token || !workspaceId) return;
+      
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_CORA_API_URL;
+        
+        console.log('[DraftConfig] Fetching documents for workspace:', workspaceId);
+        
+        const docsRes = await fetch(`${apiUrl}/workspaces/${workspaceId}/kb/documents`, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!docsRes.ok) {
+          console.error('[DraftConfig] Documents API error:', docsRes.status);
+          throw new Error('Failed to fetch workspace documents');
+        }
+        
+        const docsData = await docsRes.json();
+        console.log('[DraftConfig] Documents response:', docsData);
+        
+        // Handle nested response structure: { success, data: { documents: [...] } }
+        const docsArray = Array.isArray(docsData) 
+          ? docsData 
+          : (docsData.data?.documents || docsData.documents || docsData.data || []);
+        
+        // Ensure we have an array
+        const finalDocsArray = Array.isArray(docsArray) ? docsArray : [];
+        
+        console.log('[DraftConfig] Parsed documents:', finalDocsArray.length);
+        
+        setDocuments(finalDocsArray);
+      } catch (err) {
+        console.error('[DraftConfig] Error fetching documents:', err);
+        // Don't set error - documents are optional
+      } finally {
+        setLoadingDocuments(false);
+      }
+    }
+    
+    fetchDocuments();
+  }, [token, workspaceId]); // Fetch when workspace changes
+
+  // Filter criteria sets by selected doc type
+  const filteredCriteriaSets = React.useMemo(() => {
+    if (!selectedDocTypeId) return [];
+    return criteriaSets.filter(cs => cs.docTypeId === selectedDocTypeId);
+  }, [selectedDocTypeId, criteriaSets]);
+
+  // Auto-select criteria set if only one option
+  React.useEffect(() => {
+    if (filteredCriteriaSets.length === 1 && !selectedCriteriaSetId) {
+      setSelectedCriteriaSetId(filteredCriteriaSets[0].id);
+    } else if (filteredCriteriaSets.length === 0) {
+      setSelectedCriteriaSetId("");
+    }
+  }, [filteredCriteriaSets, selectedCriteriaSetId]);
+
+  const canSubmit = selectedDocTypeId && selectedCriteriaSetId && selectedDocIds.length > 0;
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      await onConfigure({
+        docTypeId: selectedDocTypeId,
+        criteriaSetId: selectedCriteriaSetId,
+        docIds: selectedDocIds,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start evaluation");
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Paper variant="outlined" sx={{ p: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        Configure Document Evaluation
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Select the document type, criteria set, and documents to evaluate.
+      </Typography>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {/* Configuration inputs grouped horizontally */}
+        <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "flex-start" }}>
+          {/* Document Type Selector */}
+          <FormControl sx={{ minWidth: 200, flex: "1 1 200px" }} disabled={isSubmitting}>
+            <InputLabel id="doc-type-label">Document Type</InputLabel>
+            <Select
+              labelId="doc-type-label"
+              id="doc-type-select"
+              value={selectedDocTypeId}
+              label="Document Type"
+              onChange={(e) => {
+                setSelectedDocTypeId(e.target.value);
+                setSelectedCriteriaSetId(""); // Reset criteria set when doc type changes
+              }}
+            >
+              {loadingDocTypes ? (
+                <MenuItem disabled>
+                  <CircularProgress size={20} />
+                </MenuItem>
+              ) : docTypes.length === 0 ? (
+                <MenuItem disabled>No document types available</MenuItem>
+              ) : (
+                docTypes.map((docType) => (
+                  <MenuItem key={docType.id} value={docType.id}>
+                    {docType.name}
+                  </MenuItem>
+                ))
+              )}
+            </Select>
+          </FormControl>
+
+          {/* Criteria Set Selector */}
+          <FormControl
+            sx={{ minWidth: 200, flex: "1 1 200px" }}
+            disabled={!selectedDocTypeId || isSubmitting}
+          >
+            <InputLabel id="criteria-set-label">Criteria Set</InputLabel>
+            <Select
+              labelId="criteria-set-label"
+              id="criteria-set-select"
+              value={selectedCriteriaSetId}
+              label="Criteria Set"
+              onChange={(e) => setSelectedCriteriaSetId(e.target.value)}
+            >
+              {filteredCriteriaSets.length === 0 ? (
+                <MenuItem disabled>
+                  {selectedDocTypeId ? "No criteria sets for this type" : "Select a document type first"}
+                </MenuItem>
+              ) : (
+                filteredCriteriaSets.map((criteriaSet) => (
+                  <MenuItem key={criteriaSet.id} value={criteriaSet.id}>
+                    {criteriaSet.name}
+                  </MenuItem>
+                ))
+              )}
+            </Select>
+          </FormControl>
+
+          {/* Document Selector - From workspace KB */}
+          <FormControl sx={{ minWidth: 200, flex: "1 1 200px" }} disabled={isSubmitting}>
+            <InputLabel id="documents-label">Documents</InputLabel>
+            <Select
+              labelId="documents-label"
+              id="documents-select"
+              multiple
+              value={selectedDocIds}
+              label="Documents"
+              onChange={(e: any) => {
+                const value = e.target.value;
+                setSelectedDocIds(typeof value === 'string' ? [value] : value);
+              }}
+              renderValue={(selected: any) => `${selected.length} document(s) selected`}
+            >
+              {loadingDocuments ? (
+                <MenuItem disabled>
+                  <CircularProgress size={20} />
+                </MenuItem>
+              ) : !Array.isArray(documents) || documents.length === 0 ? (
+                <MenuItem disabled>No documents in workspace KB</MenuItem>
+              ) : (
+                documents.map((doc: any) => (
+                  <MenuItem key={doc.id} value={doc.id}>
+                    {doc.filename || doc.name || doc.fileName || doc.title || `Document ${doc.id.slice(0, 8)}`}
+                  </MenuItem>
+                ))
+              )}
+            </Select>
+          </FormControl>
+
+          {/* Evaluate Button */}
+          <Button
+            variant="contained"
+            color="primary"
+            size="large"
+            disabled={!canSubmit || isSubmitting}
+            onClick={handleSubmit}
+            startIcon={isSubmitting ? <CircularProgress size={20} /> : <PlayArrowIcon />}
+            sx={{ minWidth: 140, height: 56 }}
+          >
+            {isSubmitting ? "Starting..." : "EVALUATE"}
+          </Button>
+        </Box>
+
+        {/* Helper text */}
+        {!selectedDocTypeId && (
+          <Typography variant="caption" color="text.secondary">
+            Start by selecting a document type
+          </Typography>
+        )}
+        {selectedDocTypeId && !selectedCriteriaSetId && filteredCriteriaSets.length === 0 && (
+          <Alert severity="warning" sx={{ mt: 1 }}>
+            No criteria sets available for this document type. Please create one in the admin settings.
+          </Alert>
+        )}
+      </Box>
+    </Paper>
   );
 }
 
@@ -192,12 +548,10 @@ function Header({
 // =============================================================================
 
 interface ProcessingStateProps {
-  evaluationId: string;
-  progress: number;
-  status: string;
+  evaluation: any;
 }
 
-function ProcessingState({ evaluationId, progress, status }: ProcessingStateProps) {
+function ProcessingState({ evaluation }: ProcessingStateProps) {
   return (
     <Box
       sx={{
@@ -209,11 +563,8 @@ function ProcessingState({ evaluationId, progress, status }: ProcessingStateProp
       }}
     >
       <EvalProgressCard
-        evaluationId={evaluationId}
-        title="Processing Evaluation"
-        status={status as any}
-        progress={progress}
-        showTimeEstimate
+        evaluation={evaluation}
+        showDetails
         sx={{ maxWidth: "md", width: "100%" }}
       />
       <Typography
@@ -394,14 +745,17 @@ export function EvalDetailPage({
   // Hooks
   const {
     evaluation,
-    results,
-    documents,
-    citations,
     isLoading,
     error,
     refresh,
-    editResult,
+    edit,
+    update,
   } = useEvaluation(token, workspaceId, evaluationId);
+
+  // Extract results, documents, citations from evaluation object
+  const results = evaluation?.criteriaResults || [];
+  const documents = evaluation?.documents || [];
+  const citations = evaluation?.citations || [];
 
   const { progress, isProcessing } = useEvalProgress(evaluationId);
   const { exportPdf, exportXlsx, isExporting } = useEvalExport(workspaceId, evaluationId);
@@ -416,9 +770,9 @@ export function EvalDetailPage({
   }, []);
 
   const handleSaveEdit = useCallback(async (resultId: string, data: { editedResult: string; editedStatusId: string; editNotes?: string }) => {
-    await editResult(resultId, data);
+    await edit(resultId, data);
     setEditingResult(null);
-  }, [editResult]);
+  }, [edit]);
 
   const handleCloseEdit = useCallback(() => {
     setEditingResult(null);
@@ -432,8 +786,15 @@ export function EvalDetailPage({
     }
   }, [exportPdf, exportXlsx]);
 
-  // Render loading state
-  if (isLoading) {
+  const handleConfigure = useCallback(async (config: { docTypeId: string; criteriaSetId: string; docIds: string[] }) => {
+    await update(config);
+    // After successful update, the evaluation will transition to pending/processing
+    // The useEvalProgress hook will start polling automatically
+    refresh();
+  }, [update, refresh]);
+
+  // Render loading state (also covers initial mount before evaluation loads)
+  if (isLoading || (!evaluation && !error)) {
     return (
       <Box sx={{ p: 3 }} className={className}>
         {loadingComponent || <LoadingState />}
@@ -450,7 +811,7 @@ export function EvalDetailPage({
     );
   }
 
-  // Render not found state
+  // Render not found state (only after loading complete)
   if (!evaluation) {
     return (
       <Box sx={{ p: 3 }} className={className}>
@@ -458,6 +819,29 @@ export function EvalDetailPage({
           error={new Error("Evaluation not found")}
           onRetry={refresh}
           onBack={onBack}
+        />
+      </Box>
+    );
+  }
+
+  // Render draft configuration state
+  if (evaluation.status === "draft") {
+    return (
+      <Box sx={{ p: 3, display: "flex", flexDirection: "column", gap: 3 }} className={className}>
+        <Header
+          title={evaluation.name || "Configure Evaluation"}
+          status={evaluation.status}
+          evaluation={evaluation}
+          onBack={onBack}
+          showBackButton={showBackButton}
+          onExport={handleExport}
+        />
+        <DraftConfiguration
+          evaluationId={evaluationId}
+          evaluationName={evaluation.name}
+          workspaceId={workspaceId}
+          token={token}
+          onConfigure={handleConfigure}
         />
       </Box>
     );
@@ -476,9 +860,7 @@ export function EvalDetailPage({
           onExport={handleExport}
         />
         <ProcessingState
-          evaluationId={evaluationId}
-          progress={progress || evaluation.progress}
-          status={evaluation.status}
+          evaluation={evaluation}
         />
       </Box>
     );
@@ -536,11 +918,11 @@ export function EvalDetailPage({
 
         {activeTab === "documents" && (
           <DocumentsTab
-            documents={documents?.map((d) => ({
+            documents={documents?.map((d) => (({
               id: d.id,
               name: d.fileName || d.documentId,
               summary: d.summary,
-            })) || []}
+            })) || [])}
           />
         )}
       </Box>
