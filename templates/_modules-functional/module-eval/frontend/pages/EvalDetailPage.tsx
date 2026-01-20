@@ -18,7 +18,7 @@
 
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -35,12 +35,15 @@ import {
   Select,
   MenuItem,
   CircularProgress,
+  Breadcrumbs,
+  Link,
 } from "@mui/material";
 import {
   ArrowBack as ArrowBackIcon,
   Error as ErrorIcon,
   Description as DescriptionIcon,
   PlayArrow as PlayArrowIcon,
+  ChevronRight as ChevronRightIcon,
 } from "@mui/icons-material";
 import {
   useEvaluation,
@@ -142,6 +145,9 @@ interface HeaderProps {
   title: string;
   status: string;
   evaluation: any;
+  workspaceId?: string;
+  workspaceName?: string;
+  token: string | null;
   onBack?: () => void;
   showBackButton: boolean;
   onExport: (evaluationId: string, format: "pdf" | "xlsx") => Promise<void>;
@@ -151,10 +157,16 @@ function Header({
   title,
   status,
   evaluation,
+  workspaceId,
+  workspaceName: providedWorkspaceName,
+  token,
   onBack,
   showBackButton,
   onExport,
 }: HeaderProps) {
+  const [workspaceName, setWorkspaceName] = useState<string | null>(providedWorkspaceName || null);
+  const [loadingWorkspace, setLoadingWorkspace] = useState(!providedWorkspaceName && !!workspaceId);
+
   const statusColors: Record<string, "warning" | "info" | "success" | "error" | "default"> = {
     draft: "default",
     pending: "warning",
@@ -163,14 +175,77 @@ function Header({
     failed: "error",
   };
 
+  // Fetch workspace name if we have workspaceId but no workspace name
+  useEffect(() => {
+    async function fetchWorkspaceName() {
+      if (!workspaceId || providedWorkspaceName || !token) return;
+      
+      setLoadingWorkspace(true);
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_CORA_API_URL;
+        const response = await fetch(`${apiUrl}/workspaces/${workspaceId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setWorkspaceName(data.data?.name || data.name || null);
+        }
+      } catch (err) {
+        console.error('Failed to fetch workspace name:', err);
+      } finally {
+        setLoadingWorkspace(false);
+      }
+    }
+    
+    fetchWorkspaceName();
+  }, [workspaceId, providedWorkspaceName, token]);
+
   return (
-    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-        {showBackButton && onBack && (
-          <IconButton onClick={onBack} sx={{ color: "text.secondary" }}>
-            <ArrowBackIcon />
-          </IconButton>
-        )}
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {/* Breadcrumbs */}
+      {showBackButton && onBack && workspaceId && (
+        <Breadcrumbs 
+          separator={<ChevronRightIcon fontSize="small" />}
+          aria-label="breadcrumb"
+        >
+          <Link
+            component="button"
+            variant="body2"
+            onClick={onBack}
+            sx={{ 
+              display: "flex", 
+              alignItems: "center", 
+              cursor: "pointer",
+              textDecoration: "none",
+              "&:hover": { textDecoration: "underline" }
+            }}
+          >
+            {loadingWorkspace ? "Loading..." : (workspaceName || "Workspace")}
+          </Link>
+          <Link
+            component="button"
+            variant="body2"
+            onClick={onBack}
+            sx={{ 
+              cursor: "pointer",
+              textDecoration: "none",
+              "&:hover": { textDecoration: "underline" }
+            }}
+          >
+            Evaluations
+          </Link>
+          <Typography variant="body2" color="text.primary">
+            {title}
+          </Typography>
+        </Breadcrumbs>
+      )}
+      
+      {/* Header Content */}
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Box>
           <Typography variant="h4" component="h1" gutterBottom>
             {title}
@@ -183,15 +258,15 @@ function Header({
             />
           </Box>
         </Box>
+        {status === "completed" && (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <EvalExportButton
+              evaluation={evaluation}
+              onExport={onExport}
+            />
+          </Box>
+        )}
       </Box>
-      {status === "completed" && (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <EvalExportButton
-            evaluation={evaluation}
-            onExport={onExport}
-          />
-        </Box>
-      )}
     </Box>
   );
 }
@@ -411,7 +486,7 @@ function DraftConfiguration({
   return (
     <Paper variant="outlined" sx={{ p: 3 }}>
       <Typography variant="h6" gutterBottom>
-        Configure Document Evaluation
+        Evaluation Inputs
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Select the document type, criteria set, and documents to evaluate.
@@ -832,6 +907,8 @@ export function EvalDetailPage({
           title={evaluation.name || "Configure Evaluation"}
           status={evaluation.status}
           evaluation={evaluation}
+          workspaceId={workspaceId}
+          token={token}
           onBack={onBack}
           showBackButton={showBackButton}
           onExport={handleExport}
@@ -855,6 +932,8 @@ export function EvalDetailPage({
           title={evaluation.docTypeName || "Evaluation"}
           status={evaluation.status}
           evaluation={evaluation}
+          workspaceId={workspaceId}
+          token={token}
           onBack={onBack}
           showBackButton={showBackButton}
           onExport={handleExport}
@@ -876,6 +955,8 @@ export function EvalDetailPage({
         title={evaluation.docTypeName || "Evaluation"}
         status={evaluation.status}
         evaluation={evaluation}
+        workspaceId={workspaceId}
+        token={token}
         onBack={onBack}
         showBackButton={showBackButton}
         onExport={handleExport}
