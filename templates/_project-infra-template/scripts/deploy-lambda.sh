@@ -11,7 +11,8 @@ set -e
 ENVIRONMENT="${ENVIRONMENT:-dev}"
 SKIP_BUILD=false
 SKIP_UPLOAD=false
-AUTO_APPROVE=""
+AUTO_APPROVE="-auto-approve"  # Default to auto-approve for fast iteration
+S3_BUCKET_ARG=""  # Bucket specified via --bucket flag
 
 # --- Colors ---
 RED='\033[0;31m'
@@ -46,7 +47,7 @@ Options:
   --env <env>         Target environment (dev, stg, prd) - default: dev
   --skip-build        Skip build step (use existing zip)
   --skip-upload       Skip S3 upload (use existing S3 artifact)
-  --auto-approve      Skip Terraform approval prompt
+  --no-auto-approve   Require manual Terraform approval (default is auto-approve)
   --list              List available Lambda functions
   --help              Show this help message
 
@@ -116,6 +117,10 @@ while [[ $# -gt 0 ]]; do
       ENVIRONMENT="$2"
       shift 2
       ;;
+    --bucket)
+      S3_BUCKET_ARG="$2"
+      shift 2
+      ;;
     --skip-build)
       SKIP_BUILD=true
       shift
@@ -124,8 +129,8 @@ while [[ $# -gt 0 ]]; do
       SKIP_UPLOAD=true
       shift
       ;;
-    --auto-approve)
-      AUTO_APPROVE="-auto-approve"
+    --no-auto-approve)
+      AUTO_APPROVE=""
       shift
       ;;
     --list)
@@ -184,6 +189,22 @@ if [[ ! -d "$LAMBDA_DIR" ]]; then
   exit 1
 fi
 
+# --- Detect Stack Repo for Module Lambdas ---
+STACK_REPO=""
+PROJECT_NAME=$(basename "${INFRA_ROOT}" | sed 's/-infra$//')
+
+if [[ "$LAMBDA_NAME" == *"module-"* ]]; then
+  # Try to find sibling stack directory
+  STACK_REPO=$(cd "${INFRA_ROOT}/../${PROJECT_NAME}-stack" 2>/dev/null && pwd)
+  
+  # Fallback to STACK_DIR environment variable
+  if [[ -z "${STACK_REPO}" || ! -d "${STACK_REPO}" ]]; then
+    if [[ -n "${STACK_DIR}" ]]; then
+      STACK_REPO="${STACK_DIR}"
+    fi
+  fi
+fi
+
 # --- Main Script ---
 echo "========================================"
 echo "  Deploy Lambda: ${LAMBDA_NAME}"
@@ -191,19 +212,46 @@ echo "========================================"
 echo ""
 log_info "Environment: ${ENVIRONMENT}"
 log_info "Lambda Dir:  ${LAMBDA_DIR}"
+if [[ -n "${STACK_REPO}" ]]; then
+  log_info "Stack Repo:  ${STACK_REPO}"
+fi
 echo ""
 
 # Step 1: Build
 if [[ "$SKIP_BUILD" == "false" ]]; then
   log_step "Step 1/3: Building Lambda..."
   
-  if [[ -f "${LAMBDA_DIR}/build.sh" ]]; then
-    cd "${LAMBDA_DIR}"
-    bash build.sh
-    cd "${SCRIPT_DIR}"
+  # For module Lambdas, build ALL modules (required for Terraform validation)
+  # But we'll only deploy the specific Lambda using -target
+  if [[ "$LAMBDA_NAME" == *"module-"* ]]; then
+    if [[ -z "${STACK_REPO}" || ! -d "${STACK_REPO}" ]]; then
+      log_error "Stack repository not found for module Lambda"
+      log_info "Expected: ${INFRA_ROOT}/../${PROJECT_NAME}-stack"
+      log_info "Or set STACK_DIR environment variable"
+      exit 1
+    fi
+    
+    log_info "Building ALL modules (required for Terraform validation)..."
+    log_info "Only ${LAMBDA_NAME} will be deployed via -target"
+    
+    # Build all modules using build-cora-modules.sh
+    if [[ -f "${INFRA_ROOT}/scripts/build-cora-modules.sh" ]]; then
+      export SKIP_VALIDATION=true
+      bash "${INFRA_ROOT}/scripts/build-cora-modules.sh"
+    else
+      log_error "build-cora-modules.sh not found: ${INFRA_ROOT}/scripts/build-cora-modules.sh"
+      exit 1
+    fi
   else
-    log_warn "No build.sh found in ${LAMBDA_DIR}"
-    log_info "Assuming Lambda code is ready to deploy"
+    # For non-module Lambdas (e.g., authorizer), build from infra repo
+    if [[ -f "${LAMBDA_DIR}/build.sh" ]]; then
+      cd "${LAMBDA_DIR}"
+      bash build.sh
+      cd "${SCRIPT_DIR}"
+    else
+      log_warn "No build.sh found in ${LAMBDA_DIR}"
+      log_info "Assuming Lambda code is ready to deploy"
+    fi
   fi
   echo ""
 else
@@ -215,37 +263,92 @@ fi
 if [[ "$SKIP_UPLOAD" == "false" ]]; then
   log_step "Step 2/3: Uploading to S3..."
   
-  # Get S3 bucket from Terraform outputs or config
+  # Determine S3 bucket (priority order):
+  # 1. Command-line --bucket argument
+  # 2. S3_BUCKET environment variable
+  # 3. Terraform outputs
+  # 4. local-secrets.tfvars
+  # 5. Default pattern: {project}-{env}-lambda-artifacts
+  
   S3_BUCKET=""
   
-  # Try to get from Terraform outputs
-  if [[ -f "${INFRA_ROOT}/envs/${ENVIRONMENT}/terraform.tfstate" ]]; then
-    S3_BUCKET=$(cd "${INFRA_ROOT}/envs/${ENVIRONMENT}" && terraform output -raw lambda_artifacts_bucket 2>/dev/null || true)
+  # 1. Check command-line argument
+  if [[ -n "$S3_BUCKET_ARG" ]]; then
+    S3_BUCKET="$S3_BUCKET_ARG"
+    log_info "Using bucket from --bucket flag: ${S3_BUCKET}"
   fi
   
-  # Fallback: try to get from local-secrets.tfvars
+  # 2. Check environment variable
+  if [[ -z "$S3_BUCKET" && -n "${S3_BUCKET:-}" ]]; then
+    log_info "Using bucket from S3_BUCKET env var: ${S3_BUCKET}"
+  fi
+  
+  # 3. Try to get from Terraform outputs
+  if [[ -z "$S3_BUCKET" && -f "${INFRA_ROOT}/envs/${ENVIRONMENT}/terraform.tfstate" ]]; then
+    S3_BUCKET=$(cd "${INFRA_ROOT}/envs/${ENVIRONMENT}" && terraform output -raw lambda_artifacts_bucket 2>/dev/null || true)
+    if [[ -n "$S3_BUCKET" ]]; then
+      log_info "Using bucket from Terraform outputs: ${S3_BUCKET}"
+    fi
+  fi
+  
+  # 4. Fallback: try to get from local-secrets.tfvars
   if [[ -z "$S3_BUCKET" && -f "${INFRA_ROOT}/envs/${ENVIRONMENT}/local-secrets.tfvars" ]]; then
     S3_BUCKET=$(grep 'lambda_bucket' "${INFRA_ROOT}/envs/${ENVIRONMENT}/local-secrets.tfvars" | cut -d'"' -f2 || true)
+    if [[ -n "$S3_BUCKET" ]]; then
+      log_info "Using bucket from local-secrets.tfvars: ${S3_BUCKET}"
+    fi
+  fi
+  
+  # 5. Last resort: use default pattern (extract project name from infra root)
+  if [[ -z "$S3_BUCKET" ]]; then
+    PROJECT_NAME=$(basename "${INFRA_ROOT}" | sed 's/-infra$//')
+    S3_BUCKET="${PROJECT_NAME}-${ENVIRONMENT}-lambda-artifacts"
+    log_warn "No bucket configured, using default pattern: ${S3_BUCKET}"
   fi
   
   if [[ -z "$S3_BUCKET" ]]; then
     log_error "Could not determine S3 bucket for Lambda artifacts"
-    log_info "Run deploy-terraform.sh first to create the bucket, or check Terraform outputs"
+    log_info "Options:"
+    log_info "  1. Pass --bucket <name> flag"
+    log_info "  2. Set S3_BUCKET environment variable"
+    log_info "  3. Add lambda_artifacts_bucket output to Terraform"
+    log_info "  4. Add lambda_bucket variable to local-secrets.tfvars"
     exit 1
   fi
   
   # Find the zip file
   ZIP_PATH=""
-  if [[ -f "${LAMBDA_DIR}/build/${ZIP_NAME}" ]]; then
-    ZIP_PATH="${LAMBDA_DIR}/build/${ZIP_NAME}"
-  elif [[ -f "${LAMBDA_DIR}/${ZIP_NAME}" ]]; then
-    ZIP_PATH="${LAMBDA_DIR}/${ZIP_NAME}"
-  elif [[ -f "${LAMBDA_DIR}/build/authorizer.zip" && "$LAMBDA_NAME" == "authorizer" ]]; then
-    ZIP_PATH="${LAMBDA_DIR}/build/authorizer.zip"
+  
+  # For module Lambdas, look in infra build directory (where we copied it)
+  if [[ "$LAMBDA_NAME" == *"module-"* ]]; then
+    MODULE_NAME=$(echo "${LAMBDA_NAME}" | cut -d'/' -f1)
+    LAMBDA_SHORT_NAME=$(echo "${LAMBDA_NAME}" | cut -d'/' -f2)
+    
+    # Try infra build directory first
+    if [[ -f "${INFRA_ROOT}/build/${MODULE_NAME}/${LAMBDA_SHORT_NAME}.zip" ]]; then
+      ZIP_PATH="${INFRA_ROOT}/build/${MODULE_NAME}/${LAMBDA_SHORT_NAME}.zip"
+    # Fallback to stack repo .build directory
+    elif [[ -n "${STACK_REPO}" && -f "${STACK_REPO}/packages/${MODULE_NAME}/backend/.build/${LAMBDA_SHORT_NAME}.zip" ]]; then
+      ZIP_PATH="${STACK_REPO}/packages/${MODULE_NAME}/backend/.build/${LAMBDA_SHORT_NAME}.zip"
+    else
+      log_error "Could not find zip file for ${LAMBDA_NAME}"
+      log_info "Expected at: ${INFRA_ROOT}/build/${MODULE_NAME}/${LAMBDA_SHORT_NAME}.zip"
+      log_info "Or at: ${STACK_REPO}/packages/${MODULE_NAME}/backend/.build/${LAMBDA_SHORT_NAME}.zip"
+      exit 1
+    fi
   else
-    log_error "Could not find zip file for ${LAMBDA_NAME}"
-    log_info "Expected at: ${LAMBDA_DIR}/build/${ZIP_NAME}"
-    exit 1
+    # For non-module Lambdas, look in Lambda directory
+    if [[ -f "${LAMBDA_DIR}/build/${ZIP_NAME}" ]]; then
+      ZIP_PATH="${LAMBDA_DIR}/build/${ZIP_NAME}"
+    elif [[ -f "${LAMBDA_DIR}/${ZIP_NAME}" ]]; then
+      ZIP_PATH="${LAMBDA_DIR}/${ZIP_NAME}"
+    elif [[ -f "${LAMBDA_DIR}/build/authorizer.zip" && "$LAMBDA_NAME" == "authorizer" ]]; then
+      ZIP_PATH="${LAMBDA_DIR}/build/authorizer.zip"
+    else
+      log_error "Could not find zip file for ${LAMBDA_NAME}"
+      log_info "Expected at: ${LAMBDA_DIR}/build/${ZIP_NAME}"
+      exit 1
+    fi
   fi
   
   log_info "Uploading ${ZIP_PATH} to s3://${S3_BUCKET}/lambdas/${ZIP_NAME}"
@@ -261,14 +364,31 @@ log_step "Step 3/3: Updating Lambda via Terraform..."
 
 cd "${INFRA_ROOT}/envs/${ENVIRONMENT}"
 
+# Determine Terraform target resource
+TERRAFORM_TARGET=""
+
+if [[ "$LAMBDA_NAME" == "authorizer" ]]; then
+  TERRAFORM_TARGET="aws_lambda_function.authorizer"
+elif [[ "$LAMBDA_NAME" == *"module-"* ]]; then
+  # Extract module and lambda names
+  MODULE_NAME=$(echo "${LAMBDA_NAME}" | cut -d'/' -f1)
+  LAMBDA_SHORT_NAME=$(echo "${LAMBDA_NAME}" | cut -d'/' -f2)
+  
+  # Convert to Terraform resource format (e.g., module-eval/eval-results -> module.module_eval.aws_lambda_function.eval_results)
+  MODULE_TF=$(echo "${MODULE_NAME}" | sed 's/-/_/g')
+  LAMBDA_TF=$(echo "${LAMBDA_SHORT_NAME}" | sed 's/-/_/g')
+  TERRAFORM_TARGET="module.${MODULE_TF}.aws_lambda_function.${LAMBDA_TF}"
+fi
+
 # Run targeted Terraform apply
-# Note: This will detect the zip hash change and update the Lambda
-log_info "Running terraform apply (will detect code changes via source_code_hash)..."
+# Use -target to only update this specific Lambda
+log_info "Running terraform apply for: ${TERRAFORM_TARGET}"
+log_info "(This will detect code changes via source_code_hash)"
 
 if [[ -f "local-secrets.tfvars" ]]; then
-  terraform apply -var-file=local-secrets.tfvars ${AUTO_APPROVE}
+  terraform apply -target="${TERRAFORM_TARGET}" -var-file=local-secrets.tfvars ${AUTO_APPROVE}
 else
-  terraform apply ${AUTO_APPROVE}
+  terraform apply -target="${TERRAFORM_TARGET}" ${AUTO_APPROVE}
 fi
 
 cd "${SCRIPT_DIR}"
