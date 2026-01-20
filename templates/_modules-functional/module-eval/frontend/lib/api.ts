@@ -41,6 +41,7 @@ import type {
   CreateCriteriaItemInput,
   UpdateCriteriaItemInput,
   CreateEvaluationInput,
+  UpdateEvaluationInput,
   EditResultInput,
   EditHistoryResponse,
   ExportResponse,
@@ -867,6 +868,26 @@ export async function getEvaluationStatus(
   return apiRequest<EvaluationStatusResponse>(
     `/workspaces/${workspaceId}/eval/${evaluationId}/status`,
     token
+  );
+}
+
+/**
+ * Update draft evaluation with configuration and trigger processing
+ * PATCH /workspaces/{wsId}/eval/{id}
+ */
+export async function updateEvaluation(
+  token: string,
+  workspaceId: string,
+  evaluationId: string,
+  input: UpdateEvaluationInput
+): Promise<Evaluation> {
+  return apiRequest<Evaluation>(
+    `/workspaces/${workspaceId}/eval/${evaluationId}`,
+    token,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }
   );
 }
 

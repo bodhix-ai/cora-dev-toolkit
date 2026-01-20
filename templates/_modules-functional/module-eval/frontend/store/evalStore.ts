@@ -35,6 +35,7 @@ import type {
   CreateCriteriaItemInput,
   UpdateCriteriaItemInput,
   CreateEvaluationInput,
+  UpdateEvaluationInput,
   EditResultInput,
   ListEvaluationsOptions,
   ListDocTypesOptions,
@@ -288,6 +289,12 @@ interface EvalState {
     token: string,
     workspaceId: string,
     input: CreateEvaluationInput
+  ) => Promise<Evaluation>;
+  updateEvaluation: (
+    token: string,
+    workspaceId: string,
+    evaluationId: string,
+    input: UpdateEvaluationInput
   ) => Promise<Evaluation>;
   getEvaluation: (
     token: string,
@@ -1148,6 +1155,44 @@ export const useEvalStore = create<EvalState>()(
               error instanceof Error
                 ? error.message
                 : "Failed to create evaluation",
+          });
+          throw error;
+        }
+      },
+
+      updateEvaluation: async (token, workspaceId, evaluationId, input) => {
+        try {
+          const updated = await api.updateEvaluation(
+            token,
+            workspaceId,
+            evaluationId,
+            input
+          );
+
+          // Update evaluation in list
+          set((state) => ({
+            evaluations: state.evaluations.map((e) =>
+              e.id === evaluationId ? updated : e
+            ),
+            selectedEvaluation:
+              state.selectedEvaluation?.id === evaluationId
+                ? updated
+                : state.selectedEvaluation,
+          }));
+
+          // Start polling for progress if status is pending or processing
+          if (updated.status === "pending" || updated.status === "processing") {
+            get().startPolling(token, workspaceId, evaluationId);
+          }
+
+          return updated;
+        } catch (error) {
+          console.error("Failed to update evaluation:", error);
+          set({
+            evaluationsError:
+              error instanceof Error
+                ? error.message
+                : "Failed to update evaluation",
           });
           throw error;
         }
