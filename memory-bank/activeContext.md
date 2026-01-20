@@ -10,9 +10,8 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 | Branch | Context File | Focus Area |
 |--------|--------------|------------|
-| `ws-crud-kbs-embeddings` | `context-module-kb.md` | **ACTIVE** - KB Document Processing Sprint |
+| `eval-optimization` | `context-module-eval.md` | **ACTIVE** - Eval Optimization (AI Config & Quality) |
 | `module-voice-dev` | `context-module-voice.md` | Module-Voice (Phase 1.5: Specifications) |
-| `feature/module-eval-config` | `context-module-eval.md` | Module-Eval Config Testing (Org admin configuration flow) |
 | `feature/module-kb-implementation` | `context-module-kb.md` | Module-KB development |
 | `feature/module-eval-implementation` | `context-module-eval.md` | Module-Eval (Phase 9: Frontend Hooks) |
 | `main` | (this file) | General toolkit work |
