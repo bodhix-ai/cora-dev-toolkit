@@ -7,16 +7,63 @@
 
 ## Current Session
 
+**Session: Evaluation Optimization & Inference Profile Fix**
+
+**Goal:** Fix evaluation processing failures, optimize AI provider integration
+
+**Status:** 🔄 IN PROGRESS
+
+**Plans:** 
+- `docs/plans/plan_eval-optimization.md` (Workspace UI + Optimization)
+- `docs/plans/plan_eval-inference-profile-fix.md` (Critical fix + Monitoring)
+
+**Branch:** `eval-optimization`
+
+### Current Test Environment
+- **Project:** test-optim
+- **Stack:** `~/code/bodhix/testing/test-optim/ai-sec-stack`
+- **Infra:** `~/code/bodhix/testing/test-optim/ai-sec-infra`
+
+### Session Accomplishments (January 20, 2026)
+
+**🔴 CRITICAL ISSUE IDENTIFIED:**
+Document evaluations not using configured sys-level models/prompts. Root cause investigation completed.
+
+**Investigation & Database Work:**
+- [x] Root cause identified: eval-processor doesn't check `validation_category` before API calls
+- [x] Better solution designed: Proactive validation_category checking (vs pm-app's reactive approach)
+- [x] AI operations monitoring system designed
+- [x] Database migrations created and applied:
+  - `kb_docs.workspace_id` → `kb_docs.ws_id` (naming standard fix)
+  - `ai_log_error` table created with RLS policies
+- [x] Schema file created for future projects: `templates/_modules-core/module-ai/db/schema/003-ai-log-error.sql`
+- [x] Plan document created: `docs/plans/plan_eval-inference-profile-fix.md`
+
+**Next Steps:**
+- [ ] Implement validation_category check in eval-processor Lambda
+- [ ] Add `log_ai_error()` function to org_common
+- [ ] Build and deploy updated Lambda
+- [ ] Test evaluations end-to-end
+
+**Key Discovery:**
+- Foundation models (e.g., `anthropic.claude-sonnet-4-5-20250929-v1:0`) require inference profile routing
+- pm-app uses try/catch/retry (2 API calls)
+- CORA will use proactive substitution (1 API call) - 50% more efficient
+
+---
+
+## Previous Session
+
 **Session: Workspace Doc Eval Implementation**
 
 **Goal:** Implement document evaluation workflow within workspace context
 
-**Status:** 🔄 IN PROGRESS
+**Status:** ✅ COMPLETE
 
 **Plan:** `docs/plans/plan_workspace-doc-eval-implementation.md`  
 **Sprint:** `docs/plans/plan_admin-eval-config-s2.md`
 
-### Current Test Environment
+### Previous Test Environment
 - **Project:** test-eval
 - **Stack:** `~/code/bodhix/testing/test-eval/ai-sec-stack`
 - **Infra:** `~/code/bodhix/testing/test-eval/ai-sec-infra`

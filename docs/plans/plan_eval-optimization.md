@@ -1,38 +1,49 @@
 # Evaluation Processing Optimization - Implementation Plan
 
-**Status**: 📋 PLANNING  
+**Status**: ✅ COMPLETE (Phase 1 & Workspace UI), 🔴 PRIORITY (Evaluation Processing Troubleshooting)  
 **Priority**: HIGH  
-**Estimated Duration**: 4-6 hours  
+**Estimated Duration**: 4-6 hours (eval optimization) + 2-3 hours (workspace UI) ✅ + 2-4 hours (troubleshooting)  
 **Created**: January 19, 2026  
-**Branch**: `eval-optimization`  
+**Updated**: January 20, 2026 5:31 PM  
+**Branch**: `eval-optimization`
+**Test Project**: `test-optim`  
+**Test Stack**: `~/code/bodhix/testing/test-optim/ai-sec-stack`  
+**Test Infra**: `~/code/bodhix/testing/test-optim/ai-sec-infra`  
 **Dependencies**: Evaluation processing pipeline (working)
 
 ---
 
 ## Executive Summary
 
-This plan validates and optimizes the document evaluation processing pipeline. The core processing infrastructure is working correctly (status updates, progress tracking, document processing), but AI provider configuration needs to be set up and the evaluation quality needs to be optimized.
+This plan validates and optimizes the document evaluation processing pipeline. The core processing infrastructure is working correctly (status updates, progress tracking, document processing), and AI provider configuration has been completed.
 
 **Current State:**
 - ✅ Evaluation creation and SQS message triggering working
 - ✅ Progress polling and status updates functional
 - ✅ Document summarization pipeline operational
 - ✅ Criteria evaluation pipeline running
-- ❌ AI provider not configured (placeholder responses)
-- ❌ Evaluation quality not validated
+- ✅ **AI provider configured** (prompts and models set up) - **COMPLETED 2026-01-20**
+- ✅ **Org admin page blocker resolved** (currentOrg.id → currentOrg.orgId fix) - **COMPLETED 2026-01-20**
+- ✅ **Workspace UI enhancements** (all features implemented) - **COMPLETED 2026-01-20 11:04 AM**
+- ✅ **Multi-model Bedrock support** (Claude, Nova, Titan) - **COMPLETED 2026-01-20 5:30 PM**
+- ✅ **Database column naming fixes** (workspace_id → ws_id) - **COMPLETED 2026-01-20 5:30 PM**
+- ✅ **RLS policy migrations created** (kb_docs, kb_chunks) - **COMPLETED 2026-01-20 5:30 PM**
+- 🔴 **CRITICAL: kb_docs still returns 406 errors** - RLS policy or schema cache issue
+- � **CRITICAL: eval_criteria_results RLS issues** - Similar to kb_docs
+- ⚠️ **Nova model needs inference profile** - Validation category or substitution logic
 
-**Goal:** Configure AI providers, validate evaluation quality, and optimize processing performance.
+**Goal:** Validate evaluation quality, optimize processing performance, and enhance workspace UI/UX.
 
 ---
 
-## ⚠️ BLOCKER: Org Admin Page Not Rendering
+## ✅ BLOCKER RESOLVED: Org Admin Page Fixed
 
-**Status**: 🔴 BLOCKING - Must resolve before proceeding  
-**Impact**: Prevents access to org-level eval configuration UI
+**Status**: ✅ RESOLVED - 2026-01-20 09:14 AM  
+**Impact**: Org-level eval configuration UI now fully functional
 
 ### Issue Description
 
-The org admin page for module-eval (`/admin/org/eval`) is not rendering - no error displayed, just blank/not showing page content or tabs. However, the sys admin page (`/admin/sys/eval`) renders correctly.
+The org admin page for module-eval (`/admin/org/eval`) was not rendering - no error displayed, just blank/not showing page content or tabs. However, the sys admin page (`/admin/sys/eval`) rendered correctly.
 
 ### Root Cause Analysis
 
@@ -79,38 +90,26 @@ export default function SysEvalAdminPage() {
 4. **Context provider missing** from layout hierarchy
 5. **Race condition** - page renders before context loads
 
-### Resolution Steps
+### Resolution (Completed 2026-01-20)
 
-**Before proceeding with eval optimization, must resolve:**
+**Root Cause Identified:**
+- Page used `currentOrg.id` (undefined) instead of `currentOrg.orgId`
+- The `UserOrganization` type has always used `orgId` property, not `id`
+- Page was passing `undefined` to all tab components
+- Hooks failed condition `if (token && orgId && ...)` so no API calls were made
 
-1. **Verify OrgContext provider exists in layout**:
-   - Check `apps/web/app/layout.tsx` or `apps/web/app/admin/layout.tsx`
-   - Ensure `OrgContextProvider` wraps the admin routes
+**Fix Applied:**
+- Changed all occurrences: `currentOrg.id` → `currentOrg.orgId`
+- Added debug logging to page component
+- Template updated: `templates/_modules-functional/module-eval/routes/admin/org/eval/page.tsx`
+- Synced to test project and verified working
+- Committed: `cff9fad` - "fix(module-eval): Fix org admin page rendering"
 
-2. **Test org selection**:
-   - Navigate to `/admin/org/eval`
-   - Check browser console for errors
-   - Check if OrgSelector component is visible/functional
-   - Try selecting an org and see if page renders
-
-3. **Add debugging**:
-   - Add console.log in org admin page to check `currentOrg` value
-   - Verify OrgContext is being provided correctly
-   - Check if other org admin pages work (e.g., `/admin/org/kb`)
-
-4. **Compare with working pages**:
-   - Check if `/admin/org/kb` or `/admin/org/ws` render correctly
-   - If they work, the issue may be specific to eval page
-   - If they don't work, the issue is with OrgContext provision
-
-### Next Actions
-
-**Do NOT proceed with AI provider configuration until this is resolved**, as the org admin page is needed to:
-- View organization-level eval configuration
-- Test org-specific prompt overrides
-- Manage org eval settings
-
-**Priority**: Resolve this blocker FIRST, then proceed with Phase 1.
+**Result:**
+- ✅ All 4 tabs now render correctly (Configuration, Document Types, Criteria, AI Prompts)
+- ✅ API calls are now being made successfully
+- ✅ Data loads properly in all tabs
+- ✅ Org-level eval configuration UI is fully functional
 
 ---
 
@@ -734,10 +733,12 @@ ORDER BY created_at DESC;
 
 ## Success Criteria
 
-### Phase 1: Configuration
+### Phase 1: Configuration ✅ COMPLETE
+- [x] ~~AI provider not configured blocker~~ → RESOLVED (org admin page fixed)
 - [x] AI provider configured in database
-- [x] AI model linked to prompts
-- [ ] Configuration verified with test query
+- [x] AI model linked to prompts  
+- [x] All prompts updated with selected AI models
+- [x] Configuration verified via UI (user confirmed prompts and models set)
 
 ### Phase 2: Validation
 - [ ] End-to-end evaluation completes successfully
@@ -833,8 +834,236 @@ WHERE status = 'completed';
 
 ---
 
+## 🎯 WORKSPACE UI ENHANCEMENTS
+
+### Part 1: Workspace Navigation & Labels ✅ COMPLETE
+
+Improved workspace UI/UX by making labels dynamic, consolidating tabs, and removing hard-coded references to "workspaces" to support custom terminology (e.g., "Audits" instead of "Workspaces").
+
+**Completed:**
+- ✅ Search box placeholder: "Search workspaces..." → "Search..."
+- ✅ Dynamic breadcrumbs using workspace config
+- ✅ Tabs consolidated: Members merged into Settings
+- ✅ Tabs renamed: "Data" → "Docs", "Doc Eval" → "Evaluations"
+- ✅ Tabs reordered: Overview, Docs, Evaluations, Settings
+
+### Part 2: Evaluation Tab Enhancements 🔄 IN PROGRESS
+
+Improve the Evaluations tab UI to show more information and fix navigation issues.
+
+**Requirements:**
+1. **Button Text** - Change "+ Document Evaluation" to "+ Evaluation"
+2. **Breadcrumb Navigation** - Return to Evaluations tab (not Overview) when navigating back from Evaluation Details
+3. **Document Type Display** - Replace "Unknown Doc Type" with actual document type after evaluation is created
+4. **Enhanced Evaluation Cards** - Add missing fields:
+   - Creation date
+   - Document type name
+   - Criteria set name
+   - Document name(s)
+5. **Document Count Format** - Change "X document(s)" to "doc count: X"
+
+### Enhancement Requirements
+
+#### 1. Search Box Placeholder Text
+**Current**: "Search workspaces ..."  
+**Desired**: "Search ..." (generic, not workspace-specific)
+
+**Files to modify:**
+- `templates/_modules-functional/module-ws/frontend/components/WorkspacesList.tsx` (or similar)
+- Look for `<TextField>` or `<Input>` components with placeholder text
+
+**Implementation:**
+```typescript
+// Change from:
+placeholder="Search workspaces..."
+
+// To:
+placeholder="Search..."
+```
+
+---
+
+#### 2. Dynamic Breadcrumbs
+**Current**: Hard-coded "Workspaces" in breadcrumbs  
+**Desired**: Use configured labels from database (same as sidebar menu item and workspace list title)
+
+**Data Source**: `ws_cfg_sys.plural_label_display` (e.g., "Audits" vs "Workspaces")
+
+**Files to modify:**
+- Workspace detail page breadcrumb component
+- Any layout components that show breadcrumbs
+
+**Implementation:**
+```typescript
+// Use workspace config from DB
+const { wsConfig } = useWorkspaceConfig(); // Hook to fetch config
+
+<Breadcrumbs>
+  <Link href="/ws">{wsConfig.pluralLabelDisplay}</Link>
+  <Typography>{workspace.name}</Typography>
+</Breadcrumbs>
+```
+
+**Example DB values:**
+- Default: "Workspaces"
+- Policy app: "Audits" 
+- Career app: "Applications"
+
+---
+
+#### 3. Remove Hard-Coded "Workspaces" References on Tabs
+**Current**: Tab labels reference "workspaces" explicitly  
+**Desired**: Generic labels or use dynamic config
+
+**Example changes:**
+- "Workspace Settings" → "Settings"
+- "Workspace Members" → "Members"
+- "Workspace Data" → "Data" (or use dynamic label)
+
+**Files to check:**
+- Workspace detail page tab components
+- Any tab labels that include "workspace" in the text
+
+---
+
+#### 4. Consolidate Settings and Members Tabs
+**Current**: Separate "Settings" and "Members" tabs  
+**Desired**: Single "Settings" tab with two sections:
+- Top section: Membership management
+- Bottom section: Delete workspace functionality
+
+**Files to modify:**
+- Workspace detail page tab structure
+- Move membership UI from Members tab
+- Move delete functionality from Settings tab
+- Combine into single Settings component
+
+**Implementation approach:**
+```typescript
+// New combined Settings tab structure
+<SettingsTab>
+  <MembershipSection>
+    {/* Existing member list/invite UI */}
+  </MembershipSection>
+  
+  <Divider sx={{ my: 4 }} />
+  
+  <DangerZoneSection>
+    {/* Delete workspace functionality */}
+  </DangerZoneSection>
+</SettingsTab>
+```
+
+---
+
+#### 5. Reorder and Rename Tabs
+**Current order and labels:**
+1. Overview
+2. Data
+3. Doc Eval
+4. Settings
+5. Members
+
+**Desired order and labels:**
+1. **Overview** (no change)
+2. **Docs** (currently labeled "Data")
+3. **Evaluations** (currently labeled "Doc Eval")
+4. **Settings** (consolidated from Settings + Members)
+
+**Files to modify:**
+- Workspace detail page: tab definitions
+- Update tab value constants
+- Update routing if needed
+
+**Implementation:**
+```typescript
+const tabs = [
+  { label: 'Overview', value: 'overview' },
+  { label: 'Docs', value: 'docs' },        // Was 'Data'
+  { label: 'Evaluations', value: 'eval' }, // Was 'Doc Eval'
+  { label: 'Settings', value: 'settings' } // Consolidated
+];
+```
+
+---
+
+### Implementation Checklist
+
+**Phase 1: Search and Breadcrumbs (30 min)**
+- [ ] Update search box placeholder to "Search..."
+- [ ] Add dynamic breadcrumb labels from `ws_cfg_sys`
+- [ ] Create or update `useWorkspaceConfig` hook if needed
+- [ ] Test breadcrumbs show correct labels for different configs
+
+**Phase 2: Tab Consolidation (1 hour)**
+- [ ] Create new combined Settings tab component
+- [ ] Move membership section to top of Settings
+- [ ] Move delete functionality to bottom of Settings
+- [ ] Remove old Members tab
+- [ ] Update tab navigation logic
+
+**Phase 3: Tab Rename and Reorder (30 min)**
+- [ ] Rename "Data" → "Docs"
+- [ ] Rename "Doc Eval" → "Evaluations"
+- [ ] Reorder tabs: Overview, Docs, Evaluations, Settings
+- [ ] Update any routing that depends on tab values
+
+**Phase 4: Remove Hard-Coded References (30 min)**
+- [ ] Audit all workspace UI components for "workspace" text
+- [ ] Replace with generic labels where appropriate
+- [ ] Use dynamic config labels where needed
+- [ ] Update tooltips, help text, etc.
+
+**Phase 5: Testing (30 min)**
+- [ ] Test with default "Workspaces" label
+- [ ] Test with custom label (e.g., "Audits")
+- [ ] Verify breadcrumbs update correctly
+- [ ] Verify all tabs work after consolidation
+- [ ] Check responsive layout
+
+---
+
+### Files Likely to Be Modified
+
+**Frontend (templates/_modules-functional/module-ws/):**
+- `frontend/components/WorkspacesList.tsx` - Search box
+- `routes/ws/[id]/page.tsx` - Tab structure
+- `frontend/components/workspace/WorkspaceSettings.tsx` - Settings tab
+- `frontend/components/workspace/WorkspaceMembers.tsx` - To merge into Settings
+- `frontend/hooks/useWorkspaceConfig.ts` - Dynamic labels
+
+**Database:**
+- No schema changes needed
+- Labels already in `ws_cfg_sys.plural_label_display`
+
+---
+
+### Success Criteria
+
+**Functionality:**
+- [ ] Search box shows generic "Search..." placeholder
+- [ ] Breadcrumbs dynamically use configured workspace label
+- [ ] Settings tab contains both membership and delete sections
+- [ ] Tab order matches: Overview, Docs, Evaluations, Settings
+- [ ] No hard-coded "workspaces" references in user-visible text
+
+**Quality:**
+- [ ] UI is clean and intuitive
+- [ ] No layout issues from tab consolidation
+- [ ] Proper spacing between Settings sections
+- [ ] Consistent with CORA design patterns
+
+**Testing:**
+- [ ] Works with default "Workspaces" config
+- [ ] Works with custom label (e.g., "Audits")
+- [ ] All tabs functional after changes
+- [ ] Responsive on mobile/tablet
+
+---
+
 ## Next Steps After Completion
 
+**Eval Optimization:**
 1. **Document AI provider setup** in deployment guide
 2. **Create prompt tuning guide** for organizations
 3. **Add evaluation quality dashboard** to admin UI
@@ -842,9 +1071,14 @@ WHERE status = 'completed';
 5. **Add cost tracking** for AI API usage
 6. **Create organization-level prompt customization** UI
 
+**Workspace Enhancements:**
+7. **Dynamic workspace terminology** throughout entire app
+8. **Custom icons for workspace types**
+9. **Workspace templates** for common configurations
+
 ---
 
-**Document Status:** 📋 Ready for implementation  
+**Document Status:** 📋 Active - Phase 1 complete, Workspace UI enhancements queued  
 **Branch:** `eval-optimization`  
-**Estimated Duration:** 4-6 hours (can be split across multiple sessions)  
+**Total Duration:** 6-9 hours (4-6 hours eval + 2-3 hours workspace UI)  
 **Dependencies:** Evaluation processing pipeline functional (✅ Complete)
