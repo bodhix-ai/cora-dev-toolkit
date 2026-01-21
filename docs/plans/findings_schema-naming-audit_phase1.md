@@ -11,12 +11,14 @@
 
 **CRITICAL FINDINGS:** Extensive violations of the database naming standard found across all new modules. These violations are **directly causing 406 errors** due to RLS policy type mismatches.
 
-**Total Violations Found:** 48+ instances of `workspace_id` usage (should be `ws_id`)
+**Total Violations Found:** 82 instances of `workspace_id` usage (should be `ws_id`)
 
 **Impact:**
 - ❌ **RLS policies failing** - Comparing `workspace_id` (column) against `ws_members.ws_id` causes type mismatch
 - ❌ **406 errors on database queries** - Result of RLS policy failures
 - ❌ **Blocks eval-inference-profile-fix** - Cannot proceed until this is resolved
+
+**ALL VIOLATIONS NOW FIXED ✅** - Templates updated, 0 violations remaining (verified Jan 20, 2026)
 
 ---
 
@@ -24,13 +26,15 @@
 
 ### Summary by Module
 
-| Module | Tables with Violations | Affected Columns | Severity |
-|--------|------------------------|------------------|----------|
-| **module-kb** | 2 tables | `workspace_id` | 🔴 CRITICAL |
-| **module-chat** | 1 table | `workspace_id` | 🔴 CRITICAL |
-| **module-eval** | 1 table | `workspace_id` | 🔴 CRITICAL |
-| **module-voice** | 0 tables | - | ✅ COMPLIANT |
-| **module-ws** | 0 tables | - | ✅ COMPLIANT |
+| Module | Tables with Violations | Affected Columns | Severity | Status |
+|--------|------------------------|------------------|----------|--------|
+| **module-kb** | 2 tables | `workspace_id` | 🔴 CRITICAL | ✅ FIXED |
+| **module-chat** | 1 table | `workspace_id` | 🔴 CRITICAL | ✅ FIXED |
+| **module-eval** | 1 table | `workspace_id` | 🔴 CRITICAL | ✅ FIXED |
+| **module-voice** | 1 table | `workspace_id` | 🔴 CRITICAL | ✅ FIXED |
+| **module-ws** | 0 tables (RPC only) | `workspace_id` (params) | 🟡 MEDIUM | ✅ FIXED |
+
+**Note:** Initial audit incorrectly marked voice and ws as compliant. Comprehensive verification later discovered violations in both modules.
 
 ---
 
