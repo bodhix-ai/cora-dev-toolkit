@@ -189,6 +189,143 @@ resource "aws_lambda_function" "voice_configs" {
   tags = local.common_tags
 }
 
+# Voice Analytics Lambda
+resource "aws_lambda_function" "voice_analytics" {
+  count = var.module_voice_enabled ? 1 : 0
+  
+  function_name = "${local.lambda_prefix}-analytics"
+  handler       = "lambda_function.lambda_handler"
+  runtime       = "python3.11"
+  timeout       = var.module_voice_lambda_timeout
+  memory_size   = 256
+  
+  filename         = "${path.module}/../backend/.build/voice-analytics.zip"
+  source_code_hash = filebase64sha256("${path.module}/../backend/.build/voice-analytics.zip")
+  
+  role = aws_iam_role.voice_lambda_role[0].arn
+  
+  layers = [var.org_common_layer_arn]
+  
+  environment {
+    variables = {
+      SUPABASE_SECRET_ARN = var.supabase_secret_arn
+      ENVIRONMENT         = var.environment
+    }
+  }
+  
+  lifecycle {
+    create_before_destroy = true
+  }
+  
+  tags = local.common_tags
+}
+
+# Voice Credentials Lambda
+resource "aws_lambda_function" "voice_credentials" {
+  count = var.module_voice_enabled ? 1 : 0
+  
+  function_name = "${local.lambda_prefix}-credentials"
+  handler       = "lambda_function.lambda_handler"
+  runtime       = "python3.11"
+  timeout       = var.module_voice_lambda_timeout
+  memory_size   = 256
+  
+  filename         = "${path.module}/../backend/.build/voice-credentials.zip"
+  source_code_hash = filebase64sha256("${path.module}/../backend/.build/voice-credentials.zip")
+  
+  role = aws_iam_role.voice_lambda_role[0].arn
+  
+  layers = [var.org_common_layer_arn]
+  
+  environment {
+    variables = {
+      SUPABASE_SECRET_ARN         = var.supabase_secret_arn
+      ENVIRONMENT                 = var.environment
+      DEEPGRAM_API_KEY_SECRET_ARN = var.deepgram_api_key_secret_arn
+      CARTESIA_API_KEY_SECRET_ARN = var.cartesia_api_key_secret_arn
+    }
+  }
+  
+  lifecycle {
+    create_before_destroy = true
+  }
+  
+  tags = local.common_tags
+}
+
+# Voice Transcripts Lambda
+resource "aws_lambda_function" "voice_transcripts" {
+  count = var.module_voice_enabled ? 1 : 0
+  
+  function_name = "${local.lambda_prefix}-transcripts"
+  handler       = "lambda_function.lambda_handler"
+  runtime       = "python3.11"
+  timeout       = var.module_voice_lambda_timeout
+  memory_size   = 512
+  
+  filename         = "${path.module}/../backend/.build/voice-transcripts.zip"
+  source_code_hash = filebase64sha256("${path.module}/../backend/.build/voice-transcripts.zip")
+  
+  role = aws_iam_role.voice_lambda_role[0].arn
+  
+  layers = compact([
+    var.org_common_layer_arn,
+    var.ai_common_layer_arn
+  ])
+  
+  environment {
+    variables = {
+      SUPABASE_SECRET_ARN         = var.supabase_secret_arn
+      ENVIRONMENT                 = var.environment
+      TRANSCRIPT_S3_BUCKET        = var.transcript_s3_bucket != "" ? var.transcript_s3_bucket : (var.module_voice_enabled ? aws_s3_bucket.transcripts[0].bucket : "")
+      DEEPGRAM_API_KEY_SECRET_ARN = var.deepgram_api_key_secret_arn
+    }
+  }
+  
+  lifecycle {
+    create_before_destroy = true
+  }
+  
+  tags = local.common_tags
+}
+
+# Voice WebSocket Lambda
+resource "aws_lambda_function" "voice_websocket" {
+  count = var.module_voice_enabled ? 1 : 0
+  
+  function_name = "${local.lambda_prefix}-websocket"
+  handler       = "lambda_function.lambda_handler"
+  runtime       = "python3.11"
+  timeout       = 300
+  memory_size   = 512
+  
+  filename         = "${path.module}/../backend/.build/voice-websocket.zip"
+  source_code_hash = filebase64sha256("${path.module}/../backend/.build/voice-websocket.zip")
+  
+  role = aws_iam_role.voice_lambda_role[0].arn
+  
+  layers = compact([
+    var.org_common_layer_arn,
+    var.ai_common_layer_arn
+  ])
+  
+  environment {
+    variables = {
+      SUPABASE_SECRET_ARN         = var.supabase_secret_arn
+      ENVIRONMENT                 = var.environment
+      ECS_CLUSTER_NAME            = var.ecs_cluster_name
+      WEBSOCKET_API_URL           = var.websocket_api_url
+      DEEPGRAM_API_KEY_SECRET_ARN = var.deepgram_api_key_secret_arn
+    }
+  }
+  
+  lifecycle {
+    create_before_destroy = true
+  }
+  
+  tags = local.common_tags
+}
+
 # =============================================================================
 # S3 BUCKET FOR TRANSCRIPTS
 # =============================================================================

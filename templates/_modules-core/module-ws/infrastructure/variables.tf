@@ -96,11 +96,11 @@ variable "common_tags" {
 variable "workspace_lambda_zip" {
   description = "Path to workspace Lambda deployment package"
   type        = string
-  default     = "../backend/lambdas/workspace/function.zip"
+  default     = "../backend/.build/workspace.zip"
 }
 
 variable "cleanup_lambda_zip" {
   description = "Path to cleanup Lambda deployment package"
   type        = string
-  default     = "../backend/lambdas/cleanup/function.zip"
+  default     = "../backend/.build/cleanup.zip"
 }
