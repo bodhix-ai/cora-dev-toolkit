@@ -178,6 +178,24 @@ function getStatusColor(status?: StatusOption): "success" | "error" | "warning" 
   return "default";
 }
 
+/**
+ * Get compliance color based on score value (0-100)
+ * This provides consistent color coding regardless of status option configuration
+ */
+function getScoreColor(scoreValue?: number | string | null): "success" | "error" | "warning" | "default" {
+  if (scoreValue === null || scoreValue === undefined) return "default";
+  
+  const score = typeof scoreValue === "string" ? parseFloat(scoreValue) : scoreValue;
+  
+  if (isNaN(score)) return "default";
+  
+  // Color coding based on compliance score ranges
+  if (score >= 76) return "success";    // 76-100: Green (Compliant)
+  if (score >= 51) return "warning";    // 51-75: Yellow (Mostly Compliant)
+  if (score >= 26) return "warning";    // 26-50: Orange/Yellow (Partially Compliant)
+  return "error";                        // 0-25: Red (Non-Compliant)
+}
+
 // =============================================================================
 // QA CARD COMPONENT
 // =============================================================================
@@ -201,7 +219,15 @@ export function EvalQACard({
   const effectiveStatusId = result.currentEdit?.editedStatusId ?? result.aiResult?.statusId;
   const effectiveStatus =
     result.effectiveStatus ?? getStatusOption(effectiveStatusId, statusOptions);
-  const statusColor = getStatusColor(effectiveStatus);
+  
+  // Get score value (prefer captured score, fallback to status option score)
+  const effectiveScoreValue = result.currentEdit?.editedScoreValue ?? result.aiResult?.scoreValue;
+  
+  // Use score-based color for more consistent compliance visualization
+  // Falls back to status-based color if no score available
+  const badgeColor = effectiveScoreValue !== null && effectiveScoreValue !== undefined
+    ? getScoreColor(effectiveScoreValue)
+    : getStatusColor(effectiveStatus);
 
   // Citations
   const citations = result.aiResult?.citations ?? [];
@@ -277,9 +303,13 @@ export function EvalQACard({
                     )}
                   </>
                 }
-                color={statusColor}
+                color={badgeColor}
                 size="small"
                 sx={{ flexShrink: 0 }}
+                title={effectiveScoreValue !== null && effectiveScoreValue !== undefined
+                  ? `Score: ${effectiveScoreValue}`
+                  : undefined
+                }
               />
             )}
             

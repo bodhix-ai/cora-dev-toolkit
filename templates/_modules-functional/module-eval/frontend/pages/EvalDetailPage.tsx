@@ -49,6 +49,7 @@ import {
   useEvaluation,
   useEvalProgress,
   useEvalExport,
+  useActiveStatusOptions,
 } from "../hooks";
 import {
   EvalProgressCard,
@@ -70,6 +71,8 @@ export interface EvalDetailPageProps {
   evaluationId: string;
   /** Workspace ID */
   workspaceId: string;
+  /** Organization ID */
+  orgId: string;
   /** Auth token */
   token: string | null;
   /** Optional CSS class */
@@ -811,6 +814,7 @@ function DocumentsTab({ documents }: DocumentsTabProps) {
 export function EvalDetailPage({
   evaluationId,
   workspaceId,
+  orgId,
   token,
   className = "",
   onBack,
@@ -830,6 +834,9 @@ export function EvalDetailPage({
     edit,
     update,
   } = useEvaluation(token, workspaceId, evaluationId);
+
+  // Load active status options for badge color coding
+  const { options: activeStatusOptions } = useActiveStatusOptions(token, orgId);
 
   // Extract results, documents, citations from evaluation object
   const results = evaluation?.criteriaResults || [];
@@ -987,7 +994,7 @@ export function EvalDetailPage({
         {activeTab === "results" && (
           <EvalQAList
             results={results || []}
-            statusOptions={evaluation.statusOptions}
+            statusOptions={activeStatusOptions}
             groupByCategory={false}
             editable={true}
             onEdit={handleEditResult}
