@@ -1,7 +1,7 @@
 # Context: Module-Eval Development
 
-**Branch:** `admin-eval-config-s2`  
-**Last Updated:** January 19, 2026
+**Branch:** `eval-optimization`  
+**Last Updated:** January 20, 2026
 
 ---
 
@@ -11,13 +11,12 @@
 
 **Goal:** Fix evaluation processing failures, optimize AI provider integration
 
-**Status:** 🔄 IN PROGRESS
+**Status:** ✅ COMPLETE
 
-**Plans:** 
-- `docs/plans/plan_eval-optimization.md` (Workspace UI + Optimization)
-- `docs/plans/plan_eval-inference-profile-fix.md` (Session 1-2 work - COMPLETE)
-- `docs/plans/plan_eval-validation-category-implementation.md` (Session 3+ work - ACTIVE)
-- `docs/plans/plan_module-ai-vendor-detection.md` (Vendor column population)
+**Completed Plans:** 
+- `docs/plans/completed/plan_eval-inference-profile-fix.md` (Sessions 1-2)
+- `docs/plans/completed/plan_eval-validation-category-implementation.md` (Session 3)
+- `docs/plans/completed/plan_module-ai-vendor-detection.md` (Session 4 - January 20, 2026)
 
 **Branch:** `eval-optimization`
 
@@ -43,18 +42,37 @@
 - [x] Created vendor detection plan: `docs/plans/plan_module-ai-vendor-detection.md`
 - [x] Created continuation plan: `docs/plans/plan_eval-validation-category-implementation.md`
 
-**Next Session Priority (Session 3):**
-- [ ] Deploy Lambda via Terraform (zips staged in S3)
-- [ ] Implement proper validation_category logic (database-driven substitution)
-- [ ] Test evaluations end-to-end
-- [ ] Follow `docs/plans/plan_eval-validation-category-implementation.md`
+**Session 3 - validation_category Implementation:**
+- [x] Deployed Lambda via Terraform (zips staged in S3)
+- [x] Implemented proper validation_category logic (database-driven substitution)
+- [x] Added error logging integration
+- [x] Plan moved to completed: `docs/plans/completed/plan_eval-validation-category-implementation.md`
 
-**Key Insight:**
+**Session 4 (9:00 PM) - Module-AI Vendor Detection:**
+- [x] Created database migration: `008-model-vendor.sql`
+- [x] Added `detect_model_vendor()` function to provider lambda
+- [x] Updated `_parse_bedrock_model()` to include vendor detection
+- [x] Updated `_parse_bedrock_inference_profile()` to include vendor detection
+- [x] Updated `handle_discover_models()` to save vendor field
+- [x] Verified backfill: 179 models detected across 15 vendors
+  - anthropic: 42, amazon: 37, stability: 26, meta: 20, mistral: 13
+  - cohere: 10, twelvelabs: 7, openai: 4, qwen: 4, google: 3
+  - nvidia: 3, deepseek: 2, ai21: 2, minimax: 1, unknown: 5
+- [x] Plan moved to completed: `docs/plans/completed/plan_module-ai-vendor-detection.md`
+
+**Key Accomplishment:**
+Complete inference profile routing solution implemented:
 - Foundation models require inference profile routing
 - pm-app: Try/catch/retry (2 API calls, 1 fails)
 - CORA Session 1: Simple "us." prefix (1 API call)
 - CORA Session 2: Vendor-aware region selection (1 API call, extensible)
-- CORA Session 3 (planned): Database-driven validation_category checking (1 API call, fully extensible)
+- CORA Session 3: Database-driven validation_category checking (1 API call, fully extensible)
+- CORA Session 4: Vendor detection populated for all models (enables vendor-specific logic)
+
+**Next Steps:**
+- User testing of end-to-end evaluation workflow
+- Monitor CloudWatch logs for substitution events
+- Verify evaluations complete successfully with Claude Sonnet 4.5
 
 ---
 
@@ -433,7 +451,7 @@ templates/_modules-functional/module-eval/
 
 Module-eval depends on:
 - `module-kb` - Document storage, parsing, embeddings, RAG search
-- `module-ai` - AI provider configuration
+- `module-ai` - AI provider configuration (now includes `model_vendor` column)
 - `module-ws` - Workspace scoping
 - `module-access` - Authentication
 - `module-mgmt` - Platform management
@@ -442,7 +460,7 @@ Module-eval depends on:
 
 ## Session History
 
-### Session 135: Completion & PR Preparation (Current) ✅
+### Session 135: Completion & PR Preparation ✅
 - Created validator improvements plan document
 - Updated context documentation
 - Prepared for PR creation
