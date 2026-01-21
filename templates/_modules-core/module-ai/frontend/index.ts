@@ -26,6 +26,11 @@ export { PlatformConfigTab } from "./components/admin/PlatformConfigTab";
 // Hooks
 export { useProviders } from "./hooks/useProviders";
 export { useModels } from "./hooks/useModels";
+export { 
+  usePlatformAIConfig, 
+  useOrgAIConfig, 
+  useDeployments 
+} from "./hooks/useAIConfig";
 
 // API Client
 export { createAIEnablementClient } from "./lib/api";
@@ -49,6 +54,13 @@ export type {
   ValidateModelsResponse,
   ValidationHistoryEntry,
 } from "./types";
+
+// AI Config Hook Types
+export type {
+  DeploymentInfo,
+  PlatformAIConfig,
+  OrgAIConfig,
+} from "./hooks/useAIConfig";
 
 // Admin Card
 export { aiEnablementAdminCard } from "./adminCard";
