@@ -73,7 +73,7 @@ BEGIN
     
     -- Return success
     RETURN json_build_object(
-        'workspace_id', p_ws_id,
+        'ws_id', p_ws_id,
         'new_owner_id', p_new_owner_id,
         'transferred_by', p_requester_id,
         'transferred_at', NOW()
@@ -98,7 +98,7 @@ All previous owners are demoted to ws_admin role. Can be called by org admins or
 
 -- Expected result:
 -- {
---   "workspace_id": "workspace-uuid",
+--   "ws_id": "workspace-uuid",
 --   "new_owner_id": "new-owner-user-uuid",
 --   "transferred_by": "requester-user-uuid",
 --   "transferred_at": "2026-01-11T14:10:00Z"

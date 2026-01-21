@@ -109,7 +109,7 @@ STABLE
 SECURITY DEFINER
 AS $$
     WITH chat_info AS (
-        SELECT cs.org_id, cs.workspace_id
+        SELECT cs.org_id, cs.ws_id
         FROM public.chat_sessions cs
         WHERE cs.id = p_session_id
         AND cs.is_deleted = false
@@ -146,12 +146,12 @@ AS $$
         -- Workspace-level KBs for chats in workspaces
         SELECT kb.id, kb.name, kb.scope, kb.description
         FROM public.kb_bases kb
-        JOIN chat_info ci ON kb.workspace_id = ci.workspace_id
+        JOIN chat_info ci ON kb.ws_id = ci.ws_id
         WHERE kb.scope = 'workspace'
-        AND ci.workspace_id IS NOT NULL
+        AND ci.ws_id IS NOT NULL
         AND EXISTS (
             SELECT 1 FROM public.ws_members wm
-            WHERE wm.ws_id = ci.workspace_id
+            WHERE wm.ws_id = ci.ws_id
             AND wm.user_id = p_user_id
             AND wm.deleted_at IS NULL
         )

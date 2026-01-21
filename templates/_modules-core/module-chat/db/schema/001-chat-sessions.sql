@@ -11,7 +11,7 @@
 CREATE TABLE IF NOT EXISTS public.chat_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255) NOT NULL DEFAULT 'New Chat',
-    workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE,
+    ws_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE,
     org_id UUID NOT NULL REFERENCES public.orgs(id) ON DELETE CASCADE,
     created_by UUID NOT NULL REFERENCES auth.users(id),
     is_shared_with_workspace BOOLEAN NOT NULL DEFAULT false,
@@ -31,14 +31,14 @@ CREATE TABLE IF NOT EXISTS public.chat_sessions (
 -- INDEXES
 -- =============================================
 
-CREATE INDEX IF NOT EXISTS idx_chat_sessions_workspace_id ON public.chat_sessions(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_ws_id ON public.chat_sessions(ws_id);
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_org_id ON public.chat_sessions(org_id);
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_created_by ON public.chat_sessions(created_by);
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_created_at ON public.chat_sessions(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_is_deleted ON public.chat_sessions(is_deleted) WHERE is_deleted = false;
 
 -- Composite index for common query: user's chats in workspace
-CREATE INDEX IF NOT EXISTS idx_chat_sessions_ws_user ON public.chat_sessions(workspace_id, created_by) WHERE is_deleted = false;
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_ws_user ON public.chat_sessions(ws_id, created_by) WHERE is_deleted = false;
 
 -- =============================================
 -- COMMENTS
@@ -46,7 +46,7 @@ CREATE INDEX IF NOT EXISTS idx_chat_sessions_ws_user ON public.chat_sessions(wor
 
 COMMENT ON TABLE public.chat_sessions IS 'Primary chat session container supporting workspace-scoped and user-level conversations';
 COMMENT ON COLUMN public.chat_sessions.title IS 'Chat title (1-255 characters)';
-COMMENT ON COLUMN public.chat_sessions.workspace_id IS 'Workspace (for workspace-scoped chats, NULL for user-level chats)';
+COMMENT ON COLUMN public.chat_sessions.ws_id IS 'Workspace (for workspace-scoped chats, NULL for user-level chats)';
 COMMENT ON COLUMN public.chat_sessions.org_id IS 'Organization ID for multi-tenancy (required for all chats)';
 COMMENT ON COLUMN public.chat_sessions.created_by IS 'User who created the chat (owner)';
 COMMENT ON COLUMN public.chat_sessions.is_shared_with_workspace IS 'Whether chat is shared with all workspace members';

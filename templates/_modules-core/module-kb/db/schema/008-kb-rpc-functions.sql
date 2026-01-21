@@ -44,7 +44,7 @@ BEGIN
             -- Workspace KB: Check if user is workspace member
             SELECT EXISTS (
                 SELECT 1 FROM public.ws_members
-                WHERE ws_id = v_kb.workspace_id AND user_id = p_user_id
+                WHERE ws_id = v_kb.ws_id AND user_id = p_user_id
             ) INTO v_has_access;
             
         WHEN 'chat' THEN
@@ -97,7 +97,7 @@ BEGIN
             IF v_who_can_upload = 'admin' THEN
                 SELECT EXISTS (
                     SELECT 1 FROM public.ws_members
-                    WHERE ws_id = v_kb.workspace_id 
+                    WHERE ws_id = v_kb.ws_id 
                     AND user_id = p_user_id 
                     AND ws_role IN ('ws_owner', 'ws_admin')
                 ) INTO v_has_permission;
@@ -114,7 +114,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Function: Get accessible KBs for a workspace
-CREATE OR REPLACE FUNCTION get_accessible_kbs_for_workspace(p_user_id UUID, p_workspace_id UUID)
+CREATE OR REPLACE FUNCTION get_accessible_kbs_for_workspace(p_user_id UUID, p_ws_id UUID)
 RETURNS TABLE (
     kb_id UUID,
     kb_name VARCHAR(255),
@@ -125,13 +125,13 @@ RETURNS TABLE (
 DECLARE
     v_workspace RECORD;
 BEGIN
-    SELECT * INTO v_workspace FROM public.workspaces WHERE id = p_workspace_id;
+    SELECT * INTO v_workspace FROM public.workspaces WHERE id = p_ws_id;
     
     -- Return workspace's own KB
     RETURN QUERY
     SELECT kb.id, kb.name, kb.scope, kb.is_enabled, 'workspace'::TEXT
     FROM public.kb_bases kb
-    WHERE kb.workspace_id = p_workspace_id
+    WHERE kb.ws_id = p_ws_id
     AND kb.scope = 'workspace'
     AND kb.is_deleted = false;
     
@@ -139,7 +139,7 @@ BEGIN
     RETURN QUERY
     SELECT kb.id, kb.name, kb.scope, kaw.is_enabled, 'org'::TEXT
     FROM public.kb_bases kb
-    JOIN public.kb_access_ws kaw ON kaw.kb_id = kb.id AND kaw.workspace_id = p_workspace_id
+    JOIN public.kb_access_ws kaw ON kaw.kb_id = kb.id AND kaw.ws_id = p_ws_id
     WHERE kb.org_id = v_workspace.org_id
     AND kb.scope = 'org'
     AND kb.is_deleted = false
@@ -152,7 +152,7 @@ BEGIN
     FROM public.kb_bases kb
     JOIN public.kb_access_sys kas ON kas.kb_id = kb.id
     JOIN public.kb_access_orgs kao ON kao.kb_id = kb.id AND kao.org_id = kas.org_id
-    JOIN public.kb_access_ws kaw ON kaw.kb_id = kb.id AND kaw.workspace_id = p_workspace_id
+    JOIN public.kb_access_ws kaw ON kaw.kb_id = kb.id AND kaw.ws_id = p_ws_id
     WHERE kas.org_id = v_workspace.org_id
     AND kb.scope = 'sys'
     AND kb.is_deleted = false

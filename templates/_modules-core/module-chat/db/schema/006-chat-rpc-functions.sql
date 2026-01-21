@@ -61,10 +61,10 @@ AS $$
             -- Chat is shared with workspace and user is a workspace member
             (
                 cs.is_shared_with_workspace = true
-                AND cs.workspace_id IS NOT NULL
+                AND cs.ws_id IS NOT NULL
                 AND EXISTS (
                     SELECT 1 FROM public.ws_members wm
-                    WHERE wm.ws_id = cs.workspace_id
+                    WHERE wm.ws_id = cs.ws_id
                     AND wm.user_id = p_user_id
                     AND wm.deleted_at IS NULL
                 )
@@ -109,10 +109,10 @@ AS $$
             -- Chat is shared with workspace and user is a workspace member
             (
                 cs.is_shared_with_workspace = true
-                AND cs.workspace_id IS NOT NULL
+                AND cs.ws_id IS NOT NULL
                 AND EXISTS (
                     SELECT 1 FROM public.ws_members wm
-                    WHERE wm.ws_id = cs.workspace_id
+                    WHERE wm.ws_id = cs.ws_id
                     AND wm.user_id = p_user_id
                     AND wm.deleted_at IS NULL
                 )
@@ -131,12 +131,12 @@ COMMENT ON FUNCTION public.can_edit_chat(UUID, UUID) IS 'Check if user has permi
 CREATE OR REPLACE FUNCTION public.get_accessible_chats(
     p_user_id UUID,
     p_org_id UUID,
-    p_workspace_id UUID DEFAULT NULL
+    p_ws_id UUID DEFAULT NULL
 )
 RETURNS TABLE (
     id UUID,
     title VARCHAR(255),
-    workspace_id UUID,
+    ws_id UUID,
     org_id UUID,
     created_by UUID,
     is_shared_with_workspace BOOLEAN,
@@ -152,7 +152,7 @@ AS $$
     SELECT 
         cs.id,
         cs.title,
-        cs.workspace_id,
+        cs.ws_id,
         cs.org_id,
         cs.created_by,
         cs.is_shared_with_workspace,
@@ -171,7 +171,7 @@ AS $$
     FROM public.chat_sessions cs
     WHERE cs.org_id = p_org_id
     AND cs.is_deleted = false
-    AND (p_workspace_id IS NULL OR cs.workspace_id = p_workspace_id)
+    AND (p_ws_id IS NULL OR cs.ws_id = p_ws_id)
     AND (
         -- User is the owner
         cs.created_by = p_user_id
@@ -186,10 +186,10 @@ AS $$
         -- Chat is shared with workspace and user is member
         (
             cs.is_shared_with_workspace = true
-            AND cs.workspace_id IS NOT NULL
+            AND cs.ws_id IS NOT NULL
             AND EXISTS (
                 SELECT 1 FROM public.ws_members wm
-                WHERE wm.ws_id = cs.workspace_id
+                WHERE wm.ws_id = cs.ws_id
                 AND wm.user_id = p_user_id
                 AND wm.deleted_at IS NULL
             )

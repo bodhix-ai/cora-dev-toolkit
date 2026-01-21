@@ -8,7 +8,7 @@
 -- Create eval_doc_summaries table (one row per evaluation)
 CREATE TABLE IF NOT EXISTS eval_doc_summaries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    ws_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     doc_type_id UUID REFERENCES eval_doc_types(id) ON DELETE RESTRICT,
     criteria_set_id UUID REFERENCES eval_criteria_sets(id) ON DELETE RESTRICT,
     name TEXT NOT NULL,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS eval_doc_summaries (
 
 -- Add table comment
 COMMENT ON TABLE eval_doc_summaries IS 'Main evaluation record with summaries and status';
-COMMENT ON COLUMN eval_doc_summaries.workspace_id IS 'Workspace this evaluation belongs to';
+COMMENT ON COLUMN eval_doc_summaries.ws_id IS 'Workspace this evaluation belongs to';
 COMMENT ON COLUMN eval_doc_summaries.doc_type_id IS 'Document type being evaluated (nullable for draft)';
 COMMENT ON COLUMN eval_doc_summaries.criteria_set_id IS 'Criteria set used for evaluation (nullable for draft)';
 COMMENT ON COLUMN eval_doc_summaries.name IS 'Evaluation name/title';
@@ -50,13 +50,13 @@ COMMENT ON COLUMN eval_doc_summaries.is_deleted IS 'Soft delete flag';
 
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_eval_doc_summaries_workspace 
-    ON eval_doc_summaries(workspace_id);
+    ON eval_doc_summaries(ws_id);
 CREATE INDEX IF NOT EXISTS idx_eval_doc_summaries_status 
-    ON eval_doc_summaries(workspace_id, status);
+    ON eval_doc_summaries(ws_id, status);
 CREATE INDEX IF NOT EXISTS idx_eval_doc_summaries_doc_type 
     ON eval_doc_summaries(doc_type_id);
 CREATE INDEX IF NOT EXISTS idx_eval_doc_summaries_deleted 
-    ON eval_doc_summaries(workspace_id, is_deleted);
+    ON eval_doc_summaries(ws_id, is_deleted);
 
 -- Create updated_at trigger
 CREATE OR REPLACE FUNCTION update_eval_doc_summaries_updated_at()

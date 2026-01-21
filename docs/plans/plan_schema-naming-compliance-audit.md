@@ -1,53 +1,326 @@
 # Schema Naming Compliance Audit & Remediation Plan
 
-**Status**: 📋 Planning - Ready for Analysis  
+**Status**: 🟡 IN PROGRESS  
+**Branch**: `schema-naming-audit`  
 **Priority**: 🟡 Medium-High (Blocks future development, causes bugs)  
 **Created**: January 20, 2026  
+**Started**: January 20, 2026  
 **Owner**: Engineering Team  
 
 ---
 
 ## Executive Summary
 
-A comprehensive audit of all database schema objects, RLS policies, and application code to identify and remediate naming standard violations per `docs/standards/cora/standard_DATABASE-NAMING.md`.
+**SCOPE:** This audit focuses ONLY on **newly introduced modules** (kb, chat, eval, voice, ws). Legacy core modules (access, ai, mgmt) are excluded and covered by `docs/plans/backlog/plan_db-naming-migration.md`.
+
+**BLOCKER FOR:** `docs/plans/plan_eval-inference-profile-fix.md` - Must complete this audit before fixing eval inference profile issues.
+
+A focused audit of newly introduced module database schema objects, RLS policies, and application code to identify and remediate naming standard violations per `docs/standards/cora/standard_DATABASE-NAMING.md`.
+
+**Modules in Scope:**
+- ✅ `module-kb` - Knowledge Base
+- ✅ `module-chat` - Chat & Messaging  
+- ✅ `module-eval` - Evaluation
+- ✅ `module-voice` - Voice Interaction
+- ✅ `module-ws` - Workspace Management
+
+**Modules EXCLUDED (Legacy - See Backlog Plan):**
+- ❌ `module-access` - Identity & Access (see backlog plan Phase 1)
+- ❌ `module-ai` - AI Provider Management (see backlog plan Phase 4)
+- ❌ `module-mgmt` - Platform Management (see backlog plan Phase 2)
 
 **Discovered Issues:**
 - `kb_access_ws` table uses `workspace_id` column (should be `ws_id` per Rule 3)
-- Unknown number of other tables with similar issues
+- Unknown number of other tables with similar issues in new modules
 - RLS policies reference non-standard column names
 - Lambda functions use inconsistent column references
 
 **Impact if Not Fixed:**
+- ❌ **BLOCKS eval-inference-profile-fix** - Cannot proceed until naming is compliant
 - Continued 406 errors on database queries
 - RLS policy failures
 - Developer confusion and maintenance burden
 - Future bugs when adding features
 
+**Related Plans:**
+- **Legacy Modules:** `docs/plans/backlog/plan_db-naming-migration.md` - Deferred lower-priority work
+- **Blocked Plan:** `docs/plans/plan_eval-inference-profile-fix.md` - Requires this audit complete
+
 ---
 
-## Phase 1: Schema Analysis (Discovery)
+## Phase 1 Results: Audit Complete ✅
+
+**Findings Document:** `docs/plans/findings_schema-naming-audit_phase1.md`
+
+**Summary:**
+- **82 violations found** - All `workspace_id` (should be `ws_id`)
+- **Affected modules:** module-kb (21), module-chat (16), module-eval (13), module-voice (12), module-ws (21)
+- **All violations FIXED ✅** - 0 violations remaining (verified Jan 20, 2026)
+- **Root cause identified:** RLS policy type mismatches causing 406 errors
+
+**Critical Finding:**
+```sql
+-- Example from module-eval RLS policy (THE BLOCKER):
+WHERE ws_members.ws_id = eval_doc_summaries.workspace_id
+                                           ^^^^^^^^^^^^^^
+                                           Should be: ws_id
+```
+
+**Note:** Initial audit incorrectly marked voice and ws as compliant. Comprehensive verification discovered violations in both modules, which have now been fixed.
+
+---
+
+## Implementation Approach
+
+### Strategy: DB-Only Changes + Lambda Inventory
+
+**Current Session Progress (Jan 20, 2026):**
+- ✅ **Module-Eval COMPLETE** - Schema + RLS files updated, grep verified clean
+- ✅ **Module-Chat COMPLETE** - Schema + RPC + RLS files updated, grep verified clean
+- ✅ **Module-KB COMPLETE** - Schema + RPC + RLS + Views files updated, grep verified clean
+- ✅ **Module-Voice COMPLETE** - Schema + RLS files updated, grep verified clean (12 instances)
+- ✅ **Module-WS COMPLETE** - RPC functions updated, grep verified clean (21 instances)
+- ✅ **ALL TEMPLATES FIXED** - 0 violations across all 5 modules ✅
+- ✅ **Migration Files COMPLETE** - 6 SQL migration scripts created (Jan 20, 2026)
+- ✅ **Lambda Inventory COMPLETE** - Comprehensive documentation created for other teams
+
+**Key Decisions:**
+1. **Fix templates FIRST** - Then sync to test projects
+2. **Priority order:** eval → chat → kb (based on blocker criticality)
+3. **Create database migrations** - Required for existing database (user feedback)
+4. **DB changes ONLY in this branch** - Schema + RLS + RPC functions
+5. **Lambda changes inventoried** - Document provided to other teams (avoiding merge conflicts)
+
+**Scope Clarification:**
+- ✅ **In Scope (This Branch):** SQL files only (schema, RLS, RPC functions, views)
+- ❌ **Out of Scope (Other Branches):** Lambda Python code, Frontend TypeScript code
+- 📋 **Deliverable:** Lambda Change Inventory document for other teams
+
+**Why This Approach:**
+- Eval module is **blocking** `plan_eval-inference-profile-fix.md`
+- Test projects are temporary - fixes must go in templates
+- Other teams are changing Lambdas - avoid merge conflicts
+- DB changes are isolated - no other team touching SQL files
+- Ensures all future projects are compliant from day one
+
+---
+
+### Module 1: Eval (PRIORITY 1 - Blocker)
+
+**DB Files to Fix (12 instances):**
+
+1. **Schema:**
+   - `templates/_modules-functional/module-eval/db/schema/010-eval-doc-summaries.sql`
+     - Line 11: `workspace_id UUID NOT NULL` → `ws_id UUID NOT NULL`
+     - Line 35: Comment `workspace_id` → `ws_id`
+     - Lines 51-54: 3 indexes referencing `workspace_id` → `ws_id`
+
+2. **RLS Policies:**
+   - `templates/_modules-functional/module-eval/db/schema/015-eval-rls.sql`
+     - 10 instances: `eval_doc_summaries.workspace_id` → `eval_doc_summaries.ws_id`
+
+3. **RPC Functions:**
+   - `templates/_modules-functional/module-eval/db/schema/014-eval-rpc-functions.sql`
+     - ✅ No changes needed (org-level functions only)
+
+**Lambda Changes (Inventoried for Other Teams):**
+- `eval-processor/lambda_function.py` - 48 instances
+- `eval-results/lambda_function.py` - Multiple DB query references
+
+**Frontend Changes:**
+- ✅ No changes needed (0 instances found)
+
+**Testing:**
+1. Verify SQL files with grep: `grep -r "workspace_id" templates/_modules-functional/module-eval/db/`
+2. Create fresh test project with `/test-module.md module-eval`
+3. Verify `eval_doc_summaries` table has `ws_id` column
+4. Verify RLS policies don't have type mismatches
+
+**Success Criteria:**
+- [x] All schema files use `ws_id` ✅ COMPLETE
+- [x] All RLS policies reference `ws_id` ✅ COMPLETE
+- [x] Verification: grep returns 0 results for `workspace_id` in SQL files ✅ COMPLETE
+- [ ] Lambda changes documented in inventory (DEFERRED - inventory doc)
+- [ ] Migration file created for existing database
+
+---
+
+### Module 2: Chat (PRIORITY 2)
+
+**DB Files to Fix (16 instances):**
+
+1. **Schema:**
+   - `templates/_modules-core/module-chat/db/schema/001-chat-sessions.sql`
+     - Line 5: Column `workspace_id` → `ws_id`
+     - Lines 8-10: 3 indexes referencing `workspace_id` → `ws_id`
+     - Line 12: Comment update
+
+2. **RPC Functions:**
+   - `templates/_modules-core/module-chat/db/schema/006-chat-rpc-functions.sql`
+     - Function parameters: `p_workspace_id` → `p_ws_id`
+     - Return type column: `workspace_id UUID` → `ws_id UUID`
+     - WHERE clauses: `cs.workspace_id` → `cs.ws_id` (7+ instances)
+
+3. **RLS Policies:**
+   - `templates/_modules-core/module-chat/db/schema/007-chat-rls.sql`
+     - 2 instances: `chat_sessions.workspace_id` → `chat_sessions.ws_id`
+
+**Lambda Changes (Inventoried for Other Teams):**
+- Chat Lambda files - Multiple DB query references
+
+**Frontend Changes (Inventoried for Other Teams):**
+- Chat frontend TypeScript files
+
+**Success Criteria:**
+- [x] All schema files use `ws_id` ✅ COMPLETE
+- [x] All RPC functions reference `ws_id` ✅ COMPLETE
+- [x] All RLS policies reference `ws_id` ✅ COMPLETE
+- [x] Verification: grep returns 0 results for `workspace_id` in SQL files ✅ COMPLETE
+- [ ] Lambda changes documented in inventory (DEFERRED - inventory doc)
+- [ ] Migration file created for existing database
+
+---
+
+### Module 3: KB (PRIORITY 3)
+
+**DB Files to Fix (21 instances):**
+
+1. **Schema:**
+   - `templates/_modules-core/module-kb/db/schema/001-kb-bases.sql`
+     - Line 5: Column `workspace_id` → `ws_id`
+     - Lines 8-11: CHECK constraint references (4 instances)
+     - Lines 15-18: 2 indexes referencing `workspace_id` → `ws_id`
+   
+   - `templates/_modules-core/module-kb/db/schema/002-kb-docs.sql`
+     - Comment only: S3 key path `{workspace_id}` → `{ws_id}`
+   
+   - `templates/_modules-core/module-kb/db/schema/006-kb-access-ws.sql`
+     - Line 3: Column `workspace_id` → `ws_id`
+     - Line 5: UNIQUE constraint `workspace_id` → `ws_id`
+     - Line 8: Index `workspace_id` → `ws_id`
+
+2. **RPC Functions:**
+   - `templates/_modules-core/module-kb/db/schema/008-kb-rpc-functions.sql`
+     - Function parameter: `p_workspace_id` → `p_ws_id`
+     - WHERE/JOIN clauses: 8+ instances of `workspace_id` → `ws_id`
+
+3. **Views:**
+   - `templates/_modules-core/module-kb/db/schema/010-chat-session-kb.sql`
+     - View column: `cs.workspace_id` → `cs.ws_id`
+     - JOIN: `kb.workspace_id` → `kb.ws_id`
+     - WHERE/RLS: 3 more instances
+
+**Lambda Changes (Inventoried for Other Teams):**
+- KB Lambda files - Multiple DB query references
+
+**Frontend Changes (Inventoried for Other Teams):**
+- KB frontend TypeScript files
+
+**Success Criteria:**
+- [ ] All schema files use `ws_id`
+- [ ] All RPC functions reference `ws_id`
+- [ ] All views reference `ws_id`
+- [ ] Verification: grep returns 0 results for `workspace_id` in SQL files
+
+---
+
+### Testing Strategy
+
+**Per Module After Fix:**
+1. **Template Validation:**
+   - Run grep to confirm no `workspace_id` remains: 
+     ```bash
+     grep -r "workspace_id" --include="*.sql" templates/_modules-*/module-{name}/
+     # Should return 0 results
+     ```
+
+2. **Fresh Test Project:**
+   - Use `/test-module.md module-{name}` to create clean test
+   - Verify database schema has `ws_id` columns
+   - Test end-to-end workflows
+   - Check for 406 errors in logs
+
+3. **Integration Testing:**
+   - After all modules fixed, test cross-module workflows
+   - Verify workspace-scoped features work correctly
+
+---
+
+### Rollback Strategy
+
+**If issues found:**
+1. Git revert template changes
+2. Delete test project
+3. Recreate from previous template version
+4. Document issue in findings
+
+**No production impact** - These are template fixes only, no live systems affected.
+
+---
+
+## Estimated Timeline (Revised - DB Changes Only)
+
+| Task | Duration | Status | Notes |
+|------|----------|--------|-------|
+| **Module-Eval DB Fix** | 30-45 min | ✅ COMPLETE | Schema + RLS (2 files, 12 instances) |
+| **Module-Eval Verification** | 15 min | ✅ COMPLETE | grep validation passed |
+| **Module-Chat DB Fix** | 45-60 min | ✅ COMPLETE | Schema + RLS + RPC (3 files, 16 instances) |
+| **Module-Chat Verification** | 15 min | ✅ COMPLETE | grep validation passed |
+| **Module-KB DB Fix** | 60-90 min | ⏳ PENDING | Schema + RLS + RPC + Views (5 files, 21 instances) |
+| **Module-KB Verification** | 15 min | ⏳ PENDING | grep validation |
+| **Migration Files Creation** | 60-90 min | ⏳ PENDING | SQL migration scripts for existing database |
+| **Lambda Change Inventory** | 30-45 min | ⏳ PENDING | Document all Lambda changes |
+| **Plan Update** | 15 min | ✅ COMPLETE | Updated with session 1 progress |
+| **Total** | **4-6 hours** | **~50% COMPLETE** | ~1 working day (DB only) |
+
+**Note:** Lambda and Frontend changes will be implemented by other teams using the inventory document.
+
+---
+
+## Phase 1: Schema Analysis (Discovery) - COMPLETE ✅
+
 
 ### 1.1: Table Column Name Audit
 
-**Objective**: Find all column name violations of abbreviated foreign key standards.
+**Objective**: Find all column name violations of abbreviated foreign key standards in NEW modules only.
 
 **Process:**
 ```bash
-# Search for columns that should use abbreviations
+# Search ONLY in new modules (kb, chat, eval, voice, ws)
 cd templates/_modules-core
 cd templates/_modules-functional
 
-# Find workspace_id columns (should be ws_id)
-grep -r "workspace_id" --include="*.sql" .
+# Find workspace_id columns (should be ws_id) - NEW MODULES ONLY
+grep -r "workspace_id" --include="*.sql" \
+  templates/_modules-core/module-kb/ \
+  templates/_modules-core/module-chat/ \
+  templates/_modules-functional/module-eval/ \
+  templates/_modules-functional/module-voice/ \
+  templates/_modules-functional/module-ws/
 
-# Find knowledge_base_id columns (should be kb_id)  
-grep -r "knowledge_base_id" --include="*.sql" .
+# Find knowledge_base_id columns (should be kb_id) - NEW MODULES ONLY
+grep -r "knowledge_base_id" --include="*.sql" \
+  templates/_modules-core/module-kb/ \
+  templates/_modules-core/module-chat/ \
+  templates/_modules-functional/module-eval/ \
+  templates/_modules-functional/module-voice/ \
+  templates/_modules-functional/module-ws/
 
-# Find workflow_id columns (should be wf_id)
-grep -r "workflow_id" --include="*.sql" .
+# Find workflow_id columns (should be wf_id) - NEW MODULES ONLY
+grep -r "workflow_id" --include="*.sql" \
+  templates/_modules-core/module-kb/ \
+  templates/_modules-core/module-chat/ \
+  templates/_modules-functional/module-eval/ \
+  templates/_modules-functional/module-voice/ \
+  templates/_modules-functional/module-ws/
 
-# Find organization_id columns (should be org_id)
-grep -r "organization_id" --include="*.sql" .
+# Find organization_id columns (should be org_id) - NEW MODULES ONLY
+grep -r "organization_id" --include="*.sql" \
+  templates/_modules-core/module-kb/ \
+  templates/_modules-core/module-chat/ \
+  templates/_modules-functional/module-eval/ \
+  templates/_modules-functional/module-voice/ \
+  templates/_modules-functional/module-ws/
 ```
 
 **Output**: `findings_table-column-names.md`
@@ -62,21 +335,32 @@ grep -r "organization_id" --include="*.sql" .
 
 ### 1.2: RLS Policy Audit
 
-**Objective**: Find RLS policies referencing non-standard column names.
+**Objective**: Find RLS policies referencing non-standard column names in NEW modules only.
 
 **Process:**
 ```bash
-# Find all RLS policy files
-find templates -name "*rls*.sql" -type f
+# Find RLS policy files in NEW modules only
+find templates/_modules-core/module-kb -name "*rls*.sql" -type f
+find templates/_modules-core/module-chat -name "*rls*.sql" -type f
+find templates/_modules-functional/module-eval -name "*rls*.sql" -type f
+find templates/_modules-functional/module-voice -name "*rls*.sql" -type f
+find templates/_modules-functional/module-ws -name "*rls*.sql" -type f
 
-# Extract policy definitions
-grep -A 20 "CREATE POLICY" templates/**/*rls*.sql
+# Check for workspace_id references in NEW modules
+grep -B 5 -A 5 "workspace_id" \
+  templates/_modules-core/module-kb/**/*rls*.sql \
+  templates/_modules-core/module-chat/**/*rls*.sql \
+  templates/_modules-functional/module-eval/**/*rls*.sql \
+  templates/_modules-functional/module-voice/**/*rls*.sql \
+  templates/_modules-functional/module-ws/**/*rls*.sql
 
-# Check for workspace_id references in policies
-grep -B 5 -A 5 "workspace_id" templates/**/*rls*.sql
-
-# Check for knowledge_base_id references
-grep -B 5 -A 5 "knowledge_base_id" templates/**/*rls*.sql
+# Check for knowledge_base_id references in NEW modules
+grep -B 5 -A 5 "knowledge_base_id" \
+  templates/_modules-core/module-kb/**/*rls*.sql \
+  templates/_modules-core/module-chat/**/*rls*.sql \
+  templates/_modules-functional/module-eval/**/*rls*.sql \
+  templates/_modules-functional/module-voice/**/*rls*.sql \
+  templates/_modules-functional/module-ws/**/*rls*.sql
 ```
 
 **Output**: `findings_rls-policies.md`
@@ -165,25 +449,33 @@ grep -r "CREATE TRIGGER" --include="*.sql" templates/
 
 ### 2.1: Lambda Database Call Audit
 
-**Objective**: Find all Lambda code using non-standard column names in queries.
+**Objective**: Find all Lambda code using non-standard column names in NEW modules only.
 
 **Process:**
 ```bash
-# Search Lambda Python files for workspace_id
+# Search Lambda Python files for workspace_id in NEW modules only
 grep -r "workspace_id" --include="*.py" \
-  templates/_modules-core/*/backend/lambdas/ \
-  templates/_modules-functional/*/backend/lambdas/ \
-  templates/_project-stack-template/packages/org-common/
+  templates/_modules-core/module-kb/backend/lambdas/ \
+  templates/_modules-core/module-chat/backend/lambdas/ \
+  templates/_modules-functional/module-eval/backend/lambdas/ \
+  templates/_modules-functional/module-voice/backend/lambdas/ \
+  templates/_modules-functional/module-ws/backend/lambdas/
 
-# Search for knowledge_base_id
+# Search for knowledge_base_id in NEW modules only
 grep -r "knowledge_base_id" --include="*.py" \
-  templates/_modules-core/*/backend/lambdas/ \
-  templates/_modules-functional/*/backend/lambdas/
+  templates/_modules-core/module-kb/backend/lambdas/ \
+  templates/_modules-core/module-chat/backend/lambdas/ \
+  templates/_modules-functional/module-eval/backend/lambdas/ \
+  templates/_modules-functional/module-voice/backend/lambdas/ \
+  templates/_modules-functional/module-ws/backend/lambdas/
 
-# Find all database queries (org_common calls)
+# Find all database queries (org_common calls) in NEW modules only
 grep -r "find_one\|find_many\|insert_one\|update_one" --include="*.py" \
-  templates/_modules-core/*/backend/lambdas/ \
-  templates/_modules-functional/*/backend/lambdas/
+  templates/_modules-core/module-kb/backend/lambdas/ \
+  templates/_modules-core/module-chat/backend/lambdas/ \
+  templates/_modules-functional/module-eval/backend/lambdas/ \
+  templates/_modules-functional/module-voice/backend/lambdas/ \
+  templates/_modules-functional/module-ws/backend/lambdas/
 ```
 
 **Output**: `findings_lambda-queries.md`
@@ -197,19 +489,25 @@ grep -r "find_one\|find_many\|insert_one\|update_one" --include="*.py" \
 
 ### 2.2: Frontend API Call Audit
 
-**Objective**: Find frontend code using non-standard column names.
+**Objective**: Find frontend code using non-standard column names in NEW modules only.
 
 **Process:**
 ```bash
-# Search TypeScript/JavaScript for workspace_id
+# Search TypeScript/JavaScript for workspace_id in NEW modules only
 grep -r "workspace_id" --include="*.ts" --include="*.tsx" \
-  templates/_project-stack-template/apps/web/ \
-  templates/_modules-core/*/frontend/ \
-  templates/_modules-functional/*/frontend/
+  templates/_modules-core/module-kb/frontend/ \
+  templates/_modules-core/module-chat/frontend/ \
+  templates/_modules-functional/module-eval/frontend/ \
+  templates/_modules-functional/module-voice/frontend/ \
+  templates/_modules-functional/module-ws/frontend/
 
-# Check API request payloads
-grep -r "workspace_id" --include="*.ts" --include="*.tsx" \
-  templates/_project-stack-template/apps/web/lib/api/
+# Check for knowledge_base_id in NEW modules
+grep -r "knowledge_base_id" --include="*.ts" --include="*.tsx" \
+  templates/_modules-core/module-kb/frontend/ \
+  templates/_modules-core/module-chat/frontend/ \
+  templates/_modules-functional/module-eval/frontend/ \
+  templates/_modules-functional/module-voice/frontend/ \
+  templates/_modules-functional/module-ws/frontend/
 ```
 
 **Output**: `findings_frontend-code.md`
@@ -457,15 +755,40 @@ ALTER TABLE {table} RENAME COLUMN {new_col} TO {old_col};
 
 ## Success Criteria
 
-- [ ] All tables use abbreviated foreign key columns per standard
-- [ ] All RLS policies reference correct column names
-- [ ] All indexes use correct column names
-- [ ] All Lambda queries use correct column names
-- [ ] All frontend code uses correct column names
+**DB Schema Changes:**
+- [x] Module-Eval: All SQL files use `ws_id` ✅ COMPLETE
+- [x] Module-Chat: All SQL files use `ws_id` ✅ COMPLETE
+- [ ] Module-KB: All SQL files use `ws_id` (5 files remaining)
+- [x] Verification: grep returns 0 results in completed modules ✅
+
+**Migration Files (For Existing Databases):**
+- [x] `2026-01-20_rename-eval_doc_summaries-workspace_id-to-ws_id.sql` (eval module) ✅
+- [x] `2026-01-20_rename-chat_sessions-workspace_id-to-ws_id.sql` (chat module) ✅
+- [x] `2026-01-20_rename-kb_bases-workspace_id-to-ws_id.sql` (kb module) ✅
+- [x] `2026-01-20_rename-kb_access_ws-workspace_id-to-ws_id.sql` (kb module) ✅
+- [x] `2026-01-20_rename-voice_sessions-workspace_id-to-ws_id.sql` (voice module) ✅
+- [x] `2026-01-20_update-ws-rpc-functions-workspace_id-to-ws_id.sql` (ws module) ✅
+
+**Lambda Change Inventory (For Other Teams):**
+- [x] **Comprehensive Inventory Document**: `docs/plans/lambda-change-inventory_schema-naming-audit.md` ✅
+- [x] **Module-Eval**: ~65 instances documented (eval-processor, eval-results) ✅
+- [x] **Module-Chat**: ~30 instances documented (chat-sessions) ✅
+- [x] **Module-KB**: ~35 instances documented (kb-processor) ✅
+- [x] **Module-Voice**: ~25 instances documented (voice-processor) ✅
+- [x] **Module-WS**: ~20 instances documented (ws-manager RPC calls) ✅
+- [x] **Frontend Changes**: TypeScript interface updates documented (if needed) ✅
+- [x] **Helper Scripts**: Validation script and find/replace patterns included ✅
+
+**Documentation:**
+- [x] Plan document updated with ALL modules scope ✅
+- [x] Findings document updated with voice + ws violations ✅
+- [x] Lambda change inventory document created ✅
+- [x] Migration files documented with clear step-by-step instructions ✅
+
+**Testing (Post-Migration):**
 - [ ] All tests pass
-- [ ] No 406 errors in production
-- [ ] Documentation updated
-- [ ] Migration guide published
+- [ ] No 406 errors in test environment
+- [ ] RLS policies functioning correctly
 
 ---
 
@@ -495,17 +818,281 @@ ALTER TABLE {table} RENAME COLUMN {new_col} TO {old_col};
 
 ---
 
-## Next Steps
+## Deployment Guide
 
-1. **User Approval**: Get sign-off on plan approach
-2. **Start Phase 1**: Begin schema analysis
-3. **Create Findings Documents**: Document all violations
-4. **Review Findings**: Prioritize fixes based on impact
-5. **Elaborate Remediation Plan**: Detail exact changes needed
-6. **Execute Phased Rollout**: Fix batch by batch
+### ⚠️ CRITICAL: Migration Execution Order
+
+**There is a HARD DEPENDENCY between KB migrations:**
+
+```bash
+# ⚠️ MUST run kb_access_ws BEFORE kb_bases (dependency exists)
+# The kb_bases migration recreates an RPC function that references kb_access_ws.ws_id
+# If kb_access_ws hasn't been migrated yet, the function creation will FAIL
+```
+
+**Recommended Execution Order:**
+
+```bash
+# 1. eval_doc_summaries (Priority 1 - blocks inference profile fix)
+psql -h $DB_HOST -U $DB_USER -d $DB_NAME \
+  -f scripts/migrations/2026-01-20_rename-eval_doc_summaries-workspace_id-to-ws_id.sql
+
+# 2. chat_sessions (Priority 2)
+psql -h $DB_HOST -U $DB_USER -d $DB_NAME \
+  -f scripts/migrations/2026-01-20_rename-chat_sessions-workspace_id-to-ws_id.sql
+
+# 3. kb_access_ws (MUST run before kb_bases)
+psql -h $DB_HOST -U $DB_USER -d $DB_NAME \
+  -f scripts/migrations/2026-01-20_rename-kb_access_ws-workspace_id-to-ws_id.sql
+
+# 4. kb_bases (depends on kb_access_ws having ws_id column)
+psql -h $DB_HOST -U $DB_USER -d $DB_NAME \
+  -f scripts/migrations/2026-01-20_rename-kb_bases-workspace_id-to-ws_id.sql
+
+# 5. voice_sessions (independent)
+psql -h $DB_HOST -U $DB_USER -d $DB_NAME \
+  -f scripts/migrations/2026-01-20_rename-voice_sessions-workspace_id-to-ws_id.sql
+
+# 6. ws-rpc-functions (independent, updates workspace management)
+psql -h $DB_HOST -U $DB_USER -d $DB_NAME \
+  -f scripts/migrations/2026-01-20_update-ws-rpc-functions-workspace_id-to-ws_id.sql
+```
+
+### Deployment Strategy Options
+
+#### Option A: Coordinated Deployment (Minimal Downtime)
+
+**Best for production with brief maintenance window (15-30 minutes)**
+
+1. **Schedule maintenance window**
+2. **Deploy Lambda changes FIRST** (all modules)
+3. **Run migrations in correct order** (within same window)
+4. **Test functionality** immediately
+5. **End maintenance window**
+
+**Pros:** Controlled, predictable  
+**Cons:** Brief downtime required
 
 ---
 
-**Document Status:** 📋 Ready for Review  
-**Requires:** User approval to proceed with Phase 1  
-**Expected Completion:** 2-3 weeks from approval
+#### Option B: Phased Migration (Zero Downtime) ⭐ RECOMMENDED
+
+**Best for production with no downtime tolerance**
+
+**Phase 1: Add New Columns (Non-Breaking)**
+
+Create modified migration scripts that ONLY execute Steps 1-5 (stop before dropping old columns):
+
+```sql
+-- Run ONLY these steps for each migration:
+-- STEP 1: Add new ws_id column (nullable initially)
+-- STEP 2: Copy data from workspace_id to ws_id
+-- STEP 3: Add foreign key constraint
+-- STEP 4: Add indexes
+-- STEP 5: Verify data copied correctly
+-- STOP HERE (don't drop old column yet)
+```
+
+**Result:** Both `workspace_id` and `ws_id` columns exist and contain identical data.
+
+**Phase 2: Deploy Lambda Changes**
+
+- Deploy Lambda updates to use `ws_id` (per inventory document)
+- Test thoroughly - both columns still exist
+- Old Lambda code (if any) still works with `workspace_id`
+
+**Phase 3: Remove Old Columns (After Verification)**
+
+Run Steps 6-12 of each migration:
+- Drop old RLS policies
+- Drop old constraints and indexes
+- Drop `workspace_id` column
+- Recreate RLS policies with `ws_id` references
+
+**Pros:** Zero downtime, rollback capability  
+**Cons:** More complex, requires phased scripts
+
+---
+
+### Migration Testing Checklist
+
+**Before Running Migrations:**
+
+```bash
+# 1. Create database backup
+pg_dump -h $DB_HOST -U $DB_USER -d $DB_NAME > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# 2. Verify current state
+psql -h $DB_HOST -U $DB_USER -d $DB_NAME -c "
+SELECT 
+    column_name, 
+    data_type,
+    is_nullable
+FROM information_schema.columns
+WHERE table_name IN ('eval_doc_summaries', 'chat_sessions', 'kb_bases', 'kb_access_ws', 'voice_sessions')
+  AND column_name IN ('workspace_id', 'ws_id')
+ORDER BY table_name, column_name;
+"
+```
+
+**During Migration:**
+
+Each migration file outputs verification queries automatically. Watch for:
+- ✅ "Data verification passed" messages
+- ✅ "Migration complete" notices
+- ❌ Any ERROR messages (stop and investigate)
+
+**Post-Migration Verification:**
+
+```sql
+-- 1. Verify columns renamed (should show ONLY ws_id)
+SELECT 
+    table_name,
+    column_name,
+    data_type
+FROM information_schema.columns
+WHERE table_name IN ('eval_doc_summaries', 'chat_sessions', 'kb_bases', 'kb_access_ws', 'voice_sessions')
+  AND column_name LIKE '%ws_%'
+ORDER BY table_name;
+
+-- 2. Verify RLS policies updated
+SELECT 
+    tablename,
+    policyname,
+    definition
+FROM pg_policies
+WHERE tablename IN ('eval_doc_summaries', 'chat_sessions', 'kb_bases', 'kb_access_ws', 'voice_sessions')
+ORDER BY tablename, policyname;
+
+-- 3. Verify RPC functions use p_ws_id parameter
+SELECT 
+    routine_name,
+    parameter_name,
+    data_type
+FROM information_schema.parameters
+WHERE specific_schema = 'public'
+  AND parameter_name LIKE '%ws%'
+  AND parameter_mode = 'IN'
+ORDER BY routine_name, ordinal_position;
+
+-- 4. Verify data integrity (row counts unchanged)
+SELECT 
+    'eval_doc_summaries' as table_name, COUNT(*) as row_count FROM eval_doc_summaries
+UNION ALL
+SELECT 'chat_sessions', COUNT(*) FROM chat_sessions
+UNION ALL
+SELECT 'kb_bases', COUNT(*) FROM kb_bases
+UNION ALL
+SELECT 'kb_access_ws', COUNT(*) FROM kb_access_ws
+UNION ALL
+SELECT 'voice_sessions', COUNT(*) FROM voice_sessions;
+```
+
+### Deployment Sequence Decision Matrix
+
+| Your Situation | Recommended Approach |
+|----------------|---------------------|
+| Testing in copy of database | Run migrations in order (fastest) |
+| Production with maintenance window available | Option A: Coordinated Deployment |
+| Production with zero-downtime requirement | Option B: Phased Migration |
+| First-time deployment | Test in dev first, then choose A or B |
+
+### Troubleshooting Common Issues
+
+**Error: "column ws_id does not exist in kb_access_ws"**
+- **Cause:** Ran `kb_bases` migration before `kb_access_ws`
+- **Fix:** Run `kb_access_ws` migration first, then rerun `kb_bases`
+
+**Error: "data mismatch detected"**
+- **Cause:** Some rows have NULL values or data inconsistency
+- **Fix:** Investigate which rows: `SELECT * FROM {table} WHERE workspace_id IS NULL OR ws_id IS NULL;`
+
+**Error: "policy already exists"**
+- **Cause:** Migration was partially run before
+- **Fix:** Each migration handles this with `IF EXISTS` - safe to rerun
+
+**Error: "foreign key constraint violation"**
+- **Cause:** Orphaned references to workspaces table
+- **Fix:** Clean up orphaned rows before running migration
+
+---
+
+## Next Steps
+
+**Current Status (Jan 20, 2026):**
+1. ✅ **ALL MODULE SQL FIXES COMPLETE** - 0 violations remaining across all 5 modules
+2. ✅ **Migration Files Created** - 6 SQL migration scripts ready for deployment
+3. ✅ **Lambda Change Inventory** - Comprehensive documentation for other teams
+4. ✅ **Deployment Guide Added** - Comprehensive guide with execution order and troubleshooting
+5. ⏳ **Migration Testing** - Next phase: Test migrations in database copy (see below)
+6. ⏳ **Lambda Updates** - Coordinate with functional teams (pending)
+7. ⏳ **Production Deployment** - Deploy after successful testing (pending)
+
+**Phase 3: Migration Testing & SQL Error Resolution** 🔄 NEXT
+
+**Objective:** Test all migration files in a database copy and resolve any SQL errors before production deployment.
+
+**Process:**
+1. **Setup Test Environment**
+   - Create database copy from production
+   - Verify database backup successful
+   - Configure connection credentials
+
+2. **Execute Migrations in Order**
+   - Follow strict execution order (see Deployment Guide above)
+   - Monitor output for errors
+   - Document any failures with error messages
+
+3. **Fix SQL Errors (If Found)**
+   - Analyze error messages
+   - Update migration scripts to fix issues
+   - Rerun failed migrations
+   - Verify fixes with verification queries
+
+4. **Validation**
+   - Run all post-migration verification queries
+   - Verify row counts unchanged
+   - Verify RLS policies exist and function correctly
+   - Check RPC function signatures
+
+5. **Documentation**
+   - Document any issues encountered
+   - Update migration files with fixes
+   - Update deployment guide if needed
+
+**Success Criteria:**
+- [ ] All 6 migrations execute without errors
+- [ ] All verification queries pass
+- [ ] Data integrity maintained (row counts match)
+- [ ] RLS policies function correctly
+- [ ] RPC functions have correct signatures
+
+**Expected Timeline:** 2-4 hours (including fixes)
+
+**Immediate Next Actions:**
+1. **Test migrations in database copy** (follow execution order in Deployment Guide)
+2. **Fix any SQL errors** found during testing
+3. **Retest until all migrations succeed**
+4. **Document results** in findings document
+5. **Create PR** for merging to main branch
+6. **Coordinate Lambda updates** with functional teams (after PR merge)
+
+**Migration Files Location:**
+- All 6 files in `scripts/migrations/2026-01-20_*.sql`
+
+**Lambda Changes Documentation:**
+- Complete inventory: `docs/plans/lambda-change-inventory_schema-naming-audit.md`
+- Estimated effort: 9-15 hours (~2 work days) for all Lambda changes
+
+---
+
+**Document Status:** ✅ PHASE 1 & 2 COMPLETE - All deliverables finished  
+**Progress:** 5/5 modules complete (eval ✅, chat ✅, kb ✅, voice ✅, ws ✅)  
+**Total Violations Fixed:** 82 instances across all modules  
+**Verification:** 0 violations remaining (grep verified Jan 20, 2026)  
+**Deliverables:**
+- ✅ 6 Database migration files created
+- ✅ Lambda change inventory document (comprehensive, ~175 instances documented)
+- ✅ Helper validation script and testing guidelines
+**Next Steps:** Deploy migrations to existing databases, coordinate Lambda changes with other teams  
+**Session Complete:** January 20, 2026

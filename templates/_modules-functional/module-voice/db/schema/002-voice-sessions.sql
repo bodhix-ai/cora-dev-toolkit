@@ -10,7 +10,7 @@ DROP TABLE IF EXISTS public.voice_sessions CASCADE;
 CREATE TABLE public.voice_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id UUID NOT NULL REFERENCES public.orgs(id) ON DELETE CASCADE,
-    workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE,
+    ws_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE,
     candidate_name VARCHAR(255),
     candidate_email VARCHAR(255),
     interview_type VARCHAR(100) NOT NULL,
@@ -47,14 +47,14 @@ CREATE TABLE public.voice_sessions (
 
 -- Indexes
 CREATE INDEX idx_voice_sessions_org_id ON public.voice_sessions(org_id);
-CREATE INDEX idx_voice_sessions_workspace_id ON public.voice_sessions(workspace_id);
+CREATE INDEX idx_voice_sessions_ws_id ON public.voice_sessions(ws_id);
 CREATE INDEX idx_voice_sessions_status ON public.voice_sessions(status);
 CREATE INDEX idx_voice_sessions_created_at ON public.voice_sessions(created_at DESC);
 CREATE INDEX idx_voice_sessions_config_id ON public.voice_sessions(config_id);
 CREATE INDEX idx_voice_sessions_interview_type ON public.voice_sessions(interview_type);
 CREATE INDEX idx_voice_sessions_assigned_to ON public.voice_sessions(assigned_to) WHERE assigned_to IS NOT NULL;
 -- Composite index for common query: sessions in workspace
-CREATE INDEX idx_voice_sessions_ws_user ON public.voice_sessions(workspace_id, created_by) WHERE workspace_id IS NOT NULL;
+CREATE INDEX idx_voice_sessions_ws_user ON public.voice_sessions(ws_id, created_by) WHERE ws_id IS NOT NULL;
 
 -- Trigger function
 CREATE OR REPLACE FUNCTION update_voice_sessions_updated_at()
@@ -75,7 +75,7 @@ CREATE TRIGGER voice_sessions_updated_at
 -- Comments
 COMMENT ON TABLE public.voice_sessions IS 'Voice interview sessions with Daily.co room details';
 COMMENT ON COLUMN public.voice_sessions.org_id IS 'Organization ID for multi-tenancy';
-COMMENT ON COLUMN public.voice_sessions.workspace_id IS 'Workspace (for workspace-scoped sessions, NULL for org-level sessions)';
+COMMENT ON COLUMN public.voice_sessions.ws_id IS 'Workspace (for workspace-scoped sessions, NULL for org-level sessions)';
 COMMENT ON COLUMN public.voice_sessions.candidate_name IS 'External candidate name (for job interviews)';
 COMMENT ON COLUMN public.voice_sessions.candidate_email IS 'External candidate email (for job interviews)';
 COMMENT ON COLUMN public.voice_sessions.assigned_to IS 'Internal user assigned to participate (for career/content interviews)';
