@@ -54,6 +54,7 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 | Branch | Status | Focus Area | Completed |
 |--------|--------|------------|-----------|
+| `schema-naming-audit` | ✅ Archived | Schema Naming Compliance Audit (eval, chat, kb, voice, ws) | 2026-01-21 |
 | `admin-eval-config-s2` | ✅ Archived | Workspace Doc Eval Implementation & Org Admin Config | 2026-01-20 |
 
 ---
