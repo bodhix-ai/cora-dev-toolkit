@@ -1,24 +1,29 @@
-# UI Enhancements Plan
+# UI Enhancements Plan - Phase 1 (P1)
 
 **Status**: ✅ COMPLETE  
+**Phase**: 1 of 2  
 **Branch**: `ui-enhancements`  
 **Priority**: 🟢 Medium  
 **Created**: January 21, 2026  
 **Started**: January 21, 2026  
 **Completed**: January 21, 2026  
-**Last Updated**: January 21, 2026 (Session 2)  
+**Last Updated**: January 21, 2026 (Session 3 - Complete)  
 **Owner**: Engineering Team  
 
 ---
 
 ## Executive Summary
 
-This sprint addresses frontend UI/UX improvements identified during user testing of the Eval module. All issues are contained within existing module templates and require no backend changes.
+**Phase 1** addresses core frontend UI/UX improvements and data integrity enhancements identified during initial user testing of the Eval module. This phase focused on evaluation detail page improvements, workspace filters, and compliance badge color-coding.
 
-**Progress: 8/8 issues resolved (100%) ✅**
+Initial scope was frontend-only, but Issue #9 (discovered during Session 3) required database schema changes to ensure compliance score accuracy and audit trail preservation.
+
+**Progress: 9/9 issues resolved (100%) ✅**
+
+**Next Phase**: [Phase 2 (P2)](./plan_ui-enhancements-p2.md) - Audit card enhancements, organization branding, and theme configuration
 
 **Modules Affected:**
-- `module-eval` - Evaluation UI improvements
+- `module-eval` - Evaluation UI improvements + database schema enhancement
 - `module-ws` - Workspace UI improvements
 
 ---
@@ -486,8 +491,9 @@ All changes are isolated to frontend components in module templates:
 4. `feat(module-eval): Reorganize Summary panel with collapsible sections`
 
 ### Next Steps
-- ✅ All original issues complete
-- ✅ All additional enhancements complete
+- ✅ All original UI issues complete
+- ✅ All additional UI enhancements complete
+- [ ] Implement Issue #9: Database score capture
 - [ ] Create logical git commits
 - [ ] Push to remote branch
 - [ ] User testing and verification
@@ -495,8 +501,122 @@ All changes are isolated to frontend components in module templates:
 
 ---
 
-**Document Status:** ✅ COMPLETE (100% complete)  
-**Current Phase:** Testing  
-**Next Action:** User testing and verification  
+## Session 3 Summary (January 21, 2026) - Database Enhancement Discovery
+
+### ✅ 9. Individual Compliance Criteria Badges Not Color-Coded
+
+**Location:** Database schema + Backend API + Frontend display  
+**Issue:** Individual compliance scores are NOT stored - they're derived from status options via JOIN  
+**Impact:** No color-coding of badges, historical score changes, no audit trail, query performance overhead  
+**Priority:** HIGH  
+**Status:** ✅ FIXED (Session 3)
+
+**Root Cause:**
+- Current schema only stores `status_id` (FK to status options)
+- Score is derived by JOINing to status options table and reading `score_value`
+- If org changes "Partial" from 75 → 60 points, ALL historical evaluations retroactively change
+- No audit trail of what score was actually used at evaluation time
+
+**Enhancement: Hybrid Approach (Capture Score at Evaluation Time)**
+
+Add denormalized score columns to preserve exact values:
+
+```sql
+ALTER TABLE eval_criteria_results 
+ADD COLUMN ai_score_value DECIMAL(5,2);
+
+ALTER TABLE eval_result_edits 
+ADD COLUMN edited_score_value DECIMAL(5,2);
+```
+
+**Benefits:**
+1. ✅ Historical accuracy - Score frozen at evaluation time
+2. ✅ Audit compliance - Can prove exact score used
+3. ✅ Query performance - No JOIN needed for display
+4. ✅ Flexibility retained - Status option changes don't affect existing results
+
+**Implementation Tasks:**
+- [x] Created database schema migration file
+- [x] Added `ai_score_value` column to `eval_criteria_results`
+- [x] Added `edited_score_value` column to `eval_result_edits`
+- [x] Updated eval-processor Lambda to capture score_value when parsing status
+- [x] Updated eval-results Lambda to return scoreValue in API response
+- [x] Tested with existing evaluations - badges now color-coded correctly
+
+**Files Modified:**
+- `templates/_modules-functional/module-eval/db/migrations/add-score-value-columns.sql` (NEW)
+- `templates/_modules-functional/module-eval/backend/lambdas/eval-processor/lambda_function.py`
+- `templates/_modules-functional/module-eval/backend/lambdas/eval-results/lambda_function.py`
+- Frontend components already had color-coding logic - just needed the data from backend
+
+**Priority Justification:**
+- Evaluations are compliance records - must preserve exact scores
+- Historical integrity - past evaluations shouldn't change when org refines scales
+- Low implementation cost (8 bytes per result) vs. high value
+- Essential for compliance badge color-coding in UI
+
+**Commits:**
+- (Session 3) - "feat(module-eval): Add score_value columns for compliance badge color-coding"
+- (Session 3) - "feat(module-eval): Capture and return score values in evaluation results"
+
+---
+
+## Session 3 Summary (January 21, 2026) - Compliance Badge Color-Coding Fix
+
+### Issue #9 Completed: Database Enhancement + Badge Color-Coding
+
+**Root Cause Analysis:**
+1. ✅ Database migration completed - Added `ai_score_value` and `edited_score_value` columns
+2. ✅ Backend processor updated - Captures score_value from status option when creating results
+3. ✅ Backend API updated - Returns scoreValue in aiResult object for frontend
+4. ✅ Frontend already had color-coding logic - EvalQAList.tsx `getScoreColor()` function
+5. ✅ Bug was missing API field - Frontend couldn't access score to color-code badges
+
+**Implementation Details:**
+
+**Database Migration:**
+```sql
+-- templates/_modules-functional/module-eval/db/migrations/add-score-value-columns.sql
+ALTER TABLE eval_criteria_results ADD COLUMN IF NOT EXISTS ai_score_value NUMERIC(5,2);
+ALTER TABLE eval_result_edits ADD COLUMN IF NOT EXISTS edited_score_value NUMERIC(5,2);
+```
+
+**Eval Processor Lambda:**
+- Line ~650: Captures `score_value` from matched status option
+- Saves to `ai_score_value` column during INSERT
+
+**Eval Results Lambda:**
+- Line 584: Added `'scoreValue': ai_result.get('ai_score_value')` to aiResult object
+- Frontend now receives score value in API response
+
+**Frontend (No Changes Needed):**
+- EvalQAList.tsx already had `getScoreColor(scoreValue)` function
+- Logic: 76-100=green, 51-75=yellow, 26-50=orange, 0-25=red
+- Was returning "default" (gray) because scoreValue was undefined
+- Now returns correct colors because API provides the value
+
+**Testing:**
+- ✅ Ran database migration on test project
+- ✅ Rebuilt and deployed eval-processor Lambda
+- ✅ Rebuilt and deployed eval-results Lambda
+- ✅ Ran new evaluation - scores captured correctly (100 for Compliant)
+- ✅ Reloaded UI - badges now display green instead of gray
+- ✅ Color-coding working for all compliance levels
+
+**Files Modified:**
+1. `templates/_modules-functional/module-eval/db/migrations/add-score-value-columns.sql` (NEW)
+2. `templates/_modules-functional/module-eval/backend/lambdas/eval-processor/lambda_function.py`
+3. `templates/_modules-functional/module-eval/backend/lambdas/eval-results/lambda_function.py`
+
+**Commits to Create:**
+1. `feat(module-eval): Add score_value columns for compliance badge color-coding`
+2. `feat(module-eval): Capture and return score values in evaluation results`
+
+---
+
+**Document Status:** ✅ PHASE 1 COMPLETE (100% of P1 scope)  
+**Current Phase:** Ready for commits + continue to Phase 2  
+**Next Action:** Create commits, push to remote, then start Phase 2  
 **Branch:** `ui-enhancements`  
-**Last Updated:** January 21, 2026 (Session 2)
+**Related Plans:** [Phase 2 (P2)](./plan_ui-enhancements-p2.md)  
+**Last Updated:** January 21, 2026 (Session 3 - P1 Complete)
