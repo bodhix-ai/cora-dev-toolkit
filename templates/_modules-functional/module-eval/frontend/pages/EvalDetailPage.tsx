@@ -59,6 +59,7 @@ import {
   EvalExportButton,
 } from "../components";
 import type { EvalCriteriaResult, Citation, CriteriaResultWithItem } from "../types";
+import { useWorkspaceConfig } from "@{{PROJECT_NAME}}/module-ws";
 
 // =============================================================================
 // TYPES
@@ -167,6 +168,9 @@ function Header({
   const [workspaceName, setWorkspaceName] = useState<string | null>(providedWorkspaceName || null);
   const [loadingWorkspace, setLoadingWorkspace] = useState(!providedWorkspaceName && !!workspaceId);
 
+  // Get workspace config for dynamic labels
+  const { navLabelSingular } = useWorkspaceConfig();
+
   const statusColors: Record<string, "warning" | "info" | "success" | "error" | "default"> = {
     draft: "default",
     pending: "warning",
@@ -224,7 +228,7 @@ function Header({
               "&:hover": { textDecoration: "underline" }
             }}
           >
-            {loadingWorkspace ? "Loading..." : (workspaceName || "Workspace")}
+            {loadingWorkspace ? "Loading..." : (workspaceName || navLabelSingular)}
           </Link>
           <Link
             component="button"
