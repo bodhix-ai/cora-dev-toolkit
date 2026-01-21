@@ -33,10 +33,10 @@ USING (
         -- Chat is shared with workspace and user is member
         (
             is_shared_with_workspace = true
-            AND workspace_id IS NOT NULL
+            AND ws_id IS NOT NULL
             AND EXISTS (
                 SELECT 1 FROM public.ws_members wm
-                WHERE wm.ws_id = chat_sessions.workspace_id
+                WHERE wm.ws_id = chat_sessions.ws_id
                 AND wm.user_id = auth.uid()
                 AND wm.deleted_at IS NULL
             )

@@ -147,31 +147,31 @@ COMMENT ON FUNCTION create_ws_with_owner(UUID, VARCHAR, TEXT, VARCHAR, VARCHAR, 
 
 -- Function: soft_delete_ws
 CREATE OR REPLACE FUNCTION soft_delete_ws(
-    p_workspace_id UUID,
+    p_ws_id UUID,
     p_user_id UUID
 ) RETURNS JSON AS $$
 DECLARE
     v_workspace workspaces%ROWTYPE;
 BEGIN
     -- Verify user is owner
-    IF NOT is_ws_owner(p_workspace_id, p_user_id) THEN
+    IF NOT is_ws_owner(p_ws_id, p_user_id) THEN
         RAISE EXCEPTION 'Only workspace owners can delete workspaces';
     END IF;
     
     -- Soft delete workspace
     UPDATE workspaces
     SET deleted_at = NOW(), deleted_by = p_user_id, status = 'deleted'
-    WHERE id = p_workspace_id
+    WHERE id = p_ws_id
     RETURNING * INTO v_workspace;
     
     -- Soft delete all members
     UPDATE ws_members
     SET deleted_at = NOW()
-    WHERE ws_id = p_workspace_id;
+    WHERE ws_id = p_ws_id;
     
     -- Remove all favorites
     DELETE FROM ws_favorites
-    WHERE ws_id = p_workspace_id;
+    WHERE ws_id = p_ws_id;
     
     -- Return result
     RETURN json_build_object(
@@ -187,14 +187,14 @@ COMMENT ON FUNCTION soft_delete_ws(UUID, UUID) IS
 
 -- Function: restore_ws
 CREATE OR REPLACE FUNCTION restore_ws(
-    p_workspace_id UUID,
+    p_ws_id UUID,
     p_user_id UUID
 ) RETURNS JSON AS $$
 DECLARE
     v_workspace workspaces%ROWTYPE;
 BEGIN
     -- Get workspace
-    SELECT * INTO v_workspace FROM workspaces WHERE id = p_workspace_id;
+    SELECT * INTO v_workspace FROM workspaces WHERE id = p_ws_id;
     
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Workspace not found';
@@ -207,7 +207,7 @@ BEGIN
     -- Verify user was an owner before deletion
     IF NOT EXISTS (
         SELECT 1 FROM ws_members
-        WHERE ws_id = p_workspace_id
+        WHERE ws_id = p_ws_id
         AND user_id = p_user_id
         AND ws_role = 'ws_owner'
     ) THEN
@@ -217,13 +217,13 @@ BEGIN
     -- Restore workspace
     UPDATE workspaces
     SET deleted_at = NULL, deleted_by = NULL, status = 'active', updated_by = p_user_id, updated_at = NOW()
-    WHERE id = p_workspace_id
+    WHERE id = p_ws_id
     RETURNING * INTO v_workspace;
     
     -- Restore all members
     UPDATE ws_members
     SET deleted_at = NULL
-    WHERE ws_id = p_workspace_id;
+    WHERE ws_id = p_ws_id;
     
     RETURN row_to_json(v_workspace);
 END;
@@ -234,7 +234,7 @@ COMMENT ON FUNCTION restore_ws(UUID, UUID) IS
 
 -- Function: toggle_ws_favorite
 CREATE OR REPLACE FUNCTION toggle_ws_favorite(
-    p_workspace_id UUID,
+    p_ws_id UUID,
     p_user_id UUID
 ) RETURNS JSON AS $$
 DECLARE
@@ -242,34 +242,34 @@ DECLARE
     v_favorited_at TIMESTAMPTZ;
 BEGIN
     -- Verify user is workspace member
-    IF NOT is_ws_member(p_workspace_id, p_user_id) THEN
+    IF NOT is_ws_member(p_ws_id, p_user_id) THEN
         RAISE EXCEPTION 'User is not a member of this workspace';
     END IF;
     
     -- Check if already favorited
     SELECT EXISTS (
         SELECT 1 FROM ws_favorites
-        WHERE ws_id = p_workspace_id AND user_id = p_user_id
+        WHERE ws_id = p_ws_id AND user_id = p_user_id
     ) INTO v_is_favorited;
     
     IF v_is_favorited THEN
         -- Remove favorite
         DELETE FROM ws_favorites
-        WHERE ws_id = p_workspace_id AND user_id = p_user_id;
+        WHERE ws_id = p_ws_id AND user_id = p_user_id;
         
         RETURN json_build_object(
-            'workspace_id', p_workspace_id,
+            'ws_id', p_ws_id,
             'is_favorited', false,
             'favorited_at', NULL
         );
     ELSE
         -- Add favorite
         INSERT INTO ws_favorites (ws_id, user_id)
-        VALUES (p_workspace_id, p_user_id)
+        VALUES (p_ws_id, p_user_id)
         RETURNING created_at INTO v_favorited_at;
         
         RETURN json_build_object(
-            'workspace_id', p_workspace_id,
+            'ws_id', p_ws_id,
             'is_favorited', true,
             'favorited_at', v_favorited_at
         );
@@ -350,7 +350,7 @@ COMMENT ON FUNCTION get_ws_with_member_info(UUID, UUID, BOOLEAN, BOOLEAN, VARCHA
 CREATE OR REPLACE FUNCTION cleanup_expired_ws()
 RETURNS TABLE (
     deleted_count INTEGER,
-    workspace_ids UUID[]
+    ws_ids UUID[]
 ) AS $$
 DECLARE
     v_deleted_ids UUID[];

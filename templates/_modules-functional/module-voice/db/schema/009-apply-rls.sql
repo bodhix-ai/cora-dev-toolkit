@@ -50,10 +50,10 @@ FOR SELECT
 TO authenticated
 USING (
     is_shared_with_workspace = true
-    AND workspace_id IS NOT NULL
+    AND ws_id IS NOT NULL
     AND EXISTS (
         SELECT 1 FROM public.ws_members
-        WHERE ws_members.ws_id = voice_sessions.workspace_id
+        WHERE ws_members.ws_id = voice_sessions.ws_id
         AND ws_members.user_id = auth.uid()
         AND ws_members.deleted_at IS NULL
     )
@@ -196,10 +196,10 @@ USING (
             -- Workspace shared
             (
                 vs.is_shared_with_workspace = true
-                AND vs.workspace_id IS NOT NULL
+                AND vs.ws_id IS NOT NULL
                 AND EXISTS (
                     SELECT 1 FROM public.ws_members
-                    WHERE ws_members.ws_id = vs.workspace_id
+                    WHERE ws_members.ws_id = vs.ws_id
                     AND ws_members.user_id = auth.uid()
                     AND ws_members.deleted_at IS NULL
                 )
@@ -249,10 +249,10 @@ USING (
             -- Workspace shared
             (
                 vs.is_shared_with_workspace = true
-                AND vs.workspace_id IS NOT NULL
+                AND vs.ws_id IS NOT NULL
                 AND EXISTS (
                     SELECT 1 FROM public.ws_members
-                    WHERE ws_members.ws_id = vs.workspace_id
+                    WHERE ws_members.ws_id = vs.ws_id
                     AND ws_members.user_id = auth.uid()
                     AND ws_members.deleted_at IS NULL
                 )
@@ -297,10 +297,10 @@ USING (
             ) OR
             (
                 vs.is_shared_with_workspace = true
-                AND vs.workspace_id IS NOT NULL
+                AND vs.ws_id IS NOT NULL
                 AND EXISTS (
                     SELECT 1 FROM public.ws_members
-                    WHERE ws_members.ws_id = vs.workspace_id
+                    WHERE ws_members.ws_id = vs.ws_id
                     AND ws_members.user_id = auth.uid()
                     AND ws_members.deleted_at IS NULL
                 )

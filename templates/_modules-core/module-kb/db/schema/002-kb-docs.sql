@@ -47,7 +47,7 @@ CREATE INDEX IF NOT EXISTS idx_kb_docs_is_deleted ON public.kb_docs(is_deleted) 
 -- Comments
 COMMENT ON TABLE public.kb_docs IS 'Document metadata with S3 storage and processing status';
 COMMENT ON COLUMN public.kb_docs.org_id IS 'Organization ID (NULL for system-level KBs, inherited from kb_bases)';
-COMMENT ON COLUMN public.kb_docs.s3_key IS 'S3 object key: {org_id}/{workspace_id}/{kb_id}/{doc_id}/{filename}';
+COMMENT ON COLUMN public.kb_docs.s3_key IS 'S3 object key: {org_id}/{ws_id}/{kb_id}/{doc_id}/{filename}';
 COMMENT ON COLUMN public.kb_docs.status IS 'Processing status: pending, processing, indexed, failed';
 
 -- Backfill org_id from parent KB for existing documents (idempotent)
