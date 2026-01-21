@@ -1,14 +1,16 @@
 # Evaluation Inference Profile Fix & AI Operations Monitoring
 
-**Status**: � PARTIALLY COMPLETE - Alternative fix implemented  
-**Priority**: MEDIUM (Core fix done, monitoring pending)  
-**Estimated Duration**: 3-4 hours (2 hours fix + 1-2 hours monitoring)  
+**Status**: 📋 CONTINUED IN `plan_eval-validation-category-implementation.md`  
+**Priority**: MEDIUM (Sessions 1-2 complete, final implementation in progress)  
+**Estimated Duration**: ~~3-4 hours~~ (Sessions 1-2 took ~3 hours, 2-3 hours remaining)  
 **Created**: January 20, 2026  
-**Updated**: January 20, 2026 5:33 PM  
+**Updated**: January 20, 2026 7:28 PM  
 **Branch**: `eval-optimization`  
 **Test Project**: `test-optim`  
 **Test Stack**: `~/code/bodhix/testing/test-optim/ai-sec-stack`  
 **Test Infra**: `~/code/bodhix/testing/test-optim/ai-sec-infra`
+
+> **⚠️ NOTE:** This plan documents the initial problem analysis and Sessions 1-2 implementation work. For the remaining work (proper validation_category implementation), see **[plan_eval-validation-category-implementation.md](plan_eval-validation-category-implementation.md)**.
 
 ---
 
@@ -82,9 +84,10 @@ The code MUST check `validation_category` and branch to different processing pat
 
 ---
 
-**OUTSTANDING WORK (Lower Priority):**
+**OUTSTANDING WORK (Moved to Other Plans):**
 1. **Database column naming** - Moved to `plan_schema-naming-compliance-audit.md` (comprehensive fix)
-2. **AI error logging integration** - ai_log_error table exists but full integration pending
+2. **AI Operations Monitoring** - Moved to `plan_ai-operations-monitoring.md` (comprehensive monitoring system)
+   - Includes: Error logging integration, usage metrics, admin dashboard, alerting
 
 ---
 
