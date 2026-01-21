@@ -10,12 +10,18 @@
 ## Executive Summary
 
 **Total Admin Pages Found:** 19
-- **Project Stack Template:** 11 pages
+- **Project Stack Template:** 11 pages (⚠️ ARCHITECTURAL ISSUE: Should be 0)
 - **Module Templates:** 8 pages
+
+**CRITICAL ARCHITECTURAL DECISION (Jan 21, 2026):**
+- ✅ **All admin pages MUST be module-owned**
+- ❌ Project-stack-template should NOT contain admin pages (only shell/layout)
+- 🔄 **11 orphan pages** need to be moved to appropriate modules
 
 **Audit Scope:**
 1. **Part A:** Authentication patterns (useUser, useSession, none)
 2. **Part B:** UI/Layout patterns (headers, breadcrumbs, padding, collapse/expand, etc.)
+3. **Part C (NEW):** Module ownership (identify orphans, propose correct module)
 
 ---
 
@@ -203,13 +209,43 @@ For each page, document:
 
 ---
 
+## Part C: Module Ownership Audit (NEW)
+
+**Architectural Principle:** All admin pages MUST be module-owned.
+
+**Orphan Pages Requiring Module Assignment:**
+
+| Page in project-stack-template | Proposed Module | Rationale |
+|-------------------------------|-----------------|-----------|
+| `/admin/access/page.tsx` | module-access | Access control is core to module-access |
+| `/admin/access/orgs/[id]/page.tsx` | module-access | Organization management under access control |
+| `/admin/ai/page.tsx` | module-ai | AI provider enablement is module-ai |
+| `/admin/mgmt/page.tsx` | module-mgmt | Platform management is module-mgmt |
+| `/admin/organizations/page.tsx` | module-access | Org list/management is access control |
+| `/admin/platform/page.tsx` | module-mgmt | Platform settings belong to management |
+| `/admin/org/page.tsx` | ⚠️ TBD | Org admin landing - shell page or module-ws? |
+| `/admin/sys/chat/page.tsx` | module-chat | ⚠️ Duplicate of module route |
+| `/admin/sys/kb/page.tsx` | module-kb | ⚠️ Duplicate of module route |
+| `/admin/org/chat/page.tsx` | module-chat | ⚠️ Duplicate of module route |
+| `/admin/org/kb/page.tsx` | module-kb | ⚠️ Duplicate of module route |
+
+**Actions Required:**
+1. [ ] Verify duplicates - are project-stack-template versions outdated?
+2. [ ] Move orphan pages to their correct modules
+3. [ ] Update project creation script to NOT copy admin pages from template
+4. [ ] Ensure all modules provide their own admin routes
+
+---
+
 ## Next Steps
 
 1. [ ] Complete Part A audit for all 19 pages
 2. [ ] Complete Part B audit for all 19 pages
-3. [ ] Analyze patterns and identify inconsistencies
-4. [ ] Create standards proposal document (Phase 2)
-5. [ ] Present findings and recommendations for approval
+3. [ ] Complete Part C audit (module ownership)
+4. [ ] Analyze patterns and identify inconsistencies
+5. [ ] Identify and document all orphan pages requiring relocation
+6. [ ] Create standards proposal document (Phase 2)
+7. [ ] Present findings and recommendations for approval
 
 ---
 
