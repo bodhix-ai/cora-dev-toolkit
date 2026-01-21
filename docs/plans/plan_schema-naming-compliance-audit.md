@@ -48,6 +48,69 @@ A focused audit of newly introduced module database schema objects, RLS policies
 
 ---
 
+## Infrastructure Prerequisite: Schema Ordering Fix ✅
+
+**Status**: ✅ COMPLETE (January 20, 2026)  
+**Issue**: Project creation was failing due to schema files being processed alphabetically instead of by module tier dependencies.
+
+### Problem Discovered
+
+While attempting to create a test project for schema naming validation, we discovered a critical infrastructure issue:
+
+**Error Message:**
+```
+ERROR: relation "public.workspaces" does not exist
+```
+
+**Root Cause:**
+- Schema files were being sorted alphabetically by module name
+- This caused `chat_sessions` (module-chat) to be created before `workspaces` (module-ws)
+- Since "chat" < "ws" alphabetically, the foreign key reference failed
+- Similarly, `kb_bases` tried to reference `chat_sessions` before it existed
+
+### Solution Implemented
+
+**1. Module Reclassification**
+- Moved `module-ws` from functional to core (Tier 2)
+- Rationale: Multiple modules depend on workspaces for scoping
+- Updated `module-registry.yaml` and ADR-013 to reflect the change
+
+**2. Schema Consolidation Fix**
+- Rewrote `consolidate_database_schemas()` function in `create-cora-project.sh`
+- Changed from alphabetical sorting to tier-based ordering:
+  - **Tier 1**: module-access (foundation)
+  - **Tier 2**: module-ai, module-ws (platform services)
+  - **Tier 3**: module-chat, module-kb, module-mgmt (applications)
+  - **Functional**: module-eval, module-voice (optional features)
+
+**3. Files Modified**
+- `templates/_modules-core/module-registry.yaml` - Updated module-ws classification
+- `docs/arch decisions/ADR-013-CORE-MODULE-CRITERIA.md` - Documented rationale
+- `scripts/create-cora-project.sh` - Fixed schema consolidation logic
+
+### Verification
+
+**Schema Creation Order (Verified):**
+```
+Line 2840: CREATE TABLE workspaces (Tier 2 - module-ws)
+Line 4260: CREATE TABLE chat_sessions (Tier 3 - module-chat)
+Line 5003: CREATE TABLE kb_bases (Tier 3 - module-kb)
+```
+
+**Result:** ✅ All dependencies created in correct order, project creation succeeds.
+
+### Git Changes Summary
+
+The fix resulted in 62 file changes:
+- **3 modified files**: ADR-013, create-cora-project.sh, module-registry.yaml
+- **59 moved files**: module-ws directory moved from `_modules-functional/` to `_modules-core/`
+  - Git tracks this as ~30 deletions + ~30 additions
+  - No logic changes to module-ws files, just location change
+
+**Impact:** This infrastructure fix unblocks all future test project creation and ensures schema dependencies are always satisfied.
+
+---
+
 ## Phase 1 Results: Audit Complete ✅
 
 **Findings Document:** `docs/plans/findings_schema-naming-audit_phase1.md`

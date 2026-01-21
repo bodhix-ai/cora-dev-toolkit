@@ -148,4 +148,8 @@ FROM pg_policies
 WHERE tablename = 'eval_doc_summaries'
 ORDER BY policyname;
 
-RAISE NOTICE '✅ Migration complete: eval_doc_summaries.workspace_id → ws_id';
+-- Migration complete notice
+DO $$
+BEGIN
+    RAISE NOTICE '✅ Migration complete: eval_doc_summaries.workspace_id → ws_id';
+END $$;

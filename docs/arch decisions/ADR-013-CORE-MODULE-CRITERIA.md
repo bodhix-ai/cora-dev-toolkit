@@ -1,7 +1,7 @@
 # ADR-013: Core vs Functional Module Classification
 
 **Status:** Accepted  
-**Date:** January 17, 2026  
+**Date:** January 17, 2026 (Updated: January 20, 2026)  
 **Deciders:** Engineering Team  
 **Context:** Establish clear criteria for classifying CORA modules as core vs functional
 
@@ -25,9 +25,10 @@ This decision affects:
 ### Core Modules (Required)
 
 | Module | Tier | Purpose | Why Core? |
-|--------|------|---------|-----------|
+|--------|------|---------|--------------|
 | module-access | 1 | Authentication, authorization, user management, RBAC | Foundation for all user interactions |
 | module-ai | 2 | AI provider management, credential management | Required for AI-enabled applications |
+| module-ws | 2 | Workspace management, multi-tenancy | **Core dependency** - chat, kb, eval, voice all require workspace scoping |
 | module-mgmt | 3 | Platform management, monitoring, admin tools | Required for system operations |
 | module-kb | 3 | Knowledge base, RAG, vector search | **Core AI capability** - fundamental for knowledge retrieval |
 | module-chat | 3 | Chat & messaging, AI integration | **Core AI capability** - fundamental for AI interaction |
@@ -35,8 +36,7 @@ This decision affects:
 ### Functional Modules (Optional)
 
 | Module | Tier | Purpose | Why Functional? |
-|--------|------|---------|-----------------|
-| module-ws | null | Workspace management, multi-tenancy | Feature-specific, not all projects need workspaces |
+|--------|------|---------|--------------------|
 | module-eval | null | Model evaluation, testing | Feature-specific, specialized use case |
 | module-voice | null | Voice interaction capabilities | Feature-specific, specialized use case |
 
@@ -115,7 +115,7 @@ Core modules use an explicit **tier system** to define boot order and dependenci
 | Tier | Purpose | Dependencies | Examples |
 |------|---------|--------------|----------|
 | **Tier 1** | Foundation - Authentication & Identity | None | module-access |
-| **Tier 2** | Platform Services - AI provider management | Tier 1 | module-ai |
+| **Tier 2** | Platform Services - AI & Multi-Tenancy | Tier 1 | module-ai, module-ws |
 | **Tier 3** | Management & AI Capabilities | Tier 1 + Tier 2 | module-mgmt, module-kb, module-chat |
 
 **Note:** All Tier 3 core modules depend on Tier 1 (access) and Tier 2 (ai).
@@ -131,12 +131,12 @@ templates/
 ├── _modules-core/              # Required modules (always included)
 │   ├── module-access/          # Tier 1 - Auth & Identity
 │   ├── module-ai/              # Tier 2 - AI Provider Management
+│   ├── module-ws/              # Tier 2 - Workspace Management (Multi-Tenancy)
 │   ├── module-mgmt/            # Tier 3 - Platform Management
 │   ├── module-kb/              # Tier 3 - Knowledge Base (Core AI)
 │   └── module-chat/            # Tier 3 - Chat Interface (Core AI)
 │
 └── _modules-functional/        # Optional modules (selected per-project)
-    ├── module-ws/              # Workspace Management
     ├── module-eval/            # Model Evaluation
     └── module-voice/           # Voice Interaction
 ```
@@ -164,6 +164,12 @@ modules:
     required: true
     dependencies: [module-access]
     
+  module-ws:
+    type: core
+    tier: 2
+    required: true
+    dependencies: [module-access]
+    
   module-mgmt:
     type: core
     tier: 3
@@ -184,12 +190,6 @@ modules:
   
   # ===== FUNCTIONAL MODULES =====
   # Functional modules are OPTIONAL and can be enabled per-project
-  
-  module-ws:
-    type: functional
-    tier: null
-    required: false
-    dependencies: [module-access]
     
   module-eval:
     type: functional
@@ -213,14 +213,16 @@ modules:
 ### Core Modules (Always Included)
 - `module-access` (Tier 1) - Authentication & Authorization
 - `module-ai` (Tier 2) - AI Provider Management
+- `module-ws` (Tier 2) - Workspace Management (Multi-Tenancy)
 - `module-mgmt` (Tier 3) - Platform Management & Monitoring
 - `module-kb` (Tier 3) - Knowledge Base & RAG (Core AI Capability)
 - `module-chat` (Tier 3) - Chat & Messaging (Core AI Capability)
 
-**Rationale**: CORA is an AI application framework. Knowledge retrieval (KB) and chat interaction (Chat) are fundamental capabilities for AI applications, not optional features.
+**Rationale**: 
+1. CORA is an AI application framework. Knowledge retrieval (KB) and chat interaction (Chat) are fundamental capabilities for AI applications, not optional features.
+2. Workspaces (WS) provide multi-tenancy infrastructure. Multiple core modules (chat, kb) and functional modules (eval, voice) depend on workspaces for data scoping, making it a foundational dependency.
 
 ### Functional Modules (Optional)
-- `module-ws` - Workspace Management
 - `module-eval` - Model Evaluation
 - `module-voice` - Voice Interaction
 
@@ -236,19 +238,9 @@ modules:
   --modules core
 ```
 
-**Result:** Project includes module-access, module-ai, module-mgmt, module-kb, module-chat
+**Result:** Project includes module-access, module-ai, module-ws, module-mgmt, module-kb, module-chat
 
-### Example 2: AI App with Workspaces
-
-```bash
-./scripts/create-cora-project.sh \
-  --project-name workspace-app \
-  --modules core,ws
-```
-
-**Result:** Project includes core modules + module-ws
-
-### Example 3: Full-Featured Application
+### Example 2: Full-Featured Application
 
 ```bash
 ./scripts/create-cora-project.sh \
@@ -273,6 +265,12 @@ modules:
 **Current State:** Located in `templates/_modules-functional/` (incorrect)  
 **Decision:** Move to `templates/_modules-core/` to match classification  
 **Reason:** Chat is a core AI capability, not an optional feature
+
+### module-ws: Functional → Core ✅ (Updated: January 20, 2026)
+
+**Current State:** Located in `templates/_modules-functional/` (incorrect)  
+**Decision:** Move to `templates/_modules-core/` as Tier 2 to match dependency reality  
+**Reason:** Multiple core modules (chat_sessions, kb_access_ws) and functional modules (eval_runs, voice_sessions) have foreign key dependencies on workspaces table. Schema ordering requires workspaces to be created before these tables, making it a foundational dependency.
 
 ---
 
@@ -302,11 +300,13 @@ modules:
 ## Implementation Tasks
 
 1. ✅ Create ADR-013 (this document)
-2. ⬜ Move module-kb from `_modules-functional/` to `_modules-core/`
-3. ⬜ Move module-chat from `_modules-functional/` to `_modules-core/`
-4. ⬜ Update `module-registry.yaml` with all modules (including kb, chat as core)
-5. ⬜ Update documentation to reflect new classification
-6. ⬜ Update CORA compliance validator to check module locations
+2. ✅ Move module-kb from `_modules-functional/` to `_modules-core/`
+3. ✅ Move module-chat from `_modules-functional/` to `_modules-core/`
+4. ✅ Move module-ws from `_modules-functional/` to `_modules-core/` (Added: January 20, 2026)
+5. ✅ Update `module-registry.yaml` with all modules (including kb, chat, ws as core)
+6. ⬜ Update documentation to reflect new classification
+7. ⬜ Update CORA compliance validator to check module locations
+8. ⬜ Update create-cora-project.sh to always include ws (no longer in enabled list)
 
 ---
 

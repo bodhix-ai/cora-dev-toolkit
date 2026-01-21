@@ -144,4 +144,8 @@ FROM pg_policies
 WHERE tablename = 'voice_sessions'
 ORDER BY policyname;
 
-RAISE NOTICE '✅ Migration complete: voice_sessions.workspace_id → ws_id';
+-- Migration complete notice
+DO $$
+BEGIN
+    RAISE NOTICE '✅ Migration complete: voice_sessions.workspace_id → ws_id';
+END $$;

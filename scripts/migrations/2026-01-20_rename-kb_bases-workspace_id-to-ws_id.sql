@@ -287,4 +287,8 @@ FROM information_schema.routines
 WHERE routine_name = 'get_accessible_kbs_for_workspace'
   AND routine_schema = 'public';
 
-RAISE NOTICE '✅ Migration complete: kb_bases.workspace_id → ws_id';
+-- Migration complete notice
+DO $$
+BEGIN
+    RAISE NOTICE '✅ Migration complete: kb_bases.workspace_id → ws_id';
+END $$;

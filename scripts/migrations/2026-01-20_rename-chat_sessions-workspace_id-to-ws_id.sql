@@ -203,4 +203,8 @@ FROM information_schema.routines
 WHERE routine_name = 'get_chat_sessions_for_user'
   AND routine_schema = 'public';
 
-RAISE NOTICE '✅ Migration complete: chat_sessions.workspace_id → ws_id';
+-- Migration complete notice
+DO $$
+BEGIN
+    RAISE NOTICE '✅ Migration complete: chat_sessions.workspace_id → ws_id';
+END $$;

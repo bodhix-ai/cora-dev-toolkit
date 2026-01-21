@@ -82,15 +82,15 @@ add_module_to_terraform() {
       module_description="Platform Management & Monitoring"
       ;;
     module-ws)
-      module_prefix="FUNC-WS"
+      module_prefix="CORE-WS"
       module_description="Workspace Management"
       ;;
     module-kb)
-      module_prefix="FUNC-KB"
+      module_prefix="CORE-KB"
       module_description="Knowledge Base"
       ;;
     module-chat)
-      module_prefix="FUNC-CHAT"
+      module_prefix="CORE-CHAT"
       module_description="Chat & Messaging"
       ;;
     module-project)
@@ -984,7 +984,7 @@ if $WITH_CORE_MODULES && ! $DRY_RUN; then
   # Ensure packages directory exists
   mkdir -p "${STACK_DIR}/packages"
   
-  CORE_MODULES=("module-access" "module-ai" "module-chat" "module-kb" "module-mgmt")
+  CORE_MODULES=("module-access" "module-ai" "module-ws" "module-chat" "module-kb" "module-mgmt")
   CORE_MODULES_DIR="${TOOLKIT_ROOT}/templates/_modules-core"
   MODULE_TEMPLATE="${TOOLKIT_ROOT}/templates/_module-template"
   
@@ -1529,11 +1529,47 @@ consolidate_database_schemas() {
     return
   fi
   
-  # Find all schema files from modules (exclude archive directories)
+  # Define module processing order by tier to ensure dependencies are created first
+  # Within each tier, order matters: dependencies must come before references
+  # Tier 3: chat creates chat_sessions, kb references it, so chat must come first
+  local tier1_modules=("module-access")
+  local tier2_modules=("module-ai" "module-ws")
+  local tier3_modules=("module-chat" "module-kb" "module-mgmt")
+  local functional_modules=("module-eval" "module-voice")
+  
+  # Collect schema files in dependency order
   local schema_files=()
-  while IFS= read -r schema_file; do
-    [[ -n "$schema_file" ]] && schema_files+=("$schema_file")
-  done < <(find "${stack_dir}/packages" -path "*/db/schema/*.sql" -not -path "*/db/schema/archive/*" -type f 2>/dev/null | sort)
+  
+  # Helper function to add schema files from a module
+  add_module_schemas() {
+    local module_name="$1"
+    local module_dir="${stack_dir}/packages/${module_name}/db/schema"
+    
+    if [[ -d "$module_dir" ]]; then
+      while IFS= read -r schema_file; do
+        [[ -n "$schema_file" ]] && schema_files+=("$schema_file")
+      done < <(find "$module_dir" -name "*.sql" -not -path "*/archive/*" -type f 2>/dev/null | sort)
+    fi
+  }
+  
+  # Process modules in tier order
+  log_info "Processing schemas in tier order (Tier 1 → Tier 2 → Tier 3 → Functional)..."
+  
+  for module in "${tier1_modules[@]}"; do
+    add_module_schemas "$module"
+  done
+  
+  for module in "${tier2_modules[@]}"; do
+    add_module_schemas "$module"
+  done
+  
+  for module in "${tier3_modules[@]}"; do
+    add_module_schemas "$module"
+  done
+  
+  for module in "${functional_modules[@]}"; do
+    add_module_schemas "$module"
+  done
   
   if [[ ${#schema_files[@]} -eq 0 ]]; then
     log_warn "No database schema files found in modules"

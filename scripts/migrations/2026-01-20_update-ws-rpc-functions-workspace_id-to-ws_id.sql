@@ -351,4 +351,8 @@ WHERE r.routine_schema = 'public'
   AND p.parameter_mode = 'IN'
 ORDER BY r.routine_name, p.ordinal_position;
 
-RAISE NOTICE '✅ Migration complete: WS RPC functions now use p_ws_id parameter';
+-- Migration complete notice
+DO $$
+BEGIN
+    RAISE NOTICE '✅ Migration complete: WS RPC functions now use p_ws_id parameter';
+END $$;
