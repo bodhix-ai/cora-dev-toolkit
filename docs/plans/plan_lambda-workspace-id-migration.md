@@ -1,8 +1,8 @@
 # Lambda Workspace ID Migration Plan
 
-**Status**: 📋 READY TO START  
-**Branch**: `lambda-workspace-id-migration`  
-**Priority**: 🔴 HIGH (Blocks eval module functionality)  
+**Status**: � IN PROGRESS  
+**Branch**: `schema-naming-audit`  
+**Priority**: 🔴 HIGH (Blocks eval module functionality)
 **Created**: January 20, 2026  
 **Owner**: Engineering Team  
 **Estimated Duration**: 9-15 hours (~2 work days)
@@ -539,8 +539,10 @@ echo "If incorrect, restore: mv $LAMBDA_FILE.bak $LAMBDA_FILE"
 
 ---
 
-**Document Status**: 📋 READY TO START  
+**Document Status**: � IN PROGRESS  
 **Created**: January 20, 2026  
+**Branch**: `schema-naming-audit` (current, synced with main)  
+**Test Project**: `~/code/bodhix/testing/test-optim/ai-sec-{stack,infra}`
 **Database Migration**: ✅ COMPLETE (new baseline)  
-**Lambda Changes**: ⏳ PENDING (this plan)  
-**Next Action**: Start with Phase 1 (Module-Eval)
+**Lambda Changes**: 🔄 IN PROGRESS (this plan)  
+**Next Action**: Updating templates with ws_id migration

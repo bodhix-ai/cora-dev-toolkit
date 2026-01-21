@@ -1,11 +1,72 @@
 # Context: Module-Eval Development
 
-**Branch:** `eval-optimization`  
+**Branch:** `schema-naming-audit`  
 **Last Updated:** January 20, 2026
 
 ---
 
 ## Current Session
+
+**Session: Lambda Workspace ID Migration (Schema Naming Audit)**
+
+**Goal:** Migrate all Lambda functions from `workspace_id` to `ws_id` to match database schema
+
+**Status:** 🔄 IN PROGRESS
+
+**Plan:** `docs/plans/plan_lambda-workspace-id-migration.md`
+
+**Branch:** `schema-naming-audit`
+
+### Current Test Environment
+- **Project:** test-optim
+- **Stack:** `~/code/bodhix/testing/test-optim/ai-sec-stack`
+- **Infra:** `~/code/bodhix/testing/test-optim/ai-sec-infra`
+
+### Session Overview (January 20, 2026 - 11:00 PM)
+
+**Context:**
+- Database schema migration completed: all tables, RPC functions, RLS policies, indexes, and foreign keys now use `ws_id`
+- Lambda functions still reference old `workspace_id` column names
+- This causes database query failures in all workspace-scoped features
+
+**Scope:**
+- 6 Lambda files across 5 modules (~175 instances to update)
+- Replacements: `'workspace_id':` → `'ws_id':` (DB dict keys)
+- Replacements: `'p_workspace_id'` → `'p_ws_id'` (RPC params)
+
+**Modules Affected:**
+1. **module-eval** (P1 Blocker) - 2 files, ~65 instances
+2. **module-chat** (P2) - 1 file, ~30 instances
+3. **module-kb** (P2) - 1 file, ~35 instances
+4. **module-voice** (P3) - 1 file, ~25 instances
+5. **module-ws** (P3) - 1 file, ~20 instances
+
+**Deployment Strategy:**
+- Update all templates first (template-first workflow)
+- Batch deployment at end (all Lambdas together)
+- Comprehensive verification via grep checks
+
+### Session Progress
+- [x] Updated migration plan document (branch reference)
+- [x] Updated context file (this session)
+- [ ] Phase 1: Module-Eval Lambda updates
+- [ ] Phase 2: Module-Chat Lambda updates
+- [ ] Phase 3: Module-KB Lambda updates
+- [ ] Phase 4: Module-Voice Lambda updates
+- [ ] Phase 5: Module-WS Lambda updates
+- [ ] Phase 6: Comprehensive verification & sync to test project
+- [ ] Phase 7: Batch deployment
+
+**Next Steps:**
+1. Update module-eval Lambda functions (eval-processor, eval-results)
+2. Verify changes with grep (should return 0 results)
+3. Continue through remaining modules
+4. Final verification across all modules
+5. Sync to test project and deploy
+
+---
+
+## Previous Session
 
 **Session: Evaluation Optimization & Inference Profile Fix**
 
