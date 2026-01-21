@@ -55,7 +55,7 @@ Common File Mappings:
   FRONTEND FIXES (--stack, default):
     templates/_modules-core/module-access/frontend/...  → packages/module-access/...
     templates/_modules-core/module-ai/frontend/...      → packages/module-ai/...
-    templates/_modules-functional/module-ws/frontend/.. → packages/module-ws/...
+    templates/_modules-core/module-ws/frontend/..       → packages/module-ws/...
     templates/_project-stack-template/apps/web/...      → apps/web/...
 
   BACKEND FIXES (--infra):
@@ -82,8 +82,8 @@ FRONTEND (module-ai):
   templates/_modules-core/module-ai/frontend/hooks/useAIConfig.ts
 
 FRONTEND (module-ws):
-  templates/_modules-functional/module-ws/frontend/hooks/useWorkspaceForm.ts
-  templates/_modules-functional/module-ws/frontend/components/WorkspaceForm.tsx
+  templates/_modules-core/module-ws/frontend/hooks/useWorkspaceForm.ts
+  templates/_modules-core/module-ws/frontend/components/WorkspaceForm.tsx
 
 FRONTEND (app shell):
   templates/_project-stack-template/apps/web/components/Sidebar.tsx
