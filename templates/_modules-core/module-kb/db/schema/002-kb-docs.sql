@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS public.kb_docs (
     
     -- Status constraint
     CONSTRAINT kb_docs_status_check CHECK (
-        status IN ('pending', 'processing', 'indexed', 'failed')
+        status IN ('pending', 'uploaded', 'processing', 'indexed', 'failed')
     ),
     
     -- File size constraint (50 MB max)

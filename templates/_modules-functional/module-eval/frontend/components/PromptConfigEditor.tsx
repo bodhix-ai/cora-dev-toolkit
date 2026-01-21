@@ -28,6 +28,7 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ScienceIcon from "@mui/icons-material/Science";
+import SearchIcon from "@mui/icons-material/Search";
 import type {
   EvalSysPromptConfig,
   EvalOrgPromptConfig,
@@ -36,6 +37,8 @@ import type {
   PromptTestResult,
   PromptType,
 } from "../types";
+import type { DeploymentInfo } from "../types/ai-models";
+import { ModelSelectionModal } from "./ModelSelectionModal";
 
 // =============================================================================
 // TYPES
@@ -48,10 +51,12 @@ export interface PromptConfigEditorProps {
   config: EvalMergedPromptConfig;
   /** System config (for reference in org view) */
   sysConfig?: EvalSysPromptConfig;
-  /** Available AI providers */
+  /** Available AI providers (simple list for legacy support) */
   aiProviders?: { id: string; name: string }[];
-  /** Available AI models for selected provider */
+  /** Available AI models (simple list for legacy support) */
   aiModels?: { id: string; name: string }[];
+  /** Full deployment info for enhanced model selector (preferred) */
+  deployments?: DeploymentInfo[];
   /** Whether editing is allowed (for org: delegation must be enabled) */
   canEdit?: boolean;
   /** Whether save is in progress */
@@ -251,6 +256,7 @@ export function PromptConfigEditor({
   sysConfig,
   aiProviders = [],
   aiModels = [],
+  deployments = [],
   canEdit = true,
   isSaving = false,
   isTesting = false,
@@ -276,6 +282,7 @@ export function PromptConfigEditor({
     DEFAULT_TEST_VARIABLES[promptType] || {}
   );
   const [showTestPanel, setShowTestPanel] = useState(false);
+  const [showModelSelector, setShowModelSelector] = useState(false);
 
   // Sync state when config prop changes (e.g., when switching between prompt types)
   useEffect(() => {
@@ -293,6 +300,26 @@ export function PromptConfigEditor({
     setAiProviderId(providerId);
     setAiModelId(""); // Reset model when provider changes
     onProviderChange?.(providerId);
+  };
+
+  const handleModelSelect = (modelId: string) => {
+    // Find the selected model to get provider info
+    const selectedDeployment = deployments.find((d) => d.id === modelId);
+    if (selectedDeployment) {
+      setAiProviderId(selectedDeployment.providerType);
+      setAiModelId(modelId);
+    }
+    setShowModelSelector(false);
+  };
+
+  const getSelectedModelName = () => {
+    if (deployments.length > 0) {
+      const selected = deployments.find((d) => d.id === aiModelId);
+      return selected ? `${selected.modelName} (${selected.provider})` : "None selected";
+    }
+    // Fallback to simple list
+    const selected = aiModels.find((m) => m.id === aiModelId);
+    return selected ? selected.name : "None selected";
   };
 
   const handleSave = async () => {
@@ -378,49 +405,90 @@ export function PromptConfigEditor({
 
       {/* Form */}
       <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-        {/* AI Provider & Model */}
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth size="small">
-              <InputLabel id="prompt-provider-label">AI Provider</InputLabel>
-              <Select
-                labelId="prompt-provider-label"
-                id="prompt-provider"
-                value={aiProviderId}
-                onChange={(e) => handleProviderChange(e.target.value)}
+        {/* AI Model Selection */}
+        {deployments.length > 0 ? (
+          /* Enhanced model selector with search and filters */
+          <Box>
+            <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>
+              AI Model
+            </Typography>
+            <Paper
+              variant="outlined"
+              sx={{
+                p: 2,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  Selected Model:
+                </Typography>
+                <Typography variant="body1">{getSelectedModelName()}</Typography>
+              </Box>
+              <Button
+                variant="outlined"
+                startIcon={<SearchIcon />}
+                onClick={() => setShowModelSelector(true)}
                 disabled={!canEdit || isSaving}
-                label="AI Provider"
               >
-                <MenuItem value="">Default</MenuItem>
-                {aiProviders.map((p) => (
-                  <MenuItem key={p.id} value={p.id}>
-                    {p.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                Browse Models
+              </Button>
+            </Paper>
+            <ModelSelectionModal
+              open={showModelSelector}
+              onClose={() => setShowModelSelector(false)}
+              models={deployments}
+              onSelectModel={handleModelSelect}
+              title="Select AI Model for Evaluation"
+            />
+          </Box>
+        ) : (
+          /* Fallback to simple dropdowns if deployments not available */
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="prompt-provider-label">AI Provider</InputLabel>
+                <Select
+                  labelId="prompt-provider-label"
+                  id="prompt-provider"
+                  value={aiProviderId}
+                  onChange={(e) => handleProviderChange(e.target.value)}
+                  disabled={!canEdit || isSaving}
+                  label="AI Provider"
+                >
+                  <MenuItem value="">Default</MenuItem>
+                  {aiProviders.map((p) => (
+                    <MenuItem key={p.id} value={p.id}>
+                      {p.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="prompt-model-label">AI Model</InputLabel>
+                <Select
+                  labelId="prompt-model-label"
+                  id="prompt-model"
+                  value={aiModelId}
+                  onChange={(e) => setAiModelId(e.target.value)}
+                  disabled={!canEdit || isSaving || !aiProviderId}
+                  label="AI Model"
+                >
+                  <MenuItem value="">Default</MenuItem>
+                  {aiModels.map((m) => (
+                    <MenuItem key={m.id} value={m.id}>
+                      {m.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth size="small">
-              <InputLabel id="prompt-model-label">AI Model</InputLabel>
-              <Select
-                labelId="prompt-model-label"
-                id="prompt-model"
-                value={aiModelId}
-                onChange={(e) => setAiModelId(e.target.value)}
-                disabled={!canEdit || isSaving || !aiProviderId}
-                label="AI Model"
-              >
-                <MenuItem value="">Default</MenuItem>
-                {aiModels.map((m) => (
-                  <MenuItem key={m.id} value={m.id}>
-                    {m.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
+        )}
 
         {/* Temperature & Max Tokens */}
         <Grid container spacing={2}>

@@ -169,6 +169,25 @@ module "module_ai" {
   }
 }
 
+module "module_ws" {
+  source = "../../../{{PROJECT_NAME}}-stack/packages/module-ws/infrastructure"
+
+  project_name         = "{{PROJECT_NAME}}"
+  environment          = "dev"
+  org_common_layer_arn = module.module_access.layer_arn
+  supabase_secret_arn  = module.secrets.supabase_secret_arn
+  aws_region           = var.aws_region
+  log_level            = var.log_level
+
+  common_tags = {
+    Environment = "dev"
+    Project     = "{{PROJECT_NAME}}"
+    ManagedBy   = "terraform"
+    Module      = "module-ws"
+    ModuleType  = "CORA"
+  }
+}
+
 module "module_mgmt" {
   source = "../../../{{PROJECT_NAME}}-stack/packages/module-mgmt/infrastructure"
 
@@ -244,6 +263,7 @@ module "modular_api_gateway" {
   # Core modules (always included per ADR-013):
   # - module_access (Tier 1)
   # - module_ai (Tier 2)
+  # - module_ws (Tier 2)
   # - module_mgmt (Tier 3)
   # - module_kb (Tier 3 - Core AI Capability)
   # - module_chat (Tier 3 - Core AI Capability)
@@ -253,6 +273,7 @@ module "modular_api_gateway" {
   module_routes = concat(
     module.module_access.api_routes,
     module.module_ai.api_routes,
+    module.module_ws.api_routes,
     module.module_mgmt.api_routes,
     module.module_kb.api_routes,
     module.module_chat.api_routes,

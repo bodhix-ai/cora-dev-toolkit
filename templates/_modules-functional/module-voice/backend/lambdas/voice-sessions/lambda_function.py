@@ -339,7 +339,7 @@ def handle_create_session(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
     # Create session
     session_data = {
         'org_id': org_id,
-        'workspace_id': workspace_id,
+        'ws_id': workspace_id,
         'interview_type': interview_type,
         'candidate_name': candidate_name,
         'candidate_email': candidate_email,

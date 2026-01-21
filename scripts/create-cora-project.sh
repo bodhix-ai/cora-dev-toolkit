@@ -187,8 +187,8 @@ module \"${module_underscore}\" {
   # Also add the module's api_routes to the modular_api_gateway module_routes
   # This ensures the module's API endpoints are registered with the API Gateway
   local module_underscore="${module_name//-/_}"
-  local routes_pattern="module.module_mgmt.api_routes,"
-  local new_routes="module.module_mgmt.api_routes,\n    module.${module_underscore}.api_routes,"
+  local routes_pattern="module.module_chat.api_routes,"
+  local new_routes="module.module_chat.api_routes,\n    module.${module_underscore}.api_routes,"
   
   if grep -q "module.${module_underscore}.api_routes" "$main_tf"; then
     log_info "  Module routes already in API Gateway config"
@@ -654,8 +654,27 @@ merge_module_configs() {
     done < <(sed -n '/^modules:/,/^[^ ]/p' "$config_file" | grep -E '^\s+- module-')
   fi
   
-  # Always include core modules
-  local all_modules=("module-access" "module-ai" "module-mgmt")
+  # Always include ALL core modules (dynamically from registry)
+  local all_modules=()
+  
+  # Get all core modules from registry
+  if [[ -f "$REGISTRY_FILE" ]]; then
+    if command -v yq &> /dev/null; then
+      # Use yq to get all modules where type == "core"
+      while IFS= read -r module; do
+        [[ -n "$module" && "$module" != "null" ]] && all_modules+=("$module")
+      done < <(yq '.modules | to_entries | .[] | select(.value.type == "core") | .key' "$REGISTRY_FILE" 2>/dev/null)
+    else
+      # Fallback: hardcode all 6 core modules
+      log_warn "yq not available, using hardcoded core modules list"
+      all_modules=("module-access" "module-ai" "module-ws" "module-chat" "module-kb" "module-mgmt")
+    fi
+  else
+    log_warn "Module registry not found, using hardcoded core modules list"
+    all_modules=("module-access" "module-ai" "module-ws" "module-chat" "module-kb" "module-mgmt")
+  fi
+  
+  log_info "Core modules to merge: ${all_modules[*]}"
   
   # Add enabled functional modules from config file
   for module in "${enabled_modules[@]}"; do
@@ -1008,6 +1027,36 @@ if $WITH_CORE_MODULES && ! $DRY_RUN; then
         sed -i '' "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_DISPLAY_NAME}/g" "$file" 2>/dev/null || \
         sed -i "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_DISPLAY_NAME}/g" "$file"
       done
+
+      # Copy core module routes to app directory if they exist
+      core_routes_dir="${CORE_MODULE_TEMPLATE}/routes"
+      if [[ -d "$core_routes_dir" ]]; then
+        app_routes_dir="${STACK_DIR}/apps/web/app"
+        log_info "  Copying routes from ${module}..."
+
+        # Copy each route file (using -print0 to handle special chars like [id])
+        route_files=()
+        while IFS= read -r -d '' route_file; do
+          route_files+=("$route_file")
+        done < <(find "$core_routes_dir" \( -name "page.tsx" -o -name "layout.tsx" \) -print0)
+        
+        # Process each route file
+        for route_file in "${route_files[@]}"; do
+          relative_path="${route_file#$core_routes_dir/}"
+          target_dir="${app_routes_dir}/$(dirname "$relative_path")"
+
+          # Use -- to prevent option parsing issues, quote paths for [id] bracket handling
+          mkdir -p -- "$target_dir"
+          cp -- "$route_file" "$target_dir/"
+
+          # Replace placeholders in the copied route file
+          target_file="${target_dir}/$(basename "$route_file")"
+          sed -i '' "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$target_file" 2>/dev/null || \
+          sed -i "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$target_file"
+
+          log_info "    ✅ Created route: /$(dirname "$relative_path")"
+        done
+      fi
     elif [[ -d "$MODULE_TEMPLATE" ]]; then
       log_info "Creating ${module} from generic template..."
       cp -r "$MODULE_TEMPLATE" "$MODULE_DIR"
@@ -1091,10 +1140,14 @@ if ! $DRY_RUN && [[ ${#ENABLED_MODULES[@]} -gt 0 ]]; then
   CORE_MODULES_DIR="${TOOLKIT_ROOT}/templates/_modules-core"
 
   for module in "${ENABLED_MODULES[@]}"; do
-    # Skip required core modules (they're created separately with --with-core-modules)
-    if [[ "$module" == "module-access" ]] || [[ "$module" == "module-ai" ]] || [[ "$module" == "module-mgmt" ]]; then
-      log_info "Skipping ${module} (required core module, already created)"
-      continue
+    # Skip ALL core modules when --with-core-modules is enabled (they're created separately)
+    # Use module registry to dynamically determine if module is core
+    if $WITH_CORE_MODULES; then
+      module_type=$(get_module_metadata "$module" "type" 2>/dev/null || echo "functional")
+      if [[ "$module_type" == "core" ]]; then
+        log_info "Skipping ${module} (core module, already created with --with-core-modules)"
+        continue
+      fi
     fi
 
     MODULE_DIR="${STACK_DIR}/packages/${module}"

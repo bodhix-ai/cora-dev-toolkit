@@ -231,7 +231,7 @@ def handle_get_workspace_kb(user_id: str, workspace_id: str) -> Dict[str, Any]:
     kb = common.find_one(
         table='kb_bases',
         filters={
-            'workspace_id': workspace_id,
+            'ws_id': workspace_id,
             'scope': 'workspace',
             'is_deleted': False
         }
@@ -276,7 +276,7 @@ def handle_create_workspace_kb(event: Dict[str, Any], user_id: str, workspace_id
     existing_kb = common.find_one(
         table='kb_bases',
         filters={
-            'workspace_id': workspace_id,
+            'ws_id': workspace_id,
             'scope': 'workspace',
             'is_deleted': False
         }
@@ -297,7 +297,7 @@ def handle_create_workspace_kb(event: Dict[str, Any], user_id: str, workspace_id
         'description': description,
         'scope': 'workspace',
         'org_id': workspace['org_id'],
-        'workspace_id': workspace_id,
+        'ws_id': workspace_id,
         'config': {
             'whoCanUpload': 'all_members',
             'autoIndex': True,
@@ -334,7 +334,7 @@ def handle_list_available_kbs_for_workspace(user_id: str, workspace_id: str) -> 
     # Use RPC function to get accessible KBs
     result = common.rpc(
         'get_accessible_kbs_for_workspace',
-        {'p_user_id': user_id, 'p_workspace_id': workspace_id}
+        {'p_user_id': user_id, 'p_ws_id': workspace_id}
     )
     
     # Format response - wrap KB fields in 'kb' object to match AvailableKb type
@@ -399,7 +399,7 @@ def handle_toggle_kb_for_workspace(event: Dict[str, Any], user_id: str, workspac
         table='kb_access_ws',
         filters={
             'kb_id': kb_id,
-            'workspace_id': workspace_id
+            'ws_id': workspace_id
         }
     )
     
@@ -416,7 +416,7 @@ def handle_toggle_kb_for_workspace(event: Dict[str, Any], user_id: str, workspac
             table='kb_access_ws',
             data={
                 'kb_id': kb_id,
-                'workspace_id': workspace_id,
+                'ws_id': workspace_id,
                 'is_enabled': is_enabled,
                 'created_by': user_id
             }
@@ -551,7 +551,7 @@ def handle_list_available_kbs_for_chat(user_id: str, chat_id: str) -> Dict[str, 
     # Use workspace RPC to get available KBs
     result = common.rpc(
         'get_accessible_kbs_for_workspace',
-        {'p_user_id': user_id, 'p_workspace_id': chat['workspace_id']}
+        {'p_user_id': user_id, 'p_ws_id': chat['workspace_id']}
     )
     
     # Add chat-specific toggles - wrap KB fields in 'kb' object to match AvailableKb type

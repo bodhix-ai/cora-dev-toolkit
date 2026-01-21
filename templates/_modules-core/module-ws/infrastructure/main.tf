@@ -66,8 +66,8 @@ resource "aws_iam_role_policy" "secrets" {
 resource "aws_lambda_function" "workspace" {
   function_name    = "${local.name_prefix}-workspace"
   description      = "FUNC-WS: Workspace management handler for CRUD operations"
-  filename         = var.workspace_lambda_zip
-  source_code_hash = filebase64sha256(var.workspace_lambda_zip)
+  filename         = "${path.module}/${var.workspace_lambda_zip}"
+  source_code_hash = filebase64sha256("${path.module}/${var.workspace_lambda_zip}")
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.11"
   role             = aws_iam_role.lambda.arn
@@ -105,8 +105,8 @@ resource "aws_lambda_function" "cleanup" {
 
   function_name    = "${local.name_prefix}-cleanup"
   description      = "FUNC-WS: Automated cleanup job for workspace maintenance"
-  filename         = var.cleanup_lambda_zip
-  source_code_hash = filebase64sha256(var.cleanup_lambda_zip)
+  filename         = "${path.module}/${var.cleanup_lambda_zip}"
+  source_code_hash = filebase64sha256("${path.module}/${var.cleanup_lambda_zip}")
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.11"
   role             = aws_iam_role.lambda.arn

@@ -8,7 +8,7 @@ Message Format (from SQS):
 {
     "eval_id": "uuid",
     "org_id": "uuid",
-    "workspace_id": "uuid",
+    "ws_id": "uuid",
     "doc_ids": ["uuid1", "uuid2"],
     "criteria_set_id": "uuid",
     "action": "evaluate"
@@ -71,12 +71,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             
             eval_id = body.get('eval_id')
             org_id = body.get('org_id')
-            workspace_id = body.get('workspace_id')
+            ws_id = body.get('ws_id')
             doc_ids = body.get('doc_ids', [])
             criteria_set_id = body.get('criteria_set_id')
             action = body.get('action', 'evaluate')
             
-            if not all([eval_id, org_id, workspace_id, criteria_set_id]):
+            if not all([eval_id, org_id, ws_id, criteria_set_id]):
                 logger.error(f"Missing required fields in message: {body}")
                 results.append({
                     'messageId': record.get('messageId'),
@@ -88,14 +88,14 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             # Validate UUIDs
             eval_id = common.validate_uuid(eval_id, 'eval_id')
             org_id = common.validate_uuid(org_id, 'org_id')
-            workspace_id = common.validate_uuid(workspace_id, 'workspace_id')
+            ws_id = common.validate_uuid(ws_id, 'ws_id')
             criteria_set_id = common.validate_uuid(criteria_set_id, 'criteria_set_id')
             
             if action == 'evaluate':
                 result = process_evaluation(
                     eval_id=eval_id,
                     org_id=org_id,
-                    workspace_id=workspace_id,
+                    ws_id=ws_id,
                     doc_ids=doc_ids,
                     criteria_set_id=criteria_set_id
                 )
@@ -143,7 +143,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 def process_evaluation(
     eval_id: str,
     org_id: str,
-    workspace_id: str,
+    ws_id: str,
     doc_ids: List[str],
     criteria_set_id: str
 ) -> bool:
@@ -204,7 +204,7 @@ def process_evaluation(
             update_evaluation_status(eval_id, 'processing', int(PROGRESS_DOC_SUMMARY_START + phase_progress))
             
             # Get document content from module-kb
-            doc_content = get_document_content(workspace_id, doc_id)
+            doc_content = get_document_content(ws_id, doc_id)
             if doc_content:
                 combined_doc_content += f"\n\n--- Document {idx + 1} ---\n{doc_content}"
                 
@@ -268,7 +268,7 @@ def process_evaluation(
             result = evaluate_criteria_item(
                 eval_id=eval_id,
                 criteria_item=criteria_item,
-                workspace_id=workspace_id,
+                ws_id=ws_id,
                 doc_ids=doc_ids,
                 prompts=prompts,
                 status_options=status_options,
@@ -508,7 +508,7 @@ def get_resolved_status_options(org_id: str, mode: str) -> List[Dict[str, Any]]:
 # DOCUMENT PROCESSING
 # =============================================================================
 
-def get_document_content(workspace_id: str, doc_id: str) -> Optional[str]:
+def get_document_content(ws_id: str, doc_id: str) -> Optional[str]:
     """
     Get document content from module-kb.
     
@@ -516,7 +516,7 @@ def get_document_content(workspace_id: str, doc_id: str) -> Optional[str]:
     """
     try:
         # First try to get from kb_docs table directly
-        doc = common.find_one('kb_docs', {'id': doc_id, 'ws_id': workspace_id})
+        doc = common.find_one('kb_docs', {'id': doc_id, 'ws_id': ws_id})
         
         if doc:
             # If we have extracted text, return it
@@ -585,7 +585,7 @@ def save_doc_set_summary(
 def evaluate_criteria_item(
     eval_id: str,
     criteria_item: Dict[str, Any],
-    workspace_id: str,
+    ws_id: str,
     doc_ids: List[str],
     prompts: Dict[str, Dict[str, Any]],
     status_options: List[Dict[str, Any]],
@@ -606,7 +606,7 @@ def evaluate_criteria_item(
         rag_query = f"{requirement} {description}"
         
         # Get relevant context via RAG search
-        context = get_rag_context(workspace_id, doc_ids, rag_query)
+        context = get_rag_context(ws_id, doc_ids, rag_query)
         
         if not context:
             # Fall back to using combined doc content
@@ -661,7 +661,7 @@ def evaluate_criteria_item(
 
 
 def get_rag_context(
-    workspace_id: str,
+    ws_id: str,
     doc_ids: List[str],
     query: str,
     limit: int = 10
@@ -915,61 +915,17 @@ def call_ai_provider(
         base_model_id = model.get('model_id')
         model_vendor = model.get('model_vendor', 'unknown')
         
-        logger.info(f"Model {base_model_id} requires inference profile, searching for substitute...")
-        
         # Get appropriate region for this vendor
         region = get_inference_profile_region(model_vendor)
         
-        # Search for inference profile version
-        all_models = common.find_many('ai_models', {
-            'provider_id': provider['id'],
-            'status': 'available'
-        })
+        # Build inference profile model ID by adding region prefix
+        inference_profile_id = f"{region}.{base_model_id}"
         
-        inference_profile_found = False
-        for candidate in all_models:
-            candidate_model_id = candidate.get('model_id', '')
-            
-            # Check if this is an inference profile for the same base model
-            # Format: {region}.{base_model_id}
-            expected_profile_id = f"{region}.{base_model_id}"
-            
-            if candidate_model_id == expected_profile_id:
-                # Found exact match
-                old_model_id = model.get('model_id')
-                model = candidate
-                new_model_id = model.get('model_id')
-                logger.info(f"✅ Substituted {old_model_id} with inference profile: {new_model_id}")
-                inference_profile_found = True
-                break
-            elif candidate_model_id.startswith(f"{region}.") and base_model_id in candidate_model_id:
-                # Found regional variant (fallback)
-                old_model_id = model.get('model_id')
-                model = candidate
-                new_model_id = model.get('model_id')
-                logger.info(f"✅ Substituted {old_model_id} with inference profile: {new_model_id}")
-                inference_profile_found = True
-                break
+        logger.info(f"Model {base_model_id} requires inference profile, using: {inference_profile_id}")
         
-        if not inference_profile_found:
-            error_msg = f"Model {base_model_id} requires inference profile but none found in database"
-            logger.error(error_msg)
-            
-            # Log the error for ops team
-            try:
-                common.log_ai_error(
-                    provider_id=provider_id,
-                    model_id=model_id,
-                    request_source='eval-processor',
-                    operation_type='text_generation',
-                    error=Exception(error_msg),
-                    model_id_attempted=base_model_id,
-                    validation_category=validation_category
-                )
-            except Exception as log_err:
-                logger.error(f"Failed to log error: {log_err}")
-            
-            return None
+        # Update the model object to use the inference profile ID
+        # This will be passed to Bedrock API which expects the prefixed format
+        model['model_id'] = inference_profile_id
     
     # Future validation categories can be added here:
     # elif validation_category == 'requires_marketplace_subscription':

@@ -79,6 +79,11 @@ CORE MODULES:
   templates/_modules-core/module-ai/infrastructure/main.tf
   templates/_modules-core/module-mgmt/infrastructure/main.tf
 
+CORE MODULES (continued):
+  templates/_modules-core/module-ws/infrastructure/main.tf
+  templates/_modules-core/module-kb/infrastructure/main.tf
+  templates/_modules-core/module-chat/infrastructure/main.tf
+
 FUNCTIONAL MODULES:
   templates/_modules-functional/module-eval/infrastructure/main.tf
   templates/_modules-functional/module-eval/infrastructure/variables.tf
@@ -86,10 +91,6 @@ FUNCTIONAL MODULES:
   
   templates/_modules-functional/module-voice/infrastructure/main.tf
   templates/_modules-functional/module-voice/infrastructure/outputs.tf
-  
-  templates/_modules-functional/module-ws/infrastructure/main.tf
-  templates/_modules-functional/module-kb/infrastructure/main.tf
-  templates/_modules-functional/module-chat/infrastructure/main.tf
 
 USAGE EXAMPLES:
   # Specific file
