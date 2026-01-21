@@ -213,7 +213,7 @@ def handle_list_workspace_chats(
         chats = common.find_many(
             table='chat_sessions',
             filters={
-                'workspace_id': workspace_id,
+                'ws_id': workspace_id,
                 'created_by': user_id,
                 'is_deleted': False
             },
@@ -306,7 +306,7 @@ def handle_list_user_chats(
         filters={
             'org_id': org_id,
             'created_by': user_id,
-            'workspace_id': None,
+            'ws_id': None,
             'is_deleted': False
         },
         order='updated_at.desc',
@@ -369,7 +369,7 @@ def handle_create_workspace_chat(
     # Create the chat session
     chat_data = {
         'title': title,
-        'workspace_id': workspace_id,
+        'ws_id': workspace_id,
         'org_id': workspace['org_id'],
         'created_by': user_id,
         'is_shared_with_workspace': is_shared_with_workspace,
@@ -436,7 +436,7 @@ def handle_create_user_chat(
     # Create the chat session (no workspace_id = user-level chat)
     chat_data = {
         'title': title,
-        'workspace_id': None,
+        'ws_id': None,
         'org_id': org_id,
         'created_by': user_id,
         'is_shared_with_workspace': False,

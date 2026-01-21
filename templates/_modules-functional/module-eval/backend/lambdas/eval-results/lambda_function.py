@@ -238,7 +238,7 @@ def handle_create_evaluation(
     if is_draft:
         # DRAFT MODE: Create incomplete evaluation for later configuration
         evaluation_data = {
-            'workspace_id': workspace_id,
+            'ws_id': workspace_id,
             'doc_type_id': None,
             'criteria_set_id': None,
             'name': name,
@@ -285,7 +285,7 @@ def handle_create_evaluation(
         raise common.ValidationError('Criteria set is inactive')
     
     # Get workspace KB for document verification
-    workspace_kb = common.find_one('kb_bases', {'workspace_id': workspace_id})
+    workspace_kb = common.find_one('kb_bases', {'ws_id': workspace_id})
     if not workspace_kb:
         raise common.NotFoundError('Workspace knowledge base not found')
     
@@ -297,7 +297,7 @@ def handle_create_evaluation(
     
     # Create evaluation record
     evaluation_data = {
-        'workspace_id': workspace_id,
+        'ws_id': workspace_id,
         'doc_type_id': doc_type_id,
         'criteria_set_id': criteria_set_id,
         'name': name,
@@ -362,7 +362,7 @@ def handle_list_evaluations(event: Dict[str, Any], workspace_id: str) -> Dict[st
     include_deleted = query_params.get('includeDeleted', 'false').lower() == 'true'
     
     # Build filters
-    filters = {'workspace_id': workspace_id}
+    filters = {'ws_id': workspace_id}
     
     if not include_deleted:
         filters['is_deleted'] = False
@@ -426,7 +426,7 @@ def handle_get_evaluation(eval_id: str, workspace_id: str, org_id: str) -> Dict[
     eval_id = common.validate_uuid(eval_id, 'id')
     
     # Get evaluation
-    evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'workspace_id': workspace_id})
+    evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'ws_id': workspace_id})
     if not evaluation:
         raise common.NotFoundError('Evaluation not found')
     
@@ -550,7 +550,7 @@ def handle_get_status(eval_id: str, workspace_id: str) -> Dict[str, Any]:
     """Get evaluation status and progress (for polling)."""
     eval_id = common.validate_uuid(eval_id, 'id')
     
-    evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'workspace_id': workspace_id})
+    evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'ws_id': workspace_id})
     if not evaluation:
         raise common.NotFoundError('Evaluation not found')
     
@@ -584,7 +584,7 @@ def handle_update_evaluation(
     eval_id = common.validate_uuid(eval_id, 'id')
     
     # Verify evaluation exists and belongs to workspace
-    evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'workspace_id': workspace_id})
+    evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'ws_id': workspace_id})
     if not evaluation:
         raise common.NotFoundError('Evaluation not found')
     
@@ -627,7 +627,7 @@ def handle_update_evaluation(
         raise common.ValidationError('Criteria set is inactive')
     
     # Get workspace KB for document verification
-    workspace_kb = common.find_one('kb_bases', {'workspace_id': workspace_id})
+    workspace_kb = common.find_one('kb_bases', {'ws_id': workspace_id})
     if not workspace_kb:
         raise common.NotFoundError('Workspace knowledge base not found')
     
@@ -692,7 +692,7 @@ def handle_delete_evaluation(eval_id: str, workspace_id: str, user_id: str) -> D
     """Soft delete an evaluation."""
     eval_id = common.validate_uuid(eval_id, 'id')
     
-    evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'workspace_id': workspace_id})
+    evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'ws_id': workspace_id})
     if not evaluation:
         raise common.NotFoundError('Evaluation not found')
     
@@ -738,7 +738,7 @@ def handle_edit_result(
     result_id = common.validate_uuid(result_id, 'resultId')
     
     # Verify evaluation exists and belongs to workspace
-    evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'workspace_id': workspace_id})
+    evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'ws_id': workspace_id})
     if not evaluation:
         raise common.NotFoundError('Evaluation not found')
     
@@ -808,7 +808,7 @@ def handle_get_edit_history(
     result_id = common.validate_uuid(result_id, 'resultId')
     
     # Verify evaluation exists and belongs to workspace
-    evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'workspace_id': workspace_id})
+    evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'ws_id': workspace_id})
     if not evaluation:
         raise common.NotFoundError('Evaluation not found')
     
@@ -860,7 +860,7 @@ def handle_export_pdf(
     eval_id = common.validate_uuid(eval_id, 'id')
     
     # Get evaluation data
-    evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'workspace_id': workspace_id})
+    evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'ws_id': workspace_id})
     if not evaluation:
         raise common.NotFoundError('Evaluation not found')
     
@@ -997,7 +997,7 @@ def handle_export_xlsx(
     eval_id = common.validate_uuid(eval_id, 'id')
     
     # Get evaluation data
-    evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'workspace_id': workspace_id})
+    evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'ws_id': workspace_id})
     if not evaluation:
         raise common.NotFoundError('Evaluation not found')
     
@@ -1180,7 +1180,7 @@ def send_processing_message(
         message = {
             'eval_id': eval_id,
             'org_id': org_id,
-            'workspace_id': workspace_id,
+            'ws_id': workspace_id,
             'doc_ids': doc_ids,
             'criteria_set_id': criteria_set_id,
             'action': 'evaluate'

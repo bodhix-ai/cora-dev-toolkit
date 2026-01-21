@@ -231,7 +231,7 @@ def handle_get_workspace_kb(user_id: str, workspace_id: str) -> Dict[str, Any]:
     kb = common.find_one(
         table='kb_bases',
         filters={
-            'workspace_id': workspace_id,
+            'ws_id': workspace_id,
             'scope': 'workspace',
             'is_deleted': False
         }
@@ -276,7 +276,7 @@ def handle_create_workspace_kb(event: Dict[str, Any], user_id: str, workspace_id
     existing_kb = common.find_one(
         table='kb_bases',
         filters={
-            'workspace_id': workspace_id,
+            'ws_id': workspace_id,
             'scope': 'workspace',
             'is_deleted': False
         }
@@ -297,7 +297,7 @@ def handle_create_workspace_kb(event: Dict[str, Any], user_id: str, workspace_id
         'description': description,
         'scope': 'workspace',
         'org_id': workspace['org_id'],
-        'workspace_id': workspace_id,
+        'ws_id': workspace_id,
         'config': {
             'whoCanUpload': 'all_members',
             'autoIndex': True,
@@ -399,7 +399,7 @@ def handle_toggle_kb_for_workspace(event: Dict[str, Any], user_id: str, workspac
         table='kb_access_ws',
         filters={
             'kb_id': kb_id,
-            'workspace_id': workspace_id
+            'ws_id': workspace_id
         }
     )
     
@@ -416,7 +416,7 @@ def handle_toggle_kb_for_workspace(event: Dict[str, Any], user_id: str, workspac
             table='kb_access_ws',
             data={
                 'kb_id': kb_id,
-                'workspace_id': workspace_id,
+                'ws_id': workspace_id,
                 'is_enabled': is_enabled,
                 'created_by': user_id
             }

@@ -631,7 +631,7 @@ def get_kb_id_for_scope(workspace_id: Optional[str], chat_id: Optional[str], sco
         if scope == 'workspace':
             kb = common.find_one(
                 table='kb_bases',
-                filters={'workspace_id': workspace_id, 'scope': 'workspace', 'is_deleted': False}
+                filters={'ws_id': workspace_id, 'scope': 'workspace', 'is_deleted': False}
             )
         elif scope == 'chat':
             kb = common.find_one(
@@ -677,7 +677,7 @@ def get_or_create_kb(user_id: str, workspace_id: Optional[str], chat_id: Optiona
                     'description': 'Auto-created workspace knowledge base',
                     'scope': 'workspace',
                     'org_id': org_id,
-                    'workspace_id': workspace_id,
+                    'ws_id': workspace_id,
                     'created_by': user_id
                 }
             )
