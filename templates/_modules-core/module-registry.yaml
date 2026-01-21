@@ -35,6 +35,15 @@ modules:
     dependencies: [module-access]
     config_file: module.config.yaml
 
+  module-ws:
+    type: core
+    tier: 2
+    name: "Workspace Management"
+    description: "Multi-tenant workspace management with favorites, tags, and RBAC"
+    required: true
+    dependencies: [module-access]
+    config_file: module.config.yaml
+
   module-mgmt:
     type: core
     tier: 3
@@ -64,15 +73,6 @@ modules:
   
   # ===== FUNCTIONAL MODULES =====
   # Functional modules are OPTIONAL and can be enabled per-project
-
-  module-ws:
-    type: functional
-    tier: null
-    name: "Workspace Management"
-    description: "Multi-tenant workspace management with favorites, tags, and RBAC"
-    required: false
-    dependencies: [module-access]
-    config_file: module.config.yaml
     
   module-eval:
     type: functional
