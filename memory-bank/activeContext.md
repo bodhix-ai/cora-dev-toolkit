@@ -10,7 +10,8 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 | Branch | Context File | Focus Area |
 |--------|--------------|------------|
-| `eval-optimization` | `context-module-eval.md` | **ACTIVE** - Eval Optimization (AI Config & Quality) |
+| `ui-enhancements` | (this file) | **ACTIVE** - UI/UX Enhancements (Eval Module) |
+| `eval-optimization` | `context-module-eval.md` | Eval Optimization (AI Config & Quality) |
 | `module-voice-dev` | `context-module-voice.md` | Module-Voice (Phase 1.5: Specifications) |
 | `feature/module-kb-implementation` | `context-module-kb.md` | Module-KB development |
 | `feature/module-eval-implementation` | `context-module-eval.md` | Module-Eval (Phase 9: Frontend Hooks) |
@@ -54,6 +55,7 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 | Branch | Status | Focus Area | Completed |
 |--------|--------|------------|-----------|
+| `schema-naming-audit` | ✅ Archived | Schema Naming Compliance Audit (eval, chat, kb, voice, ws) | 2026-01-21 |
 | `admin-eval-config-s2` | ✅ Archived | Workspace Doc Eval Implementation & Org Admin Config | 2026-01-20 |
 
 ---
@@ -69,4 +71,4 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 ---
 
-**Updated:** January 20, 2026
+**Updated:** January 21, 2026
