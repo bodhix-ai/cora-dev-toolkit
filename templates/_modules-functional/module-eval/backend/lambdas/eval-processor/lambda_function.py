@@ -895,9 +895,9 @@ def call_ai_provider(
     Call AI provider API to generate response.
     
     Integrates with module-ai for provider management.
-    Uses validation_category to determine how to invoke the model.
+    Automatically handles models requiring inference profiles.
     """
-    # Get provider config from database
+    # Get provider and model from database
     provider = common.find_one('ai_providers', {'id': provider_id})
     if not provider:
         logger.error(f"AI provider not found: {provider_id}")
@@ -908,19 +908,82 @@ def call_ai_provider(
         logger.error(f"AI model not found: {model_id}")
         return None
 
-    provider_type = provider.get('provider_type', '').lower()
+    # ===== VALIDATION CATEGORY HANDLING =====
     validation_category = model.get('validation_category')
     
-    # Get model_id from database (system of record, never modified)
-    bedrock_model_id = model.get('model_id')
+    if validation_category == 'requires_inference_profile':
+        base_model_id = model.get('model_id')
+        model_vendor = model.get('model_vendor', 'unknown')
+        
+        logger.info(f"Model {base_model_id} requires inference profile, searching for substitute...")
+        
+        # Get appropriate region for this vendor
+        region = get_inference_profile_region(model_vendor)
+        
+        # Search for inference profile version
+        all_models = common.find_many('ai_models', {
+            'provider_id': provider['id'],
+            'status': 'available'
+        })
+        
+        inference_profile_found = False
+        for candidate in all_models:
+            candidate_model_id = candidate.get('model_id', '')
+            
+            # Check if this is an inference profile for the same base model
+            # Format: {region}.{base_model_id}
+            expected_profile_id = f"{region}.{base_model_id}"
+            
+            if candidate_model_id == expected_profile_id:
+                # Found exact match
+                old_model_id = model.get('model_id')
+                model = candidate
+                new_model_id = model.get('model_id')
+                logger.info(f"✅ Substituted {old_model_id} with inference profile: {new_model_id}")
+                inference_profile_found = True
+                break
+            elif candidate_model_id.startswith(f"{region}.") and base_model_id in candidate_model_id:
+                # Found regional variant (fallback)
+                old_model_id = model.get('model_id')
+                model = candidate
+                new_model_id = model.get('model_id')
+                logger.info(f"✅ Substituted {old_model_id} with inference profile: {new_model_id}")
+                inference_profile_found = True
+                break
+        
+        if not inference_profile_found:
+            error_msg = f"Model {base_model_id} requires inference profile but none found in database"
+            logger.error(error_msg)
+            
+            # Log the error for ops team
+            try:
+                common.log_ai_error(
+                    provider_id=provider_id,
+                    model_id=model_id,
+                    request_source='eval-processor',
+                    operation_type='text_generation',
+                    error=Exception(error_msg),
+                    model_id_attempted=base_model_id,
+                    validation_category=validation_category
+                )
+            except Exception as log_err:
+                logger.error(f"Failed to log error: {log_err}")
+            
+            return None
     
-    # For Bedrock models requiring inference profile, transform the model_id for API call
-    if provider_type in ['bedrock', 'aws_bedrock'] and validation_category == 'requires_inference_profile':
-        # Transform model_id by prepending region prefix
-        bedrock_model_id = f"us.{bedrock_model_id}"
-        logger.info(f"Model requires inference profile. Using: {bedrock_model_id}")
+    # Future validation categories can be added here:
+    # elif validation_category == 'requires_marketplace_subscription':
+    #     # Handle marketplace subscription requirement
+    #     pass
     
-    # Route to appropriate provider with error logging
+    # ===== END VALIDATION CATEGORY HANDLING =====
+
+    # Get model_vendor for API format selection
+    model_vendor = model.get('model_vendor', 'anthropic')
+    
+    # Route to appropriate provider
+    provider_type = provider.get('provider_type', '').lower()
+    
     try:
         if provider_type == 'openai':
             response = call_openai(
@@ -931,7 +994,6 @@ def call_ai_provider(
                 temperature=temperature,
                 max_tokens=max_tokens
             )
-            return response
         elif provider_type == 'anthropic':
             response = call_anthropic(
                 api_key=provider.get('api_key'),
@@ -941,20 +1003,21 @@ def call_ai_provider(
                 temperature=temperature,
                 max_tokens=max_tokens
             )
-            return response
         elif provider_type in ['bedrock', 'aws_bedrock']:
-            # Use transformed model_id (with region prefix if needed)
             response = call_bedrock(
-                model_id=bedrock_model_id,  # Uses transformed ID
+                model_id=model.get('model_id'),  # Now possibly substituted
+                model_vendor=model_vendor,
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 temperature=temperature,
                 max_tokens=max_tokens
             )
-            return response
         else:
             logger.error(f"Unsupported provider type: {provider_type}")
             return None
+        
+        return response
+        
     except Exception as e:
         # Log the error for ops team
         try:
@@ -964,7 +1027,7 @@ def call_ai_provider(
                 request_source='eval-processor',
                 operation_type='text_generation',
                 error=e,
-                model_id_attempted=bedrock_model_id if provider_type in ['bedrock', 'aws_bedrock'] else model.get('model_id'),
+                model_id_attempted=model.get('model_id'),
                 validation_category=validation_category,
                 request_params={
                     'temperature': temperature,
@@ -975,7 +1038,7 @@ def call_ai_provider(
             logger.error(f"Failed to log error: {log_err}")
         
         logger.error(f"AI API error: {e}")
-        raise  # Re-raise to be handled by caller
+        return None
 
 
 def call_openai(
@@ -1042,29 +1105,28 @@ def call_anthropic(
 
 def call_bedrock(
     model_id: str,
+    model_vendor: str,
     system_prompt: str,
     user_prompt: str,
     temperature: float,
     max_tokens: int
 ) -> Optional[str]:
     """
-    Call AWS Bedrock API with model-specific formatting.
+    Call AWS Bedrock API with vendor-specific formatting.
     
-    Supports:
-    - Anthropic Claude models (anthropic.*)
-    - Amazon Nova models (amazon.nova-*)
-    - Amazon Titan models (amazon.titan-*)
+    Uses model_vendor column to determine API format:
+    - anthropic: Claude Messages API format
+    - amazon: Nova/Titan format (detected by model_id)
+    - meta, mistral, cohere, etc.: Vendor-specific formats as needed
     """
     try:
         import boto3
         
         client = boto3.client('bedrock-runtime')
         
-        # Detect model family from model_id and format request accordingly
-        model_id_lower = model_id.lower()
-        
-        if 'anthropic' in model_id_lower:
-            # Claude format (Messages API)
+        # Determine API format based on model vendor
+        if model_vendor == 'anthropic':
+            # Anthropic Claude format (Messages API)
             body = json.dumps({
                 "anthropic_version": "bedrock-2023-05-31",
                 "max_tokens": max_tokens,
@@ -1074,32 +1136,59 @@ def call_bedrock(
                 ],
                 "temperature": temperature
             })
-        elif 'nova' in model_id_lower:
-            # Amazon Nova format
+            response_parser = 'anthropic'
+            
+        elif model_vendor == 'amazon':
+            # Amazon models - distinguish between Nova and Titan by model_id
+            if 'nova' in model_id.lower():
+                # Amazon Nova format
+                body = json.dumps({
+                    "messages": [{
+                        "role": "user",
+                        "content": [{"text": user_prompt}]
+                    }],
+                    "system": [{"text": system_prompt}],
+                    "inferenceConfig": {
+                        "max_new_tokens": max_tokens,
+                        "temperature": temperature
+                    }
+                })
+                response_parser = 'nova'
+            elif 'titan' in model_id.lower():
+                # Amazon Titan format
+                combined_prompt = f"{system_prompt}\n\n{user_prompt}"
+                body = json.dumps({
+                    "inputText": combined_prompt,
+                    "textGenerationConfig": {
+                        "maxTokenCount": max_tokens,
+                        "temperature": temperature
+                    }
+                })
+                response_parser = 'titan'
+            else:
+                raise ValueError(f"Unknown Amazon model type: {model_id}")
+                
+        elif model_vendor in ['meta', 'mistral', 'cohere']:
+            # Meta Llama, Mistral, Cohere use similar format to Claude
+            # (This is a simplified assumption - adjust as needed per vendor)
             body = json.dumps({
-                "messages": [{
-                    "role": "user",
-                    "content": [{"text": user_prompt}]  # Array of content objects
-                }],
-                "system": [{"text": system_prompt}],    # Array format
-                "inferenceConfig": {
-                    "max_new_tokens": max_tokens,
-                    "temperature": temperature
-                }
+                "prompt": f"{system_prompt}\n\n{user_prompt}",
+                "max_gen_len": max_tokens,
+                "temperature": temperature
             })
-        elif 'titan' in model_id_lower:
-            # Amazon Titan format
-            combined_prompt = f"{system_prompt}\n\n{user_prompt}"
-            body = json.dumps({
-                "inputText": combined_prompt,
-                "textGenerationConfig": {
-                    "maxTokenCount": max_tokens,
-                    "temperature": temperature
-                }
-            })
+            response_parser = 'meta'  # Generic parser
+            
         else:
-            raise ValueError(f"Unsupported Bedrock model family: {model_id}")
+            # Unknown vendor - try generic format
+            logger.warning(f"Unknown vendor '{model_vendor}' for model {model_id}, using generic format")
+            body = json.dumps({
+                "prompt": f"{system_prompt}\n\n{user_prompt}",
+                "max_tokens": max_tokens,
+                "temperature": temperature
+            })
+            response_parser = 'generic'
         
+        # Invoke the model
         response = client.invoke_model(
             modelId=model_id,
             body=body,
@@ -1109,21 +1198,24 @@ def call_bedrock(
         
         result = json.loads(response['body'].read())
         
-        # Parse response based on model family
-        if 'anthropic' in model_id_lower:
-            # Claude response format
+        # Parse response based on vendor
+        if response_parser == 'anthropic':
             return result.get('content', [{}])[0].get('text', '')
-        elif 'nova' in model_id_lower:
-            # Nova response format
+        elif response_parser == 'nova':
             return result.get('output', {}).get('message', {}).get('content', [{}])[0].get('text', '')
-        elif 'titan' in model_id_lower:
-            # Titan response format
+        elif response_parser == 'titan':
             return result.get('results', [{}])[0].get('outputText', '')
+        elif response_parser == 'meta':
+            # Meta/Mistral/Cohere typically return generation in 'generation' field
+            return result.get('generation', result.get('text', ''))
+        elif response_parser == 'generic':
+            # Try common response fields
+            return result.get('text', result.get('completion', result.get('output', '')))
         
         return None
         
     except Exception as e:
-        logger.error(f"Bedrock API error: {e}")
+        logger.error(f"Bedrock API error for vendor '{model_vendor}', model '{model_id}': {e}")
         return None
 
 
@@ -1202,6 +1294,46 @@ def mark_evaluation_failed(eval_id: str, error_message: str) -> None:
         )
     except Exception as e:
         logger.error(f"Error marking evaluation as failed: {e}")
+
+
+# =============================================================================
+# EXCEPTIONS
+# =============================================================================
+
+def get_inference_profile_region(model_vendor: str, org_id: Optional[str] = None) -> str:
+    """
+    Get the appropriate region prefix for inference profiles based on vendor.
+    
+    Args:
+        model_vendor: The model vendor (anthropic, amazon, meta, mistral, etc.)
+        org_id: Optional organization ID for org-specific preferences (future)
+    
+    Returns:
+        Region prefix (us, eu, ap, ca, global)
+    """
+    # TODO: Check org-level preferences from database if org_id provided
+    # For now, use vendor-based defaults
+    
+    vendor_region_defaults = {
+        'anthropic': 'us',      # Anthropic models typically in US
+        'amazon': 'us',         # Amazon Nova/Titan in US
+        'meta': 'us',           # Meta Llama in US
+        'mistral': 'eu',        # Mistral AI based in Europe
+        'cohere': 'us',         # Cohere in US
+        'stability': 'us',      # Stability AI in US
+        'ai21': 'us',           # AI21 Labs in US
+        'google': 'us',         # Google models in US
+        'nvidia': 'us',         # NVIDIA in US
+        'deepseek': 'us',       # DeepSeek in US
+        'twelvelabs': 'us',     # TwelveLabs in US
+        'openai': 'us',         # OpenAI in US
+        'qwen': 'us',           # Qwen in US
+        'minimax': 'us',        # MiniMax in US
+    }
+    
+    region = vendor_region_defaults.get(model_vendor, 'us')  # Default to US
+    logger.debug(f"Selected region '{region}' for vendor '{model_vendor}'")
+    return region
 
 
 # =============================================================================
