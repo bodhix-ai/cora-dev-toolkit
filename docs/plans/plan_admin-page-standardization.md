@@ -1,9 +1,18 @@
 # Plan: Admin Page Standardization
 
-**Status:** 📋 PLANNED (Not Yet Implemented)  
+**Status:** � IN PROGRESS (Phase 1: Comprehensive Audit)  
 **Created:** January 18, 2026  
+**Started:** January 21, 2026  
 **Priority:** HIGH (Technical Debt / Code Quality)  
 **Scope:** All system and organization admin pages
+
+**Current Progress:**
+- ✅ Phase 1 Started: Found 19 admin pages, created audit framework
+- ✅ Critical architectural decision: ALL admin pages MUST be module-owned
+- ✅ Identified 11 orphan pages in project-stack-template requiring relocation
+- 🔄 Next: Begin systematic audit of authentication and UI/layout patterns
+
+**Tracking Document:** `docs/plans/findings_admin-page-audit.md`
 
 ---
 
@@ -185,9 +194,17 @@ export default function AdminPageRoute() {
 
 ## Implementation Plan
 
-### Phase 1: Comprehensive Audit
+### Phase 1: Comprehensive Audit ⏳ IN PROGRESS
 
+**Started:** January 21, 2026  
+**Status:** Audit framework created, 19 pages identified  
 **Action:** Document all admin pages - authentication patterns AND UI/layout patterns.
+
+**CRITICAL ARCHITECTURAL DECISION (Jan 21, 2026):**
+- ✅ **All admin pages MUST be module-owned** (confirmed with stakeholder)
+- Project-stack-template should NOT contain admin pages (only shell/layout)
+- Identified 11 orphan pages requiring relocation to appropriate modules
+- See Part C in findings document for detailed module assignment proposals
 
 **Part A: Authentication Audit**
 
@@ -221,7 +238,17 @@ export default function AdminPageRoute() {
 - [ ] Table/list patterns (DataGrid, Table, custom)
 - [ ] Form layouts (spacing, grouping, validation display)
 
-**Output:** `docs/plans/findings_admin-page-ui-audit.md`
+**Part C: Module Ownership Audit (NEW - Jan 21, 2026)**
+
+**Action:** Identify orphan pages and propose correct module ownership.
+
+**Discovered Issues:**
+- 11 admin pages found in project-stack-template (should be 0)
+- Several potential duplicates between project-stack and module templates
+- Need to relocate orphans to: module-access, module-ai, module-mgmt, module-chat, module-kb
+- One page (`/admin/org/page.tsx`) needs clarification: shell page or module-ws?
+
+**Output:** `docs/plans/findings_admin-page-audit.md` (includes all three parts)
 
 ### Phase 2: Propose Standards (REQUIRES APPROVAL)
 
