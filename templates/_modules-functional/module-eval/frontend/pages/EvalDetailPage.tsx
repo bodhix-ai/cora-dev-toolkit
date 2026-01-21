@@ -103,7 +103,7 @@ function TabNavigation({
   documentCount,
 }: TabNavigationProps) {
   const tabs: Array<{ id: ViewTab; label: string; count: number }> = [
-    { id: "results", label: "Criteria Results", count: resultCount },
+    { id: "results", label: "Results", count: resultCount },
     { id: "citations", label: "Citations", count: citationCount },
     { id: "documents", label: "Documents", count: documentCount },
   ];

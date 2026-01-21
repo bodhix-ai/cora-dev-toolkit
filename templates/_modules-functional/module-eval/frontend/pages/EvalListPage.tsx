@@ -569,11 +569,9 @@ export function EvalListPage({
       <EvalResultsTable
         evaluations={filteredEvaluations}
         onRowClick={handleSelectEvaluation}
-        selectedIds={selectedIds}
-        onSelectionChange={handleSelectionChange}
-        showSelection
-        showDocType
-        showProgress
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        docTypes={docTypes.map((dt) => ({ id: dt.id, name: dt.name }))}
       />
     </Box>
   );
