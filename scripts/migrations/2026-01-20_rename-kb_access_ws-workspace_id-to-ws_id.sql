@@ -167,4 +167,8 @@ FROM pg_policies
 WHERE tablename = 'kb_access_ws'
 ORDER BY policyname;
 
-RAISE NOTICE '✅ Migration complete: kb_access_ws.workspace_id → ws_id';
+-- Migration complete notice
+DO $$
+BEGIN
+    RAISE NOTICE '✅ Migration complete: kb_access_ws.workspace_id → ws_id';
+END $$;
