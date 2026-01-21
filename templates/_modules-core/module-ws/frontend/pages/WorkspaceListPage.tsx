@@ -174,7 +174,39 @@ export function WorkspaceListPage({
     setFilters(DEFAULT_FILTERS);
   };
 
-  const filteredWorkspaces = workspaces;
+  const filteredWorkspaces = useMemo(() => {
+    return workspaces.filter((workspace) => {
+      // Search filter
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const nameMatch = workspace.name.toLowerCase().includes(searchLower);
+        const descMatch = workspace.description?.toLowerCase().includes(searchLower);
+        const tagMatch = workspace.tags.some((tag) => tag.toLowerCase().includes(searchLower));
+        if (!nameMatch && !descMatch && !tagMatch) return false;
+      }
+
+      // Status filter
+      if (filters.status !== "all" && workspace.status !== filters.status) {
+        return false;
+      }
+
+      // Favorites filter
+      if (filters.favoritesOnly && !workspace.isFavorited) {
+        return false;
+      }
+
+      // Tags filter
+      if (filters.tags.length > 0) {
+        const hasMatchingTag = filters.tags.some((filterTag) =>
+          workspace.tags.includes(filterTag)
+        );
+        if (!hasMatchingTag) return false;
+      }
+
+      return true;
+    });
+  }, [workspaces, filters]);
+
   const hasActiveFilters =
     !!filters.search ||
     filters.status !== "all" ||

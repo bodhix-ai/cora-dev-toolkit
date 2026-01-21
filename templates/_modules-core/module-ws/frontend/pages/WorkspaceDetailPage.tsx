@@ -736,7 +736,7 @@ export function WorkspaceDetailPage({
                               })}
                             </Typography>
                             <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-                              Days Active: {calculateDaysActive(evaluation.createdAt)}
+                              Eval Age: {calculateDaysActive(evaluation.createdAt)}
                             </Typography>
                           </>
                         )}
