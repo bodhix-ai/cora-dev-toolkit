@@ -10,7 +10,8 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 | Branch | Context File | Focus Area |
 |--------|--------------|------------|
-| `eval-optimization` | `context-module-eval.md` | **ACTIVE** - Eval Optimization (AI Config & Quality) |
+| `admin-pages-standardization` | (this file) | **ACTIVE** - Admin Page Authentication Pattern Standardization |
+| `eval-optimization` | `context-module-eval.md` | Eval Optimization (AI Config & Quality) |
 | `module-voice-dev` | `context-module-voice.md` | Module-Voice (Phase 1.5: Specifications) |
 | `feature/module-kb-implementation` | `context-module-kb.md` | Module-KB development |
 | `feature/module-eval-implementation` | `context-module-eval.md` | Module-Eval (Phase 9: Frontend Hooks) |
@@ -29,7 +30,14 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 ## Current Branch Status
 
-### eval-optimization (ACTIVE)
+### admin-pages-standardization (ACTIVE)
+- **Status:** Admin Page Standardization (🟡 IN PROGRESS)
+- **Plans:** 
+  - `docs/plans/plan_admin-page-standardization.md` (ACTIVE)
+- **Context:** (this file)
+- **Focus:** Standardize admin page authentication patterns, audit existing pages, create templates and validators
+
+### eval-optimization
 - **Status:** Evaluation Optimization (� IN PROGRESS)
 - **Plans:** 
   - `docs/plans/plan_eval-optimization.md` (ACTIVE)

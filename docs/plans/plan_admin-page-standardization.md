@@ -185,9 +185,11 @@ export default function AdminPageRoute() {
 
 ## Implementation Plan
 
-### Phase 1: Audit Current State
+### Phase 1: Comprehensive Audit
 
-**Action:** Document all admin pages and their current patterns.
+**Action:** Document all admin pages - authentication patterns AND UI/layout patterns.
+
+**Part A: Authentication Audit**
 
 **System Admin Pages:**
 - [ ] `/admin/access/page.tsx` - Pattern A (useUser) ✅ CORRECT
@@ -205,9 +207,32 @@ export default function AdminPageRoute() {
 **Workspace Admin Pages:**
 - [ ] Workspace admin routes - Unknown ⚠️ NEEDS AUDIT
 
-### Phase 2: Create Template
+**Part B: UI/Layout Audit**
 
-**Action:** Create standardized admin page template.
+**For each admin page, document:**
+- [ ] Header style (Material-UI components used, hierarchy)
+- [ ] Breadcrumb implementation (if present)
+- [ ] Page padding/margins (Box, Container, or custom)
+- [ ] Use of collapse/expand components (Accordion, Collapse)
+- [ ] Card/section layouts (Paper, Card, custom divs)
+- [ ] Loading states (CircularProgress, Skeleton, custom)
+- [ ] Error display patterns (Alert, Snackbar, custom)
+- [ ] Action button placement (top-right, bottom, floating)
+- [ ] Table/list patterns (DataGrid, Table, custom)
+- [ ] Form layouts (spacing, grouping, validation display)
+
+**Output:** `docs/plans/findings_admin-page-ui-audit.md`
+
+### Phase 2: Propose Standards (REQUIRES APPROVAL)
+
+**Action:** Create comprehensive admin page standards document for review and approval.
+
+**Part A: Authentication Standard** (already defined - Pattern A with useUser)
+
+**Part B: UI/Layout Standards** (TO BE DEFINED)
+### Phase 3: Create Templates (After Approval)
+
+**Action:** Create standardized admin page templates based on approved standards from Phase 2.
 
 **File:** `templates/_project-stack-template/docs/ADMIN-PAGE-TEMPLATE.tsx`
 
@@ -294,7 +319,7 @@ export default function AdminPageRoute() {
 }
 ```
 
-### Phase 3: Update All Admin Pages
+### Phase 4: Update All Admin Pages (After Template Creation)
 
 **Action:** Systematically update each page to use the standard pattern.
 
@@ -316,7 +341,7 @@ export default function AdminPageRoute() {
 - [ ] Test success case (correct role)
 - [ ] Update template
 
-### Phase 4: Create ADR
+### Phase 5: Create ADR
 
 **Action:** Document this as an architectural decision.
 
@@ -329,7 +354,7 @@ export default function AdminPageRoute() {
 - Consequences: What this means for developers
 - Compliance: How to enforce this standard
 
-### Phase 5: Add Validation
+### Phase 6: Add Validation
 
 **Action:** Create validator to enforce the standard.
 
@@ -345,7 +370,7 @@ export default function AdminPageRoute() {
 
 **Integration:** Add to `validation/cora-validate.py` as new validator.
 
-### Phase 6: Update Documentation
+### Phase 7: Update Documentation
 
 **Action:** Update developer guides.
 
