@@ -950,7 +950,7 @@ export function EvalDetailPage({
   }
 
   // Collect all citations from results
-  const allCitations: Citation[] = citations || results?.flatMap((r) => r.aiCitations || []) || [];
+  const allCitations: Citation[] = citations || results?.flatMap((r) => r.aiResult?.citations || []) || [];
 
   return (
     <Box sx={{ p: 3, display: "flex", flexDirection: "column", gap: 3 }} className={className}>
@@ -987,10 +987,10 @@ export function EvalDetailPage({
         {activeTab === "results" && (
           <EvalQAList
             results={results || []}
-            onEditResult={handleEditResult}
-            showCategories
-            showConfidence
-            showEditButton
+            statusOptions={evaluation.statusOptions}
+            groupByCategory={false}
+            editable={true}
+            onEdit={handleEditResult}
           />
         )}
 

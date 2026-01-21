@@ -72,6 +72,79 @@ export interface EvalQACardProps {
 // =============================================================================
 
 /**
+ * Convert Markdown to HTML
+ * Handles common markdown patterns: headings, bold, italic, lists
+ */
+function markdownToHtml(markdown: string): string {
+  if (!markdown) return '';
+  
+  let html = markdown;
+  
+  // Normalize line endings
+  html = html.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  
+  // Convert headings (must happen before paragraph processing)
+  html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$2</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  
+  // Convert bold (must happen before italic to avoid conflicts)
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+  
+  // Convert italic (after bold)
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+  
+  // Convert unordered lists
+  const listItems = html.match(/^[\s]*[-*]\s+.+$/gm);
+  if (listItems) {
+    html = html.replace(/^([\s]*[-*]\s+.+$\n?)+/gm, (match) => {
+      const items = match.split('\n').filter(line => line.trim());
+      const listHtml = items.map(item => {
+        const content = item.replace(/^[\s]*[-*]\s+/, '');
+        return `<li>${content}</li>`;
+      }).join('');
+      return `<ul>${listHtml}</ul>\n`;
+    });
+  }
+  
+  // Convert numbered lists
+  const numberedItems = html.match(/^\d+\.\s+.+$/gm);
+  if (numberedItems) {
+    html = html.replace(/^(\d+\.\s+.+$\n?)+/gm, (match) => {
+      const items = match.split('\n').filter(line => line.trim());
+      const listHtml = items.map(item => {
+        const content = item.replace(/^\d+\.\s+/, '');
+        return `<li>${content}</li>`;
+      }).join('');
+      return `<ol>${listHtml}</ol>\n`;
+    });
+  }
+  
+  // Convert paragraphs (split by double newline)
+  const paragraphs = html.split(/\n\n+/);
+  html = paragraphs
+    .map(para => {
+      para = para.trim();
+      // Don't wrap if already wrapped in HTML tags
+      if (para.match(/^<(h[1-6]|ul|ol|li|div|p)/)) {
+        return para;
+      }
+      // Don't wrap empty paragraphs
+      if (!para) {
+        return '';
+      }
+      return `<p>${para}</p>`;
+    })
+    .filter(p => p)
+    .join('\n');
+  
+  return html;
+}
+
+/**
  * Get status option by ID
  */
 function getStatusOption(
@@ -118,7 +191,10 @@ export function EvalQACard({
   onViewCitations,
   sx = {},
 }: EvalQACardProps) {
-  const [expanded, setExpanded] = useState(false);
+  // Card-level collapse state (collapses entire result section)
+  const [cardExpanded, setCardExpanded] = useState(false);
+  // Text-level expand state (for long result text)
+  const [textExpanded, setTextExpanded] = useState(false);
 
   // Get effective result (considering edits)
   const effectiveResult = result.currentEdit?.editedResult ?? result.aiResult?.result;
@@ -141,10 +217,10 @@ export function EvalQACard({
         ...sx,
       }}
     >
-      <CardContent>
-        {/* Header */}
-        <Box sx={{ mb: 1.5, display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-          <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
+      <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
+        {/* Header with Collapse Control - Compact Single Row */}
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flex: 1, minWidth: 0, overflow: "hidden" }}>
             {/* Index badge */}
             <Chip
               label={index + 1}
@@ -155,90 +231,121 @@ export function EvalQACard({
                 bgcolor: "grey.100",
                 color: "text.secondary",
                 fontWeight: 500,
+                flexShrink: 0,
               }}
             />
 
-            {/* Criteria Info */}
-            <Box>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Typography variant="body2" fontWeight={500}>
-                  {result.criteriaItem.criteriaId}
-                </Typography>
-                {result.criteriaItem.category && (
-                  <Chip
-                    label={result.criteriaItem.category}
-                    size="small"
-                    sx={{ height: 20, fontSize: "0.75rem" }}
-                  />
-                )}
-              </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            {/* Criteria Info - Single Row */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1, minWidth: 0, overflow: "hidden" }}>
+              <Typography variant="body2" fontWeight={500} sx={{ flexShrink: 0 }}>
+                {result.criteriaItem.criteriaId}:
+              </Typography>
+              <Typography 
+                variant="body2" 
+                color="text.secondary"
+                sx={{ 
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  flex: 1,
+                  minWidth: 0,
+                }}
+              >
                 {result.criteriaItem.requirement}
               </Typography>
-            </Box>
-          </Box>
-
-          {/* Status Badge */}
-          {effectiveStatus && (
-            <Chip
-              label={
-                <>
-                  {effectiveStatus.name}
-                  {result.hasEdit && (
-                    <Box component="span" sx={{ ml: 0.5, fontSize: "0.625rem" }} title="Edited">
-                      ✎
-                    </Box>
-                  )}
-                </>
-              }
-              color={statusColor}
-              size="small"
-              sx={{ flexShrink: 0 }}
-            />
-          )}
-        </Box>
-
-        {/* Result */}
-        {effectiveResult && (
-          <Box sx={{ mb: 1.5, bgcolor: "grey.50", borderRadius: 1, p: 1.5 }}>
-            <Box sx={{ mb: 0.5, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <Typography variant="caption" color="text.secondary" fontWeight={500}>
-                {result.hasEdit ? "Edited Response" : "AI Response"}
-              </Typography>
-              {result.aiResult?.confidence !== undefined && !result.hasEdit && (
-                <Typography variant="caption" color="text.secondary">
-                  Confidence: {result.aiResult.confidence}%
-                </Typography>
+              {result.criteriaItem.category && (
+                <Chip
+                  label={result.criteriaItem.category}
+                  size="small"
+                  sx={{ height: 20, fontSize: "0.75rem", flexShrink: 0, display: { xs: "none", sm: "inline-flex" } }}
+                />
               )}
             </Box>
-            <Typography
-              variant="body2"
-              color="text.primary"
-              sx={{
-                ...((!expanded && effectiveResult.length > 300) && {
-                  display: "-webkit-box",
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                }),
-              }}
-            >
-              {effectiveResult}
-            </Typography>
-            {effectiveResult.length > 300 && (
-              <Button
-                onClick={() => setExpanded(!expanded)}
-                size="small"
-                sx={{ mt: 0.5, fontSize: "0.75rem" }}
-              >
-                {expanded ? "Show less" : "Show more"}
-              </Button>
-            )}
           </Box>
-        )}
 
-        {/* Footer */}
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          {/* Right side: Status Badge + Expand/Collapse Button - NEVER HIDE */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
+            {effectiveStatus && (
+              <Chip
+                label={
+                  <>
+                    {effectiveStatus.name}
+                    {result.hasEdit && (
+                      <Box component="span" sx={{ ml: 0.5, fontSize: "0.625rem" }} title="Edited">
+                        ✎
+                      </Box>
+                    )}
+                  </>
+                }
+                color={statusColor}
+                size="small"
+                sx={{ flexShrink: 0 }}
+              />
+            )}
+            
+            {/* Card Expand/Collapse Button */}
+            <IconButton
+              onClick={() => setCardExpanded(!cardExpanded)}
+              size="small"
+              aria-label={cardExpanded ? "Collapse result" : "Expand result"}
+              sx={{ ml: 0.5 }}
+            >
+              {cardExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+            </IconButton>
+          </Box>
+        </Box>
+
+        {/* Collapsible Result Section */}
+        <Collapse in={cardExpanded}>
+          {effectiveResult && (
+            <Box sx={{ mb: 1.5, bgcolor: "grey.50", borderRadius: 1, p: 1.5 }}>
+              <Box sx={{ mb: 0.5, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                  {result.hasEdit ? "Edited Response" : "AI Response"}
+                </Typography>
+                {result.aiResult?.confidence !== undefined && !result.hasEdit && (
+                  <Typography variant="caption" color="text.secondary">
+                    Confidence: {result.aiResult.confidence}%
+                  </Typography>
+                )}
+              </Box>
+              <Typography
+                variant="body2"
+                color="text.primary"
+                component="div"
+                sx={{
+                  ...((!textExpanded && effectiveResult.length > 300) && {
+                    display: "-webkit-box",
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }),
+                  "& p": { margin: "0.5em 0", "&:first-of-type": { marginTop: 0 }, "&:last-of-type": { marginBottom: 0 } },
+                  "& h1": { fontSize: "1.5em", fontWeight: 600, margin: "0.5em 0" },
+                  "& h2": { fontSize: "1.3em", fontWeight: 600, margin: "0.5em 0" },
+                  "& h3": { fontSize: "1.1em", fontWeight: 600, margin: "0.5em 0" },
+                  "& h4": { fontSize: "1em", fontWeight: 600, margin: "0.5em 0" },
+                  "& ul, & ol": { marginLeft: "1.5em", marginTop: "0.5em", marginBottom: "0.5em" },
+                  "& li": { marginBottom: "0.25em" },
+                  "& strong": { fontWeight: 600 },
+                  "& em": { fontStyle: "italic" },
+                }}
+                dangerouslySetInnerHTML={{ __html: markdownToHtml(effectiveResult) }}
+              />
+              {effectiveResult.length > 300 && (
+                <Button
+                  onClick={() => setTextExpanded(!textExpanded)}
+                  size="small"
+                  sx={{ mt: 0.5, fontSize: "0.75rem" }}
+                >
+                  {textExpanded ? "Show less" : "Show more"}
+                </Button>
+              )}
+            </Box>
+          )}
+
+          {/* Footer */}
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
             {/* Citations */}
             {hasCitations && (
@@ -270,24 +377,25 @@ export function EvalQACard({
               {result.hasEdit ? "Edit Again" : "Edit"}
             </Button>
           )}
-        </Box>
-
-        {/* Edit History Indicator */}
-        {result.hasEdit && result.currentEdit && (
-          <Box sx={{ mt: 1.5, borderTop: 1, borderColor: "divider", pt: 1.5 }}>
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <Typography variant="caption" color="text.secondary">
-                Edited by {result.currentEdit.editorName || "Unknown"} on{" "}
-                {new Date(result.currentEdit.createdAt).toLocaleDateString()}
-              </Typography>
-              {result.currentEdit.editNotes && (
-                <Typography variant="caption" color="text.secondary" fontStyle="italic">
-                  Note: {result.currentEdit.editNotes}
-                </Typography>
-              )}
-            </Box>
           </Box>
-        )}
+
+          {/* Edit History Indicator */}
+          {result.hasEdit && result.currentEdit && (
+            <Box sx={{ mt: 1.5, borderTop: 1, borderColor: "divider", pt: 1.5 }}>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Typography variant="caption" color="text.secondary">
+                  Edited by {result.currentEdit.editorName || "Unknown"} on{" "}
+                  {new Date(result.currentEdit.createdAt).toLocaleDateString()}
+                </Typography>
+                {result.currentEdit.editNotes && (
+                  <Typography variant="caption" color="text.secondary" fontStyle="italic">
+                    Note: {result.currentEdit.editNotes}
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          )}
+        </Collapse>
       </CardContent>
     </Card>
   );
