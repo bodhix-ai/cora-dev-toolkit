@@ -105,10 +105,10 @@ CORA uses a strict naming convention for modules: `module-{purpose}` where `{pur
 |--------|------|------|----------|
 | module-access | Core | 1 | `templates/_modules-core/module-access/` |
 | module-ai | Core | 2 | `templates/_modules-core/module-ai/` |
+| module-ws | Core | 2 | `templates/_modules-core/module-ws/` |
 | module-mgmt | Core | 3 | `templates/_modules-core/module-mgmt/` |
 | module-kb | Core | 3 | `templates/_modules-core/module-kb/` |
 | module-chat | Core | 3 | `templates/_modules-core/module-chat/` |
-| module-ws | Functional | - | `templates/_modules-functional/module-ws/` |
 | module-eval | Functional | - | `templates/_modules-functional/module-eval/` |
 | module-voice | Functional | - | `templates/_modules-functional/module-voice/` |
 
@@ -118,6 +118,7 @@ Core modules are REQUIRED for all CORA projects and follow a tier system for boo
 
 - **Tier 1:** `module-access` - Identity & access control (foundation)
 - **Tier 2:** `module-ai` - AI provider management (platform services)
+- **Tier 2:** `module-ws` - Workspace management (multi-tenancy)
 - **Tier 3:** `module-mgmt` - Platform management & monitoring
 - **Tier 3:** `module-kb` - Knowledge base & RAG (core AI capability)
 - **Tier 3:** `module-chat` - Chat & messaging (core AI capability)
@@ -128,7 +129,6 @@ Core modules are REQUIRED for all CORA projects and follow a tier system for boo
 
 Functional modules are OPTIONAL and can be enabled based on project needs:
 
-- `module-ws` - Workspace management (multi-tenancy)
 - `module-eval` - Model evaluation & testing
 - `module-voice` - Voice interaction capabilities
 - (Future functional modules as needed)
