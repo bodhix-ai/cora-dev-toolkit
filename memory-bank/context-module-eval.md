@@ -15,7 +15,9 @@
 
 **Plans:** 
 - `docs/plans/plan_eval-optimization.md` (Workspace UI + Optimization)
-- `docs/plans/plan_eval-inference-profile-fix.md` (Critical fix + Monitoring)
+- `docs/plans/plan_eval-inference-profile-fix.md` (Session 1-2 work - COMPLETE)
+- `docs/plans/plan_eval-validation-category-implementation.md` (Session 3+ work - ACTIVE)
+- `docs/plans/plan_module-ai-vendor-detection.md` (Vendor column population)
 
 **Branch:** `eval-optimization`
 
@@ -26,29 +28,33 @@
 
 ### Session Accomplishments (January 20, 2026)
 
-**🔴 CRITICAL ISSUE IDENTIFIED:**
-Document evaluations not using configured sys-level models/prompts. Root cause investigation completed.
-
-**Investigation & Database Work:**
+**Session 1 (5:30 PM) - Initial Bandaid:**
 - [x] Root cause identified: eval-processor doesn't check `validation_category` before API calls
-- [x] Better solution designed: Proactive validation_category checking (vs pm-app's reactive approach)
-- [x] AI operations monitoring system designed
-- [x] Database migrations created and applied:
-  - `kb_docs.workspace_id` → `kb_docs.ws_id` (naming standard fix)
-  - `ai_log_error` table created with RLS policies
-- [x] Schema file created for future projects: `templates/_modules-core/module-ai/db/schema/003-ai-log-error.sql`
+- [x] Simple bandaid implemented: Auto-prefix "us." to models without region prefix
+- [x] Database migrations created and applied
 - [x] Plan document created: `docs/plans/plan_eval-inference-profile-fix.md`
 
-**Next Steps:**
-- [ ] Implement validation_category check in eval-processor Lambda
-- [ ] Add `log_ai_error()` function to org_common
-- [ ] Build and deploy updated Lambda
-- [ ] Test evaluations end-to-end
+**Session 2 (7:00 PM) - Vendor-Aware Enhancement:**
+- [x] Refactored `call_bedrock()` to use `model_vendor` column
+- [x] Added `get_inference_profile_region()` for vendor-specific defaults
+- [x] Enhanced to support org-level region preferences (future)
+- [x] Built all module-eval Lambdas (11M eval-processor.zip)
+- [x] Uploaded to S3 via `deploy-cora-modules.sh`
+- [x] Created vendor detection plan: `docs/plans/plan_module-ai-vendor-detection.md`
+- [x] Created continuation plan: `docs/plans/plan_eval-validation-category-implementation.md`
 
-**Key Discovery:**
-- Foundation models (e.g., `anthropic.claude-sonnet-4-5-20250929-v1:0`) require inference profile routing
-- pm-app uses try/catch/retry (2 API calls)
-- CORA will use proactive substitution (1 API call) - 50% more efficient
+**Next Session Priority (Session 3):**
+- [ ] Deploy Lambda via Terraform (zips staged in S3)
+- [ ] Implement proper validation_category logic (database-driven substitution)
+- [ ] Test evaluations end-to-end
+- [ ] Follow `docs/plans/plan_eval-validation-category-implementation.md`
+
+**Key Insight:**
+- Foundation models require inference profile routing
+- pm-app: Try/catch/retry (2 API calls, 1 fails)
+- CORA Session 1: Simple "us." prefix (1 API call)
+- CORA Session 2: Vendor-aware region selection (1 API call, extensible)
+- CORA Session 3 (planned): Database-driven validation_category checking (1 API call, fully extensible)
 
 ---
 
