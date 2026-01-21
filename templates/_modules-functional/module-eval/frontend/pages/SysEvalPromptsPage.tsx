@@ -31,7 +31,7 @@ import {
 } from "@mui/material";
 import { Error as ErrorIcon } from "@mui/icons-material";
 import { useUser } from "@{{PROJECT_NAME}}/module-access";
-import { useProviders } from "@{{PROJECT_NAME}}/module-ai";
+import { useProviders, useDeployments } from "@{{PROJECT_NAME}}/module-ai";
 import { useSysEvalPrompts } from "../hooks";
 import { PromptConfigEditor } from "../components";
 import type { PromptType } from "../types";
@@ -225,8 +225,9 @@ export function SysEvalPromptsPage({
     getPromptByType,
   } = useSysEvalPrompts(token);
 
-  // Load AI providers from module-ai
+  // Load AI providers and deployments from module-ai
   const { providers, getModels } = useProviders(authAdapter);
+  const { deployments } = useDeployments(authAdapter);
 
   // Get current prompt config
   const currentPrompt = getPromptByType(activeTab);
@@ -306,6 +307,7 @@ export function SysEvalPromptsPage({
             name: p.displayName || p.name,
           }))}
           aiModels={aiModels}
+          deployments={deployments}
           onSave={handleUpdatePrompt}
           onProviderChange={handleProviderChange}
         />
