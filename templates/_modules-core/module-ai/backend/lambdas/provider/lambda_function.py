@@ -76,6 +76,62 @@ def _categorize_error(error_message: str) -> str:
     
     return 'unknown_error'
 
+def detect_model_vendor(model_id: str, display_name: str = '') -> str:
+    """
+    Detect the model vendor from model_id pattern.
+    
+    Args:
+        model_id: The Bedrock model ID (e.g., 'anthropic.claude-3-5-sonnet-20241022-v2:0')
+        display_name: Optional display name for additional context
+    
+    Returns:
+        Vendor name (anthropic, amazon, meta, mistral, etc.) or 'unknown'
+    """
+    import re
+    
+    # Strip region prefix if present (us., eu., ap., ca., global.)
+    clean_model_id = model_id
+    if re.match(r'^(us|eu|ap|ca|global)\.', model_id):
+        clean_model_id = model_id.split('.', 1)[1]
+    
+    # Detect vendor from model_id prefix
+    vendor_patterns = {
+        'anthropic': r'^anthropic\.',
+        'amazon': r'^amazon\.',
+        'meta': r'^meta\.',
+        'mistral': r'^mistral\.',
+        'cohere': r'^cohere\.',
+        'ai21': r'^ai21\.',
+        'stability': r'^stability\.',
+        'google': r'^google\.',
+        'nvidia': r'^nvidia\.',
+        'openai': r'^openai\.',
+        'qwen': r'^qwen\.',
+        'minimax': r'^minimax\.',
+        'twelvelabs': r'^twelvelabs\.',
+        'deepseek': r'^deepseek\.'
+    }
+    
+    for vendor, pattern in vendor_patterns.items():
+        if re.match(pattern, clean_model_id):
+            return vendor
+    
+    # Fallback: Try to detect from display_name
+    if display_name:
+        display_lower = display_name.lower()
+        if 'anthropic' in display_lower or 'claude' in display_lower:
+            return 'anthropic'
+        if 'amazon' in display_lower or 'nova' in display_lower or 'titan' in display_lower:
+            return 'amazon'
+        if 'meta' in display_lower or 'llama' in display_lower:
+            return 'meta'
+        if 'mistral' in display_lower:
+            return 'mistral'
+        if 'cohere' in display_lower:
+            return 'cohere'
+    
+    return 'unknown'
+
 def _check_admin_access(user_id: str) -> bool:
     """
     Check if user has system admin access.
@@ -485,6 +541,7 @@ def handle_discover_models(event: Dict[str, Any], user_id: str, provider_id: str
                 'model_id': model_info['model_id'],
                 'display_name': model_info['display_name'],
                 'description': model_info.get('description'),
+                'model_vendor': model_info.get('model_vendor'),
                 'capabilities': model_info['capabilities'],
                 'status': 'discovered',
                 'cost_per_1k_tokens_input': model_info.get('cost_per_1k_tokens'),
@@ -1197,6 +1254,9 @@ def _parse_bedrock_inference_profile(profile_summary: Dict[str, Any], region: st
     if 'anthropic' in profile_id.lower() or 'claude' in profile_id.lower():
         provider_name = 'Anthropic'
     
+    # Detect vendor
+    vendor = detect_model_vendor(profile_id, profile_name)
+    
     # Inference profiles support chat (they route to foundation models)
     supports_chat = True
     supports_embeddings = False
@@ -1221,6 +1281,7 @@ def _parse_bedrock_inference_profile(profile_summary: Dict[str, Any], region: st
         'model_id': profile_id,
         'display_name': f"{profile_name} (Inference Profile)",
         'description': model_description,
+        'model_vendor': vendor,
         'capabilities': {
             'chat': supports_chat,
             'embedding': supports_embeddings,
@@ -1253,6 +1314,9 @@ def _parse_bedrock_model(model_summary: Dict[str, Any], region: str) -> Optional
     
     # Use raw model ID exactly as AWS returns it (no normalization)
     model_id = raw_model_id
+    
+    # Detect vendor
+    vendor = detect_model_vendor(model_id, model_name)
     
     # Determine capabilities
     output_modalities = model_summary.get('outputModalities', [])
@@ -1290,6 +1354,7 @@ def _parse_bedrock_model(model_summary: Dict[str, Any], region: str) -> Optional
         'model_id': model_id,
         'display_name': f"{model_name} (Bedrock)",
         'description': description,
+        'model_vendor': vendor,
         'capabilities': {
             'chat': supports_chat,
             'embedding': supports_embeddings,
