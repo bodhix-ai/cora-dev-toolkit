@@ -179,7 +179,7 @@ export function WorkspaceDataKBTab({
       <Paper sx={{ p: 3 }}>
         <Box display="flex" alignItems="center" gap={1} mb={2}>
           <DocumentIcon color="primary" />
-          <Typography variant="h6">📄 Documents</Typography>
+          <Typography variant="h6">Documents</Typography>
         </Box>
         <Typography variant="body2" color="text.secondary" mb={2}>
           Upload documents to add to this knowledge base. 

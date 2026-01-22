@@ -12,12 +12,18 @@
 
 Phase 2 continues the UI/UX improvements for the Eval and Workspace modules. Phase 1 completed 8 core issues plus significant enhancements. Phase 2 focuses on workspace/audit management features and platform-level customization.
 
-**Progress: 0/6 issues resolved (0%)**
+**Progress: 4/7 issues resolved (57%)**
+
+**Completed Today (Jan 22, 2026):**
+- ✅ Issue #1: Creation Date & Days Active
+- ✅ Issue #2: Status Chip  
+- ✅ Issue #3: Edit Metadata Dialog
+- ✅ Issue #7: Resource Counts (Full Stack Implementation Verified)
 
 **Modules Affected:**
-- `module-ws` - Workspace UI improvements
-- `module-eval` - Evaluation card naming
-- Platform-level - Theming and branding
+- `module-ws` - Workspace UI improvements ✅ (4 issues complete)
+- `module-eval` - Evaluation card naming ⏳ (pending)
+- Platform-level - Theming and branding ⏳ (pending)
 
 ---
 
@@ -29,7 +35,7 @@ Phase 2 continues the UI/UX improvements for the Eval and Workspace modules. Pha
 **Issue:** Workspace cards missing creation timestamp and age metrics  
 **Impact:** Users can't see when workspaces were created or how long they've been active  
 **Priority:** Medium  
-**Status:** ⏳ PLANNED
+**Status:** ✅ COMPLETE (Jan 22, 2026)
 
 **Requirements:**
 - Display creation date on workspace card
@@ -53,7 +59,7 @@ Phase 2 continues the UI/UX improvements for the Eval and Workspace modules. Pha
 **Issue:** No visual indicator of workspace status (active, archived, etc.)  
 **Impact:** Users can't quickly identify workspace state  
 **Priority:** Medium  
-**Status:** ⏳ PLANNED
+**Status:** ✅ COMPLETE (Jan 22, 2026)
 
 **Requirements:**
 - Add status chip to workspace card
@@ -77,7 +83,12 @@ Phase 2 continues the UI/UX improvements for the Eval and Workspace modules. Pha
 **Issue:** No way to edit workspace metadata from list view  
 **Impact:** Users must navigate to detail page to edit basic info  
 **Priority:** Medium  
-**Status:** ⏳ PLANNED
+**Status:** ✅ COMPLETE (Jan 22, 2026)
+
+**Implementation Notes (Completed):**
+- WorkspaceForm component already handled both create and edit modes
+- Added status field dropdown to allow toggling between Active/Archived
+- Edit dialog was already wired up via WorkspaceListPage
 
 **Requirements:**
 - Add "Edit" option to workspace card popup menu
@@ -95,6 +106,94 @@ Phase 2 continues the UI/UX improvements for the Eval and Workspace modules. Pha
 - `templates/_modules-core/module-ws/frontend/components/WorkspaceCard.tsx` (menu)
 - `templates/_modules-core/module-ws/frontend/components/EditWorkspaceDialog.tsx` (new)
 - `templates/_modules-core/module-ws/frontend/hooks/useWorkspaces.ts` (update mutation)
+
+---
+
+### 7. Workspace Card - Add Resource Counts & Optimize Layout
+
+**Location:** Workspace List Page - Card Display  
+**Issue:** Workspace cards lack visibility into resource counts (evaluations, docs, members)  
+**Impact:** Users can't quickly assess workspace activity/content without opening it  
+**Priority:** Medium  
+**Status:** ✅ COMPLETE (Jan 22, 2026) - **Full Stack Implementation Verified**
+
+**Implementation Delivered (All Layers):**
+
+**✅ Database Layer:**
+- Created `get_workspace_resource_counts(p_workspace_ids UUID[])` RPC function
+- Efficient batch query for multiple workspaces
+- Gracefully handles optional modules (eval, voice) via exception handling
+- Returns zeros if tables don't exist (module not installed)
+- **File:** `templates/_modules-core/module-ws/db/schema/007-workspace-rpc-functions.sql`
+- **Migration:** `templates/_modules-core/module-ws/db/migrations/20260122_add_workspace_resource_counts.sql`
+
+**✅ Backend Lambda:**
+- Calls RPC function for all workspaces in single query (no N+1 problem)
+- Returns counts in API response: `documentCount`, `evaluationCount`, `chatCount`, `voiceCount`
+- Graceful error handling if RPC function not found (migration not run)
+- **File:** `templates/_modules-core/module-ws/backend/lambdas/workspace/lambda_function.py`
+
+**✅ Frontend Display:**
+- Added all count fields to Workspace TypeScript interface
+- Created dedicated "Resource Metrics" section with 3-column grid layout
+- Used icons for visual clarity (📄 Documents, 📊 Evaluations, 💬 Chats, 🎤 Voice)
+- Conditional rendering (only shows if count > 0)
+- Proper tooltips with singular/plural forms
+- **Files:**
+  - `templates/_modules-core/module-ws/frontend/components/WorkspaceCard.tsx`
+  - `templates/_modules-core/module-ws/frontend/types/index.ts`
+
+**API Response Format:**
+```json
+{
+  "id": "...",
+  "name": "Starbucks",
+  "memberCount": 1,
+  "documentCount": 12,      // ✅ NEW
+  "evaluationCount": 3,     // ✅ NEW (0 if module not installed)
+  "chatCount": 8,           // ✅ NEW
+  "voiceCount": 2           // ✅ NEW (0 if module not installed)
+}
+```
+
+**Performance:** Single RPC call for all workspaces (efficient batch processing)
+
+**See Also:** `docs/plans/completed/BACKEND-TODO-workspace-counts.md` for complete implementation details
+
+**Requirements:**
+- Add count of evaluations in workspace
+- Add count of documents in workspace
+- Add count of members in workspace (already shows, but may need repositioning)
+- Optimize card layout to accommodate new information without overwhelming UI
+- Maintain readability and visual hierarchy
+
+**Implementation Notes:**
+- Check if `evaluation_count` and `document_count` are available in workspace API response
+- May need to add computed fields to API if not present
+- Consider visual grouping of metrics (icons + counts)
+- Layout optimization strategies:
+  - Use collapsible sections for detailed info
+  - Group related metrics together
+  - Consider tabs or accordion for dense information
+  - Use icons instead of text labels where possible
+  - Adjust spacing and font sizes for balance
+
+**UX Considerations:**
+With the addition of:
+- Creation date + days active (Issue #1)
+- Status chip (Issue #2)
+- Resource counts (this issue)
+
+The card now displays significant information. Layout should:
+- Prioritize most important info (name, status)
+- Group related metrics (resource counts together)
+- Maintain visual breathing room
+- Support both grid and list view modes
+
+**Files to Modify:**
+- `templates/_modules-core/module-ws/frontend/components/WorkspaceCard.tsx`
+- `templates/_modules-core/module-ws/frontend/types/index.ts` (if adding new computed fields)
+- May need backend API updates to include evaluation/document counts
 
 ---
 
@@ -271,9 +370,10 @@ Phase 2 continues the UI/UX improvements for the Eval and Workspace modules. Pha
 
 ## Success Criteria
 
-- [ ] Workspace cards show creation date and days active
-- [ ] Workspace cards show status chip with color coding
-- [ ] Workspace cards have "Edit" menu option that opens metadata dialog
+- [x] Workspace cards show creation date and days active
+- [x] Workspace cards show status chip with color coding
+- [x] Workspace cards have "Edit" menu option that opens metadata dialog with status field
+- [x] Workspace cards show evaluation count, document count, and optimized layout
 - [ ] Eval cards show "{Document Name} - {Date}" instead of placeholder
 - [ ] Organizations can upload and display custom logos
 - [ ] System/Org/User-level theme configuration functional with proper inheritance
@@ -284,14 +384,15 @@ Phase 2 continues the UI/UX improvements for the Eval and Workspace modules. Pha
 
 | Task | Duration | Notes |
 |------|----------|-------|
-| **Issue 1: Creation Date & Days Active** | 2-3 hours | Frontend display logic |
-| **Issue 2: Status Chip** | 1-2 hours | May need schema update |
-| **Issue 3: Edit Metadata Dialog** | 3-4 hours | New dialog + validation |
+| **Issue 1: Creation Date & Days Active** | ~~2-3 hours~~ ✅ 2 hours | Frontend display logic |
+| **Issue 2: Status Chip** | ~~1-2 hours~~ ✅ 1 hour | Layout adjustments |
+| **Issue 3: Edit Metadata Dialog** | ~~3-4 hours~~ ✅ 1 hour | Added status field to existing form |
+| **Issue 7: Resource Counts & Layout Optimization** | ~~3-5 hours~~ ✅ 2 hours | Types + layout with metrics grid |
 | **Issue 4: Eval Card Naming** | 2-3 hours | Backend + frontend changes |
 | **Issue 5: Org Logo Upload** | 6-8 hours | Image processing, storage, display |
 | **Issue 6: Theme Configuration** | 8-12 hours | Complex feature with multiple levels |
 | **Testing** | 3-4 hours | All issues |
-| **Total** | **25-36 hours** | ~4-5 work days |
+| **Total** | **25-37 hours** | ~4-5 work days |
 
 ---
 
@@ -315,9 +416,21 @@ Phase 2 continues the UI/UX improvements for the Eval and Workspace modules. Pha
 
 ---
 
-**Document Status:** 🟡 PLANNED  
-**Current Phase:** Planning  
-**Next Action:** Begin implementation of Issue #4 (Eval card naming)  
+**Document Status:** � IN PROGRESS  
+**Current Phase:** Implementation  
+**Completed (Jan 22, 2026):**
+- ✅ Issues #1-3 (Workspace card enhancements: creation date, status chip, edit dialog)
+- ✅ Issue #7 (Resource counts - **full stack implementation verified**)
+  - Database: RPC function created and migrated
+  - Backend: Lambda updated to call RPC and return counts
+  - Frontend: Displays counts with icons and conditional rendering
+  - Optional modules (eval, voice) handled gracefully
+
+**Remaining:** Issues #4, #5, #6 (3 of 7)  
+**Next Action:** Issue #4 (Eval card naming - high priority, user-facing)  
 **Branch:** `ui-enhancements`  
-**Related Plan:** `plan_ui-enhancements-p1.md` (completed)  
-**Last Updated:** January 21, 2026
+**Related Plans:**
+- `plan_ui-enhancements-p1.md` (completed)
+- `docs/plans/completed/BACKEND-TODO-workspace-counts.md` (Issue #7 implementation details)
+
+**Last Updated:** January 22, 2026 4:18 PM EST
