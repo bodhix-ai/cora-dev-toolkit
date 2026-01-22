@@ -490,10 +490,11 @@ export function WorkspaceDetailPage({
           <Tab label="Evaluations" {...a11yProps(2)} />
           <Tab label="Settings" {...a11yProps(3)} />
         </Tabs>
+        <Divider /> {/* CORA UI Standard: Tab separator bar */}
 
         {/* Tab 0: Overview */}
         <TabPanel value={activeTab} index={0}>
-          <Box>
+          <Box sx={{ p: 3 }}> {/* CORA UI Standard: Tab content padding (24px) */}
             {/* Workspace Info Grid */}
             <Grid container spacing={3}>
               {/* Docs Summary */}
@@ -587,8 +588,9 @@ export function WorkspaceDetailPage({
 
         {/* Tab 1: Docs */}
         <TabPanel value={activeTab} index={1}>
-          {/* Knowledge Base Section - Integrated with module-kb */}
-          <WorkspaceDataKBTab
+          <Box sx={{ p: 3 }}> {/* CORA UI Standard: Tab content padding (24px) */}
+            {/* Knowledge Base Section - Integrated with module-kb */}
+            <WorkspaceDataKBTab
             workspaceId={workspaceId}
             kb={kb}
             availableKbs={groupedAvailableKbs}
@@ -606,13 +608,41 @@ export function WorkspaceDetailPage({
             onDeleteDocument={deleteDocument}
             onDownloadDocument={downloadDocument}
             currentUserId={userId}
-          />
+            />
+          </Box>
         </TabPanel>
 
         {/* Tab 2: Evaluations */}
         <TabPanel value={activeTab} index={2}>
-          <Box>
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", mb: 3 }}>
+          <Box sx={{ p: 3 }}> {/* CORA UI Standard: Tab content padding (24px) */}
+            {/* Stats Chips and Create Button - Same horizontal band */}
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3, flexWrap: "wrap", gap: 2 }}>
+              {/* Stats Chips */}
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                <Chip 
+                  label={`Total: ${calculatedEvalStats.total}`} 
+                  color="default"
+                />
+                <Chip 
+                  label={`Draft: ${calculatedEvalStats.draft}`} 
+                  color="default"
+                  variant="outlined"
+                />
+                <Chip 
+                  label={`Processing: ${calculatedEvalStats.processing}`} 
+                  color="info"
+                />
+                <Chip 
+                  label={`Completed: ${calculatedEvalStats.completed}`} 
+                  color="success"
+                />
+                <Chip 
+                  label={`Failed: ${calculatedEvalStats.failed}`} 
+                  color="error"
+                />
+              </Box>
+
+              {/* Create Button */}
               {canEdit && (
                 <Button
                   variant="contained"
@@ -631,31 +661,6 @@ export function WorkspaceDetailPage({
                 {evalError}
               </Alert>
             )}
-
-            {/* Stats Chips */}
-            <Box sx={{ display: "flex", gap: 1, mb: 3, flexWrap: "wrap" }}>
-              <Chip 
-                label={`Total: ${calculatedEvalStats.total}`} 
-                color="default"
-              />
-              <Chip 
-                label={`Draft: ${calculatedEvalStats.draft}`} 
-                color="default"
-                variant="outlined"
-              />
-              <Chip 
-                label={`Processing: ${calculatedEvalStats.processing}`} 
-                color="info"
-              />
-              <Chip 
-                label={`Completed: ${calculatedEvalStats.completed}`} 
-                color="success"
-              />
-              <Chip 
-                label={`Failed: ${calculatedEvalStats.failed}`} 
-                color="error"
-              />
-            </Box>
 
             {/* Loading State */}
             {evalLoading && (
@@ -833,7 +838,7 @@ export function WorkspaceDetailPage({
 
         {/* Tab 3: Settings */}
         <TabPanel value={activeTab} index={3}>
-          <Box>
+          <Box sx={{ p: 3 }}> {/* CORA UI Standard: Tab content padding (24px) */}
             <Typography variant="h6" gutterBottom>
               Settings
             </Typography>
