@@ -16,10 +16,14 @@ import {
   Typography,
   CircularProgress,
   Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import { Add, Edit } from "@mui/icons-material";
-import type { Workspace, WorkspaceFormValues } from "../types";
-import { DEFAULT_WORKSPACE_FORM } from "../types";
+import type { Workspace, WorkspaceFormValues, WorkspaceStatus } from "../types";
+import { DEFAULT_WORKSPACE_FORM, STATUS_DISPLAY_NAMES } from "../types";
 import { useWorkspaceForm } from "../hooks/useWorkspaceForm";
 import { ColorPicker } from "./ColorPicker";
 import { TagInput } from "./TagInput";
@@ -78,6 +82,7 @@ export function WorkspaceForm({
             color: workspace.color,
             icon: workspace.icon,
             tags: workspace.tags,
+            status: workspace.status,
           }
         : {
             ...DEFAULT_WORKSPACE_FORM,
@@ -222,6 +227,23 @@ export function WorkspaceForm({
             error={errors.color}
             disabled={isLoading}
           />
+
+          {/* Status selector (only in edit mode) */}
+          {isEditMode && (
+            <FormControl fullWidth disabled={isLoading}>
+              <InputLabel id="workspace-status-label">Status</InputLabel>
+              <Select
+                labelId="workspace-status-label"
+                id="workspace-status"
+                value={values.status || "active"}
+                label="Status"
+                onChange={(e) => setFieldValue("status", e.target.value as WorkspaceStatus)}
+              >
+                <MenuItem value="active">{STATUS_DISPLAY_NAMES.active}</MenuItem>
+                <MenuItem value="archived">{STATUS_DISPLAY_NAMES.archived}</MenuItem>
+              </Select>
+            </FormControl>
+          )}
 
           {/* Tags input */}
           <TagInput

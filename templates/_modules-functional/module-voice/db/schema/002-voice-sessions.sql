@@ -29,6 +29,11 @@ CREATE TABLE public.voice_sessions (
     created_by UUID NOT NULL REFERENCES auth.users(id),
     updated_by UUID REFERENCES auth.users(id),
     
+    -- Soft Delete Columns (CORA Standard Audit Columns)
+    is_deleted BOOLEAN NOT NULL DEFAULT false,
+    deleted_at TIMESTAMPTZ,
+    deleted_by UUID REFERENCES auth.users(id),
+    
     -- Permission/Sharing Columns (added for owner+assignee+shares model)
     assigned_to UUID REFERENCES auth.users(id),
     is_shared_with_workspace BOOLEAN NOT NULL DEFAULT false,
@@ -53,10 +58,13 @@ CREATE INDEX idx_voice_sessions_created_at ON public.voice_sessions(created_at D
 CREATE INDEX idx_voice_sessions_config_id ON public.voice_sessions(config_id);
 CREATE INDEX idx_voice_sessions_interview_type ON public.voice_sessions(interview_type);
 CREATE INDEX idx_voice_sessions_assigned_to ON public.voice_sessions(assigned_to) WHERE assigned_to IS NOT NULL;
+-- Soft delete indexes
+CREATE INDEX idx_voice_sessions_is_deleted ON public.voice_sessions(is_deleted) WHERE is_deleted = false;
+CREATE INDEX idx_voice_sessions_ws_not_deleted ON public.voice_sessions(ws_id, is_deleted) WHERE is_deleted = false;
 -- Composite index for common query: sessions in workspace
 CREATE INDEX idx_voice_sessions_ws_user ON public.voice_sessions(ws_id, created_by) WHERE ws_id IS NOT NULL;
 
--- Trigger function
+-- Trigger function for updated_at
 CREATE OR REPLACE FUNCTION update_voice_sessions_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -65,12 +73,37 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger
+-- Trigger for updated_at
 DROP TRIGGER IF EXISTS voice_sessions_updated_at ON public.voice_sessions;
 CREATE TRIGGER voice_sessions_updated_at 
     BEFORE UPDATE ON public.voice_sessions
     FOR EACH ROW
     EXECUTE FUNCTION update_voice_sessions_updated_at();
+
+-- Trigger function for soft delete consistency (CORA Standard)
+CREATE OR REPLACE FUNCTION sync_voice_sessions_is_deleted()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- When deleted_at is set, ensure is_deleted is true
+    IF NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL THEN
+        NEW.is_deleted := true;
+    END IF;
+    
+    -- When deleted_at is cleared (restore), ensure is_deleted is false
+    IF NEW.deleted_at IS NULL AND OLD.deleted_at IS NOT NULL THEN
+        NEW.is_deleted := false;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger for soft delete consistency
+DROP TRIGGER IF EXISTS voice_sessions_sync_is_deleted ON public.voice_sessions;
+CREATE TRIGGER voice_sessions_sync_is_deleted
+    BEFORE UPDATE ON public.voice_sessions
+    FOR EACH ROW
+    EXECUTE FUNCTION sync_voice_sessions_is_deleted();
 
 -- Comments
 COMMENT ON TABLE public.voice_sessions IS 'Voice interview sessions with Daily.co room details';
@@ -83,3 +116,7 @@ COMMENT ON COLUMN public.voice_sessions.is_shared_with_workspace IS 'Whether ses
 COMMENT ON COLUMN public.voice_sessions.status IS 'Session lifecycle: pending, ready, active, completed, failed, cancelled';
 COMMENT ON COLUMN public.voice_sessions.daily_room_token IS 'Daily.co participant token (expires after 24h)';
 COMMENT ON COLUMN public.voice_sessions.ecs_task_arn IS 'ECS task ARN for Pipecat bot';
+-- CORA Standard Audit Column Comments
+COMMENT ON COLUMN public.voice_sessions.is_deleted IS 'Soft delete flag - automatically synced with deleted_at via trigger';
+COMMENT ON COLUMN public.voice_sessions.deleted_at IS 'Timestamp when the record was soft deleted';
+COMMENT ON COLUMN public.voice_sessions.deleted_by IS 'User who soft deleted this record';

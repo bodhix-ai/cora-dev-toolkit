@@ -7,7 +7,7 @@
 
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -17,9 +17,111 @@ import {
   Grid,
   Divider,
   Paper,
+  IconButton,
+  Collapse,
 } from "@mui/material";
-import { CheckCircle as CheckCircleIcon } from "@mui/icons-material";
+import {
+  CheckCircle as CheckCircleIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+} from "@mui/icons-material";
 import type { Evaluation, EvaluationDocument } from "../types";
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+/**
+ * Convert Markdown to HTML
+ * Handles common markdown patterns: headings, bold, italic, lists
+ */
+function markdownToHtml(markdown: string): string {
+  if (!markdown) return '';
+  
+  let html = markdown;
+  
+  // Normalize line endings
+  html = html.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  
+  // Convert headings (must happen before paragraph processing)
+  html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  
+  // Convert bold (must happen before italic to avoid conflicts)
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+  
+  // Convert italic (after bold)
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+  
+  // Convert unordered lists
+  const listItems = html.match(/^[\s]*[-*]\s+.+$/gm);
+  if (listItems) {
+    html = html.replace(/^([\s]*[-*]\s+.+$\n?)+/gm, (match) => {
+      const items = match.split('\n').filter(line => line.trim());
+      const listHtml = items.map(item => {
+        const content = item.replace(/^[\s]*[-*]\s+/, '');
+        return `<li>${content}</li>`;
+      }).join('');
+      return `<ul>${listHtml}</ul>\n`;
+    });
+  }
+  
+  // Convert numbered lists
+  const numberedItems = html.match(/^\d+\.\s+.+$/gm);
+  if (numberedItems) {
+    html = html.replace(/^(\d+\.\s+.+$\n?)+/gm, (match) => {
+      const items = match.split('\n').filter(line => line.trim());
+      const listHtml = items.map(item => {
+        const content = item.replace(/^\d+\.\s+/, '');
+        return `<li>${content}</li>`;
+      }).join('');
+      return `<ol>${listHtml}</ol>\n`;
+    });
+  }
+  
+  // Convert paragraphs (split by double newline)
+  const paragraphs = html.split(/\n\n+/);
+  html = paragraphs
+    .map(para => {
+      para = para.trim();
+      // Don't wrap if already wrapped in HTML tags
+      if (para.match(/^<(h[1-6]|ul|ol|li|div|p)/)) {
+        return para;
+      }
+      // Don't wrap empty paragraphs
+      if (!para) {
+        return '';
+      }
+      return `<p>${para}</p>`;
+    })
+    .filter(p => p)
+    .join('\n');
+  
+  return html;
+}
+
+/**
+ * Extract first paragraph from markdown/HTML text
+ */
+function extractFirstParagraph(text: string): string {
+  if (!text) return '';
+  
+  // Try to extract first meaningful paragraph
+  const lines = text.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    // Skip headings and empty lines
+    if (trimmed && !trimmed.startsWith('#')) {
+      return trimmed;
+    }
+  }
+  
+  return text.split('\n\n')[0] || text;
+}
 
 // =============================================================================
 // TYPES
@@ -120,6 +222,69 @@ export function ComplianceScore({
 }
 
 // =============================================================================
+// COLLAPSIBLE EVAL SUMMARY COMPONENT
+// =============================================================================
+
+/**
+ * Collapsible evaluation summary with Markdown rendering
+ */
+function CollapsibleEvalSummary({ evalSummary }: { evalSummary: string }) {
+  const [expanded, setExpanded] = useState(false);
+  
+  // Extract first paragraph for collapsed view
+  const firstParagraph = extractFirstParagraph(evalSummary);
+  
+  return (
+    <Box>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+        <Typography variant="subtitle2" color="text.secondary">
+          Evaluation Overview
+        </Typography>
+        <IconButton
+          onClick={() => setExpanded(!expanded)}
+          size="small"
+          aria-label={expanded ? "Collapse overview" : "Expand overview"}
+        >
+          {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+        </IconButton>
+      </Box>
+      
+      <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
+        {expanded ? (
+          <Typography
+            variant="body2"
+            component="div"
+            sx={{
+              "& p": { margin: "0.5em 0", "&:first-of-type": { marginTop: 0 }, "&:last-of-type": { marginBottom: 0 } },
+              "& h1": { fontSize: "1.5em", fontWeight: 600, margin: "0.5em 0" },
+              "& h2": { fontSize: "1.3em", fontWeight: 600, margin: "0.5em 0" },
+              "& h3": { fontSize: "1.1em", fontWeight: 600, margin: "0.5em 0" },
+              "& h4": { fontSize: "1em", fontWeight: 600, margin: "0.5em 0" },
+              "& ul, & ol": { marginLeft: "1.5em", marginTop: "0.5em", marginBottom: "0.5em" },
+              "& li": { marginBottom: "0.25em" },
+              "& strong": { fontWeight: 600 },
+              "& em": { fontStyle: "italic" },
+            }}
+            dangerouslySetInnerHTML={{ __html: markdownToHtml(evalSummary) }}
+          />
+        ) : (
+          <Typography
+            variant="body2"
+            component="div"
+            sx={{
+              "& p": { margin: "0.5em 0", "&:first-of-type": { marginTop: 0 }, "&:last-of-type": { marginBottom: 0 } },
+              "& strong": { fontWeight: 600 },
+              "& em": { fontStyle: "italic" },
+            }}
+            dangerouslySetInnerHTML={{ __html: markdownToHtml(firstParagraph) }}
+          />
+        )}
+      </Paper>
+    </Box>
+  );
+}
+
+// =============================================================================
 // DOCUMENT SUMMARY PANEL
 // =============================================================================
 
@@ -211,17 +376,130 @@ export function DocSummaryPanel({
 // =============================================================================
 
 /**
+ * Collapsible details section
+ */
+function CollapsibleDetails({ evaluation }: { evaluation: Evaluation }) {
+  const [expanded, setExpanded] = useState(false);
+  
+  return (
+    <Box>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+        <Typography variant="subtitle2" color="text.secondary">
+          Details
+        </Typography>
+        <IconButton
+          onClick={() => setExpanded(!expanded)}
+          size="small"
+          aria-label={expanded ? "Collapse details" : "Expand details"}
+        >
+          {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+        </IconButton>
+      </Box>
+      
+      <Collapse in={expanded}>
+        <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="body2" color="text.secondary">
+                Document Type
+              </Typography>
+              <Typography variant="body2" fontWeight="medium">
+                {evaluation.docTypeName || evaluation.docType?.name || "N/A"}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="body2" color="text.secondary">
+                Criteria Set
+              </Typography>
+              <Typography variant="body2" fontWeight="medium">
+                {evaluation.criteriaSetName || evaluation.criteriaSet?.name || "N/A"}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="body2" color="text.secondary">
+                Documents
+              </Typography>
+              <Typography variant="body2" fontWeight="medium">
+                {evaluation.documentCount ?? evaluation.documents?.length ?? 0}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="body2" color="text.secondary">
+                Completed
+              </Typography>
+              <Typography variant="body2" fontWeight="medium">
+                {evaluation.completedAt
+                  ? new Date(evaluation.completedAt).toLocaleString()
+                  : "N/A"}
+              </Typography>
+            </Grid>
+            {evaluation.complianceScore != null && (
+              <Grid item xs={12}>
+                <Typography variant="body2" color="text.secondary">
+                  Compliance Score
+                </Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  <ComplianceScore score={evaluation.complianceScore} />
+                </Box>
+              </Grid>
+            )}
+          </Grid>
+        </Paper>
+      </Collapse>
+    </Box>
+  );
+}
+
+/**
+ * Collapsible document summary
+ */
+function CollapsibleDocSummary({ docSummary }: { docSummary: string }) {
+  const [expanded, setExpanded] = useState(false);
+  
+  return (
+    <Box>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+        <Typography variant="subtitle2" color="text.secondary">
+          Document Summary
+        </Typography>
+        <IconButton
+          onClick={() => setExpanded(!expanded)}
+          size="small"
+          aria-label={expanded ? "Collapse document summary" : "Expand document summary"}
+        >
+          {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+        </IconButton>
+      </Box>
+      
+      <Collapse in={expanded}>
+        <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
+          <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+            {docSummary}
+          </Typography>
+        </Paper>
+      </Collapse>
+    </Box>
+  );
+}
+
+/**
  * Displays the overall evaluation summary
  */
 export function EvalSummaryPanel({
   evaluation,
   className = "",
 }: EvalSummaryPanelProps) {
-  const hasScore = evaluation.complianceScore != null;
+  const [panelExpanded, setPanelExpanded] = useState(true);
   const hasSummary = !!evaluation.evalSummary;
   const hasDocSummary = !!evaluation.docSummary;
 
-  if (!hasScore && !hasSummary && !hasDocSummary) {
+  // Get document name for header
+  const documentName = evaluation.documents?.[0]?.name 
+    || evaluation.documents?.[0]?.fileName 
+    || evaluation.name 
+    || "Evaluation";
+
+  if (!hasSummary && !hasDocSummary) {
     return (
       <Card className={className}>
         <CardContent>
@@ -239,106 +517,41 @@ export function EvalSummaryPanel({
 
   return (
     <Card className={className}>
-      {/* Header with Score */}
       <CardContent>
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "flex-start",
+        {/* Header - Collapsible for entire panel */}
+        <Box 
+          sx={{ 
+            display: "flex", 
+            alignItems: "center", 
             justifyContent: "space-between",
-            mb: 3,
+            mb: panelExpanded ? 3 : 0,
           }}
         >
-          <Box>
-            <Typography variant="h6" gutterBottom>
-              Evaluation Summary
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {evaluation.name}
-            </Typography>
-          </Box>
-          {hasScore && (
-            <ComplianceScore score={evaluation.complianceScore!} large />
-          )}
+          <Typography variant="h6">
+            Evaluation Summary for {documentName}
+          </Typography>
+          <IconButton
+            onClick={() => setPanelExpanded(!panelExpanded)}
+            size="small"
+            aria-label={panelExpanded ? "Collapse panel" : "Expand panel"}
+          >
+            {panelExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          </IconButton>
         </Box>
 
-        <Divider sx={{ mb: 3 }} />
+        {/* Collapsible Content */}
+        <Collapse in={panelExpanded}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {/* 1. Details Section (collapsible) */}
+            <CollapsibleDetails evaluation={evaluation} />
 
-        {/* Summary Content */}
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          {/* Evaluation Summary */}
-          {hasSummary && (
-            <Box>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                Overall Assessment
-              </Typography>
-              <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
-                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                  {evaluation.evalSummary}
-                </Typography>
-              </Paper>
-            </Box>
-          )}
+            {/* 2. Document Summary (collapsible) */}
+            {hasDocSummary && <CollapsibleDocSummary docSummary={evaluation.docSummary!} />}
 
-          {/* Document Summary */}
-          {hasDocSummary && (
-            <Box>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                Document Summary
-              </Typography>
-              <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
-                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                  {evaluation.docSummary}
-                </Typography>
-              </Paper>
-            </Box>
-          )}
-
-          {/* Document Details */}
-          {evaluation.documents && evaluation.documents.length > 0 && (
-            <DocSummaryPanel documents={evaluation.documents} />
-          )}
-
-          {/* Metadata */}
-          <Box sx={{ pt: 2, borderTop: 1, borderColor: "divider" }}>
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <Typography variant="body2" color="text.secondary" component="span">
-                  Document Type:{" "}
-                </Typography>
-                <Typography variant="body2" fontWeight="medium" component="span">
-                  {evaluation.docTypeName || evaluation.docType?.name || "N/A"}
-                </Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="body2" color="text.secondary" component="span">
-                  Criteria Set:{" "}
-                </Typography>
-                <Typography variant="body2" fontWeight="medium" component="span">
-                  {evaluation.criteriaSetName || evaluation.criteriaSet?.name || "N/A"}
-                </Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="body2" color="text.secondary" component="span">
-                  Documents:{" "}
-                </Typography>
-                <Typography variant="body2" fontWeight="medium" component="span">
-                  {evaluation.documentCount ?? evaluation.documents?.length ?? 0}
-                </Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="body2" color="text.secondary" component="span">
-                  Completed:{" "}
-                </Typography>
-                <Typography variant="body2" fontWeight="medium" component="span">
-                  {evaluation.completedAt
-                    ? new Date(evaluation.completedAt).toLocaleString()
-                    : "N/A"}
-                </Typography>
-              </Grid>
-            </Grid>
+            {/* 3. Evaluation Overview (collapsible) - already done */}
+            {hasSummary && <CollapsibleEvalSummary evalSummary={evaluation.evalSummary!} />}
           </Box>
-        </Box>
+        </Collapse>
       </CardContent>
     </Card>
   );

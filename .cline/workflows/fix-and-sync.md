@@ -31,24 +31,42 @@ Changes made only to test projects will be lost when the project is deleted.
 
 ## 3. Sync to Test Project
 
-Determine the test project path from `memory-bank/activeContext.md` and sync:
+**CRITICAL**: CORA projects have TWO repositories:
+- `{project}-infra` - Infrastructure as Code (Terraform, Lambdas)
+- `{project}-stack` - Application Code (Next.js app, CORA modules)
+
+Determine the test project path from `memory-bank/activeContext.md` and sync to the **CORRECT REPO**:
 
 ```bash
-# Read project paths from activeContext.md
-# Stack path: for frontend and functional module code
-# Infra path: for Lambda authorizer and infrastructure code
+# For FRONTEND/MODULE code → sync to STACK repo
+./scripts/sync-fix-to-project.sh ~/path/to/{project}-stack <filename>
 
-./scripts/sync-fix-to-project.sh <project-path> <filename>
+# For INFRASTRUCTURE code → sync to INFRA repo  
+./scripts/sync-fix-to-project.sh ~/path/to/{project}-infra <filename>
 ```
 
-### Path Patterns
+### Path Patterns & Target Repos
 
-| Code Type | Target Repo | Example |
-|-----------|-------------|---------|
-| Frontend components | `{project}-stack` | `InviteMemberDialog.tsx` |
-| Functional module Lambda | `{project}-stack` | `module-access/invites/lambda_function.py` |
-| Authorizer Lambda | `{project}-infra` | `lambdas/authorizer/lambda_function.py` |
-| Terraform configs | `{project}-infra` | `main.tf`, `variables.tf` |
+| Code Type | Target Repo | Example Path | Example File |
+|-----------|-------------|--------------|--------------|
+| Frontend components | `{project}-stack` | `~/code/bodhix/testing/test-optim/ai-sec-stack` | `InviteMemberDialog.tsx` |
+| Frontend pages | `{project}-stack` | `~/code/bodhix/testing/test-optim/ai-sec-stack` | `EvalListPage.tsx` |
+| Module hooks/types | `{project}-stack` | `~/code/bodhix/testing/test-optim/ai-sec-stack` | `useEvaluations.ts` |
+| Functional module Lambda | `{project}-stack` | `~/code/bodhix/testing/test-optim/ai-sec-stack` | `module-access/invites/lambda_function.py` |
+| Authorizer Lambda | `{project}-infra` | `~/code/bodhix/testing/test-optim/ai-sec-infra` | `lambdas/authorizer/lambda_function.py` |
+| Terraform configs | `{project}-infra` | `~/code/bodhix/testing/test-optim/ai-sec-infra` | `main.tf`, `variables.tf` |
+
+**Example:**
+```bash
+# Test project at: ~/code/bodhix/testing/test-optim/
+# Contains: ai-sec-infra/ and ai-sec-stack/
+
+# Frontend fix → STACK repo
+./scripts/sync-fix-to-project.sh ~/code/bodhix/testing/test-optim/ai-sec-stack EvalListPage.tsx
+
+# Infrastructure fix → INFRA repo
+./scripts/sync-fix-to-project.sh ~/code/bodhix/testing/test-optim/ai-sec-infra main.tf
+```
 
 ## 4. Deploy if Backend
 

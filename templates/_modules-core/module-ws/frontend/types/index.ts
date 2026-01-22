@@ -42,6 +42,10 @@ export interface Workspace {
   favoritedAt?: string;
   userRole?: WorkspaceRole;
   memberCount?: number;
+  documentCount?: number;
+  evaluationCount?: number;
+  chatCount?: number;
+  voiceCount?: number;
 }
 
 /**

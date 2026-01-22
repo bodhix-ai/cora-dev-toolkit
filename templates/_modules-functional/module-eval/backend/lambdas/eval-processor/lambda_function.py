@@ -516,7 +516,8 @@ def get_document_content(ws_id: str, doc_id: str) -> Optional[str]:
     """
     try:
         # First try to get from kb_docs table directly
-        doc = common.find_one('kb_docs', {'id': doc_id, 'ws_id': ws_id})
+        # Note: ws_id parameter is for context but not used in query since doc_id is already scoped
+        doc = common.find_one('kb_docs', {'id': doc_id})
         
         if doc:
             # If we have extracted text, return it
@@ -634,12 +635,21 @@ def evaluate_criteria_item(
         # Parse AI response
         parsed = parse_evaluation_response(response, status_options)
         
+        # Get score_value from selected status option
+        ai_score_value = None
+        status_id = parsed.get('status_id')
+        if status_id:
+            status_option = next((s for s in status_options if s['id'] == status_id), None)
+            if status_option and status_option.get('score_value') is not None:
+                ai_score_value = float(status_option['score_value'])
+        
         # Save result
         result = save_criteria_result(
             eval_id=eval_id,
             criteria_item_id=criteria_item_id,
             ai_result=parsed.get('explanation', response),
-            ai_status_id=parsed.get('status_id'),
+            ai_status_id=status_id,
+            ai_score_value=ai_score_value,
             ai_confidence=parsed.get('confidence'),
             ai_citations=parsed.get('citations', [])
         )
@@ -655,6 +665,7 @@ def evaluate_criteria_item(
             criteria_item_id=criteria_item_id,
             ai_result=f"Error during evaluation: {str(e)}",
             ai_status_id=None,
+            ai_score_value=None,
             ai_confidence=0,
             ai_citations=[]
         )
@@ -727,7 +738,13 @@ def format_status_options(status_options: List[Dict[str, Any]]) -> str:
         score = opt.get('score_value', 'N/A')
         lines.append(f"- {opt['name']} (score: {score})")
     
-    return '\n'.join(lines)
+    formatted = '\n'.join(lines)
+    
+    # DEBUG: Log formatted status options
+    logger.info(f"[DEBUG] Formatted status options for AI:\n{formatted}")
+    logger.info(f"[DEBUG] Status option IDs: {[{'name': opt['name'], 'id': opt['id'][:8]} for opt in status_options]}")
+    
+    return formatted
 
 
 def parse_evaluation_response(
@@ -735,6 +752,11 @@ def parse_evaluation_response(
     status_options: List[Dict[str, Any]]
 ) -> Dict[str, Any]:
     """Parse AI evaluation response into structured data."""
+    # DEBUG: Log raw AI response
+    logger.info(f"[DEBUG] ===== PARSING AI RESPONSE =====")
+    logger.info(f"[DEBUG] Raw AI response (first 1000 chars):\n{response[:1000]}")
+    logger.info(f"[DEBUG] Available status options: {[opt['name'] for opt in status_options]}")
+    
     result = {
         'status_id': None,
         'confidence': None,
@@ -750,37 +772,69 @@ def parse_evaluation_response(
         
         if json_start >= 0 and json_end > json_start:
             json_str = response[json_start:json_end]
+            logger.info(f"[DEBUG] Extracted JSON string:\n{json_str}")
+            
             parsed = json.loads(json_str)
+            logger.info(f"[DEBUG] Parsed JSON: {parsed}")
             
             # Extract status
-            status_name = parsed.get('status', '').lower()
+            status_name = parsed.get('status', '')
+            logger.info(f"[DEBUG] AI returned status name: '{status_name}'")
+            
+            status_name_lower = status_name.lower()
+            
+            # First pass: Try exact match
             for opt in status_options:
-                if opt['name'].lower() == status_name or status_name in opt['name'].lower():
+                if opt['name'].lower() == status_name_lower:
                     result['status_id'] = opt['id']
+                    logger.info(f"[DEBUG] ✅ Exact matched status '{status_name}' to option '{opt['name']}' (ID: {opt['id'][:8]})")
                     break
+            
+            # Second pass: Try fuzzy match only if exact match not found
+            if not result['status_id']:
+                for opt in status_options:
+                    if status_name_lower in opt['name'].lower():
+                        result['status_id'] = opt['id']
+                        logger.info(f"[DEBUG] ✅ Fuzzy matched status '{status_name}' to option '{opt['name']}' (ID: {opt['id'][:8]})")
+                        break
+            
+            if not result['status_id']:
+                logger.warning(f"[DEBUG] ❌ Could not match status '{status_name}' to any option")
             
             # Extract confidence
             if 'confidence' in parsed:
                 conf = int(parsed['confidence'])
                 result['confidence'] = max(0, min(100, conf))
+                logger.info(f"[DEBUG] Confidence: {result['confidence']}%")
             
             # Extract explanation
             if 'explanation' in parsed:
                 result['explanation'] = parsed['explanation']
+                logger.info(f"[DEBUG] Explanation length: {len(result['explanation'])} chars")
             
             # Extract citations
             if 'citations' in parsed and isinstance(parsed['citations'], list):
                 result['citations'] = parsed['citations'][:10]  # Limit to 10 citations
+                logger.info(f"[DEBUG] Citations: {len(result['citations'])} found")
                 
     except (json.JSONDecodeError, ValueError) as e:
-        logger.debug(f"Could not parse response as JSON: {e}")
+        logger.warning(f"[DEBUG] Could not parse response as JSON: {e}")
         
         # Try to extract status from text
         response_lower = response.lower()
+        logger.info(f"[DEBUG] Trying text-based status extraction...")
+        
         for opt in status_options:
             if opt['name'].lower() in response_lower:
                 result['status_id'] = opt['id']
+                logger.info(f"[DEBUG] ✅ Found status '{opt['name']}' in text (ID: {opt['id'][:8]})")
                 break
+        
+        if not result['status_id']:
+            logger.warning(f"[DEBUG] ❌ Could not find any status option in text")
+    
+    logger.info(f"[DEBUG] Final parsed result: status_id={result['status_id'][:8] if result['status_id'] else None}, confidence={result['confidence']}")
+    logger.info(f"[DEBUG] ===== END PARSING =====")
     
     return result
 
@@ -790,6 +844,7 @@ def save_criteria_result(
     criteria_item_id: str,
     ai_result: str,
     ai_status_id: Optional[str],
+    ai_score_value: Optional[float],
     ai_confidence: Optional[int],
     ai_citations: List[Any]
 ) -> Dict[str, Any]:
@@ -804,6 +859,7 @@ def save_criteria_result(
         data = {
             'ai_result': ai_result,
             'ai_status_id': ai_status_id,
+            'ai_score_value': ai_score_value,
             'ai_confidence': ai_confidence,
             'ai_citations': json.dumps(ai_citations) if ai_citations else '[]',
             'processed_at': datetime.now(timezone.utc).isoformat()
@@ -825,6 +881,7 @@ def save_criteria_result(
             'criteria_item_id': criteria_item_id,
             'ai_result': ai_result,
             'ai_status_id': ai_status_id,
+            'ai_score_value': ai_score_value,
             'ai_confidence': ai_confidence,
             'ai_citations': ai_citations
         }
@@ -855,8 +912,14 @@ def generate_ai_response(
     for key, value in variables.items():
         user_prompt = user_prompt.replace(f'{{{key}}}', str(value))
     
-    # In production, call the AI provider API
-    # For now, return a placeholder response
+    # DEBUG: Log the complete prompt being sent to AI
+    logger.info(f"[DEBUG] ===== AI PROMPT =====")
+    logger.info(f"[DEBUG] System Prompt:\n{system_prompt}")
+    logger.info(f"[DEBUG] User Prompt (first 2000 chars):\n{user_prompt[:2000]}")
+    if len(user_prompt) > 2000:
+        logger.info(f"[DEBUG] ... (truncated, total length: {len(user_prompt)} chars)")
+    logger.info(f"[DEBUG] Temperature: {temperature}, Max Tokens: {max_tokens}")
+    logger.info(f"[DEBUG] =====================")
     
     # Check if we have AI provider configured
     ai_provider_id = prompt_config.get('ai_provider_id')
@@ -874,6 +937,12 @@ def generate_ai_response(
                 max_tokens=max_tokens
             )
             if response:
+                # DEBUG: Log AI response
+                logger.info(f"[DEBUG] ===== AI RESPONSE =====")
+                logger.info(f"[DEBUG] Response (first 2000 chars):\n{response[:2000]}")
+                if len(response) > 2000:
+                    logger.info(f"[DEBUG] ... (truncated, total length: {len(response)} chars)")
+                logger.info(f"[DEBUG] =====================")
                 return response
         except Exception as e:
             logger.error(f"Error calling AI provider: {e}")

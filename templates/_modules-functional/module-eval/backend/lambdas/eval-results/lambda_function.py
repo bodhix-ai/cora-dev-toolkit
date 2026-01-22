@@ -516,6 +516,7 @@ def handle_get_evaluation(eval_id: str, workspace_id: str, org_id: str) -> Dict[
                 'id': ai_result.get('id'),
                 'result': ai_result.get('ai_result'),
                 'statusId': ai_result.get('ai_status_id'),
+                'scoreValue': ai_result.get('ai_score_value'),
                 'confidence': ai_result.get('ai_confidence'),
                 'citations': json.loads(ai_result.get('ai_citations', '[]')) if ai_result.get('ai_citations') else [],
                 'processedAt': ai_result.get('processed_at')
@@ -756,6 +757,8 @@ def handle_edit_result(
     if not edited_result and not edited_status_id:
         raise common.ValidationError('Either editedResult or editedStatusId is required')
     
+    # Get score_value from selected status option
+    edited_score_value = None
     if edited_status_id:
         edited_status_id = common.validate_uuid(edited_status_id, 'editedStatusId')
         
@@ -764,8 +767,14 @@ def handle_edit_result(
         org_id = workspace.get('org_id') if workspace else None
         
         status_options = get_status_options(org_id)
-        if not any(s['id'] == edited_status_id for s in status_options):
+        status_option = next((s for s in status_options if s['id'] == edited_status_id), None)
+        
+        if not status_option:
             raise common.ValidationError('Invalid status option')
+        
+        # Capture score_value from status option
+        if status_option.get('score_value') is not None:
+            edited_score_value = float(status_option['score_value'])
     
     # Mark previous edits as not current
     previous_edits = common.find_many('eval_result_edits', {'criteria_result_id': result_id, 'is_current': True})
@@ -781,6 +790,7 @@ def handle_edit_result(
         'criteria_result_id': result_id,
         'edited_result': edited_result,
         'edited_status_id': edited_status_id,
+        'edited_score_value': edited_score_value,
         'edit_notes': edit_notes,
         'version': version,
         'is_current': True,

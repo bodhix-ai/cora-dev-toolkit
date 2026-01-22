@@ -248,6 +248,10 @@ def _transform_workspace(data: Dict[str, Any]) -> Dict[str, Any]:
         'isFavorited': data.get('is_favorited', False),
         'favoritedAt': data.get('favorited_at'),
         'memberCount': data.get('member_count'),
+        'documentCount': data.get('document_count'),
+        'evaluationCount': data.get('evaluation_count'),
+        'chatCount': data.get('chat_count'),
+        'voiceCount': data.get('voice_count'),
         'createdAt': data.get('created_at'),
         'updatedAt': data.get('updated_at'),
         'createdBy': data.get('created_by'),
@@ -367,6 +371,65 @@ def _log_activity(ws_id: str, user_id: str, action: str, metadata: Optional[Dict
     except Exception as e:
         # Don't fail the request if logging fails
         logger.warning(f'Failed to log activity: {str(e)}')
+
+
+def _get_workspace_counts(workspace_ids: List[str]) -> Dict[str, Dict[str, int]]:
+    """
+    Get resource counts for workspaces using the database RPC function.
+    
+    Returns dict: {workspace_id: {memberCount, documentCount, evaluationCount, chatCount, voiceCount}}
+    
+    Note: Uses get_workspace_resource_counts RPC function which gracefully handles
+    optional modules (eval, voice). Returns 0 for modules not installed.
+    """
+    counts = {}
+    
+    # Initialize all counts to 0
+    for ws_id in workspace_ids:
+        counts[ws_id] = {
+            'member_count': 0,
+            'document_count': 0,
+            'evaluation_count': 0,
+            'chat_count': 0,
+            'voice_count': 0
+        }
+    
+    if not workspace_ids:
+        return counts
+    
+    try:
+        # Call the database RPC function for batch counting
+        results = common.rpc(
+            function_name='get_workspace_resource_counts',
+            params={'p_workspace_ids': workspace_ids}
+        )
+        
+        # Parse results into our counts dict
+        if results:
+            for row in results:
+                ws_id = row.get('ws_id')
+                if ws_id:
+                    counts[ws_id] = {
+                        'member_count': row.get('member_count', 0),
+                        'document_count': row.get('document_count', 0),
+                        'evaluation_count': row.get('evaluation_count', 0),
+                        'chat_count': row.get('chat_count', 0),
+                        'voice_count': row.get('voice_count', 0)
+                    }
+        
+        logger.info(f"Retrieved resource counts for {len(workspace_ids)} workspaces")
+        return counts
+    
+    except Exception as e:
+        # If RPC function doesn't exist yet, log warning and return zeros
+        error_msg = str(e).lower()
+        if 'function' in error_msg and ('does not exist' in error_msg or 'not found' in error_msg):
+            logger.warning(f"get_workspace_resource_counts RPC function not found - returning zero counts. Run migration: 20260122_add_workspace_resource_counts.sql")
+        else:
+            logger.warning(f"Failed to get workspace counts: {e}")
+        
+        # Return initialized counts (all zeros)
+        return counts
 
 
 # =============================================================================
@@ -632,7 +695,7 @@ def handle_list_workspaces(
         - status: Filter by status (active, archived, all)
     
     Returns:
-        List of workspaces with member info
+        List of workspaces with member info and resource counts
     """
     try:
         query_params = event.get('queryStringParameters') or {}
@@ -651,6 +714,19 @@ def handle_list_workspaces(
                 'p_status': status
             }
         )
+        
+        # Get resource counts for all workspaces
+        if workspaces:
+            workspace_ids = [w['id'] for w in workspaces]
+            resource_counts = _get_workspace_counts(workspace_ids)
+            
+            # Merge counts into workspace records
+            for workspace in workspaces:
+                ws_counts = resource_counts.get(workspace['id'], {})
+                workspace['document_count'] = ws_counts.get('document_count', 0)
+                workspace['evaluation_count'] = ws_counts.get('evaluation_count', 0)
+                workspace['chat_count'] = ws_counts.get('chat_count', 0)
+                workspace['voice_count'] = ws_counts.get('voice_count', 0)
         
         result = {
             'workspaces': [_transform_workspace(w) for w in (workspaces or [])],

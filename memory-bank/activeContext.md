@@ -10,7 +10,8 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 | Branch | Context File | Focus Area |
 |--------|--------------|------------|
-| `eval-optimization` | `context-module-eval.md` | **ACTIVE** - Eval Optimization (AI Config & Quality) |
+| `ui-enhancements` | `context-module-ws.md` | **ACTIVE** - Module-WS UI Enhancements |
+| `eval-optimization` | `context-module-eval.md` | Eval Optimization (AI Config & Quality) |
 | `module-voice-dev` | `context-module-voice.md` | Module-Voice (Phase 1.5: Specifications) |
 | `feature/module-kb-implementation` | `context-module-kb.md` | Module-KB development |
 | `feature/module-eval-implementation` | `context-module-eval.md` | Module-Eval (Phase 9: Frontend Hooks) |
@@ -29,13 +30,20 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 ## Current Branch Status
 
-### eval-optimization (ACTIVE)
-- **Status:** Evaluation Optimization (� IN PROGRESS)
+### ui-enhancements (ACTIVE - Jan 22, 2026)
+- **Status:** Module-WS UI Enhancements Phase 2 (🟢 57% COMPLETE)
+- **Context:** See `context-module-ws.md`
+- **Plans:** `docs/plans/plan_ui-enhancements-p2.md`, `docs/plans/BACKEND-TODO-workspace-counts.md`
+- **Test Project:** `~/code/bodhix/testing/test-optim/`
+- **Focus:** Workspace card enhancements (creation date, status, counts, edit dialog)
+
+### eval-optimization
+- **Status:** Evaluation Optimization (⏳ PLANNED)
 - **Plans:** 
-  - `docs/plans/plan_eval-optimization.md` (ACTIVE)
+  - `docs/plans/plan_eval-optimization.md` (PLANNED)
 - **Context:** See `context-module-eval.md`
-- **Test Project:** `test-optim` (will be created)
-- **Focus:** Configure AI providers, optimize evaluation processing, investigate org admin page rendering issue
+- **Test Project:** `test-optim` (can reuse from ui-enhancements)
+- **Focus:** Configure AI providers, optimize evaluation processing
 
 ### ws-crud-kbs-embeddings
 - **Status:** Module-KB TypeScript Type Error Fixes
@@ -54,6 +62,7 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 | Branch | Status | Focus Area | Completed |
 |--------|--------|------------|-----------|
+| `schema-naming-audit` | ✅ Archived | Schema Naming Compliance Audit (eval, chat, kb, voice, ws) | 2026-01-21 |
 | `admin-eval-config-s2` | ✅ Archived | Workspace Doc Eval Implementation & Org Admin Config | 2026-01-20 |
 
 ---
@@ -69,4 +78,4 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 ---
 
-**Updated:** January 20, 2026
+**Updated:** January 22, 2026
