@@ -28,7 +28,11 @@ from query_parser import QueryParser
 from validator import Validator
 from fix_proposer import FixProposer
 from reporter import Reporter
-from static_schema_parser import StaticSchemaParser, find_schema_sql_files
+
+# Import shared static schema parser
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from shared.static_schema_parser import StaticSchemaParser, find_schema_sql_files
 
 # Note: .env loading moved into validate() function to support project-specific .env files
 

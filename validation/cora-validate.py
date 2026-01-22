@@ -253,6 +253,13 @@ class CoraValidator:
             "supports": ["project"],
             "cli_style": "argparse",
         },
+        "audit_columns": {
+            "name": "Audit Column Validator",
+            "description": "Validates module entity tables have required audit columns (ADR-015: created_at, created_by, updated_at, updated_by, is_deleted, deleted_at, deleted_by)",
+            "module": "audit-column-validator",
+            "supports": ["project", "module"],
+            "cli_style": "argparse",
+        },
     }
 
 
