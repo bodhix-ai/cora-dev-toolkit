@@ -12,7 +12,7 @@
 
 Phase 2 continues the UI/UX improvements for the Eval and Workspace modules. Phase 1 completed 8 core issues plus significant enhancements. Phase 2 focuses on workspace/audit management features, platform-level customization, and **Eval Details page improvements**.
 
-**Progress: 6/17 issues resolved (35%)**
+**Progress: 7/17 issues resolved (41%)**
 
 **Session Focus (Jan 22, 2026 - Evening):**
 - 🔴 **HIGH PRIORITY:** Eval Details page improvements (Issues A, A1-A7, B, C, D)
@@ -27,9 +27,12 @@ Phase 2 continues the UI/UX improvements for the Eval and Workspace modules. Pha
 
 **Completed Today (Jan 22, 2026 - Evening):**
 - ✅ Issue A: Header & Label Cleanup (all 3 sub-issues)
+- ✅ Issue A1: Summary Panel Padding
+- ✅ Issue A4: Rename to "Evaluation Inputs"
+- ✅ Issue A2: Configuration-Based Compliance Score Display (Full Stack)
 
 **In Progress:**
-- ⏳ Issues A1-A7 (Summary panel & Documents tab improvements)
+- ⏳ Issues A5-A7 (Documents tab improvements & hyperlinking)
 
 **Modules Affected:**
 - `module-ws` - Workspace UI improvements ✅ (4 issues complete)
@@ -93,21 +96,18 @@ Phase 2 continues the UI/UX improvements for the Eval and Workspace modules. Pha
 **Issue:** Compliance score is buried in collapsible Details section  
 **Impact:** Users must expand Details to see overall compliance score (key metric)  
 **Priority:** 🔴 HIGH  
-**Status:** 🟡 FRONTEND COMPLETE | ⏸️ BACKEND DEFERRED (Jan 22, 2026)
+**Status:** ✅ COMPLETE (Jan 22, 2026)
 
-**Frontend Implementation:** ✅ COMPLETE
-- Created new `ComplianceScoreChip` component with configuration-based display
-- Updated `EvalDetailPage` to use new component in header
-- Added TypeScript types for `ScoreConfig` interface
+**Implementation:** ✅ COMPLETE (Full Stack)
+- Created `ComplianceScoreChip` component with configuration-based display
+- Integrated in evaluation detail page header (overall score always visible)
+- Extended to individual criteria scores in result cards
 - Component supports two display modes:
   - Base: Status chip with name/color (always shown)
   - Additional: Numerical score chip (when `show_decimal_score = true`)
-- Graceful degradation: Won't render if `scoreConfig` missing from API
-
-**Backend Implementation:** ⏸️ DEFERRED
-- Requires database migrations (4 tables: eval_sys_cfg, eval_org_cfg, eval_sys_status_options, eval_org_status_options)
-- Requires Lambda updates (config precedence logic, scoreConfig in API response)
-- Estimated time: 2-3 hours
+- Backend Lambda updated to include `scoreConfig` in API response
+- Configuration respects org-level overrides of system defaults
+- Graceful degradation when configuration unavailable
 
 **Design Document:** `docs/designs/design_evaluation-score-display.md`
 - Complete specification with schema, API requirements, implementation guide
@@ -119,15 +119,22 @@ Phase 2 continues the UI/UX improvements for the Eval and Workspace modules. Pha
 - `templates/_modules-functional/module-eval/frontend/components/ComplianceScoreChip.tsx` (NEW)
 - `docs/designs/design_evaluation-score-display.md` (NEW)
 
-**Files Modified:**
-- `templates/_modules-functional/module-eval/frontend/components/index.ts` (exports)
-- `templates/_modules-functional/module-eval/frontend/pages/EvalDetailPage.tsx` (header integration)
-- `templates/_modules-functional/module-eval/frontend/types/index.ts` (ScoreConfig type)
+**Files Modified (Backend):**
+- `templates/_modules-functional/module-eval/backend/lambdas/eval-results/lambda_function.py`
 
-**Next Steps (New Session):**
-1. Sync frontend files to test project
-2. Implement backend (database + Lambda changes)
-3. User testing with full configuration support
+**Files Modified (Frontend):**
+- `templates/_modules-functional/module-eval/frontend/components/index.ts`
+- `templates/_modules-functional/module-eval/frontend/components/EvalQAList.tsx`
+- `templates/_modules-functional/module-eval/frontend/pages/EvalDetailPage.tsx`
+- `templates/_modules-functional/module-eval/frontend/types/index.ts`
+
+**Git Commits:**
+1. `8168258` - docs: Add Issue A2 compliance score design and planning
+2. `5b0b50a` - feat(module-eval): Add scoreConfig to evaluation API response
+3. `b5d91ad` - feat(module-eval): Add ComplianceScoreChip component
+4. `8eac522` - feat(module-eval): Integrate compliance score display in UI
+
+**Testing:** ✅ User tested and verified working
 
 ---
 
@@ -364,7 +371,8 @@ interface EvaluationDocument {
 - [x] Eval Summary panel redundant header removed
 - [x] Eval Summary sections have reduced padding
 - [x] Details section renamed to "Evaluation Inputs"
-- [ ] Compliance score displayed at top of page (always visible)
+- [x] Compliance score displayed at top of page (always visible)
+- [x] Individual criteria scores use configuration-based display
 - [ ] Document Summary section removed from upper panel
 - [ ] Documents tab shows collapsible document list with metadata
 - [ ] Documents tab shows formatted document summaries
@@ -383,8 +391,8 @@ interface EvaluationDocument {
 | **Issue A** | ✅ 30 min | Complete |
 | **Issue A1** | ✅ 10 min | Complete |
 | **Issue A4** | ✅ 5 min | Complete |
+| **Issue A2** | ✅ 1 hour | Complete (Full Stack) |
 | **Issue A5** | ⏳ 5 min | Remove section |
-| **Issue A2** | ⏳ 20 min | Move score |
 | **Issue A6** | ⏳ 30 min | Documents tab |
 | **Issue A7** | ⏳ 25 min | Hyperlinks |
 | **Issue B** | ⏳ 1 hour | Deferred |
@@ -396,21 +404,20 @@ interface EvaluationDocument {
 ## Next Steps
 
 **Current Session:**
-1. ✅ Issues A, A1, A4 complete
+1. ✅ Issues A, A1, A4, A2 complete
 2. ⏳ Implement Issue A5 (remove Document Summary)
-3. ⏳ Implement Issue A2 (move compliance score)
-4. ⏳ Implement Issue A6 (enhance Documents tab)
-5. ⏳ Implement Issue A7 (hyperlink documents)
-6. ⏳ Sync all changes to test project
-7. ⏳ User testing and verification
+3. ⏳ Implement Issue A6 (enhance Documents tab)
+4. ⏳ Implement Issue A7 (hyperlink documents)
+5. ⏳ Sync all changes to test project
+6. ⏳ User testing and verification
 
 ---
 
 **Document Status:** 🟡 IN PROGRESS  
 **Current Phase:** Implementation (Eval Details Improvements)  
 
-**Completed:** Issues A, A1, A4 (3 of 17)  
-**In Progress:** Issues A2, A5, A6, A7  
+**Completed:** Issues A, A1, A4, A2 (4 of 17)  
+**In Progress:** Issues A5, A6, A7  
 **Remaining:** Issues B, C, D (deferred), #5-6 (low priority)  
 
-**Last Updated:** January 22, 2026 9:36 PM EST
+**Last Updated:** January 22, 2026 11:30 PM EST
