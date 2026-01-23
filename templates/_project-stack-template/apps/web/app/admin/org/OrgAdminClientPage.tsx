@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
 import { Box, Grid, Card, CardContent, Typography, CardActionArea, CircularProgress, Alert } from "@mui/material";
 import Link from "next/link";
 import { AdminCardConfig } from "@{{PROJECT_NAME}}/shared-types";
@@ -18,6 +18,7 @@ interface OrgAdminClientPageProps {
  */
 export default function OrgAdminClientPage({ adminCards }: OrgAdminClientPageProps) {
   const { profile, loading, isAuthenticated } = useUser();
+  const { isOrgAdmin, isSysAdmin } = useRole();
 
   // Loading state
   if (loading) {
@@ -39,9 +40,8 @@ export default function OrgAdminClientPage({ adminCards }: OrgAdminClientPagePro
     );
   }
 
-  // Authorization check (org admin only)
-  const isOrgAdmin = ['org_owner', 'org_admin'].includes(profile.orgRole || '');
-  if (!isOrgAdmin) {
+  // Authorization check - org admins OR sys admins can access
+  if (!isOrgAdmin && !isSysAdmin) {
     return (
       <Box p={4}>
         <Alert severity="error">
