@@ -58,10 +58,46 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 ---
 
+## Cross-Cutting Fixes (All Modules)
+
+### ADR-016: Org Admin Authorization Pattern (January 23, 2026)
+
+**Issue:** Users with valid org_owner/org_admin roles could not access org admin pages.
+
+**Root Cause:** 
+- `profile.orgRole` doesn't exist (returns undefined) - must use `useRole()` hook
+- `organization.id` doesn't exist (must use `organization.orgId`)
+- `profile.orgId` doesn't exist (must use `organization.orgId` from context)
+
+**Modules Fixed:**
+- `module-kb/routes/admin/org/kb/page.tsx`
+- `module-access/routes/admin/org/access/page.tsx`
+- `module-eval/routes/admin/org/eval/page.tsx` (organization.id fix)
+- `project-stack/apps/web/app/admin/org/kb/page.tsx`
+- `project-stack/apps/web/app/admin/org/chat/page.tsx`
+- `OrgAdminClientPage.tsx`
+
+**Standard Pattern:**
+```typescript
+const { isOrgAdmin, isSysAdmin } = useRole();  // NOT profile.orgRole
+const { currentOrganization: organization } = useOrganizationContext();
+// Use organization.orgId, NOT organization.id
+```
+
+**Documentation:**
+- ADR: `docs/arch decisions/ADR-016-ORG-ADMIN-PAGE-AUTHORIZATION.md`
+- Standard: `docs/standards/standard_ORG-ADMIN-PAGE-AUTHORIZATION.md`
+- Validator: Extended `validation/admin-auth-validator/validator.py`
+
+**Validation:** 0 errors (down from 9)
+
+---
+
 ## Recently Completed
 
 | Branch | Status | Focus Area | Completed |
 |--------|--------|------------|-----------|
+| `feature/citations-review` | ✅ Complete | ADR-016 Cross-Cutting Org Admin Fixes | 2026-01-23 |
 | `ui-enhancements` | ✅ Archived | Module-WS & Eval UI Enhancements (P2) | 2026-01-23 |
 | `schema-naming-audit` | ✅ Archived | Schema Naming Compliance Audit (eval, chat, kb, voice, ws) | 2026-01-21 |
 | `admin-eval-config-s2` | ✅ Archived | Workspace Doc Eval Implementation & Org Admin Config | 2026-01-20 |
