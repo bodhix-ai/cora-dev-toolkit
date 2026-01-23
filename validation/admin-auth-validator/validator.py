@@ -1,4 +1,4 @@
-"""Admin Auth Validator - Checks admin pages follow ADR-015 Pattern A."""
+"""Admin Auth Validator - Checks admin pages follow ADR-015 Pattern A and ADR-016 Org Admin Pattern."""
 
 import re
 from pathlib import Path
@@ -6,12 +6,13 @@ from typing import List, Dict, Any
 
 
 class AdminAuthValidator:
-    """Validates admin pages follow Pattern A authentication."""
+    """Validates admin pages follow Pattern A authentication and org admin authorization (ADR-016)."""
 
     def __init__(self, project_path: str):
         self.project_path = Path(project_path)
         self.errors: List[Dict[str, Any]] = []
         self.warnings: List[Dict[str, Any]] = []
+        self.org_admin_pages_checked = 0
         
     def validate(self) -> Dict[str, Any]:
         """Run validation and return results."""
@@ -27,6 +28,7 @@ class AdminAuthValidator:
             "warnings": self.warnings,
             "summary": {
                 "total_pages": len(admin_pages),
+                "org_admin_pages": self.org_admin_pages_checked,
                 "errors": len(self.errors),
                 "warnings": len(self.warnings),
             }
@@ -46,6 +48,40 @@ class AdminAuthValidator:
         if routes_admin.exists():
             pages.extend(routes_admin.rglob("page.tsx"))
         
+        # For templates directory - search in template locations
+        # Project stack template
+        template_web_admin = self.project_path / "_project-stack-template" / "apps" / "web" / "app" / "admin"
+        if template_web_admin.exists():
+            pages.extend(template_web_admin.rglob("page.tsx"))
+            # Also find client components like OrgAdminClientPage.tsx
+            pages.extend(template_web_admin.rglob("*ClientPage.tsx"))
+        
+        # Module templates - core modules
+        core_modules = self.project_path / "_modules-core"
+        if core_modules.exists():
+            for module_dir in core_modules.iterdir():
+                if module_dir.is_dir():
+                    routes_admin = module_dir / "routes" / "admin"
+                    if routes_admin.exists():
+                        pages.extend(routes_admin.rglob("page.tsx"))
+        
+        # Module templates - functional modules
+        functional_modules = self.project_path / "_modules-functional"
+        if functional_modules.exists():
+            for module_dir in functional_modules.iterdir():
+                if module_dir.is_dir():
+                    routes_admin = module_dir / "routes" / "admin"
+                    if routes_admin.exists():
+                        pages.extend(routes_admin.rglob("page.tsx"))
+        
+        # Also support direct glob search for templates directory
+        if self.project_path.name == "templates":
+            # Use glob to find all admin pages
+            pages.extend(self.project_path.glob("**/admin/**/page.tsx"))
+            pages.extend(self.project_path.glob("**/admin/**/*ClientPage.tsx"))
+            # Remove duplicates
+            pages = list(set(pages))
+        
         return pages
     
     def _validate_page(self, page_path: Path):
@@ -55,12 +91,21 @@ class AdminAuthValidator:
             rel_path = str(page_path.relative_to(self.project_path))
             
             # Skip shell pages - they use server/client split pattern
-            shell_pages = [
+            # These are server components that just render client components
+            shell_page_patterns = [
                 "apps/web/app/admin/sys/page.tsx",
-                "apps/web/app/admin/org/page.tsx"
+                "apps/web/app/admin/org/page.tsx",
+                "_project-stack-template/apps/web/app/admin/sys/page.tsx",
+                "_project-stack-template/apps/web/app/admin/org/page.tsx"
             ]
-            if rel_path in shell_pages:
-                return  # Shell pages are exempt from Pattern A
+            if rel_path in shell_page_patterns or rel_path.endswith("/admin/sys/page.tsx") or rel_path.endswith("/admin/org/page.tsx"):
+                # Only skip if it's a shell page (renders a ClientPage component)
+                if "ClientPage" in content or "ServerPage" in content or "import" in content and "Client" in content:
+                    return  # Shell pages are exempt from Pattern A
+            
+            # Run org admin specific checks (ADR-016)
+            if self._is_org_admin_page(rel_path):
+                self._validate_org_admin_page(content, rel_path)
             
             # Check for Pattern A requirements
             has_use_user = bool(re.search(r'useUser\(\)', content))
@@ -133,7 +178,100 @@ class AdminAuthValidator:
                 })
                 
         except Exception as e:
+                self.errors.append({
+                    "file": str(page_path),
+                    "message": f"Error reading file: {str(e)}"
+                })
+    
+    def _is_org_admin_page(self, rel_path: str) -> bool:
+        """Check if the file is an org admin page (subject to ADR-016)."""
+        return "/admin/org/" in rel_path
+    
+    def _validate_org_admin_page(self, content: str, rel_path: str):
+        """Validate org admin page follows ADR-016 authorization pattern."""
+        self.org_admin_pages_checked += 1
+        
+        # Check for profile.orgRole usage (doesn't exist)
+        if re.search(r'profile\??\.orgRole', content):
+            line_num = self._find_line_number(content, r'profile\??\.orgRole')
             self.errors.append({
-                "file": str(page_path),
-                "message": f"Error reading file: {str(e)}"
+                "file": rel_path,
+                "line": line_num,
+                "message": "ADR-016: Usage of 'profile.orgRole' - field does not exist. Use useRole() hook.",
+                "rule": "org-admin-auth/no-profile-orgRole"
             })
+        
+        # Check for profile.orgId usage (doesn't exist)
+        if re.search(r'profile\??\.orgId(?!\w)', content):
+            line_num = self._find_line_number(content, r'profile\??\.orgId(?!\w)')
+            self.errors.append({
+                "file": rel_path,
+                "line": line_num,
+                "message": "ADR-016: Usage of 'profile.orgId' - field does not exist. Use organization.orgId from useOrganizationContext().",
+                "rule": "org-admin-auth/no-profile-orgId"
+            })
+        
+        # Check for organization.id usage (should be orgId)
+        if re.search(r'(?:organization|currentOrganization)\??\.id(?![A-Za-z])', content):
+            line_num = self._find_line_number(content, r'organization\??\.id(?![A-Za-z])')
+            self.errors.append({
+                "file": rel_path,
+                "line": line_num,
+                "message": "ADR-016: Usage of 'organization.id' - UserOrganization uses 'orgId' not 'id'.",
+                "rule": "org-admin-auth/use-orgId"
+            })
+        
+        # Check for organization.name usage (should be orgName)
+        if re.search(r'(?:organization|currentOrganization)\??\.name(?![A-Za-z])', content):
+            line_num = self._find_line_number(content, r'organization\??\.name(?![A-Za-z])')
+            self.errors.append({
+                "file": rel_path,
+                "line": line_num,
+                "message": "ADR-016: Usage of 'organization.name' - UserOrganization uses 'orgName' not 'name'.",
+                "rule": "org-admin-auth/use-orgName"
+            })
+        
+        # Check for useRole hook (should be used for org admin checks)
+        has_auth_check = 'isOrgAdmin' in content or 'org_admin' in content or 'org_owner' in content
+        has_use_role = 'useRole' in content
+        
+        if has_auth_check and not has_use_role:
+            self.warnings.append({
+                "file": rel_path,
+                "message": "ADR-016: Org admin page performs auth check without useRole() hook",
+                "rule": "org-admin-auth/use-role-hook"
+            })
+        
+        # Check for sys admin access (org admin pages should allow sys admins)
+        has_org_admin_only = re.search(r'if\s*\(\s*!isOrgAdmin\s*\)', content)
+        has_sys_admin_check = 'isSysAdmin' in content
+        
+        # Look for explicit org-only comments
+        org_only_patterns = [
+            r"// Org admin pages should only check org roles",
+            r"// org admins only \(no sys admin access\)",
+            r"const hasAccess = isOrgAdmin;",
+        ]
+        
+        for pattern in org_only_patterns:
+            if re.search(pattern, content, re.IGNORECASE):
+                self.warnings.append({
+                    "file": rel_path,
+                    "message": "ADR-016: Org admin page does not allow sys admin access for platform oversight",
+                    "rule": "org-admin-auth/allow-sys-admin"
+                })
+                break
+        
+        if has_org_admin_only and not has_sys_admin_check:
+            self.warnings.append({
+                "file": rel_path,
+                "message": "ADR-016: Auth check for isOrgAdmin without isSysAdmin fallback",
+                "rule": "org-admin-auth/allow-sys-admin"
+            })
+    
+    def _find_line_number(self, content: str, pattern: str) -> int:
+        """Find the line number of the first match of a pattern."""
+        match = re.search(pattern, content)
+        if match:
+            return content[:match.start()].count('\n') + 1
+        return 1
