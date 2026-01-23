@@ -1,7 +1,8 @@
 "use client";
 
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useOrganizationContext, useRole } from "@{{PROJECT_NAME}}/module-access";
 import { OrgAccessPage } from "@{{PROJECT_NAME}}/module-access";
+import { Box, CircularProgress, Alert } from "@mui/material";
 
 /**
  * Organization Admin Access Management Route
@@ -13,47 +14,52 @@ import { OrgAccessPage } from "@{{PROJECT_NAME}}/module-access";
  */
 export default function OrgAccessRoute() {
   const { profile, loading, isAuthenticated } = useUser();
+  const { currentOrganization: organization } = useOrganizationContext();
+  const { isOrgAdmin, isSysAdmin, role } = useRole();
 
-  // Pattern A: Auth checks
+  // Loading state
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
+        <CircularProgress />
+      </Box>
     );
   }
 
+  // Authentication check
   if (!isAuthenticated || !profile) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-lg font-semibold mb-2">Authentication Required</p>
-          <p className="text-muted-foreground">Please sign in to access this page.</p>
-        </div>
-      </div>
+      <Box p={4}>
+        <Alert severity="error">
+          You must be logged in to access this page.
+        </Alert>
+      </Box>
     );
   }
 
-  // Check for org admin or org owner role
-  const isOrgAdmin = profile.orgRole === "org_admin" || profile.orgRole === "org_owner";
-  
-  if (!isOrgAdmin) {
+  // Authorization check - org admins OR sys admins can access (ADR-016)
+  if (!isOrgAdmin && !isSysAdmin) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-lg font-semibold mb-2">Access Denied</p>
-          <p className="text-muted-foreground">
-            Organization administrator access required to view this page.
-          </p>
-        </div>
-      </div>
+      <Box p={4}>
+        <Alert severity="error">
+          Access denied. Organization administrator role required.
+        </Alert>
+      </Box>
     );
   }
 
-  const isOwner = profile.orgRole === "org_owner";
+  // Organization context check
+  if (!organization) {
+    return (
+      <Box p={4}>
+        <Alert severity="warning">
+          Please select an organization to manage access.
+        </Alert>
+      </Box>
+    );
+  }
 
-  return <OrgAccessPage orgId={profile.orgId} isOwner={isOwner} />;
+  const isOwner = role === "org_owner";
+
+  return <OrgAccessPage orgId={organization.orgId} isOwner={isOwner} />;
 }

@@ -8,7 +8,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useUser, useOrganizationContext, useApiClient } from '@{{PROJECT_NAME}}/module-access';
+import { useUser, useOrganizationContext, useApiClient, useRole } from '@{{PROJECT_NAME}}/module-access';
 import { 
   OrgAdminKBPage, 
   useOrgKbs, 
@@ -24,7 +24,8 @@ import { CircularProgress, Box, Alert } from '@mui/material';
  */
 export default function OrgKBAdminRoute() {
   const { profile, loading, isAuthenticated } = useUser();
-  const { organization } = useOrganizationContext();
+  const { currentOrganization: organization } = useOrganizationContext();
+  const { isOrgAdmin, isSysAdmin } = useRole();
   const apiClient = useApiClient();
 
   // Loading state
@@ -66,9 +67,9 @@ export default function OrgKBAdminRoute() {
     deleteKb,
     refresh: refreshKbs,
   } = useOrgKbs({
-    orgId: organization?.id || '',
+    orgId: organization?.orgId || '',
     apiClient: kbClient,
-    autoFetch: !!organization?.id,
+    autoFetch: !!organization?.orgId,
   });
   
   // Document management hook (for selected KB)
@@ -93,11 +94,8 @@ export default function OrgKBAdminRoute() {
     }
   }, [selectedKb?.id, refreshDocuments]);
 
-  // Check authorization - org admin only (no sys admin access)
-  const isOrgAdmin = profile?.orgRole === 'org_owner' || 
-                     profile?.orgRole === 'org_admin';
-  
-  if (!isOrgAdmin) {
+  // Check authorization - org admins OR sys admins can access (ADR-016)
+  if (!isOrgAdmin && !isSysAdmin) {
     return (
       <Box p={4}>
         <Alert severity="error">
@@ -117,8 +115,8 @@ export default function OrgKBAdminRoute() {
 
   return (
     <OrgAdminKBPage
-      orgId={organization.id}
-      orgName={organization.name}
+      orgId={organization.orgId}
+      orgName={organization.orgName}
       kbs={kbs}
       kbsLoading={kbsLoading}
       kbsError={kbsError}
