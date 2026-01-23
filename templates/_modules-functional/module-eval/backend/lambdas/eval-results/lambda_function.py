@@ -638,6 +638,47 @@ def handle_update_evaluation(
         if not doc:
             raise common.NotFoundError(f'Document not found: {doc_id}')
     
+    # Generate new evaluation name from document(s)
+    # Format: 
+    #   1 doc:  "{Document Name} - MM/DD/YYYY"
+    #   2 docs: "{Doc1} & {Doc2} - MM/DD/YYYY"
+    #   3+ docs: "{First Doc} + {n} more - MM/DD/YYYY"
+    
+    new_eval_name = evaluation.get('name')  # Default to existing name
+    doc_count = len(validated_doc_ids)
+    
+    if doc_count > 0:
+        # Format date as MM/DD/YYYY (using local server time, not UTC)
+        date_str = datetime.now().strftime('%m/%d/%Y')
+        
+        if doc_count == 1:
+            # Single document
+            first_doc = common.find_one('kb_docs', {'id': validated_doc_ids[0], 'kb_id': workspace_kb['id']})
+            if first_doc:
+                # Prefer filename over name (Supabase returns exact column names)
+                doc_name = first_doc.get('filename') or first_doc.get('name', 'Document')
+                doc_name_clean = remove_file_extension(doc_name)
+                new_eval_name = f"{doc_name_clean} - {date_str}"
+        
+        elif doc_count == 2:
+            # Two documents
+            doc1 = common.find_one('kb_docs', {'id': validated_doc_ids[0], 'kb_id': workspace_kb['id']})
+            doc2 = common.find_one('kb_docs', {'id': validated_doc_ids[1], 'kb_id': workspace_kb['id']})
+            
+            if doc1 and doc2:
+                name1 = remove_file_extension(doc1.get('filename') or doc1.get('name', 'Doc1'))
+                name2 = remove_file_extension(doc2.get('filename') or doc2.get('name', 'Doc2'))
+                new_eval_name = f"{name1} & {name2} - {date_str}"
+        
+        else:
+            # 3+ documents
+            first_doc = common.find_one('kb_docs', {'id': validated_doc_ids[0], 'kb_id': workspace_kb['id']})
+            if first_doc:
+                doc_name = remove_file_extension(first_doc.get('filename') or first_doc.get('name', 'Document'))
+                new_eval_name = f"{doc_name} + {doc_count - 1} more - {date_str}"
+        
+        logger.info(f"Auto-renaming eval {eval_id} ({doc_count} doc(s)): '{evaluation.get('name')}' -> '{new_eval_name}'")
+    
     # Update evaluation record
     common.update_one(
         'eval_doc_summaries',
@@ -645,6 +686,7 @@ def handle_update_evaluation(
         {
             'doc_type_id': doc_type_id,
             'criteria_set_id': criteria_set_id,
+            'name': new_eval_name,
             'status': 'pending',
             'updated_by': user_id
         }
@@ -1219,6 +1261,34 @@ def send_processing_message(
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
+
+def remove_file_extension(filename: str) -> str:
+    """
+    Remove common file extensions from filename.
+    
+    Strips extensions like .pdf, .doc, .docx, .txt, .xlsx, etc.
+    Returns the filename without extension.
+    """
+    if not filename:
+        return filename
+    
+    # Common file extensions to remove
+    extensions = [
+        '.pdf', '.doc', '.docx', '.txt', '.rtf',
+        '.xlsx', '.xls', '.csv',
+        '.ppt', '.pptx',
+        '.zip', '.tar', '.gz',
+        '.jpg', '.jpeg', '.png', '.gif',
+        '.html', '.htm', '.xml', '.json'
+    ]
+    
+    filename_lower = filename.lower()
+    for ext in extensions:
+        if filename_lower.endswith(ext):
+            return filename[:-len(ext)]
+    
+    return filename
+
 
 def get_status_options(org_id: Optional[str]) -> List[Dict[str, Any]]:
     """Get active status options for an organization."""
