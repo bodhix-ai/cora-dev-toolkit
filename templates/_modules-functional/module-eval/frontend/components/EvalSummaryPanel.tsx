@@ -19,6 +19,7 @@ import {
   Paper,
   IconButton,
   Collapse,
+  Link,
 } from "@mui/material";
 import {
   CheckCircle as CheckCircleIcon,
@@ -104,24 +105,7 @@ function markdownToHtml(markdown: string): string {
   return html;
 }
 
-/**
- * Extract first paragraph from markdown/HTML text
- */
-function extractFirstParagraph(text: string): string {
-  if (!text) return '';
-  
-  // Try to extract first meaningful paragraph
-  const lines = text.split('\n');
-  for (const line of lines) {
-    const trimmed = line.trim();
-    // Skip headings and empty lines
-    if (trimmed && !trimmed.startsWith('#')) {
-      return trimmed;
-    }
-  }
-  
-  return text.split('\n\n')[0] || text;
-}
+// Helper extractFirstParagraph removed as collapsed preview is no longer used
 
 // =============================================================================
 // TYPES
@@ -132,6 +116,10 @@ export interface EvalSummaryPanelProps {
   evaluation: Evaluation;
   /** Custom class name */
   className?: string;
+  /** Callback when document is clicked (for Issue A7) */
+  onDocumentClick?: (documentId: string) => void;
+  /** External control for expanding all sections */
+  expandAll?: boolean;
 }
 
 export interface DocSummaryPanelProps {
@@ -228,16 +216,26 @@ export function ComplianceScore({
 /**
  * Collapsible evaluation summary with Markdown rendering
  */
-function CollapsibleEvalSummary({ evalSummary }: { evalSummary: string }) {
-  const [expanded, setExpanded] = useState(false);
-  
-  // Extract first paragraph for collapsed view
-  const firstParagraph = extractFirstParagraph(evalSummary);
+function CollapsibleEvalSummary({ 
+  evalSummary, 
+  isExpanded 
+}: { 
+  evalSummary: string;
+  isExpanded?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(true);
+
+  // Sync with external control
+  React.useEffect(() => {
+    if (isExpanded !== undefined) {
+      setExpanded(isExpanded);
+    }
+  }, [isExpanded]);
   
   return (
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-        <Typography variant="subtitle2" color="text.secondary">
+        <Typography variant="h6" color="text.primary" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
           Evaluation Overview
         </Typography>
         <IconButton
@@ -249,8 +247,8 @@ function CollapsibleEvalSummary({ evalSummary }: { evalSummary: string }) {
         </IconButton>
       </Box>
       
-      <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
-        {expanded ? (
+      <Collapse in={expanded}>
+        <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
           <Typography
             variant="body2"
             component="div"
@@ -267,19 +265,8 @@ function CollapsibleEvalSummary({ evalSummary }: { evalSummary: string }) {
             }}
             dangerouslySetInnerHTML={{ __html: markdownToHtml(evalSummary) }}
           />
-        ) : (
-          <Typography
-            variant="body2"
-            component="div"
-            sx={{
-              "& p": { margin: "0.5em 0", "&:first-of-type": { marginTop: 0 }, "&:last-of-type": { marginBottom: 0 } },
-              "& strong": { fontWeight: 600 },
-              "& em": { fontStyle: "italic" },
-            }}
-            dangerouslySetInnerHTML={{ __html: markdownToHtml(firstParagraph) }}
-          />
-        )}
-      </Paper>
+        </Paper>
+      </Collapse>
     </Box>
   );
 }
@@ -378,13 +365,28 @@ export function DocSummaryPanel({
 /**
  * Collapsible details section
  */
-function CollapsibleDetails({ evaluation }: { evaluation: Evaluation }) {
-  const [expanded, setExpanded] = useState(false);
-  
+function CollapsibleDetails({ 
+  evaluation, 
+  onDocumentClick,
+  isExpanded
+}: { 
+  evaluation: Evaluation;
+  onDocumentClick?: (documentId: string) => void;
+  isExpanded?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(true);
+
+  // Sync with external control
+  React.useEffect(() => {
+    if (isExpanded !== undefined) {
+      setExpanded(isExpanded);
+    }
+  }, [isExpanded]);
+
   return (
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-        <Typography variant="subtitle2" color="text.secondary">
+        <Typography variant="h6" color="text.primary" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
           Evaluation Inputs
         </Typography>
         <IconButton
@@ -395,7 +397,7 @@ function CollapsibleDetails({ evaluation }: { evaluation: Evaluation }) {
           {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
         </IconButton>
       </Box>
-      
+
       <Collapse in={expanded}>
         <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
           <Grid container spacing={2}>
@@ -419,9 +421,38 @@ function CollapsibleDetails({ evaluation }: { evaluation: Evaluation }) {
               <Typography variant="body2" color="text.secondary">
                 Documents
               </Typography>
-              <Typography variant="body2" fontWeight="medium">
-                {evaluation.documentCount ?? evaluation.documents?.length ?? 0}
-              </Typography>
+              {evaluation.documents && evaluation.documents.length > 0 ? (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {evaluation.documents.map((doc: any, index: number) => (
+                    <React.Fragment key={doc.id}>
+                      <Link
+                        component="button"
+                        variant="body2"
+                        onClick={() => onDocumentClick?.(doc.id)}
+                        sx={{
+                          fontWeight: 'medium',
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                          '&:hover': {
+                            textDecoration: 'none',
+                          },
+                        }}
+                      >
+                        {doc.fileName || doc.name || doc.documentId || `Document ${index + 1}`}
+                      </Link>
+                      {index < evaluation.documents.length - 1 && (
+                        <Typography variant="body2" component="span" sx={{ fontWeight: 'medium' }}>
+                          ,
+                        </Typography>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </Box>
+              ) : (
+                <Typography variant="body2" fontWeight="medium">
+                  {evaluation.documentCount ?? 0}
+                </Typography>
+              )}
             </Grid>
             <Grid item xs={12} sm={6}>
               <Typography variant="body2" color="text.secondary">
@@ -491,6 +522,8 @@ function CollapsibleDocSummary({ docSummary }: { docSummary: string }) {
 export function EvalSummaryPanel({
   evaluation,
   className = "",
+  onDocumentClick,
+  expandAll,
 }: EvalSummaryPanelProps) {
   const hasSummary = !!evaluation.evalSummary;
 
@@ -515,10 +548,19 @@ export function EvalSummaryPanel({
       <CardContent>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
           {/* 1. Evaluation Inputs (collapsible) */}
-          <CollapsibleDetails evaluation={evaluation} />
+          <CollapsibleDetails 
+            evaluation={evaluation} 
+            onDocumentClick={onDocumentClick} 
+            isExpanded={expandAll}
+          />
 
           {/* 2. Evaluation Overview (collapsible) */}
-          {hasSummary && <CollapsibleEvalSummary evalSummary={evaluation.evalSummary!} />}
+          {hasSummary && (
+            <CollapsibleEvalSummary 
+              evalSummary={evaluation.evalSummary!} 
+              isExpanded={expandAll}
+            />
+          )}
         </Box>
       </CardContent>
     </Card>

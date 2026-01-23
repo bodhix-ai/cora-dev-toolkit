@@ -50,6 +50,8 @@ export interface EvalQAListProps {
   onEdit?: (result: CriteriaResultWithItem) => void;
   /** Callback when viewing citations */
   onViewCitations?: (citations: Citation[]) => void;
+  /** External control for expanding all cards */
+  expandAll?: boolean;
   /** Custom sx prop */
   sx?: object;
 }
@@ -69,6 +71,8 @@ export interface EvalQACardProps {
   onEdit?: () => void;
   /** Callback when viewing citations */
   onViewCitations?: (citations: Citation[]) => void;
+  /** External control for expanded state */
+  isExpanded?: boolean;
   /** Custom sx prop */
   sx?: object;
 }
@@ -214,10 +218,19 @@ export function EvalQACard({
   editable = false,
   onEdit,
   onViewCitations,
+  isExpanded: externalExpanded,
   sx = {},
 }: EvalQACardProps) {
   // Card-level collapse state (collapses entire result section)
   const [cardExpanded, setCardExpanded] = useState(false);
+
+  // Sync with external control
+  React.useEffect(() => {
+    if (externalExpanded !== undefined) {
+      setCardExpanded(externalExpanded);
+    }
+  }, [externalExpanded]);
+  
   // Text-level expand state (for long result text)
   const [textExpanded, setTextExpanded] = useState(false);
 
@@ -467,6 +480,7 @@ export function EvalQAList({
   editable = false,
   onEdit,
   onViewCitations,
+  expandAll,
   sx = {},
 }: EvalQAListProps) {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
@@ -528,6 +542,7 @@ export function EvalQAList({
             editable={editable}
             onEdit={() => onEdit?.(result)}
             onViewCitations={onViewCitations}
+            isExpanded={expandAll}
           />
         ))}
       </Box>
