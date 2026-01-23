@@ -27,7 +27,9 @@ import type {
   CriteriaResultWithItem,
   StatusOption,
   Citation,
+  ScoreConfig,
 } from "../types";
+import { ComplianceScoreChip, getStatusForScore } from "./ComplianceScoreChip";
 
 // =============================================================================
 // TYPES
@@ -38,6 +40,8 @@ export interface EvalQAListProps {
   results: CriteriaResultWithItem[];
   /** Available status options */
   statusOptions?: StatusOption[];
+  /** Score configuration for display */
+  scoreConfig?: ScoreConfig;
   /** Whether to group by category */
   groupByCategory?: boolean;
   /** Whether results are editable */
@@ -55,6 +59,8 @@ export interface EvalQACardProps {
   result: CriteriaResultWithItem;
   /** Status options for lookup */
   statusOptions?: StatusOption[];
+  /** Score configuration for display */
+  scoreConfig?: ScoreConfig;
   /** Card index for display */
   index: number;
   /** Whether card is editable */
@@ -203,6 +209,7 @@ function getScoreColor(scoreValue?: number | string | null): "success" | "error"
 export function EvalQACard({
   result,
   statusOptions,
+  scoreConfig,
   index,
   editable = false,
   onEdit,
@@ -291,7 +298,24 @@ export function EvalQACard({
 
           {/* Right side: Status Badge + Expand/Collapse Button - NEVER HIDE */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
-            {effectiveStatus && (
+            {effectiveScoreValue !== null && effectiveScoreValue !== undefined && scoreConfig ? (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                <ComplianceScoreChip
+                  score={effectiveScoreValue}
+                  config={{
+                    categoricalMode: scoreConfig.categoricalMode,
+                    showDecimalScore: scoreConfig.showDecimalScore,
+                  }}
+                  statusOptions={scoreConfig.statusOptions}
+                  size="small"
+                />
+                {result.hasEdit && (
+                  <Box component="span" sx={{ fontSize: "0.75rem", color: "text.secondary" }} title="Edited">
+                    ✎
+                  </Box>
+                )}
+              </Box>
+            ) : effectiveStatus ? (
               <Chip
                 label={
                   <>
@@ -311,7 +335,7 @@ export function EvalQACard({
                   : undefined
                 }
               />
-            )}
+            ) : null}
             
             {/* Card Expand/Collapse Button */}
             <IconButton
@@ -438,6 +462,7 @@ export function EvalQACard({
 export function EvalQAList({
   results,
   statusOptions,
+  scoreConfig,
   groupByCategory = false,
   editable = false,
   onEdit,
@@ -498,6 +523,7 @@ export function EvalQAList({
             key={result.criteriaItem.id}
             result={result}
             statusOptions={statusOptions}
+            scoreConfig={scoreConfig}
             index={index}
             editable={editable}
             onEdit={() => onEdit?.(result)}
@@ -568,6 +594,7 @@ export function EvalQAList({
                     key={result.criteriaItem.id}
                     result={result}
                     statusOptions={statusOptions}
+                    scoreConfig={scoreConfig}
                     index={index}
                     editable={editable}
                     onEdit={() => onEdit?.(result)}

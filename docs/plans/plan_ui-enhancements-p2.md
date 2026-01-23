@@ -1,8 +1,8 @@
 # UI Enhancements Plan - Phase 2
 
-**Status**: 🟡 PLANNED  
+**Status**: 🟡 IN PROGRESS  
 **Branch**: `ui-enhancements` (continuing from P1)  
-**Priority**: 🟢 Medium  
+**Priority**: 🔴 HIGH (Session: Jan 22, 2026 - Evening)  
 **Created**: January 21, 2026  
 **Owner**: Engineering Team  
 
@@ -10,314 +10,332 @@
 
 ## Executive Summary
 
-Phase 2 continues the UI/UX improvements for the Eval and Workspace modules. Phase 1 completed 8 core issues plus significant enhancements. Phase 2 focuses on workspace/audit management features and platform-level customization.
+Phase 2 continues the UI/UX improvements for the Eval and Workspace modules. Phase 1 completed 8 core issues plus significant enhancements. Phase 2 focuses on workspace/audit management features, platform-level customization, and **Eval Details page improvements**.
 
-**Progress: 4/7 issues resolved (57%)**
+**Progress: 7/17 issues resolved (41%)**
 
-**Completed Today (Jan 22, 2026):**
+**Session Focus (Jan 22, 2026 - Evening):**
+- 🔴 **HIGH PRIORITY:** Eval Details page improvements (Issues A, A1-A7, B, C, D)
+- 🟢 **LOW PRIORITY:** Platform customization (Issues #5-6)
+
+**Completed Today (Jan 22, 2026 - Morning):**
 - ✅ Issue #1: Creation Date & Days Active
 - ✅ Issue #2: Status Chip  
 - ✅ Issue #3: Edit Metadata Dialog
 - ✅ Issue #7: Resource Counts (Full Stack Implementation Verified)
+- ✅ Issue #4: Eval Card Naming (VERIFIED WORKING)
+
+**Completed Today (Jan 22, 2026 - Evening):**
+- ✅ Issue A: Header & Label Cleanup (all 3 sub-issues)
+- ✅ Issue A1: Summary Panel Padding
+- ✅ Issue A4: Rename to "Evaluation Inputs"
+- ✅ Issue A2: Configuration-Based Compliance Score Display (Full Stack)
+
+**In Progress:**
+- ⏳ Issues A5-A7 (Documents tab improvements & hyperlinking)
 
 **Modules Affected:**
 - `module-ws` - Workspace UI improvements ✅ (4 issues complete)
-- `module-eval` - Evaluation card naming ⏳ (pending)
+- `module-eval` - Evaluation card naming ✅ + Eval Details improvements ⏳
+- `module-kb` - DocumentStatusBadge error fixed ✅ (bonus fix)
 - Platform-level - Theming and branding ⏳ (pending)
 
 ---
 
 ## Issues to Address
 
-### 1. Workspace/Audit Card - Add Creation Date & Days Active
-
-**Location:** Workspace List Page - Card Display  
-**Issue:** Workspace cards missing creation timestamp and age metrics  
-**Impact:** Users can't see when workspaces were created or how long they've been active  
-**Priority:** Medium  
-**Status:** ✅ COMPLETE (Jan 22, 2026)
-
-**Requirements:**
-- Display creation date on workspace card
-- Calculate and display "days active" (time since creation)
-- Consistent formatting with other timestamp displays
-
-**Implementation Notes:**
-- Check if `created_at` column exists in workspaces table
-- Add to card metadata section
-- Use existing date formatting utilities
-
-**Files to Modify:**
-- `templates/_modules-core/module-ws/frontend/components/WorkspaceCard.tsx` (or similar)
-- `templates/_modules-core/module-ws/frontend/pages/WorkspaceListPage.tsx`
+### ⏳ CURRENT SESSION - Eval Details Page Improvements
 
 ---
 
-### 2. Workspace/Audit Card - Add Status Chip
+### Issue A: Eval Details - Header & Label Cleanup
 
-**Location:** Workspace List Page - Card Display  
-**Issue:** No visual indicator of workspace status (active, archived, etc.)  
-**Impact:** Users can't quickly identify workspace state  
-**Priority:** Medium  
+**Location:** Evaluation Detail Page  
+**Issue:** Duplication of headers and labels causing visual clutter  
+**Impact:** Users see redundant information, page feels repetitive  
+**Priority:** 🔴 HIGH  
 **Status:** ✅ COMPLETE (Jan 22, 2026)
 
-**Requirements:**
-- Add status chip to workspace card
-- Color-code by status (e.g., green = active, gray = archived)
-- Position prominently on card (top-right corner)
+**Sub-Issues:**
 
-**Implementation Notes:**
-- Define workspace status enum (if not already defined)
-- Use MUI Chip component with appropriate colors
-- Consider status options: Active, Archived, Completed, On Hold
+**A1. Change Main Header from "Evaluation" to "Evaluation Results"**
+- **Status:** ✅ COMPLETE
 
-**Files to Modify:**
-- `templates/_modules-core/module-ws/frontend/components/WorkspaceCard.tsx`
-- May need to add `status` field to workspace schema if not present
+**A2. Remove Redundant Summary Panel Header**
+- **Status:** ✅ COMPLETE
+
+**A3. Update Breadcrumb to Be Dynamic**
+- **Status:** ✅ COMPLETE
+
+**Files Modified:**
+- `templates/_modules-functional/module-eval/frontend/pages/EvalDetailPage.tsx`
+- `templates/_modules-functional/module-eval/frontend/components/EvalSummaryPanel.tsx`
 
 ---
 
-### 3. Workspace/Audit Card - Add Edit to Popup Menu
+### Issue A1: Summary Panel - Reduce Padding Between Collapsed Sections
 
-**Location:** Workspace List Page - Card Actions Menu  
-**Issue:** No way to edit workspace metadata from list view  
-**Impact:** Users must navigate to detail page to edit basic info  
-**Priority:** Medium  
+**Location:** Evaluation Detail Page - Summary Panel  
+**Issue:** Too much vertical padding between collapsed sections (Details, Document Summary, Evaluation Summary)  
+**Impact:** Wasted vertical space, page feels sparse when sections are collapsed  
+**Priority:** 🔴 HIGH  
 **Status:** ✅ COMPLETE (Jan 22, 2026)
 
-**Implementation Notes (Completed):**
-- WorkspaceForm component already handled both create and edit modes
-- Added status field dropdown to allow toggling between Active/Archived
-- Edit dialog was already wired up via WorkspaceListPage
+**Implementation:**
+- Changed gap from `gap: 3` to `gap: 1.5`
+- Maintains visual separation while improving density
 
-**Requirements:**
-- Add "Edit" option to workspace card popup menu
-- Open dialog to edit metadata: title, description, status, tags
-- **Do NOT allow editing:** docs, evals, members (managed separately)
-- Validate and save changes via API
-
-**Implementation Notes:**
-- Create `EditWorkspaceDialog` component
-- Add to popup menu alongside existing actions
-- Use form validation for required fields
-- Update workspace via API call
-
-**Files to Modify:**
-- `templates/_modules-core/module-ws/frontend/components/WorkspaceCard.tsx` (menu)
-- `templates/_modules-core/module-ws/frontend/components/EditWorkspaceDialog.tsx` (new)
-- `templates/_modules-core/module-ws/frontend/hooks/useWorkspaces.ts` (update mutation)
+**Files Modified:**
+- `templates/_modules-functional/module-eval/frontend/components/EvalSummaryPanel.tsx`
 
 ---
 
-### 7. Workspace Card - Add Resource Counts & Optimize Layout
+### Issue A2: Summary Panel - Move Compliance Score to Top
 
-**Location:** Workspace List Page - Card Display  
-**Issue:** Workspace cards lack visibility into resource counts (evaluations, docs, members)  
-**Impact:** Users can't quickly assess workspace activity/content without opening it  
-**Priority:** Medium  
-**Status:** ✅ COMPLETE (Jan 22, 2026) - **Full Stack Implementation Verified**
+**Location:** Evaluation Detail Page - Header Area  
+**Issue:** Compliance score is buried in collapsible Details section  
+**Impact:** Users must expand Details to see overall compliance score (key metric)  
+**Priority:** 🔴 HIGH  
+**Status:** ✅ COMPLETE (Jan 22, 2026)
 
-**Implementation Delivered (All Layers):**
+**Implementation:** ✅ COMPLETE (Full Stack)
+- Created `ComplianceScoreChip` component with configuration-based display
+- Integrated in evaluation detail page header (overall score always visible)
+- Extended to individual criteria scores in result cards
+- Component supports two display modes:
+  - Base: Status chip with name/color (always shown)
+  - Additional: Numerical score chip (when `show_decimal_score = true`)
+- Backend Lambda updated to include `scoreConfig` in API response
+- Configuration respects org-level overrides of system defaults
+- Graceful degradation when configuration unavailable
 
-**✅ Database Layer:**
-- Created `get_workspace_resource_counts(p_workspace_ids UUID[])` RPC function
-- Efficient batch query for multiple workspaces
-- Gracefully handles optional modules (eval, voice) via exception handling
-- Returns zeros if tables don't exist (module not installed)
-- **File:** `templates/_modules-core/module-ws/db/schema/007-workspace-rpc-functions.sql`
-- **Migration:** `templates/_modules-core/module-ws/db/migrations/20260122_add_workspace_resource_counts.sql`
+**Design Document:** `docs/designs/design_evaluation-score-display.md`
+- Complete specification with schema, API requirements, implementation guide
+- Configuration precedence rules (org overrides system)
+- Score-to-status mapping logic
+- Testing checklist and examples
 
-**✅ Backend Lambda:**
-- Calls RPC function for all workspaces in single query (no N+1 problem)
-- Returns counts in API response: `documentCount`, `evaluationCount`, `chatCount`, `voiceCount`
-- Graceful error handling if RPC function not found (migration not run)
-- **File:** `templates/_modules-core/module-ws/backend/lambdas/workspace/lambda_function.py`
+**Files Created:**
+- `templates/_modules-functional/module-eval/frontend/components/ComplianceScoreChip.tsx` (NEW)
+- `docs/designs/design_evaluation-score-display.md` (NEW)
 
-**✅ Frontend Display:**
-- Added all count fields to Workspace TypeScript interface
-- Created dedicated "Resource Metrics" section with 3-column grid layout
-- Used icons for visual clarity (📄 Documents, 📊 Evaluations, 💬 Chats, 🎤 Voice)
-- Conditional rendering (only shows if count > 0)
-- Proper tooltips with singular/plural forms
-- **Files:**
-  - `templates/_modules-core/module-ws/frontend/components/WorkspaceCard.tsx`
-  - `templates/_modules-core/module-ws/frontend/types/index.ts`
+**Files Modified (Backend):**
+- `templates/_modules-functional/module-eval/backend/lambdas/eval-results/lambda_function.py`
 
-**API Response Format:**
-```json
-{
-  "id": "...",
-  "name": "Starbucks",
-  "memberCount": 1,
-  "documentCount": 12,      // ✅ NEW
-  "evaluationCount": 3,     // ✅ NEW (0 if module not installed)
-  "chatCount": 8,           // ✅ NEW
-  "voiceCount": 2           // ✅ NEW (0 if module not installed)
+**Files Modified (Frontend):**
+- `templates/_modules-functional/module-eval/frontend/components/index.ts`
+- `templates/_modules-functional/module-eval/frontend/components/EvalQAList.tsx`
+- `templates/_modules-functional/module-eval/frontend/pages/EvalDetailPage.tsx`
+- `templates/_modules-functional/module-eval/frontend/types/index.ts`
+
+**Git Commits:**
+1. `8168258` - docs: Add Issue A2 compliance score design and planning
+2. `5b0b50a` - feat(module-eval): Add scoreConfig to evaluation API response
+3. `b5d91ad` - feat(module-eval): Add ComplianceScoreChip component
+4. `8eac522` - feat(module-eval): Integrate compliance score display in UI
+
+**Testing:** ✅ User tested and verified working
+
+---
+
+### Issue A3: Details Section - Show Document Names Instead of Count
+
+**Location:** Evaluation Detail Page - Evaluation Inputs Section  
+**Issue:** "Documents" field shows count (e.g., "3") instead of actual document names  
+**Impact:** Users can't see which documents were evaluated without navigating to Documents tab  
+**Priority:** 🔴 HIGH (Superseded by A7)  
+**Status:** ⏸️ SUPERSEDED BY A7
+
+**Note:** This issue evolved into Issue A7 which includes hyperlinks and tab navigation.
+
+---
+
+### Issue A4: Details Section - Rename "Details" to "Evaluation Inputs"
+
+**Location:** Evaluation Detail Page - Details Section Header  
+**Issue:** "Details" label is too generic  
+**Impact:** Not clear what information this section contains  
+**Priority:** 🔴 HIGH  
+**Status:** ✅ COMPLETE (Jan 22, 2026)
+
+**Implementation:**
+- Changed section header from "Details" to "Evaluation Inputs"
+- Updated aria-label accordingly
+
+**Files Modified:**
+- `templates/_modules-functional/module-eval/frontend/components/EvalSummaryPanel.tsx`
+
+---
+
+### Issue A5: Summary Panel - Remove Document Summary Section
+
+**Location:** Evaluation Detail Page - Summary Panel  
+**Issue:** Document Summary section is redundant (already shown on Documents tab)  
+**Impact:** Duplicated information, cluttered UI  
+**Priority:** 🔴 HIGH  
+**Status:** ⏳ PLANNED (Current Session)
+
+**Requirements:**
+- Remove `CollapsibleDocSummary` component from EvalSummaryPanel
+- Document summaries will only appear on Documents tab (see Issue A6)
+- Simplifies summary panel to just Evaluation Inputs and Evaluation Overview
+
+**Implementation Notes:**
+- Remove the `hasDocSummary` check and related rendering
+- Remove `CollapsibleDocSummary` component call
+- Keep `CollapsibleDetails` (Evaluation Inputs) and `CollapsibleEvalSummary` (Evaluation Overview)
+
+**Files to Modify:**
+- `templates/_modules-functional/module-eval/frontend/components/EvalSummaryPanel.tsx`
+
+**Estimated Time:** 5 minutes
+
+---
+
+### Issue A6: Documents Tab - Enhanced Collapsible Document List
+
+**Location:** Evaluation Detail Page - Documents Tab  
+**Issue:** Documents tab shows static list without metadata or formatted summaries  
+**Impact:** Users can't see document details or properly formatted summaries  
+**Priority:** � HIGH  
+**Status:** ⏳ PLANNED (Current Session)
+
+**Requirements:**
+- Make each document collapsible/expandable
+- **Collapsed state:** Show only document name (clickable to expand)
+- **Expanded state:** Show two sections:
+  1. **Metadata section** (at top) displaying:
+     - Author (from kb_docs.metadata.author)
+     - Word Count (from kb_docs.metadata.wordCount)
+     - Created Date (from kb_docs.metadata.createdDate - date only, not time)
+     - Paragraph Count (from kb_docs.metadata.paragraphCount)
+  2. **Document Summary** (below metadata) formatted with markdown rendering
+
+**Implementation Notes:**
+- Modify `DocumentsTab` component in `EvalDetailPage.tsx`
+- Use Collapse/Accordion pattern for each document
+- Apply `markdownToHtml` function to document summaries (same as Evaluation Overview)
+- Metadata should be displayed in a compact grid layout
+- Each document should be independently expandable
+
+**Data Structure:**
+```typescript
+interface DocumentMetadata {
+  author?: string;
+  wordCount?: number;
+  createdDate?: string; // ISO format, display date only
+  paragraphCount?: number;
+}
+
+interface EvaluationDocument {
+  id: string;
+  name: string;
+  fileName?: string;
+  summary?: string;
+  metadata?: DocumentMetadata; // From kb_docs.metadata JSON field
 }
 ```
 
-**Performance:** Single RPC call for all workspaces (efficient batch processing)
-
-**See Also:** `docs/plans/completed/BACKEND-TODO-workspace-counts.md` for complete implementation details
-
-**Requirements:**
-- Add count of evaluations in workspace
-- Add count of documents in workspace
-- Add count of members in workspace (already shows, but may need repositioning)
-- Optimize card layout to accommodate new information without overwhelming UI
-- Maintain readability and visual hierarchy
-
-**Implementation Notes:**
-- Check if `evaluation_count` and `document_count` are available in workspace API response
-- May need to add computed fields to API if not present
-- Consider visual grouping of metrics (icons + counts)
-- Layout optimization strategies:
-  - Use collapsible sections for detailed info
-  - Group related metrics together
-  - Consider tabs or accordion for dense information
-  - Use icons instead of text labels where possible
-  - Adjust spacing and font sizes for balance
-
-**UX Considerations:**
-With the addition of:
-- Creation date + days active (Issue #1)
-- Status chip (Issue #2)
-- Resource counts (this issue)
-
-The card now displays significant information. Layout should:
-- Prioritize most important info (name, status)
-- Group related metrics (resource counts together)
-- Maintain visual breathing room
-- Support both grid and list view modes
-
 **Files to Modify:**
-- `templates/_modules-core/module-ws/frontend/components/WorkspaceCard.tsx`
-- `templates/_modules-core/module-ws/frontend/types/index.ts` (if adding new computed fields)
-- May need backend API updates to include evaluation/document counts
+- `templates/_modules-functional/module-eval/frontend/pages/EvalDetailPage.tsx` (DocumentsTab component)
+
+**Estimated Time:** 30 minutes
 
 ---
 
-### 4. Eval Card - Update Temporary Placeholder Name
+### Issue A7: Evaluation Inputs - Hyperlink Documents to Documents Tab
 
-**Location:** Evaluation Card Display  
-**Issue:** New evaluations show concatenated placeholder name instead of meaningful identifier  
-**Impact:** Users can't easily identify what document is being evaluated  
-**Priority:** High  
+**Location:** Evaluation Detail Page - Evaluation Inputs Section  
+**Issue:** Document field shows count or plain text, no navigation to Documents tab  
+**Impact:** Users can't quickly navigate to specific document details  
+**Priority:** � HIGH  
+**Status:** ⏳ PLANNED (Current Session)
+
+**Requirements:**
+- Replace document count with list of document names
+- Each document name should be a **clickable hyperlink**
+- Pulling documents from `eval_docs_sets` table (via evaluation.documents)
+- When user clicks a document name:
+  1. Switch to Documents tab
+  2. Automatically expand that specific document in the list
+- Support multiple documents (most common is 1, but can be many)
+
+**Implementation Notes:**
+- Modify `CollapsibleDetails` component in `EvalSummaryPanel.tsx`
+- Change Documents field from showing count to showing list of linked names
+- Format: `Doc1.pdf, Doc2.pdf, Doc3.pdf` where each is clickable
+- Use tab state management to switch to Documents tab
+- Pass selected document ID to automatically expand it
+- May need to add callback prop to CollapsibleDetails: `onDocumentClick(documentId: string)`
+- Parent component (EvalDetailPage) handles tab switch and document expansion
+
+**Technical Approach:**
+1. Add `onDocumentClick` callback prop to `CollapsibleDetails`
+2. Render document names as clickable links (MUI Link component)
+3. On click, call `onDocumentClick(doc.id)` 
+4. Parent (EvalDetailPage) receives callback, switches to Documents tab, sets active document
+5. DocumentsTab receives `activeDocumentId` prop and auto-expands matching document
+
+**Files to Modify:**
+- `templates/_modules-functional/module-eval/frontend/components/EvalSummaryPanel.tsx` (CollapsibleDetails)
+- `templates/_modules-functional/module-eval/frontend/pages/EvalDetailPage.tsx` (tab management + document expansion)
+
+**Estimated Time:** 25 minutes
+
+---
+
+### Issue B: Eval Details - Expand All / Collapse All Feature
+
+**Location:** Evaluation Detail Page - Results Tab  
+**Issue:** No easy way to expand/collapse all criteria results at once  
+**Impact:** Users must click each card individually to see all results  
+**Priority:** 🟡 MEDIUM (Deferred after A1-A7)  
 **Status:** ⏳ PLANNED
 
-**Requirements:**
-- Change placeholder from concatenated string to: "{Document Name} - {Date}"
-- Apply when evaluation is first created (before completion)
-- Update after evaluation completes (if needed)
-
-**Current Behavior (assumed):**
-```
-"eval-doc-abc123-xyz789"
-```
-
-**Desired Behavior:**
-```
-"NIST SP 800-53 Rev 5 - Jan 21, 2026"
-```
-
-**Implementation Notes:**
-- Check where temporary name is generated (likely in eval-processor Lambda)
-- Update naming logic to use document name + date
-- May need to pass document name to evaluation creation
-
-**Files to Modify:**
-- `templates/_modules-functional/module-eval/backend/lambdas/eval-processor/lambda_function.py` (naming logic)
-- `templates/_modules-functional/module-eval/frontend/components/EvalCard.tsx` (display)
+**Estimated Time:** 1 hour
 
 ---
+
+### Issue C: Eval Details - Citations Tab Not Populating
+
+**Location:** Evaluation Detail Page - Citations Tab  
+**Issue:** Citations tab shows "No citations available" even though citations exist in results  
+**Impact:** Users cannot view citations in dedicated tab  
+**Priority:** 🟡 MEDIUM (Deferred after A1-A7)  
+**Status:** ⏳ PLANNED
+
+**Estimated Time:** 1 hour
+
+---
+
+### Issue D: Eval Details - Citations Not Viewable When Clicking Paperclip Icon
+
+**Location:** Evaluation Detail Page - Result Cards  
+**Issue:** Clicking paperclip icon does nothing  
+**Impact:** Users cannot view citation details from result cards  
+**Priority:** � MEDIUM (Deferred after A1-A7)  
+**Status:** ⏳ PLANNED
+
+**Estimated Time:** 1.5-2 hours
+
+---
+
+### ⏸️ DEFERRED - Workspace Enhancements (Completed)
+
+### 1-4, 7: Workspace improvements
+**Status:** ✅ COMPLETE (Jan 22, 2026)
+
+---
+
+### ⏸️ DEFERRED - Platform Customization
 
 ### 5. Organization Logo Upload
+**Priority:** 🟢 Low (DEFERRED)  
+**Estimated Time:** 6-8 hours
 
-**Location:** Organization Settings Page (Platform-Level)  
-**Issue:** No way for organizations to customize branding with logo  
-**Impact:** Platform looks generic, lacks org identity  
-**Priority:** Low  
-**Status:** ⏳ PLANNED
-
-**Requirements:**
-- Allow org admins to upload custom logo
-- Image processing: resize, crop, optimize
-- Support formats: PNG, JPG, SVG
-- Display logo in:
-  - Sidebar header
-  - Login page
-  - Email templates (future)
-  - Reports/exports (future)
-
-**Technical Considerations:**
-- **Storage:** S3 bucket for org logos (`s3://{bucket}/orgs/{org_id}/logo.{ext}`)
-- **Processing:** Lambda or client-side resize/crop
-- **CDN:** CloudFront for fast delivery
-- **Fallback:** Default CORA logo if none uploaded
-
-**Implementation Approach:**
-1. Add `logo_url` column to `organizations` table
-2. Create `OrgLogoUpload` component with image cropper
-3. Create `org-logo-upload` Lambda for processing
-4. Update `OrgSidebar` to display custom logo
-5. Add logo management to org settings page
-
-**Files to Create:**
-- `templates/_project-stack-template/apps/web/components/org/OrgLogoUpload.tsx`
-- `templates/_modules-core/module-access/backend/lambdas/org-logo-upload/lambda_function.py` (new)
-- Database migration to add `logo_url` column
-
-**Files to Modify:**
-- `templates/_project-stack-template/apps/web/components/navigation/OrgSidebar.tsx`
-- `templates/_modules-core/module-access/db/schema/002-organizations.sql`
-
----
-
-### 6. MUI Theme Configuration (System/Org/User Levels)
-
-**Location:** Platform-Level Settings  
-**Issue:** No way to customize MUI theme per org or user  
-**Impact:** All users see same theme, no personalization  
-**Priority:** Low  
-**Status:** ⏳ PLANNED
-
-**Requirements:**
-- **System-level theme:** Default CORA theme (already exists)
-- **Org-level theme:** Org admins can customize colors, fonts, etc.
-- **User-level theme:** Individual users can override org theme
-- **Inheritance:** User > Org > System (lower levels override)
-- **Fallback:** If not configured, inherit from parent level
-
-**Theme Customization Options:**
-- Primary color
-- Secondary color
-- Font family
-- Dark/light mode preference
-- Component overrides (advanced)
-
-**Implementation Approach:**
-1. Add `theme_config` JSONB column to `organizations` table
-2. Add `theme_config` JSONB column to `users` table (or user_preferences)
-3. Create `ThemeProvider` that resolves theme hierarchy
-4. Create `ThemeSettingsDialog` for org/user customization
-5. Add theme preview capability
-
-**Technical Considerations:**
-- Store theme as JSON in database
-- Merge themes at runtime (user overrides org, org overrides system)
-- Validate theme JSON against schema
-- Provide sensible defaults if invalid
-- Consider performance impact of theme resolution
-
-**Files to Create:**
-- `templates/_project-stack-template/apps/web/components/theme/ThemeProvider.tsx` (enhanced)
-- `templates/_project-stack-template/apps/web/components/settings/ThemeSettingsDialog.tsx`
-- `templates/_project-stack-template/apps/web/lib/theme/mergeThemes.ts`
-
-**Files to Modify:**
-- `templates/_modules-core/module-access/db/schema/002-organizations.sql` (add column)
-- `templates/_modules-core/module-access/db/schema/001-users.sql` (add column)
-- `templates/_project-stack-template/apps/web/app/layout.tsx` (integrate ThemeProvider)
+### 6. MUI Theme Configuration
+**Priority:** 🟢 Low (DEFERRED)  
+**Estimated Time:** 8-12 hours
 
 ---
 
@@ -325,46 +343,19 @@ The card now displays significant information. Layout should:
 
 ### Strategy: Incremental Improvements
 
-**Order of Implementation:**
-1. **High Priority:** Issue #4 (Eval card naming) - User-facing, affects daily workflow
-2. **Medium Priority:** Issues #1-3 (Workspace card enhancements) - Grouped together for efficiency
-3. **Low Priority:** Issues #5-6 (Platform customization) - Nice-to-have features
+**Order of Implementation (Current Session - Updated):**
+1. **Issue A** - Header/label cleanup ✅ COMPLETE
+2. **Issue A1** - Reduce padding ✅ COMPLETE
+3. **Issue A4** - Rename to "Evaluation Inputs" ✅ COMPLETE
+4. **Issue A5** - Remove Document Summary section (5 mins)
+5. **Issue A2** - Move compliance score to top (20 mins)
+6. **Issue A6** - Enhance Documents tab (30 mins)
+7. **Issue A7** - Hyperlink documents (25 mins)
+8. **Issue B** - Expand/Collapse All (1 hour) - DEFERRED
+9. **Issue C** - Citations tab fix (1 hour) - DEFERRED
+10. **Issue D** - Citation modal (1.5-2 hours) - DEFERRED
 
-### File Locations
-
-**Workspace Module:**
-- `templates/_modules-core/module-ws/frontend/components/`
-- `templates/_modules-core/module-ws/frontend/pages/`
-- `templates/_modules-core/module-ws/frontend/hooks/`
-- `templates/_modules-core/module-ws/db/schema/` (if schema changes needed)
-
-**Eval Module:**
-- `templates/_modules-functional/module-eval/frontend/components/`
-- `templates/_modules-functional/module-eval/backend/lambdas/eval-processor/`
-
-**Platform-Level:**
-- `templates/_project-stack-template/apps/web/components/`
-- `templates/_modules-core/module-access/db/schema/`
-
----
-
-## Testing Strategy
-
-### Per Issue After Fix:
-
-1. **Manual Testing:**
-   - Test the specific functionality
-   - Verify visual appearance
-   - Test edge cases
-
-2. **Integration Testing:**
-   - Test navigation flow
-   - Verify no regressions in other areas
-   - Test across different screen sizes
-
-3. **User Acceptance:**
-   - Verify fix addresses original issue
-   - Check for any new issues introduced
+**Total Estimated Time for A5-A7:** ~1 hour 20 minutes
 
 ---
 
@@ -372,65 +363,61 @@ The card now displays significant information. Layout should:
 
 - [x] Workspace cards show creation date and days active
 - [x] Workspace cards show status chip with color coding
-- [x] Workspace cards have "Edit" menu option that opens metadata dialog with status field
-- [x] Workspace cards show evaluation count, document count, and optimized layout
-- [ ] Eval cards show "{Document Name} - {Date}" instead of placeholder
-- [ ] Organizations can upload and display custom logos
-- [ ] System/Org/User-level theme configuration functional with proper inheritance
+- [x] Workspace cards have "Edit" menu option
+- [x] Workspace cards show resource counts
+- [x] Eval cards show dynamic naming
+- [x] Eval Details page header changed to "Evaluation Results"
+- [x] Eval Details page breadcrumb shows evaluation name
+- [x] Eval Summary panel redundant header removed
+- [x] Eval Summary sections have reduced padding
+- [x] Details section renamed to "Evaluation Inputs"
+- [x] Compliance score displayed at top of page (always visible)
+- [x] Individual criteria scores use configuration-based display
+- [ ] Document Summary section removed from upper panel
+- [ ] Documents tab shows collapsible document list with metadata
+- [ ] Documents tab shows formatted document summaries
+- [ ] Evaluation Inputs section shows document names as hyperlinks
+- [ ] Clicking document link navigates to Documents tab and expands document
+- [ ] Eval Details results have "Expand All" / "Collapse All" buttons
+- [ ] Eval Details Citations tab populates correctly
+- [ ] Eval Details paperclip click opens citation modal
 
 ---
 
 ## Estimated Timeline
 
 | Task | Duration | Notes |
-|------|----------|-------|
-| **Issue 1: Creation Date & Days Active** | ~~2-3 hours~~ ✅ 2 hours | Frontend display logic |
-| **Issue 2: Status Chip** | ~~1-2 hours~~ ✅ 1 hour | Layout adjustments |
-| **Issue 3: Edit Metadata Dialog** | ~~3-4 hours~~ ✅ 1 hour | Added status field to existing form |
-| **Issue 7: Resource Counts & Layout Optimization** | ~~3-5 hours~~ ✅ 2 hours | Types + layout with metrics grid |
-| **Issue 4: Eval Card Naming** | 2-3 hours | Backend + frontend changes |
-| **Issue 5: Org Logo Upload** | 6-8 hours | Image processing, storage, display |
-| **Issue 6: Theme Configuration** | 8-12 hours | Complex feature with multiple levels |
-| **Testing** | 3-4 hours | All issues |
-| **Total** | **25-37 hours** | ~4-5 work days |
-
----
-
-## Risk Assessment
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| Breaking existing workspace functionality | Low | Medium | Test thoroughly, revert if needed |
-| Theme configuration affecting performance | Medium | Medium | Implement caching, optimize theme resolution |
-| Logo upload storage costs | Low | Low | Implement size limits, compression |
-| Schema changes requiring migration | Low | Medium | Create migration scripts for existing DBs |
+|------|----------|----------|
+| **Issue A** | ✅ 30 min | Complete |
+| **Issue A1** | ✅ 10 min | Complete |
+| **Issue A4** | ✅ 5 min | Complete |
+| **Issue A2** | ✅ 1 hour | Complete (Full Stack) |
+| **Issue A5** | ⏳ 5 min | Remove section |
+| **Issue A6** | ⏳ 30 min | Documents tab |
+| **Issue A7** | ⏳ 25 min | Hyperlinks |
+| **Issue B** | ⏳ 1 hour | Deferred |
+| **Issue C** | ⏳ 1 hour | Deferred |
+| **Issue D** | ⏳ 1.5-2 hours | Deferred |
 
 ---
 
 ## Next Steps
 
-1. **Prioritize Issues** - Confirm priority order with stakeholders
-2. **Start with Issue #4** - Eval card naming (high priority, user-facing)
-3. **Group Workspace Issues** - Implement #1-3 together for efficiency
-4. **Platform Features Last** - Logo upload and theming are nice-to-have
+**Current Session:**
+1. ✅ Issues A, A1, A4, A2 complete
+2. ⏳ Implement Issue A5 (remove Document Summary)
+3. ⏳ Implement Issue A6 (enhance Documents tab)
+4. ⏳ Implement Issue A7 (hyperlink documents)
+5. ⏳ Sync all changes to test project
+6. ⏳ User testing and verification
 
 ---
 
-**Document Status:** � IN PROGRESS  
-**Current Phase:** Implementation  
-**Completed (Jan 22, 2026):**
-- ✅ Issues #1-3 (Workspace card enhancements: creation date, status chip, edit dialog)
-- ✅ Issue #7 (Resource counts - **full stack implementation verified**)
-  - Database: RPC function created and migrated
-  - Backend: Lambda updated to call RPC and return counts
-  - Frontend: Displays counts with icons and conditional rendering
-  - Optional modules (eval, voice) handled gracefully
+**Document Status:** 🟡 IN PROGRESS  
+**Current Phase:** Implementation (Eval Details Improvements)  
 
-**Remaining:** Issues #4, #5, #6 (3 of 7)  
-**Next Action:** Issue #4 (Eval card naming - high priority, user-facing)  
-**Branch:** `ui-enhancements`  
-**Related Plans:**
-- `plan_ui-enhancements-p1.md` (completed)
-- `docs/plans/completed/BACKEND-TODO-workspace-counts.md` (Issue #7 implementation details)
+**Completed:** Issues A, A1, A4, A2 (4 of 17)  
+**In Progress:** Issues A5, A6, A7  
+**Remaining:** Issues B, C, D (deferred), #5-6 (low priority)  
 
-**Last Updated:** January 22, 2026 4:18 PM EST
+**Last Updated:** January 22, 2026 11:30 PM EST

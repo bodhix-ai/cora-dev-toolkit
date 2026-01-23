@@ -60,6 +60,15 @@ export {
   type SummaryStatsProps,
 } from "./EvalSummaryPanel";
 
+// Compliance Score Chip (Configuration-based)
+export {
+  ComplianceScoreChip,
+  getStatusForScore,
+  type StatusOption,
+  type ScoreConfig,
+  type ComplianceScoreChipProps,
+} from "./ComplianceScoreChip";
+
 // Result Editing
 export {
   ResultEditDialog,
