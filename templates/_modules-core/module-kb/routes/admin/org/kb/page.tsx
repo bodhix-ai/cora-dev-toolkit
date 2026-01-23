@@ -8,14 +8,13 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useUser, useOrganizationContext, useApiClient, useRole } from '@{{PROJECT_NAME}}/module-access';
+import { useUser, useOrganizationContext, useRole } from '@{{PROJECT_NAME}}/module-access';
 import { 
   OrgAdminKBPage, 
   useOrgKbs, 
   useKbDocuments,
-  createKbModuleClient,
 } from '@{{PROJECT_NAME}}/module-kb';
-import type { KnowledgeBase, KbDocument } from '@{{PROJECT_NAME}}/module-kb';
+import type { KnowledgeBase } from '@{{PROJECT_NAME}}/module-kb';
 import { CircularProgress, Box, Alert } from '@mui/material';
 
 /**
@@ -26,7 +25,6 @@ export default function OrgKBAdminRoute() {
   const { profile, loading, isAuthenticated } = useUser();
   const { currentOrganization: organization } = useOrganizationContext();
   const { isOrgAdmin, isSysAdmin } = useRole();
-  const apiClient = useApiClient();
 
   // Loading state
   if (loading) {
@@ -51,13 +49,7 @@ export default function OrgKBAdminRoute() {
   // Selected KB state for document management
   const [selectedKb, setSelectedKb] = useState<KnowledgeBase | null>(null);
   
-  // Create KB API client
-  const kbClient = React.useMemo(
-    () => apiClient ? createKbModuleClient(apiClient) : null,
-    [apiClient]
-  );
-  
-  // KB management hook
+  // KB management hook - hooks handle their own API client internally
   const {
     kbs,
     loading: kbsLoading,
@@ -68,7 +60,6 @@ export default function OrgKBAdminRoute() {
     refresh: refreshKbs,
   } = useOrgKbs({
     orgId: organization?.orgId || '',
-    apiClient: kbClient,
     autoFetch: !!organization?.orgId,
   });
   
@@ -83,7 +74,6 @@ export default function OrgKBAdminRoute() {
   } = useKbDocuments({
     scope: 'kb',
     kbId: selectedKb?.id || undefined,
-    apiClient: kbClient,
     autoFetch: !!selectedKb?.id,
   });
   
