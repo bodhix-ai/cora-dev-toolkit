@@ -76,7 +76,7 @@ export function OrganizationSwitcher() {
   };
 
   const handlePlatformAdmin = () => {
-    router.push("/admin/platform" as any);
+    router.push("/admin/sys" as any);
     handleClose();
   };
 
@@ -199,13 +199,13 @@ export function OrganizationSwitcher() {
         {(profile?.sysRole === "sys_owner" || profile?.sysRole === "sys_admin" ||
           currentOrganization?.role === "org_owner" || currentOrganization?.role === "org_admin") && (
           <>
-            {/* System Admin */}
+            {/* Sys Admin */}
             {(profile?.sysRole === "sys_owner" || profile?.sysRole === "sys_admin") && (
               <MenuItem onClick={handlePlatformAdmin}>
                 <ListItemIcon>
                   <AdminPanelSettingsIcon fontSize="small" />
                 </ListItemIcon>
-                <Typography variant="body2">System Admin</Typography>
+                <Typography variant="body2">Sys Admin</Typography>
               </MenuItem>
             )}
 

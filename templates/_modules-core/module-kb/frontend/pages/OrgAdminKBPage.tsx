@@ -201,13 +201,10 @@ export function OrgAdminKBPage({
     <Container maxWidth="lg" sx={{ py: 3 }}>
       {/* Breadcrumbs */}
       <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} sx={{ mb: 3 }}>
-        <Link href="/admin" color="inherit" underline="hover" aria-label="Go to Admin dashboard">
-          Admin
+        <Link href="/admin/org" color="inherit" underline="hover" aria-label="Go to Org Admin">
+          Org Admin
         </Link>
-        <Link href="/admin/org" color="inherit" underline="hover" aria-label={`Go to ${orgName} settings`}>
-          {orgName}
-        </Link>
-        <Typography color="text.primary">Knowledge Bases</Typography>
+        <Typography color="text.primary">KB</Typography>
       </Breadcrumbs>
 
       {/* Header */}

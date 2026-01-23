@@ -1,0 +1,88 @@
+"use client";
+
+import React from "react";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { Box, Grid, Card, CardContent, Typography, CardActionArea, CircularProgress, Alert } from "@mui/material";
+import Link from "next/link";
+import { AdminCardConfig } from "@{{PROJECT_NAME}}/shared-types";
+
+interface SystemAdminClientPageProps {
+  adminCards: AdminCardConfig[];
+}
+
+/**
+ * System Administration Client Page
+ *
+ * Client component that handles authentication and displays admin cards.
+ * Cards are passed from server component (loaded with fs access).
+ */
+export default function SystemAdminClientPage({ adminCards }: SystemAdminClientPageProps) {
+  const { profile, loading, isAuthenticated } = useUser();
+
+  // Loading state
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Authentication check
+  if (!isAuthenticated || !profile) {
+    return (
+      <Box p={4}>
+        <Alert severity="error">
+          You must be logged in to access this page.
+        </Alert>
+      </Box>
+    );
+  }
+
+  // Authorization check (sys admin only)
+  const isSysAdmin = ['sys_owner', 'sys_admin'].includes(profile.sysRole || '');
+  if (!isSysAdmin) {
+    return (
+      <Box p={4}>
+        <Alert severity="error">
+          Access denied. System administrator role required.
+        </Alert>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>
+        System Administration
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+        Manage system-level configuration and settings
+      </Typography>
+
+      <Grid container spacing={3}>
+        {adminCards.map((card) => (
+          <Grid item xs={12} sm={6} md={4} key={card.id}>
+            <Card>
+              <Link href={card.href as any} style={{ textDecoration: "none", color: "inherit" }} aria-label={card.title}>
+                <CardActionArea>
+                  <CardContent sx={{ textAlign: "center", py: 4 }}>
+                    <Box sx={{ color: card.color || "primary.main", mb: 2 }}>
+                      {card.icon}
+                    </Box>
+                    <Typography variant="h5" gutterBottom>
+                      {card.title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {card.description}
+                    </Typography>
+                  </CardContent>
+                </CardActionArea>
+              </Link>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
+  );
+}

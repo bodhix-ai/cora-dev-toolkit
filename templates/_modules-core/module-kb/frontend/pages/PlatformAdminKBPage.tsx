@@ -285,13 +285,10 @@ export function PlatformAdminKBPage({
     <Container maxWidth="lg" sx={{ py: 3 }}>
       {/* Breadcrumbs */}
       <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} sx={{ mb: 3 }}>
-        <Link href="/admin" color="inherit" underline="hover" aria-label="Go to Admin dashboard">
-          Admin
+        <Link href="/admin/sys" color="inherit" underline="hover" aria-label="Go to Sys Admin">
+          Sys Admin
         </Link>
-        <Link href="/admin/sys" color="inherit" underline="hover" aria-label="Go to System settings">
-          System
-        </Link>
-        <Typography color="text.primary">Knowledge Bases</Typography>
+        <Typography color="text.primary">KB</Typography>
       </Breadcrumbs>
 
       {/* Header */}

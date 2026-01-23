@@ -12,7 +12,7 @@ module_access:
   # Admin Card Configuration
   admin_card:
     enabled: true
-    path: "/admin/access"
+    path: "/admin/sys/access"
     title: "User & Access Management"
     description: "Manage users, organizations, roles, and permissions"
     icon: "Shield"

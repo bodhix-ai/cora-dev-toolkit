@@ -114,7 +114,7 @@ export function OrgsTab({ authAdapter }: OrgsTabProps) {
   };
 
   const handleViewDetails = (orgId: string) => {
-    router.push(`/admin/access/orgs/${orgId}`);
+    router.push(`/admin/sys/access/orgs/${orgId}`);
   };
 
   if (loading) {

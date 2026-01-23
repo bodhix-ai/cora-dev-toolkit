@@ -137,15 +137,23 @@ export function OrgDetails({ orgId, authAdapter, isSysAdmin }: OrgDetailsProps) 
       >
         <Link
           color="inherit"
-          href="/admin/access"
+          href="/admin/sys"
+          sx={{ cursor: "pointer" }}
+          aria-label="Go to Sys Admin"
+        >
+          Sys Admin
+        </Link>
+        <Link
+          color="inherit"
+          href="/admin/sys/access"
           onClick={(e) => {
             e.preventDefault();
-            router.push("/admin/access");
+            router.push("/admin/sys/access");
           }}
           sx={{ cursor: "pointer" }}
           aria-label="Back to Access Control"
         >
-          Access Control
+          Access
         </Link>
         <Typography color="text.primary">{organization.name}</Typography>
       </Breadcrumbs>

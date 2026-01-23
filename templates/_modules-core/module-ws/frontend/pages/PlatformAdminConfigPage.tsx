@@ -276,23 +276,25 @@ export function PlatformAdminConfigPage({
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* Breadcrumbs */}
-      <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}>
-        <Link href="/admin/sys" style={{ textDecoration: "none" }} aria-label="Go to System Admin">
-          <Typography 
-            variant="body2" 
-            color="primary" 
-            sx={{ 
-              "&:hover": { textDecoration: "underline" },
-              cursor: "pointer"
-            }}
-          >
-            System Admin
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Link href="/admin/sys" style={{ textDecoration: "none" }} aria-label="Go to Sys Admin">
+            <Typography 
+              variant="body2" 
+              color="primary" 
+              sx={{ 
+                "&:hover": { textDecoration: "underline" },
+                cursor: "pointer"
+              }}
+            >
+              Sys Admin
+            </Typography>
+          </Link>
+          <NavigateNext fontSize="small" color="action" />
+          <Typography variant="body2" color="text.secondary">
+            WS
           </Typography>
-        </Link>
-        <NavigateNext fontSize="small" color="action" />
-        <Typography variant="body2" color="text.secondary">
-          Workspace Configuration
-        </Typography>
+        </Box>
       </Box>
 
       {/* Header */}
