@@ -112,9 +112,11 @@ export function ConfigForm({
   const [name, setName] = useState(config?.name || "");
   const [interviewType, setInterviewType] = useState(config?.interviewType || "general");
   const [description, setDescription] = useState(config?.description || "");
-  const [configJson, setConfigJson] = useState<VoiceConfigJson>(
-    config?.configJson || defaultConfigJson
-  );
+  // Merge config.configJson with defaults to ensure all fields exist
+  const [configJson, setConfigJson] = useState<VoiceConfigJson>({
+    ...defaultConfigJson,
+    ...(config?.configJson || {}),
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Sync with prop changes (for edit mode)
@@ -123,7 +125,11 @@ export function ConfigForm({
       setName(config.name);
       setInterviewType(config.interviewType);
       setDescription(config.description || "");
-      setConfigJson(config.configJson);
+      // Merge with defaults to ensure all fields exist
+      setConfigJson({
+        ...defaultConfigJson,
+        ...(config.configJson || {}),
+      });
     }
   }, [config]);
 
