@@ -10,7 +10,6 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 | Branch | Context File | Focus Area |
 |--------|--------------|------------|
-| `ui-enhancements` | `context-module-ws.md` | **ACTIVE** - Module-WS UI Enhancements |
 | `eval-optimization` | `context-module-eval.md` | Eval Optimization (AI Config & Quality) |
 | `module-voice-dev` | `context-module-voice.md` | Module-Voice (Phase 1.5: Specifications) |
 | `feature/module-kb-implementation` | `context-module-kb.md` | Module-KB development |
@@ -29,13 +28,6 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 ---
 
 ## Current Branch Status
-
-### ui-enhancements (ACTIVE - Jan 22, 2026)
-- **Status:** Module-WS UI Enhancements Phase 2 (🟢 57% COMPLETE)
-- **Context:** See `context-module-ws.md`
-- **Plans:** `docs/plans/plan_ui-enhancements-p2.md`, `docs/plans/BACKEND-TODO-workspace-counts.md`
-- **Test Project:** `~/code/bodhix/testing/test-optim/`
-- **Focus:** Workspace card enhancements (creation date, status, counts, edit dialog)
 
 ### eval-optimization
 - **Status:** Evaluation Optimization (⏳ PLANNED)
@@ -62,6 +54,7 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 | Branch | Status | Focus Area | Completed |
 |--------|--------|------------|-----------|
+| `ui-enhancements` | ✅ Archived | Module-WS & Eval UI Enhancements (P2) | 2026-01-23 |
 | `schema-naming-audit` | ✅ Archived | Schema Naming Compliance Audit (eval, chat, kb, voice, ws) | 2026-01-21 |
 | `admin-eval-config-s2` | ✅ Archived | Workspace Doc Eval Implementation & Org Admin Config | 2026-01-20 |
 
@@ -78,4 +71,4 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 ---
 
-**Updated:** January 22, 2026
+**Updated:** January 23, 2026
