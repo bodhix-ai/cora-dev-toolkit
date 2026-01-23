@@ -19,7 +19,9 @@ import {
   OrgEvalDocTypesPageV2,
   OrgEvalCriteriaPageV2
 } from '@{{PROJECT_NAME}}/module-eval';
-import { Box, Tabs, Tab, CircularProgress, Alert } from '@mui/material';
+import { Box, Tabs, Tab, CircularProgress, Alert, Breadcrumbs, Typography, Link } from '@mui/material';
+import { NavigateNext } from '@mui/icons-material';
+import NextLink from 'next/link';
 
 type TabValue = 'config' | 'doc-types' | 'criteria' | 'prompts';
 
@@ -72,7 +74,23 @@ export default function OrgEvalAdminPage() {
   }
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ width: '100%', p: 4 }}>
+      {/* Breadcrumbs: Org Admin > Eval */}
+      <Breadcrumbs
+        separator={<NavigateNext fontSize="small" />}
+        sx={{ mb: 2 }}
+      >
+        <Link
+          component={NextLink}
+          href="/admin/org"
+          underline="hover"
+          color="inherit"
+        >
+          Org Admin
+        </Link>
+        <Typography color="text.primary">Eval</Typography>
+      </Breadcrumbs>
+
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs 
           value={activeTab} 
