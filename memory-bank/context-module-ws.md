@@ -7,44 +7,50 @@
 
 ## Current Session
 
-**Session: Workspace Card UI Enhancements (Phase 2) - Full Stack Implementation**
+**Session: UI Enhancements Phase 2 - Workspace & Eval Modules**
 
-**Goal:** Complete workspace card improvements - resource counts, creation date, status, edit dialog
+**Goal:** Complete workspace card improvements + eval card naming fix
 
-**Status:** 🟢 57% COMPLETE (4/7 issues) - **Full Stack Verified**
+**Status:** 🟢 71% COMPLETE (5/7 issues) - **Verified Working**
 
 **Plan:** `docs/plans/plan_ui-enhancements-p2.md`
 
 **Branch:** `ui-enhancements`
 
-**Key Achievement:** Backend implementation for workspace resource counts **COMPLETE** (Database + Lambda + Frontend)
+**Key Achievements:** 
+- Workspace resource counts **COMPLETE** (Full Stack)
+- Eval card naming **COMPLETE** (Verified Working)
+- DocumentStatusBadge error **FIXED** (Bonus)
 
 ### Current Test Environment
 - **Project:** test-optim
 - **Stack:** `~/code/bodhix/testing/test-optim/ai-sec-stack`
 - **Infra:** `~/code/bodhix/testing/test-optim/ai-sec-infra`
 
-### Session Overview (January 22, 2026 - 9:00 AM to 5:20 PM)
+### Session Overview (January 22, 2026 - 9:00 AM to 7:36 PM)
 
 **Context:**
 - Phase 1 of UI enhancements completed 8 issues
-- Phase 2 focuses on workspace card enhancements and platform customization
+- Phase 2 focuses on workspace card enhancements, eval naming, and platform customization
 - User requested workspace cards show resource counts (docs, evals, members)
 - Iterative improvements based on user feedback (tooltips, layout, all 5 counts)
 - **Backend implementation completed and verified** (full stack delivery)
+- **Eval card naming implemented, debugged, and verified working**
+- **Bonus fix:** DocumentStatusBadge error (unknown status values)
 
 **Scope:**
 - 7 issues total in Phase 2
-- 4 issues completed this session (workspace card enhancements)
-- 3 issues deferred (eval card naming, logo upload, theme configuration)
+- 5 issues completed this session (workspace + eval + bonus fix)
+- 2 issues remaining (logo upload, theme configuration - low priority)
 
 **Issues Addressed:**
-1. **Issue #1:** Workspace Creation Date & Days Active (Medium priority)
-2. **Issue #2:** Workspace Status Chip (Medium priority)
-3. **Issue #3:** Workspace Edit Dialog (Medium priority)
-4. **Issue #7:** Resource Counts & Optimized Layout (Medium priority)
-5. **Issue #4:** Eval Card Naming (High priority - DEFERRED)
-6. **Issues #5-6:** Platform customization (Low priority - DEFERRED)
+1. **Issue #1:** Workspace Creation Date & Days Active ✅ COMPLETE
+2. **Issue #2:** Workspace Status Chip ✅ COMPLETE
+3. **Issue #3:** Workspace Edit Dialog ✅ COMPLETE
+4. **Issue #7:** Resource Counts & Optimized Layout ✅ COMPLETE
+5. **Issue #4:** Eval Card Naming ✅ COMPLETE & VERIFIED
+6. **Bonus:** DocumentStatusBadge error ✅ FIXED
+7. **Issues #5-6:** Platform customization (Low priority - DEFERRED)
 
 ### Session Progress
 
@@ -115,6 +121,35 @@
 - [x] Graceful handling for optional modules verified
 - [x] Status: BACKEND-TODO moved to `docs/plans/completed/`
 
+**Issue #4: Eval Card Naming** ✅ COMPLETE & VERIFIED
+
+**Implementation Details:**
+- [x] Modified `eval-results` Lambda (not `eval-processor` as initially expected)
+- [x] Auto-renames evaluation when EVALUATE button clicked (PATCH request)
+- [x] Fixed column name: `filename` (actual DB column) not `file_name`
+- [x] Fixed timezone: local time not UTC (prevented date being off by 1 day)
+- [x] Added support for multiple document formats:
+  - 1 doc: `{Document Name} - MM/DD/YYYY`
+  - 2 docs: `{Doc1} & {Doc2} - MM/DD/YYYY`
+  - 3+ docs: `{First Doc} + {n} more - MM/DD/YYYY`
+
+**Debugging Iterations:**
+- Iteration 1: Initial implementation (used `file_name`, UTC time)
+- Iteration 2: Fixed to use `filename` column and local time
+- Iteration 3: User verified: "the naming fix worked!"
+
+**Files Modified:**
+- `templates/_modules-functional/module-eval/backend/lambdas/eval-results/lambda_function.py`
+
+**Bonus Fix: DocumentStatusBadge Error** ✅ FIXED
+- [x] Added guard for unknown status values in STATUS_CONFIG
+- [x] Console warning logs unknown status for debugging
+- [x] Displays fallback chip instead of crashing
+- [x] Synced to test project
+
+**Files Modified:**
+- `templates/_modules-core/module-kb/frontend/components/DocumentStatusBadge.tsx`
+
 ### User Feedback & Iterations
 
 **Iteration 1: Initial 3 counts**
@@ -167,7 +202,12 @@
 
 **All synced to test project:** `~/code/bodhix/testing/test-optim/ai-sec-stack`
 
-### Additional Work Completed (Bonus)
+**Deployed to test environment:**
+- ✅ Workspace enhancements (Issues #1-3, #7)
+- ✅ Eval card naming fix (Issue #4)
+- ✅ DocumentStatusBadge error fix (bonus)
+
+### Additional Work Completed
 
 **Validation Suite Refactor** ✅ COMPLETE
 - [x] Created `validation/shared/` module for common schema parsing
@@ -181,24 +221,25 @@
 
 **Impact:** DRY principle applied, single source of truth for SQL parsing, bug fix for audit validator
 
+### Production Deployment ✅ COMPLETE
+
+**Deployment to Production** (Completed previous session)
+- [x] Run migration: `20260122_add_workspace_resource_counts.sql`
+- [x] Deploy workspace Lambda
+- [x] Verify counts appear in production UI
+- [x] All Phase 2 workspace enhancements (Issues #1-3, #7) live in production
+
 ### Next Steps
 
-**Option A: Continue Frontend (Issue #4)** - RECOMMENDED
-- Eval Card Naming - Change placeholder to "{Document Name} - {Date}"
-- Requires backend Lambda changes (eval-processor)
-- High priority, user-facing
-- Estimated: 2-3 hours
+**Completed: Issue #4 (Eval Card Naming)** ✅ VERIFIED WORKING
+- Changed placeholder to \"{Document Name} - {Date}\"
+- Backend Lambda changes (eval-results, not eval-processor)
+- User verified: "the naming fix worked!"
+- Actual time: 3 hours (including debugging)
 
-**Option B: Platform Customization (Issues #5-6)**
+**Remaining: Platform Customization (Issues #5-6)** - LOW PRIORITY
 - Organization Logo Upload (Low priority, 6-8 hours)
 - MUI Theme Configuration (Low priority, 8-12 hours)
-
-**Option C: Deploy to Production**
-- Run migration: `20260122_add_workspace_resource_counts.sql`
-- Deploy workspace Lambda
-- Verify counts appear in production UI
-
-**Recommended:** Issue #4 (Eval card naming) as it's high priority and user-facing
 
 ---
 
@@ -310,4 +351,11 @@
 
 ---
 
-**Updated:** January 22, 2026
+**Updated:** January 22, 2026 7:36 PM EST
+
+**Session Summary:**
+- **Duration:** 10.5 hours (9:00 AM - 7:36 PM)
+- **Issues Completed:** 5 of 7 (71%)
+- **Bonus Fixes:** 1 (DocumentStatusBadge)
+- **Deployment:** All fixes deployed to test environment and verified
+- **User Feedback:** "the naming fix worked!" ✅

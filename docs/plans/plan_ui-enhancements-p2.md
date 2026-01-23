@@ -12,17 +12,19 @@
 
 Phase 2 continues the UI/UX improvements for the Eval and Workspace modules. Phase 1 completed 8 core issues plus significant enhancements. Phase 2 focuses on workspace/audit management features and platform-level customization.
 
-**Progress: 4/7 issues resolved (57%)**
+**Progress: 5/7 issues resolved (71%)**
 
 **Completed Today (Jan 22, 2026):**
 - ✅ Issue #1: Creation Date & Days Active
 - ✅ Issue #2: Status Chip  
 - ✅ Issue #3: Edit Metadata Dialog
 - ✅ Issue #7: Resource Counts (Full Stack Implementation Verified)
+- ✅ Issue #4: Eval Card Naming (VERIFIED WORKING)
 
 **Modules Affected:**
 - `module-ws` - Workspace UI improvements ✅ (4 issues complete)
-- `module-eval` - Evaluation card naming ⏳ (pending)
+- `module-eval` - Evaluation card naming ✅ (complete)
+- `module-kb` - DocumentStatusBadge error fixed ✅ (bonus fix)
 - Platform-level - Theming and branding ⏳ (pending)
 
 ---
@@ -203,31 +205,32 @@ The card now displays significant information. Layout should:
 **Issue:** New evaluations show concatenated placeholder name instead of meaningful identifier  
 **Impact:** Users can't easily identify what document is being evaluated  
 **Priority:** High  
-**Status:** ⏳ PLANNED
+**Status:** ✅ COMPLETE (Jan 22, 2026) - **VERIFIED WORKING**
 
-**Requirements:**
-- Change placeholder from concatenated string to: "{Document Name} - {Date}"
-- Apply when evaluation is first created (before completion)
-- Update after evaluation completes (if needed)
+**Implementation Delivered:**
 
-**Current Behavior (assumed):**
-```
-"eval-doc-abc123-xyz789"
-```
+**✅ Backend Lambda (eval-results):**
+- Auto-renames evaluation when EVALUATE button clicked (PATCH request)
+- Uses `kb_docs.filename` column (raw database column name)
+- Removes file extensions (.pdf, .docx, etc.)
+- Uses local server time (not UTC)
+- Supports multiple document formats:
+  - 1 doc: `{Document Name} - MM/DD/YYYY`
+  - 2 docs: `{Doc1} & {Doc2} - MM/DD/YYYY`
+  - 3+ docs: `{First Doc} + {n} more - MM/DD/YYYY`
 
-**Desired Behavior:**
-```
-"NIST SP 800-53 Rev 5 - Jan 21, 2026"
-```
+**Root Cause Fixes Applied:**
+1. **Column name mismatch**: Changed from `file_name` to `filename` (actual DB column)
+2. **Timezone issue**: Changed from UTC to local time (prevents date being off by 1 day)
 
-**Implementation Notes:**
-- Check where temporary name is generated (likely in eval-processor Lambda)
-- Update naming logic to use document name + date
-- May need to pass document name to evaluation creation
+**Example Output:**
+- Before: `"Document - 01/23/2026"` (generic name, wrong date)
+- After: `"Access-Control-Policy - 01/22/2026"` (correct name, correct date)
 
-**Files to Modify:**
-- `templates/_modules-functional/module-eval/backend/lambdas/eval-processor/lambda_function.py` (naming logic)
-- `templates/_modules-functional/module-eval/frontend/components/EvalCard.tsx` (display)
+**Files Modified:**
+- `templates/_modules-functional/module-eval/backend/lambdas/eval-results/lambda_function.py`
+
+**Status:** ✅ Deployed to test environment and **verified working** by user
 
 ---
 
@@ -374,9 +377,30 @@ The card now displays significant information. Layout should:
 - [x] Workspace cards show status chip with color coding
 - [x] Workspace cards have "Edit" menu option that opens metadata dialog with status field
 - [x] Workspace cards show evaluation count, document count, and optimized layout
-- [ ] Eval cards show "{Document Name} - {Date}" instead of placeholder
+- [x] Workspace enhancements deployed to production (Issue #7 backend + frontend)
+- [x] Eval cards show "{Document Name} - {Date}" instead of placeholder ✅ VERIFIED
 - [ ] Organizations can upload and display custom logos
 - [ ] System/Org/User-level theme configuration functional with proper inheritance
+
+---
+
+## Production Deployment
+
+**Status:** ✅ DEPLOYED (Jan 22, 2026)
+
+**Deployed Features:**
+- ✅ Database migration: `20260122_add_workspace_resource_counts.sql`
+- ✅ Workspace Lambda: Updated with resource count RPC calls
+- ✅ Frontend: WorkspaceCard with all 5 resource counts
+- ✅ Verified: Counts displaying correctly in production UI
+
+**Deployment Steps Completed:**
+1. Applied database migration to production database
+2. Built and deployed workspace Lambda to production
+3. Frontend deployment (Next.js build)
+4. Smoke testing verified all counts working
+
+**Result:** All Phase 2 workspace enhancements (Issues #1-3, #7) now live in production.
 
 ---
 
@@ -388,7 +412,7 @@ The card now displays significant information. Layout should:
 | **Issue 2: Status Chip** | ~~1-2 hours~~ ✅ 1 hour | Layout adjustments |
 | **Issue 3: Edit Metadata Dialog** | ~~3-4 hours~~ ✅ 1 hour | Added status field to existing form |
 | **Issue 7: Resource Counts & Layout Optimization** | ~~3-5 hours~~ ✅ 2 hours | Types + layout with metrics grid |
-| **Issue 4: Eval Card Naming** | 2-3 hours | Backend + frontend changes |
+| **Issue 4: Eval Card Naming** | ~~2-3 hours~~ ✅ 3 hours | Backend changes + 3 iterations to fix |
 | **Issue 5: Org Logo Upload** | 6-8 hours | Image processing, storage, display |
 | **Issue 6: Theme Configuration** | 8-12 hours | Complex feature with multiple levels |
 | **Testing** | 3-4 hours | All issues |
@@ -426,11 +450,22 @@ The card now displays significant information. Layout should:
   - Frontend: Displays counts with icons and conditional rendering
   - Optional modules (eval, voice) handled gracefully
 
-**Remaining:** Issues #4, #5, #6 (3 of 7)  
-**Next Action:** Issue #4 (Eval card naming - high priority, user-facing)  
+**Completed (Jan 22, 2026):**
+- ✅ Issue #4 (Eval card naming - **verified working**)
+  - Backend: Fixed column name (`filename` not `file_name`)
+  - Backend: Fixed timezone (local time not UTC)
+  - Deployed to test environment
+  - User confirmed: "the naming fix worked!"
+
+**Remaining:** Issues #5, #6 (2 of 7)  
+**Next Action:** Platform customization features (low priority)  
 **Branch:** `ui-enhancements`  
+
+**Bonus Fix:**
+- ✅ DocumentStatusBadge error (module-kb) - Added guard for unknown status values
+
 **Related Plans:**
 - `plan_ui-enhancements-p1.md` (completed)
 - `docs/plans/completed/BACKEND-TODO-workspace-counts.md` (Issue #7 implementation details)
 
-**Last Updated:** January 22, 2026 4:18 PM EST
+**Last Updated:** January 22, 2026 7:36 PM EST
