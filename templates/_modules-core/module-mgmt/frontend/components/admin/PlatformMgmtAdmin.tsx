@@ -56,13 +56,13 @@ export function PlatformMgmtAdmin(): React.ReactElement {
         <Link
           underline="hover"
           color="inherit"
-          href="/admin/platform"
+          href="/admin/sys"
           sx={{ display: "flex", alignItems: "center" }}
-          aria-label="Navigate to Admin Dashboard"
+          aria-label="Navigate to Sys Admin"
         >
-          Admin Dashboard
+          Sys Admin
         </Link>
-        <Typography color="text.primary">Platform Management</Typography>
+        <Typography color="text.primary">Mgmt</Typography>
       </Breadcrumbs>
 
       <Box sx={{ mb: 3 }}>

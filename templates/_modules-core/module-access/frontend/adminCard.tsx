@@ -14,7 +14,7 @@ export const accessControlAdminCard: AdminCardConfig = {
   title: "Access Control",
   description: "Manage organizations, users, identity providers, and access settings",
   icon: <BusinessIcon sx={{ fontSize: 48 }} />,
-  href: "/admin/access",
+  href: "/admin/sys/access",
   context: "platform",
   color: "primary.main",
   order: 10, // Core platform feature - should appear first

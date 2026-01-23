@@ -253,6 +253,10 @@ class CoraValidator:
             "supports": ["project"],
             "cli_style": "argparse",
         },
+        "admin_auth": {
+            "name": "Admin Auth Validator",
+            "description": "Validates admin pages follow ADR-015 Pattern A authentication",
+            "module": "admin-auth-validator",
         "audit_columns": {
             "name": "Audit Column Validator",
             "description": "Validates module entity tables have required audit columns (ADR-015: created_at, created_by, updated_at, updated_by, is_deleted, deleted_at, deleted_by)",

@@ -11,8 +11,8 @@
  * - Evaluation Criteria
  */
 
-import React, { useState, useContext, useEffect } from 'react';
-import { OrgContext } from '@{{PROJECT_NAME}}/module-access';
+import React, { useState } from 'react';
+import { useUser, useOrganizationContext } from '@{{PROJECT_NAME}}/module-access';
 import { 
   OrgEvalConfigPage,
   OrgEvalPromptsPage,
@@ -24,20 +24,47 @@ import { Box, Tabs, Tab, CircularProgress, Alert } from '@mui/material';
 type TabValue = 'config' | 'doc-types' | 'criteria' | 'prompts';
 
 export default function OrgEvalAdminPage() {
-  const context = useContext(OrgContext);
-  const currentOrg = context?.currentOrg;
+  const { profile, loading, isAuthenticated } = useUser();
+  const { organization } = useOrganizationContext();
   const [activeTab, setActiveTab] = useState<TabValue>('config');
 
-  // 🔍 DEBUG LOGGING
-  useEffect(() => {
-    console.log('[OrgEvalAdminPage] Mounted');
-    console.log('[OrgEvalAdminPage] context:', context);
-    console.log('[OrgEvalAdminPage] currentOrg:', currentOrg);
-    console.log('[OrgEvalAdminPage] activeTab:', activeTab);
-  }, [context, currentOrg, activeTab]);
+  // Loading state
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
-  if (!currentOrg) {
-    console.error('[OrgEvalAdminPage] NO currentOrg - showing warning');
+  // Authentication check
+  if (!isAuthenticated || !profile) {
+    return (
+      <Box p={4}>
+        <Alert severity="error">
+          You must be logged in to access this page.
+        </Alert>
+      </Box>
+    );
+  }
+
+  // Authorization check - org admins only (no sys admin access)
+  const isOrgAdmin = ["org_owner", "org_admin"].includes(
+    profile.orgRole || ""
+  );
+
+  if (!isOrgAdmin) {
+    return (
+      <Box p={4}>
+        <Alert severity="error">
+          Access denied. Organization administrator role required.
+        </Alert>
+      </Box>
+    );
+  }
+
+  // Check if organization is selected
+  if (!organization) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="warning">
@@ -47,17 +74,12 @@ export default function OrgEvalAdminPage() {
     );
   }
 
-  console.log('[OrgEvalAdminPage] Rendering with orgId:', currentOrg.orgId);
-
   return (
     <Box sx={{ width: '100%' }}>
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs 
           value={activeTab} 
-          onChange={(_, newValue) => {
-            console.log('[OrgEvalAdminPage] Tab change:', activeTab, '→', newValue);
-            setActiveTab(newValue);
-          }}
+          onChange={(_, newValue) => setActiveTab(newValue)}
           aria-label="Evaluation admin tabs"
         >
           <Tab label="Configuration" value="config" />
@@ -69,28 +91,16 @@ export default function OrgEvalAdminPage() {
 
       <Box sx={{ p: 3 }}>
         {activeTab === 'config' && (
-          <>
-            {console.log('[OrgEvalAdminPage] Rendering CONFIG tab with orgId:', currentOrg.orgId)}
-            <OrgEvalConfigPage orgId={currentOrg.orgId} />
-          </>
+          <OrgEvalConfigPage orgId={organization.id} />
         )}
         {activeTab === 'doc-types' && (
-          <>
-            {console.log('[OrgEvalAdminPage] Rendering DOC-TYPES tab with orgId:', currentOrg.orgId)}
-            <OrgEvalDocTypesPageV2 orgId={currentOrg.orgId} />
-          </>
+          <OrgEvalDocTypesPageV2 orgId={organization.id} />
         )}
         {activeTab === 'criteria' && (
-          <>
-            {console.log('[OrgEvalAdminPage] Rendering CRITERIA tab with orgId:', currentOrg.orgId)}
-            <OrgEvalCriteriaPageV2 orgId={currentOrg.orgId} />
-          </>
+          <OrgEvalCriteriaPageV2 orgId={organization.id} />
         )}
         {activeTab === 'prompts' && (
-          <>
-            {console.log('[OrgEvalAdminPage] Rendering PROMPTS tab with orgId:', currentOrg.orgId)}
-            <OrgEvalPromptsPage orgId={currentOrg.orgId} />
-          </>
+          <OrgEvalPromptsPage orgId={organization.id} />
         )}
       </Box>
     </Box>

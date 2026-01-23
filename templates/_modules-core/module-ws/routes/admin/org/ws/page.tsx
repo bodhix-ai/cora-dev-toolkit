@@ -33,11 +33,8 @@ export default function WorkspaceOrgManagementRoute() {
     (org) => org.orgId === currentOrgId && ["org_owner", "org_admin"].includes(org.role)
   );
 
-  const isSysAdmin = ["sys_owner", "sys_admin"].includes(
-    profile?.sysRole || ""
-  );
-
-  const hasAccess = isOrgAdmin || isSysAdmin;
+  // Org admin pages should only check org roles (no sys admin access)
+  const hasAccess = isOrgAdmin;
 
   // Show loading state while user profile is being fetched
   if (userLoading) {
@@ -65,6 +62,17 @@ export default function WorkspaceOrgManagementRoute() {
       <Box sx={{ p: 3 }}>
         <Alert severity="warning">
           Please select an organization from the organization switcher to manage workspaces.
+        </Alert>
+      </Box>
+    );
+  }
+
+  // Authorization check
+  if (!hasAccess) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          Access denied. Organization administrator role required.
         </Alert>
       </Box>
     );

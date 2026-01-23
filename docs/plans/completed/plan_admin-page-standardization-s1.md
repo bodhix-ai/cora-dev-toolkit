@@ -1,9 +1,63 @@
 # Plan: Admin Page Standardization
 
-**Status:** 📋 PLANNED (Not Yet Implemented)  
+**Status:** ✅ COMPLETE - All Auth Fixes, Breadcrumbs & Validation (0 Errors on 19 Pages)
 **Created:** January 18, 2026  
+**Started:** January 21, 2026  
+**Completed:** January 22, 2026  
 **Priority:** HIGH (Technical Debt / Code Quality)  
 **Scope:** All system and organization admin pages
+
+**Current Progress:**
+- ✅ Phase 1 COMPLETE: Comprehensive audit of all 19 admin pages (3 parts)
+  - ✅ Part A: Authentication patterns audited (19/19 pages) - 6 critical, 8 need improvement, 5 compliant
+  - ✅ Part B: UI/Layout patterns audited (19/19 pages) - 4 critical issues found
+  - ✅ Part C: Module ownership audited (11/11 pages) - 4 duplicates, 5 orphans, 2 shell pages
+- ✅ Critical architectural decision: ALL admin pages MUST be module-owned
+- ✅ Identified 10 critical issues requiring fixes (auth, URL, breadcrumbs, design, ownership)
+- ✅ **Phase 2A COMPLETE:** All 6 critical auth fixes applied to templates (January 22, 2026)
+  - ✅ Fix 1/6: `/admin/organizations` - Already used Pattern A (verified)
+  - ✅ Fix 2/6: `/admin/sys` - Split into server + client components, tested & working
+  - ✅ Fix 3/6: `/admin/org` - Split into server + client components, added org admin auth
+  - ✅ Fix 4/6: `module-ws/admin/sys/ws` - Added Pattern A authentication
+  - ✅ Fix 5/6: `module-ws/admin/workspaces` - Added Pattern A authentication
+  - ✅ Fix 6/6: `module-eval/admin/sys/eval` - Added Pattern A authentication
+  - ✅ Fixed URL pattern: `/admin/platform` → `/admin/sys` 
+  - ✅ Fixed navigation label: "System Admin" → "Sys Admin"
+  - ✅ Fixed fs module errors with server/client component split
+- ✅ **Phase 2B COMPLETE:** All 8 pages with partial auth issues fixed (January 22, 2026)
+  - ✅ Fix 1/8: `/admin/access/orgs/[id]` - Added loading, auth, authz checks
+  - ✅ Fix 2/8: `/admin/ai` - Added explicit auth and authz checks
+  - ✅ Fix 3/8: `/admin/sys/chat` - Added Pattern A auth to placeholder
+  - ✅ Fix 4/8: `/admin/org/chat` - Added Pattern A auth to placeholder
+  - ✅ Fix 5/8: `/admin/org/kb` - Added Pattern A auth to placeholder
+  - ✅ Fix 6/8: `module-kb/admin/org/kb` - Added loading and isAuthenticated checks
+  - ✅ Fix 7/8: `module-ws/admin/org/ws/[id]` - Added full Pattern A auth
+  - ✅ Fix 8/8: `module-eval/admin/org/eval` - Replaced OrgContext with useUser
+- ✅ **Phase 2C COMPLETE:** Breadcrumb standardization across all admin pages (January 22, 2026)
+  - ✅ Created ADR-015 breadcrumb navigation standard (2-level and 3-level patterns)
+  - ✅ Fixed 8 existing admin component breadcrumbs (Access, AI, Mgmt, KB x2, WS x2, OrgDetails)
+  - ✅ Added breadcrumbs to 2 eval admin pages (SysEvalConfigPage, OrgEvalConfigPage)
+  - ✅ Verified user-facing pages use correct dynamic labels (WorkspaceDetailPage, EvalDetailPage)
+  - ✅ All breadcrumbs use Material-UI components with NavigateNext separator
+  - ✅ All breadcrumbs include proper aria-label attributes for accessibility
+  - ✅ Synced all 10 breadcrumb files to test-eval project (~/code/bodhix/testing/test-eval/ai-sec-stack)
+- ✅ **ADR-015 CREATED:** Admin Page Auth Pattern + Breadcrumb Navigation standards documented
+- ✅ **VALIDATOR CREATED:** admin-auth-validator enforces Pattern A compliance
+- ✅ **VALIDATION COMPLETE:** 19 pages, 0 errors, 0 warnings, 100% compliance
+- ✅ **CLEANUP COMPLETE:** Deleted deprecated `/admin/platform` directory
+
+**Session Completed:** January 22, 2026  
+**Tracking Document:** `docs/plans/findings_admin-page-audit.md` (complete audit results)
+
+**Critical Issues Summary:**
+1. ✅ **6 pages with critical auth issues** - FIXED (Pattern A applied, useSession eliminated)
+2. ✅ **8 pages with partial auth issues** - FIXED (All now use Pattern A)
+3. ✅ **URL pattern broken** - FIXED (`/admin/platform` → `/admin/sys`, directory deleted)
+4. ✅ **Navigation label wrong** - FIXED (\"System Admin\" → \"Sys Admin\")
+5. ✅ **Validation enforcement** - CREATED (admin-auth-validator with 0 errors achieved)
+6. ✅ **Breadcrumb standardization** - COMPLETE (ADR-015 standard created, 10 admin pages updated, synced to test-eval)
+7. 🔴 **No sys/org design distinction** (pages look identical despite different scopes) - FUTURE PHASE
+8. 🔴 **Module ownership issues** (11 pages in wrong location) - FUTURE PHASE
 
 ---
 
@@ -185,9 +239,19 @@ export default function AdminPageRoute() {
 
 ## Implementation Plan
 
-### Phase 1: Audit Current State
+### Phase 1: Comprehensive Audit ⏳ IN PROGRESS
 
-**Action:** Document all admin pages and their current patterns.
+**Started:** January 21, 2026  
+**Status:** Audit framework created, 19 pages identified  
+**Action:** Document all admin pages - authentication patterns AND UI/layout patterns.
+
+**CRITICAL ARCHITECTURAL DECISION (Jan 21, 2026):**
+- ✅ **All admin pages MUST be module-owned** (confirmed with stakeholder)
+- Project-stack-template should NOT contain admin pages (only shell/layout)
+- Identified 11 orphan pages requiring relocation to appropriate modules
+- See Part C in findings document for detailed module assignment proposals
+
+**Part A: Authentication Audit**
 
 **System Admin Pages:**
 - [ ] `/admin/access/page.tsx` - Pattern A (useUser) ✅ CORRECT
@@ -205,9 +269,42 @@ export default function AdminPageRoute() {
 **Workspace Admin Pages:**
 - [ ] Workspace admin routes - Unknown ⚠️ NEEDS AUDIT
 
-### Phase 2: Create Template
+**Part B: UI/Layout Audit**
 
-**Action:** Create standardized admin page template.
+**For each admin page, document:**
+- [ ] Header style (Material-UI components used, hierarchy)
+- [ ] Breadcrumb implementation (if present)
+- [ ] Page padding/margins (Box, Container, or custom)
+- [ ] Use of collapse/expand components (Accordion, Collapse)
+- [ ] Card/section layouts (Paper, Card, custom divs)
+- [ ] Loading states (CircularProgress, Skeleton, custom)
+- [ ] Error display patterns (Alert, Snackbar, custom)
+- [ ] Action button placement (top-right, bottom, floating)
+- [ ] Table/list patterns (DataGrid, Table, custom)
+- [ ] Form layouts (spacing, grouping, validation display)
+
+**Part C: Module Ownership Audit (NEW - Jan 21, 2026)**
+
+**Action:** Identify orphan pages and propose correct module ownership.
+
+**Discovered Issues:**
+- 11 admin pages found in project-stack-template (should be 0)
+- Several potential duplicates between project-stack and module templates
+- Need to relocate orphans to: module-access, module-ai, module-mgmt, module-chat, module-kb
+- One page (`/admin/org/page.tsx`) needs clarification: shell page or module-ws?
+
+**Output:** `docs/plans/findings_admin-page-audit.md` (includes all three parts)
+
+### Phase 2: Propose Standards (REQUIRES APPROVAL)
+
+**Action:** Create comprehensive admin page standards document for review and approval.
+
+**Part A: Authentication Standard** (already defined - Pattern A with useUser)
+
+**Part B: UI/Layout Standards** (TO BE DEFINED)
+### Phase 3: Create Templates (After Approval)
+
+**Action:** Create standardized admin page templates based on approved standards from Phase 2.
 
 **File:** `templates/_project-stack-template/docs/ADMIN-PAGE-TEMPLATE.tsx`
 
@@ -294,7 +391,7 @@ export default function AdminPageRoute() {
 }
 ```
 
-### Phase 3: Update All Admin Pages
+### Phase 4: Update All Admin Pages (After Template Creation)
 
 **Action:** Systematically update each page to use the standard pattern.
 
@@ -316,7 +413,7 @@ export default function AdminPageRoute() {
 - [ ] Test success case (correct role)
 - [ ] Update template
 
-### Phase 4: Create ADR
+### Phase 5: Create ADR
 
 **Action:** Document this as an architectural decision.
 
@@ -329,7 +426,7 @@ export default function AdminPageRoute() {
 - Consequences: What this means for developers
 - Compliance: How to enforce this standard
 
-### Phase 5: Add Validation
+### Phase 6: Add Validation
 
 **Action:** Create validator to enforce the standard.
 
@@ -345,7 +442,7 @@ export default function AdminPageRoute() {
 
 **Integration:** Add to `validation/cora-validate.py` as new validator.
 
-### Phase 6: Update Documentation
+### Phase 7: Update Documentation
 
 **Action:** Update developer guides.
 

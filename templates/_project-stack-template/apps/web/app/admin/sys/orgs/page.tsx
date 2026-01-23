@@ -2,21 +2,23 @@
 
 import React from "react";
 import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { OrganizationManagement } from "@{{PROJECT_NAME}}/module-access";
 import { CircularProgress, Box, Alert } from "@mui/material";
-import { PlatformAdminConfigPage } from "@{{PROJECT_NAME}}/module-ws";
 
 /**
- * System Admin - Workspace Configuration Page
+ * Organization Management Admin Page
  * 
- * Route: /admin/sys/ws
+ * System admin interface for managing organizations.
+ * Accessible only to sys_owner and sys_admin roles.
  * 
  * Features:
- * - Configuration: Navigation labels, visual icon picker, color picker, feature flags
- * - Usage Summary: Real API calls to /ws/sys/analytics for cross-org statistics
- * 
- * Access: Platform admins only (sys_owner, sys_admin)
+ * - List all organizations with member counts
+ * - Create new organizations
+ * - Edit organization details and domain configuration
+ * - Configure domain-based auto-provisioning
+ * - Delete organizations
  */
-export default function WorkspaceSystemConfigPage() {
+export default function OrganizationsAdminPage() {
   const { profile, loading, isAuthenticated } = useUser();
 
   // Loading state
@@ -51,5 +53,6 @@ export default function WorkspaceSystemConfigPage() {
     );
   }
 
-  return <PlatformAdminConfigPage />;
+  // Render the organization management component
+  return <OrganizationManagement />;
 }

@@ -381,23 +381,25 @@ export function OrgAdminManagementPage({
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {/* Breadcrumbs */}
-      <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}>
-        <Link href="/admin/org" style={{ textDecoration: "none" }} aria-label="Go to Organization Admin">
-          <Typography 
-            variant="body2" 
-            color="primary" 
-            sx={{ 
-              "&:hover": { textDecoration: "underline" },
-              cursor: "pointer"
-            }}
-          >
-            Organization Admin
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Link href="/admin/org" style={{ textDecoration: "none" }} aria-label="Go to Org Admin">
+            <Typography 
+              variant="body2" 
+              color="primary" 
+              sx={{ 
+                "&:hover": { textDecoration: "underline" },
+                cursor: "pointer"
+              }}
+            >
+              Org Admin
+            </Typography>
+          </Link>
+          <NavigateNext fontSize="small" color="action" />
+          <Typography variant="body2" color="text.secondary">
+            WS
           </Typography>
-        </Link>
-        <NavigateNext fontSize="small" color="action" />
-        <Typography variant="body2" color="text.secondary">
-          Workspace Management
-        </Typography>
+        </Box>
       </Box>
 
       {/* Header */}
