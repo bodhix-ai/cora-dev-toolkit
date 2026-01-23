@@ -61,11 +61,10 @@ export {
 } from "./EvalSummaryPanel";
 
 // Compliance Score Chip (Configuration-based)
+// Note: StatusOption and ScoreConfig types are internal to avoid conflicts with types/index.ts
 export {
   ComplianceScoreChip,
   getStatusForScore,
-  type StatusOption,
-  type ScoreConfig,
   type ComplianceScoreChipProps,
 } from "./ComplianceScoreChip";
 

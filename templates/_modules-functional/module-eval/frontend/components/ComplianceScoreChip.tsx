@@ -12,17 +12,20 @@ import React from "react";
 import { Box, Chip } from "@mui/material";
 
 // =============================================================================
-// TYPES
+// TYPES (Internal - specific to this component's MUI Chip requirements)
+// These are NOT exported to avoid conflicts with types/index.ts
 // =============================================================================
 
-export interface StatusOption {
+/** Status option with MUI Chip-compatible color */
+interface StatusOption {
   id: string;
   name: string;
   color: "success" | "warning" | "error" | "info" | "default";
   scoreValue: number;
 }
 
-export interface ScoreConfig {
+/** Score display configuration (local version for this component) */
+interface ScoreConfig {
   categoricalMode: "boolean" | "detailed";
   showDecimalScore: boolean;
 }

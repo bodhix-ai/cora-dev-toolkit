@@ -314,8 +314,9 @@ export function ConfigForm({
                   value={configJson.voice?.provider || "cartesia"}
                   onChange={(e: SelectChangeEvent) =>
                     updateConfigField("voice", {
-                      ...configJson.voice,
                       provider: e.target.value,
+                      voice_id: configJson.voice?.voice_id || "default",
+                      speed: configJson.voice?.speed,
                     })
                   }
                   label="Voice Provider"
@@ -334,12 +335,13 @@ export function ConfigForm({
               <Slider
                 id="voice-speed"
                 value={configJson.voice?.speed || 1.0}
-                onChange={(_event: Event, value: number | number[]) =>
-                  updateConfigField("voice", {
-                    ...configJson.voice,
-                    speed: value as number,
-                  })
-                }
+                  onChange={(_event: Event, value: number | number[]) =>
+                    updateConfigField("voice", {
+                      provider: configJson.voice?.provider || "cartesia",
+                      voice_id: configJson.voice?.voice_id || "default",
+                      speed: value as number,
+                    })
+                  }
                 min={0.5}
                 max={2.0}
                 step={0.1}
