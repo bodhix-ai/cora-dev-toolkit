@@ -12,7 +12,7 @@
  */
 
 import React, { useState } from 'react';
-import { useUser, useOrganizationContext } from '@{{PROJECT_NAME}}/module-access';
+import { useUser, useOrganizationContext, useRole } from '@{{PROJECT_NAME}}/module-access';
 import { 
   OrgEvalConfigPage,
   OrgEvalPromptsPage,
@@ -25,7 +25,8 @@ type TabValue = 'config' | 'doc-types' | 'criteria' | 'prompts';
 
 export default function OrgEvalAdminPage() {
   const { profile, loading, isAuthenticated } = useUser();
-  const { organization } = useOrganizationContext();
+  const { currentOrganization: organization } = useOrganizationContext();
+  const { isOrgAdmin, isSysAdmin } = useRole();
   const [activeTab, setActiveTab] = useState<TabValue>('config');
 
   // Loading state
@@ -48,12 +49,8 @@ export default function OrgEvalAdminPage() {
     );
   }
 
-  // Authorization check - org admins only (no sys admin access)
-  const isOrgAdmin = ["org_owner", "org_admin"].includes(
-    profile.orgRole || ""
-  );
-
-  if (!isOrgAdmin) {
+  // Authorization check - org admins OR sys admins can access
+  if (!isOrgAdmin && !isSysAdmin) {
     return (
       <Box p={4}>
         <Alert severity="error">
@@ -91,16 +88,16 @@ export default function OrgEvalAdminPage() {
 
       <Box sx={{ p: 3 }}>
         {activeTab === 'config' && (
-          <OrgEvalConfigPage orgId={organization.id} />
+          <OrgEvalConfigPage orgId={organization.orgId} />
         )}
         {activeTab === 'doc-types' && (
-          <OrgEvalDocTypesPageV2 orgId={organization.id} />
+          <OrgEvalDocTypesPageV2 orgId={organization.orgId} />
         )}
         {activeTab === 'criteria' && (
-          <OrgEvalCriteriaPageV2 orgId={organization.id} />
+          <OrgEvalCriteriaPageV2 orgId={organization.orgId} />
         )}
         {activeTab === 'prompts' && (
-          <OrgEvalPromptsPage orgId={organization.id} />
+          <OrgEvalPromptsPage orgId={organization.orgId} />
         )}
       </Box>
     </Box>
