@@ -206,7 +206,8 @@ interface ConfigListProps {
 }
 
 function ConfigList({ configs, onEdit, onDelete }: ConfigListProps) {
-  if (configs.length === 0) {
+  // Safety check: ensure configs is an array
+  if (!Array.isArray(configs) || configs.length === 0) {
     return (
       <Box sx={{ textAlign: "center", py: 6 }}>
         <MicIcon sx={{ fontSize: 48, color: "text.disabled", mb: 2 }} />
