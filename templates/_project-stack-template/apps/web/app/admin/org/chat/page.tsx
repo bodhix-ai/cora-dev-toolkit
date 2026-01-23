@@ -10,13 +10,16 @@
 import React from "react";
 import {
   Box,
+  Breadcrumbs,
   Card,
   CardContent,
+  Link,
   Typography,
   Alert,
   CircularProgress,
 } from "@mui/material";
-import { Construction } from "@mui/icons-material";
+import { Construction, NavigateNext } from "@mui/icons-material";
+import NextLink from "next/link";
 import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
 
 export default function OrgChatConfigPage() {
@@ -56,6 +59,22 @@ export default function OrgChatConfigPage() {
 
   return (
     <Box sx={{ p: 4 }}>
+      {/* Breadcrumbs: Org Admin > Chat */}
+      <Breadcrumbs
+        separator={<NavigateNext fontSize="small" />}
+        sx={{ mb: 2 }}
+      >
+        <Link
+          component={NextLink}
+          href="/admin/org"
+          underline="hover"
+          color="inherit"
+        >
+          Org Admin
+        </Link>
+        <Typography color="text.primary">Chat</Typography>
+      </Breadcrumbs>
+
       <Typography variant="h4" gutterBottom>
         Organization Chat Settings
       </Typography>
