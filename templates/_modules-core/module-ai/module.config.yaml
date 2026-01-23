@@ -12,7 +12,7 @@ module_ai:
   # Admin Card Configuration
   admin_card:
     enabled: true
-    path: "/admin/ai"
+    path: "/admin/sys/ai"
     title: "AI Provider Management"
     description: "Configure AI providers, models, and access control"
     icon: "Psychology"

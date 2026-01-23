@@ -12,7 +12,7 @@ module_mgmt:
   # Admin Card Configuration
   admin_card:
     enabled: true
-    path: "/admin/mgmt"
+    path: "/admin/sys/mgmt"
     title: "Platform Management"
     description: "Monitor system health, manage configurations, and view analytics"
     icon: "Settings"
