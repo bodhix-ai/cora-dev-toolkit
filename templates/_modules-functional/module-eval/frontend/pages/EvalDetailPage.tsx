@@ -44,6 +44,8 @@ import {
   Description as DescriptionIcon,
   PlayArrow as PlayArrowIcon,
   ChevronRight as ChevronRightIcon,
+  UnfoldMore as UnfoldMoreIcon,
+  UnfoldLess as UnfoldLessIcon,
 } from "@mui/icons-material";
 import {
   useEvaluation,
@@ -109,7 +111,6 @@ function TabNavigation({
 }: TabNavigationProps) {
   const tabs: Array<{ id: ViewTab; label: string; count: number }> = [
     { id: "results", label: "Results", count: resultCount },
-    { id: "citations", label: "Citations", count: citationCount },
     { id: "documents", label: "Documents", count: documentCount },
   ];
 
@@ -156,6 +157,8 @@ interface HeaderProps {
   onBack?: () => void;
   showBackButton: boolean;
   onExport: (evaluationId: string, format: "pdf" | "xlsx") => Promise<void>;
+  expandAll?: boolean;
+  onExpandAllChange?: (expanded: boolean) => void;
 }
 
 function Header({
@@ -168,6 +171,8 @@ function Header({
   onBack,
   showBackButton,
   onExport,
+  expandAll,
+  onExpandAllChange,
 }: HeaderProps) {
   const [workspaceName, setWorkspaceName] = useState<string | null>(providedWorkspaceName || null);
   const [loadingWorkspace, setLoadingWorkspace] = useState(!providedWorkspaceName && !!workspaceId);
@@ -265,12 +270,42 @@ function Header({
                 color={statusColors[status] || "default"}
                 size="small"
               />
+              
+              {/* Page-wide Expand/Collapse Controls */}
+              {status === "completed" && onExpandAllChange && (
+                <Box sx={{ display: "flex", gap: 0.5, ml: 1 }}>
+                  <IconButton
+                    size="small"
+                    onClick={() => onExpandAllChange(true)}
+                    title="Expand all sections"
+                    sx={{ 
+                      border: 1, 
+                      borderColor: 'divider',
+                      '&:hover': { bgcolor: 'action.hover' }
+                    }}
+                  >
+                    <UnfoldMoreIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => onExpandAllChange(false)}
+                    title="Collapse all sections"
+                    sx={{ 
+                      border: 1, 
+                      borderColor: 'divider',
+                      '&:hover': { bgcolor: 'action.hover' }
+                    }}
+                  >
+                    <UnfoldLessIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              )}
             </Box>
           </Box>
           {evaluation.complianceScore != null && 
            evaluation.scoreConfig && 
            status === "completed" && (
-            <Box sx={{ mt: -1 }}>
+            <Box>
               <ComplianceScoreChip
                 score={evaluation.complianceScore}
                 config={{
@@ -762,6 +797,14 @@ function ErrorState({ error, onRetry, onBack }: ErrorStateProps) {
 // DOCUMENTS TAB COMPONENT
 // =============================================================================
 
+interface DocumentMetadata {
+  author?: string;
+  wordCount?: number;
+  createdDate?: string; // ISO format
+  paragraphCount?: number;
+  [key: string]: any; // Allow other fields but we'll filter out technical ones
+}
+
 interface DocumentsTabProps {
   documents: Array<{
     id: string;
@@ -769,10 +812,85 @@ interface DocumentsTabProps {
     summary?: string;
     pageCount?: number;
     createdAt?: string;
+    metadata?: DocumentMetadata;
   }>;
+  activeDocumentId?: string; // For auto-expansion from Issue A7
 }
 
-function DocumentsTab({ documents }: DocumentsTabProps) {
+// Simple markdown to HTML converter (same as used in EvalSummaryPanel)
+function markdownToHtml(markdown: string): string {
+  if (!markdown) return '';
+
+  let html = markdown;
+
+  // Normalize line endings
+  html = html.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  // Convert headings
+  html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+  // Convert bold
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+
+  // Convert italic
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+
+  // Convert inline code
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // Convert links
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+  // Convert unordered lists
+  html = html.replace(/^\* (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+
+  // Convert line breaks (double newline = paragraph)
+  const paragraphs = html.split('\n\n');
+  html = paragraphs
+    .filter((p) => p.trim())
+    .map((p) => {
+      // Don't wrap if already a block element
+      if (p.startsWith('<h') || p.startsWith('<ul') || p.startsWith('<ol')) {
+        return p;
+      }
+      return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+    })
+    .join('\n');
+
+  return html;
+}
+
+function DocumentsTab({ documents, activeDocumentId }: DocumentsTabProps) {
+  const [expandedDocs, setExpandedDocs] = React.useState<Set<string>>(
+    new Set(activeDocumentId ? [activeDocumentId] : [])
+  );
+
+  // Auto-expand document when activeDocumentId changes (for Issue A7)
+  React.useEffect(() => {
+    if (activeDocumentId) {
+      setExpandedDocs((prev) => new Set([...prev, activeDocumentId]));
+    }
+  }, [activeDocumentId]);
+
+  const handleToggle = (docId: string) => {
+    setExpandedDocs((prev) => {
+      const next = new Set(prev);
+      if (next.has(docId)) {
+        next.delete(docId);
+      } else {
+        next.add(docId);
+      }
+      return next;
+    });
+  };
+
   if (documents.length === 0) {
     return (
       <Box sx={{ textAlign: "center", py: 6 }}>
@@ -785,42 +903,147 @@ function DocumentsTab({ documents }: DocumentsTabProps) {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      {documents.map((doc) => (
-        <Paper key={doc.id} variant="outlined" sx={{ p: 2 }}>
-          <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-              <Box
+      {documents.map((doc) => {
+        const isExpanded = expandedDocs.has(doc.id);
+        const hasMetadata = doc.metadata && Object.keys(doc.metadata).length > 0;
+        
+        // Filter metadata to show only user-relevant fields (omit technical details)
+        const displayMetadata: Record<string, any> = {};
+        if (doc.metadata) {
+          // Fields to include
+          if (doc.metadata.author) displayMetadata['Author'] = doc.metadata.author;
+          if (doc.metadata.wordCount) displayMetadata['Word Count'] = doc.metadata.wordCount.toLocaleString();
+          if (doc.metadata.createdDate) {
+            // Display date only (not time)
+            const date = new Date(doc.metadata.createdDate);
+            displayMetadata['Created'] = date.toLocaleDateString();
+          }
+          if (doc.metadata.paragraphCount) displayMetadata['Paragraphs'] = doc.metadata.paragraphCount;
+          // Note: Intentionally omitting technical fields like parsing library
+        }
+
+        return (
+          <Paper 
+            key={doc.id} 
+            variant="outlined" 
+            sx={{ 
+              overflow: 'hidden',
+              bgcolor: activeDocumentId === doc.id ? 'action.hover' : 'background.paper',
+              transition: 'background-color 0.2s'
+            }}
+          >
+            {/* Document Header - Always Visible */}
+            <Box
+              sx={{
+                p: 2,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                cursor: "pointer",
+                '&:hover': { bgcolor: 'action.hover' }
+              }}
+              onClick={() => handleToggle(doc.id)}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flex: 1 }}>
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 1,
+                    bgcolor: "primary.lighter",
+                  }}
+                >
+                  <DescriptionIcon sx={{ width: 20, height: 20, color: "primary.main" }} />
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2">{doc.name}</Typography>
+                  {doc.pageCount && (
+                    <Typography variant="caption" color="text.secondary">
+                      {doc.pageCount} pages
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+              <IconButton
+                size="small"
                 sx={{
-                  width: 40,
-                  height: 40,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 1,
-                  bgcolor: "primary.lighter",
+                  transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s'
                 }}
               >
-                <DescriptionIcon sx={{ width: 20, height: 20, color: "primary.main" }} />
-              </Box>
-              <Box>
-                <Typography variant="subtitle2">{doc.name}</Typography>
-                {doc.pageCount && (
-                  <Typography variant="caption" color="text.secondary">
-                    {doc.pageCount} pages
+                <ChevronRightIcon />
+              </IconButton>
+            </Box>
+
+            {/* Expandable Content */}
+            {isExpanded && (
+              <Box sx={{ px: 2, pb: 2, pt: 0 }}>
+                {/* Metadata Section */}
+                {hasMetadata && Object.keys(displayMetadata).length > 0 && (
+                  <Box
+                    sx={{
+                      mb: 2,
+                      p: 1.5,
+                      bgcolor: 'background.default',
+                      borderRadius: 1,
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                      gap: 1.5
+                    }}
+                  >
+                    {Object.entries(displayMetadata).map(([label, value]) => (
+                      <Box key={label}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+                          {label}
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {value}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+
+                {/* Document Summary */}
+                {doc.summary && (
+                  <Box sx={{ pt: hasMetadata ? 0 : 1.5 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, fontWeight: 600 }}>
+                      Document Summary
+                    </Typography>
+                    <Box
+                      sx={{
+                        '& p': { mb: 1, lineHeight: 1.6 },
+                        '& h1, & h2, & h3, & h4': { mt: 2, mb: 1, fontWeight: 600 },
+                        '& ul, & ol': { pl: 3, mb: 1 },
+                        '& li': { mb: 0.5 },
+                        '& code': { 
+                          px: 0.5, 
+                          py: 0.25, 
+                          bgcolor: 'action.hover', 
+                          borderRadius: 0.5,
+                          fontFamily: 'monospace',
+                          fontSize: '0.9em'
+                        },
+                        '& a': { color: 'primary.main', textDecoration: 'underline' }
+                      }}
+                      dangerouslySetInnerHTML={{ __html: markdownToHtml(doc.summary) }}
+                    />
+                  </Box>
+                )}
+
+                {!doc.summary && !hasMetadata && (
+                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                    No additional details available for this document.
                   </Typography>
                 )}
               </Box>
-            </Box>
-          </Box>
-          {doc.summary && (
-            <Box sx={{ mt: 1.5, pt: 1.5, borderTop: 1, borderColor: "divider" }}>
-              <Typography variant="body2" color="text.secondary">
-                {doc.summary}
-              </Typography>
-            </Box>
-          )}
-        </Paper>
-      ))}
+            )}
+          </Paper>
+        );
+      })}
     </Box>
   );
 }
@@ -842,6 +1065,8 @@ export function EvalDetailPage({
   // State
   const [activeTab, setActiveTab] = useState<ViewTab>("results");
   const [editingResult, setEditingResult] = useState<CriteriaResultWithItem | null>(null);
+  const [activeDocumentId, setActiveDocumentId] = useState<string | undefined>(undefined);
+  const [expandAll, setExpandAll] = useState<boolean | undefined>(undefined);
 
   // Hooks
   const {
@@ -867,6 +1092,11 @@ export function EvalDetailPage({
   // Handlers
   const handleTabChange = useCallback((tab: ViewTab) => {
     setActiveTab(tab);
+  }, []);
+
+  const handleDocumentClick = useCallback((documentId: string) => {
+    setActiveDocumentId(documentId);
+    setActiveTab("documents");
   }, []);
 
   const handleEditResult = useCallback((result: CriteriaResultWithItem) => {
@@ -989,13 +1219,15 @@ export function EvalDetailPage({
         onBack={onBack}
         showBackButton={showBackButton}
         onExport={handleExport}
+        expandAll={expandAll}
+        onExpandAllChange={setExpandAll}
       />
 
       {/* Summary Panel */}
       <EvalSummaryPanel
         evaluation={evaluation}
-        documents={documents}
-        showDocSummaries
+        onDocumentClick={handleDocumentClick}
+        expandAll={expandAll}
       />
 
       {/* Tab Navigation */}
@@ -1017,23 +1249,19 @@ export function EvalDetailPage({
             groupByCategory={false}
             editable={true}
             onEdit={handleEditResult}
-          />
-        )}
-
-        {activeTab === "citations" && (
-          <CitationViewer
-            citations={allCitations}
-            showDocumentLinks
+            expandAll={expandAll}
           />
         )}
 
         {activeTab === "documents" && (
           <DocumentsTab
-            documents={documents?.map((d) => (({
+            documents={documents?.map((d) => ({
               id: d.id,
-              name: d.fileName || d.documentId,
+              name: d.name || d.fileName || d.documentId || `Document ${documents.indexOf(d) + 1}`,
               summary: d.summary,
-            })) || [])}
+              metadata: d.metadata,
+            })) || []}
+            activeDocumentId={activeDocumentId}
           />
         )}
       </Box>

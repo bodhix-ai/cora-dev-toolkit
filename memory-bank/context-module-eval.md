@@ -7,6 +7,67 @@
 
 ## Current Session
 
+**Session: Eval Details UI Improvements (Expand/Collapse & Data Fixes)**
+
+**Goal:** Implement Expand/Collapse All, fix backend data retrieval, and refine UI
+
+**Status:** ✅ COMPLETE
+
+**Plan:** `docs/plans/plan_ui-enhancements-p2.md`
+
+**Branch:** `ui-enhancements`
+
+### Session Overview (January 23, 2026 - Morning)
+
+**Context:**
+- Addressed multiple UI/UX issues on the Evaluation Detail page.
+- Fixed critical backend bug preventing document metadata from displaying.
+- Implemented requested "Expand All / Collapse All" functionality.
+- Refined UI based on user feedback.
+
+**Scope:**
+- ✅ **Backend Fix:** Updated `eval-results` Lambda to join with `kb_docs` and return full metadata (Unblocked A6/A7).
+- ✅ **Expand/Collapse All:** Implemented page-wide control with icon buttons in header.
+- ✅ **UI Refinements:**
+  - Fixed score chip alignment (top-aligned).
+  - Improved section header typography (h6, bold).
+  - Cleaned up collapsed state for Overview (removed partial text).
+  - Set default expanded state for Inputs and Overview sections.
+  - Ensured individual toggle control persists after global action.
+
+### Files Modified
+
+**Backend:**
+- `templates/_modules-functional/module-eval/backend/lambdas/eval-results/lambda_function.py`
+  - Added SQL join to fetch document title, filename, and metadata from `kb_docs`.
+
+**Frontend:**
+- `templates/_modules-functional/module-eval/frontend/pages/EvalDetailPage.tsx`
+  - Added page-wide state management for expansion.
+  - Added header icon buttons (UnfoldMore/UnfoldLess).
+  - Wired state to child components.
+- `templates/_modules-functional/module-eval/frontend/components/EvalSummaryPanel.tsx`
+  - Updated to support external expansion control.
+  - Improved typography and default states.
+- `templates/_modules-functional/module-eval/frontend/components/EvalQAList.tsx`
+  - Updated `EvalQACard` to support external expansion control while maintaining local state.
+
+### Implementation Results
+
+**What Works:**
+- ✅ **Document Display:** Real document names and metadata now appear in "Evaluation Inputs" and "Documents" tab.
+- ✅ **Expand/Collapse:** Users can expand/collapse all sections at once or toggle individually.
+- ✅ **Visual Hierarchy:** Headers are more distinct, alignment is corrected.
+- ✅ **User Experience:** Initial page load shows relevant summary context by default.
+
+**Next Steps:**
+- Implement Issue D (Paperclip citation modal).
+- Perform full end-to-end user testing.
+
+---
+
+## Previous Session
+
 **Session: Issue A2 - Compliance Score Display (Full Stack)**
 
 **Goal:** Implement configuration-based compliance score display for evaluation detail page

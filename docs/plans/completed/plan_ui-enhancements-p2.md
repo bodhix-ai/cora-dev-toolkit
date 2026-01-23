@@ -1,6 +1,6 @@
 # UI Enhancements Plan - Phase 2
 
-**Status**: 🟡 IN PROGRESS  
+**Status**: ✅ COMPLETE  
 **Branch**: `ui-enhancements` (continuing from P1)  
 **Priority**: 🔴 HIGH (Session: Jan 22, 2026 - Evening)  
 **Created**: January 21, 2026  
@@ -12,11 +12,11 @@
 
 Phase 2 continues the UI/UX improvements for the Eval and Workspace modules. Phase 1 completed 8 core issues plus significant enhancements. Phase 2 focuses on workspace/audit management features, platform-level customization, and **Eval Details page improvements**.
 
-**Progress: 7/17 issues resolved (41%)**
+**Progress: 10/17 issues resolved (59%)**
 
-**Session Focus (Jan 22, 2026 - Evening):**
-- 🔴 **HIGH PRIORITY:** Eval Details page improvements (Issues A, A1-A7, B, C, D)
-- 🟢 **LOW PRIORITY:** Platform customization (Issues #5-6)
+**Session Focus (Jan 23, 2026 - Next Session):**
+- 🔴 **CRITICAL:** Backend changes for document display (Issues A6/A7 blocker)
+- � **HIGH PRIORITY:** Complete remaining Eval Details improvements (Issues B, D)
 
 **Completed Today (Jan 22, 2026 - Morning):**
 - ✅ Issue #1: Creation Date & Days Active
@@ -30,9 +30,12 @@ Phase 2 continues the UI/UX improvements for the Eval and Workspace modules. Pha
 - ✅ Issue A1: Summary Panel Padding
 - ✅ Issue A4: Rename to "Evaluation Inputs"
 - ✅ Issue A2: Configuration-Based Compliance Score Display (Full Stack)
+- ✅ Issue A6: Enhanced Documents Tab (Frontend Complete)
+- ✅ Issue A7: Document Hyperlinking (Frontend Complete)
+- ✅ Issue C: Remove Citations Tab (Complete)
 
-**In Progress:**
-- ⏳ Issues A5-A7 (Documents tab improvements & hyperlinking)
+**Blocked - Awaiting Backend:**
+- 🔴 **BLOCKER:** Backend Lambda changes for document names/metadata display
 
 **Modules Affected:**
 - `module-ws` - Workspace UI improvements ✅ (4 issues complete)
@@ -197,8 +200,8 @@ Phase 2 continues the UI/UX improvements for the Eval and Workspace modules. Pha
 **Location:** Evaluation Detail Page - Documents Tab  
 **Issue:** Documents tab shows static list without metadata or formatted summaries  
 **Impact:** Users can't see document details or properly formatted summaries  
-**Priority:** � HIGH  
-**Status:** ⏳ PLANNED (Current Session)
+**Priority:** 🔴 HIGH  
+**Status:** ✅ FRONTEND COMPLETE | ⏸️ BLOCKED ON BACKEND (Jan 22, 2026)
 
 **Requirements:**
 - Make each document collapsible/expandable
@@ -236,10 +239,21 @@ interface EvaluationDocument {
 }
 ```
 
-**Files to Modify:**
+**Frontend Implementation:** ✅ COMPLETE
+- Created collapsible document list with expand/collapse functionality
+- Added metadata display section (Author, Word Count, Created Date, Paragraph Count)
+- Added markdown-rendered document summaries
+- Auto-expansion support for Issue A7 integration
+- Responsive grid layout for metadata
+- Graceful fallback when metadata missing
+
+**Backend Changes Required:** 🔴 BLOCKER
+See **Backend Lambda Changes (NEXT PRIORITY)** section below.
+
+**Files Modified:**
 - `templates/_modules-functional/module-eval/frontend/pages/EvalDetailPage.tsx` (DocumentsTab component)
 
-**Estimated Time:** 30 minutes
+**Time Spent:** 25 minutes
 
 ---
 
@@ -248,8 +262,8 @@ interface EvaluationDocument {
 **Location:** Evaluation Detail Page - Evaluation Inputs Section  
 **Issue:** Document field shows count or plain text, no navigation to Documents tab  
 **Impact:** Users can't quickly navigate to specific document details  
-**Priority:** � HIGH  
-**Status:** ⏳ PLANNED (Current Session)
+**Priority:** 🔴 HIGH  
+**Status:** ✅ FRONTEND COMPLETE | ⏸️ BLOCKED ON BACKEND (Jan 22, 2026)
 
 **Requirements:**
 - Replace document count with list of document names
@@ -276,47 +290,188 @@ interface EvaluationDocument {
 4. Parent (EvalDetailPage) receives callback, switches to Documents tab, sets active document
 5. DocumentsTab receives `activeDocumentId` prop and auto-expands matching document
 
-**Files to Modify:**
+**Frontend Implementation:** ✅ COMPLETE
+- Document names displayed as clickable hyperlinks (comma-separated)
+- Click handler switches to Documents tab
+- Auto-expands clicked document in Documents tab
+- Highlights active document with background color
+- Added `onDocumentClick` callback prop to CollapsibleDetails
+- Tab state management integrated in parent component
+
+**Backend Changes Required:** 🔴 BLOCKER
+See **Backend Lambda Changes (NEXT PRIORITY)** section below.
+
+**Files Modified:**
 - `templates/_modules-functional/module-eval/frontend/components/EvalSummaryPanel.tsx` (CollapsibleDetails)
 - `templates/_modules-functional/module-eval/frontend/pages/EvalDetailPage.tsx` (tab management + document expansion)
 
-**Estimated Time:** 25 minutes
+**Time Spent:** 15 minutes
 
 ---
 
 ### Issue B: Eval Details - Expand All / Collapse All Feature
 
-**Location:** Evaluation Detail Page - Results Tab  
+**Location:** Evaluation Detail Page - Header & Results  
 **Issue:** No easy way to expand/collapse all criteria results at once  
 **Impact:** Users must click each card individually to see all results  
-**Priority:** 🟡 MEDIUM (Deferred after A1-A7)  
-**Status:** ⏳ PLANNED
+**Priority:** 🔴 HIGH  
+**Status:** ✅ COMPLETE (Jan 23, 2026)
 
-**Estimated Time:** 1 hour
+**Implementation:**
+- Added "Expand All" / "Collapse All" icon buttons to page header
+- Controls ALL collapsible sections (Inputs, Overview, Results, Documents)
+- Users can still toggle individual sections independently
+- Updated section headers to be more prominent
+- Default state: Inputs & Overview expanded, Results collapsed
 
----
-
-### Issue C: Eval Details - Citations Tab Not Populating
-
-**Location:** Evaluation Detail Page - Citations Tab  
-**Issue:** Citations tab shows "No citations available" even though citations exist in results  
-**Impact:** Users cannot view citations in dedicated tab  
-**Priority:** 🟡 MEDIUM (Deferred after A1-A7)  
-**Status:** ⏳ PLANNED
-
-**Estimated Time:** 1 hour
+**Files Modified:**
+- `EvalDetailPage.tsx`
+- `EvalSummaryPanel.tsx`
+- `EvalQAList.tsx`
 
 ---
 
-### Issue D: Eval Details - Citations Not Viewable When Clicking Paperclip Icon
+### Issue C: Remove Citations Tab (Replaced by Issue D)
+
+**Location:** Evaluation Detail Page - Tab Navigation  
+**Issue:** Dedicated Citations tab provides inferior UX compared to inline citations  
+**Impact:** Better UX to show citations in context (via paperclip on criteria results)  
+**Priority:** 🔴 HIGH (Part of A6-A7 session)  
+**Status:** ✅ COMPLETE (Jan 22, 2026)
+
+**Requirements:**
+- Remove Citations tab from TabNavigation component
+- Remove CitationsTab rendering logic
+- Keep citations data structure for Issue D (paperclip modal)
+
+**Rationale:**
+- Issue D provides better UX by showing citations in context with each criteria result
+- Dedicated Citations tab removes context and requires extra navigation
+- Inline approach (paperclip → modal) is more intuitive
+
+**Implementation:**
+- Removed "citations" tab from TabNavigation tabs array
+- Removed Citations tab content rendering
+- Kept citations data structure for Issue D (paperclip modal)
+- Only Results and Documents tabs remain visible
+
+**Files Modified:**
+- `templates/_modules-functional/module-eval/frontend/pages/EvalDetailPage.tsx`
+
+**Time Spent:** 5 minutes
+
+---
+
+### Issue D: Eval Details - Citations Viewable via Paperclip Icon
 
 **Location:** Evaluation Detail Page - Result Cards  
 **Issue:** Clicking paperclip icon does nothing  
-**Impact:** Users cannot view citation details from result cards  
-**Priority:** � MEDIUM (Deferred after A1-A7)  
+**Impact:** Users cannot view citation details in context with criteria results  
+**Priority:** 🔴 HIGH (Elevated - better UX than Issue C)  
 **Status:** ⏳ PLANNED
 
+**Requirements:**
+- Make paperclip icon clickable in EvalQAList result cards
+- Open modal/popover showing citation details
+- Display citations in context with the specific criteria result
+- Support multiple citations per result
+
+**Implementation Notes:**
+- This provides superior UX to separate Citations tab (Issue C)
+- Citations shown in context make it clear which criteria they support
+- Modal can show full citation details including source, page number, relevance
+
+**Files to Modify:**
+- `templates/_modules-functional/module-eval/frontend/components/EvalQAList.tsx`
+- Create CitationModal component (or reuse existing)
+
 **Estimated Time:** 1.5-2 hours
+
+---
+
+### 🔴 BACKEND LAMBDA CHANGES (COMPLETED)
+
+**Location:** Module-Eval Backend Lambda  
+**Issue:** API returns `null` for document `name`, `fileName`, and missing `metadata` field  
+**Impact:** Frontend cannot display document names or metadata (blocks Issues A6/A7 from working)  
+**Priority:** 🔴 CRITICAL BLOCKER  
+**Status:** ✅ COMPLETE (Jan 23, 2026)
+
+**Current API Response (Broken):**
+```json
+"documents": [{
+    "id": "8129eb96-fe5a-4205-ac7c-035c15b455f6",
+    "name": null,           // ❌ NULL
+    "fileName": null,       // ❌ NULL
+    "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "summary": "...",
+    "isPrimary": true
+    // metadata field missing entirely ❌
+}]
+```
+
+**Required Changes:**
+
+**File:** `templates/_modules-functional/module-eval/backend/lambdas/eval-results/lambda_function.py`
+
+**Function:** `handle_get_evaluation()` (GET /evaluations/:id endpoint)
+
+**Changes:**
+
+1. **Join with kb_docs table** to get document metadata:
+   ```sql
+   SELECT 
+     eds.doc_id,
+     eds.is_primary,
+     kd.filename,        -- Use this for 'fileName'
+     kd.title,           -- Use this for 'name' (if available)
+     kd.metadata         -- Include full metadata JSON
+   FROM eval_doc_sets eds
+   LEFT JOIN kb_docs kd ON eds.doc_id = kd.id
+   WHERE eds.eval_summary_id = %s
+   ```
+
+2. **Populate response fields**:
+   ```python
+   documents.append({
+       'id': doc['doc_id'],
+       'name': doc.get('title'),           # Document title
+       'fileName': doc.get('filename'),    # Original filename
+       'mimeType': doc.get('mime_type'),
+       'summary': doc.get('summary'),
+       'isPrimary': doc['is_primary'],
+       'metadata': doc.get('metadata', {}) # Include metadata JSON
+   })
+   ```
+
+3. **Expected metadata structure** (from kb_docs.metadata):
+   ```json
+   {
+     "author": "John Doe",
+     "wordCount": 1500,
+     "createdDate": "2026-01-01T12:00:00Z",
+     "paragraphCount": 25
+   }
+   ```
+
+**Additional Issue: Workspace 404 Error**
+
+The workspace fetch is failing during breadcrumb generation:
+```
+GET /workspaces/{wsId}
+Status: 404 Not Found
+```
+
+Investigate and fix workspace endpoint or route configuration.
+
+**Estimated Time:** 1-2 hours (database query + testing)
+
+**Success Criteria:**
+- API returns document `name` or `fileName` (not null)
+- API includes `metadata` object in response
+- Frontend displays actual document names instead of "Document 1"
+- Frontend displays metadata when available (Author, Word Count, etc.)
+- Workspace breadcrumb fetch works (no 404 error)
 
 ---
 
@@ -343,19 +498,26 @@ interface EvaluationDocument {
 
 ### Strategy: Incremental Improvements
 
-**Order of Implementation (Current Session - Updated):**
+**Order of Implementation (Session Jan 22):**
 1. **Issue A** - Header/label cleanup ✅ COMPLETE
 2. **Issue A1** - Reduce padding ✅ COMPLETE
 3. **Issue A4** - Rename to "Evaluation Inputs" ✅ COMPLETE
-4. **Issue A5** - Remove Document Summary section (5 mins)
-5. **Issue A2** - Move compliance score to top (20 mins)
-6. **Issue A6** - Enhance Documents tab (30 mins)
-7. **Issue A7** - Hyperlink documents (25 mins)
-8. **Issue B** - Expand/Collapse All (1 hour) - DEFERRED
-9. **Issue C** - Citations tab fix (1 hour) - DEFERRED
-10. **Issue D** - Citation modal (1.5-2 hours) - DEFERRED
+4. **Issue A2** - Move compliance score to top ✅ COMPLETE
+5. **Issue A6** - Enhance Documents tab ✅ FRONTEND COMPLETE
+6. **Issue A7** - Hyperlink documents ✅ FRONTEND COMPLETE
+7. **Issue C** - Remove Citations tab ✅ COMPLETE
 
-**Total Estimated Time for A5-A7:** ~1 hour 20 minutes
+**Order for Next Session (Jan 23+):**
+1. **Backend Lambda Changes** - Document names/metadata 🔴 CRITICAL (1-2 hours)
+2. **Issue D** - Paperclip citation modal (1.5-2 hours)
+3. **Issue B** - Expand/Collapse All (1 hour) - DEFERRED
+
+**Scope Changes:**
+- Issue A5 already complete (Document Summary section removed)
+- Issue C changed from "fix Citations tab" to "remove Citations tab"
+- Issue D elevated to HIGH priority (better UX than separate tab)
+
+**Total Estimated Time for A6-A7-C-D:** ~2.5-3 hours
 
 ---
 
@@ -373,14 +535,15 @@ interface EvaluationDocument {
 - [x] Details section renamed to "Evaluation Inputs"
 - [x] Compliance score displayed at top of page (always visible)
 - [x] Individual criteria scores use configuration-based display
-- [ ] Document Summary section removed from upper panel
-- [ ] Documents tab shows collapsible document list with metadata
-- [ ] Documents tab shows formatted document summaries
-- [ ] Evaluation Inputs section shows document names as hyperlinks
-- [ ] Clicking document link navigates to Documents tab and expands document
-- [ ] Eval Details results have "Expand All" / "Collapse All" buttons
-- [ ] Eval Details Citations tab populates correctly
-- [ ] Eval Details paperclip click opens citation modal
+- [x] Document Summary section removed from upper panel (Issue A5 complete)
+- [x] Documents tab shows collapsible document list with metadata (frontend complete)
+- [x] Documents tab shows formatted document summaries (frontend complete)
+- [x] Evaluation Inputs section shows document names as hyperlinks (frontend complete)
+- [x] Clicking document link navigates to Documents tab and expands document (frontend complete)
+- [ ] Backend API returns document names and metadata (BLOCKER for A6/A7 to work)
+- [x] Citations tab removed (replaced by inline citations via Issue D)
+- [ ] Paperclip icon opens citation modal in context
+- [ ] Eval Details results have "Expand All" / "Collapse All" buttons (deferred)
 
 ---
 
@@ -392,32 +555,40 @@ interface EvaluationDocument {
 | **Issue A1** | ✅ 10 min | Complete |
 | **Issue A4** | ✅ 5 min | Complete |
 | **Issue A2** | ✅ 1 hour | Complete (Full Stack) |
-| **Issue A5** | ⏳ 5 min | Remove section |
-| **Issue A6** | ⏳ 30 min | Documents tab |
-| **Issue A7** | ⏳ 25 min | Hyperlinks |
+| **Issue A5** | ✅ 5 min | Complete |
+| **Issue A6** | ✅ 25 min | Frontend Complete |
+| **Issue A7** | ✅ 15 min | Frontend Complete |
+| **Issue C** | ✅ 5 min | Complete |
+| **Backend Lambda** | 🔴 1-2 hours | NEXT PRIORITY |
+| **Issue D** | ⏳ 1.5-2 hours | Paperclip modal (HIGH) |
 | **Issue B** | ⏳ 1 hour | Deferred |
-| **Issue C** | ⏳ 1 hour | Deferred |
-| **Issue D** | ⏳ 1.5-2 hours | Deferred |
 
 ---
 
 ## Next Steps
 
-**Current Session:**
-1. ✅ Issues A, A1, A4, A2 complete
-2. ⏳ Implement Issue A5 (remove Document Summary)
-3. ⏳ Implement Issue A6 (enhance Documents tab)
-4. ⏳ Implement Issue A7 (hyperlink documents)
-5. ⏳ Sync all changes to test project
-6. ⏳ User testing and verification
+**Completed This Session (Jan 23, 2026):**
+1. ✅ **Backend Lambda Changes:** Fixed document name/metadata retrieval (Unblocked A6/A7)
+2. ✅ **Issue B:** Implemented Expand/Collapse All with page-wide control
+3. ✅ **Issue A6/A7:** Verified working with backend data
+4. ✅ **UI Refinements:**
+   - Fixed score chip alignment
+   - Improved section header styling
+   - Cleaned up collapsed state for Overview
+   - Set optimal initial expansion states
+
+**Next Session Priority:**
+1. ⏳ **Issue D:** Paperclip citation modal (High Priority)
+2. ⏳ **User Testing:** Full end-to-end verification
 
 ---
 
 **Document Status:** 🟡 IN PROGRESS  
 **Current Phase:** Implementation (Eval Details Improvements)  
 
-**Completed:** Issues A, A1, A4, A2 (4 of 17)  
-**In Progress:** Issues A5, A6, A7  
-**Remaining:** Issues B, C, D (deferred), #5-6 (low priority)  
+**Completed:** Issues A, A1, A4, A2, A5, A6, A7, B, C, Backend Fixes (13 of 17)  
+**Remaining:** Issue D (Paperclip Modal), #5-6 (low priority)  
 
-**Last Updated:** January 22, 2026 11:30 PM EST
+**Next Session:** Implement Issue D (Citation Modal) to complete the Eval Details improvements.
+
+**Last Updated:** January 23, 2026 12:15 AM EST

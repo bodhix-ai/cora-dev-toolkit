@@ -10,8 +10,6 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 | Branch | Context File | Focus Area |
 |--------|--------------|------------|
-| `admin-pages-standardization` | (this file) | **ACTIVE** - Admin Page Authentication Pattern Standardization |
-| `ui-enhancements` | `context-module-ws.md` | **ACTIVE** - Module-WS UI Enhancements |
 | `eval-optimization` | `context-module-eval.md` | Eval Optimization (AI Config & Quality) |
 | `module-voice-dev` | `context-module-voice.md` | Module-Voice (Phase 1.5: Specifications) |
 | `feature/module-kb-implementation` | `context-module-kb.md` | Module-KB development |
@@ -30,39 +28,6 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 ---
 
 ## Current Branch Status
-
-### admin-pages-standardization (ACTIVE)
-- **Status:** Admin Page Standardization (🟡 IN PROGRESS - Phase 1: Audit Setup)
-- **Plans:** 
-  - `docs/plans/plan_admin-page-standardization.md` (ACTIVE)
-  - `docs/plans/findings_admin-page-audit.md` (Audit tracking document)
-- **Context:** (this file)
-- **Focus:** Standardize admin page authentication patterns, UI/layout, and module ownership
-
-**Current Session Progress (Jan 21, 2026):**
-- ✅ Branch created from latest main
-- ✅ Plan enhanced to include UI/layout standardization (user feedback)
-- ✅ Found 19 admin pages across templates (11 in project-stack, 8 in modules)
-- ✅ Created audit findings framework with 3 parts: Auth, UI/Layout, Module Ownership
-- ✅ **CRITICAL DECISION:** All admin pages MUST be module-owned (not in project-stack-template)
-- ✅ Identified 11 orphan pages requiring relocation to modules
-- ✅ Proposed module assignments for each orphan
-
-**Next Session Actions:**
-1. Verify duplicate pages (project-stack vs module versions)
-2. Begin Part A audit: Check authentication patterns for sample pages
-3. Begin Part B audit: Document UI/layout patterns for sample pages
-4. Investigate `/admin/org/page.tsx` - shell page or belongs to module-ws?
-5. Continue building findings document with actual audit data
-
-### eval-optimization
-- **Status:** Evaluation Optimization (� IN PROGRESS)
-### ui-enhancements (ACTIVE - Jan 22, 2026)
-- **Status:** Module-WS UI Enhancements Phase 2 (🟢 57% COMPLETE)
-- **Context:** See `context-module-ws.md`
-- **Plans:** `docs/plans/plan_ui-enhancements-p2.md`, `docs/plans/BACKEND-TODO-workspace-counts.md`
-- **Test Project:** `~/code/bodhix/testing/test-optim/`
-- **Focus:** Workspace card enhancements (creation date, status, counts, edit dialog)
 
 ### eval-optimization
 - **Status:** Evaluation Optimization (⏳ PLANNED)
@@ -89,6 +54,7 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 | Branch | Status | Focus Area | Completed |
 |--------|--------|------------|-----------|
+| `ui-enhancements` | ✅ Archived | Module-WS & Eval UI Enhancements (P2) | 2026-01-23 |
 | `schema-naming-audit` | ✅ Archived | Schema Naming Compliance Audit (eval, chat, kb, voice, ws) | 2026-01-21 |
 | `admin-eval-config-s2` | ✅ Archived | Workspace Doc Eval Implementation & Org Admin Config | 2026-01-20 |
 
@@ -105,4 +71,4 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 ---
 
-**Updated:** January 22, 2026
+**Updated:** January 23, 2026

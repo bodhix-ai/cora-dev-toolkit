@@ -442,7 +442,7 @@ def handle_get_evaluation(eval_id: str, workspace_id: str, org_id: str) -> Dict[
     if criteria_set:
         result['criteriaSet'] = common.format_record(criteria_set)
     
-    # Get documents
+    # Get documents with metadata from kb_docs
     doc_sets = common.find_many(
         'eval_doc_sets',
         {'eval_summary_id': eval_id},
@@ -453,13 +453,17 @@ def handle_get_evaluation(eval_id: str, workspace_id: str, org_id: str) -> Dict[
     for doc_set in doc_sets:
         doc = common.find_one('kb_docs', {'id': doc_set['kb_doc_id']})
         if doc:
+            # Use title for name, fallback to filename
+            doc_name = doc.get('title') or doc.get('filename')
+            
             documents.append({
                 'id': doc['id'],
-                'name': doc.get('name'),
-                'fileName': doc.get('file_name'),
+                'name': doc_name,
+                'fileName': doc.get('filename'),
                 'mimeType': doc.get('mime_type'),
                 'summary': doc_set.get('doc_summary'),
-                'isPrimary': doc_set.get('is_primary', False)
+                'isPrimary': doc_set.get('is_primary', False),
+                'metadata': doc.get('metadata', {})  # Include metadata JSON field
             })
     result['documents'] = documents
     
