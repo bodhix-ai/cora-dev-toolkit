@@ -1,11 +1,121 @@
 # Context: Module-Eval Development
 
-**Branch:** `schema-naming-audit`  
-**Last Updated:** January 20, 2026
+**Branch:** `ui-enhancements`  
+**Last Updated:** January 22, 2026
 
 ---
 
 ## Current Session
+
+**Session: Issue A2 - Compliance Score Display (Frontend)**
+
+**Goal:** Implement configuration-based compliance score display for evaluation detail page
+
+**Status:** ✅ FRONTEND COMPLETE | ⏸️ BACKEND DEFERRED
+
+**Plan:** `docs/plans/plan_ui-enhancements-p2.md` - Issue A2
+
+**Design:** `docs/designs/design_evaluation-score-display.md`
+
+**Branch:** `ui-enhancements`
+
+### Session Overview (January 22, 2026 - Evening)
+
+**Context:**
+- User requested compliance score be moved from collapsible Details section to page header
+- Score should be always visible (key metric for users)
+- Initial requirement evolved into configuration-based display system
+- Design approved: Additive display (status chip always shown, numerical score optional)
+
+**Scope:**
+- Frontend implementation complete (component, types, integration)
+- Backend deferred to new session (database + Lambda work)
+- Design document created with full specification
+
+### Files Created
+
+**1. ComplianceScoreChip.tsx (NEW)**
+- Location: `templates/_modules-functional/module-eval/frontend/components/ComplianceScoreChip.tsx`
+- Purpose: Configuration-based compliance score display
+- Features:
+  - Base display: Status chip with name/color (always shown)
+  - Additional display: Numerical score chip (when `show_decimal_score = true`)
+  - Size variants: small, medium, large
+  - Helper function: `getStatusForScore()` for score-to-status mapping
+
+**2. Design Document (NEW)**
+- Location: `docs/designs/design_evaluation-score-display.md`
+- Content:
+  - Configuration schema (eval_sys_cfg, eval_org_cfg, status options)
+  - Configuration precedence rules (org overrides system)
+  - Score-to-status mapping logic
+  - Display variations and examples
+  - API requirements and implementation guide
+  - Testing checklist
+
+### Files Modified
+
+**1. components/index.ts**
+- Added exports for `ComplianceScoreChip`, `getStatusForScore`
+- Added type exports: `StatusOption`, `ScoreConfig`, `ComplianceScoreChipProps`
+
+**2. EvalDetailPage.tsx**
+- Replaced old `ComplianceScore` component with `ComplianceScoreChip`
+- Added conditional rendering based on `scoreConfig` existence
+- Passes configuration from API response to component
+- Graceful degradation: Won't render if `scoreConfig` missing
+
+**3. types/index.ts**
+- Added `ScoreConfig` interface with full documentation
+- Added `scoreConfig` field to `Evaluation` interface
+- Supports both boolean and detailed scoring modes
+
+### Implementation Details
+
+**Configuration System:**
+- `categoricalMode`: "boolean" | "detailed" (scoring granularity)
+- `showDecimalScore`: boolean (show numerical score chip)
+- `statusOptions`: Array of status options with thresholds
+
+**Display Logic:**
+- Status chip maps score to status using threshold matching
+- Numerical chip shows percentage when enabled
+- Both chips use same color for visual consistency
+- Height constraint: 56px (matches header + status chip)
+
+### Backend Work (Deferred)
+
+**Database Migrations Required:**
+1. `eval_sys_cfg` - System-level configuration
+2. `eval_org_cfg` - Org-level configuration overrides
+3. `eval_sys_status_options` - System status options
+4. `eval_org_status_options` - Org status options
+
+**Lambda Updates Required:**
+1. Create `get_effective_eval_config(org_id)` function
+2. Create `get_effective_status_options(org_id, categorical_mode)` function
+3. Update `GET /evaluations/:id` to include `scoreConfig` in response
+
+**Estimated Backend Time:** 2-3 hours
+
+### Next Session Actions
+
+1. Sync frontend files to test project:
+   - `ComplianceScoreChip.tsx`
+   - `components/index.ts`
+   - `EvalDetailPage.tsx`
+   - `types/index.ts`
+
+2. Implement backend:
+   - Database migrations (4 tables)
+   - Lambda function updates (config logic)
+   - API response modifications (scoreConfig)
+
+3. User testing with full configuration support
+
+---
+
+## Previous Session
 
 **Session: Lambda Workspace ID Migration (Schema Naming Audit)**
 
