@@ -10,6 +10,7 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 
 | Branch | Context File | Focus Area |
 |--------|--------------|------------|
+| `feature/citations-review` | `context-module-eval.md` | **ACTIVE** - Eval Citations Modal |
 | `eval-optimization` | `context-module-eval.md` | Eval Optimization (AI Config & Quality) |
 | `module-voice-dev` | `context-module-voice.md` | Module-Voice (Phase 1.5: Specifications) |
 | `feature/module-kb-implementation` | `context-module-kb.md` | Module-KB development |
@@ -28,6 +29,13 @@ This repository uses **branch-specific context files** to avoid merge conflicts 
 ---
 
 ## Current Branch Status
+
+### feature/citations-review (ACTIVE)
+- **Status:** Citation Modal Implementation (🟡 IN PROGRESS)
+- **Plans:** `docs/plans/plan_citations-review.md`
+- **Context:** See `context-module-eval.md`
+- **Test Project:** `test-optim`
+- **Focus:** Display citation details in a modal for evaluation results.
 
 ### eval-optimization
 - **Status:** Evaluation Optimization (⏳ PLANNED)
