@@ -58,6 +58,7 @@ import {
   CitationViewer,
   ResultEditDialog,
   EvalExportButton,
+  ComplianceScoreChip,
 } from "../components";
 import type { EvalCriteriaResult, Citation, CriteriaResultWithItem } from "../types";
 import { useWorkspaceConfig } from "@{{PROJECT_NAME}}/module-ws";
@@ -253,17 +254,34 @@ function Header({
       
       {/* Header Content */}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Box>
-          <Typography variant="h4" component="h1" gutterBottom>
-            {title}
-          </Typography>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Chip
-              label={status.charAt(0).toUpperCase() + status.slice(1)}
-              color={statusColors[status] || "default"}
-              size="small"
-            />
+        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 3 }}>
+          <Box>
+            <Typography variant="h4" component="h1" gutterBottom>
+              Evaluation Results
+            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Chip
+                label={status.charAt(0).toUpperCase() + status.slice(1)}
+                color={statusColors[status] || "default"}
+                size="small"
+              />
+            </Box>
           </Box>
+          {evaluation.complianceScore != null && 
+           evaluation.scoreConfig && 
+           status === "completed" && (
+            <Box sx={{ mt: -1 }}>
+              <ComplianceScoreChip
+                score={evaluation.complianceScore}
+                config={{
+                  categoricalMode: evaluation.scoreConfig.categoricalMode,
+                  showDecimalScore: evaluation.scoreConfig.showDecimalScore,
+                }}
+                statusOptions={evaluation.scoreConfig.statusOptions}
+                size="large"
+              />
+            </Box>
+          )}
         </Box>
         {status === "completed" && (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -940,7 +958,7 @@ export function EvalDetailPage({
     return (
       <Box sx={{ p: 3 }} className={className}>
         <Header
-          title={evaluation.docTypeName || "Evaluation"}
+          title={evaluation.name || "Evaluation"}
           status={evaluation.status}
           evaluation={evaluation}
           workspaceId={workspaceId}
@@ -963,7 +981,7 @@ export function EvalDetailPage({
     <Box sx={{ p: 3, display: "flex", flexDirection: "column", gap: 3 }} className={className}>
       {/* Header */}
       <Header
-        title={evaluation.docTypeName || "Evaluation"}
+        title={evaluation.name || "Evaluation"}
         status={evaluation.status}
         evaluation={evaluation}
         workspaceId={workspaceId}
@@ -995,6 +1013,7 @@ export function EvalDetailPage({
           <EvalQAList
             results={results || []}
             statusOptions={activeStatusOptions}
+            scoreConfig={evaluation?.scoreConfig}
             groupByCategory={false}
             editable={true}
             onEdit={handleEditResult}

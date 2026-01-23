@@ -385,12 +385,12 @@ function CollapsibleDetails({ evaluation }: { evaluation: Evaluation }) {
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
         <Typography variant="subtitle2" color="text.secondary">
-          Details
+          Evaluation Inputs
         </Typography>
         <IconButton
           onClick={() => setExpanded(!expanded)}
           size="small"
-          aria-label={expanded ? "Collapse details" : "Expand details"}
+          aria-label={expanded ? "Collapse evaluation inputs" : "Expand evaluation inputs"}
         >
           {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
         </IconButton>
@@ -433,16 +433,6 @@ function CollapsibleDetails({ evaluation }: { evaluation: Evaluation }) {
                   : "N/A"}
               </Typography>
             </Grid>
-            {evaluation.complianceScore != null && (
-              <Grid item xs={12}>
-                <Typography variant="body2" color="text.secondary">
-                  Compliance Score
-                </Typography>
-                <Box sx={{ mt: 0.5 }}>
-                  <ComplianceScore score={evaluation.complianceScore} />
-                </Box>
-              </Grid>
-            )}
           </Grid>
         </Paper>
       </Collapse>
@@ -473,9 +463,22 @@ function CollapsibleDocSummary({ docSummary }: { docSummary: string }) {
       
       <Collapse in={expanded}>
         <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
-          <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-            {docSummary}
-          </Typography>
+          <Typography
+            variant="body2"
+            component="div"
+            sx={{
+              "& p": { margin: "0.5em 0", "&:first-of-type": { marginTop: 0 }, "&:last-of-type": { marginBottom: 0 } },
+              "& h1": { fontSize: "1.5em", fontWeight: 600, margin: "0.5em 0" },
+              "& h2": { fontSize: "1.3em", fontWeight: 600, margin: "0.5em 0" },
+              "& h3": { fontSize: "1.1em", fontWeight: 600, margin: "0.5em 0" },
+              "& h4": { fontSize: "1em", fontWeight: 600, margin: "0.5em 0" },
+              "& ul, & ol": { marginLeft: "1.5em", marginTop: "0.5em", marginBottom: "0.5em" },
+              "& li": { marginBottom: "0.25em" },
+              "& strong": { fontWeight: 600 },
+              "& em": { fontStyle: "italic" },
+            }}
+            dangerouslySetInnerHTML={{ __html: markdownToHtml(docSummary) }}
+          />
         </Paper>
       </Collapse>
     </Box>
@@ -489,17 +492,9 @@ export function EvalSummaryPanel({
   evaluation,
   className = "",
 }: EvalSummaryPanelProps) {
-  const [panelExpanded, setPanelExpanded] = useState(true);
   const hasSummary = !!evaluation.evalSummary;
-  const hasDocSummary = !!evaluation.docSummary;
 
-  // Get document name for header
-  const documentName = evaluation.documents?.[0]?.name 
-    || evaluation.documents?.[0]?.fileName 
-    || evaluation.name 
-    || "Evaluation";
-
-  if (!hasSummary && !hasDocSummary) {
+  if (!hasSummary) {
     return (
       <Card className={className}>
         <CardContent>
@@ -518,40 +513,13 @@ export function EvalSummaryPanel({
   return (
     <Card className={className}>
       <CardContent>
-        {/* Header - Collapsible for entire panel */}
-        <Box 
-          sx={{ 
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "space-between",
-            mb: panelExpanded ? 3 : 0,
-          }}
-        >
-          <Typography variant="h6">
-            Evaluation Summary for {documentName}
-          </Typography>
-          <IconButton
-            onClick={() => setPanelExpanded(!panelExpanded)}
-            size="small"
-            aria-label={panelExpanded ? "Collapse panel" : "Expand panel"}
-          >
-            {panelExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-          </IconButton>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          {/* 1. Evaluation Inputs (collapsible) */}
+          <CollapsibleDetails evaluation={evaluation} />
+
+          {/* 2. Evaluation Overview (collapsible) */}
+          {hasSummary && <CollapsibleEvalSummary evalSummary={evaluation.evalSummary!} />}
         </Box>
-
-        {/* Collapsible Content */}
-        <Collapse in={panelExpanded}>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {/* 1. Details Section (collapsible) */}
-            <CollapsibleDetails evaluation={evaluation} />
-
-            {/* 2. Document Summary (collapsible) */}
-            {hasDocSummary && <CollapsibleDocSummary docSummary={evaluation.docSummary!} />}
-
-            {/* 3. Evaluation Overview (collapsible) - already done */}
-            {hasSummary && <CollapsibleEvalSummary evalSummary={evaluation.evalSummary!} />}
-          </Box>
-        </Collapse>
       </CardContent>
     </Card>
   );
