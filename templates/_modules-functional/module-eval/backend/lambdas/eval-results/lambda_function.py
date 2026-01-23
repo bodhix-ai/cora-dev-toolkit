@@ -477,8 +477,13 @@ def handle_get_evaluation(eval_id: str, workspace_id: str, org_id: str) -> Dict[
     
     results_map = {r['criteria_item_id']: r for r in criteria_results}
     
-    # Get status options for display
-    status_options = get_status_options(org_id)
+    # Get effective eval config for this org
+    eval_config = get_effective_eval_config(org_id)
+    categorical_mode = eval_config.get('categorical_mode', 'detailed')
+    show_numerical_score = eval_config.get('show_numerical_score', True)
+    
+    # Get status options filtered by categorical mode
+    status_options = get_status_options(org_id, categorical_mode)
     status_map = {s['id']: s for s in status_options}
     
     criteria_result_list = []
@@ -533,7 +538,7 @@ def handle_get_evaluation(eval_id: str, workspace_id: str, org_id: str) -> Dict[
     
     result['criteriaResults'] = criteria_result_list
     
-    # Add status options for frontend
+    # Add status options for frontend (DEPRECATED - use scoreConfig instead)
     result['statusOptions'] = [
         {
             'id': s['id'],
@@ -543,6 +548,31 @@ def handle_get_evaluation(eval_id: str, workspace_id: str, org_id: str) -> Dict[
         }
         for s in status_options
     ]
+    
+    # Add scoreConfig object for configuration-based score display
+    # Map hex colors to MUI color names
+    color_map = {
+        '#4caf50': 'success',
+        '#2196f3': 'info',
+        '#ff9800': 'warning',
+        '#ffeb3b': 'warning',
+        '#f44336': 'error',
+        '#8bc34a': 'success'
+    }
+    
+    result['scoreConfig'] = {
+        'categoricalMode': categorical_mode,
+        'showDecimalScore': show_numerical_score,  # Frontend expects 'showDecimalScore'
+        'statusOptions': [
+            {
+                'id': s['id'],
+                'name': s['name'],
+                'color': color_map.get(s.get('color', ''), 'default'),  # Convert hex to MUI color
+                'scoreValue': float(s['score_value']) if s.get('score_value') is not None else None
+            }
+            for s in status_options
+        ]
+    }
     
     return common.success_response(result)
 
@@ -1290,24 +1320,96 @@ def remove_file_extension(filename: str) -> str:
     return filename
 
 
-def get_status_options(org_id: Optional[str]) -> List[Dict[str, Any]]:
-    """Get active status options for an organization."""
+def get_effective_eval_config(org_id: Optional[str]) -> Dict[str, Any]:
+    """
+    Get effective evaluation configuration for an organization.
+    Org config overrides system config when present.
+    
+    Returns:
+        {
+            'categorical_mode': 'boolean' | 'detailed',
+            'show_numerical_score': bool
+        }
+    """
+    # Get system config (should always exist with defaults)
+    sys_config = common.find_one('eval_cfg_sys', {})
+    if not sys_config:
+        # Fallback defaults if no system config exists
+        logger.warning("No system eval config found, using defaults")
+        return {
+            'categorical_mode': 'detailed',
+            'show_numerical_score': True
+        }
+    
+    # If no org_id, return system config
+    if not org_id:
+        return {
+            'categorical_mode': sys_config.get('categorical_mode', 'detailed'),
+            'show_numerical_score': sys_config.get('show_numerical_score', True)
+        }
+    
+    # Get org config (may not exist)
+    org_config = common.find_one('eval_cfg_org', {'org_id': org_id})
+    
+    # Apply precedence: org overrides sys when not null
+    effective_config = {
+        'categorical_mode': (
+            org_config.get('categorical_mode') if org_config and org_config.get('categorical_mode') is not None
+            else sys_config.get('categorical_mode', 'detailed')
+        ),
+        'show_numerical_score': (
+            org_config.get('show_numerical_score') if org_config and org_config.get('show_numerical_score') is not None
+            else sys_config.get('show_numerical_score', True)
+        )
+    }
+    
+    return effective_config
+
+
+def get_status_options(org_id: Optional[str], categorical_mode: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    Get active status options for an organization, filtered by categorical_mode.
+    
+    Args:
+        org_id: Organization ID (None for system defaults)
+        categorical_mode: Filter by mode ('boolean' or 'detailed'). If None, returns all modes.
+    
+    Returns:
+        List of status options matching the mode
+    """
     if org_id:
         # Check for org-level options
+        filters = {'org_id': org_id}
+        
         org_options = common.find_many(
             'eval_org_status_options',
-            {'org_id': org_id, 'is_active': True},
+            filters,
             order='order_index.asc'
         )
         if org_options:
+            # Filter by mode if specified
+            if categorical_mode:
+                org_options = [
+                    opt for opt in org_options 
+                    if opt.get('mode') == categorical_mode or opt.get('mode') == 'both'
+                ]
             return org_options
     
     # Fall back to system options
+    filters = {}
     sys_options = common.find_many(
         'eval_sys_status_options',
-        {},
+        filters,
         order='order_index.asc'
     )
+    
+    # Filter by mode if specified
+    if categorical_mode:
+        sys_options = [
+            opt for opt in sys_options 
+            if opt.get('mode') == categorical_mode or opt.get('mode') == 'both'
+        ]
+    
     return sys_options
 
 
