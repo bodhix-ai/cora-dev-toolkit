@@ -378,10 +378,413 @@ Include in your CI pipeline:
 - **standard_CORA-FRONTEND.md**: CORA Frontend Standards (Section 4.2: Material-UI Usage)
 - **plan_module-chat-mui-migration.md**: MUI Migration Plan and Implementation
 
+## Tabbed Interface Standard
+
+### Tab Separator Bar (Required)
+
+**All tabbed interfaces MUST include a visual separator (Divider) between tab navigation and tab content.**
+
+✅ **CORRECT Pattern**:
+```typescript
+<Paper>
+  <Tabs value={activeTab} onChange={handleTabChange}>
+    <Tab label="Overview" {...a11yProps(0)} />
+    <Tab label="Docs" {...a11yProps(1)} />
+    <Tab label="Settings" {...a11yProps(2)} />
+  </Tabs>
+  <Divider /> {/* REQUIRED: Visual separator */}
+  
+  <TabPanel value={activeTab} index={0}>
+    <Box sx={{ p: 3 }}> {/* Standard padding */}
+      {/* Tab content */}
+    </Box>
+  </TabPanel>
+</Paper>
+```
+
+❌ **WRONG - No separator**:
+```typescript
+<Paper>
+  <Tabs value={activeTab} onChange={handleTabChange}>
+    <Tab label="Overview" />
+  </Tabs>
+  {/* Missing Divider - creates visual ambiguity */}
+  <TabPanel value={activeTab} index={0}>
+    {/* Content appears disconnected from tabs */}
+  </TabPanel>
+</Paper>
+```
+
+**Rationale:**
+- **Clear Visual Hierarchy**: Separates navigation from content
+- **Industry Standard**: Common in Material Design (Gmail, Drive, GitHub)
+- **Purposeful Actions**: Buttons/controls in tab content feel intentional, not arbitrary
+- **Consistent**: Same pattern across all CORA modules
+- **Scalable**: Works with or without tab-level actions/filters
+
+### Tab Content Padding (Required)
+
+**All tab content MUST use standard padding of 3 spacing units (24px).**
+
+**Standard Padding Pattern**:
+```typescript
+<TabPanel value={activeTab} index={0}>
+  <Box sx={{ p: 3 }}> {/* p: 3 = 24px (3 × 8px MUI spacing) */}
+    {/* Content with proper spacing from edges */}
+  </Box>
+</TabPanel>
+```
+
+**Padding Values**:
+- **Default Tab Content**: `p: 3` (24px all sides)
+- **Dense Content**: `p: 2` (16px) - Only if explicitly needed
+- **Expansive Content**: `p: 4` (32px) - Rare, high-level pages only
+
+**Never use zero padding** - content should never touch container edges.
+
+### Complete Tabbed Interface Example
+
+```typescript
+import { 
+  Paper, 
+  Tabs, 
+  Tab, 
+  Box, 
+  Divider,
+  Button,
+  Typography 
+} from '@mui/material';
+
+function TabPanel(props: { children?: React.ReactNode; index: number; value: number }) {
+  const { children, value, index } = props;
+  return (
+    <div role="tabpanel" hidden={value !== index}>
+      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
+    </div>
+  );
+}
+
+export function MyTabbedInterface() {
+  const [activeTab, setActiveTab] = useState(0);
+
+  return (
+    <Paper>
+      {/* Tab navigation */}
+      <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val)}>
+        <Tab label="Overview" />
+        <Tab label="Details" />
+        <Tab label="Settings" />
+      </Tabs>
+      
+      {/* Required separator */}
+      <Divider />
+      
+      {/* Tab content with standard padding */}
+      <TabPanel value={activeTab} index={0}>
+        <Typography variant="h6" gutterBottom>
+          Overview Content
+        </Typography>
+        {/* Content has 24px padding from all edges */}
+      </TabPanel>
+      
+      <TabPanel value={activeTab} index={1}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+          <Typography variant="h6">Details</Typography>
+          <Button variant="contained">Action</Button>
+        </Box>
+        {/* Actions feel purposeful with separator above */}
+      </TabPanel>
+    </Paper>
+  );
+}
+```
+
+### Tab Content Layout Patterns
+
+**Pattern 1: Content with Top Actions**
+```typescript
+<TabPanel value={activeTab} index={0}>
+  <Box sx={{ p: 3 }}>
+    {/* Actions row (aligned to padding) */}
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+      <Box sx={{ display: 'flex', gap: 1 }}>
+        <Chip label="Filter 1" />
+        <Chip label="Filter 2" />
+      </Box>
+      <Button variant="contained">Create New</Button>
+    </Box>
+    
+    {/* Main content */}
+    <Typography>Content here...</Typography>
+  </Box>
+</TabPanel>
+```
+
+**Pattern 2: Simple Content**
+```typescript
+<TabPanel value={activeTab} index={0}>
+  <Box sx={{ p: 3 }}>
+    <Typography variant="body1">
+      Simple text content with proper padding.
+    </Typography>
+  </Box>
+</TabPanel>
+```
+
+**Pattern 3: Grid Layout**
+```typescript
+<TabPanel value={activeTab} index={0}>
+  <Box sx={{ p: 3 }}>
+    <Grid container spacing={2}>
+      <Grid item xs={12} md={6}>
+        <Paper variant="outlined" sx={{ p: 2 }}>Card 1</Paper>
+      </Grid>
+      <Grid item xs={12} md={6}>
+        <Paper variant="outlined" sx={{ p: 2 }}>Card 2</Paper>
+      </Grid>
+    </Grid>
+  </Box>
+</TabPanel>
+```
+
+### Modules Using Tabs (Apply Standard)
+
+**Core Modules:**
+- ✅ `module-ws` - WorkspaceDetailPage (Overview, Docs, Evaluations, Settings)
+- ✅ `module-kb` - (if using tabs)
+- ✅ `module-chat` - (if using tabs)
+- ✅ `module-mgmt` - (if using tabs)
+
+**Functional Modules:**
+- ✅ `module-eval` - EvalDetailPage (if using tabs)
+- ✅ `module-voice` - (if using tabs)
+
+**All new tabbed interfaces MUST follow this standard.**
+
+---
+
+## Content Padding Standards
+
+### Standard Padding Values
+
+**CORA uses Material-UI's 8px spacing system.**
+
+| Use Case | Padding | Pixels | Usage |
+|----------|---------|--------|-------|
+| **Tab Content** | `p: 3` | 24px | Default for all tab panels |
+| **Cards** | `p: 2` | 16px | Card content padding |
+| **Dialogs** | `p: 3` | 24px | Dialog content padding |
+| **Sections** | `pb: 3, mb: 3` | 24px | Between major sections |
+| **Dense UI** | `p: 2` | 16px | Compact layouts only |
+| **Expansive** | `p: 4` | 32px | High-level container pages |
+
+### Spacing Utilities
+
+```typescript
+// MUI spacing units: 1 unit = 8px
+sx={{ 
+  p: 3,     // padding: 24px (all sides)
+  px: 3,    // padding-left, padding-right: 24px
+  py: 3,    // padding-top, padding-bottom: 24px
+  pt: 3,    // padding-top: 24px
+  pr: 3,    // padding-right: 24px
+  pb: 3,    // padding-bottom: 24px
+  pl: 3,    // padding-left: 24px
+  
+  m: 3,     // margin: 24px (all sides)
+  mx: 3,    // margin-left, margin-right: 24px
+  my: 3,    // margin-top, margin-bottom: 24px
+  
+  gap: 2,   // gap: 16px (for flex/grid)
+}}
+```
+
+### Common Padding Patterns
+
+**Container Padding**:
+```typescript
+<Container maxWidth="lg" sx={{ py: 4 }}>
+  {/* Page content with vertical padding */}
+</Container>
+```
+
+**Section Spacing**:
+```typescript
+<Box sx={{ mb: 3, pb: 3, borderBottom: 1, borderColor: 'divider' }}>
+  {/* Section with bottom margin and divider */}
+</Box>
+```
+
+**Nested Content**:
+```typescript
+<Paper sx={{ p: 3 }}>
+  <Typography variant="h6" gutterBottom>
+    Title
+  </Typography>
+  <Box sx={{ pl: 2 }}> {/* Indent nested content */}
+    <Typography variant="body2">
+      Nested content
+    </Typography>
+  </Box>
+</Paper>
+```
+
+---
+
+## Module Resource Count Display Standard
+
+### Hide Zero Counts Pattern (Required)
+
+**Resource count metrics from modules MUST only be displayed when count > 0.**
+
+This pattern:
+- ✅ Reduces cognitive load (users don't process meaningless zeros)
+- ✅ Automatically handles optional modules (eval, voice) - if module disabled or unused, counts don't show
+- ✅ Cleaner, more scannable cards
+- ✅ Progressive disclosure (information appears when it matters)
+- ✅ Industry standard (Gmail, GitHub, Slack don't show "0" badges)
+
+✅ **CORRECT Pattern** - Conditional rendering:
+```typescript
+// WorkspaceCard.tsx - Only render metrics with data
+<Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+  {/* Members - always show (core feature) */}
+  {workspace.memberCount > 0 && (
+    <Tooltip title="Members">
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <Group fontSize="small" color="action" />
+        <Typography variant="body2">{workspace.memberCount}</Typography>
+      </Box>
+    </Tooltip>
+  )}
+  
+  {/* Documents - core module KB */}
+  {workspace.documentCount > 0 && (
+    <Tooltip title="Documents">
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <Description fontSize="small" color="action" />
+        <Typography variant="body2">{workspace.documentCount}</Typography>
+      </Box>
+    </Tooltip>
+  )}
+  
+  {/* Evaluations - optional module (only shows if enabled AND count > 0) */}
+  {workspace.evaluationCount > 0 && (
+    <Tooltip title="Evaluations">
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <Assessment fontSize="small" color="action" />
+        <Typography variant="body2">{workspace.evaluationCount}</Typography>
+      </Box>
+    </Tooltip>
+  )}
+  
+  {/* Voice - optional module (only shows if enabled AND count > 0) */}
+  {workspace.voiceCount > 0 && (
+    <Tooltip title="Voice Sessions">
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <Mic fontSize="small" color="action" />
+        <Typography variant="body2">{workspace.voiceCount}</Typography>
+      </Box>
+    </Tooltip>
+  )}
+</Box>
+```
+
+❌ **WRONG - Always showing zeros**:
+```typescript
+// Don't do this - clutters interface with meaningless data
+<Box sx={{ display: 'flex', gap: 2 }}>
+  <Typography>Members: {workspace.memberCount || 0}</Typography>
+  <Typography>Docs: {workspace.documentCount || 0}</Typography>
+  <Typography>Evals: {workspace.evaluationCount || 0}</Typography>
+  {/* User sees "Members: 1, Docs: 0, Evals: 0" - poor UX */}
+</Box>
+```
+
+### Empty State Handling
+
+**When ALL counts are zero, show placeholder content:**
+
+```typescript
+// WorkspaceCard.tsx
+const hasAnyResources = 
+  workspace.memberCount > 0 || 
+  workspace.documentCount > 0 || 
+  workspace.evaluationCount > 0 ||
+  workspace.chatCount > 0 ||
+  workspace.voiceCount > 0;
+
+{!hasAnyResources && (
+  <Typography variant="caption" color="text.secondary">
+    No resources yet
+  </Typography>
+)}
+```
+
+### Backend Implementation
+
+**Backend MUST return 0 for disabled/missing modules gracefully:**
+
+```python
+# Lambda function - graceful handling for optional modules
+def _get_workspace_counts(workspace_ids: List[str]) -> Dict[str, Dict[str, int]]:
+    """
+    Get resource counts with graceful handling for optional modules.
+    Returns 0 for missing tables (disabled modules) without errors.
+    """
+    counts = {ws_id: {
+        'member_count': 0,
+        'document_count': 0,
+        'evaluation_count': 0,  # Optional - may be 0 if module disabled
+        'chat_count': 0,
+        'voice_count': 0,       # Optional - may be 0 if module disabled
+    } for ws_id in workspace_ids}
+    
+    # Core module queries (always execute)
+    # Optional module queries (catch table-not-found errors)
+    # ...
+    
+    return counts
+```
+
+**Frontend receives all counts (0 if module disabled), decides what to display.**
+
+### Benefits of This Pattern
+
+1. **Dynamic Module Support**: Optional modules (eval, voice) automatically hide when:
+   - Module not enabled in project → table doesn't exist → backend returns 0 → frontend doesn't render
+   - Module enabled but not used → count = 0 → frontend doesn't render
+   - No frontend module detection logic needed!
+
+2. **Cleaner Cards**: New/empty workspaces don't show rows of zeros
+
+3. **Cognitive Efficiency**: Users only process actionable information
+
+4. **Scalable**: As more modules are added, cards don't become cluttered
+
+5. **Consistent with Industry**: Gmail (no "0 attachments"), GitHub (no "0 issues"), Slack (no "0 messages")
+
+### Applicable To
+
+This pattern applies to:
+- ✅ Workspace list cards (module resource counts)
+- ✅ Dashboard summary cards
+- ✅ Any list/card interface showing metrics from multiple modules
+- ✅ Sidebar badges/indicators
+
+Do NOT hide zeros for:
+- ❌ Explicit status dashboards (analytics wants to see zeros)
+- ❌ Comparison tables (need consistent columns)
+- ❌ Progress indicators (0% is meaningful)
+
+---
+
 ## Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.2 | 2026-01-22 | Added module resource count display standard (hide zero counts) |
+| 1.1 | 2026-01-22 | Added tabbed interface standard (separator bar, padding) |
 | 1.0 | 2026-01-17 | Initial standard documenting Material-UI requirement |
 
 ---

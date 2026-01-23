@@ -477,8 +477,13 @@ def handle_get_evaluation(eval_id: str, workspace_id: str, org_id: str) -> Dict[
     
     results_map = {r['criteria_item_id']: r for r in criteria_results}
     
-    # Get status options for display
-    status_options = get_status_options(org_id)
+    # Get effective eval config for this org
+    eval_config = get_effective_eval_config(org_id)
+    categorical_mode = eval_config.get('categorical_mode', 'detailed')
+    show_numerical_score = eval_config.get('show_numerical_score', True)
+    
+    # Get status options filtered by categorical mode
+    status_options = get_status_options(org_id, categorical_mode)
     status_map = {s['id']: s for s in status_options}
     
     criteria_result_list = []
@@ -516,6 +521,7 @@ def handle_get_evaluation(eval_id: str, workspace_id: str, org_id: str) -> Dict[
                 'id': ai_result.get('id'),
                 'result': ai_result.get('ai_result'),
                 'statusId': ai_result.get('ai_status_id'),
+                'scoreValue': ai_result.get('ai_score_value'),
                 'confidence': ai_result.get('ai_confidence'),
                 'citations': json.loads(ai_result.get('ai_citations', '[]')) if ai_result.get('ai_citations') else [],
                 'processedAt': ai_result.get('processed_at')
@@ -532,7 +538,7 @@ def handle_get_evaluation(eval_id: str, workspace_id: str, org_id: str) -> Dict[
     
     result['criteriaResults'] = criteria_result_list
     
-    # Add status options for frontend
+    # Add status options for frontend (DEPRECATED - use scoreConfig instead)
     result['statusOptions'] = [
         {
             'id': s['id'],
@@ -542,6 +548,31 @@ def handle_get_evaluation(eval_id: str, workspace_id: str, org_id: str) -> Dict[
         }
         for s in status_options
     ]
+    
+    # Add scoreConfig object for configuration-based score display
+    # Map hex colors to MUI color names
+    color_map = {
+        '#4caf50': 'success',
+        '#2196f3': 'info',
+        '#ff9800': 'warning',
+        '#ffeb3b': 'warning',
+        '#f44336': 'error',
+        '#8bc34a': 'success'
+    }
+    
+    result['scoreConfig'] = {
+        'categoricalMode': categorical_mode,
+        'showDecimalScore': show_numerical_score,  # Frontend expects 'showDecimalScore'
+        'statusOptions': [
+            {
+                'id': s['id'],
+                'name': s['name'],
+                'color': color_map.get(s.get('color', ''), 'default'),  # Convert hex to MUI color
+                'scoreValue': float(s['score_value']) if s.get('score_value') is not None else None
+            }
+            for s in status_options
+        ]
+    }
     
     return common.success_response(result)
 
@@ -637,6 +668,47 @@ def handle_update_evaluation(
         if not doc:
             raise common.NotFoundError(f'Document not found: {doc_id}')
     
+    # Generate new evaluation name from document(s)
+    # Format: 
+    #   1 doc:  "{Document Name} - MM/DD/YYYY"
+    #   2 docs: "{Doc1} & {Doc2} - MM/DD/YYYY"
+    #   3+ docs: "{First Doc} + {n} more - MM/DD/YYYY"
+    
+    new_eval_name = evaluation.get('name')  # Default to existing name
+    doc_count = len(validated_doc_ids)
+    
+    if doc_count > 0:
+        # Format date as MM/DD/YYYY (using local server time, not UTC)
+        date_str = datetime.now().strftime('%m/%d/%Y')
+        
+        if doc_count == 1:
+            # Single document
+            first_doc = common.find_one('kb_docs', {'id': validated_doc_ids[0], 'kb_id': workspace_kb['id']})
+            if first_doc:
+                # Prefer filename over name (Supabase returns exact column names)
+                doc_name = first_doc.get('filename') or first_doc.get('name', 'Document')
+                doc_name_clean = remove_file_extension(doc_name)
+                new_eval_name = f"{doc_name_clean} - {date_str}"
+        
+        elif doc_count == 2:
+            # Two documents
+            doc1 = common.find_one('kb_docs', {'id': validated_doc_ids[0], 'kb_id': workspace_kb['id']})
+            doc2 = common.find_one('kb_docs', {'id': validated_doc_ids[1], 'kb_id': workspace_kb['id']})
+            
+            if doc1 and doc2:
+                name1 = remove_file_extension(doc1.get('filename') or doc1.get('name', 'Doc1'))
+                name2 = remove_file_extension(doc2.get('filename') or doc2.get('name', 'Doc2'))
+                new_eval_name = f"{name1} & {name2} - {date_str}"
+        
+        else:
+            # 3+ documents
+            first_doc = common.find_one('kb_docs', {'id': validated_doc_ids[0], 'kb_id': workspace_kb['id']})
+            if first_doc:
+                doc_name = remove_file_extension(first_doc.get('filename') or first_doc.get('name', 'Document'))
+                new_eval_name = f"{doc_name} + {doc_count - 1} more - {date_str}"
+        
+        logger.info(f"Auto-renaming eval {eval_id} ({doc_count} doc(s)): '{evaluation.get('name')}' -> '{new_eval_name}'")
+    
     # Update evaluation record
     common.update_one(
         'eval_doc_summaries',
@@ -644,6 +716,7 @@ def handle_update_evaluation(
         {
             'doc_type_id': doc_type_id,
             'criteria_set_id': criteria_set_id,
+            'name': new_eval_name,
             'status': 'pending',
             'updated_by': user_id
         }
@@ -756,6 +829,8 @@ def handle_edit_result(
     if not edited_result and not edited_status_id:
         raise common.ValidationError('Either editedResult or editedStatusId is required')
     
+    # Get score_value from selected status option
+    edited_score_value = None
     if edited_status_id:
         edited_status_id = common.validate_uuid(edited_status_id, 'editedStatusId')
         
@@ -764,8 +839,14 @@ def handle_edit_result(
         org_id = workspace.get('org_id') if workspace else None
         
         status_options = get_status_options(org_id)
-        if not any(s['id'] == edited_status_id for s in status_options):
+        status_option = next((s for s in status_options if s['id'] == edited_status_id), None)
+        
+        if not status_option:
             raise common.ValidationError('Invalid status option')
+        
+        # Capture score_value from status option
+        if status_option.get('score_value') is not None:
+            edited_score_value = float(status_option['score_value'])
     
     # Mark previous edits as not current
     previous_edits = common.find_many('eval_result_edits', {'criteria_result_id': result_id, 'is_current': True})
@@ -781,6 +862,7 @@ def handle_edit_result(
         'criteria_result_id': result_id,
         'edited_result': edited_result,
         'edited_status_id': edited_status_id,
+        'edited_score_value': edited_score_value,
         'edit_notes': edit_notes,
         'version': version,
         'is_current': True,
@@ -1210,24 +1292,124 @@ def send_processing_message(
 # HELPER FUNCTIONS
 # =============================================================================
 
-def get_status_options(org_id: Optional[str]) -> List[Dict[str, Any]]:
-    """Get active status options for an organization."""
+def remove_file_extension(filename: str) -> str:
+    """
+    Remove common file extensions from filename.
+    
+    Strips extensions like .pdf, .doc, .docx, .txt, .xlsx, etc.
+    Returns the filename without extension.
+    """
+    if not filename:
+        return filename
+    
+    # Common file extensions to remove
+    extensions = [
+        '.pdf', '.doc', '.docx', '.txt', '.rtf',
+        '.xlsx', '.xls', '.csv',
+        '.ppt', '.pptx',
+        '.zip', '.tar', '.gz',
+        '.jpg', '.jpeg', '.png', '.gif',
+        '.html', '.htm', '.xml', '.json'
+    ]
+    
+    filename_lower = filename.lower()
+    for ext in extensions:
+        if filename_lower.endswith(ext):
+            return filename[:-len(ext)]
+    
+    return filename
+
+
+def get_effective_eval_config(org_id: Optional[str]) -> Dict[str, Any]:
+    """
+    Get effective evaluation configuration for an organization.
+    Org config overrides system config when present.
+    
+    Returns:
+        {
+            'categorical_mode': 'boolean' | 'detailed',
+            'show_numerical_score': bool
+        }
+    """
+    # Get system config (should always exist with defaults)
+    sys_config = common.find_one('eval_cfg_sys', {})
+    if not sys_config:
+        # Fallback defaults if no system config exists
+        logger.warning("No system eval config found, using defaults")
+        return {
+            'categorical_mode': 'detailed',
+            'show_numerical_score': True
+        }
+    
+    # If no org_id, return system config
+    if not org_id:
+        return {
+            'categorical_mode': sys_config.get('categorical_mode', 'detailed'),
+            'show_numerical_score': sys_config.get('show_numerical_score', True)
+        }
+    
+    # Get org config (may not exist)
+    org_config = common.find_one('eval_cfg_org', {'org_id': org_id})
+    
+    # Apply precedence: org overrides sys when not null
+    effective_config = {
+        'categorical_mode': (
+            org_config.get('categorical_mode') if org_config and org_config.get('categorical_mode') is not None
+            else sys_config.get('categorical_mode', 'detailed')
+        ),
+        'show_numerical_score': (
+            org_config.get('show_numerical_score') if org_config and org_config.get('show_numerical_score') is not None
+            else sys_config.get('show_numerical_score', True)
+        )
+    }
+    
+    return effective_config
+
+
+def get_status_options(org_id: Optional[str], categorical_mode: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    Get active status options for an organization, filtered by categorical_mode.
+    
+    Args:
+        org_id: Organization ID (None for system defaults)
+        categorical_mode: Filter by mode ('boolean' or 'detailed'). If None, returns all modes.
+    
+    Returns:
+        List of status options matching the mode
+    """
     if org_id:
         # Check for org-level options
+        filters = {'org_id': org_id}
+        
         org_options = common.find_many(
             'eval_org_status_options',
-            {'org_id': org_id, 'is_active': True},
+            filters,
             order='order_index.asc'
         )
         if org_options:
+            # Filter by mode if specified
+            if categorical_mode:
+                org_options = [
+                    opt for opt in org_options 
+                    if opt.get('mode') == categorical_mode or opt.get('mode') == 'both'
+                ]
             return org_options
     
     # Fall back to system options
+    filters = {}
     sys_options = common.find_many(
         'eval_sys_status_options',
-        {},
+        filters,
         order='order_index.asc'
     )
+    
+    # Filter by mode if specified
+    if categorical_mode:
+        sys_options = [
+            opt for opt in sys_options 
+            if opt.get('mode') == categorical_mode or opt.get('mode') == 'both'
+        ]
+    
     return sys_options
 
 

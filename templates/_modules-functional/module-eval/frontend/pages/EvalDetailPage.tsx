@@ -49,6 +49,7 @@ import {
   useEvaluation,
   useEvalProgress,
   useEvalExport,
+  useActiveStatusOptions,
 } from "../hooks";
 import {
   EvalProgressCard,
@@ -57,8 +58,10 @@ import {
   CitationViewer,
   ResultEditDialog,
   EvalExportButton,
+  ComplianceScoreChip,
 } from "../components";
 import type { EvalCriteriaResult, Citation, CriteriaResultWithItem } from "../types";
+import { useWorkspaceConfig } from "@{{PROJECT_NAME}}/module-ws";
 
 // =============================================================================
 // TYPES
@@ -69,6 +72,8 @@ export interface EvalDetailPageProps {
   evaluationId: string;
   /** Workspace ID */
   workspaceId: string;
+  /** Organization ID */
+  orgId: string;
   /** Auth token */
   token: string | null;
   /** Optional CSS class */
@@ -103,7 +108,7 @@ function TabNavigation({
   documentCount,
 }: TabNavigationProps) {
   const tabs: Array<{ id: ViewTab; label: string; count: number }> = [
-    { id: "results", label: "Criteria Results", count: resultCount },
+    { id: "results", label: "Results", count: resultCount },
     { id: "citations", label: "Citations", count: citationCount },
     { id: "documents", label: "Documents", count: documentCount },
   ];
@@ -167,6 +172,9 @@ function Header({
   const [workspaceName, setWorkspaceName] = useState<string | null>(providedWorkspaceName || null);
   const [loadingWorkspace, setLoadingWorkspace] = useState(!providedWorkspaceName && !!workspaceId);
 
+  // Get workspace config for dynamic labels
+  const { navLabelSingular } = useWorkspaceConfig();
+
   const statusColors: Record<string, "warning" | "info" | "success" | "error" | "default"> = {
     draft: "default",
     pending: "warning",
@@ -224,7 +232,7 @@ function Header({
               "&:hover": { textDecoration: "underline" }
             }}
           >
-            {loadingWorkspace ? "Loading..." : (workspaceName || "Workspace")}
+            {loadingWorkspace ? "Loading..." : (workspaceName || navLabelSingular)}
           </Link>
           <Link
             component="button"
@@ -246,17 +254,34 @@ function Header({
       
       {/* Header Content */}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Box>
-          <Typography variant="h4" component="h1" gutterBottom>
-            {title}
-          </Typography>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Chip
-              label={status.charAt(0).toUpperCase() + status.slice(1)}
-              color={statusColors[status] || "default"}
-              size="small"
-            />
+        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 3 }}>
+          <Box>
+            <Typography variant="h4" component="h1" gutterBottom>
+              Evaluation Results
+            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Chip
+                label={status.charAt(0).toUpperCase() + status.slice(1)}
+                color={statusColors[status] || "default"}
+                size="small"
+              />
+            </Box>
           </Box>
+          {evaluation.complianceScore != null && 
+           evaluation.scoreConfig && 
+           status === "completed" && (
+            <Box sx={{ mt: -1 }}>
+              <ComplianceScoreChip
+                score={evaluation.complianceScore}
+                config={{
+                  categoricalMode: evaluation.scoreConfig.categoricalMode,
+                  showDecimalScore: evaluation.scoreConfig.showDecimalScore,
+                }}
+                statusOptions={evaluation.scoreConfig.statusOptions}
+                size="large"
+              />
+            </Box>
+          )}
         </Box>
         {status === "completed" && (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -807,6 +832,7 @@ function DocumentsTab({ documents }: DocumentsTabProps) {
 export function EvalDetailPage({
   evaluationId,
   workspaceId,
+  orgId,
   token,
   className = "",
   onBack,
@@ -826,6 +852,9 @@ export function EvalDetailPage({
     edit,
     update,
   } = useEvaluation(token, workspaceId, evaluationId);
+
+  // Load active status options for badge color coding
+  const { options: activeStatusOptions } = useActiveStatusOptions(token, orgId);
 
   // Extract results, documents, citations from evaluation object
   const results = evaluation?.criteriaResults || [];
@@ -929,7 +958,7 @@ export function EvalDetailPage({
     return (
       <Box sx={{ p: 3 }} className={className}>
         <Header
-          title={evaluation.docTypeName || "Evaluation"}
+          title={evaluation.name || "Evaluation"}
           status={evaluation.status}
           evaluation={evaluation}
           workspaceId={workspaceId}
@@ -946,13 +975,13 @@ export function EvalDetailPage({
   }
 
   // Collect all citations from results
-  const allCitations: Citation[] = citations || results?.flatMap((r) => r.aiCitations || []) || [];
+  const allCitations: Citation[] = citations || results?.flatMap((r) => r.aiResult?.citations || []) || [];
 
   return (
     <Box sx={{ p: 3, display: "flex", flexDirection: "column", gap: 3 }} className={className}>
       {/* Header */}
       <Header
-        title={evaluation.docTypeName || "Evaluation"}
+        title={evaluation.name || "Evaluation"}
         status={evaluation.status}
         evaluation={evaluation}
         workspaceId={workspaceId}
@@ -983,10 +1012,11 @@ export function EvalDetailPage({
         {activeTab === "results" && (
           <EvalQAList
             results={results || []}
-            onEditResult={handleEditResult}
-            showCategories
-            showConfidence
-            showEditButton
+            statusOptions={activeStatusOptions}
+            scoreConfig={evaluation?.scoreConfig}
+            groupByCategory={false}
+            editable={true}
+            onEdit={handleEditResult}
           />
         )}
 

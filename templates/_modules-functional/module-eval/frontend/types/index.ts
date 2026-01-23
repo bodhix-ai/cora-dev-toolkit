@@ -512,6 +512,8 @@ export interface Evaluation {
   criteriaResults?: CriteriaResultWithItem[];
   /** Available status options */
   statusOptions?: StatusOption[];
+  /** Score display configuration */
+  scoreConfig?: ScoreConfig;
 }
 
 /**
@@ -675,6 +677,18 @@ export interface StatusOption {
   color?: string;
   /** Score value */
   scoreValue?: number;
+}
+
+/**
+ * Score display configuration (from API)
+ */
+export interface ScoreConfig {
+  /** Scoring mode: boolean or detailed */
+  categoricalMode: CategoricalMode;
+  /** Whether to show numerical score alongside status chip */
+  showDecimalScore: boolean;
+  /** Available status options for this evaluation */
+  statusOptions: StatusOption[];
 }
 
 /**

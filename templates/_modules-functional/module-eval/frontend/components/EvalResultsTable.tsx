@@ -175,59 +175,6 @@ export function EvalResultsTable({
 
   return (
     <Box className={className}>
-      {/* Filters */}
-      <Box sx={{ mb: 3, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 2 }}>
-        {/* Status Filter */}
-        <FormControl size="small" sx={{ minWidth: 150 }}>
-          <InputLabel id="status-filter-label">Status</InputLabel>
-          <Select
-            labelId="status-filter-label"
-            id="status-filter"
-            value={filters?.status || ""}
-            label="Status"
-            onChange={(e) =>
-              onFilterChange?.({ status: e.target.value as EvaluationStatus || undefined })
-            }
-          >
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="pending">Pending</MenuItem>
-            <MenuItem value="processing">Processing</MenuItem>
-            <MenuItem value="completed">Completed</MenuItem>
-            <MenuItem value="failed">Failed</MenuItem>
-          </Select>
-        </FormControl>
-
-        {/* Doc Type Filter */}
-        {docTypes.length > 0 && (
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel id="doctype-filter-label">Doc Type</InputLabel>
-            <Select
-              labelId="doctype-filter-label"
-              id="doctype-filter"
-              value={filters?.docTypeId || ""}
-              label="Doc Type"
-              onChange={(e) =>
-                onFilterChange?.({ docTypeId: e.target.value || undefined })
-              }
-            >
-              <MenuItem value="">All</MenuItem>
-              {docTypes.map((dt) => (
-                <MenuItem key={dt.id} value={dt.id}>
-                  {dt.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-
-        {/* Results count */}
-        <Typography variant="body2" color="text.secondary" sx={{ ml: "auto" }}>
-          {pagination
-            ? `Showing ${evaluations.length} of ${pagination.total}`
-            : `${evaluations.length} evaluations`}
-        </Typography>
-      </Box>
-
       {/* Table */}
       <TableContainer component={Paper}>
         <Table>

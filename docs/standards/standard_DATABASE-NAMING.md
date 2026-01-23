@@ -545,7 +545,84 @@ subscription_tier VARCHAR(20) NOT NULL DEFAULT 'basic'
   CHECK (subscription_tier IN ('basic', 'professional', 'enterprise'))
 ```
 
-### Rule 8: User Reference Columns → UUID REFERENCES auth.users(id)
+### Rule 8: Audit Column Standards (REQUIRED for CRUD Tables)
+
+**Status:** ✅ REQUIRED as of 2026-01-22 (ADR-015)
+
+All module entity tables that support CRUD operations MUST include the complete set of CORA Standard Audit Columns. This provides consistent audit trails, soft delete capability, and data recovery across all modules.
+
+**Required Columns:**
+```sql
+-- CORA Standard Audit Columns (REQUIRED)
+created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+created_by UUID NOT NULL REFERENCES auth.users(id),
+updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+updated_by UUID REFERENCES auth.users(id),
+
+-- CORA Standard Soft Delete Columns (REQUIRED)
+is_deleted BOOLEAN NOT NULL DEFAULT false,
+deleted_at TIMESTAMPTZ,
+deleted_by UUID REFERENCES auth.users(id)
+```
+
+**Quick Reference Table:**
+
+| Column | Type | Nullable | Default | Purpose |
+|--------|------|----------|---------|---------|
+| `created_at` | TIMESTAMPTZ | NOT NULL | NOW() | When record was created |
+| `created_by` | UUID | NOT NULL | - | User who created record (auth.users) |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | NOW() | When record was last updated |
+| `updated_by` | UUID | NULL | - | User who last updated record (auth.users) |
+| `is_deleted` | BOOLEAN | NOT NULL | false | **Primary soft delete indicator** |
+| `deleted_at` | TIMESTAMPTZ | NULL | - | When record was soft deleted |
+| `deleted_by` | UUID | NULL | - | User who soft deleted record (auth.users) |
+
+**Critical Rules:**
+
+1. **Use `is_deleted` for queries** (not `deleted_at`):
+   ```sql
+   -- ✅ CORRECT
+   SELECT * FROM module_entity WHERE is_deleted = false;
+   
+   -- ❌ WRONG
+   SELECT * FROM module_entity WHERE deleted_at IS NULL;
+   ```
+
+2. **Add trigger for consistency** between `is_deleted` and `deleted_at`:
+   ```sql
+   CREATE OR REPLACE FUNCTION sync_{table}_is_deleted()
+   RETURNS TRIGGER AS $$
+   BEGIN
+     IF NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL THEN
+       NEW.is_deleted := true;
+     END IF;
+     IF NEW.deleted_at IS NULL AND OLD.deleted_at IS NOT NULL THEN
+       NEW.is_deleted := false;
+     END IF;
+     RETURN NEW;
+   END;
+   $$ LANGUAGE plpgsql;
+   ```
+
+3. **Add indexes for performance:**
+   ```sql
+   CREATE INDEX idx_{table}_is_deleted 
+     ON {table}(is_deleted) WHERE is_deleted = false;
+   ```
+
+**When to Use:**
+- ✅ Module entity tables (workspaces, sessions, documents, evaluations)
+- ✅ Any table with user-initiated UPDATE or DELETE operations
+- ❌ Junction/join tables (simple many-to-many)
+- ❌ Lookup/reference tables (static configuration)
+- ❌ Log/event tables (append-only)
+
+**For complete details, migration patterns, and examples, see:**
+- [ADR-015: Module Entity Audit Columns and Soft Delete Standard](../arch%20decisions/ADR-015-MODULE-ENTITY-AUDIT-COLUMNS.md)
+
+---
+
+### Rule 9: User Reference Columns → UUID REFERENCES auth.users(id)
 
 **CRITICAL:** All columns referencing users (`created_by`, `updated_by`, `assigned_to`, etc.) MUST use UUID type and reference `auth.users(id)`, NOT `user_profiles(id)`.
 
