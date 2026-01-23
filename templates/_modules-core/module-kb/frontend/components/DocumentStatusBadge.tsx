@@ -83,6 +83,28 @@ export function DocumentStatusBadge({
   size = 'small',
 }: DocumentStatusBadgeProps) {
   const config = STATUS_CONFIG[status];
+  
+  // Guard against undefined status values
+  if (!config) {
+    console.warn(`Unknown document status: "${status}". Falling back to default.`);
+    const fallbackConfig = {
+      label: status || 'Unknown',
+      color: 'default' as const,
+      Icon: ClockIcon,
+    };
+    const { label, color, Icon } = fallbackConfig;
+    
+    return (
+      <Chip
+        icon={<Icon />}
+        label={label}
+        color={color}
+        size={size}
+        variant="outlined"
+      />
+    );
+  }
+  
   const { label, color, Icon, animate } = config;
 
   const badge = (
