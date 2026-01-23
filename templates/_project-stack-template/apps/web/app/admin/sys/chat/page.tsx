@@ -14,10 +14,49 @@ import {
   CardContent,
   Typography,
   Alert,
+  CircularProgress,
 } from "@mui/material";
 import { Construction } from "@mui/icons-material";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
 
 export default function SystemChatConfigPage() {
+  const { profile, loading, isAuthenticated } = useUser();
+
+  // Loading state
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Authentication check
+  if (!isAuthenticated || !profile) {
+    return (
+      <Box p={4}>
+        <Alert severity="error">
+          You must be logged in to access this page.
+        </Alert>
+      </Box>
+    );
+  }
+
+  // Authorization check - system admins only
+  const isSysAdmin = ["sys_owner", "sys_admin"].includes(
+    profile.sysRole || ""
+  );
+
+  if (!isSysAdmin) {
+    return (
+      <Box p={4}>
+        <Alert severity="error">
+          Access denied. System administrator role required.
+        </Alert>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ p: 4 }}>
       <Typography variant="h4" gutterBottom>

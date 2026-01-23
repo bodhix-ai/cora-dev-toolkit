@@ -23,7 +23,10 @@ import {
   FormControl,
   InputLabel,
   Slider,
+  Breadcrumbs,
+  Link,
 } from "@mui/material";
+import { NavigateNext as NavigateNextIcon } from "@mui/icons-material";
 import { useUser } from "@{{PROJECT_NAME}}/module-access";
 
 interface KBSystemConfig {
@@ -155,6 +158,24 @@ export default function SystemKBConfigPage() {
 
   return (
     <Box sx={{ p: 4 }}>
+      {/* Breadcrumb Navigation */}
+      <Breadcrumbs
+        separator={<NavigateNextIcon fontSize="small" />}
+        aria-label="breadcrumb"
+        sx={{ mb: 2 }}
+      >
+        <Link
+          underline="hover"
+          color="inherit"
+          href="/admin/sys"
+          sx={{ display: "flex", alignItems: "center" }}
+          aria-label="Navigate to Sys Admin"
+        >
+          Sys Admin
+        </Link>
+        <Typography color="text.primary">KB</Typography>
+      </Breadcrumbs>
+
       <Typography variant="h4" gutterBottom>
         System KB Configuration
       </Typography>
