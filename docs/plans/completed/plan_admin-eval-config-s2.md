@@ -655,12 +655,72 @@ While we're doing happy path testing, we implicitly validate these RLS policies:
 | Jan 19, 2026 | 2 | Committed fixes: API param order, hook deps, page component deps |
 | Jan 19, 2026 | 2 | Decision: Rebuild problematic pages (DocTypes, Criteria) from scratch |
 
+### Session 5: Breadcrumb Standardization ✅ COMPLETE
+**Date:** January 22, 2026  
+**Duration:** ~1 hour  
+**Focus:** Admin page breadcrumb standardization across all modules  
+**Status:** ✅ COMPLETE - All admin pages updated with standardized breadcrumbs
+
+**Work Completed:**
+
+1. **ADR-015 Breadcrumb Standard Created:**
+   - Documented 2-level pattern for admin pages: `[Scope] > [Module]`
+   - Documented 3-level pattern for dynamic routes: `[Scope] > [Module] > [Resource Name]`
+   - Examples: "Sys Admin > Eval", "Org Admin > KB", "Sys Admin > Access > ABC Corp"
+
+2. **Breadcrumbs Fixed/Added (10 Admin Pages):**
+   
+   **System Admin Pages:**
+   - ✅ `module-access/AccessControlAdmin.tsx` - "Sys Admin > Access"
+   - ✅ `module-ai/AIEnablementAdmin.tsx` - "Sys Admin > AI"
+   - ✅ `module-mgmt/PlatformMgmtAdmin.tsx` - "Sys Admin > Mgmt"
+   - ✅ `module-kb/PlatformAdminKBPage.tsx` - "Sys Admin > KB"
+   - ✅ `module-ws/PlatformAdminConfigPage.tsx` - "Sys Admin > WS"
+   - ✅ `module-eval/SysEvalConfigPage.tsx` - "Sys Admin > Eval" (ADDED)
+   
+   **Org Admin Pages:**
+   - ✅ `module-kb/OrgAdminKBPage.tsx` - "Org Admin > KB"
+   - ✅ `module-ws/OrgAdminManagementPage.tsx` - "Org Admin > WS"
+   - ✅ `module-eval/OrgEvalConfigPage.tsx` - "Org Admin > Eval" (ADDED)
+   
+   **Dynamic Routes:**
+   - ✅ `module-access/OrgDetails.tsx` - "Sys Admin > Access > {organization.name}"
+
+3. **User-Facing Pages Verified:**
+   - ✅ `module-ws/WorkspaceDetailPage.tsx` - Uses `{navLabelPlural}` ✓ CORRECT
+   - ✅ `module-eval/EvalDetailPage.tsx` - Uses workspace name ✓ CORRECT
+   - These pages correctly use dynamic labels since they're workspace-scoped, not admin pages
+
+**Breadcrumb Implementation:**
+- All breadcrumbs use Material-UI Breadcrumbs component
+- NavigateNext icon separator for consistency
+- Clickable links to parent levels with proper hrefs
+- aria-label attributes for accessibility
+- Consistent spacing and styling
+
+**Files Modified:**
+- ✅ `docs/standards/standard_ADR-015-BREADCRUMB-NAVIGATION.md` (NEW)
+- ✅ 8 existing admin component pages (breadcrumbs updated)
+- ✅ 2 new eval admin pages (breadcrumbs added)
+
+**Testing Required:**
+- [ ] Navigate through all admin sections to verify breadcrumbs display correctly
+- [ ] Verify breadcrumb links navigate to correct parent pages
+- [ ] Test on different screen sizes for responsive behavior
+- [ ] Verify accessibility with screen reader
+
+**Next Steps:**
+1. User will test all admin pages in test project
+2. Sync fixes to test project if needed using `/fix-and-sync.md` workflow
+3. Update findings document when testing complete
+
 ---
 
-**Status**: ✅ ADMIN FEATURES COMPLETE (Sys Admin ✅ | Org Admin ✅ | User Testing 🔜 NEXT)  
-**Last Updated**: January 19, 2026  
+**Status**: ✅ ADMIN FEATURES COMPLETE (Sys Admin ✅ | Org Admin ✅ | Breadcrumbs ✅ | User Testing 🔜 NEXT)  
+**Last Updated**: January 22, 2026  
 **Branch**: admin-eval-config-s2  
 **Test Project**: test-embed (Session 1-3), test-eval (Session 4+)  
 **Session 1**: Sys Admin Config ✅ COMPLETE  
 **Session 3**: Org Admin Config ✅ COMPLETE  
-**Session 4**: Workspace UI Integration ✅ COMPLETE
+**Session 4**: Workspace UI Integration ✅ COMPLETE  
+**Session 5**: Breadcrumb Standardization ✅ COMPLETE

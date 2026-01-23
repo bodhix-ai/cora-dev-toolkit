@@ -23,9 +23,29 @@ import { CircularProgress, Box, Alert } from '@mui/material';
  * Renders the OrgAdminKBPage with data from hooks.
  */
 export default function OrgKBAdminRoute() {
-  const { profile } = useUser();
+  const { profile, loading, isAuthenticated } = useUser();
   const { organization } = useOrganizationContext();
   const apiClient = useApiClient();
+
+  // Loading state
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Authentication check
+  if (!isAuthenticated || !profile) {
+    return (
+      <Box p={4}>
+        <Alert severity="error">
+          You must be logged in to access this page.
+        </Alert>
+      </Box>
+    );
+  }
   
   // Selected KB state for document management
   const [selectedKb, setSelectedKb] = useState<KnowledgeBase | null>(null);
@@ -73,13 +93,11 @@ export default function OrgKBAdminRoute() {
     }
   }, [selectedKb?.id, refreshDocuments]);
 
-  // Check authorization
-  const isAuthorized = profile?.sysRole === 'sys_owner' || 
-                       profile?.sysRole === 'sys_admin' ||
-                       profile?.orgRole === 'org_owner' ||
-                       profile?.orgRole === 'org_admin';
+  // Check authorization - org admin only (no sys admin access)
+  const isOrgAdmin = profile?.orgRole === 'org_owner' || 
+                     profile?.orgRole === 'org_admin';
   
-  if (!isAuthorized) {
+  if (!isOrgAdmin) {
     return (
       <Box p={4}>
         <Alert severity="error">

@@ -1,18 +1,63 @@
 # Plan: Admin Page Standardization
 
-**Status:** � IN PROGRESS (Phase 1: Comprehensive Audit)  
+**Status:** ✅ COMPLETE - All Auth Fixes, Breadcrumbs & Validation (0 Errors on 19 Pages)
 **Created:** January 18, 2026  
 **Started:** January 21, 2026  
+**Completed:** January 22, 2026  
 **Priority:** HIGH (Technical Debt / Code Quality)  
 **Scope:** All system and organization admin pages
 
 **Current Progress:**
-- ✅ Phase 1 Started: Found 19 admin pages, created audit framework
+- ✅ Phase 1 COMPLETE: Comprehensive audit of all 19 admin pages (3 parts)
+  - ✅ Part A: Authentication patterns audited (19/19 pages) - 6 critical, 8 need improvement, 5 compliant
+  - ✅ Part B: UI/Layout patterns audited (19/19 pages) - 4 critical issues found
+  - ✅ Part C: Module ownership audited (11/11 pages) - 4 duplicates, 5 orphans, 2 shell pages
 - ✅ Critical architectural decision: ALL admin pages MUST be module-owned
-- ✅ Identified 11 orphan pages in project-stack-template requiring relocation
-- 🔄 Next: Begin systematic audit of authentication and UI/layout patterns
+- ✅ Identified 10 critical issues requiring fixes (auth, URL, breadcrumbs, design, ownership)
+- ✅ **Phase 2A COMPLETE:** All 6 critical auth fixes applied to templates (January 22, 2026)
+  - ✅ Fix 1/6: `/admin/organizations` - Already used Pattern A (verified)
+  - ✅ Fix 2/6: `/admin/sys` - Split into server + client components, tested & working
+  - ✅ Fix 3/6: `/admin/org` - Split into server + client components, added org admin auth
+  - ✅ Fix 4/6: `module-ws/admin/sys/ws` - Added Pattern A authentication
+  - ✅ Fix 5/6: `module-ws/admin/workspaces` - Added Pattern A authentication
+  - ✅ Fix 6/6: `module-eval/admin/sys/eval` - Added Pattern A authentication
+  - ✅ Fixed URL pattern: `/admin/platform` → `/admin/sys` 
+  - ✅ Fixed navigation label: "System Admin" → "Sys Admin"
+  - ✅ Fixed fs module errors with server/client component split
+- ✅ **Phase 2B COMPLETE:** All 8 pages with partial auth issues fixed (January 22, 2026)
+  - ✅ Fix 1/8: `/admin/access/orgs/[id]` - Added loading, auth, authz checks
+  - ✅ Fix 2/8: `/admin/ai` - Added explicit auth and authz checks
+  - ✅ Fix 3/8: `/admin/sys/chat` - Added Pattern A auth to placeholder
+  - ✅ Fix 4/8: `/admin/org/chat` - Added Pattern A auth to placeholder
+  - ✅ Fix 5/8: `/admin/org/kb` - Added Pattern A auth to placeholder
+  - ✅ Fix 6/8: `module-kb/admin/org/kb` - Added loading and isAuthenticated checks
+  - ✅ Fix 7/8: `module-ws/admin/org/ws/[id]` - Added full Pattern A auth
+  - ✅ Fix 8/8: `module-eval/admin/org/eval` - Replaced OrgContext with useUser
+- ✅ **Phase 2C COMPLETE:** Breadcrumb standardization across all admin pages (January 22, 2026)
+  - ✅ Created ADR-015 breadcrumb navigation standard (2-level and 3-level patterns)
+  - ✅ Fixed 8 existing admin component breadcrumbs (Access, AI, Mgmt, KB x2, WS x2, OrgDetails)
+  - ✅ Added breadcrumbs to 2 eval admin pages (SysEvalConfigPage, OrgEvalConfigPage)
+  - ✅ Verified user-facing pages use correct dynamic labels (WorkspaceDetailPage, EvalDetailPage)
+  - ✅ All breadcrumbs use Material-UI components with NavigateNext separator
+  - ✅ All breadcrumbs include proper aria-label attributes for accessibility
+  - ✅ Synced all 10 breadcrumb files to test-eval project (~/code/bodhix/testing/test-eval/ai-sec-stack)
+- ✅ **ADR-015 CREATED:** Admin Page Auth Pattern + Breadcrumb Navigation standards documented
+- ✅ **VALIDATOR CREATED:** admin-auth-validator enforces Pattern A compliance
+- ✅ **VALIDATION COMPLETE:** 19 pages, 0 errors, 0 warnings, 100% compliance
+- ✅ **CLEANUP COMPLETE:** Deleted deprecated `/admin/platform` directory
 
-**Tracking Document:** `docs/plans/findings_admin-page-audit.md`
+**Session Completed:** January 22, 2026  
+**Tracking Document:** `docs/plans/findings_admin-page-audit.md` (complete audit results)
+
+**Critical Issues Summary:**
+1. ✅ **6 pages with critical auth issues** - FIXED (Pattern A applied, useSession eliminated)
+2. ✅ **8 pages with partial auth issues** - FIXED (All now use Pattern A)
+3. ✅ **URL pattern broken** - FIXED (`/admin/platform` → `/admin/sys`, directory deleted)
+4. ✅ **Navigation label wrong** - FIXED (\"System Admin\" → \"Sys Admin\")
+5. ✅ **Validation enforcement** - CREATED (admin-auth-validator with 0 errors achieved)
+6. ✅ **Breadcrumb standardization** - COMPLETE (ADR-015 standard created, 10 admin pages updated, synced to test-eval)
+7. 🔴 **No sys/org design distinction** (pages look identical despite different scopes) - FUTURE PHASE
+8. 🔴 **Module ownership issues** (11 pages in wrong location) - FUTURE PHASE
 
 ---
 

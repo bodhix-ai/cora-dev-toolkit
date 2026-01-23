@@ -253,6 +253,13 @@ class CoraValidator:
             "supports": ["project"],
             "cli_style": "argparse",
         },
+        "admin_auth": {
+            "name": "Admin Auth Validator",
+            "description": "Validates admin pages follow ADR-015 Pattern A authentication",
+            "module": "admin-auth-validator",
+            "supports": ["project", "module"],
+            "cli_style": "argparse",
+        },
     }
 
 
