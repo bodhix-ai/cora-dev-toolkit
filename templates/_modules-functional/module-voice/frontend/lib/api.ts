@@ -90,7 +90,13 @@ async function parseResponse<T>(response: Response): Promise<T> {
   }
 
   try {
-    return JSON.parse(responseText) as T;
+    const json = JSON.parse(responseText);
+    // Handle CORA API response wrapper: { success: boolean, data: T }
+    // If response has success=true and data field, unwrap it
+    if (json && typeof json === 'object' && 'success' in json && 'data' in json) {
+      return json.data as T;
+    }
+    return json as T;
   } catch {
     throw new VoiceApiError(
       `Failed to parse API response: ${responseText}`,

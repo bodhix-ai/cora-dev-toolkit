@@ -21,6 +21,7 @@ import {
   Slider,
   Grid,
   SelectChangeEvent,
+  Alert,
 } from "@mui/material";
 import type {
   VoiceConfig,
@@ -118,6 +119,7 @@ export function ConfigForm({
     ...(config?.configJson || {}),
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Sync with prop changes (for edit mode)
   useEffect(() => {
@@ -156,23 +158,32 @@ export function ConfigForm({
     e.preventDefault();
     if (!validate() || loading) return;
 
-    if (isEditMode) {
-      const updateData: UpdateVoiceConfigRequest = {
-        name,
-        interviewType,
-        description: description || null,
-        configJson,
-      };
-      await onSubmit(updateData);
-    } else {
-      const createData: CreateVoiceConfigRequest = {
-        orgId,
-        name,
-        interviewType,
-        description: description || undefined,
-        configJson,
-      };
-      await onSubmit(createData);
+    // Clear previous submit error
+    setSubmitError(null);
+
+    try {
+      if (isEditMode) {
+        const updateData: UpdateVoiceConfigRequest = {
+          name,
+          interviewType,
+          description: description || null,
+          configJson,
+        };
+        await onSubmit(updateData);
+      } else {
+        const createData: CreateVoiceConfigRequest = {
+          orgId,
+          name,
+          interviewType,
+          description: description || undefined,
+          configJson,
+        };
+        await onSubmit(createData);
+      }
+    } catch (err) {
+      // Display API error message to user
+      const message = err instanceof Error ? err.message : "Failed to save configuration";
+      setSubmitError(message);
     }
   };
 
@@ -191,6 +202,13 @@ export function ConfigForm({
       className={className}
       sx={{ display: "flex", flexDirection: "column", gap: 3 }}
     >
+      {/* Submit Error Alert */}
+      {submitError && (
+        <Alert severity="error" onClose={() => setSubmitError(null)}>
+          {submitError}
+        </Alert>
+      )}
+
       {/* Basic Info */}
       <Card variant="outlined">
         <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
