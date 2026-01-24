@@ -221,18 +221,22 @@ export function useOrgEvalPrompts(token: string | null, orgId: string | null) {
     orgPrompts,
     orgConfig,
     orgConfigLoading,
+    orgPromptsError,
     loadOrgPrompts,
     updateOrgPrompt,
   } = useEvalStore();
 
-  // Load prompts on mount or org change
+  // Check if delegation is enabled - only load prompts if delegated
+  const isDelegated = orgConfig?.aiConfigDelegated === true;
+
+  // Load prompts on mount or org change - only if delegated and no error
   useEffect(() => {
-    if (token && orgId && orgPrompts.length === 0 && !orgConfigLoading) {
+    if (token && orgId && orgPrompts.length === 0 && !orgConfigLoading && isDelegated && !orgPromptsError) {
       loadOrgPrompts(token, orgId);
     }
     // Note: loadOrgPrompts is intentionally excluded from deps to prevent infinite loops
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, orgId, orgPrompts.length, orgConfigLoading]);
+  }, [token, orgId, orgPrompts.length, orgConfigLoading, isDelegated, orgPromptsError]);
 
   const update = useCallback(
     async (promptType: PromptType, input: PromptConfigInput) => {
@@ -262,6 +266,7 @@ export function useOrgEvalPrompts(token: string | null, orgId: string | null) {
   return {
     prompts: orgPrompts,
     isLoading: orgConfigLoading,
+    error: orgPromptsError,
     canEditPrompts,
     update,
     refresh,

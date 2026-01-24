@@ -93,6 +93,8 @@ interface EvalState {
   orgConfig: EvalOrgConfig | null;
   /** Org prompts (merged with sys defaults) */
   orgPrompts: EvalMergedPromptConfig[];
+  /** Org prompts error (e.g., not delegated) */
+  orgPromptsError: string | null;
   /** Org status options */
   orgStatusOptions: EvalOrgStatusOption[];
   /** Org config loading */
@@ -392,6 +394,7 @@ export const useEvalStore = create<EvalState>()(
       // Org config
       orgConfig: null,
       orgPrompts: [],
+      orgPromptsError: null,
       orgStatusOptions: [],
       orgConfigLoading: false,
       orgConfigError: null,
@@ -618,14 +621,15 @@ export const useEvalStore = create<EvalState>()(
       },
 
       loadOrgPrompts: async (token, orgId) => {
-        set({ orgConfigLoading: true });
+        set({ orgConfigLoading: true, orgPromptsError: null });
 
         try {
           const prompts = await api.listOrgPrompts(token, orgId);
           set({ orgPrompts: prompts, orgConfigLoading: false });
         } catch (error) {
           console.error("Failed to load org prompts:", error);
-          set({ orgConfigLoading: false });
+          const errorMessage = error instanceof Error ? error.message : "Failed to load prompts";
+          set({ orgConfigLoading: false, orgPromptsError: errorMessage });
         }
       },
 
@@ -1544,6 +1548,7 @@ export const useEvalStore = create<EvalState>()(
           // Org config
           orgConfig: null,
           orgPrompts: [],
+          orgPromptsError: null,
           orgStatusOptions: [],
           orgConfigLoading: false,
           orgConfigError: null,
