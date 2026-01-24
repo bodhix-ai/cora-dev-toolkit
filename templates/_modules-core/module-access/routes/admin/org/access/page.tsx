@@ -2,7 +2,20 @@
 
 import { useUser, useOrganizationContext, useRole } from "@{{PROJECT_NAME}}/module-access";
 import { OrgAccessPage } from "@{{PROJECT_NAME}}/module-access";
-import { Box, CircularProgress, Alert } from "@mui/material";
+import {
+  Box,
+  CircularProgress,
+  Alert,
+  Typography,
+  Breadcrumbs,
+  Link,
+  Paper,
+} from "@mui/material";
+import {
+  NavigateNext as NavigateNextIcon,
+  People as PeopleIcon,
+} from "@mui/icons-material";
+import NextLink from "next/link";
 
 /**
  * Organization Admin Access Management Route
@@ -61,5 +74,42 @@ export default function OrgAccessRoute() {
 
   const isOwner = role === "org_owner";
 
-  return <OrgAccessPage orgId={organization.orgId} isOwner={isOwner} />;
+  return (
+    <Box sx={{ p: 3, maxWidth: 1200, mx: "auto" }}>
+      {/* Breadcrumbs */}
+      <Breadcrumbs
+        separator={<NavigateNextIcon fontSize="small" />}
+        sx={{ mb: 3 }}
+        aria-label="breadcrumb"
+      >
+        <Link
+          component={NextLink}
+          href="/admin/org"
+          underline="hover"
+          color="inherit"
+        >
+          Org Admin
+        </Link>
+        <Typography color="text.primary">Member Management</Typography>
+      </Breadcrumbs>
+
+      {/* Page Header */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
+        <PeopleIcon sx={{ fontSize: 32, color: "primary.main" }} />
+        <Box>
+          <Typography variant="h4" component="h1">
+            Member Management
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Manage members and roles for {organization.name}
+          </Typography>
+        </Box>
+      </Box>
+
+      {/* Access Management Content */}
+      <Paper sx={{ p: 3 }}>
+        <OrgAccessPage orgId={organization.orgId} isOwner={isOwner} />
+      </Paper>
+    </Box>
+  );
 }

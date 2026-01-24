@@ -31,7 +31,8 @@ import {
   Psychology as PsychologyIcon,
 } from "@mui/icons-material";
 import NextLink from "next/link";
-import { useCoraAuth } from "@{{PROJECT_NAME}}/api-client";
+import { createClerkAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
+import { useAuth } from "@clerk/nextjs";
 
 /**
  * Org AI Admin Page Route
@@ -41,7 +42,8 @@ export default function OrgAIAdminRoute() {
   const { profile, loading, isAuthenticated } = useUser();
   const { currentOrganization: organization } = useOrganizationContext();
   const { isOrgAdmin, isSysAdmin } = useRole();
-  const { authAdapter } = useCoraAuth();
+  const clerkAuth = useAuth();
+  const authAdapter = createClerkAuthAdapter(clerkAuth);
 
   // Loading state
   if (loading) {
@@ -85,14 +87,6 @@ export default function OrgAIAdminRoute() {
     );
   }
 
-  // Auth adapter check
-  if (!authAdapter) {
-    return (
-      <Alert severity="error" sx={{ m: 2 }}>
-        Authentication not available. Please try refreshing the page.
-      </Alert>
-    );
-  }
 
   return (
     <Box sx={{ p: 3, maxWidth: 1200, mx: "auto" }}>
