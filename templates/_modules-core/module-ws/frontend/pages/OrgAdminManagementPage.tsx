@@ -104,6 +104,7 @@ export function OrgAdminManagementPage({
   const [analytics, setAnalytics] = useState<WorkspaceAnalytics | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
+  const [workspacesLoading, setWorkspacesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
@@ -195,6 +196,7 @@ export function OrgAdminManagementPage({
       return;
     }
 
+    setWorkspacesLoading(true);
     try {
       const client = createWorkspaceApiClient(session.accessToken as string);
       const result = await client.listWorkspaces({
@@ -213,6 +215,8 @@ export function OrgAdminManagementPage({
     } catch (err) {
       console.error("[OrgAdminManagement] Failed to fetch workspaces:", err);
       setError(err instanceof Error ? err.message : "Failed to load workspaces");
+    } finally {
+      setWorkspacesLoading(false);
     }
   };
 
@@ -461,7 +465,11 @@ export function OrgAdminManagementPage({
         <>
           {/* All Workspaces Tab */}
           <TabPanel value={activeTab} index={0}>
-            {workspaces.length > 0 ? (
+            {workspacesLoading ? (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+                <CircularProgress />
+              </Box>
+            ) : workspaces.length > 0 ? (
               <Paper>
                 {/* Bulk Actions Bar */}
                 {selectedIds.length > 0 && (

@@ -10,13 +10,21 @@ module_access:
   nav_icon: "Shield"
   
   # Admin Card Configuration
-  admin_card:
-    enabled: true
-    path: "/admin/sys/access"
-    title: "User & Access Management"
-    description: "Manage users, organizations, roles, and permissions"
-    icon: "Shield"
-    priority: 10  # Lower number = higher priority in admin dashboard
+  admin_cards:
+    platform:
+      enabled: true
+      path: "/admin/sys/access"
+      title: "User & Access Management"
+      description: "Manage users, organizations, roles, and permissions"
+      icon: "Shield"
+      priority: 10  # Lower number = higher priority in admin dashboard
+    organization:
+      enabled: true
+      path: "/admin/org/access"
+      title: "Member Management"
+      description: "Manage organization members and invitations"
+      icon: "People"
+      priority: 10
   
   # Organization Settings
   organizations:

@@ -54,7 +54,7 @@ interface Member {
  * - Invite new users (org owner only)
  */
 export function OrgAccessPage({ orgId, isOwner }: OrgAccessPageProps) {
-  const { members, loading, error, refreshMembers } = useOrgMembers(orgId);
+  const { members, loading, error, refetch } = useOrgMembers(orgId);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
@@ -74,7 +74,7 @@ export function OrgAccessPage({ orgId, isOwner }: OrgAccessPageProps) {
     try {
       // TODO: Implement delete user API call
       // await deleteOrgMember(orgId, memberId);
-      await refreshMembers();
+      await refetch();
     } catch (err) {
       console.error("Failed to delete member:", err);
     }
@@ -87,7 +87,7 @@ export function OrgAccessPage({ orgId, isOwner }: OrgAccessPageProps) {
       setInviteDialogOpen(false);
       setInviteEmail("");
       setInviteRole("org_member");
-      await refreshMembers();
+      await refetch();
     } catch (err) {
       console.error("Failed to invite member:", err);
     }
@@ -101,7 +101,7 @@ export function OrgAccessPage({ orgId, isOwner }: OrgAccessPageProps) {
       // await updateOrgMember(orgId, selectedMember.id, selectedMember);
       setEditDialogOpen(false);
       setSelectedMember(null);
-      await refreshMembers();
+      await refetch();
     } catch (err) {
       console.error("Failed to update member:", err);
     }
@@ -200,42 +200,47 @@ export function OrgAccessPage({ orgId, isOwner }: OrgAccessPageProps) {
                 </TableCell>
               </TableRow>
             ) : (
-              members.map((member) => (
-                <TableRow key={member.id} hover>
-                  <TableCell>{member.email}</TableCell>
-                  <TableCell>{member.name}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={getRoleLabel(member.orgRole)}
-                      color={getRoleColor(member.orgRole)}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    {new Date(member.createdAt).toLocaleDateString()}
-                  </TableCell>
-                  {isOwner && (
-                    <TableCell align="right">
-                      <IconButton
+              members.map((member) => {
+                const email = member.profile?.email || member.user?.email || '';
+                const name = member.profile?.fullName || member.user?.name || member.user?.fullName || 'Unknown';
+                
+                return (
+                  <TableRow key={member.id} hover>
+                    <TableCell>{email}</TableCell>
+                    <TableCell>{name}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={getRoleLabel(member.orgRole)}
+                        color={getRoleColor(member.orgRole)}
                         size="small"
-                        onClick={() => handleEdit(member)}
-                        aria-label={`Edit ${member.name}`}
-                        disabled={member.orgRole === "org_owner"}
-                      >
-                        <Edit fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDelete(member.id)}
-                        aria-label={`Delete ${member.name}`}
-                        disabled={member.orgRole === "org_owner"}
-                      >
-                        <Delete fontSize="small" />
-                      </IconButton>
+                      />
                     </TableCell>
-                  )}
-                </TableRow>
-              ))
+                    <TableCell>
+                      {new Date(member.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    {isOwner && (
+                      <TableCell align="right">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleEdit({ ...member, email, name } as Member)}
+                          aria-label={`Edit ${name}`}
+                          disabled={member.orgRole === "org_owner"}
+                        >
+                          <Edit fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDelete(member.id)}
+                          aria-label={`Delete ${name}`}
+                          disabled={member.orgRole === "org_owner"}
+                        >
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>

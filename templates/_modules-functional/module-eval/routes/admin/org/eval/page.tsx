@@ -12,20 +12,23 @@
  */
 
 import React, { useState } from 'react';
-import { useUser, useOrganizationContext } from '@{{PROJECT_NAME}}/module-access';
+import { useUser, useOrganizationContext, useRole } from '@{{PROJECT_NAME}}/module-access';
 import { 
   OrgEvalConfigPage,
   OrgEvalPromptsPage,
   OrgEvalDocTypesPageV2,
   OrgEvalCriteriaPageV2
 } from '@{{PROJECT_NAME}}/module-eval';
-import { Box, Tabs, Tab, CircularProgress, Alert } from '@mui/material';
+import { Box, Tabs, Tab, CircularProgress, Alert, Breadcrumbs, Typography, Link } from '@mui/material';
+import { NavigateNext } from '@mui/icons-material';
+import NextLink from 'next/link';
 
 type TabValue = 'config' | 'doc-types' | 'criteria' | 'prompts';
 
 export default function OrgEvalAdminPage() {
   const { profile, loading, isAuthenticated } = useUser();
-  const { organization } = useOrganizationContext();
+  const { currentOrganization: organization } = useOrganizationContext();
+  const { isOrgAdmin, isSysAdmin } = useRole();
   const [activeTab, setActiveTab] = useState<TabValue>('config');
 
   // Loading state
@@ -48,12 +51,8 @@ export default function OrgEvalAdminPage() {
     );
   }
 
-  // Authorization check - org admins only (no sys admin access)
-  const isOrgAdmin = ["org_owner", "org_admin"].includes(
-    profile.orgRole || ""
-  );
-
-  if (!isOrgAdmin) {
+  // Authorization check - org admins OR sys admins can access
+  if (!isOrgAdmin && !isSysAdmin) {
     return (
       <Box p={4}>
         <Alert severity="error">
@@ -75,7 +74,23 @@ export default function OrgEvalAdminPage() {
   }
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ width: '100%', p: 4 }}>
+      {/* Breadcrumbs: Org Admin > Eval */}
+      <Breadcrumbs
+        separator={<NavigateNext fontSize="small" />}
+        sx={{ mb: 2 }}
+      >
+        <Link
+          component={NextLink}
+          href="/admin/org"
+          underline="hover"
+          color="inherit"
+        >
+          Org Admin
+        </Link>
+        <Typography color="text.primary">Eval</Typography>
+      </Breadcrumbs>
+
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs 
           value={activeTab} 
@@ -91,16 +106,16 @@ export default function OrgEvalAdminPage() {
 
       <Box sx={{ p: 3 }}>
         {activeTab === 'config' && (
-          <OrgEvalConfigPage orgId={organization.id} />
+          <OrgEvalConfigPage orgId={organization.orgId} />
         )}
         {activeTab === 'doc-types' && (
-          <OrgEvalDocTypesPageV2 orgId={organization.id} />
+          <OrgEvalDocTypesPageV2 orgId={organization.orgId} />
         )}
         {activeTab === 'criteria' && (
-          <OrgEvalCriteriaPageV2 orgId={organization.id} />
+          <OrgEvalCriteriaPageV2 orgId={organization.orgId} />
         )}
         {activeTab === 'prompts' && (
-          <OrgEvalPromptsPage orgId={organization.id} />
+          <OrgEvalPromptsPage orgId={organization.orgId} />
         )}
       </Box>
     </Box>

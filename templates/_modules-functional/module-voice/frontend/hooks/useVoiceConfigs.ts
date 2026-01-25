@@ -120,7 +120,8 @@ export function useVoiceConfigs(options: UseVoiceConfigsOptions): UseVoiceConfig
         interviewType,
         isActive,
       });
-      setConfigs(result);
+      // Ensure result is always an array
+      setConfigs(Array.isArray(result) ? result : []);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load configs";
       setError(message);
@@ -155,7 +156,8 @@ export function useVoiceConfigs(options: UseVoiceConfigsOptions): UseVoiceConfig
     setError(null);
     try {
       const config = await api.createConfig(token, input);
-      setConfigs((prev) => [config, ...prev]);
+      // Ensure prev is an array before spreading
+      setConfigs((prev) => [config, ...(Array.isArray(prev) ? prev : [])]);
       return config;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to create config";
@@ -173,8 +175,9 @@ export function useVoiceConfigs(options: UseVoiceConfigsOptions): UseVoiceConfig
     setError(null);
     try {
       const updated = await api.updateConfig(configId, token, input);
+      // Ensure prev is an array before mapping
       setConfigs((prev) =>
-        prev.map((c) => (c.id === configId ? updated : c))
+        (Array.isArray(prev) ? prev : []).map((c) => (c.id === configId ? updated : c))
       );
       return updated;
     } catch (err) {
@@ -190,7 +193,8 @@ export function useVoiceConfigs(options: UseVoiceConfigsOptions): UseVoiceConfig
     setError(null);
     try {
       await api.deleteConfig(configId, token);
-      setConfigs((prev) => prev.filter((c) => c.id !== configId));
+      // Ensure prev is an array before filtering
+      setConfigs((prev) => (Array.isArray(prev) ? prev : []).filter((c) => c.id !== configId));
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to delete config";
       setError(message);
@@ -203,8 +207,9 @@ export function useVoiceConfigs(options: UseVoiceConfigsOptions): UseVoiceConfig
 
     try {
       const updated = await api.updateConfig(configId, token, { isActive });
+      // Ensure prev is an array before mapping
       setConfigs((prev) =>
-        prev.map((c) => (c.id === configId ? updated : c))
+        (Array.isArray(prev) ? prev : []).map((c) => (c.id === configId ? updated : c))
       );
     } catch (err) {
       console.error("Failed to toggle config active:", err);

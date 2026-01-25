@@ -21,6 +21,7 @@ import {
   Slider,
   Grid,
   SelectChangeEvent,
+  Alert,
 } from "@mui/material";
 import type {
   VoiceConfig,
@@ -112,10 +113,13 @@ export function ConfigForm({
   const [name, setName] = useState(config?.name || "");
   const [interviewType, setInterviewType] = useState(config?.interviewType || "general");
   const [description, setDescription] = useState(config?.description || "");
-  const [configJson, setConfigJson] = useState<VoiceConfigJson>(
-    config?.configJson || defaultConfigJson
-  );
+  // Merge config.configJson with defaults to ensure all fields exist
+  const [configJson, setConfigJson] = useState<VoiceConfigJson>({
+    ...defaultConfigJson,
+    ...(config?.configJson || {}),
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Sync with prop changes (for edit mode)
   useEffect(() => {
@@ -123,7 +127,11 @@ export function ConfigForm({
       setName(config.name);
       setInterviewType(config.interviewType);
       setDescription(config.description || "");
-      setConfigJson(config.configJson);
+      // Merge with defaults to ensure all fields exist
+      setConfigJson({
+        ...defaultConfigJson,
+        ...(config.configJson || {}),
+      });
     }
   }, [config]);
 
@@ -150,23 +158,32 @@ export function ConfigForm({
     e.preventDefault();
     if (!validate() || loading) return;
 
-    if (isEditMode) {
-      const updateData: UpdateVoiceConfigRequest = {
-        name,
-        interviewType,
-        description: description || null,
-        configJson,
-      };
-      await onSubmit(updateData);
-    } else {
-      const createData: CreateVoiceConfigRequest = {
-        orgId,
-        name,
-        interviewType,
-        description: description || undefined,
-        configJson,
-      };
-      await onSubmit(createData);
+    // Clear previous submit error
+    setSubmitError(null);
+
+    try {
+      if (isEditMode) {
+        const updateData: UpdateVoiceConfigRequest = {
+          name,
+          interviewType,
+          description: description || null,
+          configJson,
+        };
+        await onSubmit(updateData);
+      } else {
+        const createData: CreateVoiceConfigRequest = {
+          orgId,
+          name,
+          interviewType,
+          description: description || undefined,
+          configJson,
+        };
+        await onSubmit(createData);
+      }
+    } catch (err) {
+      // Display API error message to user
+      const message = err instanceof Error ? err.message : "Failed to save configuration";
+      setSubmitError(message);
     }
   };
 
@@ -185,6 +202,13 @@ export function ConfigForm({
       className={className}
       sx={{ display: "flex", flexDirection: "column", gap: 3 }}
     >
+      {/* Submit Error Alert */}
+      {submitError && (
+        <Alert severity="error" onClose={() => setSubmitError(null)}>
+          {submitError}
+        </Alert>
+      )}
+
       {/* Basic Info */}
       <Card variant="outlined">
         <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -314,8 +338,9 @@ export function ConfigForm({
                   value={configJson.voice?.provider || "cartesia"}
                   onChange={(e: SelectChangeEvent) =>
                     updateConfigField("voice", {
-                      ...configJson.voice,
                       provider: e.target.value,
+                      voice_id: configJson.voice?.voice_id || "default",
+                      speed: configJson.voice?.speed,
                     })
                   }
                   label="Voice Provider"
@@ -334,12 +359,13 @@ export function ConfigForm({
               <Slider
                 id="voice-speed"
                 value={configJson.voice?.speed || 1.0}
-                onChange={(_event: Event, value: number | number[]) =>
-                  updateConfigField("voice", {
-                    ...configJson.voice,
-                    speed: value as number,
-                  })
-                }
+                  onChange={(_event: Event, value: number | number[]) =>
+                    updateConfigField("voice", {
+                      provider: configJson.voice?.provider || "cartesia",
+                      voice_id: configJson.voice?.voice_id || "default",
+                      speed: value as number,
+                    })
+                  }
                 min={0.5}
                 max={2.0}
                 step={0.1}

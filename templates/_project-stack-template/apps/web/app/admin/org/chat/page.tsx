@@ -10,17 +10,21 @@
 import React from "react";
 import {
   Box,
+  Breadcrumbs,
   Card,
   CardContent,
+  Link,
   Typography,
   Alert,
   CircularProgress,
 } from "@mui/material";
-import { Construction } from "@mui/icons-material";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { Construction, NavigateNext } from "@mui/icons-material";
+import NextLink from "next/link";
+import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
 
 export default function OrgChatConfigPage() {
   const { profile, loading, isAuthenticated } = useUser();
+  const { isOrgAdmin, isSysAdmin } = useRole();
 
   // Loading state
   if (loading) {
@@ -42,14 +46,7 @@ export default function OrgChatConfigPage() {
     );
   }
 
-  // Authorization check - org admins or system admins
-  const isOrgAdmin = ["org_owner", "org_admin"].includes(
-    profile.orgRole || ""
-  );
-  const isSysAdmin = ["sys_owner", "sys_admin"].includes(
-    profile.sysRole || ""
-  );
-
+  // Authorization check - org admins OR sys admins can access (ADR-016)
   if (!isOrgAdmin && !isSysAdmin) {
     return (
       <Box p={4}>
@@ -62,6 +59,22 @@ export default function OrgChatConfigPage() {
 
   return (
     <Box sx={{ p: 4 }}>
+      {/* Breadcrumbs: Org Admin > Chat */}
+      <Breadcrumbs
+        separator={<NavigateNext fontSize="small" />}
+        sx={{ mb: 2 }}
+      >
+        <Link
+          component={NextLink}
+          href="/admin/org"
+          underline="hover"
+          color="inherit"
+        >
+          Org Admin
+        </Link>
+        <Typography color="text.primary">Chat</Typography>
+      </Breadcrumbs>
+
       <Typography variant="h4" gutterBottom>
         Organization Chat Settings
       </Typography>

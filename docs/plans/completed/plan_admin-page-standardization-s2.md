@@ -1,8 +1,8 @@
 # Plan: Admin Page Standardization - Sprint 2 (URL & Navigation)
 
-**Status:** ✅ COMPLETE (Code Implementation)  
+**Status:** ✅ COMPLETE (Code Implementation + ADR-016 Fixes)  
 **Created:** January 22, 2026  
-**Completed:** January 22, 2026  
+**Completed:** January 23, 2026  
 **Priority:** HIGH  
 **Depends On:** [Sprint 1 - Auth & Breadcrumb Foundation](completed/plan_admin-page-standardization-s1.md)
 
@@ -349,6 +349,84 @@ if (!isOrgAdmin) {
 
 ---
 
+### Phase 3b: ADR-016 Org Admin Authorization Pattern ✅ COMPLETE
+
+**Date:** January 23, 2026
+
+**Discovery:** User testing revealed critical bugs in org admin pages preventing access for users with valid roles.
+
+#### 3b.1 Root Cause Analysis
+
+**Problems Found:**
+
+1. **`profile.orgRole` doesn't exist** - The `Profile` type has `sysRole` directly, but org roles are stored in `profile.organizations[].role`. Checking `profile.orgRole` always returns `undefined`.
+
+2. **`organization.id` vs `organization.orgId`** - The `UserOrganization` type uses `orgId` and `orgName`, not `id` and `name`. Components received `undefined` instead of valid org IDs.
+
+3. **`profile.orgId` doesn't exist** - Similar to #1, the `Profile` type has `currentOrgId`, not `orgId`.
+
+4. **Inconsistent auth patterns** - Different pages used different approaches (direct field access, array search, hooks).
+
+5. **Missing sys admin access** - Some org admin pages incorrectly blocked sys admins from oversight access.
+
+#### 3b.2 Standard Created
+
+**ADR-016:** `docs/arch decisions/ADR-016-ORG-ADMIN-PAGE-AUTHORIZATION.md`
+
+**Standard:** `docs/standards/standard_ORG-ADMIN-PAGE-AUTHORIZATION.md`
+
+**Correct Pattern:**
+```typescript
+"use client";
+import { useUser, useOrganizationContext, useRole } from "@{project}/module-access";
+
+export default function OrgAdminPage() {
+  const { profile, loading, isAuthenticated } = useUser();
+  const { currentOrganization: organization } = useOrganizationContext();
+  const { isOrgAdmin, isSysAdmin } = useRole();
+
+  if (loading) return <Loading />;
+  if (!isAuthenticated || !profile) return <AuthRequired />;
+  if (!isOrgAdmin && !isSysAdmin) return <AccessDenied />;
+  if (!organization) return <SelectOrg />;
+
+  // Use organization.orgId, NOT organization.id
+  return <Content orgId={organization.orgId} />;
+}
+```
+
+#### 3b.3 Validation Integration ✅
+
+Extended `validation/admin-auth-validator/validator.py` with ADR-016 checks:
+- ERROR: `profile.orgRole` usage (field doesn't exist)
+- ERROR: `profile.orgId` usage (field doesn't exist)
+- ERROR: `organization.id` usage (should be `orgId`)
+- ERROR: `organization.name` usage (should be `orgName`)
+- WARNING: Missing `useRole()` hook
+- WARNING: Missing sys admin access allowance
+
+#### 3b.4 Files Fixed ✅
+
+| File | Issues Fixed |
+|------|--------------|
+| `OrgAdminClientPage.tsx` | `profile.orgRole` → `useRole()` |
+| `module-eval/routes/admin/org/eval/page.tsx` | `organization.id` → `orgId` |
+| `module-kb/routes/admin/org/kb/page.tsx` | `profile.orgRole`, `organization.id`, `organization.name` |
+| `module-access/routes/admin/org/access/page.tsx` | `profile.orgRole`, `profile.orgId` |
+| `project-stack/apps/web/app/admin/org/kb/page.tsx` | `profile.orgRole` |
+| `project-stack/apps/web/app/admin/org/chat/page.tsx` | `profile.orgRole` |
+
+#### 3b.5 Validation Results ✅
+
+**Before Fixes:**
+- 9 errors, 16 warnings across 9 org admin pages
+
+**After Fixes:**
+- 0 errors, 10 warnings (warnings are style recommendations, not blockers)
+- Status: ✅ PASSED
+
+---
+
 ### Phase 4: Comprehensive End-to-End Testing
 
 **Goal:** Systematically test all admin pages with documented results.
@@ -639,5 +717,6 @@ if (!isOrgAdmin) {
 
 **Created By:** AI Agent (Cline)  
 **Date:** January 22, 2026  
-**Status:** 🔴 IN PROGRESS  
-**Next Action:** Begin Phase 1 - URL Structure Migration
+**Updated:** January 23, 2026 (ADR-016 Fixes)  
+**Status:** ✅ COMPLETE (Templates)  
+**Next Action:** User testing of org admin pages, then sync to test project

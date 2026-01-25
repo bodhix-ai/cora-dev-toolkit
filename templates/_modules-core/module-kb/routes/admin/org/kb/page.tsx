@@ -8,14 +8,13 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useUser, useOrganizationContext, useApiClient } from '@{{PROJECT_NAME}}/module-access';
+import { useUser, useOrganizationContext, useRole } from '@{{PROJECT_NAME}}/module-access';
 import { 
   OrgAdminKBPage, 
   useOrgKbs, 
   useKbDocuments,
-  createKbModuleClient,
 } from '@{{PROJECT_NAME}}/module-kb';
-import type { KnowledgeBase, KbDocument } from '@{{PROJECT_NAME}}/module-kb';
+import type { KnowledgeBase } from '@{{PROJECT_NAME}}/module-kb';
 import { CircularProgress, Box, Alert } from '@mui/material';
 
 /**
@@ -24,8 +23,8 @@ import { CircularProgress, Box, Alert } from '@mui/material';
  */
 export default function OrgKBAdminRoute() {
   const { profile, loading, isAuthenticated } = useUser();
-  const { organization } = useOrganizationContext();
-  const apiClient = useApiClient();
+  const { currentOrganization: organization } = useOrganizationContext();
+  const { isOrgAdmin, isSysAdmin } = useRole();
 
   // Loading state
   if (loading) {
@@ -50,13 +49,7 @@ export default function OrgKBAdminRoute() {
   // Selected KB state for document management
   const [selectedKb, setSelectedKb] = useState<KnowledgeBase | null>(null);
   
-  // Create KB API client
-  const kbClient = React.useMemo(
-    () => apiClient ? createKbModuleClient(apiClient) : null,
-    [apiClient]
-  );
-  
-  // KB management hook
+  // KB management hook - hooks handle their own API client internally
   const {
     kbs,
     loading: kbsLoading,
@@ -66,9 +59,8 @@ export default function OrgKBAdminRoute() {
     deleteKb,
     refresh: refreshKbs,
   } = useOrgKbs({
-    orgId: organization?.id || '',
-    apiClient: kbClient,
-    autoFetch: !!organization?.id,
+    orgId: organization?.orgId || '',
+    autoFetch: !!organization?.orgId,
   });
   
   // Document management hook (for selected KB)
@@ -82,7 +74,6 @@ export default function OrgKBAdminRoute() {
   } = useKbDocuments({
     scope: 'kb',
     kbId: selectedKb?.id || undefined,
-    apiClient: kbClient,
     autoFetch: !!selectedKb?.id,
   });
   
@@ -93,11 +84,8 @@ export default function OrgKBAdminRoute() {
     }
   }, [selectedKb?.id, refreshDocuments]);
 
-  // Check authorization - org admin only (no sys admin access)
-  const isOrgAdmin = profile?.orgRole === 'org_owner' || 
-                     profile?.orgRole === 'org_admin';
-  
-  if (!isOrgAdmin) {
+  // Check authorization - org admins OR sys admins can access (ADR-016)
+  if (!isOrgAdmin && !isSysAdmin) {
     return (
       <Box p={4}>
         <Alert severity="error">
@@ -117,8 +105,8 @@ export default function OrgKBAdminRoute() {
 
   return (
     <OrgAdminKBPage
-      orgId={organization.id}
-      orgName={organization.name}
+      orgId={organization.orgId}
+      orgName={organization.orgName}
       kbs={kbs}
       kbsLoading={kbsLoading}
       kbsError={kbsError}

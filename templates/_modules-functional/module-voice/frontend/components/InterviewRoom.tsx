@@ -90,9 +90,24 @@ export function InterviewRoom({
 
   // Note: In production, you would import Daily from '@daily-co/daily-js'
   // For now, this is a placeholder that shows the room info
-  interface WindowWithDaily extends Window {
-    DailyIframe?: unknown;
+  
+  // Daily.co SDK type definitions (minimal subset)
+  interface DailyCall {
+    join(options: { url: string; token?: string }): Promise<void>;
+    leave(): Promise<void>;
+    destroy(): Promise<void>;
+    on(event: string, handler: (data?: any) => void): void;
+    off(event: string, handler: (data?: any) => void): void;
   }
+  
+  interface DailyIframeConstructor {
+    createFrame(element: HTMLElement, options?: Record<string, any>): DailyCall;
+  }
+  
+  interface WindowWithDaily extends Window {
+    DailyIframe?: DailyIframeConstructor;
+  }
+  
   const isDailyAvailable = typeof window !== "undefined" && (window as WindowWithDaily).DailyIframe;
 
   const initializeDaily = useCallback(async () => {
@@ -104,7 +119,7 @@ export function InterviewRoom({
     try {
       if (isDailyAvailable) {
         // Daily.co SDK integration
-        const DailyIframe = (window as WindowWithDaily).DailyIframe;
+        const DailyIframe = (window as WindowWithDaily).DailyIframe as DailyIframeConstructor;
         
         const dailyFrame = DailyIframe.createFrame(containerRef.current, {
           iframeStyle: {

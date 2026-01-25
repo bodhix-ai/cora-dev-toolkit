@@ -41,7 +41,11 @@ import {
 } from "@mui/icons-material";
 import { useVoiceConfigs } from "../hooks";
 import { ConfigForm } from "../components";
-import type { VoiceConfig, VoiceConfigInput } from "../types";
+import type { 
+  VoiceConfig, 
+  CreateVoiceConfigRequest,
+  UpdateVoiceConfigRequest,
+} from "../types";
 
 // =============================================================================
 // TYPES
@@ -202,7 +206,8 @@ interface ConfigListProps {
 }
 
 function ConfigList({ configs, onEdit, onDelete }: ConfigListProps) {
-  if (configs.length === 0) {
+  // Safety check: ensure configs is an array
+  if (!Array.isArray(configs) || configs.length === 0) {
     return (
       <Box sx={{ textAlign: "center", py: 6 }}>
         <MicIcon sx={{ fontSize: 48, color: "text.disabled", mb: 2 }} />
@@ -292,11 +297,12 @@ function ConfigList({ configs, onEdit, onDelete }: ConfigListProps) {
 interface ConfigDialogProps {
   isOpen: boolean;
   config: VoiceConfig | null;
-  onSave: (data: VoiceConfigInput) => Promise<void>;
+  orgId: string;
+  onSave: (data: CreateVoiceConfigRequest | UpdateVoiceConfigRequest) => Promise<void>;
   onClose: () => void;
 }
 
-function ConfigDialog({ isOpen, config, onSave, onClose }: ConfigDialogProps) {
+function ConfigDialog({ isOpen, config, orgId, onSave, onClose }: ConfigDialogProps) {
   return (
     <Dialog
       open={isOpen}
@@ -323,7 +329,8 @@ function ConfigDialog({ isOpen, config, onSave, onClose }: ConfigDialogProps) {
       </DialogTitle>
       <DialogContent sx={{ pt: 3 }}>
         <ConfigForm
-          initialData={config || undefined}
+          config={config || undefined}
+          orgId={orgId}
           onSubmit={async (data) => {
             await onSave(data);
             onClose();
@@ -351,13 +358,13 @@ export function OrgVoiceConfigPage({
   // Hooks
   const {
     configs,
-    isLoading,
+    loading,
     error,
-    createConfig,
-    updateConfig,
-    deleteConfig,
+    create,
+    update,
+    remove,
     refresh,
-  } = useVoiceConfigs(orgId);
+  } = useVoiceConfigs({ orgId });
 
   // Handlers
   const handleCreateNew = useCallback(() => {
@@ -373,21 +380,21 @@ export function OrgVoiceConfigPage({
   const handleDelete = useCallback(
     async (configId: string) => {
       if (window.confirm("Are you sure you want to delete this configuration?")) {
-        await deleteConfig(configId);
+        await remove(configId);
       }
     },
-    [deleteConfig]
+    [remove]
   );
 
   const handleSave = useCallback(
-    async (data: VoiceConfigInput) => {
+    async (data: CreateVoiceConfigRequest | UpdateVoiceConfigRequest) => {
       if (editingConfig) {
-        await updateConfig(editingConfig.id, data);
+        await update(editingConfig.id, data as UpdateVoiceConfigRequest);
       } else {
-        await createConfig(data);
+        await create(data as CreateVoiceConfigRequest);
       }
     },
-    [editingConfig, createConfig, updateConfig]
+    [editingConfig, create, update]
   );
 
   const handleCloseDialog = useCallback(() => {
@@ -396,7 +403,7 @@ export function OrgVoiceConfigPage({
   }, []);
 
   // Render loading state
-  if (isLoading) {
+  if (loading) {
     return (
       <Box className={className} sx={{ p: 3 }}>
         {loadingComponent || <LoadingState />}
@@ -408,7 +415,7 @@ export function OrgVoiceConfigPage({
   if (error) {
     return (
       <Box className={className} sx={{ p: 3 }}>
-        <ErrorState error={error} onRetry={refresh} />
+        <ErrorState error={new Error(error)} onRetry={refresh} />
       </Box>
     );
   }
@@ -443,6 +450,7 @@ export function OrgVoiceConfigPage({
       <ConfigDialog
         isOpen={isDialogOpen}
         config={editingConfig}
+        orgId={orgId}
         onSave={handleSave}
         onClose={handleCloseDialog}
       />

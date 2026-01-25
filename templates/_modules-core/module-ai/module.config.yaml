@@ -10,13 +10,21 @@ module_ai:
   nav_icon: "Psychology"
   
   # Admin Card Configuration
-  admin_card:
-    enabled: true
-    path: "/admin/sys/ai"
-    title: "AI Provider Management"
-    description: "Configure AI providers, models, and access control"
-    icon: "Psychology"
-    priority: 20  # Lower number = higher priority in admin dashboard
+  admin_cards:
+    platform:
+      enabled: true
+      path: "/admin/sys/ai"
+      title: "AI Provider Management"
+      description: "Configure AI providers, models, and access control"
+      icon: "Psychology"
+      priority: 20  # Lower number = higher priority in admin dashboard
+    organization:
+      enabled: true
+      path: "/admin/org/ai"
+      title: "AI Settings"
+      description: "Manage AI configuration for your organization"
+      icon: "Psychology"
+      priority: 20
   
   # Provider Management
   providers:
