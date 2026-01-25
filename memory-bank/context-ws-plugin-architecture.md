@@ -26,15 +26,15 @@ Define and implement the architecture for functional modules (kb, chat, voice, e
 
 | Sprint | Branch | Plan | Status | Completed |
 |--------|--------|------|--------|-----------|
-| S1 | `feature/ws-plugin-types` | `plan_ws-plugin-types.md` | ⏳ Planned | - |
+| S1 | `feature/ws-plugin-architecture-s1` | `docs/plans/plan_feature-ws-plugin-architecture-s1.md` | 🟡 Active | - |
 | S2 | `feature/ws-plugin-config` | `plan_ws-plugin-config.md` | ⏳ Planned | - |
 | S3 | `feature/ws-module-registration` | `plan_ws-module-registration.md` | ⏳ Planned | - |
 
 ## Current Sprint
 
-- **Branch:** `feature/ws-plugin-types`
-- **Plan:** `docs/plans/plan_ws-plugin-types.md`
-- **Focus:** Fix TypeScript type errors (78 accessToken errors), define plugin interfaces
+- **Branch:** `feature/ws-plugin-architecture-s1`
+- **Plan:** `docs/plans/plan_feature-ws-plugin-architecture-s1.md`
+- **Focus:** Fix TypeScript type errors (e.g., Session.accessToken) and establish initial plugin interface/types to prevent cross-module type-checking.
 
 ## Technical Context
 
