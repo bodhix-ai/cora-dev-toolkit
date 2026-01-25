@@ -4,12 +4,15 @@
  * Provider component that supplies workspace context to plugin modules.
  * This is the composition layer where apps/web provides workspace data
  * to plugins without them needing to import module-ws directly.
+ * 
+ * Sprint 2 Update: Integrated with module-mgmt to provide module availability checking.
  */
 
 'use client';
 
-import { ReactNode } from 'react';
-import { WorkspacePluginContextInstance, WorkspacePluginContext } from '@{{PROJECT_NAME}}/shared/workspace-plugin';
+import { ReactNode, useMemo } from 'react';
+import { WorkspacePluginContextInstance, WorkspacePluginContext, ModuleConfig } from '@{{PROJECT_NAME}}/shared/workspace-plugin';
+import { useModuleRegistry } from '@{{PROJECT_NAME}}/module-mgmt';
 
 interface WorkspacePluginProviderProps {
   /**
@@ -105,14 +108,60 @@ export function WorkspacePluginProvider({
   error = null,
   children,
 }: WorkspacePluginProviderProps) {
+  // Fetch module registry from sys_module_registry
+  const { modules, isLoading: modulesLoading } = useModuleRegistry({ 
+    autoFetch: true,
+    includeDisabled: false, // Only fetch enabled modules
+  });
+
+  // Compute module availability utilities
+  const moduleAvailability = useMemo(() => {
+    // Filter to modules that are both installed and enabled
+    const enabledModules = modules
+      .filter(m => m.isEnabled && m.isInstalled)
+      .map(m => m.name);
+    
+    return {
+      /**
+       * Check if a module is available (installed AND enabled)
+       */
+      isModuleAvailable: (moduleName: string): boolean => {
+        return enabledModules.includes(moduleName);
+      },
+      
+      /**
+       * Get module configuration from sys_module_registry
+       */
+      getModuleConfig: (moduleName: string): ModuleConfig | null => {
+        const module = modules.find(m => m.name === moduleName);
+        if (!module) return null;
+        
+        return {
+          name: module.name,
+          displayName: module.displayName,
+          isEnabled: module.isEnabled,
+          isInstalled: module.isInstalled,
+          config: module.config,
+          featureFlags: module.featureFlags,
+        };
+      },
+      
+      /**
+       * List of enabled modules
+       */
+      enabledModules,
+    };
+  }, [modules]);
+
   const contextValue = {
     workspaceId,
     workspace,
     navigation,
     features,
     userRole,
+    moduleAvailability,
     refresh: onRefresh || (async () => {}),
-    loading,
+    loading: loading || modulesLoading,
     error,
   };
 

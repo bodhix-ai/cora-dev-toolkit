@@ -24,6 +24,11 @@ const defaultContextValue: WorkspacePluginContextValue = {
     tagsEnabled: false,
     colorCodingEnabled: false,
   },
+  moduleAvailability: {
+    isModuleAvailable: () => false,
+    getModuleConfig: () => null,
+    enabledModules: [],
+  },
   refresh: async () => {},
   loading: false,
   error: null,
