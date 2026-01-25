@@ -273,7 +273,7 @@ class CoraValidator:
             "module": "module-toggle-validator",
             "supports": ["project", "module"],
         "workspace_plugin": {
-            "name": "Workspace Plugin Architecture",
+        },            "name": "Workspace Plugin Architecture",
             "description": "Validates modules follow ADR-017 workspace plugin architecture (no direct module-ws imports, use shared/workspace-plugin)",
             "module": "workspace-plugin-validator",
             "supports": ["project"],
