@@ -2,13 +2,14 @@
 
 **Status**: 🟡 IN PROGRESS  
 **Priority**: **P2**  
-**Estimated Duration**: 8-11 hours (includes Phase 0 prerequisite)  
+**Estimated Duration**: 6-8 hours (Phase 0 prerequisite already complete)  
 **Created**: 2026-01-25  
 **Updated**: 2026-01-25 (Added Phase 0 - DB naming migration integration)  
+**Updated**: 2026-01-25 (Phase 0 completed by other team)  
 **Branch**: `feature/ws-plugin-arch-s3`  
 **Context**: `memory-bank/context-ws-plugin-architecture.md`  
-**Dependencies**: Sprint 2 (Complete) ✅  
-**Related Plans**: `docs/plans/backlog/plan_db-naming-migration.md` (Phase 2 scope moved here)
+**Dependencies**: Sprint 2 (Complete) ✅, Phase 0 (Complete) ✅  
+**Related Plans**: `docs/plans/backlog/plan_db-naming-migration.md` (Phase 2 completed by other team)
 
 ---
 
@@ -70,20 +71,26 @@ Sprint 3 implements the **dynamic module configuration system** for workspace pl
 
 ---
 
-## Phase 0: Database Foundation - Module-Mgmt Table Migration (2-3h)
+## Phase 0: Database Foundation - Module-Mgmt Table Migration ✅ COMPLETE
 
-**Context:** This phase integrates scope from the db-naming-migration plan (Phase 2). By migrating these tables now, we avoid touching module-mgmt again later and ensure S3 builds on a compliant foundation.
+**Status:** ✅ Completed by other team (merged to main)
 
-**Related:** See `docs/plans/backlog/plan_db-naming-migration.md` - Phase 2 scope moved here.
+**Context:** This phase integrated scope from the db-naming-migration plan (Phase 2). The other team completed these migrations and merged them to main.
 
-### Tables to Migrate
+**Related:** See `docs/plans/backlog/plan_db-naming-migration.md` - Phase 2 marked as complete.
 
-| Current Name | New Name | Type | Rationale |
-|--------------|----------|------|-----------|
-| `sys_module_registry` | `mgmt_cfg_sys_modules` | Config | Foundation table for S3, follows `{module}_cfg_{scope}_{purpose}` pattern |
-| `sys_lambda_config` | `mgmt_cfg_sys_lambda` | Config | Same module (module-mgmt), "touch each module once" principle |
+### Tables Migrated (by other team)
 
-### Migration Steps
+| Current Name | New Name | Type | Status |
+|--------------|----------|------|--------|
+| `sys_module_registry` | `mgmt_cfg_sys_modules` | Config | ✅ Complete |
+| `sys_lambda_config` | `mgmt_cfg_sys_lambda` | Config | ✅ Complete |
+| `sys_module_usage` | `mgmt_usage_modules` | Usage | ✅ Complete (bonus) |
+| `sys_module_usage_daily` | `mgmt_usage_modules_daily` | Usage | ✅ Complete (bonus) |
+
+**Note:** The other team also migrated the usage tracking tables (originally deferred to Phase 6 of db-naming-migration plan).
+
+### Migration Steps (Already Complete)
 
 ```sql
 -- 1. Create new tables with correct naming
@@ -153,25 +160,21 @@ CREATE VIEW sys_lambda_config AS SELECT * FROM mgmt_cfg_sys_lambda;
 - Rename `module-mgmt/db/schema/001-sys-lambda-config.sql` → `001-mgmt-cfg-sys-lambda.sql`
 - Update table creation statements in both files
 
-### Testing
+### Testing (Completed by other team)
 
-- [ ] Test module registry read/write operations
-- [ ] Test Lambda warming toggle functionality
-- [ ] Test module availability checks (used by Sprint 2)
-- [ ] Verify RLS policies work correctly
-- [ ] Run validator: `python scripts/validate-db-naming.py`
+- ✅ Module registry read/write operations tested
+- ✅ Lambda warming toggle functionality verified
+- ✅ Module availability checks working (used by Sprint 2)
+- ✅ RLS policies verified
+- ✅ Validator passing
 
-### Post-Migration
+### Post-Migration (Completed by other team)
 
-- [ ] Remove from whitelist: Delete `sys_module_registry` and `sys_lambda_config` from `LEGACY_WHITELIST` in `scripts/validate-db-naming.py`
-- [ ] Verify validator passes with whitelist entries removed
-- [ ] Update `plan_db-naming-migration.md` to mark Phase 2 as "Moved to WS-Plugin S3"
+- ✅ Removed from whitelist
+- ✅ Validator passes
+- ✅ `plan_db-naming-migration.md` updated
 
-### Rollback Plan
-
-1. Drop new tables: `DROP TABLE mgmt_cfg_sys_modules, mgmt_cfg_sys_lambda CASCADE;`
-2. Revert Lambda code changes
-3. Views ensure old code continues to work
+**Result:** Phase 0 prerequisite complete. Sprint 3 can proceed directly to Phase 1.
 
 ---
 

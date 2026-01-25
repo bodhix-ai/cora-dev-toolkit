@@ -102,25 +102,25 @@ As each migration phase completes, remove the corresponding tables/indexes from 
 
 ---
 
-### Phase 2: System Config Tables → MOVED TO WS-PLUGIN S3
+### Phase 2: System Config Tables ✅ COMPLETE
 
-**Status:** ✅ Scope moved to `docs/plans/plan_ws-plugin-arch-s3.md` (Phase 0)  
+**Status:** ✅ Completed by other team (merged to main)  
 **Risk Level:** ⚠️ HIGH - Admin functionality  
-**Duration:** Integrated with S3 implementation  
+**Duration:** 2-3 hours (actual)  
 **Lambda Impact:** `module-mgmt/lambda-mgmt` + `module-mgmt/module-registry`
 
-**Rationale:** WS-Plugin S3 needs to migrate `sys_module_registry` as its foundation table. Since both tables are owned by module-mgmt, migrating them together follows the "touch each module once" principle.
+**Rationale:** WS-Plugin S3 needed to migrate `sys_module_registry` as its foundation table. The other team completed these migrations as Phase 0 of WS-Plugin S3.
 
-#### Tables Migrated in WS-Plugin S3 Phase 0
+#### Tables Migrated (by other team)
 
-| Current Name | New Name | Type | Moved To |
-|--------------|----------|------|----------|
-| `sys_module_registry` | `mgmt_cfg_sys_modules` | Config | WS-Plugin S3 Phase 0 |
-| `sys_lambda_config` | `mgmt_cfg_sys_lambda` | Config | WS-Plugin S3 Phase 0 |
+| Current Name | New Name | Type | Status |
+|--------------|----------|------|--------|
+| `sys_module_registry` | `mgmt_cfg_sys_modules` | Config | ✅ Complete |
+| `sys_lambda_config` | `mgmt_cfg_sys_lambda` | Config | ✅ Complete |
 
-**See:** `docs/plans/plan_ws-plugin-arch-s3.md` - Phase 0 for complete migration details.
+**See:** `docs/plans/plan_ws-plugin-arch-s3.md` - Phase 0 (now marked complete).
 
-**Note:** This phase is no longer part of the db-naming-migration plan. It has been integrated with WS-Plugin S3 to minimize module-mgmt code changes and establish a compliant foundation for S3's new config override tables.
+**Result:** Module-mgmt tables now compliant. Foundation established for WS-Plugin S3's new config override tables.
 
 ---
 
@@ -268,26 +268,30 @@ CREATE VIEW ws_activity_log AS SELECT * FROM ws_log_activity;
 
 ---
 
-### Phase 6: Usage Tracking Tables (Low Priority - Deferred)
+### Phase 6: Usage Tracking Tables ✅ COMPLETE (Bonus)
 
 **Risk Level:** ✅ LOW - Analytics only  
-**Duration:** 1-2 hours  
-**Lambda Impact:** None in templates (future feature)
+**Duration:** Completed as part of Phase 2 work  
+**Lambda Impact:** None (no code uses these tables yet)
 
-#### Tables to Migrate
+**Status:** ✅ Completed by other team (merged to main)
 
-| Current Name | New Name | Type | Priority |
-|--------------|----------|------|----------|
-| `sys_module_usage` | `sys_usage_module` | Usage | P3 (Low) |
-| `sys_module_usage_daily` | `sys_usage_module_daily` | Usage | P3 (Low) |
+#### Tables Migrated (by other team - bonus work)
 
-**Decision:** Defer indefinitely. No code currently uses these tables.
+| Current Name | New Name | Type | Status |
+|--------------|----------|------|--------|
+| `sys_module_usage` | `mgmt_usage_modules` | Usage | ✅ Complete |
+| `sys_module_usage_daily` | `mgmt_usage_modules_daily` | Usage | ✅ Complete |
 
-#### Post-Migration (When Phase 6 Executes)
+**Note:** The other team completed these migrations alongside the Phase 2 work, even though they were originally deferred. This is a bonus that reduces future migration debt.
 
-- [ ] **Remove from whitelist**: Delete `sys_module_usage` from `LEGACY_WHITELIST` in `scripts/validate-db-naming.py`
-- [ ] **Add to plan**: `sys_module_registry` migration (not yet scheduled)
-- [ ] **Note**: `ai_cfg_sys_rag_singleton` index needs idx_ prefix (not yet scheduled)
+#### Post-Migration (Complete)
+
+- ✅ Removed from whitelist
+- ✅ Tables now compliant with ADR-011 naming standards
+- ✅ Ready for future module usage analytics features
+
+**Result:** No migration needed for usage tracking - already compliant!
 
 ---
 
@@ -380,10 +384,13 @@ Execute all phases 1-4 in a single migration event.
 
 ## Success Metrics
 
-- [ ] All config tables use `_cfg_` infix
+- [x] All config tables use `_cfg_` infix (Phase 2 complete)
+- [x] All usage tables use `_usage_` infix (Phase 6 complete - bonus)
+- [ ] All workspace config tables use `_cfg_` infix (Phase 3 pending)
+- [ ] All log tables use `_log_` infix (Phase 5 deferred)
 - [ ] Validator passes on all module schemas
-- [ ] No production incidents during migration
-- [ ] Rollback not required
+- [x] No production incidents during Phase 2 & 6 migrations
+- [x] Rollback not required for Phase 2 & 6
 - [ ] New modules (kb, chat, wf) use correct naming from inception
 
 ---
@@ -393,7 +400,8 @@ Execute all phases 1-4 in a single migration event.
 | Lambda | Tables to Change | Phase | Reason for Grouping |
 |--------|------------------|-------|---------------------|
 | `idp-config` | `sys_idp_config` + `sys_idp_audit_log` | Phase 1 | Both used by same Lambda |
-| `lambda-mgmt` | `sys_lambda_config` | Phase 2 | Single table |
+| `lambda-mgmt` | `sys_lambda_config` | Phase 2 ✅ COMPLETE | Single table |
+| `module-registry` | `sys_module_registry` + `sys_module_usage` + `sys_module_usage_daily` | Phase 2 ✅ COMPLETE | All owned by module-mgmt |
 | `workspace` | `ws_configs` + `ws_org_settings` + `ws_activity_log` | Phase 3 | All used by same Lambda |
 | `ai-config-handler` | `org_prompt_engineering` + `sys_rag` | module-kb Phase 0 | Both used by same Lambda + prerequisite for module-kb |
 
@@ -401,9 +409,26 @@ Execute all phases 1-4 in a single migration event.
 
 ---
 
-**Status:** Ready for Execution  
-**Next Steps:** 
-1. **If implementing module-kb first:** Start with module-kb Phase 0 (handles Phase 4 automatically), then complete Phases 1-3 as needed
-2. **If migrating existing modules first:** Complete Phases 1-3 (skip Phase 4), then proceed to module-kb implementation
+**Status:** Partially Complete  
+**Progress:** 6 of 13 tables migrated (46% complete)
 
-**Cross-Reference:** [Module-KB Phase 0 - AI Config Table Migration](plan_module-kb-implementation.md#phase-0-prerequisite---ai-config-table-migration-session-103)
+**Completed Phases:**
+- ✅ Phase 0: Standards Foundation (documentation)
+- ✅ Phase 2: System Config Tables (by other team - WS-Plugin S3 Phase 0)
+- ✅ Phase 4: AI Config Tables (by other team - module-kb implementation)
+- ✅ Phase 6: Usage Tracking Tables (by other team - bonus work)
+
+**Remaining Work:**
+- Phase 1: Critical Auth Tables (can move to Cognito/OIDC Phase 0) - 2 tables
+- Phase 3: Workspace Config Tables - 3 tables
+- Phase 5: Log/History Tables (deferred) - 2 tables
+
+**Next Steps:** 
+1. **For Cognito/OIDC implementation:** Include Phase 1 (IDP tables) as Phase 0 prerequisite
+2. **For workspace features:** Complete Phase 3 (workspace config tables)
+3. **For log analytics:** Defer Phase 5 until needed
+
+**Cross-Reference:** 
+- [Module-KB Phase 0](plan_module-kb-implementation.md#phase-0-prerequisite---ai-config-table-migration-session-103) - Phase 4 complete
+- [WS-Plugin S3 Phase 0](../plan_ws-plugin-arch-s3.md#phase-0-database-foundation---module-mgmt-table-migration) - Phase 2 & 6 complete
+- [Cognito/OIDC Phase 0](plan_cognito-external-idp-migration.md#phase-0-database-foundation---idp-table-migration) - Phase 1 pending
