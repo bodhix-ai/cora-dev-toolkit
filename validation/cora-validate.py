@@ -267,6 +267,13 @@ class CoraValidator:
             "supports": ["project", "module"],
             "cli_style": "argparse",
         },
+        "workspace_plugin": {
+            "name": "Workspace Plugin Architecture",
+            "description": "Validates modules follow ADR-017 workspace plugin architecture (no direct module-ws imports, use shared/workspace-plugin)",
+            "module": "workspace-plugin-validator",
+            "supports": ["project"],
+            "cli_style": "argparse",
+        },
     }
 
 
