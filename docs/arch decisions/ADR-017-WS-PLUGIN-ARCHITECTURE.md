@@ -1,7 +1,8 @@
 # ADR-017: Workspace Plugin Architecture
 
-**Status:** Proposed  
+**Status:** Approved  
 **Date:** January 25, 2026  
+**Updated:** January 25, 2026 (Sprint 2 - Module Availability Integration)  
 **Deciders:** Engineering Team  
 **Context:** Establish plugin architecture for functional modules to integrate with workspace (WS) module
 
@@ -425,5 +426,187 @@ export function WorkspacePluginProvider({
 
 ---
 
-**Status:** Proposed  
-**Next Steps:** Review and approve ADR, create shared package, implement WorkspacePluginProvider
+---
+
+## Sprint 2 Addition: Module Availability Integration
+
+**Date:** January 25, 2026  
+**Status:** Implemented
+
+### Context
+
+With the workspace plugin architecture established in Sprint 1, Sprint 2 integrates module availability checking from the module registry (`sys_module_registry`). This allows plugins and the shell to check if modules are installed and enabled before rendering features.
+
+### Key Discovery
+
+During Sprint 2 planning, we discovered that **module-mgmt already has complete module registry infrastructure**:
+- `sys_module_registry` database table (with `is_enabled`, `is_installed`, `config`, `feature_flags`)
+- `/api/platform/modules` API endpoint
+- `useModuleRegistry` hook with module availability checking
+- `ModuleGate` and `ModuleConditional` components for conditional rendering
+
+**Decision:** Integrate this existing infrastructure with the workspace plugin context rather than building from scratch.
+
+### Extended Plugin Contract
+
+The `WorkspacePluginContext` interface now includes module availability:
+
+```typescript
+export interface WorkspacePluginContext {
+  // ... existing fields from Sprint 1 ...
+  
+  /**
+   * Module availability (from sys_module_registry)
+   * 
+   * Provides utilities to check if modules are available and retrieve their configuration.
+   * Module availability is determined by: is_installed AND is_enabled.
+   */
+  moduleAvailability: {
+    /**
+     * Check if a module is available (installed AND enabled)
+     */
+    isModuleAvailable: (moduleName: string) => boolean;
+    
+    /**
+     * Get module configuration from sys_module_registry
+     */
+    getModuleConfig: (moduleName: string) => ModuleConfig | null;
+    
+    /**
+     * List of enabled modules
+     */
+    enabledModules: string[];
+  };
+}
+
+export interface ModuleConfig {
+  name: string;
+  displayName: string;
+  isEnabled: boolean;
+  isInstalled: boolean;
+  config: Record<string, unknown>;
+  featureFlags: Record<string, boolean>;
+}
+```
+
+### Updated WorkspacePluginProvider
+
+The provider now integrates with `useModuleRegistry` to fetch module availability on load:
+
+```typescript
+export function WorkspacePluginProvider({ ... }) {
+  // Fetch module registry from sys_module_registry
+  const { modules, isLoading: modulesLoading } = useModuleRegistry({ 
+    autoFetch: true,
+    includeDisabled: false,
+  });
+
+  // Compute module availability utilities
+  const moduleAvailability = useMemo(() => {
+    const enabledModules = modules
+      .filter(m => m.isEnabled && m.isInstalled)
+      .map(m => m.name);
+    
+    return {
+      isModuleAvailable: (moduleName: string) => 
+        enabledModules.includes(moduleName),
+      getModuleConfig: (moduleName: string) => { ... },
+      enabledModules,
+    };
+  }, [modules]);
+
+  const contextValue = {
+    // ... existing fields ...
+    moduleAvailability,
+    loading: loading || modulesLoading,
+  };
+
+  return <WorkspacePluginContext.Provider value={contextValue}>...</>;
+}
+```
+
+### Shell-Level Module Filtering
+
+**Architecture Decision:** Use shell-level filtering (Option B) rather than plugin-level checks.
+
+**Rationale:**
+- Cleaner architecture: Plugins don't need module-mgmt dependency
+- Single responsibility: Shell handles availability, plugins handle functionality
+- Performance: One check at shell level vs. N checks per plugin
+- Already exists: `ModuleGate` component implements this pattern
+
+**Implementation:**
+
+```typescript
+// apps/web workspace layout
+import { ModuleGate } from '@{project}/module-mgmt';
+
+<WorkspacePluginProvider workspaceId={workspaceId}>
+  <ModuleGate moduleName="module-kb" fallback={null}>
+    <KBPlugin />
+  </ModuleGate>
+  
+  <ModuleGate moduleName="module-chat" fallback={null}>
+    <ChatPlugin />
+  </ModuleGate>
+  
+  <ModuleGate moduleName="module-eval" fallback={null}>
+    <EvalPlugin />
+  </ModuleGate>
+</WorkspacePluginProvider>
+```
+
+### Future: Config Inheritance (Org/Workspace Overrides)
+
+Sprint 2 defines types for future org-level and workspace-level config overrides:
+
+**Config Cascade (Future Implementation):**
+
+```
+System Level (sys_module_registry):
+  ├─ is_installed: true/false (module deployed?)
+  ├─ is_enabled: true/false (SysAdmin toggle)
+  ├─ config: { ... }
+  └─ featureFlags: { ... }
+
+Org Level (org_module_config - future):
+  ├─ Can disable modules for their org
+  ├─ Can override system config/feature flags
+  └─ Inherits from system if not overridden
+
+Workspace Level (ws_module_config - future):
+  ├─ Can override org config/feature flags
+  ├─ Cannot enable if org/system disabled
+  └─ Inherits from org → system cascade
+```
+
+**Example:**
+```typescript
+System:    { feature: "default", limit: 100 }
+Org:       { limit: 200 }
+Workspace: { feature: "custom" }
+Resolved:  { feature: "custom", limit: 200 }
+```
+
+### Integration with Admin Standardization
+
+The admin standardization project is implementing module enablement toggles via the module-mgmt admin config page, which updates `sys_module_registry.is_enabled`.
+
+**Integration Points:**
+- Module availability checks `is_installed AND is_enabled`
+- Admin config changes trigger module registry refresh
+- Future: Org-level overrides will integrate with licensing/paywall system
+
+### Sprint 2 Success Criteria
+
+- ✅ `WorkspacePluginContext` includes module availability
+- ✅ `WorkspacePluginProvider` fetches module registry on load
+- ✅ Plugins can check if modules are available via context
+- ✅ Shell uses `ModuleGate` to conditionally render plugins
+- ✅ Types defined for future org/workspace config overrides
+- ✅ Documentation explains integration and future config cascade
+
+---
+
+**Status:** Approved (Sprint 1) + Implemented (Sprint 2 Module Availability)  
+**Next Steps:** Sprint 3 - Dynamic module registration and org-level config overrides
