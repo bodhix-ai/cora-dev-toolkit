@@ -12,3 +12,4 @@ packages:
   - "packages/api-client"
   - "packages/shared-types"
   - "packages/contracts"
+  - "packages/shared"
