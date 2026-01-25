@@ -291,27 +291,40 @@ class AuditColumnValidator:
         """Scan all module schema files for compliance."""
         print(f"{BLUE}Scanning module schema files for audit column compliance...{RESET}\n")
         
-        # Find all schema directories
-        schema_dirs = [
-            self.templates_dir / "_modules-core",
-            self.templates_dir / "_modules-functional"
-        ]
+        # Determine if we're scanning templates (toolkit) or packages (project)
+        is_project = False
+        schema_dirs = []
         
+        # Check if this is a project directory with packages
+        packages_dir = self.templates_dir.parent / "packages" if self.templates_dir.name == "templates" else self.templates_dir / "packages"
+        if packages_dir.exists():
+            # This is a project - scan packages
+            is_project = True
+            for module_dir in packages_dir.glob("module-*"):
+                if module_dir.is_dir():
+                    schema_path = module_dir / "db" / "schema"
+                    if schema_path.exists():
+                        schema_dirs.append(schema_path)
+        else:
+            # This is the toolkit - scan template modules
+            schema_dirs = [
+                self.templates_dir / "_modules-core",
+                self.templates_dir / "_modules-functional"
+            ]
+        
+        if not schema_dirs:
+            self.warnings.append("No module schema directories found")
+            return
+        
+        # Scan schema directories
         for schema_dir in schema_dirs:
             if not schema_dir.exists():
                 self.warnings.append(f"Schema directory not found: {schema_dir}")
                 continue
             
-            # Find all SQL files in module schema directories
-            for module_dir in schema_dir.iterdir():
-                if not module_dir.is_dir():
-                    continue
-                
-                schema_path = module_dir / "db" / "schema"
-                if not schema_path.exists():
-                    continue
-                
-                for sql_file in schema_path.glob("*.sql"):
+            if is_project:
+                # Project mode: schema_dir is already packages/module-*/db/schema
+                for sql_file in schema_dir.glob("*.sql"):
                     tables = self.extract_table_definitions(sql_file)
                     
                     for table in tables:
@@ -322,6 +335,28 @@ class AuditColumnValidator:
                                 self.compliant_tables.append(result['table'])
                         else:
                             self.non_compliant_tables.append(result)
+            else:
+                # Toolkit mode: schema_dir is templates/_modules-core or _modules-functional
+                # Find all SQL files in module schema directories
+                for module_dir in schema_dir.iterdir():
+                    if not module_dir.is_dir():
+                        continue
+                    
+                    schema_path = module_dir / "db" / "schema"
+                    if not schema_path.exists():
+                        continue
+                    
+                    for sql_file in schema_path.glob("*.sql"):
+                        tables = self.extract_table_definitions(sql_file)
+                        
+                        for table in tables:
+                            result = self.validate_table(table)
+                            
+                            if result['compliant']:
+                                if result.get('reason') != 'excluded' and result.get('reason') != 'not_entity_table':
+                                    self.compliant_tables.append(result['table'])
+                            else:
+                                self.non_compliant_tables.append(result)
     
     def print_report(self) -> None:
         """Print validation report."""
@@ -422,7 +457,7 @@ def main():
     
     args = parser.parse_args()
     
-    # Determine templates directory
+    # Determine templates directory or project directory
     if args.path:
         # Path provided - check if it's a project or module
         target_path = Path(args.path)
@@ -438,11 +473,16 @@ def main():
             # This is a module - not yet supported for individual validation
             print(f"{RED}Error: Module-level validation not yet implemented{RESET}")
             sys.exit(1)
-        # Assume it's a project directory containing templates
+        # Check if it's a project directory with packages
+        elif (target_path / "packages").exists():
+            # This is a project - use it directly
+            # The validator will detect packages and scan them
+            templates_dir = target_path
+        # Check if it's a toolkit directory with templates
         elif (target_path / "templates").exists():
             templates_dir = target_path / "templates"
         else:
-            print(f"{RED}Error: Could not find templates directory in {args.path}{RESET}")
+            print(f"{RED}Error: Could not find templates or packages directory in {args.path}{RESET}")
             sys.exit(1)
     else:
         # No path provided - find templates relative to script location
@@ -450,8 +490,11 @@ def main():
         project_root = script_dir.parent.parent  # audit-column-validator -> validation -> project root
         templates_dir = project_root / "templates"
     
+    # Validate the path exists
+    # For toolkit: templates_dir should be the templates directory
+    # For project: templates_dir should be the project root (which has packages/)
     if not templates_dir.exists():
-        print(f"{RED}Error: Templates directory not found: {templates_dir}{RESET}")
+        print(f"{RED}Error: Directory not found: {templates_dir}{RESET}")
         sys.exit(1)
     
     # Create validator and run
