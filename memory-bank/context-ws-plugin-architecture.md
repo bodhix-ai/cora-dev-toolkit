@@ -27,16 +27,29 @@ Define and implement the architecture for functional modules (kb, chat, voice, e
 | Sprint | Branch | Plan | Status | Completed |
 |--------|--------|------|--------|-----------|
 | S1 | `feature/ws-plugin-architecture-s1` | `docs/plans/plan_feature-ws-plugin-architecture-s1.md` | ✅ Complete | 2026-01-25 |
-| S2 | `feature/ws-plugin-config` | `plan_ws-plugin-config.md` | ⏳ Planned | - |
-| S3 | `feature/ws-module-registration` | `plan_ws-module-registration.md` | ⏳ Planned | - |
+| S2 | `feature/ws-plugin-architecture-s2` | `docs/plans/plan_ws-plugin-architecture-s2.md` | ⏳ Ready | - |
+| S3 | `feature/ws-plugin-architecture-s3` | `docs/plans/plan_ws-plugin-architecture-s3.md` | ⏳ Planned | - |
+
+## Naming Pattern (Initiative-Wide Consistency)
+
+All sprints in the **WS Plugin Architecture** initiative follow this naming pattern:
+
+- **Branch:** `feature/ws-plugin-architecture-s{N}`
+- **Plan:** `docs/plans/plan_ws-plugin-architecture-s{N}.md`
+- **Context:** `memory-bank/context-ws-plugin-architecture.md` (shared across all sprints)
+
+**Why this pattern:**
+- Makes it clear all sprints are part of the same initiative
+- Sprint number differentiation is obvious
+- Easy to track related work across branches
+- Consistent with git branch naming best practices
 
 ## Current Sprint
 
-- **Branch:** `feature/ws-plugin-architecture-s1`
-- **Plan:** `docs/plans/plan_feature-ws-plugin-architecture-s1.md`
-- **Status:** ✅ COMPLETE - All phases finished (Phase 1-4)
-- **Completed:** 2026-01-25
-- **Achievement:** 100% module compliance with ADR-017 (0 violations)
+- **Branch:** `feature/ws-plugin-architecture-s2`
+- **Plan:** `docs/plans/plan_ws-plugin-architecture-s2.md`
+- **Status:** ⏳ Ready to Start
+- **Focus:** Config inheritance system (sys → org → ws cascade)
 
 ## Sprint 1 Summary
 
