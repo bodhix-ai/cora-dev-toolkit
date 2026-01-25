@@ -77,6 +77,111 @@ This plan outlines the migration from Clerk to AWS Cognito as the default authen
 
 ## Implementation Phases
 
+### Phase 0: Database Foundation - IDP Table Migration (2-3h)
+
+**Status:** ⏳ To be integrated from db-naming-migration plan  
+**Goal:** Migrate IDP config tables to comply with database naming standards before implementing Cognito.
+
+**Context:** This phase integrates scope from the db-naming-migration plan (Phase 1). By migrating these tables now as a prerequisite to Cognito implementation, we avoid touching module-access again later and ensure all auth infrastructure uses compliant naming.
+
+**Related:** See `docs/plans/backlog/plan_db-naming-migration.md` - Phase 1 scope can be moved here.
+
+#### Tables to Migrate
+
+| Current Name | New Name | Type | Rationale |
+|--------------|----------|------|-----------|
+| `sys_idp_config` | `access_cfg_sys_idp` | Config | Module-access owns IDP config, follows `{module}_cfg_{scope}_{purpose}` pattern |
+| `sys_idp_audit_log` | `access_log_idp_audit` | Log | Module-access owns IDP audit, follows `{module}_log_{purpose}` pattern |
+
+**Note:** Using `access_` prefix (not `sys_`) because module-access owns these tables. The `sys` portion moves to the scope position per ADR-011.
+
+#### Migration Steps
+
+```sql
+-- 1. Create new tables with correct naming
+CREATE TABLE access_cfg_sys_idp (
+    -- Copy structure from sys_idp_config
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    provider_type VARCHAR(50) NOT NULL,
+    display_name VARCHAR(200) NOT NULL,
+    config JSONB NOT NULL,
+    is_configured BOOLEAN NOT NULL DEFAULT false,
+    is_active BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE access_log_idp_audit (
+    -- Copy structure from sys_idp_audit_log
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    idp_config_id UUID NOT NULL,
+    action VARCHAR(50) NOT NULL,
+    performed_by UUID NOT NULL,
+    performed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    old_config JSONB,
+    new_config JSONB
+);
+
+-- 2. Copy data
+INSERT INTO access_cfg_sys_idp SELECT * FROM sys_idp_config;
+INSERT INTO access_log_idp_audit SELECT * FROM sys_idp_audit_log;
+
+-- 3. Update foreign keys
+ALTER TABLE access_log_idp_audit
+    DROP CONSTRAINT IF EXISTS sys_idp_audit_log_idp_config_id_fkey,
+    ADD CONSTRAINT access_log_idp_audit_idp_config_id_fkey
+        FOREIGN KEY (idp_config_id) REFERENCES access_cfg_sys_idp(id);
+
+-- 4. Recreate indexes with correct naming
+DROP INDEX IF EXISTS idx_sys_idp_audit_config;
+CREATE INDEX idx_access_log_idp_audit_config ON access_log_idp_audit(idp_config_id);
+
+DROP INDEX IF EXISTS idx_sys_idp_audit_performed_at;
+CREATE INDEX idx_access_log_idp_audit_performed_at ON access_log_idp_audit(performed_at);
+
+-- 5. Update RLS policies
+ALTER TABLE access_cfg_sys_idp ENABLE ROW LEVEL SECURITY;
+ALTER TABLE access_log_idp_audit ENABLE ROW LEVEL SECURITY;
+
+-- (Copy RLS policies from original tables)
+
+-- 6. Create backward-compatible views (temporary)
+CREATE VIEW sys_idp_config AS SELECT * FROM access_cfg_sys_idp;
+CREATE VIEW sys_idp_audit_log AS SELECT * FROM access_log_idp_audit;
+```
+
+#### Code Changes
+
+**Lambda:** `module-access/backend/lambdas/idp-config/lambda_function.py`
+- Update all SQL queries: `sys_idp_config` → `access_cfg_sys_idp`
+- Update all SQL queries: `sys_idp_audit_log` → `access_log_idp_audit`
+
+**Template Schema Files:**
+- Rename `module-access/db/schema/005-sys-idp-config.sql` → `005-access-cfg-sys-idp.sql`
+- Update table creation statements
+
+#### Testing
+
+- [ ] Test IDP configuration read/write operations
+- [ ] Test IDP audit logging
+- [ ] Test auth flow end-to-end (if Okta is configured)
+- [ ] Verify RLS policies work correctly
+- [ ] Run validator: `python scripts/validate-db-naming.py`
+
+#### Post-Migration
+
+- [ ] Remove from whitelist: Delete `sys_idp_config` and `sys_idp_audit_log` from `LEGACY_WHITELIST` in `scripts/validate-db-naming.py`
+- [ ] Verify validator passes with whitelist entries removed
+- [ ] Update `plan_db-naming-migration.md` to mark Phase 1 as "Moved to Cognito/OIDC"
+
+#### Rollback Plan
+
+1. Drop new tables: `DROP TABLE access_cfg_sys_idp, access_log_idp_audit CASCADE;`
+2. Revert Lambda code changes
+3. Views ensure old code continues to work
+
+---
+
 ### Phase 1: Fix Regression + Remove Clerk ✅ CURRENT TASK
 
 **Goal:** Fix the immediate auth adapter regression and remove Clerk support.

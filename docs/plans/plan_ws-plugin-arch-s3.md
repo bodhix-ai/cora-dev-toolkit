@@ -2,11 +2,13 @@
 
 **Status**: 🟡 IN PROGRESS  
 **Priority**: **P2**  
-**Estimated Duration**: 6-8 hours  
+**Estimated Duration**: 8-11 hours (includes Phase 0 prerequisite)  
 **Created**: 2026-01-25  
+**Updated**: 2026-01-25 (Added Phase 0 - DB naming migration integration)  
 **Branch**: `feature/ws-plugin-arch-s3`  
 **Context**: `memory-bank/context-ws-plugin-architecture.md`  
-**Dependencies**: Sprint 2 (Complete) ✅
+**Dependencies**: Sprint 2 (Complete) ✅  
+**Related Plans**: `docs/plans/backlog/plan_db-naming-migration.md` (Phase 2 scope moved here)
 
 ---
 
@@ -45,8 +47,15 @@ Sprint 3 implements the **dynamic module configuration system** for workspace pl
 
 ### In Scope
 
-- [ ] Org-level module config database schema
-- [ ] Workspace-level module config database schema
+**Phase 0 - Prerequisite (from db-naming-migration):**
+- [ ] Migrate `sys_module_registry` → `mgmt_cfg_sys_modules` (foundation table)
+- [ ] Migrate `sys_lambda_config` → `mgmt_cfg_sys_lambda` (same module)
+- [ ] Update module-mgmt Lambda code
+- [ ] Create backward-compatible views
+
+**Phases 1-4 - Original S3 Scope:**
+- [ ] Org-level module config database schema (`mgmt_cfg_org_modules`)
+- [ ] Workspace-level module config database schema (`mgmt_cfg_ws_modules`)
 - [ ] Config resolution with cascade (sys → org → ws)
 - [ ] Real-time module availability updates (polling or WebSocket)
 - [ ] Admin UI for org-level module configuration
@@ -61,27 +70,136 @@ Sprint 3 implements the **dynamic module configuration system** for workspace pl
 
 ---
 
-## Phase 1: Database Schema (2h)
+## Phase 0: Database Foundation - Module-Mgmt Table Migration (2-3h)
 
-### org_module_config Table
+**Context:** This phase integrates scope from the db-naming-migration plan (Phase 2). By migrating these tables now, we avoid touching module-mgmt again later and ensure S3 builds on a compliant foundation.
 
-- [ ] Create migration for `org_module_config` table
+**Related:** See `docs/plans/backlog/plan_db-naming-migration.md` - Phase 2 scope moved here.
+
+### Tables to Migrate
+
+| Current Name | New Name | Type | Rationale |
+|--------------|----------|------|-----------|
+| `sys_module_registry` | `mgmt_cfg_sys_modules` | Config | Foundation table for S3, follows `{module}_cfg_{scope}_{purpose}` pattern |
+| `sys_lambda_config` | `mgmt_cfg_sys_lambda` | Config | Same module (module-mgmt), "touch each module once" principle |
+
+### Migration Steps
+
+```sql
+-- 1. Create new tables with correct naming
+CREATE TABLE mgmt_cfg_sys_modules (
+    -- Copy structure from sys_module_registry
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    module_name VARCHAR(100) UNIQUE NOT NULL,
+    display_name VARCHAR(200) NOT NULL,
+    module_type VARCHAR(20) NOT NULL,
+    tier INTEGER,
+    is_enabled BOOLEAN NOT NULL DEFAULT true,
+    is_installed BOOLEAN NOT NULL DEFAULT false,
+    config JSONB DEFAULT '{}'::jsonb,
+    feature_flags JSONB DEFAULT '{}'::jsonb,
+    nav_config JSONB DEFAULT '{}'::jsonb,
+    dependencies JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE mgmt_cfg_sys_lambda (
+    -- Copy structure from sys_lambda_config
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    config_key VARCHAR(100) UNIQUE NOT NULL,
+    config_value JSONB NOT NULL,
+    description TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 2. Copy data
+INSERT INTO mgmt_cfg_sys_modules SELECT * FROM sys_module_registry;
+INSERT INTO mgmt_cfg_sys_lambda SELECT * FROM sys_lambda_config;
+
+-- 3. Recreate indexes with correct naming
+DROP INDEX IF EXISTS idx_sys_module_registry_type;
+CREATE INDEX idx_mgmt_cfg_sys_modules_type ON mgmt_cfg_sys_modules(module_type);
+
+DROP INDEX IF EXISTS idx_sys_module_registry_enabled;
+CREATE INDEX idx_mgmt_cfg_sys_modules_enabled ON mgmt_cfg_sys_modules(is_enabled);
+
+DROP INDEX IF EXISTS idx_sys_lambda_config_key;
+CREATE INDEX idx_mgmt_cfg_sys_lambda_key ON mgmt_cfg_sys_lambda(config_key);
+
+-- 4. Update RLS policies
+ALTER TABLE mgmt_cfg_sys_modules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mgmt_cfg_sys_lambda ENABLE ROW LEVEL SECURITY;
+
+-- (Copy RLS policies from original tables)
+
+-- 5. Create backward-compatible views (temporary)
+CREATE VIEW sys_module_registry AS SELECT * FROM mgmt_cfg_sys_modules;
+CREATE VIEW sys_lambda_config AS SELECT * FROM mgmt_cfg_sys_lambda;
+```
+
+### Code Changes
+
+**Lambda:** `module-mgmt/backend/lambdas/module-registry/lambda_function.py`
+- Update all SQL queries: `sys_module_registry` → `mgmt_cfg_sys_modules`
+
+**Lambda:** `module-mgmt/backend/lambdas/lambda-mgmt/lambda_function.py`
+- Update all SQL queries: `sys_lambda_config` → `mgmt_cfg_sys_lambda`
+
+**Template Schema Files:**
+- Rename `module-mgmt/db/schema/002-sys-module-registry.sql` → `002-mgmt-cfg-sys-modules.sql`
+- Rename `module-mgmt/db/schema/001-sys-lambda-config.sql` → `001-mgmt-cfg-sys-lambda.sql`
+- Update table creation statements in both files
+
+### Testing
+
+- [ ] Test module registry read/write operations
+- [ ] Test Lambda warming toggle functionality
+- [ ] Test module availability checks (used by Sprint 2)
+- [ ] Verify RLS policies work correctly
+- [ ] Run validator: `python scripts/validate-db-naming.py`
+
+### Post-Migration
+
+- [ ] Remove from whitelist: Delete `sys_module_registry` and `sys_lambda_config` from `LEGACY_WHITELIST` in `scripts/validate-db-naming.py`
+- [ ] Verify validator passes with whitelist entries removed
+- [ ] Update `plan_db-naming-migration.md` to mark Phase 2 as "Moved to WS-Plugin S3"
+
+### Rollback Plan
+
+1. Drop new tables: `DROP TABLE mgmt_cfg_sys_modules, mgmt_cfg_sys_lambda CASCADE;`
+2. Revert Lambda code changes
+3. Views ensure old code continues to work
+
+---
+
+## Phase 1: Database Schema - Config Override Tables (2h)
+
+**Note:** These new tables reference the migrated `mgmt_cfg_sys_modules` from Phase 0.
+
+### mgmt_cfg_org_modules Table
+
+- [ ] Create migration for `mgmt_cfg_org_modules` table
 - [ ] Fields: org_id, module_name, is_enabled, config_overrides, feature_flag_overrides
 - [ ] RLS policies: Org admins can manage their org's config
-- [ ] Default values: Inherit from sys_module_registry
+- [ ] Default values: Inherit from `mgmt_cfg_sys_modules`
+- [ ] Foreign key: `module_name` references `mgmt_cfg_sys_modules(module_name)`
 
-### ws_module_config Table
+### mgmt_cfg_ws_modules Table
 
-- [ ] Create migration for `ws_module_config` table
-- [ ] Fields: workspace_id, module_name, is_enabled, config_overrides, feature_flag_overrides
+- [ ] Create migration for `mgmt_cfg_ws_modules` table
+- [ ] Fields: ws_id, module_name, is_enabled, config_overrides, feature_flag_overrides
 - [ ] RLS policies: Workspace admins can manage their workspace config
 - [ ] Cascade: Cannot enable if org/system disabled
+- [ ] Foreign key: `ws_id` references `workspaces(id)` (per ADR-011 - use ws_id not workspace_id)
 
-### Config Resolution Query
+### Config Resolution Function
 
-- [ ] Create database function: `resolve_module_config(workspace_id, module_name)`
-- [ ] Implements cascade: sys → org → ws
-- [ ] Returns fully resolved config object
+- [ ] Create database function: `resolve_module_config(p_ws_id UUID, p_module_name VARCHAR)`
+- [ ] Implements cascade: `mgmt_cfg_sys_modules` → `mgmt_cfg_org_modules` → `mgmt_cfg_ws_modules`
+- [ ] Returns fully resolved config object (JSONB)
 - [ ] Optimized with appropriate indexes
 
 ---
