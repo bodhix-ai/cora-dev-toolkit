@@ -14,10 +14,26 @@ Standardize all CORA admin pages (sys and org) with consistent:
 ## Sprint History
 
 | Sprint | Branch | Plan | Status | Completed |
-|--------|--------|------|--------|-----------|
+|--------|--------|------|-----------|-----------|
 | S1 | `admin-page-s1` | `plan_admin-page-standardization-s1.md` | ✅ Complete | 2026-01-22 |
 | S2 | `admin-page-s2-completion` | `plan_admin-page-standardization-s2.md` | ✅ Complete | 2026-01-24 |
-| S3 | `admin-page-s3` | `plan_admin-page-standardization-s3.md` | ⏳ Planned | - |
+| S3a | `admin-page-s3a` | `plan_admin-page-s3a.md` | 🟡 Active | - |
+
+## Current Sprint (S3a)
+
+**Branch:** `admin-page-s3a`
+**Plan:** `docs/plans/plan_admin-page-s3a.md`
+**Priority:** P1 - Unblocks WS Plugin Architecture initiative
+
+**Focus:** Module Management Core
+- Module Configuration Tab UI
+- Module-aware admin card visibility
+- Module-aware left navigation
+- module-chat reclassification (core → functional)
+- Validation script for module toggle compliance
+- Standard documentation for module toggle pattern
+
+**Impact:** Enables sys admins to toggle functional modules on/off at runtime. Provides foundation for WS Plugin Architecture to read module enabled state.
 
 ## Sprint 2 Summary (Completed)
 
@@ -30,14 +46,20 @@ Standardize all CORA admin pages (sys and org) with consistent:
 - ADR-016: Org Admin Authorization Pattern
 - Admin-auth-validator extended
 
-## Sprint 3 Scope (Outstanding)
+## Sprint 3b Scope (Planned)
 
-Priority: **LOWEST** (unless admin config required for ws-plugin-architecture)
+**Focus:** Admin Standards & Documentation
+- Admin page parity rule (both sys & org per module)
+- Module ADMINISTRATION.md template
+- Delegated admin concept documentation
+- Guide for module developers
 
-Outstanding work:
-- Complete testing of all admin pages per test matrix
-- Fix any remaining admin page issues
-- Integration with ws-plugin architecture (if applicable)
+## Sprint 3c Scope (Future)
+
+**Focus:** In-App Documentation (kbdocs)
+- Documentation route structure
+- Markdown rendering in-app
+- Project documentation copying pattern
 
 ## Key Decisions
 
@@ -45,6 +67,12 @@ Outstanding work:
 - ADR-016: Org Admin Page Authorization
 
 ## Session Log
+
+### January 25, 2026 - Sprint 3a Start
+- Created admin-page-s3a branch
+- Scope expanded to include module management core features
+- Module-chat will be reclassified as functional (toggleable) while remaining in core creation tier
+- This work unblocks WS Plugin Architecture initiative
 
 ### January 24, 2026 - Sprint 2 Completion
 - Completed ADR-016 fixes for org admin authorization
