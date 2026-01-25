@@ -267,6 +267,13 @@ class CoraValidator:
             "supports": ["project", "module"],
             "cli_style": "argparse",
         },
+        "module_toggle": {
+            "name": "Module Toggle Validator",
+            "description": "Validates module toggle compliance (core/functional classification, admin cards, navigation)",
+            "module": "module-toggle-validator",
+            "supports": ["project", "module"],
+            "cli_style": "argparse",
+        },
     }
 
 

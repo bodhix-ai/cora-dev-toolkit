@@ -1,19 +1,19 @@
 -- ============================================================================
 -- CORA Module Registry - Database Schema
--- Schema: 002-sys-module-registry.sql
--- Purpose: Create the sys_module_registry table for runtime module control
--- Updated: Jan 2026 - Renamed from platform_* to sys_*
+-- Schema: 002-mgmt-cfg-sys-modules.sql
+-- Purpose: Create the mgmt_cfg_sys_modules table for runtime module control
+-- Updated: Jan 2026 - Renamed from sys_module_registry to mgmt_cfg_sys_modules (DB naming compliance)
 -- ============================================================================
 
 -- Enable UUID extension if not already enabled
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================================================
--- Table: sys_module_registry
+-- Table: mgmt_cfg_sys_modules
 -- Purpose: Track all registered modules and their configuration/status
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS sys_module_registry (
+CREATE TABLE IF NOT EXISTS mgmt_cfg_sys_modules (
     -- Primary Key
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     
@@ -69,30 +69,30 @@ CREATE TABLE IF NOT EXISTS sys_module_registry (
 -- ============================================================================
 
 -- Index for quick module lookups by name
-CREATE INDEX IF NOT EXISTS idx_sys_module_registry_name 
-    ON sys_module_registry(module_name) 
+CREATE INDEX IF NOT EXISTS idx_mgmt_cfg_sys_modules_name 
+    ON mgmt_cfg_sys_modules(module_name) 
     WHERE deleted_at IS NULL;
 
 -- Index for filtering by module type
-CREATE INDEX IF NOT EXISTS idx_sys_module_registry_type 
-    ON sys_module_registry(module_type) 
+CREATE INDEX IF NOT EXISTS idx_mgmt_cfg_sys_modules_type 
+    ON mgmt_cfg_sys_modules(module_type) 
     WHERE deleted_at IS NULL;
 
 -- Index for filtering enabled modules
-CREATE INDEX IF NOT EXISTS idx_sys_module_registry_enabled 
-    ON sys_module_registry(is_enabled) 
+CREATE INDEX IF NOT EXISTS idx_mgmt_cfg_sys_modules_enabled 
+    ON mgmt_cfg_sys_modules(is_enabled) 
     WHERE deleted_at IS NULL AND is_enabled = true;
 
 -- Index for tier-based queries
-CREATE INDEX IF NOT EXISTS idx_sys_module_registry_tier 
-    ON sys_module_registry(tier) 
+CREATE INDEX IF NOT EXISTS idx_mgmt_cfg_sys_modules_tier 
+    ON mgmt_cfg_sys_modules(tier) 
     WHERE deleted_at IS NULL;
 
 -- ============================================================================
 -- Updated At Trigger
 -- ============================================================================
 
-CREATE OR REPLACE FUNCTION update_sys_module_registry_updated_at()
+CREATE OR REPLACE FUNCTION update_mgmt_cfg_sys_modules_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = CURRENT_TIMESTAMP;
@@ -100,20 +100,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trigger_update_sys_module_registry_timestamp 
-    ON sys_module_registry;
+DROP TRIGGER IF EXISTS trigger_update_mgmt_cfg_sys_modules_timestamp 
+    ON mgmt_cfg_sys_modules;
 
-DROP TRIGGER IF EXISTS trigger_update_sys_module_registry_timestamp ON sys_module_registry;
-DROP TRIGGER IF EXISTS trigger_update_sys_module_registry_timestamp ON sys_module_registry;
-CREATE TRIGGER trigger_update_sys_module_registry_timestamp BEFORE UPDATE ON sys_module_registry
+CREATE TRIGGER trigger_update_mgmt_cfg_sys_modules_timestamp 
+    BEFORE UPDATE ON mgmt_cfg_sys_modules
     FOR EACH ROW
-    EXECUTE FUNCTION update_sys_module_registry_updated_at();
+    EXECUTE FUNCTION update_mgmt_cfg_sys_modules_updated_at();
 
 -- ============================================================================
 -- Initial Core Module Data
 -- ============================================================================
 
-INSERT INTO sys_module_registry (
+INSERT INTO mgmt_cfg_sys_modules (
     module_name, 
     display_name, 
     description, 
@@ -133,8 +132,8 @@ INSERT INTO sys_module_registry (
         1,
         true,
         '[]'::jsonb,
-        '{\"route\": \"/admin/access\", \"icon\": \"Shield\", \"label\": \"Access Control\", \"order\": 100, \"adminOnly\": true}'::jsonb,
-        '[\"admin:access\"]'::jsonb
+        '{"route": "/admin/access", "icon": "Shield", "label": "Access Control", "order": 100, "adminOnly": true}'::jsonb,
+        '["admin:access"]'::jsonb
     ),
     
     -- Tier 2: Depends on Tier 1
@@ -145,9 +144,9 @@ INSERT INTO sys_module_registry (
         'core',
         2,
         true,
-        '[\"module-access\"]'::jsonb,
-        '{\"route\": \"/admin/ai\", \"icon\": \"Bot\", \"label\": \"AI Providers\", \"order\": 110, \"adminOnly\": true}'::jsonb,
-        '[\"admin:ai\"]'::jsonb
+        '["module-access"]'::jsonb,
+        '{"route": "/admin/ai", "icon": "Bot", "label": "AI Providers", "order": 110, "adminOnly": true}'::jsonb,
+        '["admin:ai"]'::jsonb
     ),
     (
         'module-ws',
@@ -156,9 +155,9 @@ INSERT INTO sys_module_registry (
         'core',
         2,
         true,
-        '[\"module-access\"]'::jsonb,
-        '{\"route\": \"/admin/ws\", \"icon\": \"Building\", \"label\": \"Workspaces\", \"order\": 115, \"adminOnly\": true}'::jsonb,
-        '[\"admin:ws\"]'::jsonb
+        '["module-access"]'::jsonb,
+        '{"route": "/admin/ws", "icon": "Building", "label": "Workspaces", "order": 115, "adminOnly": true}'::jsonb,
+        '["admin:ws"]'::jsonb
     ),
     
     -- Tier 3: Depends on Tier 1 and 2
@@ -169,9 +168,9 @@ INSERT INTO sys_module_registry (
         'core',
         3,
         true,
-        '[\"module-access\", \"module-ai\"]'::jsonb,
-        '{\"route\": \"/admin/kb\", \"icon\": \"BookOpen\", \"label\": \"Knowledge Base\", \"order\": 125, \"adminOnly\": true}'::jsonb,
-        '[\"admin:kb\"]'::jsonb
+        '["module-access", "module-ai"]'::jsonb,
+        '{"route": "/admin/kb", "icon": "BookOpen", "label": "Knowledge Base", "order": 125, "adminOnly": true}'::jsonb,
+        '["admin:kb"]'::jsonb
     ),
     (
         'module-chat',
@@ -180,9 +179,9 @@ INSERT INTO sys_module_registry (
         'functional',
         3,
         true,
-        '[\"module-access\", \"module-kb\"]'::jsonb,
-        '{\"route\": \"/admin/chat\", \"icon\": \"MessageSquare\", \"label\": \"Chat\", \"order\": 130, \"adminOnly\": true}'::jsonb,
-        '[\"admin:chat\"]'::jsonb
+        '["module-access", "module-kb"]'::jsonb,
+        '{"route": "/admin/chat", "icon": "MessageSquare", "label": "Chat", "order": 130, "adminOnly": true}'::jsonb,
+        '["admin:chat"]'::jsonb
     ),
     (
         'module-mgmt',
@@ -191,9 +190,9 @@ INSERT INTO sys_module_registry (
         'core',
         3,
         true,
-        '[\"module-access\", \"module-ai\"]'::jsonb,
-        '{\"route\": \"/admin/platform\", \"icon\": \"Settings\", \"label\": \"Platform\", \"order\": 120, \"adminOnly\": true}'::jsonb,
-        '[\"admin:platform\"]'::jsonb
+        '["module-access", "module-ai"]'::jsonb,
+        '{"route": "/admin/platform", "icon": "Settings", "label": "Platform", "order": 120, "adminOnly": true}'::jsonb,
+        '["admin:platform"]'::jsonb
     ),
     
     -- Functional Modules (Optional - can be toggled)
@@ -204,9 +203,9 @@ INSERT INTO sys_module_registry (
         'functional',
         3,
         true,
-        '[\"module-access\", \"module-ws\"]'::jsonb,
-        '{\"route\": \"/admin/eval\", \"icon\": \"ClipboardCheck\", \"label\": \"Evaluation\", \"order\": 140, \"adminOnly\": true}'::jsonb,
-        '[\"admin:eval\"]'::jsonb
+        '["module-access", "module-ws"]'::jsonb,
+        '{"route": "/admin/eval", "icon": "ClipboardCheck", "label": "Evaluation", "order": 140, "adminOnly": true}'::jsonb,
+        '["admin:eval"]'::jsonb
     ),
     (
         'module-voice',
@@ -215,9 +214,9 @@ INSERT INTO sys_module_registry (
         'functional',
         3,
         true,
-        '[\"module-access\", \"module-ws\"]'::jsonb,
-        '{\"route\": \"/admin/voice\", \"icon\": \"Mic\", \"label\": \"Voice\", \"order\": 145, \"adminOnly\": true}'::jsonb,
-        '[\"admin:voice\"]'::jsonb
+        '["module-access", "module-ws"]'::jsonb,
+        '{"route": "/admin/voice", "icon": "Mic", "label": "Voice", "order": 145, "adminOnly": true}'::jsonb,
+        '["admin:voice"]'::jsonb
     )
 ON CONFLICT (module_name) DO NOTHING;
 
@@ -225,12 +224,12 @@ ON CONFLICT (module_name) DO NOTHING;
 -- Comments
 -- ============================================================================
 
-COMMENT ON TABLE sys_module_registry IS 'Registry of all CORA modules with their configuration and status';
-COMMENT ON COLUMN sys_module_registry.module_name IS 'Unique module identifier following module-{purpose} convention';
-COMMENT ON COLUMN sys_module_registry.module_type IS 'core = required for CORA, functional = feature-specific';
-COMMENT ON COLUMN sys_module_registry.tier IS 'Dependency tier: 1=no deps, 2=depends on T1, 3=depends on T1+T2';
-COMMENT ON COLUMN sys_module_registry.is_enabled IS 'Runtime toggle - can be changed without redeployment';
-COMMENT ON COLUMN sys_module_registry.is_installed IS 'Whether module code is deployed to the system';
-COMMENT ON COLUMN sys_module_registry.config IS 'Module-specific configuration as JSON';
-COMMENT ON COLUMN sys_module_registry.nav_config IS 'Navigation configuration: route, icon, label, order, visibility';
-COMMENT ON COLUMN sys_module_registry.dependencies IS 'Array of module_name values this module depends on';
+COMMENT ON TABLE mgmt_cfg_sys_modules IS 'Registry of all CORA modules with their configuration and status';
+COMMENT ON COLUMN mgmt_cfg_sys_modules.module_name IS 'Unique module identifier following module-{purpose} convention';
+COMMENT ON COLUMN mgmt_cfg_sys_modules.module_type IS 'core = required for CORA, functional = feature-specific';
+COMMENT ON COLUMN mgmt_cfg_sys_modules.tier IS 'Dependency tier: 1=no deps, 2=depends on T1, 3=depends on T1+T2';
+COMMENT ON COLUMN mgmt_cfg_sys_modules.is_enabled IS 'Runtime toggle - can be changed without redeployment';
+COMMENT ON COLUMN mgmt_cfg_sys_modules.is_installed IS 'Whether module code is deployed to the system';
+COMMENT ON COLUMN mgmt_cfg_sys_modules.config IS 'Module-specific configuration as JSON';
+COMMENT ON COLUMN mgmt_cfg_sys_modules.nav_config IS 'Navigation configuration: route, icon, label, order, visibility';
+COMMENT ON COLUMN mgmt_cfg_sys_modules.dependencies IS 'Array of module_name values this module depends on';

@@ -106,7 +106,7 @@ export type UseModuleRegistryReturn = ModuleRegistryState &
 // API Client
 // =============================================================================
 
-const API_BASE = "/api/platform/modules";
+const API_BASE = "/api/sys/modules";
 
 async function apiRequest<T>(
   endpoint: string,

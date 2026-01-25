@@ -81,17 +81,15 @@ LEGACY_WHITELIST = {
     'sys_idp_config',
     'sys_idp_audit_log',
     
-    # Phase 2: System Config Tables (module-mgmt)
-    'sys_lambda_config',
+    # Phase 2: System Config Tables (module-mgmt) - ✅ COMPLETED in Sprint 3a Phase 0
+    # Removed: sys_lambda_config (now mgmt_cfg_sys_lambda)
+    # Removed: sys_module_registry (now mgmt_cfg_sys_modules)
+    # Removed: sys_module_usage (now mgmt_usage_modules)
     
     # Phase 5: Log/History Tables (Deferred)
     'user_auth_log',
     'ai_model_validation_history',
     'ai_model_validation_progress',
-    
-    # Not Yet Scheduled (needs phase assignment)
-    'sys_module_registry',
-    'sys_module_usage',
     
     # Index naming (module-ai)
     'ai_cfg_sys_rag_singleton',

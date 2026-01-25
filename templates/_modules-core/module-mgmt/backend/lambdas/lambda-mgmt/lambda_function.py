@@ -195,7 +195,7 @@ def handle_list_configs() -> Dict[str, Any]:
     """
     try:
         configs = common.find_many(
-            table='sys_lambda_config',
+            table='mgmt_cfg_sys_lambda',
             filters={'is_active': True}
         )
         
@@ -226,7 +226,7 @@ def handle_get_config(config_key: str) -> Dict[str, Any]:
     
     try:
         config = common.find_one(
-            table='sys_lambda_config',
+            table='mgmt_cfg_sys_lambda',
             filters={'config_key': config_key}
         )
         
@@ -274,7 +274,7 @@ def handle_update_config(
     try:
         # Update configuration in database
         updated_config = common.update_one(
-            table='sys_lambda_config',
+            table='mgmt_cfg_sys_lambda',
             filters={'config_key': config_key},
             data={
                 'config_value': config_value,
@@ -364,7 +364,7 @@ def handle_sync_eventbridge(user_id: str) -> Dict[str, Any]:
     try:
         # Get current lambda_warming configuration
         config = common.find_one(
-            table='sys_lambda_config',
+            table='mgmt_cfg_sys_lambda',
             filters={'config_key': 'lambda_warming'}
         )
         
@@ -444,7 +444,7 @@ def handle_list_modules(event: Dict[str, Any]) -> Dict[str, Any]:
             filters['is_enabled'] = enabled_filter.lower() == 'true'
         
         modules = common.find_many(
-            table='sys_module_registry',
+            table='mgmt_cfg_sys_modules',
             filters=filters,
             order='tier,module_name'
         )
@@ -487,7 +487,7 @@ def handle_get_module(module_name: str) -> Dict[str, Any]:
     
     try:
         module = common.find_one(
-            table='sys_module_registry',
+            table='mgmt_cfg_sys_modules',
             filters={'module_name': module_name, 'deleted_at': None}
         )
         
@@ -538,7 +538,7 @@ def handle_update_module(
     
     try:
         updated_module = common.update_one(
-            table='sys_module_registry',
+            table='mgmt_cfg_sys_modules',
             filters={'module_name': module_name, 'deleted_at': None},
             data=update_data
         )
@@ -573,7 +573,7 @@ def handle_enable_module(module_name: str, user_id: str) -> Dict[str, Any]:
     try:
         # Get the module to check dependencies
         module = common.find_one(
-            table='sys_module_registry',
+            table='mgmt_cfg_sys_modules',
             filters={'module_name': module_name, 'deleted_at': None}
         )
         
@@ -585,7 +585,7 @@ def handle_enable_module(module_name: str, user_id: str) -> Dict[str, Any]:
         # Check if all dependencies are enabled
         if dependencies:
             deps = common.find_many(
-                table='sys_module_registry',
+                table='mgmt_cfg_sys_modules',
                 filters={'deleted_at': None}
             )
             
@@ -600,7 +600,7 @@ def handle_enable_module(module_name: str, user_id: str) -> Dict[str, Any]:
         
         # Enable the module
         updated_module = common.update_one(
-            table='sys_module_registry',
+            table='mgmt_cfg_sys_modules',
             filters={'module_name': module_name},
             data={'is_enabled': True, 'updated_by': user_id}
         )
@@ -640,7 +640,7 @@ def handle_disable_module(
     try:
         # Get the module
         module = common.find_one(
-            table='sys_module_registry',
+            table='mgmt_cfg_sys_modules',
             filters={'module_name': module_name, 'deleted_at': None}
         )
         
@@ -656,7 +656,7 @@ def handle_disable_module(
         # Check if other enabled modules depend on this one
         if not force:
             all_modules = common.find_many(
-                table='sys_module_registry',
+                table='mgmt_cfg_sys_modules',
                 filters={'deleted_at': None, 'is_enabled': True}
             )
             
@@ -672,7 +672,7 @@ def handle_disable_module(
         
         # Disable the module
         updated_module = common.update_one(
-            table='sys_module_registry',
+            table='mgmt_cfg_sys_modules',
             filters={'module_name': module_name},
             data={'is_enabled': False, 'updated_by': user_id}
         )
@@ -720,7 +720,7 @@ def handle_register_module(body: Dict[str, Any], user_id: str) -> Dict[str, Any]
     try:
         # Check if module already exists
         existing = common.find_one(
-            table='sys_module_registry',
+            table='mgmt_cfg_sys_modules',
             filters={'module_name': module_name, 'deleted_at': None}
         )
         
@@ -755,7 +755,7 @@ def handle_register_module(body: Dict[str, Any], user_id: str) -> Dict[str, Any]
         
         # Insert module
         new_module = common.insert_one(
-            table='sys_module_registry',
+            table='mgmt_cfg_sys_modules',
             data=insert_data
         )
         
