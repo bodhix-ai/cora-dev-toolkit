@@ -68,7 +68,21 @@ Standardize all CORA admin pages (sys and org) with consistent:
 
 ## Session Log
 
-### January 25, 2026 - Sprint 3a Start
+### January 25, 2026 - Sprint 3a Progress (Session 2)
+- **Steps 1-4 Complete (57% done)**
+  - ✅ Step 1: module-chat reclassified as 'functional' in sys_module_registry
+  - ✅ Step 2: ModuleConfigTab component fully implemented
+  - ✅ Step 3: PlatformMgmtAdmin includes Modules tab
+  - ✅ Step 4: Admin cards respect runtime module state (SystemAdminClientPage, OrgAdminClientPage)
+- **Infrastructure Fixes:**
+  - Fixed create-cora-project.sh password URL encoding
+  - Fixed audit-column-validator project detection
+- **Remaining Steps:**
+  - Step 5: Integrate useModuleNavigation() hook in Sidebar (hook exists, not yet used)
+  - Step 6: Create module-toggle-validator
+  - Step 7: Create standard_MODULE-TOGGLE.md documentation
+
+### January 25, 2026 - Sprint 3a Start (Session 1)
 - Created admin-page-s3a branch
 - Scope expanded to include module management core features
 - Module-chat will be reclassified as functional (toggleable) while remaining in core creation tier

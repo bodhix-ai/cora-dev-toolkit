@@ -1,10 +1,11 @@
 # Plan: Admin Standardization Sprint 3a - Module Management Core
 
-**Status:** 🟡 IN PROGRESS  
+**Status:** 🟡 IN PROGRESS (57% complete - 4/7 steps done)  
 **Branch:** `admin-page-s3a`  
 **Context:** `memory-bank/context-admin-standardization.md`  
 **Priority:** P1 - Unblocks WS Plugin Architecture initiative  
-**Created:** January 25, 2026
+**Created:** January 25, 2026  
+**Last Updated:** January 25, 2026 (Session 2)
 
 ---
 
@@ -66,7 +67,7 @@ These modules can be enabled/disabled by sys admin:
 
 ## Implementation Steps
 
-### Step 1: Reclassify module-chat in Database Schema
+### Step 1: Reclassify module-chat in Database Schema ✅ COMPLETE
 
 **Files:**
 - `templates/_modules-core/module-chat/db/schema/002-sys-module-registry.sql` (if exists)
@@ -79,7 +80,7 @@ INSERT INTO sys_module_registry (module_name, display_name, module_type, tier, .
 VALUES ('module-chat', 'Chat & Messaging', 'functional', 3, ...);  -- Changed from 'core' to 'functional'
 ```
 
-### Step 2: Create Module Configuration Tab Component
+### Step 2: Create Module Configuration Tab Component ✅ COMPLETE
 
 **File:** `templates/_modules-core/module-mgmt/frontend/components/admin/ModuleConfigTab.tsx`
 
@@ -113,7 +114,7 @@ VALUES ('module-chat', 'Chat & Messaging', 'functional', 3, ...);  -- Changed fr
 └─────────────────────────────────────────────┘
 ```
 
-### Step 3: Update PlatformMgmtAdmin to Include ModuleConfigTab
+### Step 3: Update PlatformMgmtAdmin to Include ModuleConfigTab ✅ COMPLETE
 
 **File:** `templates/_modules-core/module-mgmt/frontend/components/admin/PlatformMgmtAdmin.tsx`
 
@@ -122,7 +123,7 @@ VALUES ('module-chat', 'Chat & Messaging', 'functional', 3, ...);  -- Changed fr
 - Import and render `ModuleConfigTab` component
 - Use standard tabbed interface pattern
 
-### Step 4: Update Admin Cards for Module-Aware Visibility
+### Step 4: Update Admin Cards for Module-Aware Visibility ✅ COMPLETE
 
 **Files to Update:**
 - `templates/_project-stack-template/apps/web/app/admin/sys/SystemAdminClientPage.tsx`
@@ -188,14 +189,14 @@ export function SystemAdminClientPage() {
 
 ## Success Criteria
 
-- [ ] **SC-1:** Module Configuration tab visible in `/admin/sys/mgmt` page
-- [ ] **SC-2:** Tab lists all registered modules with type indicators (core/functional)
-- [ ] **SC-3:** Core modules display "Always Enabled" badge, no toggle
-- [ ] **SC-4:** Functional modules have enable/disable toggle switch
-- [ ] **SC-5:** Toggling functional module updates `sys_module_registry.is_enabled`
+- [x] **SC-1:** Module Configuration tab visible in `/admin/sys/mgmt` page
+- [x] **SC-2:** Tab lists all registered modules with type indicators (core/functional)
+- [x] **SC-3:** Core modules display "Always Enabled" badge, no toggle
+- [x] **SC-4:** Functional modules have enable/disable toggle switch
+- [x] **SC-5:** Toggling functional module updates `sys_module_registry.is_enabled`
 - [ ] **SC-6:** Dependency validation prevents disabling if dependents are enabled (future)
-- [ ] **SC-7:** Admin cards (sys & org) are hidden/disabled for disabled modules
-- [ ] **SC-8:** Left nav items hidden for disabled modules
+- [x] **SC-7:** Admin cards (sys & org) are hidden/disabled for disabled modules
+- [ ] **SC-8:** Left nav items hidden for disabled modules (hook exists, not integrated)
 - [ ] **SC-9:** Validation script exists: `validation/module-toggle-validator/`
 - [ ] **SC-10:** Standard documented: `docs/standards/standard_MODULE-TOGGLE.md`
 
