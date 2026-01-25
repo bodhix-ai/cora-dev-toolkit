@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useWorkspacePlugin } from '@{{PROJECT_NAME}}/shared/workspace-plugin';
 import type { KnowledgeBase, KbDocument, AvailableKb } from '../types';
 import type { KbModuleApiClient } from '../lib/api';
 
@@ -24,8 +25,6 @@ export interface ApiClientWithKb {
 }
 
 export interface UseWorkspaceKBOptions {
-  /** Workspace ID */
-  workspaceId: string;
   /** API client with KB module */
   apiClient: ApiClientWithKb | null;
   /** Auto-fetch on mount */
@@ -65,10 +64,12 @@ export interface UseWorkspaceKBReturn {
  * Hook for managing workspace KB data and operations
  */
 export function useWorkspaceKB({
-  workspaceId,
   apiClient,
   autoFetch = true,
 }: UseWorkspaceKBOptions): UseWorkspaceKBReturn {
+  // Get workspace context from plugin
+  const { workspaceId } = useWorkspacePlugin();
+  
   // State
   const [kb, setKb] = useState<KnowledgeBase | null>(null);
   const [documents, setDocuments] = useState<KbDocument[]>([]);

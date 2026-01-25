@@ -76,143 +76,51 @@ As each migration phase completes, remove the corresponding tables/indexes from 
 
 ---
 
-### Phase 1: Critical Auth Tables (sys_cfg_idp)
+### Phase 1: Critical Auth Tables → CAN BE MOVED TO COGNITO/OIDC
 
+**Status:** ⏳ Can be integrated with `docs/plans/backlog/plan_cognito-external-idp-migration.md` (Phase 0)  
 **Risk Level:** ❌ CRITICAL - Auth system dependency  
-**Duration:** 3-4 hours  
+**Duration:** Integrated with Cognito implementation  
 **Lambda Impact:** `module-access/idp-config` only
+
+**Rationale:** When implementing Cognito (the new default auth provider), module-access IDP tables will be updated anyway. Migrating these tables as Phase 0 of Cognito implementation follows the "touch each module once" principle.
+
+**Recommended:** Integrate this phase with Cognito/OIDC migration to avoid touching module-access twice.
 
 #### Tables to Migrate
 
-| Current Name | New Name | Type | Rows |
-|--------------|----------|------|------|
-| `sys_idp_config` | `sys_cfg_idp` | Config | Singleton |
-| `sys_idp_audit_log` | `sys_log_idp_audit` | Log | Multi-row |
+| Current Name | New Name | Type | Can Move To |
+|--------------|----------|------|-------------|
+| `sys_idp_config` | `access_cfg_sys_idp` | Config | Cognito/OIDC Phase 0 |
+| `sys_idp_audit_log` | `access_log_idp_audit` | Log | Cognito/OIDC Phase 0 |
 
-#### Migration Steps
+**Note:** Corrected table names use `access_` prefix (module-access owns these tables) instead of `sys_` prefix per ADR-011 standards.
 
-```sql
--- 1. Create new tables with correct naming
-CREATE TABLE sys_cfg_idp (
-    -- Copy structure from sys_idp_config
-    ...
-);
+**See:** `docs/plans/backlog/plan_cognito-external-idp-migration.md` - Phase 0 for complete migration details with corrected table names.
 
-CREATE TABLE sys_log_idp_audit (
-    -- Copy structure from sys_idp_audit_log
-    ...
-);
-
--- 2. Copy data
-INSERT INTO sys_cfg_idp SELECT * FROM sys_idp_config;
-INSERT INTO sys_log_idp_audit SELECT * FROM sys_idp_audit_log;
-
--- 3. Update foreign keys
-ALTER TABLE sys_log_idp_audit
-    DROP CONSTRAINT sys_idp_audit_log_idp_config_id_fkey,
-    ADD CONSTRAINT sys_log_idp_audit_idp_config_id_fkey
-        FOREIGN KEY (idp_config_id) REFERENCES sys_cfg_idp(id);
-
--- 4. Recreate indexes
-DROP INDEX idx_sys_idp_audit_config;
-CREATE INDEX idx_sys_log_idp_audit_config ON sys_log_idp_audit(idp_config_id);
-
--- 5. Update RLS policies (both tables)
--- ... (copy policy structure)
-
--- 6. Create backward-compatible views (temporary)
-CREATE VIEW sys_idp_config AS SELECT * FROM sys_cfg_idp;
-CREATE VIEW sys_idp_audit_log AS SELECT * FROM sys_log_idp_audit;
-```
-
-#### Code Changes
-
-**Lambda:** `module-access/backend/lambdas/idp-config/lambda_function.py`
-- Update all SQL queries: `sys_idp_config` → `sys_cfg_idp`
-- Update all SQL queries: `sys_idp_audit_log` → `sys_log_idp_audit`
-
-**Template:** `module-access/db/schema/005-sys-idp-config.sql`
-- Rename file to `005-sys-cfg-idp.sql`
-- Update table creation statements
-
-#### Testing
-
-- [ ] Test IDP configuration read/write
-- [ ] Test IDP audit logging
-- [ ] Test auth flow end-to-end
-- [ ] Verify RLS policies work correctly
-
-#### Post-Migration
-
-- [ ] **Remove from whitelist**: Delete `sys_idp_config` and `sys_idp_audit_log` from `LEGACY_WHITELIST` in `scripts/validate-db-naming.py`
-- [ ] Verify validator passes with whitelist entries removed
-
-#### Rollback Plan
-
-1. Drop new tables
-2. Remove foreign key updates
-3. Revert Lambda code
-4. Views ensure old code continues to work
+**If implementing this phase standalone** (not integrated with Cognito), use the migration steps in the Cognito plan but note that table names should use `access_` prefix, not `sys_` prefix.
 
 ---
 
-### Phase 2: System Config Tables (sys_cfg_lambda)
+### Phase 2: System Config Tables → MOVED TO WS-PLUGIN S3
 
+**Status:** ✅ Scope moved to `docs/plans/plan_ws-plugin-arch-s3.md` (Phase 0)  
 **Risk Level:** ⚠️ HIGH - Admin functionality  
-**Duration:** 2-3 hours  
-**Lambda Impact:** `module-mgmt/lambda-mgmt` only
+**Duration:** Integrated with S3 implementation  
+**Lambda Impact:** `module-mgmt/lambda-mgmt` + `module-mgmt/module-registry`
 
-#### Tables to Migrate
+**Rationale:** WS-Plugin S3 needs to migrate `sys_module_registry` as its foundation table. Since both tables are owned by module-mgmt, migrating them together follows the "touch each module once" principle.
 
-| Current Name | New Name | Type | Rows |
-|--------------|----------|------|------|
-| `sys_lambda_config` | `sys_cfg_lambda` | Config | Multi-row |
+#### Tables Migrated in WS-Plugin S3 Phase 0
 
-#### Migration Steps
+| Current Name | New Name | Type | Moved To |
+|--------------|----------|------|----------|
+| `sys_module_registry` | `mgmt_cfg_sys_modules` | Config | WS-Plugin S3 Phase 0 |
+| `sys_lambda_config` | `mgmt_cfg_sys_lambda` | Config | WS-Plugin S3 Phase 0 |
 
-```sql
--- 1. Create new table
-CREATE TABLE sys_cfg_lambda (
-    -- Copy structure from sys_lambda_config
-    ...
-);
+**See:** `docs/plans/plan_ws-plugin-arch-s3.md` - Phase 0 for complete migration details.
 
--- 2. Copy data
-INSERT INTO sys_cfg_lambda SELECT * FROM sys_lambda_config;
-
--- 3. Recreate indexes
-DROP INDEX idx_sys_lambda_config_key;
-CREATE INDEX idx_sys_cfg_lambda_key ON sys_cfg_lambda(config_key);
-
--- 4. Update RLS policies
--- ... (copy policy structure)
-
--- 5. Create backward-compatible view
-CREATE VIEW sys_lambda_config AS SELECT * FROM sys_cfg_lambda;
-```
-
-#### Code Changes
-
-**Lambda:** `module-mgmt/backend/lambdas/lambda-mgmt/lambda_function.py`
-- Update all SQL queries: `sys_lambda_config` → `sys_cfg_lambda`
-
-**Template:** `module-mgmt/db/schema/001-sys-lambda-config.sql`
-- Rename file to `001-sys-cfg-lambda.sql`
-- Update table creation statements
-
-**Frontend:** `module-mgmt/frontend/components/admin/LambdaWarmingTab.tsx`
-- No changes needed (uses API)
-
-#### Testing
-
-- [ ] Test Lambda warming toggle
-- [ ] Test custom schedule configuration
-- [ ] Test admin dashboard displays correctly
-
-#### Post-Migration
-
-- [ ] **Remove from whitelist**: Delete `sys_lambda_config` from `LEGACY_WHITELIST` in `scripts/validate-db-naming.py`
-- [ ] Verify validator passes with whitelist entry removed
+**Note:** This phase is no longer part of the db-naming-migration plan. It has been integrated with WS-Plugin S3 to minimize module-mgmt code changes and establish a compliant foundation for S3's new config override tables.
 
 ---
 

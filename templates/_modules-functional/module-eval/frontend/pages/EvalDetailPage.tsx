@@ -63,7 +63,7 @@ import {
   ComplianceScoreChip,
 } from "../components";
 import type { EvalCriteriaResult, Citation, CriteriaResultWithItem } from "../types";
-import { useWorkspaceConfig } from "@{{PROJECT_NAME}}/module-ws";
+import { useWorkspacePlugin } from "@{{PROJECT_NAME}}/shared/workspace-plugin";
 
 // =============================================================================
 // TYPES
@@ -178,7 +178,8 @@ function Header({
   const [loadingWorkspace, setLoadingWorkspace] = useState(!providedWorkspaceName && !!workspaceId);
 
   // Get workspace config for dynamic labels
-  const { navLabelSingular } = useWorkspaceConfig();
+  const { navigation } = useWorkspacePlugin();
+  const navLabelSingular = navigation.labelSingular;
 
   const statusColors: Record<string, "warning" | "info" | "success" | "error" | "default"> = {
     draft: "default",
