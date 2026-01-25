@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
+import { useWorkspacePlugin } from "@{{PROJECT_NAME}}/shared/workspace-plugin";
 import type {
   VoiceSession,
   VoiceSessionSummary,
@@ -102,14 +103,19 @@ export interface UseVoiceSessionsReturn {
  * ```
  */
 export function useVoiceSessions(options: UseVoiceSessionsOptions): UseVoiceSessionsReturn {
+  // Get workspace context from plugin (provides default workspaceId)
+  const pluginContext = useWorkspacePlugin();
+  
+  // Use provided workspaceId from options, or fall back to plugin context
   const {
     orgId,
-    workspaceId,
+    workspaceId: optionsWorkspaceId,
     status: initialStatus,
     interviewType: initialInterviewType,
     pageSize = 20,
     autoLoad = true,
   } = options;
+  const workspaceId = optionsWorkspaceId ?? pluginContext.workspaceId;
 
   // Auth
   const { data: authSession } = useSession();

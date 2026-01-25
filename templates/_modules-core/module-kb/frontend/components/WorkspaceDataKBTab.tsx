@@ -40,11 +40,6 @@ interface GroupedAvailableKbs {
 
 interface WorkspaceDataKBTabProps {
   /**
-   * Workspace ID
-   */
-  workspaceId: string;
-  
-  /**
    * Workspace KB (if exists)
    */
   kb?: KnowledgeBase | null;
@@ -125,7 +120,6 @@ interface WorkspaceDataKBTabProps {
  * 4. KB stats - document count, chunk count, storage size
  */
 export function WorkspaceDataKBTab({
-  workspaceId,
   kb = null,
   availableKbs,
   documents = [],
