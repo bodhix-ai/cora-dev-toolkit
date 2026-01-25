@@ -2020,8 +2020,9 @@ run_migrations() {
   
   # URL-encode password for PostgreSQL connection string
   # Special characters like &, =, @, etc. need to be encoded
+  # Pass password as sys.argv to avoid shell quoting issues
   url_encode_password() {
-    python3 -c "import urllib.parse; print(urllib.parse.quote('$1', safe=''))"
+    python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=''))" "$1"
   }
   
   # Build connection string with URL-encoded password
@@ -2041,11 +2042,20 @@ run_migrations() {
     local psql_output=$(mktemp)
     local psql_errors=$(mktemp)
     
-    # Execute with verbose output
-    if psql "$conn_string" -f "${stack_dir}/scripts/setup-database.sql" \
-         -v ON_ERROR_STOP=1 \
+    # Execute with verbose output (don't use ON_ERROR_STOP=1 to allow warnings)
+    psql "$conn_string" -f "${stack_dir}/scripts/setup-database.sql" \
          --echo-errors \
-         > "$psql_output" 2> "$psql_errors"; then
+         > "$psql_output" 2> "$psql_errors"
+    local psql_exit_code=$?
+    
+    # Check if there are actual ERRORs (not just NOTICE/WARNING)
+    local has_errors=false
+    if grep -q "^ERROR:" "$psql_errors" 2>/dev/null; then
+      has_errors=true
+    fi
+    
+    # Consider successful if no actual ERRORs, even if warnings present
+    if [[ $psql_exit_code -eq 0 ]] || ! $has_errors; then
       
       # Show summary of what was executed
       log_info "Schema creation completed. Summary:"

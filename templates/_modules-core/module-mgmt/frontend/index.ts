@@ -14,7 +14,15 @@ export * from "./types";
 export { LambdaMgmtApiClient, createLambdaMgmtClient } from "./lib/api";
 
 // Export all hooks
-export { useLambdaWarming, useLambdaFunctions } from "./hooks";
+export {
+  useLambdaWarming,
+  useLambdaFunctions,
+  useModuleRegistry,
+  useModule,
+  useEnabledModules,
+  useModuleEnabled,
+  useModuleNavigation,
+} from "./hooks";
 
 // Export admin card
 export { platformMgmtAdminCard } from "./adminCard";

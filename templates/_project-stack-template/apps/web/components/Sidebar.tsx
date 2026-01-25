@@ -21,6 +21,7 @@ import * as MuiIcons from "@mui/icons-material";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 import { useWorkspaceConfig } from "@{{PROJECT_NAME}}/module-ws";
 import { useOrganizationContext, OrgIcon } from "@{{PROJECT_NAME}}/module-access";
+import { ModuleGate } from "@{{PROJECT_NAME}}/module-mgmt";
 
 /**
  * Sidebar Component - Following ADR-008 CORA Sidebar and Org Selector Standard
@@ -57,6 +58,17 @@ export function Sidebar({ navigation }: SidebarProps) {
   
   // Get current organization for app branding
   const { currentOrganization } = useOrganizationContext();
+  
+  // Helper function to map routes to module names for ModuleGate
+  const getModuleFromRoute = (href: string): string | null => {
+    // Map routes to functional module names (toggleable modules only)
+    const routeToModule: Record<string, string> = {
+      "/chat": "module-chat",
+      "/eval": "module-eval",
+      "/voice": "module-voice",
+    };
+    return routeToModule[href] || null;
+  };
   
   // Helper function to get dynamic label for navigation items
   const getNavLabel = (item: { href: string; label: string }) => {
@@ -105,30 +117,51 @@ export function Sidebar({ navigation }: SidebarProps) {
       {/* Navigation Items */}
       <List sx={{ flexGrow: 1, overflowY: "auto", py: 2 }}>
         {navigation.flatMap((section) =>
-          section.items.map((item) => (
-            <ListItem key={item.href} disablePadding sx={{ px: 2 }}>
-              <ListItemButton
-                selected={pathname === item.href}
-                onClick={() => handleNavigation(item.href)}
-                sx={{
-                  borderRadius: 1,
-                  "&.Mui-selected": {
-                    bgcolor: "primary.main",
-                    color: "primary.contrastText",
-                    "&:hover": {
-                      bgcolor: "primary.dark",
-                    },
-                    "& .MuiListItemIcon-root": {
+          section.items.map((item) => {
+            // Don't render workspace nav item until custom label is loaded
+            // This prevents showing default "Workspaces" label before custom label loads
+            if (item.href === "/ws" && !wsConfig?.navLabelPlural) {
+              return null;
+            }
+
+            const moduleName = getModuleFromRoute(item.href);
+            const navItem = (
+              <ListItem key={item.href} disablePadding sx={{ px: 2 }}>
+                <ListItemButton
+                  selected={pathname === item.href}
+                  onClick={() => handleNavigation(item.href)}
+                  sx={{
+                    borderRadius: 1,
+                    "&.Mui-selected": {
+                      bgcolor: "primary.main",
                       color: "primary.contrastText",
+                      "&:hover": {
+                        bgcolor: "primary.dark",
+                      },
+                      "& .MuiListItemIcon-root": {
+                        color: "primary.contrastText",
+                      },
                     },
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>{getNavIcon(item)}</ListItemIcon>
-                <ListItemText primary={getNavLabel(item)} />
-              </ListItemButton>
-            </ListItem>
-          ))
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>{getNavIcon(item)}</ListItemIcon>
+                  <ListItemText primary={getNavLabel(item)} />
+                </ListItemButton>
+              </ListItem>
+            );
+
+            // Wrap functional module nav items in ModuleGate for visibility control
+            if (moduleName) {
+              return (
+                <ModuleGate key={item.href} moduleName={moduleName} fallback={null}>
+                  {navItem}
+                </ModuleGate>
+              );
+            }
+
+            // Core module nav items are always visible
+            return navItem;
+          })
         )}
       </List>
 

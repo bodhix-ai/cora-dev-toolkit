@@ -14,10 +14,43 @@ Standardize all CORA admin pages (sys and org) with consistent:
 ## Sprint History
 
 | Sprint | Branch | Plan | Status | Completed |
-|--------|--------|------|--------|-----------|
+|--------|--------|------|-----------|--------------|
 | S1 | `admin-page-s1` | `plan_admin-page-standardization-s1.md` | ✅ Complete | 2026-01-22 |
 | S2 | `admin-page-s2-completion` | `plan_admin-page-standardization-s2.md` | ✅ Complete | 2026-01-24 |
-| S3 | `admin-page-s3` | `plan_admin-page-standardization-s3.md` | ⏳ Planned | - |
+| S3a | `admin-page-s3a` | `plan_admin-page-s3a.md` | ✅ Complete | 2026-01-25 (Session 5) |
+| S3b | TBD | `plan_admin-page-s3b.md` | 📋 Planned | - |
+
+## Sprint 3a Summary (Completed)
+
+**Branch:** `admin-page-s3a`
+**Plan:** `docs/plans/plan_admin-page-s3a.md`
+**Status:** ✅ Complete (100% - Phase 0 + Steps 1-7 done, migration tested)
+
+**Achievements:**
+- ✅ Step 1: module-chat reclassified as 'functional' in sys_module_registry
+- ✅ Step 2: ModuleConfigTab component fully implemented
+- ✅ Step 3: PlatformMgmtAdmin includes Modules tab
+- ✅ Step 4: Admin cards respect runtime module state
+- ✅ Step 5: Sidebar uses ModuleGate for functional module nav items + WS label fix
+- ✅ Step 6: module-toggle-validator created with full validation
+- ✅ Step 7: standard_MODULE-TOGGLE.md documented
+
+**Deliverables:**
+- `templates/_project-stack-template/apps/web/components/Sidebar.tsx` - ModuleGate integration + WS label loading fix
+- `validation/module-toggle-validator/` - Module toggle compliance validator
+- `docs/standards/standard_MODULE-TOGGLE.md` - Module toggle pattern standard
+
+**Impact:** Sys admins can now toggle functional modules on/off. Infrastructure ready for WS Plugin Architecture. Database tables comply with naming standards.
+
+## Sprint 3b Scope (Planned)
+
+**Focus:** Admin Standards & Documentation
+- Admin page parity rule (both sys & org per module)
+- Module ADMINISTRATION.md template
+- Delegated admin concept documentation
+- Guide for module developers
+
+**Not Started** - Awaiting definition and scoping.
 
 ## Sprint 2 Summary (Completed)
 
@@ -30,14 +63,20 @@ Standardize all CORA admin pages (sys and org) with consistent:
 - ADR-016: Org Admin Authorization Pattern
 - Admin-auth-validator extended
 
-## Sprint 3 Scope (Outstanding)
+## Sprint 3b Scope (Planned)
 
-Priority: **LOWEST** (unless admin config required for ws-plugin-architecture)
+**Focus:** Admin Standards & Documentation
+- Admin page parity rule (both sys & org per module)
+- Module ADMINISTRATION.md template
+- Delegated admin concept documentation
+- Guide for module developers
 
-Outstanding work:
-- Complete testing of all admin pages per test matrix
-- Fix any remaining admin page issues
-- Integration with ws-plugin architecture (if applicable)
+## Sprint 3c Scope (Future)
+
+**Focus:** In-App Documentation (kbdocs)
+- Documentation route structure
+- Markdown rendering in-app
+- Project documentation copying pattern
 
 ## Key Decisions
 
@@ -45,6 +84,67 @@ Outstanding work:
 - ADR-016: Org Admin Page Authorization
 
 ## Session Log
+
+### January 25, 2026 - Sprint 3a Completion (Sessions 3-5)
+
+**Session 5 - Phase 0 DB Migration Complete:**
+- **Database Migration Executed Successfully**
+  - Created migration script: `scripts/migrations/002-module-mgmt-table-rename.sql`
+  - Renamed 4 module-mgmt tables to comply with DATABASE-NAMING standard:
+    - `sys_lambda_config` → `mgmt_cfg_sys_lambda`
+    - `sys_module_registry` → `mgmt_cfg_sys_modules`
+    - `sys_module_usage` → `mgmt_usage_modules`
+    - `sys_module_usage_daily` → `mgmt_usage_modules_daily`
+  - Fixed multiple migration issues iteratively:
+    - Constraint name conflict (unique_daily_usage → mgmt_usage_modules_daily_unique)
+    - Table/view conflict (renamed old tables to *_old before creating views)
+    - Syntax error (removed RAISE NOTICE outside DO block)
+  - Migration tested and validated on test database
+  - Old tables preserved as *_old for rollback safety (to be dropped after testing period)
+- **Template Schema Files Updated**
+  - Renamed schema files to match new table names
+  - Updated all table definitions with correct naming patterns
+  - Applied Rule 8 specialized patterns: `{module}_cfg_{scope}_{purpose}` and `{module}_usage_{entity}`
+- **Lambda Code Updated**
+  - Updated 15 table references in `lambda-mgmt/lambda_function.py`
+  - All queries now use new table names
+- **Validator Updated**
+  - Removed `sys_module_registry`, `sys_lambda_config`, `sys_module_usage` from whitelist
+  - Marked Phase 2 as "Completed in S3a Phase 0"
+- **Documentation Updated**
+  - Updated plan status to 100% complete
+  - Added cleanup instructions for old tables
+
+**Session 3 - Steps 5-7 Complete (100% done)**
+- **Steps 5-7 Complete (100% done)**
+  - ✅ Step 5: Sidebar integrated with ModuleGate for functional module nav items
+    - Fixed workspace nav item showing default label before custom label loads
+    - Functional modules wrapped in `<ModuleGate>` for visibility control
+    - Core modules always visible without conditionals
+  - ✅ Step 6: module-toggle-validator created (validator.py, cli.py, __init__.py)
+  - ✅ Step 7: standard_MODULE-TOGGLE.md documented with comprehensive guide
+- **Key Implementation Details:**
+  - Sidebar uses `getModuleFromRoute()` helper to map routes to module names
+  - Added check: `if (item.href === "/ws" && !wsConfig?.navLabelPlural) return null;`
+  - This prevents workspace nav from showing default "Workspaces" before custom label loads
+  - Validator checks: schema module_type, admin card patterns, sidebar integration
+  - Standard documents: classification, hybrid pattern, integration points, testing
+
+### January 25, 2026 - Sprint 3a Progress (Session 2)
+- **Steps 1-4 Complete (57% done)**
+  - ✅ Step 1: module-chat reclassified as 'functional' in sys_module_registry
+  - ✅ Step 2: ModuleConfigTab component fully implemented
+  - ✅ Step 3: PlatformMgmtAdmin includes Modules tab
+  - ✅ Step 4: Admin cards respect runtime module state (SystemAdminClientPage, OrgAdminClientPage)
+- **Infrastructure Fixes:**
+  - Fixed create-cora-project.sh password URL encoding
+  - Fixed audit-column-validator project detection
+
+### January 25, 2026 - Sprint 3a Start (Session 1)
+- Created admin-page-s3a branch
+- Scope expanded to include module management core features
+- Module-chat will be reclassified as functional (toggleable) while remaining in core creation tier
+- This work unblocks WS Plugin Architecture initiative
 
 ### January 24, 2026 - Sprint 2 Completion
 - Completed ADR-016 fixes for org admin authorization
