@@ -66,6 +66,8 @@ export interface EvalSysPromptConfig {
   temperature: number;
   /** Max tokens for response */
   maxTokens: number;
+  /** Whether org has an override for this prompt */
+  hasOrgOverride: boolean;
   /** Creation timestamp */
   createdAt: string;
   /** Last update timestamp */

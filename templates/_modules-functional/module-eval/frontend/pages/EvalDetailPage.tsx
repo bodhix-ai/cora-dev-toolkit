@@ -62,7 +62,7 @@ import {
   EvalExportButton,
   ComplianceScoreChip,
 } from "../components";
-import type { EvalCriteriaResult, Citation, CriteriaResultWithItem } from "../types";
+import type { EvalCriteriaResult, Citation, CriteriaResultWithItem, EditResultInput } from "../types";
 import { useWorkspacePlugin } from "@{{PROJECT_NAME}}/shared/workspace-plugin";
 
 // =============================================================================
@@ -1088,7 +1088,7 @@ export function EvalDetailPage({
   const citations = evaluation?.citations || [];
 
   const { progress, isProcessing } = useEvalProgress(evaluationId);
-  const { exportPdf, exportXlsx, isExporting } = useEvalExport(workspaceId, evaluationId);
+  const { downloadPdf, downloadXlsx, isExporting } = useEvalExport(workspaceId, evaluationId);
 
   // Handlers
   const handleTabChange = useCallback((tab: ViewTab) => {
@@ -1104,7 +1104,7 @@ export function EvalDetailPage({
     setEditingResult(result);
   }, []);
 
-  const handleSaveEdit = useCallback(async (resultId: string, data: { editedResult: string; editedStatusId: string; editNotes?: string }) => {
+  const handleSaveEdit = useCallback(async (resultId: string, data: EditResultInput) => {
     await edit(resultId, data);
     setEditingResult(null);
   }, [edit]);
@@ -1114,12 +1114,9 @@ export function EvalDetailPage({
   }, []);
 
   const handleExport = useCallback(async (evaluationId: string, format: "pdf" | "xlsx") => {
-    const exportFn = format === "pdf" ? exportPdf : exportXlsx;
-    const result = await exportFn();
-    if (result?.downloadUrl) {
-      window.open(result.downloadUrl, "_blank");
-    }
-  }, [exportPdf, exportXlsx]);
+    const exportFn = format === "pdf" ? downloadPdf : downloadXlsx;
+    await exportFn();
+  }, [downloadPdf, downloadXlsx]);
 
   const handleConfigure = useCallback(async (config: { docTypeId: string; criteriaSetId: string; docIds: string[] }) => {
     await update(config);
