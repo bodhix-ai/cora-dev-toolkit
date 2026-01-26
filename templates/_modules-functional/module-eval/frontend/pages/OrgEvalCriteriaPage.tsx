@@ -253,9 +253,10 @@ export function OrgEvalCriteriaPage({
 
   const handleImport = useCallback(
     async (data: ImportCriteriaSetInput) => {
-      if (!token || !orgId) return;
-      await importCriteriaSet(data);
+      if (!token || !orgId) throw new Error('No auth token or org ID');
+      const result = await importCriteriaSet(data);
       setIsImportDialogOpen(false);
+      return result;
     },
     [token, orgId, importCriteriaSet]
   );

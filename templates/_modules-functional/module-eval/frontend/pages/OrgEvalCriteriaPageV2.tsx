@@ -314,9 +314,10 @@ export function OrgEvalCriteriaPageV2({
         throw new Error("No auth token or org ID");
       }
 
-      await importCriteriaSet(token, orgId, input);
+      const result = await importCriteriaSet(token, orgId, input);
       setIsImportDialogOpen(false);
       await loadData(); // Reload to show imported set
+      return result;
     },
     [token, orgId, loadData]
   );
