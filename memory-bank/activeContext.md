@@ -12,6 +12,7 @@ This repository uses **initiative-scoped context files** to avoid merge conflict
 
 | Initiative | Context File | Primary Focus | Priority |
 |------------|--------------|---------------|----------|
+| Error Remediation & Clean Baseline | `context-error-remediation.md` | Eliminate validation errors | **P1** |
 | WS Plugin Architecture | `context-ws-plugin-architecture.md` | Module integration patterns | **P1** |
 | Module-Eval Development | `context-module-eval.md` | Eval features (citations, scoring) | P2, P3 |
 | Admin Standardization | `context-admin-standardization.md` | Admin page patterns | P4 |
@@ -20,12 +21,12 @@ This repository uses **initiative-scoped context files** to avoid merge conflict
 
 ---
 
-## Current Priority Order (January 24-26, 2026)
+## Current Priority Order (January 26, 2026)
 
-1. **WS Plugin Architecture** - Fix type errors, establish plugin pattern
-2. **Module-Eval Citations** - Complete citations implementation
-3. **Eval Scoring Quality** - Investigate and fix scoring issues
-4. **Admin Standardization** - Outstanding admin features (lowest priority)
+1. **Error Remediation (S1: TypeScript)** - Eliminate 46 TypeScript errors in module-eval
+2. **WS Plugin Architecture (S3)** - Dynamic module configuration
+3. **Module-Eval Citations** - Complete citations implementation
+4. **Eval Scoring Quality** - Investigate and fix scoring issues
 
 ---
 
@@ -50,4 +51,4 @@ This repository uses **initiative-scoped context files** to avoid merge conflict
 
 ---
 
-**Updated:** January 24, 2026
+**Updated:** January 26, 2026
