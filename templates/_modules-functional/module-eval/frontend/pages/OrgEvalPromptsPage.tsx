@@ -272,10 +272,14 @@ export function OrgEvalPromptsPage({
   );
 
   const handleTestPrompt = useCallback(
-    async (testInput: string) => {
+    async (input: { systemPrompt?: string; userPromptTemplate?: string }) => {
       // Test functionality not yet implemented for org-level prompts
-      console.log("Test prompt:", { activeTab, testInput });
-      return "Test functionality coming soon";
+      console.log("Test prompt:", { activeTab, input });
+      return {
+        output: "Test functionality coming soon",
+        tokenCount: 0,
+        duration: 0,
+      };
     },
     [activeTab]
   );

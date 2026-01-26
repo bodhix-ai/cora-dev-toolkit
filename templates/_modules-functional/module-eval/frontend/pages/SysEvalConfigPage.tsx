@@ -37,7 +37,7 @@ import {
   StatusOptionManager,
   OrgDelegationManager,
 } from "../components";
-import type { UpdateSysConfigInput } from "../types";
+import type { UpdateSysConfigInput, UpdateOrgConfigInput } from "../types";
 
 // =============================================================================
 // TYPES
@@ -221,8 +221,8 @@ export function SysEvalConfigPage({
   }, [refreshConfig, refreshStatus, refreshOrgs]);
 
   const handleScoringUpdate = useCallback(
-    async (updates: UpdateSysConfigInput) => {
-      await updateConfig(updates);
+    async (updates: UpdateSysConfigInput | UpdateOrgConfigInput) => {
+      await updateConfig(updates as UpdateSysConfigInput);
     },
     [updateConfig]
   );
