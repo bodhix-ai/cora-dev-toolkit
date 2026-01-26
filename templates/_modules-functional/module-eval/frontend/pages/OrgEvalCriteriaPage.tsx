@@ -273,7 +273,7 @@ export function OrgEvalCriteriaPage({
   if (error) {
     return (
       <Box sx={{ p: 3 }} className={className}>
-        <ErrorState error={error} onRetry={refresh} />
+        <ErrorState error={error instanceof Error ? error : new Error(error || 'Unknown error')} onRetry={refresh} />
       </Box>
     );
   }

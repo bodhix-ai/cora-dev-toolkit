@@ -252,7 +252,7 @@ export function OrgEvalConfigPage({
   if (error) {
     return (
       <Box sx={{ p: 3 }} className={className}>
-        <ErrorState error={error} onRetry={handleRefresh} />
+        <ErrorState error={error instanceof Error ? error : new Error(error || 'Unknown error')} onRetry={handleRefresh} />
       </Box>
     );
   }
