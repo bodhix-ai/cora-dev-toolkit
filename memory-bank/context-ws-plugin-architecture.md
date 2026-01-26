@@ -190,6 +190,91 @@ Use composition pattern (target):
 
 ## Session Log
 
+### January 25, 2026 - Sprint 3 Planning Session ✅ API Route Standards Established
+
+**Status:** Planning / Prerequisite Work  
+**Duration:** ~4 hours  
+**Focus:** Establishing API route standards to unblock S3 implementation
+
+**Context:**
+Sprint 3 requires new admin API routes for org/workspace module configuration:
+- `/admin/org/{module}/modules` - Org-level module config
+- `/admin/ws/{wsId}/{module}/modules` - Workspace-level module config
+
+However, CORA lacked standardized API route patterns, creating uncertainty about:
+- Route structure (scope prefixes, module shortnames)
+- Context passing (orgId in path vs session, wsId placement)
+- Admin route patterns (sys/org/ws scopes)
+
+**Decision:** Establish comprehensive API route standards before implementing S3 database/API phases.
+
+**Work Completed:**
+
+**1. API Route Standards Foundation**
+- ✅ Created ADR-018b: API Gateway Route Standards
+- ✅ Created standard_ADMIN-API-ROUTES.md (comprehensive standard)
+- ✅ Defined route patterns for all scopes (sys admin, org admin, ws admin, data API)
+- ✅ Clarified context passing (org via session, wsId in path)
+- ✅ Documented module shortname usage
+
+**2. Admin Route Validator**
+- ✅ Developed validation/admin-route-validator/
+- ✅ Detects missing scope prefixes
+- ✅ Validates module shortname usage
+- ✅ Identifies API prefix violations
+- ✅ Integrated with cora-validate.py orchestrator
+- ✅ Baseline validation run: 86 errors, 90 warnings (11% compliance)
+
+**3. API Route Migration Plan**
+- ✅ Created docs/plans/backlog/plan_api-route-migration.md
+- ✅ Grouped 86 errors by module and priority
+- ✅ Prioritized admin routes (Phases 1-3: 34 errors, 40% of total)
+- ✅ Defined phased implementation (aligns with admin standardization)
+- ✅ Created integration strategy with ongoing work
+
+**Files Created:**
+- `docs/arch decisions/ADR-018b-API-GATEWAY-ROUTE-STANDARDS.md`
+- `docs/standards/standard_ADMIN-API-ROUTES.md`
+- `validation/admin-route-validator/validate_routes.py`
+- `validation/admin-route-validator/cli.py`
+- `validation/admin-route-validator/__init__.py`
+- `validation/admin-route-validator/README.md`
+- `docs/plans/backlog/plan_api-route-migration.md`
+
+**Files Modified:**
+- `validation/cora-validate.py` (added admin_routes validator)
+
+**Impact on Sprint 3:**
+
+**Unblocked:**
+- ✅ S3 Phase 2 (Backend API) now has clear route patterns
+- ✅ Design document route ambiguities resolved
+- ✅ Integration with admin standardization clarified
+
+**Routes for S3:**
+```
+# System Admin - Module Management
+GET  /admin/sys/mgmt/modules
+PUT  /admin/sys/mgmt/modules/{moduleName}
+
+# Org Admin - Module Management  
+GET  /admin/org/mgmt/modules
+PUT  /admin/org/mgmt/modules/{moduleName}
+
+# Workspace Admin - Module Management
+GET  /admin/ws/{wsId}/mgmt/modules
+PUT  /admin/ws/{wsId}/mgmt/modules/{moduleName}
+```
+
+**Next Session:**
+- Evaluate options to integrate admin standardization work with API route migration (Phases 1-2)
+- Decide if S3 Phase 1 (database schema) proceeds independently or waits for route migration coordination
+- Consider if S3 should integrate Phase 1-2 of API route migration plan
+
+**Status:** Sprint 3 prerequisites established. Ready to proceed with Phase 1 (database schema) or coordinate with route migration.
+
+---
+
 ### January 25, 2026 - Sprint 2 Complete ✅
 
 **Planning Phase:**
