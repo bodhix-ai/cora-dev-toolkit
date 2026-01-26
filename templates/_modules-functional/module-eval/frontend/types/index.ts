@@ -514,6 +514,8 @@ export interface Evaluation {
   statusOptions?: StatusOption[];
   /** Score display configuration */
   scoreConfig?: ScoreConfig;
+  /** All citations from criteria results */
+  citations?: Citation[];
 }
 
 /**
@@ -522,6 +524,8 @@ export interface Evaluation {
 export interface EvaluationDocument {
   /** Document ID (from KB) */
   id: string;
+  /** Document ID (alias for compatibility) */
+  documentId?: string;
   /** Document name */
   name?: string;
   /** Original file name */
@@ -530,6 +534,8 @@ export interface EvaluationDocument {
   mimeType?: string;
   /** AI-generated summary for this doc */
   summary?: string;
+  /** Document metadata */
+  metadata?: Record<string, any>;
   /** Whether this is the primary document */
   isPrimary: boolean;
 }
@@ -634,6 +640,8 @@ export interface EvalResultEdit {
   editedResult?: string;
   /** Edited status option ID */
   editedStatusId?: string;
+  /** Edited score value (numerical) */
+  editedScoreValue?: number;
   /** Notes about the edit */
   editNotes?: string;
   /** Version number */
@@ -710,6 +718,7 @@ export interface CriteriaResultWithItem {
     result?: string;
     statusId?: string;
     confidence?: number;
+    scoreValue?: number;
     citations: Citation[];
     processedAt?: string;
   };
