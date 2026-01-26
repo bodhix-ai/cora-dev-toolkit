@@ -274,6 +274,13 @@ class CoraValidator:
             "supports": ["project"],
             "cli_style": "argparse",
         },
+        "admin_routes": {
+            "name": "Admin Route Validator",
+            "description": "Validates API Gateway routes follow ADR-018b route standards (scope prefixes, module shortnames, context passing)",
+            "module": "admin-route-validator",
+            "supports": ["project", "module"],
+            "cli_style": "argparse",
+        },
     }
 
 
