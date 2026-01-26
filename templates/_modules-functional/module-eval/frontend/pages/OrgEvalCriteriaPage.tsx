@@ -196,7 +196,7 @@ export function OrgEvalCriteriaPage({
     create: createCriteriaSet,
     update: updateCriteriaSet,
     remove: deleteCriteriaSet,
-    importSet: importCriteriaSet,
+    importFromFile: importCriteriaSet,
     refresh,
   } = useEvalCriteriaSets(token, orgId, { docTypeId: filterDocTypeId });
 
@@ -308,13 +308,13 @@ export function OrgEvalCriteriaPage({
       <CriteriaSetManager
         criteriaSets={criteriaSets || []}
         docTypes={docTypes || []}
-        onCreateSet={handleCreateSet}
-        onUpdateSet={handleUpdateSet}
-        onDeleteSet={handleDeleteSet}
-        onSelectSet={handleSelectSet}
-        onImportClick={handleOpenImport}
+        onCreate={handleCreateSet}
+        onUpdate={handleUpdateSet}
+        onDelete={handleDeleteSet}
+        onViewItems={handleSelectSet}
+        onImport={handleOpenImport}
         selectedDocTypeId={filterDocTypeId}
-        onDocTypeFilterChange={handleDocTypeFilterChange}
+        onFilterChange={handleDocTypeFilterChange}
       />
 
       {/* Import Dialog */}
