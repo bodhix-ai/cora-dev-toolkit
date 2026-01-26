@@ -728,7 +728,7 @@ export function EvalQAStats({
               </Typography>
               <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
                 {Array.from(stats.byStatus.entries()).map(([statusId, count]) => {
-                  const status = statusOptions.find((s) => s.id === statusId);
+                  const status: StatusOption | undefined = statusOptions.find((s) => s.id === statusId);
                   const color = getStatusColor(status);
                   return (
                     <Chip
