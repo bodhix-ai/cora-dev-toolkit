@@ -166,11 +166,12 @@ export function ModuleGate({
   const { modules, isLoading } = useModuleRegistry({ autoFetch: true });
 
   const isEnabled = useMemo(() => {
+    if (!modules || !Array.isArray(modules)) return false;
     const module = modules.find((m) => m.name === moduleName);
     return module?.isEnabled ?? false;
   }, [modules, moduleName]);
 
-  if (isLoading) {
+  if (isLoading || !modules) {
     return null;
   }
 
@@ -198,10 +199,11 @@ export function ModuleConditional({
   const { modules, isLoading } = useModuleRegistry({ autoFetch: true });
 
   const module = useMemo(() => {
+    if (!modules || !Array.isArray(modules)) return null;
     return modules.find((m) => m.name === moduleName) || null;
   }, [modules, moduleName]);
 
-  if (isLoading) {
+  if (isLoading || !modules) {
     return <></>;
   }
 
