@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useShallow } from "zustand/react/shallow";
+import { useWorkspacePlugin } from "@{{PROJECT_NAME}}/shared/workspace-plugin";
 import {
   useChatStore,
   selectCurrentSession,
@@ -176,7 +177,12 @@ export interface UseChatReturn {
  * ```
  */
 export function useChat(options: UseChatOptions = {}): UseChatReturn {
-  const { workspaceId, autoLoad = false, initialFilters } = options;
+  // Get workspace context from plugin (provides default workspaceId)
+  const pluginContext = useWorkspacePlugin();
+  
+  // Use provided workspaceId from options, or fall back to plugin context
+  const { workspaceId: optionsWorkspaceId, autoLoad = false, initialFilters } = options;
+  const workspaceId = optionsWorkspaceId ?? pluginContext.workspaceId;
 
   // Get auth token
   const { data: session, status } = useSession();

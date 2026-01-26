@@ -1,0 +1,199 @@
+Scope: 12 of 13 workspace projects
+packages/module-eval/frontend type-check$ tsc --noEmit
+packages/module-voice/frontend type-check$ tsc --noEmit
+packages/module-voice/frontend type-check: Done
+packages/module-eval/frontend type-check: components/CriteriaItemEditor.tsx(530,13): error TS2322: Type '(input: CreateCriteriaItemInput) => Promise<void>' is not assignable to type '(input: CreateCriteriaItemInput | UpdateCriteriaItemInput) => Promise<void>'.
+packages/module-eval/frontend type-check:   Types of parameters 'input' and 'input' are incompatible.
+packages/module-eval/frontend type-check:     Type 'CreateCriteriaItemInput | UpdateCriteriaItemInput' is not assignable to type 'CreateCriteriaItemInput'.
+packages/module-eval/frontend type-check:       Type 'UpdateCriteriaItemInput' is not assignable to type 'CreateCriteriaItemInput'.
+packages/module-eval/frontend type-check:         Types of property 'criteriaId' are incompatible.
+packages/module-eval/frontend type-check:           Type 'string | undefined' is not assignable to type 'string'.
+packages/module-eval/frontend type-check:             Type 'undefined' is not assignable to type 'string'.
+packages/module-eval/frontend type-check: components/CriteriaSetManager.tsx(493,13): error TS2322: Type '(input: CreateCriteriaSetInput) => Promise<void>' is not assignable to type '(input: CreateCriteriaSetInput | UpdateCriteriaSetInput) => Promise<void>'.
+packages/module-eval/frontend type-check:   Types of parameters 'input' and 'input' are incompatible.
+packages/module-eval/frontend type-check:     Type 'CreateCriteriaSetInput | UpdateCriteriaSetInput' is not assignable to type 'CreateCriteriaSetInput'.
+packages/module-eval/frontend type-check:       Property 'docTypeId' is missing in type 'UpdateCriteriaSetInput' but required in type 'CreateCriteriaSetInput'.
+packages/module-eval/frontend type-check: components/DocTypeManager.tsx(361,15): error TS2322: Type '(input: CreateDocTypeInput) => Promise<void>' is not assignable to type '(input: CreateDocTypeInput | UpdateDocTypeInput) => Promise<void>'.
+packages/module-eval/frontend type-check:   Types of parameters 'input' and 'input' are incompatible.
+packages/module-eval/frontend type-check:     Type 'CreateDocTypeInput | UpdateDocTypeInput' is not assignable to type 'CreateDocTypeInput'.
+packages/module-eval/frontend type-check:       Type 'UpdateDocTypeInput' is not assignable to type 'CreateDocTypeInput'.
+packages/module-eval/frontend type-check:         Types of property 'name' are incompatible.
+packages/module-eval/frontend type-check:           Type 'string | undefined' is not assignable to type 'string'.
+packages/module-eval/frontend type-check:             Type 'undefined' is not assignable to type 'string'.
+packages/module-eval/frontend type-check: components/EvalQAList.tsx(244,51): error TS2339: Property 'editedScoreValue' does not exist on type 'EvalResultEdit'.
+packages/module-eval/frontend type-check: components/EvalQAList.tsx(244,88): error TS2339: Property 'scoreValue' does not exist on type '{ id: string; result?: string | undefined; statusId?: string | undefined; confidence?: number | undefined; citations: Citation[]; processedAt?: string | undefined; }'.
+packages/module-eval/frontend type-check: components/EvalQAList.tsx(322,19): error TS2322: Type 'import("/Users/aaron/code/bodhix/testing/test-plugin/ai-sec-stack/packages/module-eval/frontend/types/index").StatusOption[]' is not assignable to type 'StatusOption[]'.
+packages/module-eval/frontend type-check:   Type 'import("/Users/aaron/code/bodhix/testing/test-plugin/ai-sec-stack/packages/module-eval/frontend/types/index").StatusOption' is not assignable to type 'StatusOption'.
+packages/module-eval/frontend type-check:     Types of property 'color' are incompatible.
+packages/module-eval/frontend type-check:       Type 'string | undefined' is not assignable to type '"success" | "error" | "warning" | "info" | "default"'.
+packages/module-eval/frontend type-check:         Type 'undefined' is not assignable to type '"success" | "error" | "warning" | "info" | "default"'.
+packages/module-eval/frontend type-check: components/EvalResultsTable.tsx(85,7): error TS2741: Property 'draft' is missing in type '{ pending: { label: string; color: "warning"; }; processing: { label: string; color: "info"; }; completed: { label: string; color: "success"; }; failed: { label: string; color: "error"; }; }' but required in type 'Record<EvaluationStatus, { label: string; color: "success" | "error" | "warning" | "info"; }>'.
+packages/module-eval/frontend type-check: components/EvalSummaryPanel.tsx(443,32): error TS18048: 'evaluation.documents' is possibly 'undefined'.
+packages/module-eval/frontend type-check: pages/EvalDetailPage.tsx(1087,33): error TS2339: Property 'citations' does not exist on type 'Evaluation'.
+packages/module-eval/frontend type-check: pages/EvalDetailPage.tsx(1089,38): error TS2554: Expected 3 arguments, but got 1.
+packages/module-eval/frontend type-check: pages/EvalDetailPage.tsx(1090,11): error TS2339: Property 'exportPdf' does not exist on type '{ downloadPdf: () => Promise<void>; downloadXlsx: () => Promise<void>; isPdfLoading: boolean; isXlsxLoading: boolean; isExporting: boolean; pdfError: string | null; xlsxError: string | null; hasError: boolean; clearErrors: () => void; }'.
+packages/module-eval/frontend type-check: pages/EvalDetailPage.tsx(1090,22): error TS2339: Property 'exportXlsx' does not exist on type '{ downloadPdf: () => Promise<void>; downloadXlsx: () => Promise<void>; isPdfLoading: boolean; isXlsxLoading: boolean; isExporting: boolean; pdfError: string | null; xlsxError: string | null; hasError: boolean; clearErrors: () => void; }'.
+packages/module-eval/frontend type-check: pages/EvalDetailPage.tsx(1090,50): error TS2554: Expected 3 arguments, but got 2.
+packages/module-eval/frontend type-check: pages/EvalDetailPage.tsx(1143,21): error TS2322: Type 'string' is not assignable to type 'Error'.
+packages/module-eval/frontend type-check: pages/EvalDetailPage.tsx(1260,47): error TS2339: Property 'documentId' does not exist on type 'EvaluationDocument'.
+packages/module-eval/frontend type-check: pages/EvalDetailPage.tsx(1262,27): error TS2339: Property 'metadata' does not exist on type 'EvaluationDocument'.
+packages/module-eval/frontend type-check: pages/EvalDetailPage.tsx(1273,11): error TS2322: Type '(resultId: string, data: { editedResult: string; editedStatusId: string; editNotes?: string; }) => Promise<void>' is not assignable to type '(resultId: string, input: EditResultInput) => Promise<void>'.
+packages/module-eval/frontend type-check:   Types of parameters 'data' and 'input' are incompatible.
+packages/module-eval/frontend type-check:     Type 'EditResultInput' is not assignable to type '{ editedResult: string; editedStatusId: string; editNotes?: string | undefined; }'.
+packages/module-eval/frontend type-check:       Types of property 'editedResult' are incompatible.
+packages/module-eval/frontend type-check:         Type 'string | undefined' is not assignable to type 'string'.
+packages/module-eval/frontend type-check:           Type 'undefined' is not assignable to type 'string'.
+packages/module-eval/frontend type-check: pages/EvalListPage.tsx(187,15): error TS2322: Type '{ evaluationId: string; title: string; status: EvaluationStatus; progress: number; createdAt: string; onClick: () => void; showTimeEstimate: true; }' is not assignable to type 'IntrinsicAttributes & EvalProgressCardProps'.
+packages/module-eval/frontend type-check:   Property 'evaluationId' does not exist on type 'IntrinsicAttributes & EvalProgressCardProps'. Did you mean 'evaluation'?
+packages/module-eval/frontend type-check: pages/EvalListPage.tsx(429,28): error TS2339: Property 'processingIds' does not exist on type '{ isAnyProcessing: boolean; stopAllPolling: () => void; }'.
+packages/module-eval/frontend type-check: pages/EvalListPage.tsx(429,63): error TS2554: Expected 0 arguments, but got 1.
+packages/module-eval/frontend type-check: pages/EvalListPage.tsx(430,11): error TS2339: Property 'exportPdf' does not exist on type '{ exportAllPdf: (evaluationIds: string[]) => Promise<void>; exportAllXlsx: (evaluationIds: string[]) => Promise<void>; isExporting: boolean; progress: number; errors: { ...; }[]; hasErrors: boolean; reset: () => void; }'.
+packages/module-eval/frontend type-check: pages/EvalListPage.tsx(430,22): error TS2339: Property 'exportXlsx' does not exist on type '{ exportAllPdf: (evaluationIds: string[]) => Promise<void>; exportAllXlsx: (evaluationIds: string[]) => Promise<void>; isExporting: boolean; progress: number; errors: { ...; }[]; hasErrors: boolean; reset: () => void; }'.
+packages/module-eval/frontend type-check: pages/EvalListPage.tsx(506,21): error TS2322: Type 'string' is not assignable to type 'Error'.
+packages/module-eval/frontend type-check: pages/OrgEvalConfigPage.tsx(237,26): error TS2345: Argument of type '{ categoricalMode?: string | undefined; showNumericalScore?: boolean | undefined; }' is not assignable to parameter of type 'UpdateOrgConfigInput'.
+packages/module-eval/frontend type-check:   Types of property 'categoricalMode' are incompatible.
+packages/module-eval/frontend type-check:     Type 'string | undefined' is not assignable to type 'CategoricalMode | null | undefined'.
+packages/module-eval/frontend type-check:       Type 'string' is not assignable to type 'CategoricalMode | null | undefined'.
+packages/module-eval/frontend type-check: pages/OrgEvalConfigPage.tsx(255,21): error TS2322: Type 'string' is not assignable to type 'Error'.
+packages/module-eval/frontend type-check: pages/OrgEvalConfigPage.tsx(275,11): error TS2322: Type '(updates: { categoricalMode?: string; showNumericalScore?: boolean; }) => Promise<void>' is not assignable to type '(input: UpdateSysConfigInput | UpdateOrgConfigInput) => Promise<void>'.
+packages/module-eval/frontend type-check:   Types of parameters 'updates' and 'input' are incompatible.
+packages/module-eval/frontend type-check:     Type 'UpdateSysConfigInput | UpdateOrgConfigInput' is not assignable to type '{ categoricalMode?: string | undefined; showNumericalScore?: boolean | undefined; }'.
+packages/module-eval/frontend type-check:       Type 'UpdateOrgConfigInput' is not assignable to type '{ categoricalMode?: string | undefined; showNumericalScore?: boolean | undefined; }'.
+packages/module-eval/frontend type-check:         Types of property 'categoricalMode' are incompatible.
+packages/module-eval/frontend type-check:           Type 'CategoricalMode | null | undefined' is not assignable to type 'string | undefined'.
+packages/module-eval/frontend type-check:             Type 'null' is not assignable to type 'string | undefined'.
+packages/module-eval/frontend type-check: pages/OrgEvalCriteriaPage.tsx(199,5): error TS2339: Property 'importSet' does not exist on type '{ criteriaSets: EvalCriteriaSet[]; isLoading: boolean; error: string | null; create: (input: CreateCriteriaSetInput) => Promise<EvalCriteriaSet>; ... 5 more ...; getById: (id: string) => EvalCriteriaSet | undefined; }'.
+packages/module-eval/frontend type-check: pages/OrgEvalCriteriaPage.tsx(276,21): error TS2322: Type 'string' is not assignable to type 'Error'.
+packages/module-eval/frontend type-check: pages/OrgEvalCriteriaPage.tsx(295,11): error TS2322: Type '{ criteriaSetId: string; orgId: string; }' is not assignable to type 'IntrinsicAttributes & CriteriaItemEditorProps'.
+packages/module-eval/frontend type-check:   Property 'criteriaSetId' does not exist on type 'IntrinsicAttributes & CriteriaItemEditorProps'. Did you mean 'criteriaSet'?
+packages/module-eval/frontend type-check: pages/OrgEvalCriteriaPage.tsx(311,9): error TS2322: Type '{ criteriaSets: EvalCriteriaSet[]; docTypes: EvalDocType[]; onCreateSet: (data: { name: string; docTypeId: string; description?: string | undefined; }) => Promise<void>; ... 5 more ...; onDocTypeFilterChange: (docTypeId: string | undefined) => void; }' is not assignable to type 'IntrinsicAttributes & CriteriaSetManagerProps'.
+packages/module-eval/frontend type-check:   Property 'onCreateSet' does not exist on type 'IntrinsicAttributes & CriteriaSetManagerProps'. Did you mean 'onCreate'?
+packages/module-eval/frontend type-check: pages/OrgEvalCriteriaPage.tsx(324,9): error TS2322: Type '(data: { docTypeId: string; name: string; file: File; }) => Promise<void>' is not assignable to type '(input: ImportCriteriaSetInput) => Promise<ImportCriteriaSetResult>'.
+packages/module-eval/frontend type-check:   Types of parameters 'data' and 'input' are incompatible.
+packages/module-eval/frontend type-check:     Property 'file' is missing in type 'ImportCriteriaSetInput' but required in type '{ docTypeId: string; name: string; file: File; }'.
+packages/module-eval/frontend type-check: pages/OrgEvalCriteriaPageV2.tsx(356,11): error TS2322: Type '{ criteriaSetId: string; orgId: string; }' is not assignable to type 'IntrinsicAttributes & CriteriaItemEditorProps'.
+packages/module-eval/frontend type-check:   Property 'criteriaSetId' does not exist on type 'IntrinsicAttributes & CriteriaItemEditorProps'. Did you mean 'criteriaSet'?
+packages/module-eval/frontend type-check: pages/OrgEvalCriteriaPageV2.tsx(385,9): error TS2322: Type '(input: ImportCriteriaSetInput) => Promise<void>' is not assignable to type '(input: ImportCriteriaSetInput) => Promise<ImportCriteriaSetResult>'.
+packages/module-eval/frontend type-check:   Type 'Promise<void>' is not assignable to type 'Promise<ImportCriteriaSetResult>'.
+packages/module-eval/frontend type-check:     Type 'void' is not assignable to type 'ImportCriteriaSetResult'.
+packages/module-eval/frontend type-check: pages/OrgEvalDocTypesPage.tsx(220,21): error TS2322: Type 'string' is not assignable to type 'Error'.
+packages/module-eval/frontend type-check: pages/OrgEvalPromptsPage.tsx(243,5): error TS2339: Property 'test' does not exist on type '{ prompts: EvalMergedPromptConfig[]; isLoading: boolean; error: string | null; canEditPrompts: boolean; update: (promptType: PromptType, input: PromptConfigInput) => Promise<...>; refresh: () => Promise<...>; getPromptByType: (type: PromptType) => EvalMergedPromptConfig | undefined; }'.
+packages/module-eval/frontend type-check: pages/OrgEvalPromptsPage.tsx(306,21): error TS2322: Type 'string' is not assignable to type 'Error'.
+packages/module-eval/frontend type-check: pages/OrgEvalPromptsPage.tsx(323,11): error TS2322: Type 'EvalMergedPromptConfig | undefined' is not assignable to type 'EvalMergedPromptConfig'.
+packages/module-eval/frontend type-check:   Type 'undefined' is not assignable to type 'EvalMergedPromptConfig'.
+packages/module-eval/frontend type-check: pages/OrgEvalPromptsPage.tsx(325,11): error TS2322: Type '(testInput: string) => Promise<any>' is not assignable to type '(input: { systemPrompt?: string | undefined; userPromptTemplate?: string | undefined; }) => Promise<PromptTestResult>'.
+packages/module-eval/frontend type-check:   Types of parameters 'testInput' and 'input' are incompatible.
+packages/module-eval/frontend type-check:     Type '{ systemPrompt?: string | undefined; userPromptTemplate?: string | undefined; }' is not assignable to type 'string'.
+packages/module-eval/frontend type-check: pages/SysEvalConfigPage.tsx(224,26): error TS2345: Argument of type '{ categoricalMode?: string | undefined; showNumericalScore?: boolean | undefined; }' is not assignable to parameter of type 'UpdateSysConfigInput'.
+packages/module-eval/frontend type-check:   Types of property 'categoricalMode' are incompatible.
+packages/module-eval/frontend type-check:     Type 'string | undefined' is not assignable to type 'CategoricalMode | undefined'.
+packages/module-eval/frontend type-check:       Type 'string' is not assignable to type 'CategoricalMode | undefined'.
+packages/module-eval/frontend type-check: pages/SysEvalConfigPage.tsx(242,21): error TS2322: Type 'string' is not assignable to type 'Error'.
+packages/module-eval/frontend type-check: pages/SysEvalConfigPage.tsx(262,11): error TS2322: Type '(updates: { categoricalMode?: string; showNumericalScore?: boolean; }) => Promise<void>' is not assignable to type '(input: UpdateSysConfigInput | UpdateOrgConfigInput) => Promise<void>'.
+packages/module-eval/frontend type-check:   Types of parameters 'updates' and 'input' are incompatible.
+packages/module-eval/frontend type-check:     Type 'UpdateSysConfigInput | UpdateOrgConfigInput' is not assignable to type '{ categoricalMode?: string | undefined; showNumericalScore?: boolean | undefined; }'.
+packages/module-eval/frontend type-check:       Type 'UpdateOrgConfigInput' is not assignable to type '{ categoricalMode?: string | undefined; showNumericalScore?: boolean | undefined; }'.
+packages/module-eval/frontend type-check:         Types of property 'categoricalMode' are incompatible.
+packages/module-eval/frontend type-check:           Type 'CategoricalMode | null | undefined' is not assignable to type 'string | undefined'.
+packages/module-eval/frontend type-check:             Type 'null' is not assignable to type 'string | undefined'.
+packages/module-eval/frontend type-check: pages/SysEvalConfigPage.tsx(289,11): error TS2322: Type '(orgId: string, delegated: boolean) => Promise<void>' is not assignable to type '(orgId: string, input: ToggleDelegationInput) => Promise<DelegationToggleResult>'.
+packages/module-eval/frontend type-check:   Types of parameters 'delegated' and 'input' are incompatible.
+packages/module-eval/frontend type-check:     Type 'ToggleDelegationInput' is not assignable to type 'boolean'.
+packages/module-eval/frontend type-check: pages/SysEvalPromptsPage.tsx(304,11): error TS2741: Property 'hasOrgOverride' is missing in type 'EvalSysPromptConfig' but required in type 'EvalMergedPromptConfig'.
+packages/module-eval/frontend type-check: store/evalStore.ts(437,17): error TS2322: Type 'unknown' is not assignable to type 'EvalSysConfig | null | undefined'.
+packages/module-eval/frontend type-check: store/evalStore.ts(580,55): error TS2345: Argument of type 'boolean' is not assignable to parameter of type 'ToggleDelegationInput'.
+packages/module-eval/frontend type-check: store/evalStore.ts(1411,15): error TS2345: Argument of type '(state: EvalState) => EvalState | { selectedEvaluation: { criteriaResults: (CriteriaResultWithItem | { currentEdit: { edit: EvalResultEdit; criteriaResultId: string; evaluationId: string; message: string; }; hasEdit: boolean; criteriaItem: { ...; }; aiResult?: { ...; } | undefined; effectiveStatus?: StatusOption | u...' is not assignable to parameter of type 'EvalState | Partial<EvalState> | ((state: EvalState) => EvalState | Partial<EvalState>)'.
+packages/module-eval/frontend type-check:   Type '(state: EvalState) => EvalState | { selectedEvaluation: { criteriaResults: (CriteriaResultWithItem | { currentEdit: { edit: EvalResultEdit; criteriaResultId: string; evaluationId: string; message: string; }; hasEdit: boolean; criteriaItem: { ...; }; aiResult?: { ...; } | undefined; effectiveStatus?: StatusOption | u...' is not assignable to type '(state: EvalState) => EvalState | Partial<EvalState>'.
+packages/module-eval/frontend type-check:     Type 'EvalState | { selectedEvaluation: { criteriaResults: (CriteriaResultWithItem | { currentEdit: { edit: EvalResultEdit; criteriaResultId: string; evaluationId: string; message: string; }; hasEdit: boolean; criteriaItem: { ...; }; aiResult?: { ...; } | undefined; effectiveStatus?: StatusOption | undefined; })[] | undef...' is not assignable to type 'EvalState | Partial<EvalState>'.
+packages/module-eval/frontend type-check:       Type '{ selectedEvaluation: { criteriaResults: (CriteriaResultWithItem | { currentEdit: { edit: EvalResultEdit; criteriaResultId: string; evaluationId: string; message: string; }; hasEdit: boolean; criteriaItem: { id: string; criteriaId: string; requirement: string; description?: string; category?: string; weight: number;...' is not assignable to type 'EvalState | Partial<EvalState>'.
+packages/module-eval/frontend type-check:         Type '{ selectedEvaluation: { criteriaResults: (CriteriaResultWithItem | { currentEdit: { edit: EvalResultEdit; criteriaResultId: string; evaluationId: string; message: string; }; hasEdit: boolean; criteriaItem: { id: string; criteriaId: string; requirement: string; description?: string; category?: string; weight: number;...' is not assignable to type 'Partial<EvalState>'.
+packages/module-eval/frontend type-check:           The types of 'selectedEvaluation.criteriaResults' are incompatible between these types.
+packages/module-eval/frontend type-check:             Type '(CriteriaResultWithItem | { currentEdit: { edit: EvalResultEdit; criteriaResultId: string; evaluationId: string; message: string; }; hasEdit: boolean; criteriaItem: { ...; }; aiResult?: { ...; } | undefined; effectiveStatus?: StatusOption | undefined; })[] | undefined' is not assignable to type 'CriteriaResultWithItem[] | undefined'.
+packages/module-eval/frontend type-check:               Type '(CriteriaResultWithItem | { currentEdit: { edit: EvalResultEdit; criteriaResultId: string; evaluationId: string; message: string; }; hasEdit: boolean; criteriaItem: { ...; }; aiResult?: { ...; } | undefined; effectiveStatus?: StatusOption | undefined; })[]' is not assignable to type 'CriteriaResultWithItem[]'.
+packages/module-eval/frontend type-check:                 Type 'CriteriaResultWithItem | { currentEdit: { edit: EvalResultEdit; criteriaResultId: string; evaluationId: string; message: string; }; hasEdit: boolean; criteriaItem: { ...; }; aiResult?: { ...; } | undefined; effectiveStatus?: StatusOption | undefined; }' is not assignable to type 'CriteriaResultWithItem'.
+packages/module-eval/frontend type-check:                   Type '{ currentEdit: { edit: EvalResultEdit; criteriaResultId: string; evaluationId: string; message: string; }; hasEdit: boolean; criteriaItem: { id: string; criteriaId: string; requirement: string; description?: string; category?: string; weight: number; }; aiResult?: { id: string; result?: string; statusId?: string; co...' is not assignable to type 'CriteriaResultWithItem'.
+packages/module-eval/frontend type-check:                     Types of property 'currentEdit' are incompatible.
+packages/module-eval/frontend type-check:                       Type '{ edit: EvalResultEdit; criteriaResultId: string; evaluationId: string; message: string; }' is missing the following properties from type 'EvalResultEdit': id, version, isCurrent, editedBy, createdAt
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(83,19): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(92,55): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(115,16): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(119,31): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(123,16): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(128,21): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(131,57): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(140,15): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(146,21): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(149,57): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(157,15): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(162,19): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(165,55): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(173,16): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(177,19): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(180,55): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(196,16): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(201,21): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(204,57): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(213,15): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(219,21): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(222,57): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(233,15): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(239,21): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(242,57): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspace.ts(251,15): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspaceConfig.ts(62,19): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspaceConfig.ts(71,55): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspaceConfig.ts(81,16): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspaceConfig.ts(91,21): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspaceConfig.ts(97,57): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspaceConfig.ts(109,15): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspaces.ts(97,19): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspaces.ts(112,55): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/hooks/useWorkspaces.ts(179,14): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/OrgAdminManagementPage.tsx(124,19): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/OrgAdminManagementPage.tsx(128,55): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/OrgAdminManagementPage.tsx(145,19): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/OrgAdminManagementPage.tsx(152,55): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/OrgAdminManagementPage.tsx(170,19): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/OrgAdminManagementPage.tsx(176,55): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/OrgAdminManagementPage.tsx(190,34): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/OrgAdminManagementPage.tsx(194,19): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/OrgAdminManagementPage.tsx(201,55): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/OrgAdminManagementPage.tsx(227,16): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/OrgAdminManagementPage.tsx(264,41): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/OrgAdminManagementPage.tsx(269,55): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/OrgAdminManagementPage.tsx(283,41): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/OrgAdminManagementPage.tsx(296,55): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/OrgAdminManagementPage.tsx(308,47): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/OrgAdminManagementPage.tsx(318,55): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/OrgAdminManagementPage.tsx(337,47): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/OrgAdminManagementPage.tsx(347,55): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/PlatformAdminConfigPage.tsx(136,19): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/PlatformAdminConfigPage.tsx(142,58): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/PlatformAdminConfigPage.tsx(155,16): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/PlatformAdminConfigPage.tsx(159,68): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/PlatformAdminConfigPage.tsx(163,27): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceDetailAdminPage.tsx(134,19): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceDetailAdminPage.tsx(140,55): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceDetailAdminPage.tsx(159,19): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceDetailAdminPage.tsx(162,55): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceDetailAdminPage.tsx(173,16): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceDetailAdminPage.tsx(176,33): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceDetailAdminPage.tsx(181,55): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceDetailAdminPage.tsx(196,19): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceDetailAdminPage.tsx(201,55): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceDetailAdminPage.tsx(215,34): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceDetailPage.tsx(143,18): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceDetailPage.tsx(144,47): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceDetailPage.tsx(147,35): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceDetailPage.tsx(165,18): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceDetailPage.tsx(166,60): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceDetailPage.tsx(170,16): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceDetailPage.tsx(206,14): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceDetailPage.tsx(245,9): error TS2353: Object literal may only specify known properties, and 'workspaceId' does not exist in type 'CreateEvaluationInput'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceListPage.tsx(62,18): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceListPage.tsx(63,47): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: ../../module-ws/frontend/pages/WorkspaceListPage.tsx(66,35): error TS2339: Property 'accessToken' does not exist on type 'Session'.
+packages/module-eval/frontend type-check: Failed
+/Users/aaron/code/bodhix/testing/test-plugin/ai-sec-stack/packages/module-eval/frontend:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @ai-sec/module-eval@1.0.0 type-check: `tsc --noEmit`
+Exit status 2
