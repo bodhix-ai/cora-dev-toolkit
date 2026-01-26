@@ -1087,8 +1087,8 @@ export function EvalDetailPage({
   const documents = evaluation?.documents || [];
   const citations = evaluation?.citations || [];
 
-  const { progress, isProcessing } = useEvalProgress(evaluationId);
-  const { downloadPdf, downloadXlsx, isExporting } = useEvalExport(workspaceId, evaluationId);
+  const { progress, isProcessing } = useEvalProgress(token, workspaceId, evaluationId);
+  const { downloadPdf, downloadXlsx, isExporting } = useEvalExport(token, workspaceId, evaluationId);
 
   // Handlers
   const handleTabChange = useCallback((tab: ViewTab) => {
