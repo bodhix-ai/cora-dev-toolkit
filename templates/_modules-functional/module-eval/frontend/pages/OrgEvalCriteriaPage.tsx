@@ -40,7 +40,7 @@ import {
   CriteriaImportDialog,
   CriteriaItemEditor,
 } from "../components";
-import type { EvalCriteriaSet } from "../types";
+import type { EvalCriteriaSet, ImportCriteriaSetInput } from "../types";
 
 // =============================================================================
 // TYPES
@@ -252,7 +252,7 @@ export function OrgEvalCriteriaPage({
   }, []);
 
   const handleImport = useCallback(
-    async (data: { docTypeId: string; name: string; file: File }) => {
+    async (data: ImportCriteriaSetInput) => {
       if (!token || !orgId) return;
       await importCriteriaSet(data);
       setIsImportDialogOpen(false);
