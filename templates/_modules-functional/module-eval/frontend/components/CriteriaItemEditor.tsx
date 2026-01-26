@@ -421,21 +421,21 @@ export function CriteriaItemEditor({
     return a.localeCompare(b);
   });
 
-  const handleAdd = async (input: CreateCriteriaItemInput) => {
+  const handleAdd = async (input: CreateCriteriaItemInput | UpdateCriteriaItemInput) => {
     try {
       setIsSaving(true);
-      await onAdd(input);
+      await onAdd(input as CreateCriteriaItemInput);
       setIsAdding(false);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleUpdate = async (input: UpdateCriteriaItemInput) => {
+  const handleUpdate = async (input: CreateCriteriaItemInput | UpdateCriteriaItemInput) => {
     if (!editingId) return;
     try {
       setIsSaving(true);
-      await onUpdate(editingId, input);
+      await onUpdate(editingId, input as UpdateCriteriaItemInput);
       setEditingId(null);
     } finally {
       setIsSaving(false);

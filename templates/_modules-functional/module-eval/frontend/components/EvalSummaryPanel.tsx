@@ -440,7 +440,7 @@ function CollapsibleDetails({
                       >
                         {doc.fileName || doc.name || doc.documentId || `Document ${index + 1}`}
                       </Link>
-                      {index < evaluation.documents.length - 1 && (
+                      {index < (evaluation.documents?.length ?? 0) - 1 && (
                         <Typography variant="body2" component="span" sx={{ fontWeight: 'medium' }}>
                           ,
                         </Typography>

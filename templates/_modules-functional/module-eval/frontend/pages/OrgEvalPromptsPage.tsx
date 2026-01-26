@@ -317,15 +317,23 @@ export function OrgEvalPromptsPage({
       <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
 
       {/* Prompt Editor */}
-      <Paper variant="outlined">
-        <PromptConfigEditor
-          promptType={activeTab}
-          config={currentPrompt}
-          onSave={handleUpdatePrompt}
-          onTest={handleTestPrompt}
-          isSystemLevel={false}
-        />
-      </Paper>
+      {currentPrompt ? (
+        <Paper variant="outlined">
+          <PromptConfigEditor
+            promptType={activeTab}
+            config={currentPrompt}
+            onSave={handleUpdatePrompt}
+            onTest={handleTestPrompt}
+            isSystemLevel={false}
+          />
+        </Paper>
+      ) : (
+        <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="body2" color="text.secondary">
+            No prompt configuration found for this type
+          </Typography>
+        </Paper>
+      )}
     </Box>
   );
 }
