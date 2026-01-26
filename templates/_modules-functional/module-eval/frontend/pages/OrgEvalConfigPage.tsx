@@ -36,7 +36,7 @@ import {
   ScoringConfigPanel,
   StatusOptionManager,
 } from "../components";
-import type { CategoricalMode } from "../types";
+import type { UpdateOrgConfigInput } from "../types";
 
 // =============================================================================
 // TYPES
@@ -234,7 +234,7 @@ export function OrgEvalConfigPage({
   }, [refreshConfig, refreshStatus]);
 
   const handleScoringUpdate = useCallback(
-    async (updates: { categoricalMode?: CategoricalMode; showNumericalScore?: boolean }) => {
+    async (updates: UpdateOrgConfigInput) => {
       await updateConfig(updates);
     },
     [updateConfig]

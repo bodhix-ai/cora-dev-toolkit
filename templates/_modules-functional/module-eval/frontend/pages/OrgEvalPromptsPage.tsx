@@ -240,7 +240,6 @@ export function OrgEvalPromptsPage({
     isLoading: isPromptsLoading,
     error,
     update: updatePrompt,
-    test: testPrompt,
     refresh,
   } = useOrgEvalPrompts(token, orgId);
 
@@ -274,10 +273,11 @@ export function OrgEvalPromptsPage({
 
   const handleTestPrompt = useCallback(
     async (testInput: string) => {
-      if (!token || !orgId) return "";
-      return await testPrompt(activeTab, testInput);
+      // Test functionality not yet implemented for org-level prompts
+      console.log("Test prompt:", { activeTab, testInput });
+      return "Test functionality coming soon";
     },
-    [token, orgId, testPrompt, activeTab]
+    [activeTab]
   );
 
   // Render loading state

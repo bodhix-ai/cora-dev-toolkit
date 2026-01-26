@@ -37,7 +37,7 @@ import {
   StatusOptionManager,
   OrgDelegationCard,
 } from "../components";
-import type { CategoricalMode } from "../types";
+import type { UpdateSysConfigInput } from "../types";
 
 // =============================================================================
 // TYPES
@@ -221,7 +221,7 @@ export function SysEvalConfigPage({
   }, [refreshConfig, refreshStatus, refreshOrgs]);
 
   const handleScoringUpdate = useCallback(
-    async (updates: { categoricalMode?: CategoricalMode; showNumericalScore?: boolean }) => {
+    async (updates: UpdateSysConfigInput) => {
       await updateConfig(updates);
     },
     [updateConfig]
