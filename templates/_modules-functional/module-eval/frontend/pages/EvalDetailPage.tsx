@@ -1271,6 +1271,7 @@ export function EvalDetailPage({
           onSave={handleSaveEdit}
           onClose={handleCloseEdit}
           isOpen={true}
+          statusOptions={activeStatusOptions}
         />
       )}
     </Box>
