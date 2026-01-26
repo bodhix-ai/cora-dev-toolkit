@@ -37,7 +37,12 @@ import {
   StatusOptionManager,
   OrgDelegationManager,
 } from "../components";
-import type { UpdateSysConfigInput, UpdateOrgConfigInput } from "../types";
+import type { 
+  UpdateSysConfigInput, 
+  UpdateOrgConfigInput,
+  ToggleDelegationInput,
+  DelegationToggleResult,
+} from "../types";
 
 // =============================================================================
 // TYPES
@@ -227,6 +232,26 @@ export function SysEvalConfigPage({
     [updateConfig]
   );
 
+  const handleToggleDelegation = useCallback(
+    async (orgId: string, input: ToggleDelegationInput): Promise<DelegationToggleResult> => {
+      // Call the original toggle function
+      await toggleDelegation(orgId, input.aiConfigDelegated);
+      
+      // Find the org to get its name
+      const org = orgs?.find(o => o.id === orgId);
+      
+      return {
+        orgId,
+        orgName: org?.name || "Unknown",
+        aiConfigDelegated: input.aiConfigDelegated,
+        message: input.aiConfigDelegated 
+          ? "AI configuration delegation enabled" 
+          : "AI configuration delegation disabled",
+      };
+    },
+    [toggleDelegation, orgs]
+  );
+
   // Render loading state
   if (isLoading || !config) {
     return (
@@ -287,7 +312,7 @@ export function SysEvalConfigPage({
       >
         <OrgDelegationManager
           organizations={orgs || []}
-          onToggle={toggleDelegation}
+          onToggle={handleToggleDelegation}
           onRefresh={refreshOrgs}
         />
       </Section>

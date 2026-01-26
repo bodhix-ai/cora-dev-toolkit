@@ -33,7 +33,7 @@ import {
 import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { useOrgEvalPrompts, useOrgEvalConfig } from "../hooks";
 import { PromptConfigEditor } from "../components";
-import type { PromptType } from "../types";
+import type { PromptType, PromptTestResult } from "../types";
 
 // =============================================================================
 // TYPES
@@ -272,13 +272,14 @@ export function OrgEvalPromptsPage({
   );
 
   const handleTestPrompt = useCallback(
-    async (input: { systemPrompt?: string; userPromptTemplate?: string }) => {
+    async (input: { systemPrompt?: string; userPromptTemplate?: string }): Promise<PromptTestResult> => {
       // Test functionality not yet implemented for org-level prompts
       console.log("Test prompt:", { activeTab, input });
       return {
-        output: "Test functionality coming soon",
-        tokenCount: 0,
-        duration: 0,
+        promptType: activeTab,
+        renderedSystemPrompt: input.systemPrompt || "",
+        renderedUserPrompt: input.userPromptTemplate || "",
+        message: "Test functionality coming soon",
       };
     },
     [activeTab]
