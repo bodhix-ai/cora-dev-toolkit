@@ -68,3 +68,7 @@ test-ws-*/
 .DS_Store
 validation-latest.txt
 validation-results-current.txt
+
+# Temporary validation and error logs
+typescript-errors*.txt
+validation-*.txt
