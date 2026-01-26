@@ -329,7 +329,6 @@ export function OrgEvalPromptsPage({
             config={currentPrompt}
             onSave={handleUpdatePrompt}
             onTest={handleTestPrompt}
-            isSystemLevel={false}
           />
         </Paper>
       ) : (
