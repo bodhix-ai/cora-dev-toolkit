@@ -18,12 +18,12 @@ import type {
 /**
  * Lambda Management API Client
  *
- * Communicates with the Lambda Management Lambda via the new platform endpoints:
- * - GET /platform/lambda-config - List all configurations
- * - GET /platform/lambda-config/{configKey} - Get specific config
- * - PUT /platform/lambda-config/{configKey} - Update config (triggers EventBridge sync)
- * - GET /platform/lambda-functions - List Lambda functions
- * - POST /platform/lambda-config/sync - Manual EventBridge sync
+ * Communicates with the Lambda Management Lambda via system admin endpoints:
+ * - GET /admin/sys/mgmt/lambda-config - List all configurations
+ * - GET /admin/sys/mgmt/lambda-config/{configKey} - Get specific config
+ * - PUT /admin/sys/mgmt/lambda-config/{configKey} - Update config (triggers EventBridge sync)
+ * - GET /admin/sys/mgmt/lambda-functions - List Lambda functions
+ * - POST /admin/sys/mgmt/lambda-config/sync - Manual EventBridge sync
  */
 export class LambdaMgmtApiClient {
   private client: ReturnType<typeof createCoraAuthenticatedClient>;
@@ -38,7 +38,7 @@ export class LambdaMgmtApiClient {
   async listConfigs(): Promise<LambdaConfig[]> {
     try {
       const response = await this.client.get<LambdaConfig[]>(
-        "/platform/lambda-config"
+        "/admin/sys/mgmt/lambda-config"
       );
       return Array.isArray(response) ? response : [];
     } catch (error) {
@@ -55,7 +55,7 @@ export class LambdaMgmtApiClient {
   async getConfig(configKey: string): Promise<LambdaConfig | null> {
     try {
       const response = await this.client.get<{ data: LambdaConfig }>(
-        `/platform/lambda-config/${configKey}`
+        `/admin/sys/mgmt/lambda-config/${configKey}`
       );
       // CORA API returns { success: true, data: {...} } - unwrap it
       return response?.data || null;
@@ -102,7 +102,7 @@ export class LambdaMgmtApiClient {
   ): Promise<LambdaConfig | null> {
     try {
       const response = await this.client.put<{ data: LambdaConfig }>(
-        `/platform/lambda-config/${configKey}`,
+        `/admin/sys/mgmt/lambda-config/${configKey}`,
         { configValue: value }
       );
       // CORA API returns { success: true, data: {...} } - unwrap it
@@ -136,7 +136,7 @@ export class LambdaMgmtApiClient {
     try {
       const response = await this.client.get<{
         data: LambdaFunctionInfo[];
-      }>("/platform/lambda-functions");
+      }>("/admin/sys/mgmt/lambda-functions");
       // CORA API returns { success: true, data: [...] } - unwrap it
       return response?.data || [];
     } catch (error) {
@@ -153,7 +153,7 @@ export class LambdaMgmtApiClient {
   async syncEventBridge(): Promise<EventBridgeSyncResult> {
     try {
       const response = await this.client.post<EventBridgeSyncResult>(
-        "/platform/lambda-config/sync",
+        "/admin/sys/mgmt/lambda-config/sync",
         {}
       );
       return (
