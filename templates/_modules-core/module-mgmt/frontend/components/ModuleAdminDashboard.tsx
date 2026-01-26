@@ -10,7 +10,7 @@
  * ```
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   useModuleRegistry,
   type Module,
@@ -298,6 +298,25 @@ export function ModuleAdminDashboard({
   const [filter, setFilter] = useState<"all" | "core" | "functional">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Inject CSS styles on mount
+  useEffect(() => {
+    const styleId = "module-admin-dashboard-styles";
+    
+    // Check if styles already injected
+    if (!document.getElementById(styleId)) {
+      const styleElement = document.createElement("style");
+      styleElement.id = styleId;
+      styleElement.textContent = moduleAdminDashboardStyles;
+      document.head.appendChild(styleElement);
+    }
+
+    return () => {
+      // Optional: Remove styles on unmount
+      // const el = document.getElementById(styleId);
+      // if (el) el.remove();
+    };
+  }, []);
+
   // Handle enable/disable
   const handleToggleModule = useCallback(
     async (module: Module, enable: boolean) => {
@@ -334,7 +353,7 @@ export function ModuleAdminDashboard({
   );
 
   // Filter modules
-  const filteredModules = modules.filter((m) => {
+  const filteredModules = (modules || []).filter((m) => {
     if (filter !== "all" && m.type !== filter) {
       return false;
     }
@@ -399,19 +418,19 @@ export function ModuleAdminDashboard({
             className={filter === "all" ? "active" : ""}
             onClick={() => setFilter("all")}
           >
-            All ({modules.length})
+            All ({(modules || []).length})
           </button>
           <button
             className={filter === "core" ? "active" : ""}
             onClick={() => setFilter("core")}
           >
-            Core ({modules.filter((m) => m.type === "core").length})
+            Core ({(modules || []).filter((m) => m.type === "core").length})
           </button>
           <button
             className={filter === "functional" ? "active" : ""}
             onClick={() => setFilter("functional")}
           >
-            Functional ({modules.filter((m) => m.type === "functional").length})
+            Functional ({(modules || []).filter((m) => m.type === "functional").length})
           </button>
         </div>
 

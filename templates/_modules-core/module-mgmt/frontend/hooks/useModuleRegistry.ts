@@ -17,6 +17,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSession } from "next-auth/react";
 
 // =============================================================================
 // Types
@@ -106,11 +107,19 @@ export type UseModuleRegistryReturn = ModuleRegistryState &
 // API Client
 // =============================================================================
 
-const API_BASE = "/api/platform/modules";
+const API_BASE_URL =
+  typeof window !== "undefined"
+    ? (window as any).NEXT_PUBLIC_CORA_API_URL ||
+      process.env.NEXT_PUBLIC_CORA_API_URL ||
+      ""
+    : process.env.NEXT_PUBLIC_CORA_API_URL || "";
+
+const API_BASE = `${API_BASE_URL}/admin/sys/mgmt/modules`;
 
 async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  token?: string
 ): Promise<{ data: T | null; error: string | null }> {
   try {
     // Note: Using computed URL to avoid api-tracer regex false positives
@@ -119,6 +128,7 @@ async function apiRequest<T>(
       ...options,
       headers: {
         "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,
       },
     });
@@ -156,6 +166,11 @@ export function useModuleRegistry(
     onError,
   } = options;
 
+  // Authentication
+  const { data: session, status } = useSession();
+  const token = (session as { accessToken?: string } | null)?.accessToken ?? "";
+  const isAuthenticated = status === "authenticated" && !!token;
+
   // State
   const [modules, setModules] = useState<Module[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -172,6 +187,11 @@ export function useModuleRegistry(
 
   // Fetch all modules
   const refreshModules = useCallback(async () => {
+    if (!isAuthenticated) {
+      setError("Not authenticated");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -183,24 +203,33 @@ export function useModuleRegistry(
     const endpoint = queryString ? `?${queryString}` : "";
 
     const { data, error: fetchError } = await apiRequest<{ modules: Module[] }>(
-      endpoint
+      endpoint,
+      {},
+      token
     );
 
     if (fetchError) {
       handleError(fetchError);
       setModules([]);
     } else if (data) {
-      setModules(data.modules);
+      // API returns: { success: true, data: { modules: [...] } }
+      // apiRequest returns the full response as data, so we need data.data.modules
+      const apiData = data as any;
+      setModules(apiData?.data?.modules || []);
     }
 
     setIsLoading(false);
-  }, [includeDisabled, moduleType, handleError]);
+  }, [includeDisabled, moduleType, handleError, isAuthenticated, token]);
 
   // Get single module
   const getModule = useCallback(
     async (name: string): Promise<Module | null> => {
+      if (!isAuthenticated) return null;
+
       const { data, error: fetchError } = await apiRequest<{ module: Module }>(
-        `/${name}`
+        `/${name}`,
+        {},
+        token
       );
 
       if (fetchError) {
@@ -208,9 +237,11 @@ export function useModuleRegistry(
         return null;
       }
 
-      return data?.module || null;
+      // API returns: { success: true, data: { module: {...} } }
+      const apiData = data as any;
+      return apiData?.data?.module || null;
     },
-    [handleError]
+    [handleError, isAuthenticated, token]
   );
 
   // Update module
@@ -220,10 +251,15 @@ export function useModuleRegistry(
       name: string,
       updates: Partial<ModuleUpdate>
     ): Promise<Module | null> => {
+      if (!isAuthenticated) return null;
+
       try {
-        const response = await fetch(`/platform/modules/${name}`, {
+        const response = await fetch(`${API_BASE_URL}/admin/sys/mgmt/modules/${name}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify(updates),
         });
 
@@ -253,15 +289,18 @@ export function useModuleRegistry(
         return null;
       }
     },
-    [handleError]
+    [handleError, isAuthenticated, token]
   );
 
   // Enable module
   const enableModule = useCallback(
     async (name: string): Promise<boolean> => {
+      if (!isAuthenticated) return false;
+
       const { data, error: enableError } = await apiRequest<{ module: Module }>(
         `/${name}/enable`,
-        { method: "POST" }
+        { method: "POST" },
+        token
       );
 
       if (enableError) {
@@ -270,7 +309,9 @@ export function useModuleRegistry(
       }
 
       // Update local state
-      if (data?.module) {
+      // API returns: { success: true, data: { module: {...} } }
+      const apiData = data as any;
+      if (apiData?.data?.module) {
         setModules((prev) =>
           prev.map((m) => (m.name === name ? { ...m, isEnabled: true } : m))
         );
@@ -278,18 +319,20 @@ export function useModuleRegistry(
 
       return true;
     },
-    [handleError]
+    [handleError, isAuthenticated, token]
   );
 
   // Disable module
   const disableModule = useCallback(
     async (name: string, force = false): Promise<boolean> => {
+      if (!isAuthenticated) return false;
+
       const endpoint = force
         ? `/${name}/disable?force=true`
         : `/${name}/disable`;
       const { data, error: disableError } = await apiRequest<{
         module: Module;
-      }>(endpoint, { method: "POST" });
+      }>(endpoint, { method: "POST" }, token);
 
       if (disableError) {
         handleError(disableError);
@@ -297,7 +340,9 @@ export function useModuleRegistry(
       }
 
       // Update local state
-      if (data?.module) {
+      // API returns: { success: true, data: { module: {...} } }
+      const apiData = data as any;
+      if (apiData?.data?.module) {
         setModules((prev) =>
           prev.map((m) => (m.name === name ? { ...m, isEnabled: false } : m))
         );
@@ -305,12 +350,14 @@ export function useModuleRegistry(
 
       return true;
     },
-    [handleError]
+    [handleError, isAuthenticated, token]
   );
 
   // Register new module
   const registerModule = useCallback(
     async (module: ModuleRegistration): Promise<Module | null> => {
+      if (!isAuthenticated) return null;
+
       const { data, error: registerError } = await apiRequest<{
         module: Module;
       }>("", {
@@ -327,7 +374,7 @@ export function useModuleRegistry(
           config: module.config,
           feature_flags: module.featureFlags,
         }),
-      });
+      }, token);
 
       if (registerError) {
         handleError(registerError);
@@ -335,13 +382,15 @@ export function useModuleRegistry(
       }
 
       // Add to local state
-      if (data?.module) {
-        setModules((prev) => [...prev, data.module]);
+      // API returns: { success: true, data: { module: {...} } }
+      const apiData = data as any;
+      if (apiData?.data?.module) {
+        setModules((prev) => [...prev, apiData.data.module]);
       }
 
-      return data?.module || null;
+      return apiData?.data?.module || null;
     },
-    [handleError]
+    [handleError, isAuthenticated, token]
   );
 
   // Auto-fetch on mount
@@ -398,27 +447,42 @@ export function useModule(name: string): {
   error: string | null;
   refresh: () => Promise<void>;
 } {
+  // Authentication
+  const { data: session, status } = useSession();
+  const token = (session as { accessToken?: string } | null)?.accessToken ?? "";
+  const isAuthenticated = status === "authenticated" && !!token;
+
   const [module, setModule] = useState<Module | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    if (!isAuthenticated) {
+      setError("Not authenticated");
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     const { data, error: fetchError } = await apiRequest<{ module: Module }>(
-      `/${name}`
+      `/${name}`,
+      {},
+      token
     );
 
     if (fetchError) {
       setError(fetchError);
       setModule(null);
     } else if (data) {
-      setModule(data.module);
+      // API returns: { success: true, data: { module: {...} } }
+      const apiData = data as any;
+      setModule(apiData?.data?.module || null);
     }
 
     setIsLoading(false);
-  }, [name]);
+  }, [name, isAuthenticated, token]);
 
   useEffect(() => {
     refresh();
@@ -433,7 +497,10 @@ export function useModule(name: string): {
 export function useModuleEnabled(name: string): boolean {
   const { modules } = useModuleRegistry({ autoFetch: true });
   return useMemo(
-    () => modules.some((m) => m.name === name && m.isEnabled),
+    () => {
+      if (!modules || !Array.isArray(modules)) return false;
+      return modules.some((m) => m.name === name && m.isEnabled);
+    },
     [modules, name]
   );
 }

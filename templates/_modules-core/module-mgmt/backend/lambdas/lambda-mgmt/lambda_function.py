@@ -6,19 +6,19 @@ configurations, EventBridge rules, and the module registry. It follows
 CORA patterns with standard auth and super admin authorization.
 
 Routes - Lambda Config:
-- GET /platform/lambda-config - List all configurations
-- GET /platform/lambda-config/{configKey} - Get specific configuration
-- PUT /platform/lambda-config/{configKey} - Update configuration
-- GET /platform/lambda-functions - List Lambda functions
-- POST /platform/lambda-config/sync - Manual EventBridge sync
+- GET /admin/sys/mgmt/lambda-config - List all configurations
+- GET /admin/sys/mgmt/lambda-config/{configKey} - Get specific configuration
+- PUT /admin/sys/mgmt/lambda-config/{configKey} - Update configuration
+- GET /admin/sys/mgmt/lambda-functions - List Lambda functions
+- POST /admin/sys/mgmt/lambda-config/sync - Manual EventBridge sync
 
 Routes - Module Registry:
-- GET /platform/modules - List all registered modules
-- GET /platform/modules/{name} - Get specific module
-- PUT /platform/modules/{name} - Update module configuration
-- POST /platform/modules/{name}/enable - Enable a module
-- POST /platform/modules/{name}/disable - Disable a module
-- POST /platform/modules - Register a new module
+- GET /admin/sys/mgmt/modules - List all registered modules
+- GET /admin/sys/mgmt/modules/{name} - Get specific module
+- PUT /admin/sys/mgmt/modules/{name} - Update module configuration
+- POST /admin/sys/mgmt/modules/{name}/enable - Enable a module
+- POST /admin/sys/mgmt/modules/{name}/disable - Disable a module
+- POST /admin/sys/mgmt/modules - Register a new module
 """
 
 import json
@@ -116,46 +116,46 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         logger.info(f"System admin access granted for user {supabase_user_id}")
         
         # Route dispatcher
-        if path.endswith('/platform/lambda-config') and http_method == 'GET':
+        if path.endswith('/admin/sys/mgmt/lambda-config') and http_method == 'GET':
             return handle_list_configs()
         
-        elif path.endswith('/platform/lambda-config/sync') and http_method == 'POST':
+        elif path.endswith('/admin/sys/mgmt/lambda-config/sync') and http_method == 'POST':
             return handle_sync_eventbridge(supabase_user_id)
         
-        elif '/platform/lambda-config/' in path and http_method == 'GET':
+        elif '/admin/sys/mgmt/lambda-config/' in path and http_method == 'GET':
             config_key = path_parameters.get('configKey')
             return handle_get_config(config_key)
         
-        elif '/platform/lambda-config/' in path and http_method == 'PUT':
+        elif '/admin/sys/mgmt/lambda-config/' in path and http_method == 'PUT':
             config_key = path_parameters.get('configKey')
             body = json.loads(event.get('body', '{}'))
             return handle_update_config(config_key, body, supabase_user_id)
         
-        elif path.endswith('/platform/lambda-functions') and http_method == 'GET':
+        elif path.endswith('/admin/sys/mgmt/lambda-functions') and http_method == 'GET':
             return handle_list_functions()
         
         # Module Registry Routes
-        elif path.endswith('/platform/modules') and http_method == 'GET':
+        elif path.endswith('/admin/sys/mgmt/modules') and http_method == 'GET':
             return handle_list_modules(event)
         
-        elif path.endswith('/platform/modules') and http_method == 'POST':
+        elif path.endswith('/admin/sys/mgmt/modules') and http_method == 'POST':
             body = json.loads(event.get('body', '{}'))
             return handle_register_module(body, supabase_user_id)
         
-        elif '/platform/modules/' in path and path.endswith('/enable') and http_method == 'POST':
+        elif '/admin/sys/mgmt/modules/' in path and path.endswith('/enable') and http_method == 'POST':
             module_name = path_parameters.get('name')
             return handle_enable_module(module_name, supabase_user_id)
         
-        elif '/platform/modules/' in path and path.endswith('/disable') and http_method == 'POST':
+        elif '/admin/sys/mgmt/modules/' in path and path.endswith('/disable') and http_method == 'POST':
             module_name = path_parameters.get('name')
             force = event.get('queryStringParameters', {}).get('force', 'false').lower() == 'true'
             return handle_disable_module(module_name, supabase_user_id, force)
         
-        elif '/platform/modules/' in path and http_method == 'GET':
+        elif '/admin/sys/mgmt/modules/' in path and http_method == 'GET':
             module_name = path_parameters.get('name')
             return handle_get_module(module_name)
         
-        elif '/platform/modules/' in path and http_method == 'PUT':
+        elif '/admin/sys/mgmt/modules/' in path and http_method == 'PUT':
             module_name = path_parameters.get('name')
             body = json.loads(event.get('body', '{}'))
             return handle_update_module(module_name, body, supabase_user_id)
@@ -186,7 +186,7 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
 
 def handle_list_configs() -> Dict[str, Any]:
     """
-    GET /platform/lambda-config
+    GET /admin/sys/mgmt/lambda-config
     
     List all platform Lambda configurations.
     
@@ -195,7 +195,7 @@ def handle_list_configs() -> Dict[str, Any]:
     """
     try:
         configs = common.find_many(
-            table='sys_lambda_config',
+            table='mgmt_cfg_sys_lambda',
             filters={'is_active': True}
         )
         
@@ -211,7 +211,7 @@ def handle_list_configs() -> Dict[str, Any]:
 
 def handle_get_config(config_key: str) -> Dict[str, Any]:
     """
-    GET /platform/lambda-config/{configKey}
+    GET /admin/sys/mgmt/lambda-config/{configKey}
     
     Get a specific configuration by key.
     
@@ -226,7 +226,7 @@ def handle_get_config(config_key: str) -> Dict[str, Any]:
     
     try:
         config = common.find_one(
-            table='sys_lambda_config',
+            table='mgmt_cfg_sys_lambda',
             filters={'config_key': config_key}
         )
         
@@ -247,7 +247,7 @@ def handle_update_config(
     user_id: str
 ) -> Dict[str, Any]:
     """
-    PUT /platform/lambda-config/{configKey}
+    PUT /admin/sys/mgmt/lambda-config/{configKey}
     
     Update a configuration. If lambda_warming, also syncs EventBridge rules.
     
@@ -274,7 +274,7 @@ def handle_update_config(
     try:
         # Update configuration in database
         updated_config = common.update_one(
-            table='sys_lambda_config',
+            table='mgmt_cfg_sys_lambda',
             filters={'config_key': config_key},
             data={
                 'config_value': config_value,
@@ -327,7 +327,7 @@ def handle_update_config(
 
 def handle_list_functions() -> Dict[str, Any]:
     """
-    GET /platform/lambda-functions
+    GET /admin/sys/mgmt/lambda-functions
     
     List all Lambda functions in the environment.
     
@@ -350,7 +350,7 @@ def handle_list_functions() -> Dict[str, Any]:
 
 def handle_sync_eventbridge(user_id: str) -> Dict[str, Any]:
     """
-    POST /platform/lambda-config/sync
+    POST /admin/sys/mgmt/lambda-config/sync
     
     Manually trigger EventBridge rule synchronization.
     Useful for testing or fixing sync issues.
@@ -364,7 +364,7 @@ def handle_sync_eventbridge(user_id: str) -> Dict[str, Any]:
     try:
         # Get current lambda_warming configuration
         config = common.find_one(
-            table='sys_lambda_config',
+            table='mgmt_cfg_sys_lambda',
             filters={'config_key': 'lambda_warming'}
         )
         
@@ -418,7 +418,7 @@ def _transform_module(data: Dict[str, Any]) -> Dict[str, Any]:
 
 def handle_list_modules(event: Dict[str, Any]) -> Dict[str, Any]:
     """
-    GET /platform/modules
+    GET /admin/sys/mgmt/modules
     
     List all registered modules with optional filtering.
     
@@ -444,7 +444,7 @@ def handle_list_modules(event: Dict[str, Any]) -> Dict[str, Any]:
             filters['is_enabled'] = enabled_filter.lower() == 'true'
         
         modules = common.find_many(
-            table='sys_module_registry',
+            table='mgmt_cfg_sys_modules',
             filters=filters,
             order='tier,module_name'
         )
@@ -468,7 +468,7 @@ def handle_list_modules(event: Dict[str, Any]) -> Dict[str, Any]:
 
 def handle_get_module(module_name: str) -> Dict[str, Any]:
     """
-    GET /platform/modules/{name}
+    GET /admin/sys/mgmt/modules/{name}
     
     Get details for a specific module.
     
@@ -487,7 +487,7 @@ def handle_get_module(module_name: str) -> Dict[str, Any]:
     
     try:
         module = common.find_one(
-            table='sys_module_registry',
+            table='mgmt_cfg_sys_modules',
             filters={'module_name': module_name, 'deleted_at': None}
         )
         
@@ -508,7 +508,7 @@ def handle_update_module(
     user_id: str
 ) -> Dict[str, Any]:
     """
-    PUT /platform/modules/{name}
+    PUT /admin/sys/mgmt/modules/{name}
     
     Update module configuration.
     
@@ -538,7 +538,7 @@ def handle_update_module(
     
     try:
         updated_module = common.update_one(
-            table='sys_module_registry',
+            table='mgmt_cfg_sys_modules',
             filters={'module_name': module_name, 'deleted_at': None},
             data=update_data
         )
@@ -556,7 +556,7 @@ def handle_update_module(
 
 def handle_enable_module(module_name: str, user_id: str) -> Dict[str, Any]:
     """
-    POST /platform/modules/{name}/enable
+    POST /admin/sys/mgmt/modules/{name}/enable
     
     Enable a module. Checks that all dependencies are enabled first.
     
@@ -573,7 +573,7 @@ def handle_enable_module(module_name: str, user_id: str) -> Dict[str, Any]:
     try:
         # Get the module to check dependencies
         module = common.find_one(
-            table='sys_module_registry',
+            table='mgmt_cfg_sys_modules',
             filters={'module_name': module_name, 'deleted_at': None}
         )
         
@@ -585,7 +585,7 @@ def handle_enable_module(module_name: str, user_id: str) -> Dict[str, Any]:
         # Check if all dependencies are enabled
         if dependencies:
             deps = common.find_many(
-                table='sys_module_registry',
+                table='mgmt_cfg_sys_modules',
                 filters={'deleted_at': None}
             )
             
@@ -600,7 +600,7 @@ def handle_enable_module(module_name: str, user_id: str) -> Dict[str, Any]:
         
         # Enable the module
         updated_module = common.update_one(
-            table='sys_module_registry',
+            table='mgmt_cfg_sys_modules',
             filters={'module_name': module_name},
             data={'is_enabled': True, 'updated_by': user_id}
         )
@@ -622,7 +622,7 @@ def handle_disable_module(
     force: bool = False
 ) -> Dict[str, Any]:
     """
-    POST /platform/modules/{name}/disable
+    POST /admin/sys/mgmt/modules/{name}/disable
     
     Disable a module. Checks for dependent modules unless force=true.
     
@@ -640,7 +640,7 @@ def handle_disable_module(
     try:
         # Get the module
         module = common.find_one(
-            table='sys_module_registry',
+            table='mgmt_cfg_sys_modules',
             filters={'module_name': module_name, 'deleted_at': None}
         )
         
@@ -656,7 +656,7 @@ def handle_disable_module(
         # Check if other enabled modules depend on this one
         if not force:
             all_modules = common.find_many(
-                table='sys_module_registry',
+                table='mgmt_cfg_sys_modules',
                 filters={'deleted_at': None, 'is_enabled': True}
             )
             
@@ -672,7 +672,7 @@ def handle_disable_module(
         
         # Disable the module
         updated_module = common.update_one(
-            table='sys_module_registry',
+            table='mgmt_cfg_sys_modules',
             filters={'module_name': module_name},
             data={'is_enabled': False, 'updated_by': user_id}
         )
@@ -690,7 +690,7 @@ def handle_disable_module(
 
 def handle_register_module(body: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
-    POST /platform/modules
+    POST /admin/sys/mgmt/modules
     
     Register a new module in the registry.
     
@@ -720,7 +720,7 @@ def handle_register_module(body: Dict[str, Any], user_id: str) -> Dict[str, Any]
     try:
         # Check if module already exists
         existing = common.find_one(
-            table='sys_module_registry',
+            table='mgmt_cfg_sys_modules',
             filters={'module_name': module_name, 'deleted_at': None}
         )
         
@@ -755,7 +755,7 @@ def handle_register_module(body: Dict[str, Any], user_id: str) -> Dict[str, Any]
         
         # Insert module
         new_module = common.insert_one(
-            table='sys_module_registry',
+            table='mgmt_cfg_sys_modules',
             data=insert_data
         )
         

@@ -23,68 +23,68 @@ output "api_routes" {
   value = [
     {
       method      = "GET"
-      path        = "/platform/lambda-config"
+      path        = "/admin/sys/mgmt/lambda-config"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/platform/lambda-config/{configKey}"
+      path        = "/admin/sys/mgmt/lambda-config/{configKey}"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "PUT"
-      path        = "/platform/lambda-config/{configKey}"
+      path        = "/admin/sys/mgmt/lambda-config/{configKey}"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/platform/lambda-functions"
+      path        = "/admin/sys/mgmt/lambda-functions"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/platform/lambda-config/sync"
+      path        = "/admin/sys/mgmt/lambda-config/sync"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     # Module registry routes
     {
       method      = "GET"
-      path        = "/platform/modules"
+      path        = "/admin/sys/mgmt/modules"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/platform/modules/{name}"
+      path        = "/admin/sys/mgmt/modules/{name}"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "PUT"
-      path        = "/platform/modules/{name}"
+      path        = "/admin/sys/mgmt/modules/{name}"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/platform/modules/{name}/enable"
+      path        = "/admin/sys/mgmt/modules/{name}/enable"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/platform/modules/{name}/disable"
+      path        = "/admin/sys/mgmt/modules/{name}/disable"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/platform/modules"
+      path        = "/admin/sys/mgmt/modules"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     }

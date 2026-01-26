@@ -23,6 +23,7 @@ import { ScheduleTab } from "./ScheduleTab";
 import { PerformanceTab } from "./PerformanceTab";
 import { StorageTab } from "./StorageTab";
 import { CostTab } from "./CostTab";
+import { ModuleConfigTab } from "./ModuleConfigTab";
 
 /**
  * Platform Management Admin Page
@@ -84,6 +85,7 @@ export function PlatformMgmtAdmin(): React.ReactElement {
           <Tab label="Performance" id="tab-performance" aria-controls="tabpanel-performance" />
           <Tab label="Storage" id="tab-storage" aria-controls="tabpanel-storage" />
           <Tab label="Cost" id="tab-cost" aria-controls="tabpanel-cost" />
+          <Tab label="Modules" id="tab-modules" aria-controls="tabpanel-modules" />
         </Tabs>
       </Box>
 
@@ -101,6 +103,10 @@ export function PlatformMgmtAdmin(): React.ReactElement {
 
       <Box role="tabpanel" hidden={activeTab !== 3} id="tabpanel-cost" aria-labelledby="tab-cost">
         {activeTab === 3 && <CostTab />}
+      </Box>
+
+      <Box role="tabpanel" hidden={activeTab !== 4} id="tabpanel-modules" aria-labelledby="tab-modules">
+        {activeTab === 4 && <ModuleConfigTab />}
       </Box>
     </Box>
   );

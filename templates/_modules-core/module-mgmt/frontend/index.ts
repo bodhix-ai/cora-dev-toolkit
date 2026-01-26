@@ -14,7 +14,15 @@ export * from "./types";
 export { LambdaMgmtApiClient, createLambdaMgmtClient } from "./lib/api";
 
 // Export all hooks
-export { useLambdaWarming, useLambdaFunctions } from "./hooks";
+export {
+  useLambdaWarming,
+  useLambdaFunctions,
+  useModuleRegistry,
+  useModule,
+  useEnabledModules,
+  useModuleEnabled,
+  useModuleNavigation,
+} from "./hooks";
 
 // Export admin card
 export { platformMgmtAdminCard } from "./adminCard";
@@ -28,6 +36,7 @@ export { CostTab } from "./components/admin/CostTab";
 
 // Export other components
 export { ModuleAdminDashboard } from "./components/ModuleAdminDashboard";
+export { ModuleGate, ModuleAwareNavigation, ModuleConditional } from "./components/ModuleAwareNavigation";
 
 /**
  * Module metadata
