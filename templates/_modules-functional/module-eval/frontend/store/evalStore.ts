@@ -434,7 +434,7 @@ export const useEvalStore = create<EvalState>()(
         try {
           const response = await api.getSysConfig(token);
           // Defensive unwrapping: handle { data: ... } wrapper if API client didn't unwrap
-          const config = 'data' in response ? response.data : response;
+          const config: EvalSysConfig | null = 'data' in response ? response.data : response;
           set({ sysConfig: config, sysConfigLoading: false });
         } catch (error) {
           console.error("Failed to load sys config:", error);
@@ -1429,9 +1429,9 @@ export const useEvalStore = create<EvalState>()(
                   ...state.selectedEvaluation,
                   criteriaResults: results,
                 },
-              };
+              } as Partial<EvalState>;
             }
-            return state;
+            return {} as Partial<EvalState>;
           });
         } catch (error) {
           console.error("Failed to edit result:", error);
