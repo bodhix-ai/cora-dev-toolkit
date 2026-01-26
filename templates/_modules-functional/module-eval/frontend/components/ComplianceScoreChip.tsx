@@ -17,13 +17,6 @@ import { Box, Chip } from "@mui/material";
 // =============================================================================
 
 /** Status option with MUI Chip-compatible color */
-interface StatusOption {
-  id: string;
-  name: string;
-  color: "success" | "warning" | "error" | "info" | "default";
-  scoreValue: number;
-}
-
 /** Score display configuration (local version for this component) */
 interface ScoreConfig {
   categoricalMode: "boolean" | "detailed";
@@ -36,7 +29,7 @@ export interface ComplianceScoreChipProps {
   /** Configuration from evaluation API */
   config: ScoreConfig;
   /** Status options for mapping score to status */
-  statusOptions: StatusOption[];
+  statusOptions: Array<{ id: string; name: string; color?: string; scoreValue?: number }>;
   /** Size variant */
   size?: "small" | "medium" | "large";
   /** Custom class name */
@@ -52,14 +45,14 @@ export interface ComplianceScoreChipProps {
  */
 export function getStatusForScore(
   score: number,
-  statusOptions: StatusOption[]
-): StatusOption {
+  statusOptions: Array<{ id: string; name: string; color?: string; scoreValue?: number }>
+): { id: string; name: string; color?: string; scoreValue?: number } {
   // Sort status options by score_value DESC
-  const sorted = [...statusOptions].sort((a, b) => b.scoreValue - a.scoreValue);
+  const sorted = [...statusOptions].sort((a, b) => (b.scoreValue ?? 0) - (a.scoreValue ?? 0));
 
   // Find first option where score >= scoreValue
   for (const option of sorted) {
-    if (score >= option.scoreValue) {
+    if (option.scoreValue !== undefined && score >= option.scoreValue) {
       return option;
     }
   }
@@ -103,7 +96,7 @@ export function ComplianceScoreChip({
       {/* Status name chip - ALWAYS shown */}
       <Chip
         label={statusOption.name}
-        color={statusOption.color}
+        color={(statusOption.color as any) || "default"}
         sx={{
           ...sizeStyles[size],
           fontWeight: "medium",
@@ -115,7 +108,7 @@ export function ComplianceScoreChip({
       {config.showDecimalScore && (
         <Chip
           label={`${score.toFixed(0)}%`}
-          color={statusOption.color}
+          color={(statusOption.color as any) || "default"}
           sx={{
             ...scoreSizeStyles[size],
             fontWeight: "bold",

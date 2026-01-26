@@ -34,6 +34,7 @@ import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import {
   useEvalCriteriaSets,
   useEvalDocTypes,
+  useEvalCriteriaItems,
 } from "../hooks";
 import {
   CriteriaSetManager,
@@ -279,22 +280,32 @@ export function OrgEvalCriteriaPage({
     );
   }
 
+  // Use criteria items hook when a set is selected
+  const {
+    items: criteriaItems,
+    isLoading: itemsLoading,
+    add: addItem,
+    update: updateItem,
+    remove: removeItem,
+  } = useEvalCriteriaItems(
+    selectedSet ? token : null,
+    selectedSet ? orgId : null,
+    selectedSet ? selectedSet.id : null
+  );
+
   // Render criteria item editor when a set is selected
   if (selectedSet) {
     return (
       <Box sx={{ p: 3 }} className={className}>
         <PageHeader showBackButton onBack={handleBackToList} />
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="h6">
-            {selectedSet.name}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {selectedSet.description || "No description"}
-          </Typography>
-        </Box>
         <CriteriaItemEditor
-          criteriaSetId={selectedSet.id}
-          orgId={orgId}
+          criteriaSet={selectedSet}
+          items={criteriaItems}
+          isLoading={itemsLoading}
+          onAdd={addItem}
+          onUpdate={updateItem}
+          onDelete={removeItem}
+          onBack={handleBackToList}
         />
       </Box>
     );

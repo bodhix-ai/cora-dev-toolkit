@@ -25,7 +25,6 @@ import {
 } from "@mui/icons-material";
 import type {
   CriteriaResultWithItem,
-  StatusOption,
   Citation,
   ScoreConfig,
 } from "../types";
@@ -39,7 +38,7 @@ export interface EvalQAListProps {
   /** Criteria results with items */
   results: CriteriaResultWithItem[];
   /** Available status options */
-  statusOptions?: StatusOption[];
+  statusOptions?: Array<{ id: string; name: string; color?: string }>;
   /** Score configuration for display */
   scoreConfig?: ScoreConfig;
   /** Whether to group by category */
@@ -60,7 +59,7 @@ export interface EvalQACardProps {
   /** Criteria result with item */
   result: CriteriaResultWithItem;
   /** Status options for lookup */
-  statusOptions?: StatusOption[];
+  statusOptions?: Array<{ id: string; name: string; color?: string }>;
   /** Score configuration for display */
   scoreConfig?: ScoreConfig;
   /** Card index for display */
@@ -159,8 +158,8 @@ function markdownToHtml(markdown: string): string {
  */
 function getStatusOption(
   statusId: string | undefined,
-  statusOptions?: StatusOption[]
-): StatusOption | undefined {
+  statusOptions?: Array<{ id: string; name: string; color?: string }>
+): { id: string; name: string; color?: string } | undefined {
   if (!statusId || !statusOptions) return undefined;
   return statusOptions.find((s) => s.id === statusId);
 }
@@ -168,7 +167,7 @@ function getStatusOption(
 /**
  * Get status chip color from hex
  */
-function getStatusColor(status?: StatusOption): "success" | "error" | "warning" | "info" | "default" {
+function getStatusColor(status?: { id: string; name: string; color?: string }): "success" | "error" | "warning" | "info" | "default" {
   if (!status?.color) return "default";
 
   const color = status.color.toLowerCase();
@@ -633,7 +632,7 @@ export interface EvalQAStatsProps {
   /** Criteria results */
   results: CriteriaResultWithItem[];
   /** Status options */
-  statusOptions?: StatusOption[];
+  statusOptions?: Array<{ id: string; name: string; color?: string }>;
   /** Custom sx prop */
   sx?: object;
 }
@@ -728,7 +727,7 @@ export function EvalQAStats({
               </Typography>
               <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
                 {Array.from(stats.byStatus.entries()).map(([statusId, count]) => {
-                  const status: StatusOption | undefined = statusOptions.find((s) => s.id === statusId);
+                  const status = statusOptions.find((s) => s.id === statusId);
                   const color = getStatusColor(status);
                   return (
                     <Chip

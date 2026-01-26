@@ -432,9 +432,7 @@ export const useEvalStore = create<EvalState>()(
         set({ sysConfigLoading: true, sysConfigError: null });
 
         try {
-          const response = await api.getSysConfig(token);
-          // Defensive unwrapping: handle { data: ... } wrapper if API client didn't unwrap
-          const config: EvalSysConfig | null = 'data' in response ? response.data : response;
+          const config = await api.getSysConfig(token);
           set({ sysConfig: config, sysConfigLoading: false });
         } catch (error) {
           console.error("Failed to load sys config:", error);
