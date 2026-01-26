@@ -35,7 +35,7 @@ import {
 import {
   ScoringConfigPanel,
   StatusOptionManager,
-  OrgDelegationTable,
+  OrgDelegationCard,
 } from "../components";
 import type { CategoricalMode } from "../types";
 
@@ -285,7 +285,7 @@ export function SysEvalConfigPage({
         title="Organization Delegation"
         description="Control which organizations can customize their own AI prompts and models."
       >
-        <OrgDelegationManager
+        <OrgDelegationCard
           organizations={orgs || []}
           onToggle={toggleDelegation}
           onRefresh={refreshOrgs}

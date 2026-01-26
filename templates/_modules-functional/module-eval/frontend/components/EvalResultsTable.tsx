@@ -86,6 +86,7 @@ const statusConfig: Record<
   EvaluationStatus,
   { label: string; color: "warning" | "info" | "success" | "error" }
 > = {
+  draft: { label: "Draft", color: "info" },
   pending: { label: "Pending", color: "warning" },
   processing: { label: "Processing", color: "info" },
   completed: { label: "Completed", color: "success" },
