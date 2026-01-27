@@ -4,6 +4,8 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 import EditIcon from "@mui/icons-material/Edit";
 import EmailIcon from "@mui/icons-material/Email";
 import PhoneIcon from "@mui/icons-material/Phone";
@@ -69,16 +71,26 @@ export function ProfileCard({
 
   return (
     <Card
-      className="shadow-md border border-gray-200 dark:border-gray-700"
       sx={{
         bgcolor: "background.paper",
         borderRadius: "12px",
+        boxShadow: 3,
+        border: 1,
+        borderColor: (theme) =>
+          theme.palette.mode === "dark" ? "grey.700" : "grey.200",
       }}
     >
-      <CardContent className="p-6">
+      <CardContent sx={{ p: 6 }}>
         {/* Header with Avatar and Edit Button */}
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex items-center gap-4">
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            mb: 6,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 4 }}>
             <Avatar
               sx={{
                 width: 64,
@@ -90,18 +102,43 @@ export function ProfileCard({
             >
               {getUserInitials()}
             </Avatar>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <Box>
+              <Typography
+                variant="h4"
+                sx={{
+                  fontSize: "1.5rem",
+                  fontWeight: "bold",
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "white" : "grey.900",
+                }}
+              >
                 {getUserName()}
-              </h2>
+              </Typography>
               {/* Role Badge */}
-              <div className="inline-flex items-center px-3 py-1 mt-2 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-sm font-medium">
-                {profile.sysRole === "sys_owner" 
-                  ? "System Owner" 
+              <Box
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  px: 3,
+                  py: 1,
+                  mt: 2,
+                  borderRadius: "9999px",
+                  bgcolor: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? "rgba(30, 64, 175, 0.2)"
+                      : "rgba(219, 234, 254, 1)",
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "primary.light" : "primary.main",
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                }}
+              >
+                {profile.sysRole === "sys_owner"
+                  ? "System Owner"
                   : getRoleDisplayName(profile.sysRole)}
-              </div>
-            </div>
-          </div>
+              </Box>
+            </Box>
+          </Box>
           {showEdit && onEdit && (
             <Button
               variant="outlined"
@@ -116,75 +153,161 @@ export function ProfileCard({
               Edit
             </Button>
           )}
-        </div>
+        </Box>
 
         {/* Profile Details */}
-        <div className="space-y-4">
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {/* Email */}
-          <div className="flex items-center gap-3">
+          <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
             <EmailIcon
-              className="text-gray-400 dark:text-gray-500"
               fontSize="small"
+              sx={{
+                color: (theme) =>
+                  theme.palette.mode === "dark" ? "grey.500" : "grey.400",
+              }}
             />
-            <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">
+            <Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  fontSize: "0.75rem",
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "grey.400" : "grey.500",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  fontWeight: 600,
+                }}
+              >
                 Email
-              </p>
-              <p className="text-sm text-gray-900 dark:text-white">
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontSize: "0.875rem",
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "white" : "grey.900",
+                }}
+              >
                 {profile.email}
-              </p>
-            </div>
-          </div>
+              </Typography>
+            </Box>
+          </Box>
 
           {/* Phone */}
           {profile.phone && (
-            <div className="flex items-center gap-3">
+            <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
               <PhoneIcon
-                className="text-gray-400 dark:text-gray-500"
                 fontSize="small"
+                sx={{
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "grey.500" : "grey.400",
+                }}
               />
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">
+              <Box>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontSize: "0.75rem",
+                    color: (theme) =>
+                      theme.palette.mode === "dark" ? "grey.400" : "grey.500",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    fontWeight: 600,
+                  }}
+                >
                   Phone
-                </p>
-                <p className="text-sm text-gray-900 dark:text-white">
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontSize: "0.875rem",
+                    color: (theme) =>
+                      theme.palette.mode === "dark" ? "white" : "grey.900",
+                  }}
+                >
                   {profile.phone}
-                </p>
-              </div>
-            </div>
+                </Typography>
+              </Box>
+            </Box>
           )}
 
           {/* Member Since */}
-          <div className="flex items-center gap-3">
+          <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
             <CalendarTodayIcon
-              className="text-gray-400 dark:text-gray-500"
               fontSize="small"
+              sx={{
+                color: (theme) =>
+                  theme.palette.mode === "dark" ? "grey.500" : "grey.400",
+              }}
             />
-            <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">
+            <Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  fontSize: "0.75rem",
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "grey.400" : "grey.500",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  fontWeight: 600,
+                }}
+              >
                 Member Since
-              </p>
-              <p className="text-sm text-gray-900 dark:text-white">
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontSize: "0.875rem",
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "white" : "grey.900",
+                }}
+              >
                 {formatDate(profile.createdAt)}
-              </p>
-            </div>
-          </div>
+              </Typography>
+            </Box>
+          </Box>
 
           {/* Organizations Count */}
           {profile.organizations && profile.organizations.length > 0 && (
-            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold mb-2">
+            <Box
+              sx={{
+                pt: 4,
+                borderTop: 1,
+                borderColor: (theme) =>
+                  theme.palette.mode === "dark" ? "grey.700" : "grey.200",
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{
+                  fontSize: "0.75rem",
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "grey.400" : "grey.500",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  fontWeight: 600,
+                  mb: 2,
+                  display: "block",
+                }}
+              >
                 Organizations
-              </p>
-              <p className="text-sm text-gray-900 dark:text-white">
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontSize: "0.875rem",
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "white" : "grey.900",
+                }}
+              >
                 Member of {profile.organizations.length}{" "}
                 {profile.organizations.length === 1
                   ? "organization"
                   : "organizations"}
-              </p>
-            </div>
+              </Typography>
+            </Box>
           )}
-        </div>
+        </Box>
       </CardContent>
     </Card>
   );

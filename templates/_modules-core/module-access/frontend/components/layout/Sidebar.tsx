@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Box, IconButton } from "@mui/material";
 import { useUser } from "../../contexts/UserContext";
 import { useOrganizationContext } from "../../hooks/useOrganizationContext";
 import { useRole } from "../../hooks/useRole";
@@ -105,9 +106,20 @@ export function Sidebar({ navigation }: SidebarProps) {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside
-        className="hidden md:flex flex-col bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 relative transition-all duration-300"
-        style={{ width: `${sidebarWidth}px` }}
+      <Box
+        component="aside"
+        sx={{
+          display: { xs: "none", md: "flex" },
+          flexDirection: "column",
+          bgcolor: (theme) =>
+            theme.palette.mode === "dark" ? "#18181b" : "white",
+          borderRight: 1,
+          borderColor: (theme) =>
+            theme.palette.mode === "dark" ? "#27272a" : "grey.200",
+          position: "relative",
+          transition: "all 0.3s",
+          width: `${sidebarWidth}px`,
+        }}
       >
         {/* Resize Handle */}
         <ResizeHandle
@@ -120,44 +132,99 @@ export function Sidebar({ navigation }: SidebarProps) {
 
         {/* App Branding Section */}
         {isExpanded ? (
-          <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-200 dark:border-zinc-800">
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 3,
+              px: 4,
+              py: 4,
+              borderBottom: 1,
+              borderColor: (theme) =>
+                theme.palette.mode === "dark" ? "#27272a" : "grey.200",
+            }}
+          >
             <OrgIcon
               iconName={currentOrganization?.appIcon}
-              className="text-blue-600 dark:text-blue-400"
+              sx={{
+                color: (theme) =>
+                  theme.palette.mode === "dark" ? "primary.light" : "primary.main",
+              }}
               fontSize="medium"
             />
-            <span className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+            <Box
+              component="span"
+              sx={{
+                fontSize: "1.125rem",
+                fontWeight: 600,
+                color: (theme) =>
+                  theme.palette.mode === "dark" ? "white" : "grey.900",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               {currentOrganization?.appName || currentOrganization?.orgName || "CORA"}
-            </span>
-          </div>
+            </Box>
+          </Box>
         ) : (
-          <div className="flex items-center justify-center px-4 py-4 border-b border-gray-200 dark:border-zinc-800">
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              px: 4,
+              py: 4,
+              borderBottom: 1,
+              borderColor: (theme) =>
+                theme.palette.mode === "dark" ? "#27272a" : "grey.200",
+            }}
+          >
             <OrgIcon
               iconName={currentOrganization?.appIcon}
-              className="text-blue-600 dark:text-blue-400"
+              sx={{
+                color: (theme) =>
+                  theme.palette.mode === "dark" ? "primary.light" : "primary.main",
+              }}
               fontSize="medium"
             />
-          </div>
+          </Box>
         )}
 
         {/* Collapse/Expand Button */}
-        <div className="flex items-center justify-end p-4">
-          <button
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", p: 4 }}>
+          <IconButton
             onClick={toggleExpanded}
-            className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
             aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+            sx={{
+              p: 2,
+              borderRadius: 1,
+              transition: "background-color 0.2s",
+              "&:hover": {
+                bgcolor: (theme) =>
+                  theme.palette.mode === "dark" ? "#27272a" : "grey.100",
+              },
+            }}
           >
             {isExpanded ? (
               <ChevronLeftIcon fontSize="small" />
             ) : (
               <ChevronRightIcon fontSize="small" />
             )}
-          </button>
-        </div>
+          </IconButton>
+        </Box>
 
         {/* Navigation Links - Flat list without section headers */}
-        <nav className="flex-1 px-3 py-4 overflow-y-auto">
-          <div className="space-y-1">
+        <Box
+          component="nav"
+          sx={{
+            flex: 1,
+            px: 3,
+            py: 4,
+            overflowY: "auto",
+          }}
+        >
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
             {sortedNavigation.flatMap((section) =>
               section.items.map((item) => (
                 <NavLink
@@ -169,49 +236,119 @@ export function Sidebar({ navigation }: SidebarProps) {
                 />
               ))
             )}
-          </div>
-        </nav>
+          </Box>
+        </Box>
 
         {/* Bottom Section - Unified User Menu */}
-        <div className="border-t border-gray-200 dark:border-zinc-800 p-3">
+        <Box
+          sx={{
+            borderTop: 1,
+            borderColor: (theme) =>
+              theme.palette.mode === "dark" ? "#27272a" : "grey.200",
+            p: 3,
+          }}
+        >
           <SidebarUserMenu isExpanded={isExpanded} />
-        </div>
-      </aside>
+        </Box>
+      </Box>
 
       {/* Mobile Menu - Overlay */}
       {isMobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-50">
+        <Box
+          sx={{
+            display: { xs: "block", md: "none" },
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+          }}
+        >
           {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/50"
+          <Box
             onClick={() => setIsMobileMenuOpen(false)}
+            sx={{
+              position: "absolute",
+              inset: 0,
+              bgcolor: "rgba(0, 0, 0, 0.5)",
+            }}
           />
 
           {/* Sidebar */}
-          <aside className="absolute left-0 top-0 bottom-0 w-64 bg-white dark:bg-zinc-900 shadow-xl flex flex-col">
+          <Box
+            component="aside"
+            sx={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: "256px",
+              bgcolor: (theme) =>
+                theme.palette.mode === "dark" ? "#18181b" : "white",
+              boxShadow: 24,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
             {/* App Branding + Close button */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-zinc-800">
-              <div className="flex items-center gap-3">
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                p: 4,
+                borderBottom: 1,
+                borderColor: (theme) =>
+                  theme.palette.mode === "dark" ? "#27272a" : "grey.200",
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
                 <OrgIcon
                   iconName={currentOrganization?.appIcon}
-                  className="text-blue-600 dark:text-blue-400"
+                  sx={{
+                    color: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "primary.light"
+                        : "primary.main",
+                  }}
                   fontSize="medium"
                 />
-                <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                <Box
+                  component="span"
+                  sx={{
+                    fontSize: "1.125rem",
+                    fontWeight: 600,
+                    color: (theme) =>
+                      theme.palette.mode === "dark" ? "white" : "grey.900",
+                  }}
+                >
                   {currentOrganization?.appName || currentOrganization?.orgName || "CORA"}
-                </span>
-              </div>
-              <button
+                </Box>
+              </Box>
+              <IconButton
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-zinc-800"
+                sx={{
+                  p: 2,
+                  borderRadius: 1,
+                  "&:hover": {
+                    bgcolor: (theme) =>
+                      theme.palette.mode === "dark" ? "#27272a" : "grey.100",
+                  },
+                }}
               >
                 <ChevronLeftIcon fontSize="small" />
-              </button>
-            </div>
+              </IconButton>
+            </Box>
 
             {/* Navigation - Flat list without section headers */}
-            <nav className="flex-1 px-3 py-4 overflow-y-auto">
-              <div className="space-y-1">
+            <Box
+              component="nav"
+              sx={{
+                flex: 1,
+                px: 3,
+                py: 4,
+                overflowY: "auto",
+              }}
+            >
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                 {sortedNavigation.flatMap((section) =>
                   section.items.map((item) => (
                     <NavLink
@@ -223,15 +360,22 @@ export function Sidebar({ navigation }: SidebarProps) {
                     />
                   ))
                 )}
-              </div>
-            </nav>
+              </Box>
+            </Box>
 
             {/* Bottom section - Unified User Menu */}
-            <div className="border-t border-gray-200 dark:border-zinc-800 p-3">
+            <Box
+              sx={{
+                borderTop: 1,
+                borderColor: (theme) =>
+                  theme.palette.mode === "dark" ? "#27272a" : "grey.200",
+                p: 3,
+              }}
+            >
               <SidebarUserMenu isExpanded={true} />
-            </div>
-          </aside>
-        </div>
+            </Box>
+          </Box>
+        </Box>
       )}
     </>
   );

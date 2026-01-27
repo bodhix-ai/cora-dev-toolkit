@@ -4,12 +4,17 @@ import { useState } from "react";
 import { useUser } from "../../contexts/UserContext";
 import { useOrganizationContext } from "../../hooks/useOrganizationContext";
 import { useRole } from "../../hooks/useRole";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
-import Divider from "@mui/material/Divider";
-import Avatar from "@mui/material/Avatar";
-import ListItemIcon from "@mui/material/ListItemIcon";
-import ListItemText from "@mui/material/ListItemText";
+import {
+  Box,
+  Menu,
+  MenuItem,
+  Divider,
+  Avatar,
+  ListItemIcon,
+  ListItemText,
+  Typography,
+  IconButton,
+} from "@mui/material";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import CheckIcon from "@mui/icons-material/Check";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -94,54 +99,124 @@ export function SidebarUserMenu({ isExpanded }: SidebarUserMenuProps) {
   return (
     <>
       {/* Trigger Button */}
-      <button
+      <Box
+        component="button"
         onClick={handleMenuClick}
-        className={`w-full transition-colors ${
-          isExpanded
-            ? "flex items-center gap-3 px-3 py-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg"
-            : "flex items-center justify-center py-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-md group relative"
-        }`}
         aria-label="User menu"
         aria-expanded={menuOpen}
         aria-haspopup="true"
+        sx={{
+          width: "100%",
+          display: "flex",
+          alignItems: isExpanded ? "center" : "center",
+          justifyContent: isExpanded ? "flex-start" : "center",
+          gap: isExpanded ? 3 : 0,
+          px: isExpanded ? 3 : 0,
+          py: 2,
+          border: "none",
+          bgcolor: "transparent",
+          cursor: "pointer",
+          borderRadius: isExpanded ? "12px" : "8px",
+          transition: "background-color 0.2s",
+          position: "relative",
+          "&:hover": {
+            bgcolor: (theme) =>
+              theme.palette.mode === "dark" ? "#27272a" : "grey.100",
+          },
+        }}
       >
         {/* User initials - simple text circle */}
-        <div
-          className="flex items-center justify-center w-5 h-5 rounded-full bg-gray-200 dark:bg-zinc-700 text-gray-900 dark:text-white text-[0.625rem] font-medium"
-          style={{ minWidth: "20px", minHeight: "20px" }}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "20px",
+            height: "20px",
+            minWidth: "20px",
+            minHeight: "20px",
+            borderRadius: "50%",
+            bgcolor: (theme) =>
+              theme.palette.mode === "dark" ? "#3f3f46" : "grey.200",
+            color: (theme) =>
+              theme.palette.mode === "dark" ? "white" : "grey.900",
+            fontSize: "0.625rem",
+            fontWeight: 500,
+          }}
         >
           {getUserInitials()}
-        </div>
+        </Box>
 
         {/* Expanded State - Name + Arrow */}
         {isExpanded && (
           <>
-            <div className="flex-1 min-w-0 text-left">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+            <Box sx={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+              <Typography
+                sx={{
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "white" : "grey.900",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
                 {getUserName()}
-              </p>
+              </Typography>
               {role && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <Typography
+                  sx={{
+                    fontSize: "0.75rem",
+                    color: (theme) =>
+                      theme.palette.mode === "dark" ? "grey.400" : "grey.500",
+                  }}
+                >
                   {getRoleDisplayName(role)}
-                </p>
+                </Typography>
               )}
-            </div>
+            </Box>
             <KeyboardArrowDownIcon
               fontSize="small"
-              className={`text-gray-500 dark:text-gray-400 transition-transform ${
-                menuOpen ? "rotate-180" : ""
-              }`}
+              sx={{
+                color: (theme) =>
+                  theme.palette.mode === "dark" ? "grey.400" : "grey.500",
+                transition: "transform 0.2s",
+                transform: menuOpen ? "rotate(180deg)" : "rotate(0deg)",
+              }}
             />
           </>
         )}
 
         {/* Collapsed State - Tooltip */}
         {!isExpanded && (
-          <div className="absolute left-full ml-2 px-3 py-2 bg-gray-900 dark:bg-zinc-800 text-white text-sm rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity z-50 shadow-lg">
+          <Box
+            sx={{
+              position: "absolute",
+              left: "100%",
+              ml: 2,
+              px: 3,
+              py: 2,
+              bgcolor: (theme) =>
+                theme.palette.mode === "dark" ? "#27272a" : "grey.900",
+              color: "white",
+              fontSize: "0.875rem",
+              borderRadius: "8px",
+              opacity: 0,
+              pointerEvents: "none",
+              whiteSpace: "nowrap",
+              transition: "opacity 0.2s",
+              zIndex: 50,
+              boxShadow: 6,
+              "&:hover": {
+                opacity: 1,
+              },
+            }}
+          >
             {getUserName()}
-          </div>
+          </Box>
         )}
-      </button>
+      </Box>
 
       {/* Dropdown Menu */}
       <Menu
@@ -165,15 +240,15 @@ export function SidebarUserMenu({ isExpanded }: SidebarUserMenuProps) {
               ml: isExpanded ? 0 : 1,
               overflow: "visible",
               borderRadius: "8px",
-              border: "1px solid",
+              border: 1,
               borderColor: "divider",
             },
           },
         }}
       >
         {/* User Info Section */}
-        <div className="px-4 py-3">
-          <div className="flex items-center gap-3 mb-2">
+        <Box sx={{ px: 4, py: 3 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 3, mb: 2 }}>
             <Avatar
               src=""
               alt=""
@@ -181,48 +256,123 @@ export function SidebarUserMenu({ isExpanded }: SidebarUserMenuProps) {
                 width: 40,
                 height: 40,
                 fontSize: "1rem",
-                bgcolor: "rgb(229, 231, 235)",
-                color: "rgb(17, 24, 39)",
+                bgcolor: (theme) =>
+                  theme.palette.mode === "dark" ? "#3f3f46" : "grey.200",
+                color: (theme) =>
+                  theme.palette.mode === "dark" ? "white" : "grey.900",
               }}
-              className="dark:bg-zinc-700 dark:text-white"
             >
               {getUserInitials()}
             </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography
+                sx={{
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "white" : "grey.900",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
                 {getUserName()}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: "0.75rem",
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "grey.400" : "grey.500",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
                 {profile.email}
-              </p>
-            </div>
-          </div>
+              </Typography>
+            </Box>
+          </Box>
           {role && (
-            <div className="inline-flex items-center px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-medium">
+            <Box
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                px: 2,
+                py: 1,
+                borderRadius: "8px",
+                bgcolor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(30, 64, 175, 0.2)"
+                    : "#eff6ff",
+                color: (theme) =>
+                  theme.palette.mode === "dark" ? "primary.light" : "primary.main",
+                fontSize: "0.75rem",
+                fontWeight: 500,
+              }}
+            >
               {getRoleDisplayName(role)}
-            </div>
+            </Box>
           )}
 
           {/* Error/Status Information */}
           {isLoading && (
-            <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">
+            <Box
+              sx={{
+                mt: 2,
+                fontSize: "0.75rem",
+                color: (theme) =>
+                  theme.palette.mode === "dark" ? "#fbbf24" : "#d97706",
+                bgcolor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(217, 119, 6, 0.2)"
+                    : "#fef3c7",
+                px: 2,
+                py: 1,
+                borderRadius: "4px",
+              }}
+            >
               Loading organization data...
-            </div>
+            </Box>
           )}
           {!profile?.firstName && !profile?.lastName && (
-            <div className="mt-2 text-xs text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded">
+            <Box
+              sx={{
+                mt: 2,
+                fontSize: "0.75rem",
+                color: (theme) =>
+                  theme.palette.mode === "dark" ? "#fb923c" : "#ea580c",
+                bgcolor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(234, 88, 12, 0.2)"
+                    : "#ffedd5",
+                px: 2,
+                py: 1,
+                borderRadius: "4px",
+              }}
+            >
               Profile incomplete - please update your name
-            </div>
+            </Box>
           )}
-        </div>
+        </Box>
 
         {/* Organization Section */}
         {organizations.length > 0 && <Divider />}
         {organizations.length > 0 && (
-          <div className="px-2 py-2">
-            <div className="px-2 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+          <Box sx={{ px: 2, py: 2 }}>
+            <Box
+              sx={{
+                px: 2,
+                py: 1,
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                color: (theme) =>
+                  theme.palette.mode === "dark" ? "grey.400" : "grey.500",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
               Organization
-            </div>
+            </Box>
             {organizations.map((org) => (
               <MenuItem
                 key={org.orgId}
@@ -241,7 +391,14 @@ export function SidebarUserMenu({ isExpanded }: SidebarUserMenuProps) {
                   },
                 }}
               >
-                <div className="flex items-center gap-3 w-full">
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 3,
+                    width: "100%",
+                  }}
+                >
                   <Avatar
                     src=""
                     alt=""
@@ -255,30 +412,51 @@ export function SidebarUserMenu({ isExpanded }: SidebarUserMenuProps) {
                   >
                     {org.orgName.charAt(0).toUpperCase()}
                   </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography
+                      sx={{
+                        fontSize: "0.875rem",
+                        fontWeight: 500,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       {org.orgName}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontSize: "0.75rem",
+                        color: (theme) =>
+                          theme.palette.mode === "dark"
+                            ? "grey.400"
+                            : "grey.500",
+                      }}
+                    >
                       {getRoleDisplayName(org.role)}
                       {org.isOwner && " • Owner"}
-                    </div>
-                  </div>
+                    </Typography>
+                  </Box>
                   {org.orgId === currentOrganization?.orgId && (
                     <CheckIcon
                       fontSize="small"
-                      className="text-blue-600 dark:text-blue-400"
+                      sx={{
+                        color: (theme) =>
+                          theme.palette.mode === "dark"
+                            ? "primary.light"
+                            : "primary.main",
+                      }}
                     />
                   )}
-                </div>
+                </Box>
               </MenuItem>
             ))}
-          </div>
+          </Box>
         )}
 
         {/* Actions Section */}
         <Divider />
-        <div className="px-2 py-2">
+        <Box sx={{ px: 2, py: 2 }}>
           {/* User Profile */}
           <MenuItem
             onClick={() => {
@@ -399,7 +577,7 @@ export function SidebarUserMenu({ isExpanded }: SidebarUserMenuProps) {
               primaryTypographyProps={{ fontSize: "0.875rem" }}
             />
           </MenuItem>
-        </div>
+        </Box>
       </Menu>
     </>
   );

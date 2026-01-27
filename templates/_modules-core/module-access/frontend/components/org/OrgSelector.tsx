@@ -7,6 +7,8 @@ import FormControl from "@mui/material/FormControl";
 import Avatar from "@mui/material/Avatar";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 import CheckIcon from "@mui/icons-material/Check";
 import { useOrganizationContext } from "../../hooks/useOrganizationContext";
 import { getRoleDisplayName } from "../../lib/permissions";
@@ -77,7 +79,7 @@ export function OrgSelector({ variant = "full" }: OrgSelectorProps) {
             const org = organizations.find((o) => o.orgId === value);
             if (!org) return null;
             return (
-              <div className="flex items-center gap-2">
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                 <Avatar
                   src=""
                   alt=""
@@ -91,10 +93,19 @@ export function OrgSelector({ variant = "full" }: OrgSelectorProps) {
                 >
                   {org.orgName.charAt(0).toUpperCase()}
                 </Avatar>
-                <span className="text-sm font-medium truncate">
+                <Box
+                  component="span"
+                  sx={{
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   {org.orgName}
-                </span>
-              </div>
+                </Box>
+              </Box>
             );
           }}
         >
@@ -124,7 +135,10 @@ export function OrgSelector({ variant = "full" }: OrgSelectorProps) {
                 secondary={getRoleDisplayName(org.role)}
               />
               {org.orgId === currentOrganization.orgId && (
-                <CheckIcon fontSize="small" className="ml-2 text-blue-600" />
+                <CheckIcon
+                  fontSize="small"
+                  sx={{ ml: 2, color: "primary.main" }}
+                />
               )}
             </MenuItem>
           ))}
@@ -135,10 +149,20 @@ export function OrgSelector({ variant = "full" }: OrgSelectorProps) {
 
   // Full variant
   return (
-    <div className="w-full">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+    <Box sx={{ width: "100%" }}>
+      <Typography
+        component="label"
+        sx={{
+          display: "block",
+          fontSize: "0.875rem",
+          fontWeight: 500,
+          color: (theme) =>
+            theme.palette.mode === "dark" ? "grey.300" : "grey.700",
+          mb: 2,
+        }}
+      >
         Current Organization
-      </label>
+      </Typography>
       <FormControl fullWidth disabled={isLoading || switching}>
         <Select
           value={currentOrganization.orgId}
@@ -157,7 +181,7 @@ export function OrgSelector({ variant = "full" }: OrgSelectorProps) {
             const org = organizations.find((o) => o.orgId === value);
             if (!org) return null;
             return (
-              <div className="flex items-center gap-3">
+              <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
                 <Avatar
                   src=""
                   alt=""
@@ -171,16 +195,32 @@ export function OrgSelector({ variant = "full" }: OrgSelectorProps) {
                 >
                   {org.orgName.charAt(0).toUpperCase()}
                 </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="text-base font-semibold text-gray-900 dark:text-white truncate">
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography
+                    sx={{
+                      fontSize: "1rem",
+                      fontWeight: 600,
+                      color: (theme) =>
+                        theme.palette.mode === "dark" ? "white" : "grey.900",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     {org.orgName}
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: "0.875rem",
+                      color: (theme) =>
+                        theme.palette.mode === "dark" ? "grey.400" : "grey.500",
+                    }}
+                  >
                     {getRoleDisplayName(org.role)}
                     {org.isOwner && " • Owner"}
-                  </div>
-                </div>
-              </div>
+                  </Typography>
+                </Box>
+              </Box>
             );
           }}
         >
@@ -199,7 +239,14 @@ export function OrgSelector({ variant = "full" }: OrgSelectorProps) {
                 },
               }}
             >
-              <div className="flex items-center gap-3 w-full">
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 3,
+                  width: "100%",
+                }}
+              >
                 <Avatar
                   src=""
                   alt=""
@@ -213,28 +260,49 @@ export function OrgSelector({ variant = "full" }: OrgSelectorProps) {
                 >
                   {org.orgName.charAt(0).toUpperCase()}
                 </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="text-base font-semibold truncate">
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography
+                    sx={{
+                      fontSize: "1rem",
+                      fontWeight: 600,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     {org.orgName}
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: "0.875rem",
+                      color: (theme) =>
+                        theme.palette.mode === "dark" ? "grey.400" : "grey.500",
+                    }}
+                  >
                     {getRoleDisplayName(org.role)}
                     {org.isOwner && " • Owner"}
-                  </div>
-                </div>
+                  </Typography>
+                </Box>
                 {org.orgId === currentOrganization.orgId && (
-                  <CheckIcon fontSize="small" className="text-blue-600" />
+                  <CheckIcon fontSize="small" sx={{ color: "primary.main" }} />
                 )}
-              </div>
+              </Box>
             </MenuItem>
           ))}
         </Select>
       </FormControl>
       {organizations.length > 1 && (
-        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        <Typography
+          sx={{
+            mt: 2,
+            fontSize: "0.75rem",
+            color: (theme) =>
+              theme.palette.mode === "dark" ? "grey.400" : "grey.500",
+          }}
+        >
           You belong to {organizations.length} organizations
-        </p>
+        </Typography>
       )}
-    </div>
+    </Box>
   );
 }
