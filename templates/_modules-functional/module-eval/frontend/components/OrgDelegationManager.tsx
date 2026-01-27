@@ -326,6 +326,7 @@ export function OrgDelegationManager({
             disabled={isLoading}
             size="small"
             title="Refresh"
+            aria-label="Refresh organizations"
           >
             <RefreshIcon />
           </IconButton>
