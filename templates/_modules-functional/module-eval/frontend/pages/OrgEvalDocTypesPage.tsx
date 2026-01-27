@@ -217,7 +217,7 @@ export function OrgEvalDocTypesPage({
   if (error) {
     return (
       <Box sx={{ p: 3 }} className={className}>
-        <ErrorState error={error} onRetry={refresh} />
+        <ErrorState error={typeof error === 'string' ? new Error(error) : error} onRetry={refresh} />
       </Box>
     );
   }

@@ -33,7 +33,7 @@ import {
 import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { useOrgEvalPrompts, useOrgEvalConfig } from "../hooks";
 import { PromptConfigEditor } from "../components";
-import type { PromptType } from "../types";
+import type { PromptType, PromptTestResult } from "../types";
 
 // =============================================================================
 // TYPES
@@ -240,7 +240,6 @@ export function OrgEvalPromptsPage({
     isLoading: isPromptsLoading,
     error,
     update: updatePrompt,
-    test: testPrompt,
     refresh,
   } = useOrgEvalPrompts(token, orgId);
 
@@ -273,11 +272,17 @@ export function OrgEvalPromptsPage({
   );
 
   const handleTestPrompt = useCallback(
-    async (testInput: string) => {
-      if (!token || !orgId) return "";
-      return await testPrompt(activeTab, testInput);
+    async (input: { systemPrompt?: string; userPromptTemplate?: string }): Promise<PromptTestResult> => {
+      // Test functionality not yet implemented for org-level prompts
+      console.log("Test prompt:", { activeTab, input });
+      return {
+        promptType: activeTab,
+        renderedSystemPrompt: input.systemPrompt || "",
+        renderedUserPrompt: input.userPromptTemplate || "",
+        message: "Test functionality coming soon",
+      };
     },
-    [token, orgId, testPrompt, activeTab]
+    [activeTab]
   );
 
   // Render loading state
@@ -303,7 +308,7 @@ export function OrgEvalPromptsPage({
   if (error) {
     return (
       <Box sx={{ p: 3 }} className={className}>
-        <ErrorState error={error} onRetry={refresh} />
+        <ErrorState error={typeof error === 'string' ? new Error(error) : error} onRetry={refresh} />
       </Box>
     );
   }
@@ -317,15 +322,22 @@ export function OrgEvalPromptsPage({
       <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
 
       {/* Prompt Editor */}
-      <Paper variant="outlined">
-        <PromptConfigEditor
-          promptType={activeTab}
-          config={currentPrompt}
-          onSave={handleUpdatePrompt}
-          onTest={handleTestPrompt}
-          isSystemLevel={false}
-        />
-      </Paper>
+      {currentPrompt ? (
+        <Paper variant="outlined">
+          <PromptConfigEditor
+            promptType={activeTab}
+            config={currentPrompt}
+            onSave={handleUpdatePrompt}
+            onTest={handleTestPrompt}
+          />
+        </Paper>
+      ) : (
+        <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="body2" color="text.secondary">
+            No prompt configuration found for this type
+          </Typography>
+        </Paper>
+      )}
     </Box>
   );
 }

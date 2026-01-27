@@ -45,6 +45,7 @@ import type {
   StatusOptionInput,
   PromptConfigInput,
   ImportCriteriaSetResult,
+  ToggleDelegationInput,
 } from "../types";
 import * as api from "../lib/api";
 
@@ -170,7 +171,7 @@ interface EvalState {
   toggleOrgDelegation: (
     token: string,
     orgId: string,
-    delegated: boolean
+    input: ToggleDelegationInput
   ) => Promise<void>;
 
   // === Org Config Actions ===
@@ -431,9 +432,7 @@ export const useEvalStore = create<EvalState>()(
         set({ sysConfigLoading: true, sysConfigError: null });
 
         try {
-          const response = await api.getSysConfig(token);
-          // Defensive unwrapping: handle { data: ... } wrapper if API client didn't unwrap
-          const config = 'data' in response ? response.data : response;
+          const config = await api.getSysConfig(token);
           set({ sysConfig: config, sysConfigLoading: false });
         } catch (error) {
           console.error("Failed to load sys config:", error);
@@ -566,18 +565,18 @@ export const useEvalStore = create<EvalState>()(
         }
       },
 
-      toggleOrgDelegation: async (token, orgId, delegated) => {
+      toggleOrgDelegation: async (token, orgId, input) => {
         const previous = get().orgsDelegation;
 
         // Optimistic update
         set((state) => ({
           orgsDelegation: state.orgsDelegation.map((o) =>
-            o.id === orgId ? { ...o, aiConfigDelegated: delegated } : o
+            o.id === orgId ? { ...o, aiConfigDelegated: input.aiConfigDelegated } : o
           ),
         }));
 
         try {
-          await api.toggleOrgDelegation(token, orgId, delegated);
+          await api.toggleOrgDelegation(token, orgId, input);
         } catch (error) {
           // Revert
           console.error("Failed to toggle org delegation:", error);
@@ -1428,9 +1427,9 @@ export const useEvalStore = create<EvalState>()(
                   ...state.selectedEvaluation,
                   criteriaResults: results,
                 },
-              };
+              } as Partial<EvalState>;
             }
-            return state;
+            return {} as Partial<EvalState>;
           });
         } catch (error) {
           console.error("Failed to edit result:", error);

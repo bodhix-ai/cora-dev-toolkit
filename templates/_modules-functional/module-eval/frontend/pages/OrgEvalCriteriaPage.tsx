@@ -34,13 +34,14 @@ import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import {
   useEvalCriteriaSets,
   useEvalDocTypes,
+  useEvalCriteriaItems,
 } from "../hooks";
 import {
   CriteriaSetManager,
   CriteriaImportDialog,
   CriteriaItemEditor,
 } from "../components";
-import type { EvalCriteriaSet } from "../types";
+import type { EvalCriteriaSet, ImportCriteriaSetInput } from "../types";
 
 // =============================================================================
 // TYPES
@@ -196,7 +197,7 @@ export function OrgEvalCriteriaPage({
     create: createCriteriaSet,
     update: updateCriteriaSet,
     remove: deleteCriteriaSet,
-    importSet: importCriteriaSet,
+    importFromFile: importCriteriaSet,
     refresh,
   } = useEvalCriteriaSets(token, orgId, { docTypeId: filterDocTypeId });
 
@@ -252,10 +253,11 @@ export function OrgEvalCriteriaPage({
   }, []);
 
   const handleImport = useCallback(
-    async (data: { docTypeId: string; name: string; file: File }) => {
-      if (!token || !orgId) return;
-      await importCriteriaSet(data);
+    async (data: ImportCriteriaSetInput) => {
+      if (!token || !orgId) throw new Error('No auth token or org ID');
+      const result = await importCriteriaSet(data);
       setIsImportDialogOpen(false);
+      return result;
     },
     [token, orgId, importCriteriaSet]
   );
@@ -273,27 +275,37 @@ export function OrgEvalCriteriaPage({
   if (error) {
     return (
       <Box sx={{ p: 3 }} className={className}>
-        <ErrorState error={error} onRetry={refresh} />
+        <ErrorState error={typeof error === 'string' ? new Error(error) : error} onRetry={refresh} />
       </Box>
     );
   }
+
+  // Use criteria items hook when a set is selected
+  const {
+    items: criteriaItems,
+    isLoading: itemsLoading,
+    add: addItem,
+    update: updateItem,
+    remove: removeItem,
+  } = useEvalCriteriaItems(
+    selectedSet ? token : null,
+    selectedSet ? orgId : null,
+    selectedSet ? selectedSet.id : null
+  );
 
   // Render criteria item editor when a set is selected
   if (selectedSet) {
     return (
       <Box sx={{ p: 3 }} className={className}>
         <PageHeader showBackButton onBack={handleBackToList} />
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="h6">
-            {selectedSet.name}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {selectedSet.description || "No description"}
-          </Typography>
-        </Box>
         <CriteriaItemEditor
-          criteriaSetId={selectedSet.id}
-          orgId={orgId}
+          criteriaSet={selectedSet}
+          items={criteriaItems}
+          isLoading={itemsLoading}
+          onAdd={addItem}
+          onUpdate={updateItem}
+          onDelete={removeItem}
+          onBack={handleBackToList}
         />
       </Box>
     );
@@ -308,13 +320,13 @@ export function OrgEvalCriteriaPage({
       <CriteriaSetManager
         criteriaSets={criteriaSets || []}
         docTypes={docTypes || []}
-        onCreateSet={handleCreateSet}
-        onUpdateSet={handleUpdateSet}
-        onDeleteSet={handleDeleteSet}
-        onSelectSet={handleSelectSet}
-        onImportClick={handleOpenImport}
+        onCreate={handleCreateSet}
+        onUpdate={handleUpdateSet}
+        onDelete={handleDeleteSet}
+        onViewItems={handleSelectSet}
+        onImport={handleOpenImport}
         selectedDocTypeId={filterDocTypeId}
-        onDocTypeFilterChange={handleDocTypeFilterChange}
+        onFilterChange={handleDocTypeFilterChange}
       />
 
       {/* Import Dialog */}

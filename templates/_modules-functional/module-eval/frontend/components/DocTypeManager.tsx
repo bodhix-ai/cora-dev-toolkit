@@ -274,21 +274,21 @@ export function DocTypeManager({
     ? docTypes.find((dt) => dt.id === editingId)
     : null;
 
-  const handleCreate = async (input: CreateDocTypeInput) => {
+  const handleCreate = async (input: CreateDocTypeInput | UpdateDocTypeInput) => {
     try {
       setIsSaving(true);
-      await onCreate(input);
+      await onCreate(input as CreateDocTypeInput);
       setIsCreating(false);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleUpdate = async (input: UpdateDocTypeInput) => {
+  const handleUpdate = async (input: CreateDocTypeInput | UpdateDocTypeInput) => {
     if (!editingId) return;
     try {
       setIsSaving(true);
-      await onUpdate(editingId, input);
+      await onUpdate(editingId, input as UpdateDocTypeInput);
       setEditingId(null);
     } finally {
       setIsSaving(false);

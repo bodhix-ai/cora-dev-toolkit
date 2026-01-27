@@ -374,21 +374,21 @@ export function CriteriaSetManager({
     ? criteriaSets.filter((cs) => cs.docTypeId === selectedDocTypeId)
     : criteriaSets;
 
-  const handleCreate = async (input: CreateCriteriaSetInput) => {
+  const handleCreate = async (input: CreateCriteriaSetInput | UpdateCriteriaSetInput) => {
     try {
       setIsSaving(true);
-      await onCreate(input);
+      await onCreate(input as CreateCriteriaSetInput);
       setIsCreating(false);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleUpdate = async (input: UpdateCriteriaSetInput) => {
+  const handleUpdate = async (input: CreateCriteriaSetInput | UpdateCriteriaSetInput) => {
     if (!editingId) return;
     try {
       setIsSaving(true);
-      await onUpdate(editingId, input);
+      await onUpdate(editingId, input as UpdateCriteriaSetInput);
       setEditingId(null);
     } finally {
       setIsSaving(false);

@@ -137,7 +137,7 @@ export function useOrgsDelegation(token: string | null) {
   const toggle = useCallback(
     async (orgId: string, delegated: boolean) => {
       if (!token) throw new Error("No auth token");
-      await toggleOrgDelegation(token, orgId, delegated);
+      await toggleOrgDelegation(token, orgId, { aiConfigDelegated: delegated });
     },
     [token, toggleOrgDelegation]
   );
