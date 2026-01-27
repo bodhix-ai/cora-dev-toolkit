@@ -48,31 +48,34 @@ Standardize all CORA admin pages (sys and org) with consistent:
 **Plan:** `docs/plans/plan_admin-standardization-s3b.md`
 **Started:** January 27, 2026
 
-**Expanded Scope:**
-1. **Version Tracking Foundation** (4-6 hours)
+**Scope:**
+1. **Version Tracking Foundation** (4-6 hours) ✅ COMPLETE
    - Toolkit and module versioning system
    - Dependency tracking in module-registry.yaml
    - Project version snapshots (.cora-version.yaml)
    - Sync logging for upgrade traceability
 
-2. **Admin Route Standardization** (4-6 hours)
+2. **Admin Page Parity & Route Standardization** (4-6 hours)
+   - Ensure every module has BOTH sys and org admin pages (or placeholders)
    - Fix 84 admin route validator errors
-   - Update module-mgmt Lambda docstrings
+   - Align with `/admin/{scope}/{module}/{resource}` pattern
+   - Update Lambda docstrings with route documentation
    - Update API Gateway routes in outputs.tf
    - Update frontend API calls
+   - Validate route compliance
 
 3. **Documentation** (2-3 hours)
-   - Admin page parity rule
+   - Admin page parity rule (both sys & org required)
    - Module ADMINISTRATION.md template
    - Delegated admin concept documentation
    - Guide for module developers
 
 **Total Estimated Effort:** 12-18 hours
 
-**Why Expanded:**
-- Version tracking is critical for deploying updates to 4+ projects
-- Admin route fixes cannot be deployed sustainably without version tracking
-- Both are tightly coupled to deployment workflow
+**Key Standards to Follow:**
+- `docs/standards/standard_API-PATTERNS.md` - Request/response patterns
+- `docs/standards/standard_ADMIN-API-ROUTES.md` - Route structure requirements
+- `docs/arch decisions/ADR-018-API-ROUTE-STRUCTURE.md` - Architecture decision
 
 ## Sprint 2 Summary (Completed)
 
@@ -221,10 +224,120 @@ Standardize all CORA admin pages (sys and org) with consistent:
    - Commit: `ed1f0ac` - "feat(admin-s3b): add version tracking and admin route standardization plan"
    - Ready for PR or implementation
 
+### January 27, 2026 - Sprint 3b Session 2
+
+**Status:** Phase 1 Complete, Scope Expanded
+**Branch:** `admin-page-s3b`
+
+**Phase 1 Verification (Version Tracking Foundation):**
+All 7 steps verified as complete from previous session:
+- ✅ VERSION file (0.1.0)
+- ✅ CHANGELOG.md
+- ✅ module-registry.yaml enhanced with dependencies
+- ✅ .cora-version.yaml template
+- ✅ create-cora-project.sh version stamping
+- ✅ sync-fix-to-project.sh logging
+
+**Admin Page Parity Analysis - SCOPE EXPANDED:**
+1. **Ran admin route validator:**
+   - 51 errors found (not 84 as originally estimated)
+   - All errors in module-mgmt routes
+
+2. **Analyzed all 8 modules for sys/org admin route parity:**
+   - **2 modules with complete parity:** module-kb, module-eval ✅
+   - **1 module missing org routes:** module-mgmt (has sys only) ⚠️
+   - **3 modules with non-standard routes:** module-access, module-ai, module-ws ❌
+   - **2 modules with NO admin routes:** module-chat, module-voice ❌❌
+
+3. **Key Discovery:**
+   - Validator errors (51) only catch route naming issues within existing routes
+   - Business requirement: ALL modules need BOTH sys AND org admin pages
+   - **Real scope: 6 modules need significant work** (not just mgmt's route fixes)
+
+**Work Tiers Identified:**
+- **Tier 1:** Route standardization (access, ai, ws) - 17 routes to migrate
+- **Tier 2:** Add org admin routes (mgmt, access, ai, ws) - 4 modules
+- **Tier 3:** Create admin infrastructure (chat, voice) - 2 modules from scratch
+
+**Documents Updated:**
+- `docs/plans/plan_admin-standardization-s3b.md` - Added Admin Page Parity Gap Matrix
+- `memory-bank/context-admin-standardization.md` - This session summary
+
+**Next Steps:**
+- Prioritize work within revised Phase 2 scope
+- Determine if work should be phased (quick wins first) or comprehensive
+- Await user direction on implementation priority
+
+### January 27, 2026 - Sprint 3b Session 3
+
+**Status:** Admin Route Validator Enhanced - Module Parity Detection Complete
+**Branch:** `admin-page-s3b`
+
+**Work Completed:**
+
+1. **Fixed Critical Validator Bug** ✅
+   - **Problem:** Anti-pattern regex was too broad, causing 51 false positives
+   - **Old pattern:** `r'^/admin/[a-z]+/[^/]+'` (matched valid routes)
+   - **New pattern:** `r'^/admin/(?!sys/|org/|ws/)'` (negative lookahead)
+   - **Impact:** module-mgmt routes now pass validation completely!
+
+2. **Enhanced Validator with Module Parity Checking** ✅
+   - Added `discover_modules()` function - scans packages/ or templates/ directories
+   - Track which modules have sys/org admin routes
+   - Report missing routes as violations
+   - Quantify "admin page parity gap"
+   - Support both toolkit templates AND provisioned projects
+
+3. **Enhanced Output Reports** ✅
+   - Added "Admin Page Parity Check" section to text output
+   - Shows: discovered modules, modules with sys/org routes, missing routes
+   - Added module_parity section to JSON output
+   - Clear actionable metrics for Phase 2 work
+
+4. **Testing & Validation** ✅
+   - Tested on toolkit: `templates/_modules-core`
+   - Tested on provisioned project: `~/code/sts/ai-ccat/ai-ccat-stack`
+   - Confirmed module discovery works for both environments
+
+**Key Findings:**
+
+**ai-ccat-stack Validation Results:**
+- **Total routes scanned:** 152
+- **Compliant routes:** 67
+- **Non-compliant routes:** 54 errors
+- **Discovered modules:** 8 (all CORA modules present)
+- **Modules with sys admin routes:** 2 (mgmt, eval)
+- **Modules with org admin routes:** 1 (eval only)
+
+**Error Breakdown (54 total):**
+- 35 route format errors (missing scope prefix: `/admin/ai/` → `/admin/sys/ai/`)
+- 13 module-kb malformed routes (missing module name: `/admin/sys/kbs` → `/admin/sys/kb/bases`)
+- 6 modules missing sys admin routes (access, ai, chat, kb, voice, ws)
+- 7 modules missing org admin routes (access, ai, chat, kb, mgmt, voice, ws)
+
+**Module-Specific Status:**
+| Module | Sys Admin | Org Admin | Status |
+|--------|-----------|-----------|--------|
+| eval | ✅ Compliant | ✅ Compliant | **Full parity** |
+| mgmt | ✅ Compliant | ❌ Missing | Partial |
+| kb | ⚠️ Malformed | ⚠️ Malformed | Routes exist, need path fix |
+| access | ❌ Missing | ❌ Missing | No parity |
+| ai | ❌ Missing | ❌ Missing | No parity |
+| chat | ❌ Missing | ❌ Missing | No parity |
+| voice | ❌ Missing | ❌ Missing | No parity |
+| ws | ❌ Missing | ❌ Missing | No parity |
+
+**Documents Updated:**
+- `validation/admin-route-validator/validate_routes.py` - Enhanced with parity checking
+- Commit: `c633e28` - "feat(admin-route-validator): add module parity checking"
+
+**Key Insight:**
+module-kb routes EXIST for both sys and org but are malformed. They use `/admin/sys/kbs` instead of `/admin/sys/kb/bases`. This is better than missing entirely - only needs path restructuring (1-2 hours) vs full route creation (3-4 hours).
+
 **Next Session:**
-- Begin Phase 1: Version Tracking Foundation
-- Start with Step 1.2: Create VERSION file (0.1.0)
-- Follow plan in `docs/plans/plan_admin-standardization-s3b.md`
+- Begin Phase 2: Admin Page Parity & Route Standardization
+- Start with module-kb path fixes (quickest win)
+- Then address missing sys/org admin routes for other modules
 
 ---
 
