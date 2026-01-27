@@ -16,14 +16,15 @@ This initiative aims to achieve the **P1: Clean Project Baseline (Error-Free)** 
 ## Sprint History
 
 | Sprint | Branch | Plan | Status | Completed |
-|--------|--------|------|--------|-----------|
-| S1 | `fix/typescript-errors-s1` | `plan_typescript-errors-s1.md` | 🟡 Active | - |
+|--------|--------|------|-----------|-----------|
+| S1 | `fix/typescript-errors-s1` | `plan_typescript-errors-s1.md` | ✅ Complete | 2026-01-26 |
+| S2 | `fix/validation-errors-s2` | `plan_api-tracer-s2.md` | 🟡 Active | - |
 
 ## Current Sprint
 
-- **Branch:** `fix/typescript-errors-s1`
-- **Plan:** `docs/plans/plan_typescript-errors-s1.md`
-- **Focus:** Fix 46 TypeScript errors (primarily in module-eval)
+- **Branch:** `fix/validation-errors-s2`
+- **Plan:** `docs/plans/plan_api-tracer-s2.md`
+- **Focus:** API Tracer (7 errors) + UI Library (2 errors) = 9 total validation errors
 
 **Sprint Goal:** Achieve 0 TypeScript errors across entire project
 
@@ -486,7 +487,7 @@ This initiative will address errors in priority order:
 - Fixed union type handling across components
 
 **Next Sprint Priorities:**
-1. **S2: API Tracer** - Fix 7 route mismatches
-2. **S3: UI Library & TypeScript** - Address remaining validation issues
-3. **S4: Frontend & Accessibility** - Fix 42 frontend compliance + 55 a11y errors
-4. **S5: Next.js Routing** - Fix 24 errors
+1. **S2: API Tracer + UI Library** - Fix 7 route mismatches + 2 UI Library errors (9 total) ← CURRENT
+2. **S3: Frontend & Accessibility** - Fix 42 frontend compliance + 55 a11y errors
+3. **S4: Next.js Routing** - Fix 24 errors
+4. **S5: Database Naming** - Fix 6 errors
