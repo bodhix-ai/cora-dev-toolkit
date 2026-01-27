@@ -352,7 +352,7 @@ export function CreateEvaluationDialog({
                 <List>
                   <ListItem
                     secondaryAction={
-                      <IconButton edge="end" onClick={handleRemoveFile}>
+                      <IconButton edge="end" onClick={handleRemoveFile} aria-label="Remove file">
                         <Close />
                       </IconButton>
                     }

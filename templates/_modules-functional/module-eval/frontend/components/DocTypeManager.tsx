@@ -233,6 +233,7 @@ export function DocTypeCard({
               size="small"
               color="default"
               title="Edit"
+              aria-label="Edit document type"
             >
               <EditIcon fontSize="small" />
             </IconButton>
@@ -241,6 +242,7 @@ export function DocTypeCard({
               size="small"
               color="error"
               title="Delete"
+              aria-label="Delete document type"
             >
               <DeleteIcon fontSize="small" />
             </IconButton>
