@@ -2315,6 +2315,48 @@ RUNSCRIPT
   log_info "   To run validators: ./scripts/validation/run-validators.sh"
 }
 
+# --- Build Packages ---
+build_packages() {
+  local stack_dir="$1"
+  
+  log_step "Building all packages..."
+  
+  # Check if pnpm is available
+  if ! command -v pnpm &> /dev/null; then
+    log_warn "pnpm not found. Skipping package build."
+    log_info "Install pnpm to enable automatic builds: npm install -g pnpm"
+    return
+  fi
+  
+  log_info "Installing dependencies with pnpm..."
+  cd "$stack_dir"
+  
+  # Run pnpm install
+  if pnpm install 2>&1 | tee /tmp/pnpm-install.log | grep -v "Progress" | tail -10; then
+    log_info "✅ Dependencies installed"
+  else
+    log_warn "⚠️  Some dependencies may have failed to install"
+    log_info "Check /tmp/pnpm-install.log for details"
+  fi
+  
+  echo ""
+  log_info "Building all packages..."
+  
+  # Run pnpm build (this builds all packages in the workspace)
+  if pnpm build 2>&1 | tee /tmp/pnpm-build.log | grep -v "Progress" | tail -20; then
+    log_info "✅ All packages built successfully"
+  else
+    log_warn "⚠️  Some packages may have failed to build"
+    log_info "Check /tmp/pnpm-build.log for details"
+  fi
+  
+  cd - > /dev/null
+  
+  log_info "📦 Package build complete!"
+  log_info "   Type declarations are now available for TypeScript validation"
+  echo ""
+}
+
 # --- Run Post-Creation Validation ---
 run_post_creation_validation() {
   local stack_dir="$1"
@@ -2323,15 +2365,15 @@ run_post_creation_validation() {
   
   # Run UI library validation first (fast check)
   log_info "Checking UI library compliance..."
-  if [[ -f "${TOOLKIT_ROOT}/scripts/validate-ui-library.sh" ]]; then
-    if "${TOOLKIT_ROOT}/scripts/validate-ui-library.sh" "templates" > /dev/null 2>&1; then
+  if [[ -f "${TOOLKIT_ROOT}/validation/ui-library-validator/validate-ui-library.sh" ]]; then
+    if "${TOOLKIT_ROOT}/validation/ui-library-validator/validate-ui-library.sh" "templates" > /dev/null 2>&1; then
       log_info "✅ UI library validation passed"
     else
       log_warn "⚠️  UI library validation found violations"
-      log_info "Run: ./scripts/validate-ui-library.sh templates for details"
+      log_info "Run: ./validation/ui-library-validator/validate-ui-library.sh templates for details"
     fi
   else
-    log_warn "UI library validator not found: ${TOOLKIT_ROOT}/scripts/validate-ui-library.sh"
+    log_warn "UI library validator not found: ${TOOLKIT_ROOT}/validation/ui-library-validator/validate-ui-library.sh"
   fi
   echo ""
   
@@ -2422,6 +2464,11 @@ if ! $DRY_RUN; then
     # Generate minimal .env file for infra even without config
     generate_infra_env "" "$INFRA_DIR"
   fi
+fi
+
+# --- Build Packages ---
+if ! $DRY_RUN && $WITH_CORE_MODULES; then
+  build_packages "$STACK_DIR"
 fi
 
 # --- Run Post-Creation Validation ---
