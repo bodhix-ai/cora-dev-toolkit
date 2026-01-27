@@ -326,10 +326,10 @@ export function CriteriaItemRow({
 
       {/* Actions */}
       <Box sx={{ display: "flex", gap: 0.5, flexShrink: 0 }}>
-        <IconButton size="small" onClick={onEdit} title="Edit">
+        <IconButton size="small" onClick={onEdit} title="Edit" aria-label="Edit criteria item">
           <EditIcon fontSize="small" />
         </IconButton>
-        <IconButton size="small" onClick={onDelete} title="Delete" color="error">
+        <IconButton size="small" onClick={onDelete} title="Delete" color="error" aria-label="Delete criteria item">
           <DeleteIcon fontSize="small" />
         </IconButton>
       </Box>
@@ -459,7 +459,7 @@ export function CriteriaItemEditor({
       <Box sx={{ mb: 3 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
           {onBack && (
-            <IconButton onClick={onBack} title="Back">
+            <IconButton onClick={onBack} title="Back" aria-label="Back to criteria sets">
               <BackIcon />
             </IconButton>
           )}
