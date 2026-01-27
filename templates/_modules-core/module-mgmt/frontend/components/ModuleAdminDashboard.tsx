@@ -556,6 +556,7 @@ export function ModuleAdminDashboard({
         }}
       >
         <TextField
+          label="Search"
           placeholder="Search modules..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -567,7 +568,6 @@ export function ModuleAdminDashboard({
                 <SearchIcon />
               </InputAdornment>
             ),
-            "aria-label": "Search modules",
           }}
         />
 
