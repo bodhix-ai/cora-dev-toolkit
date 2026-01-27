@@ -2,8 +2,8 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { Box, CircularProgress, Container, Typography } from "@mui/material";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
 
 /**
  * Admin Parent Route (Client Component)
@@ -17,23 +17,21 @@ import { Box, CircularProgress, Container, Typography } from "@mui/material";
  */
 export default function AdminPage() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { profile, loading, isAuthenticated } = useUser();
 
   useEffect(() => {
-    if (status === "loading") return;
+    if (loading) return;
 
-    if (!session) {
+    if (!isAuthenticated || !profile) {
       // Not authenticated, redirect to home
       router.push("/");
       return;
     }
 
     // Check user roles
-    const isSysAdmin = session.user?.roles?.some(
-      (role: string) => role === "sys-admin" || role === "system-admin"
-    );
-    const isOrgAdmin = session.user?.roles?.some(
-      (role: string) => role === "org-admin" || role === "organization-admin"
+    const isSysAdmin = ["sys_owner", "sys_admin"].includes(profile.sysRole || "");
+    const isOrgAdmin = profile.organizations?.some(
+      (org) => ["org_owner", "org_admin"].includes(org.role || "")
     );
 
     // If user has only one role, redirect accordingly
@@ -43,18 +41,16 @@ export default function AdminPage() {
       router.push("/admin/org");
     }
     // If user has both roles, show selection page (no redirect)
-  }, [session, status, router]);
+  }, [profile, loading, isAuthenticated, router]);
 
   // Check user roles for display
-  const isSysAdmin = session?.user?.roles?.some(
-    (role: string) => role === "sys-admin" || role === "system-admin"
-  );
-  const isOrgAdmin = session?.user?.roles?.some(
-    (role: string) => role === "org-admin" || role === "organization-admin"
+  const isSysAdmin = ["sys_owner", "sys_admin"].includes(profile?.sysRole || "");
+  const isOrgAdmin = profile?.organizations?.some(
+    (org) => ["org_owner", "org_admin"].includes(org.role || "")
   );
 
   // Loading state
-  if (status === "loading") {
+  if (loading) {
     return (
       <Container maxWidth="sm" sx={{ py: 8 }}>
         <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
