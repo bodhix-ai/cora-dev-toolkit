@@ -5,18 +5,18 @@ Handles voice interview session management including creation, retrieval,
 updates, status transitions, Daily.co bot orchestration, and KB associations.
 
 Routes - Sessions:
-- GET /api/voice/sessions - List sessions for organization/workspace
-- GET /api/voice/sessions/{id} - Get session by ID
-- POST /api/voice/sessions - Create new session
-- PUT /api/voice/sessions/{id} - Update session
-- DELETE /api/voice/sessions/{id} - Delete session
-- POST /api/voice/sessions/{id}/start - Start bot for session
+- GET /voice/sessions - List sessions for organization/workspace
+- GET /voice/sessions/{sessionId} - Get session by ID
+- POST /voice/sessions - Create new session
+- PUT /voice/sessions/{sessionId} - Update session
+- DELETE /voice/sessions/{sessionId} - Delete session
+- POST /voice/sessions/{sessionId}/start - Start bot for session
 
 Routes - KB Associations:
-- GET /api/voice/sessions/{id}/kbs - List KB associations for session
-- POST /api/voice/sessions/{id}/kbs - Add KB to session
-- PUT /api/voice/sessions/{id}/kbs/{kbId} - Toggle KB enabled status
-- DELETE /api/voice/sessions/{id}/kbs/{kbId} - Remove KB from session
+- GET /voice/sessions/{sessionId}/kbs - List KB associations for session
+- POST /voice/sessions/{sessionId}/kbs - Add KB to session
+- PUT /voice/sessions/{sessionId}/kbs/{kbId} - Toggle KB enabled status
+- DELETE /voice/sessions/{sessionId}/kbs/{kbId} - Remove KB from session
 """
 
 import json
