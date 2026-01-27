@@ -230,6 +230,7 @@ function Header({
             component="button"
             variant="body2"
             onClick={onBack}
+            aria-label={`Return to ${loadingWorkspace ? 'workspace' : (workspaceName || navLabelSingular)}`}
             sx={{ 
               display: "flex", 
               alignItems: "center", 
@@ -244,6 +245,7 @@ function Header({
             component="button"
             variant="body2"
             onClick={onBack}
+            aria-label="Return to evaluations list"
             sx={{ 
               cursor: "pointer",
               textDecoration: "none",

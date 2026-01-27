@@ -71,7 +71,7 @@ function PageHeader({ showBackButton, onBack }: PageHeaderProps) {
   return (
     <Box sx={{ mb: 4, display: "flex", alignItems: "center", gap: 2 }}>
       {showBackButton && onBack && (
-        <IconButton onClick={onBack} sx={{ color: "text.secondary" }}>
+        <IconButton onClick={onBack} sx={{ color: "text.secondary" }} aria-label="Back to criteria sets">
           <ArrowBackIcon />
         </IconButton>
       )}
