@@ -550,7 +550,7 @@ function DraftConfiguration({
 
   return (
     <Paper variant="outlined" sx={{ p: 3 }}>
-      <Typography variant="h6" gutterBottom>
+      <Typography variant="h5" gutterBottom>
         Evaluation Inputs
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>

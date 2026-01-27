@@ -386,7 +386,7 @@ function CollapsibleDetails({
   return (
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-        <Typography variant="h6" color="text.primary" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
+        <Typography variant="h4" color="text.primary" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
           Evaluation Inputs
         </Typography>
         <IconButton

@@ -313,7 +313,7 @@ export function Dashboard({
         {navigationCards.length > 0 && (
           <Box sx={{ mb: 8 }}>
             <Typography
-              variant="h6"
+              variant="h5"
               sx={{
                 fontSize: "1.125rem",
                 fontWeight: 600,
@@ -391,7 +391,7 @@ export function Dashboard({
         {showAdminSection && isAdmin && (
           <Box sx={{ mb: 8 }}>
             <Typography
-              variant="h6"
+              variant="h5"
               sx={{
                 fontSize: "1.125rem",
                 fontWeight: 600,

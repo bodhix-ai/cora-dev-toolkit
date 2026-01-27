@@ -757,7 +757,7 @@ export function WorkspaceDetailPage({
                         )}
                         {(evaluation.documents && evaluation.documents.length > 0) && (
                           <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-                            Documents: {evaluation.documents.map((d: any) => d.fileName || d.name || d.documentId).filter(Boolean).join(', ') || `${evaluation.documents.length} document(s)`}
+                            Documents: {evaluation.documents.map((d: { fileName?: string; name?: string; documentId?: string }) => d.fileName || d.name || d.documentId).filter(Boolean).join(', ') || `${evaluation.documents.length} document(s)`}
                           </Typography>
                         )}
                       </Box>

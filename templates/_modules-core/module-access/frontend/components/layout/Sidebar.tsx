@@ -325,6 +325,7 @@ export function Sidebar({ navigation }: SidebarProps) {
               </Box>
               <IconButton
                 onClick={() => setIsMobileMenuOpen(false)}
+                aria-label="Close menu"
                 sx={{
                   p: 2,
                   borderRadius: 1,
