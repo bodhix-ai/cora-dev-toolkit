@@ -197,7 +197,7 @@ function Header({
       setLoadingWorkspace(true);
       try {
         const apiUrl = process.env.NEXT_PUBLIC_CORA_API_URL;
-        const response = await fetch(`${apiUrl}/workspaces/${workspaceId}`, {
+        const response = await fetch(`${apiUrl}/ws/${workspaceId}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -469,10 +469,12 @@ function DraftConfiguration({
       
       try {
         const apiUrl = process.env.NEXT_PUBLIC_CORA_API_URL;
+        // Use wsId variable name to match API Gateway route parameter naming
+        const wsId = workspaceId;
         
-        console.log('[DraftConfig] Fetching documents for workspace:', workspaceId);
+        console.log('[DraftConfig] Fetching documents for workspace:', wsId);
         
-        const docsRes = await fetch(`${apiUrl}/workspaces/${workspaceId}/kb/documents`, {
+        const docsRes = await fetch(`${apiUrl}/ws/${wsId}/kb/documents`, {
           headers: { 
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
