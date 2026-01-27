@@ -208,7 +208,7 @@ export function Dashboard({
           }}
         >
           <Typography
-            variant="h5"
+            variant="h4"
             sx={{
               fontSize: "1.125rem",
               fontWeight: 600,
