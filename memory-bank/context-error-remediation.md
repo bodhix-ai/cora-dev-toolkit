@@ -19,20 +19,21 @@ This initiative aims to achieve the **P1: Clean Project Baseline (Error-Free)** 
 |--------|--------|------|-----------|-----------| 
 | S1 | `fix/typescript-errors-s1` | `plan_typescript-errors-s1.md` | ✅ Complete | 2026-01-26 |
 | S2 | `fix/validation-errors-s2` | `plan_api-tracer-s2.md` | ✅ Complete | 2026-01-27 |
-| S3 | `fix/validation-errors-s3` | `plan_accessibility-frontend-s3.md` | 🟡 Active | - |
+| S3 | `fix/validation-errors-s3` | `plan_accessibility-frontend-s3.md` | ✅ Complete | 2026-01-27 |
+| S4 | `fix/validation-errors-s4` | `plan_validation-errors-s4.md` | 🟡 Active | - |
 
 ## Current Sprint
 
-- **Branch:** `fix/validation-errors-s3`
-- **Plan:** `docs/plans/plan_accessibility-frontend-s3.md`
-- **Focus:** Accessibility (55 errors) + Frontend compliance (42 errors)
+- **Branch:** `fix/validation-errors-s4`
+- **Plan:** `docs/plans/plan_validation-errors-s4.md`
+- **Focus:** Next.js Routing (20) + Admin Auth (3) + Audit Column (1) + Workspace Plugin (2) + TypeScript (9)
 
-**Sprint Goal:** Achieve 0 errors across Accessibility and Frontend Compliance validators
+**Sprint Goal:** Achieve 0 errors across 5 validators (35 errors total)
 
-**Sprint S2 Complete (Previous):**
-- **Achieved:** API Tracer (13 → 0 ✅) + UI Library (12 files → 0 ✅)
-- **Bonus:** Admin Route (91 → 7, 84 error reduction!)
-- **Deferred to S4:** TypeScript monorepo config (9 errors) + Audit columns (1 error)
+**Sprint S3 Complete (Previous):**
+- **Achieved:** Accessibility (58 → 0 ✅) + Frontend Compliance (2 → 0 ✅)
+- **Total:** 60 errors eliminated
+- **Impact:** All CORA templates now pass Section 508/WCAG 2.1 Level AA compliance
 
 ## Phased Approach
 
@@ -40,8 +41,9 @@ This initiative addresses errors in priority order:
 
 1. **Phase 1 (S1):** ✅ TypeScript errors (46 → 0) - COMPLETE
 2. **Phase 2 (S2):** ✅ API Tracer (13 → 0) + UI Library (12 files → 0) - COMPLETE
-3. **Phase 3 (S3):** Accessibility (55) + Frontend compliance (42) - NEXT
-4. **Phase 4 (S4):** TypeScript monorepo (9) + Audit columns (1) + Next.js routing (24) + Database naming (6)
+3. **Phase 3 (S3):** ✅ Accessibility (58 → 0) + Frontend compliance (2 → 0) - COMPLETE
+4. **Phase 4 (S4):** Next.js Routing (20) + Admin Auth (3) + Audit Column (1) + Workspace Plugin (2) + TypeScript (9) - NEXT
+5. **Phase 5 (S5):** Database Naming (5) - Deferred as "API standards" priority
 
 **Bonus Achievement (S2):** Admin Route standardization improved from 91 → 7 errors (84 error reduction!) as side effect of fixing module-voice `/api/` prefix issues. Remaining 84 errors will be addressed by another team as part of admin pages and features enhancement work.
 
@@ -937,7 +939,7 @@ Successfully converted from Tailwind CSS to Material-UI:
 - All CORA templates pass Frontend Compliance standards
 - New projects created from templates have 0 accessibility and frontend compliance errors
 
-**Next Sprint Priorities:**
-1. **S4: TypeScript + Next.js Routing** - Fix 9 monorepo config + 20 routing errors
-2. **S5: Database Naming** - Fix 5 naming errors
-3. **S6: Admin Auth** - Fix 3 auth errors
+**Next Sprint (S5) Priorities:**
+1. **Database Naming (5 errors)** - Part of broader API standards initiative
+2. **Admin Route (51 errors)** - Separate team/initiative
+3. **Remaining errors** - Other validators as needed
