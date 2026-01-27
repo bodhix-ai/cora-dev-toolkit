@@ -116,7 +116,7 @@ export default function OrgAIAdminRoute() {
             AI Settings
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Configure AI behavior for {organization.name}
+            Configure AI behavior for {organization.orgName}
           </Typography>
         </Box>
       </Box>
@@ -124,7 +124,7 @@ export default function OrgAIAdminRoute() {
       {/* AI Config Panel */}
       <Paper sx={{ p: 3 }}>
         <OrgAIConfigPanel
-          organizationId={organization.id}
+          organizationId={organization.orgId}
           authAdapter={authAdapter}
         />
       </Paper>
