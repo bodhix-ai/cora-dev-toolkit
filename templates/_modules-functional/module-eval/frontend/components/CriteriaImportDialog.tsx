@@ -541,6 +541,7 @@ export function CriteriaImportDialog({
                       checked={useWeightedScoring}
                       onChange={(e) => setUseWeightedScoring(e.target.checked)}
                       disabled={isImporting}
+                      aria-label="Use weighted scoring"
                     />
                   }
                   label="Weighted scoring"

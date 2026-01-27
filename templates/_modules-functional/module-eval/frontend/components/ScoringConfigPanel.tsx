@@ -354,6 +354,7 @@ export function ScoringConfigPanel({
                 onChange={(e) => handleNumericalChange(e.target.checked)}
                 disabled={isSaving}
                 color="primary"
+                aria-label="Show numerical compliance score"
               />
             </Box>
           </CardContent>
