@@ -289,6 +289,12 @@ while [[ $# -gt 0 ]]; do
       ;;
     --input)
       INPUT_CONFIG="$2"
+      # Convert to absolute path to ensure it works even if CWD changes
+      if [[ -f "$INPUT_CONFIG" ]]; then
+        if [[ "$INPUT_CONFIG" != /* ]]; then
+          INPUT_CONFIG="$(cd "$(dirname "$INPUT_CONFIG")" && pwd)/$(basename "$INPUT_CONFIG")"
+        fi
+      fi
       shift 2
       ;;
     --no-git)

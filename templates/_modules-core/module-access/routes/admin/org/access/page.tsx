@@ -102,7 +102,7 @@ export default function OrgAccessRoute() {
             Member Management
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Manage members and roles for {organization.name}
+            Manage members and roles for {organization.orgName}
           </Typography>
         </Box>
       </Box>

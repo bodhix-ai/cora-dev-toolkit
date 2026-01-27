@@ -848,8 +848,16 @@ function markdownToHtml(markdown: string): string {
   // Convert inline code
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
 
-  // Convert links
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  // Convert links (with safeguard for empty link text)
+  html = html.replace(/\[([^\]]*)\]\(([^)]+)\)/g, (match, text, url) => {
+    const linkText = text.trim();
+    if (!linkText) {
+      // Empty link text - add fallback text and aria-label for accessibility
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer" aria-label="Link to ${url}">Link</a>`;
+    }
+    // Add aria-label to all links for robust accessibility (validator requirement)
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer" aria-label="${linkText}">${linkText}</a>`;
+  });
 
   // Convert unordered lists
   html = html.replace(/^\* (.+)$/gm, '<li>$1</li>');
