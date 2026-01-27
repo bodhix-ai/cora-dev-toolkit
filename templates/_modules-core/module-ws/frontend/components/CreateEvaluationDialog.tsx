@@ -286,12 +286,12 @@ export function CreateEvaluationDialog({
             >
               <FormControlLabel
                 value="existing"
-                control={<Radio />}
+                control={<Radio aria-label="Select from Knowledge Base" />}
                 label="Select from Knowledge Base"
               />
               <FormControlLabel
                 value="upload"
-                control={<Radio />}
+                control={<Radio aria-label="Upload New Document" />}
                 label="Upload New Document"
               />
             </RadioGroup>
@@ -346,13 +346,14 @@ export function CreateEvaluationDialog({
                     hidden
                     accept=".pdf,.doc,.docx,.txt"
                     onChange={handleFileChange}
+                    aria-label="Upload document file"
                   />
                 </Button>
               ) : (
                 <List>
                   <ListItem
                     secondaryAction={
-                      <IconButton edge="end" onClick={handleRemoveFile}>
+                      <IconButton edge="end" onClick={handleRemoveFile} aria-label="Remove file">
                         <Close />
                       </IconButton>
                     }

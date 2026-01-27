@@ -71,7 +71,7 @@ function PageHeader({ showBackButton, onBack }: PageHeaderProps) {
   return (
     <Box sx={{ mb: 4, display: "flex", alignItems: "center", gap: 2 }}>
       {showBackButton && onBack && (
-        <IconButton onClick={onBack} sx={{ color: "text.secondary" }}>
+        <IconButton onClick={onBack} sx={{ color: "text.secondary" }} aria-label="Back to criteria sets">
           <ArrowBackIcon />
         </IconButton>
       )}
@@ -140,7 +140,7 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
       >
         <ErrorIcon sx={{ width: 32, height: 32, color: "error.main" }} />
       </Box>
-      <Typography variant="h6" gutterBottom>
+      <Typography variant="h5" gutterBottom>
         Failed to load criteria
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center", mb: 3, maxWidth: "md" }}>

@@ -307,7 +307,7 @@ function ModuleConfigModal({
     <Dialog open onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Typography variant="h6">Configure {module.displayName}</Typography>
-        <IconButton onClick={onClose} size="small">
+        <IconButton onClick={onClose} size="small" aria-label="Close dialog">
           <CloseIcon />
         </IconButton>
       </DialogTitle>
@@ -556,6 +556,7 @@ export function ModuleAdminDashboard({
         }}
       >
         <TextField
+          label="Search"
           placeholder="Search modules..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -567,7 +568,6 @@ export function ModuleAdminDashboard({
                 <SearchIcon />
               </InputAdornment>
             ),
-            "aria-label": "Search modules",
           }}
         />
 

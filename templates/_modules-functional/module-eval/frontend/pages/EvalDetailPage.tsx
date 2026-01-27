@@ -230,6 +230,7 @@ function Header({
             component="button"
             variant="body2"
             onClick={onBack}
+            aria-label={`Return to ${loadingWorkspace ? 'workspace' : (workspaceName || navLabelSingular)}`}
             sx={{ 
               display: "flex", 
               alignItems: "center", 
@@ -244,6 +245,7 @@ function Header({
             component="button"
             variant="body2"
             onClick={onBack}
+            aria-label="Return to evaluations list"
             sx={{ 
               cursor: "pointer",
               textDecoration: "none",
@@ -548,7 +550,7 @@ function DraftConfiguration({
 
   return (
     <Paper variant="outlined" sx={{ p: 3 }}>
-      <Typography variant="h6" gutterBottom>
+      <Typography variant="h5" gutterBottom>
         Evaluation Inputs
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
@@ -972,6 +974,7 @@ function DocumentsTab({ documents, activeDocumentId }: DocumentsTabProps) {
               </Box>
               <IconButton
                 size="small"
+                aria-label={isExpanded ? "Collapse document details" : "Expand document details"}
                 sx={{
                   transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                   transition: 'transform 0.2s'

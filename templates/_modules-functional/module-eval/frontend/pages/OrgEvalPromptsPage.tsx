@@ -186,7 +186,7 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
       >
         <ErrorIcon sx={{ width: 32, height: 32, color: "error.main" }} />
       </Box>
-      <Typography variant="h6" gutterBottom>
+      <Typography variant="h5" gutterBottom>
         Failed to load prompts
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center", mb: 3, maxWidth: "md" }}>

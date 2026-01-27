@@ -676,7 +676,7 @@ export function EvalQAStats({
       <Grid container spacing={2}>
         <Grid item xs={6} md={3}>
           <Box sx={{ bgcolor: "grey.50", borderRadius: 2, p: 1.5 }}>
-            <Typography variant="h4" fontWeight={600}>
+            <Typography variant="h2" fontWeight={600}>
               {stats.total}
             </Typography>
             <Typography variant="caption" color="text.secondary">

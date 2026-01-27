@@ -148,7 +148,7 @@ export function FilePreview({
             </Typography>
           </Box>
         </Box>
-        <IconButton onClick={onRemove} size="small" title="Remove file">
+        <IconButton onClick={onRemove} size="small" title="Remove file" aria-label="Remove file">
           <CloseIcon />
         </IconButton>
       </Box>
@@ -419,6 +419,7 @@ export function CriteriaImportDialog({
             onClick={handleClose}
             disabled={isImporting}
             size="small"
+            aria-label="Close dialog"
           >
             <CloseIcon />
           </IconButton>
@@ -540,6 +541,7 @@ export function CriteriaImportDialog({
                       checked={useWeightedScoring}
                       onChange={(e) => setUseWeightedScoring(e.target.checked)}
                       disabled={isImporting}
+                      aria-label="Use weighted scoring"
                     />
                   }
                   label="Weighted scoring"

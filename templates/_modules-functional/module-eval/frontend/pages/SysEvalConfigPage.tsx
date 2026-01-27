@@ -86,7 +86,7 @@ function Section({ title, description, children }: SectionProps) {
   return (
     <Paper variant="outlined">
       <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
-        <Typography variant="h6" component="h2">
+        <Typography variant="h5" component="h2">
           {title}
         </Typography>
         {description && (
