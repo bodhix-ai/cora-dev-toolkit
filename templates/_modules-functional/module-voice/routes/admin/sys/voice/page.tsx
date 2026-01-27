@@ -1,5 +1,6 @@
 "use client";
 
+import { Box, Typography, CircularProgress } from "@mui/material";
 import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { SysVoiceConfigPage } from "@{{PROJECT_NAME}}/module-voice";
 
@@ -17,23 +18,43 @@ export default function SysVoiceRoute() {
   // Pattern A: Auth checks
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+        }}
+      >
+        <Box sx={{ textAlign: "center" }}>
+          <CircularProgress sx={{ mb: 2 }} />
+          <Typography variant="body1" color="text.secondary">
+            Loading...
+          </Typography>
+        </Box>
+      </Box>
     );
   }
 
   if (!isAuthenticated || !profile) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-lg font-semibold mb-2">Authentication Required</p>
-          <p className="text-muted-foreground">Please sign in to access this page.</p>
-        </div>
-      </div>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+        }}
+      >
+        <Box sx={{ textAlign: "center" }}>
+          <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>
+            Authentication Required
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Please sign in to access this page.
+          </Typography>
+        </Box>
+      </Box>
     );
   }
 
@@ -42,14 +63,23 @@ export default function SysVoiceRoute() {
   
   if (!isSysAdmin) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-lg font-semibold mb-2">Access Denied</p>
-          <p className="text-muted-foreground">
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+        }}
+      >
+        <Box sx={{ textAlign: "center" }}>
+          <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>
+            Access Denied
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
             System administrator access required to view this page.
-          </p>
-        </div>
-      </div>
+          </Typography>
+        </Box>
+      </Box>
     );
   }
 
