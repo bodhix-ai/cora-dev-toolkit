@@ -314,6 +314,7 @@ export function StatusOptionForm({
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
               disabled={isSaving}
+              aria-label="Mark status option as active"
             />
           }
           label="Active"

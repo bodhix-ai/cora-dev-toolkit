@@ -187,6 +187,11 @@ export function OrgDelegationCard({
               onChange={(e) => onToggle(e.target.checked)}
               disabled={isToggling}
               color="primary"
+              aria-label={
+                org.aiConfigDelegated
+                  ? "Disable AI config delegation"
+                  : "Enable AI config delegation"
+              }
               title={
                 org.aiConfigDelegated
                   ? "Disable AI config delegation"
@@ -301,6 +306,7 @@ export function OrgDelegationManager({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search organizations..."
+          label="Search organizations"
           sx={{ flexGrow: 1, minWidth: 200 }}
           InputProps={{
             startAdornment: (

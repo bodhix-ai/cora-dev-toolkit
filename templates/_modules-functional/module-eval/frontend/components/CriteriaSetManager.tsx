@@ -224,6 +224,7 @@ export function CriteriaSetForm({
                 checked={useWeightedScoring}
                 onChange={(e) => setUseWeightedScoring(e.target.checked)}
                 disabled={isSaving}
+                aria-label="Use weighted scoring"
               />
             }
             label="Use weighted scoring"
