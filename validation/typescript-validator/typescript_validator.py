@@ -101,6 +101,8 @@ class TypeScriptValidator:
         """
         Check if the project has necessary files for type checking.
         
+        Auto-runs 'pnpm install' if node_modules is missing.
+        
         Returns:
             True if prerequisites are met, False otherwise
         """
@@ -112,8 +114,36 @@ class TypeScriptValidator:
             return False
         
         if not node_modules.exists():
-            self.warnings.append(f"Missing node_modules at {self.stack_path}. Run 'pnpm install' first.")
-            return False
+            self.warnings.append(f"Missing node_modules at {self.stack_path}. Running 'pnpm install'...")
+            
+            # Auto-run pnpm install
+            try:
+                import sys
+                print(f"📦 Installing dependencies in {self.stack_path}...", file=sys.stderr)
+                result = subprocess.run(
+                    'pnpm install',
+                    shell=True,
+                    cwd=self.stack_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=600  # 10 minute timeout for install
+                )
+                
+                if result.returncode == 0:
+                    print("✅ Dependencies installed successfully", file=sys.stderr)
+                    self.warnings.append("Auto-installed dependencies with 'pnpm install'")
+                    return True
+                else:
+                    print(f"❌ pnpm install failed: {result.stderr}", file=sys.stderr)
+                    self.warnings.append(f"Failed to install dependencies: {result.stderr[:200]}")
+                    return False
+                    
+            except subprocess.TimeoutExpired:
+                self.warnings.append("pnpm install timed out after 10 minutes")
+                return False
+            except Exception as e:
+                self.warnings.append(f"Error running pnpm install: {str(e)}")
+                return False
         
         return True
     

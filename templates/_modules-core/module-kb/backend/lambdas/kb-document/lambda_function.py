@@ -2,12 +2,12 @@
 KB Document Lambda - Document Upload/Download Operations
 
 Routes - Workspace Scoped:
-- GET /workspaces/{workspaceId}/kb/documents - List documents
-- POST /workspaces/{workspaceId}/kb/documents - Get presigned upload URL
-- GET /workspaces/{workspaceId}/kb/documents/{docId} - Get document metadata
-- PUT /workspaces/{workspaceId}/kb/documents/{docId}/complete - Complete document upload
-- DELETE /workspaces/{workspaceId}/kb/documents/{docId} - Delete document
-- GET /workspaces/{workspaceId}/kb/documents/{docId}/download - Get presigned download URL
+- GET /ws/{wsId}/kb/documents - List documents
+- POST /ws/{wsId}/kb/documents - Get presigned upload URL
+- GET /ws/{wsId}/kb/documents/{docId} - Get document metadata
+- PUT /ws/{wsId}/kb/documents/{docId}/complete - Complete document upload
+- DELETE /ws/{wsId}/kb/documents/{docId} - Delete document
+- GET /ws/{wsId}/kb/documents/{docId}/download - Get presigned download URL
 
 Routes - Chat Scoped:
 - GET /chats/{chatId}/kb/documents - List documents
@@ -82,7 +82,7 @@ def lambda_handler(event, context):
         user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
         
         # Route to appropriate handler
-        if '/workspaces/' in path and '/kb/documents' in path:
+        if '/ws/' in path and '/kb/documents' in path:
             return handle_workspace_documents(http_method, path, path_params, event, user_id)
         elif '/chats/' in path and '/kb/documents' in path:
             return handle_chat_documents(http_method, path, path_params, event, user_id)
@@ -116,11 +116,11 @@ def lambda_handler(event, context):
 
 def handle_workspace_documents(method: str, path: str, path_params: Dict, event: Dict, user_id: str):
     """Handle workspace-scoped document operations."""
-    workspace_id = path_params.get('workspaceId')
+    workspace_id = path_params.get('wsId')
     doc_id = path_params.get('docId')
     
     if not workspace_id:
-        return common.bad_request_response("Missing workspaceId")
+        return common.bad_request_response("Missing wsId")
     
     # Verify workspace access
     if not check_workspace_access(user_id, workspace_id):

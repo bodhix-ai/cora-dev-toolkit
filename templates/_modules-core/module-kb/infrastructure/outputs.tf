@@ -93,31 +93,31 @@ output "api_routes" {
     # kb-base: Workspace-scoped KB routes
     {
       method      = "GET"
-      path        = "/workspaces/{workspaceId}/kb"
+      path        = "/ws/{wsId}/kb"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/workspaces/{workspaceId}/kb"
+      path        = "/ws/{wsId}/kb"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
     {
       method      = "PATCH"
-      path        = "/workspaces/{workspaceId}/kb/{kbId}"
+      path        = "/ws/{wsId}/kb/{kbId}"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/workspaces/{workspaceId}/available-kbs"
+      path        = "/ws/{wsId}/available-kbs"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/workspaces/{workspaceId}/kbs/{kbId}/toggle"
+      path        = "/ws/{wsId}/kbs/{kbId}/toggle"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
@@ -223,37 +223,37 @@ output "api_routes" {
     # kb-document: Workspace-scoped document routes
     {
       method      = "GET"
-      path        = "/workspaces/{workspaceId}/kb/documents"
+      path        = "/ws/{wsId}/kb/documents"
       integration = aws_lambda_function.kb_document.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/workspaces/{workspaceId}/kb/documents"
+      path        = "/ws/{wsId}/kb/documents"
       integration = aws_lambda_function.kb_document.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/workspaces/{workspaceId}/kb/documents/{docId}"
+      path        = "/ws/{wsId}/kb/documents/{docId}"
       integration = aws_lambda_function.kb_document.invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/workspaces/{workspaceId}/kb/documents/{docId}"
+      path        = "/ws/{wsId}/kb/documents/{docId}"
       integration = aws_lambda_function.kb_document.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/workspaces/{workspaceId}/kb/documents/{docId}/download"
+      path        = "/ws/{wsId}/kb/documents/{docId}/download"
       integration = aws_lambda_function.kb_document.invoke_arn
       public      = false
     },
     {
       method      = "PUT"
-      path        = "/workspaces/{workspaceId}/kb/documents/{docId}/complete"
+      path        = "/ws/{wsId}/kb/documents/{docId}/complete"
       integration = aws_lambda_function.kb_document.invoke_arn
       public      = false
     },

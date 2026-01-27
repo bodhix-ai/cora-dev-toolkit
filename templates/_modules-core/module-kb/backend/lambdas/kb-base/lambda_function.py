@@ -2,11 +2,11 @@
 KB Base Lambda - Knowledge Base CRUD Operations
 
 Routes - Workspace Scoped:
-- GET /workspaces/{workspaceId}/kb - Get workspace KB
-- POST /workspaces/{workspaceId}/kb - Create workspace KB (auto)
-- PATCH /workspaces/{workspaceId}/kb/{kbId} - Update KB settings
-- GET /workspaces/{workspaceId}/available-kbs - List toggleable KBs
-- POST /workspaces/{workspaceId}/kbs/{kbId}/toggle - Toggle KB access
+- GET /ws/{wsId}/kb - Get workspace KB
+- POST /ws/{wsId}/kb - Create workspace KB (auto)
+- PATCH /ws/{wsId}/kb/{kbId} - Update KB settings
+- GET /ws/{wsId}/available-kbs - List toggleable KBs
+- POST /ws/{wsId}/kbs/{kbId}/toggle - Toggle KB access
 
 Routes - Chat Scoped:
 - GET /chats/{chatId}/kb - Get chat KB
@@ -67,7 +67,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         path_params = event.get('pathParameters', {}) or {}
         
         # Route to appropriate handler based on path pattern
-        if '/workspaces/' in path:
+        if '/ws/' in path:
             return route_workspace_handlers(event, supabase_user_id, http_method, path, path_params)
         elif '/chats/' in path:
             return route_chat_handlers(event, supabase_user_id, http_method, path, path_params)
@@ -102,7 +102,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
 def route_workspace_handlers(event: Dict[str, Any], user_id: str, method: str, path: str, path_params: Dict[str, str]) -> Dict[str, Any]:
     """Route workspace-scoped requests"""
-    workspace_id = path_params.get('workspaceId')
+    workspace_id = path_params.get('wsId')
     if not workspace_id:
         return common.bad_request_response('Workspace ID is required')
     
@@ -115,7 +115,7 @@ def route_workspace_handlers(event: Dict[str, Any], user_id: str, method: str, p
             return common.bad_request_response('KB ID is required')
         if method == 'POST':
             return handle_toggle_kb_for_workspace(event, user_id, workspace_id, kb_id)
-    elif path.endswith(f'/workspaces/{workspace_id}/kb'):
+    elif path.endswith(f'/ws/{workspace_id}/kb'):
         if method == 'GET':
             return handle_get_workspace_kb(user_id, workspace_id)
         elif method == 'POST':

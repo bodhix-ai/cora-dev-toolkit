@@ -171,7 +171,7 @@ export interface ListSessionsOptions {
 
 /**
  * List voice sessions
- * GET /api/voice/sessions
+ * GET /voice/sessions
  */
 export async function listSessions(
   token: string,
@@ -186,30 +186,30 @@ export async function listSessions(
     offset: options.offset,
   };
 
-  const url = buildUrl("/api/voice/sessions", params);
+  const url = buildUrl("/voice/sessions", params);
   return apiRequest<VoiceSessionSummary[]>(url, token);
 }
 
 /**
  * Get a voice session by ID
- * GET /api/voice/sessions/{id}
+ * GET /voice/sessions/{sessionId}
  */
 export async function getSession(
   sessionId: string,
   token: string
 ): Promise<VoiceSession> {
-  return apiRequest<VoiceSession>(`/api/voice/sessions/${sessionId}`, token);
+  return apiRequest<VoiceSession>(`/voice/sessions/${sessionId}`, token);
 }
 
 /**
  * Create a new voice session
- * POST /api/voice/sessions
+ * POST /voice/sessions
  */
 export async function createSession(
   token: string,
   input: CreateVoiceSessionRequest
 ): Promise<VoiceSession> {
-  return apiRequest<VoiceSession>("/api/voice/sessions", token, {
+  return apiRequest<VoiceSession>("/voice/sessions", token, {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -217,14 +217,14 @@ export async function createSession(
 
 /**
  * Update a voice session
- * PUT /api/voice/sessions/{id}
+ * PUT /voice/sessions/{sessionId}
  */
 export async function updateSession(
   sessionId: string,
   token: string,
   input: UpdateVoiceSessionRequest
 ): Promise<VoiceSession> {
-  return apiRequest<VoiceSession>(`/api/voice/sessions/${sessionId}`, token, {
+  return apiRequest<VoiceSession>(`/voice/sessions/${sessionId}`, token, {
     method: "PUT",
     body: JSON.stringify(input),
   });
@@ -232,26 +232,26 @@ export async function updateSession(
 
 /**
  * Delete a voice session
- * DELETE /api/voice/sessions/{id}
+ * DELETE /voice/sessions/{sessionId}
  */
 export async function deleteSession(
   sessionId: string,
   token: string
 ): Promise<void> {
-  await apiRequest<void>(`/api/voice/sessions/${sessionId}`, token, {
+  await apiRequest<void>(`/voice/sessions/${sessionId}`, token, {
     method: "DELETE",
   });
 }
 
 /**
  * Start a voice session (creates Daily.co room and starts bot)
- * POST /api/voice/sessions/{id}/start
+ * POST /voice/sessions/{sessionId}/start
  */
 export async function startSession(
   sessionId: string,
   token: string
 ): Promise<VoiceSession> {
-  return apiRequest<VoiceSession>(`/api/voice/sessions/${sessionId}/start`, token, {
+  return apiRequest<VoiceSession>(`/voice/sessions/${sessionId}/start`, token, {
     method: "POST",
   });
 }
@@ -262,25 +262,25 @@ export async function startSession(
 
 /**
  * List KB associations for a session
- * GET /api/voice/sessions/{id}/kbs
+ * GET /voice/sessions/{sessionId}/kbs
  */
 export async function listSessionKbs(
   sessionId: string,
   token: string
 ): Promise<VoiceSessionKb[]> {
-  return apiRequest<VoiceSessionKb[]>(`/api/voice/sessions/${sessionId}/kbs`, token);
+  return apiRequest<VoiceSessionKb[]>(`/voice/sessions/${sessionId}/kbs`, token);
 }
 
 /**
  * Add a KB to a session
- * POST /api/voice/sessions/{id}/kbs
+ * POST /voice/sessions/{sessionId}/kbs
  */
 export async function addSessionKb(
   sessionId: string,
   token: string,
   input: AddVoiceSessionKbRequest
 ): Promise<VoiceSessionKb> {
-  return apiRequest<VoiceSessionKb>(`/api/voice/sessions/${sessionId}/kbs`, token, {
+  return apiRequest<VoiceSessionKb>(`/voice/sessions/${sessionId}/kbs`, token, {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -288,7 +288,7 @@ export async function addSessionKb(
 
 /**
  * Toggle KB enabled status for a session
- * PUT /api/voice/sessions/{id}/kbs/{kbId}
+ * PUT /voice/sessions/{sessionId}/kbs/{kbId}
  */
 export async function toggleSessionKb(
   sessionId: string,
@@ -296,7 +296,7 @@ export async function toggleSessionKb(
   token: string,
   input: ToggleVoiceSessionKbRequest
 ): Promise<VoiceSessionKb> {
-  return apiRequest<VoiceSessionKb>(`/api/voice/sessions/${sessionId}/kbs/${kbId}`, token, {
+  return apiRequest<VoiceSessionKb>(`/voice/sessions/${sessionId}/kbs/${kbId}`, token, {
     method: "PUT",
     body: JSON.stringify(input),
   });
@@ -304,14 +304,14 @@ export async function toggleSessionKb(
 
 /**
  * Remove a KB from a session
- * DELETE /api/voice/sessions/{id}/kbs/{kbId}
+ * DELETE /voice/sessions/{sessionId}/kbs/{kbId}
  */
 export async function removeSessionKb(
   sessionId: string,
   kbId: string,
   token: string
 ): Promise<void> {
-  await apiRequest<void>(`/api/voice/sessions/${sessionId}/kbs/${kbId}`, token, {
+  await apiRequest<void>(`/voice/sessions/${sessionId}/kbs/${kbId}`, token, {
     method: "DELETE",
   });
 }
@@ -331,7 +331,7 @@ export async function getAvailableKbs(
     scope: workspaceId ? "workspace" : "org",
   };
   
-  const url = buildUrl("/api/kb/bases", params);
+  const url = buildUrl("/kb/bases", params);
   
   interface KbBase {
     id: string;
@@ -363,7 +363,7 @@ export interface ListConfigsOptions {
 
 /**
  * List voice configs
- * GET /api/voice/configs
+ * GET /voice/configs
  */
 export async function listConfigs(
   token: string,
@@ -377,30 +377,30 @@ export async function listConfigs(
     offset: options.offset,
   };
 
-  const url = buildUrl("/api/voice/configs", params);
+  const url = buildUrl("/voice/configs", params);
   return apiRequest<VoiceConfig[]>(url, token);
 }
 
 /**
  * Get a voice config by ID
- * GET /api/voice/configs/{id}
+ * GET /voice/configs/{configId}
  */
 export async function getConfig(
   configId: string,
   token: string
 ): Promise<VoiceConfig> {
-  return apiRequest<VoiceConfig>(`/api/voice/configs/${configId}`, token);
+  return apiRequest<VoiceConfig>(`/voice/configs/${configId}`, token);
 }
 
 /**
  * Create a new voice config
- * POST /api/voice/configs
+ * POST /voice/configs
  */
 export async function createConfig(
   token: string,
   input: CreateVoiceConfigRequest
 ): Promise<VoiceConfig> {
-  return apiRequest<VoiceConfig>("/api/voice/configs", token, {
+  return apiRequest<VoiceConfig>("/voice/configs", token, {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -408,14 +408,14 @@ export async function createConfig(
 
 /**
  * Update a voice config
- * PUT /api/voice/configs/{id}
+ * PUT /voice/configs/{configId}
  */
 export async function updateConfig(
   configId: string,
   token: string,
   input: UpdateVoiceConfigRequest
 ): Promise<VoiceConfig> {
-  return apiRequest<VoiceConfig>(`/api/voice/configs/${configId}`, token, {
+  return apiRequest<VoiceConfig>(`/voice/configs/${configId}`, token, {
     method: "PUT",
     body: JSON.stringify(input),
   });
@@ -423,13 +423,13 @@ export async function updateConfig(
 
 /**
  * Delete a voice config
- * DELETE /api/voice/configs/{id}
+ * DELETE /voice/configs/{configId}
  */
 export async function deleteConfig(
   configId: string,
   token: string
 ): Promise<void> {
-  await apiRequest<void>(`/api/voice/configs/${configId}`, token, {
+  await apiRequest<void>(`/voice/configs/${configId}`, token, {
     method: "DELETE",
   });
 }
@@ -446,7 +446,7 @@ export interface ListCredentialsOptions {
 
 /**
  * List voice credentials
- * GET /api/voice/credentials
+ * GET /voice/credentials
  */
 export async function listCredentials(
   token: string,
@@ -458,30 +458,30 @@ export async function listCredentials(
     isActive: options.isActive,
   };
 
-  const url = buildUrl("/api/voice/credentials", params);
+  const url = buildUrl("/voice/credentials", params);
   return apiRequest<VoiceCredential[]>(url, token);
 }
 
 /**
  * Get a voice credential by ID
- * GET /api/voice/credentials/{id}
+ * GET /voice/credentials/{credentialId}
  */
 export async function getCredential(
   credentialId: string,
   token: string
 ): Promise<VoiceCredential> {
-  return apiRequest<VoiceCredential>(`/api/voice/credentials/${credentialId}`, token);
+  return apiRequest<VoiceCredential>(`/voice/credentials/${credentialId}`, token);
 }
 
 /**
  * Create a new voice credential
- * POST /api/voice/credentials
+ * POST /voice/credentials
  */
 export async function createCredential(
   token: string,
   input: CreateVoiceCredentialRequest
 ): Promise<VoiceCredential> {
-  return apiRequest<VoiceCredential>("/api/voice/credentials", token, {
+  return apiRequest<VoiceCredential>("/voice/credentials", token, {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -489,13 +489,13 @@ export async function createCredential(
 
 /**
  * Delete a voice credential
- * DELETE /api/voice/credentials/{id}
+ * DELETE /voice/credentials/{credentialId}
  */
 export async function deleteCredential(
   credentialId: string,
   token: string
 ): Promise<void> {
-  await apiRequest<void>(`/api/voice/credentials/${credentialId}`, token, {
+  await apiRequest<void>(`/voice/credentials/${credentialId}`, token, {
     method: "DELETE",
   });
 }
@@ -513,7 +513,7 @@ export interface ListTranscriptsOptions {
 
 /**
  * List voice transcripts
- * GET /api/voice/transcripts
+ * GET /voice/transcripts
  */
 export async function listTranscripts(
   token: string,
@@ -526,24 +526,24 @@ export async function listTranscripts(
     offset: options.offset,
   };
 
-  const url = buildUrl("/api/voice/transcripts", params);
+  const url = buildUrl("/voice/transcripts", params);
   return apiRequest<VoiceTranscript[]>(url, token);
 }
 
 /**
  * Get a voice transcript by ID
- * GET /api/voice/transcripts/{id}
+ * GET /voice/transcripts/{transcriptId}
  */
 export async function getTranscript(
   transcriptId: string,
   token: string
 ): Promise<VoiceTranscript> {
-  return apiRequest<VoiceTranscript>(`/api/voice/transcripts/${transcriptId}`, token);
+  return apiRequest<VoiceTranscript>(`/voice/transcripts/${transcriptId}`, token);
 }
 
 /**
  * Get transcript for a session
- * GET /api/voice/transcripts?sessionId={sessionId}
+ * GET /voice/transcripts?sessionId={sessionId}
  */
 export async function getSessionTranscript(
   sessionId: string,
@@ -567,7 +567,7 @@ export interface ListAnalyticsOptions {
 
 /**
  * List voice analytics
- * GET /api/voice/analytics
+ * GET /voice/analytics
  */
 export async function listAnalytics(
   token: string,
@@ -580,24 +580,24 @@ export async function listAnalytics(
     offset: options.offset,
   };
 
-  const url = buildUrl("/api/voice/analytics", params);
+  const url = buildUrl("/voice/analytics", params);
   return apiRequest<VoiceAnalytics[]>(url, token);
 }
 
 /**
  * Get voice analytics by ID
- * GET /api/voice/analytics/{id}
+ * GET /voice/analytics/{analyticsId}
  */
 export async function getAnalytics(
   analyticsId: string,
   token: string
 ): Promise<VoiceAnalytics> {
-  return apiRequest<VoiceAnalytics>(`/api/voice/analytics/${analyticsId}`, token);
+  return apiRequest<VoiceAnalytics>(`/voice/analytics/${analyticsId}`, token);
 }
 
 /**
  * Get analytics for a session
- * GET /api/voice/analytics?sessionId={sessionId}
+ * GET /voice/analytics?sessionId={sessionId}
  */
 export async function getSessionAnalytics(
   sessionId: string,
@@ -610,13 +610,13 @@ export async function getSessionAnalytics(
 
 /**
  * Get organization voice stats
- * GET /api/voice/analytics/stats
+ * GET /voice/analytics/stats
  */
 export async function getOrgStats(
   orgId: string,
   token: string
 ): Promise<VoiceOrgStats> {
-  return apiRequest<VoiceOrgStats>(`/api/voice/analytics/stats?orgId=${orgId}`, token);
+  return apiRequest<VoiceOrgStats>(`/voice/analytics/stats?orgId=${orgId}`, token);
 }
 
 // =============================================================================

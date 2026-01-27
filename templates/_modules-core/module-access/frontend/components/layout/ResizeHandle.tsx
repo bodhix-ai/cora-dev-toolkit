@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { Box } from "@mui/material";
 
 interface ResizeHandleProps {
   onResize: (width: number) => void;
@@ -62,13 +63,41 @@ export function ResizeHandle({
   }, [isResizing, resize, stopResizing]);
 
   return (
-    <div
-      className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:w-1.5 hover:bg-blue-500 bg-transparent transition-all group"
+    <Box
       onMouseDown={startResizing}
-      style={{ zIndex: 10 }}
+      sx={{
+        position: "absolute",
+        top: 0,
+        right: 0,
+        width: "4px",
+        height: "100%",
+        cursor: "col-resize",
+        bgcolor: "transparent",
+        transition: "all 0.2s",
+        zIndex: 10,
+        "&:hover": {
+          width: "6px",
+          bgcolor: "primary.main",
+        },
+      }}
     >
       {/* Visual indicator on hover */}
-      <div className="absolute inset-y-0 right-0 w-1 bg-gray-300 dark:bg-zinc-700 opacity-0 group-hover:opacity-100 transition-opacity" />
-    </div>
+      <Box
+        sx={{
+          position: "absolute",
+          top: 0,
+          bottom: 0,
+          right: 0,
+          width: "4px",
+          bgcolor: (theme) =>
+            theme.palette.mode === "dark" ? "#3f3f46" : "#d1d5db",
+          opacity: 0,
+          transition: "opacity 0.2s",
+          "parentHover": {
+            opacity: 1,
+          },
+        }}
+      />
+    </Box>
   );
 }

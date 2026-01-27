@@ -15,68 +15,68 @@ output "api_routes" {
     # Sessions routes
     {
       method      = "GET"
-      path        = "/api/voice/sessions"
+      path        = "/voice/sessions"
       integration = aws_lambda_function.voice_sessions[0].invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/api/voice/sessions/{id}"
+      path        = "/voice/sessions/{sessionId}"
       integration = aws_lambda_function.voice_sessions[0].invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/api/voice/sessions"
+      path        = "/voice/sessions"
       integration = aws_lambda_function.voice_sessions[0].invoke_arn
       public      = false
     },
     {
       method      = "PUT"
-      path        = "/api/voice/sessions/{id}"
+      path        = "/voice/sessions/{sessionId}"
       integration = aws_lambda_function.voice_sessions[0].invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/api/voice/sessions/{id}"
+      path        = "/voice/sessions/{sessionId}"
       integration = aws_lambda_function.voice_sessions[0].invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/api/voice/sessions/{id}/start"
+      path        = "/voice/sessions/{sessionId}/start"
       integration = aws_lambda_function.voice_sessions[0].invoke_arn
       public      = false
     },
     # Configs routes
     {
       method      = "GET"
-      path        = "/api/voice/configs"
+      path        = "/voice/configs"
       integration = aws_lambda_function.voice_configs[0].invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/api/voice/configs/{id}"
+      path        = "/voice/configs/{configId}"
       integration = aws_lambda_function.voice_configs[0].invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/api/voice/configs"
+      path        = "/voice/configs"
       integration = aws_lambda_function.voice_configs[0].invoke_arn
       public      = false
     },
     {
       method      = "PUT"
-      path        = "/api/voice/configs/{id}"
+      path        = "/voice/configs/{configId}"
       integration = aws_lambda_function.voice_configs[0].invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/api/voice/configs/{id}"
+      path        = "/voice/configs/{configId}"
       integration = aws_lambda_function.voice_configs[0].invoke_arn
       public      = false
     }

@@ -5,11 +5,11 @@ Handles voice interview configuration management including templates
 for Pipecat bot behavior, interview questions, and scoring rubrics.
 
 Routes - Configs:
-- GET /api/voice/configs - List configs for organization
-- GET /api/voice/configs/{id} - Get config by ID
-- POST /api/voice/configs - Create new config
-- PUT /api/voice/configs/{id} - Update config
-- DELETE /api/voice/configs/{id} - Delete config
+- GET /voice/configs - List configs for organization
+- GET /voice/configs/{configId} - Get config by ID
+- POST /voice/configs - Create new config
+- PUT /voice/configs/{configId} - Update config
+- DELETE /voice/configs/{configId} - Delete config
 """
 
 import json
