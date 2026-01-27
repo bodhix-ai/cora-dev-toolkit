@@ -1,4 +1,4 @@
-# Sprint Plan: API Tracer & UI Library Validation S2
+# Sprint Plan: API Tracer, UI Library & TypeScript Validation S2
 
 **Status:** 🟡 IN PROGRESS  
 **Branch:** `fix/validation-errors-s2`  
@@ -9,13 +9,14 @@
 
 ## Sprint Goal
 
-Eliminate 9 validation errors across API Tracer and UI Library validators to improve template quality and documentation accuracy.
+Eliminate validation errors across API Tracer, UI Library, and TypeScript validators to improve template quality and documentation accuracy.
 
 **Targets:**
-- 0 API Tracer errors (down from 7)
-- 0 UI Library errors (down from 2)
+- 0 API Tracer errors (down from 13)
+- 0 UI Library errors (Tailwind CSS usage in 12 files)
+- 0 TypeScript errors (module reference issues with @{{PROJECT_NAME}} placeholder)
 
-**Total:** 0 errors (down from 9)
+**Total:** 0 errors across all three validators
 
 ---
 
@@ -23,25 +24,33 @@ Eliminate 9 validation errors across API Tracer and UI Library validators to imp
 
 ### IN SCOPE
 
-**Target Errors:** 9 validation errors across 2 validators
+**Target Errors:** Validation errors across 3 validators
 
 **Error Categories:**
 
-1. **API Tracer (7 errors)**
-   - Route documentation mismatches - Lambda function docstrings don't accurately document their routes
-   - These errors block proper API route verification and documentation accuracy
-   - **Affected Modules:** module-access, module-ai, module-ws, module-kb, module-chat, module-eval
+1. **API Tracer (13 errors → 0)** ✅ COMPLETE
+   - Route parameter naming mismatches (workspaceId vs wsId)
+   - Fixed module-kb infrastructure, Lambda handlers, and frontend code
+   - **Affected Modules:** module-kb
    - **Validation Standard:** `docs/standards/standard_LAMBDA-ROUTE-DOCSTRING.md`
 
-2. **UI Library (2 errors)**
-   - UI component library compliance issues
+2. **UI Library (1 error - 12 files with Tailwind CSS)**
+   - Tailwind CSS class usage instead of Material-UI sx prop
    - Violations of CORA UI component standards
-   - **Affected Areas:** Component usage or import patterns
+   - **Affected Files:** 12 components across module-access, module-mgmt, module-voice
+   - **Fix:** Convert all Tailwind className props to Material-UI sx props
+
+3. **TypeScript (30+ errors)**
+   - Hardcoded project name references (`@ai-sec`) instead of placeholder (`@{{PROJECT_NAME}}`)
+   - Missing module type declarations in newly created projects
+   - **Affected Files:** Module frontend adapters, components, and admin cards
+   - **Fix:** Update all hardcoded project references to use template placeholder
 
 **Combined Impact:**
-- Improves API documentation accuracy
-- Ensures UI component standards compliance
-- Small, focused scope suitable for single sprint
+- Improves API route documentation and frontend-backend consistency
+- Ensures UI component standards compliance (Material-UI only)
+- Fixes template placeholder substitution for project names
+- Enables TypeScript validation for newly created projects
 
 ### OUT OF SCOPE
 
@@ -50,38 +59,57 @@ Eliminate 9 validation errors across API Tracer and UI Library validators to imp
 - Frontend compliance errors (42)
 - Next.js routing errors (24)
 - Database naming errors (6)
-- UI Library validation errors
 - Other validation warnings
 
 ---
 
 ## Implementation Steps
 
-### Phase 1: Analysis & Setup
-- [ ] Run fresh validation to identify all 9 errors
-- [ ] Document API Tracer errors (which Lambda functions have route mismatches)
-- [ ] Document UI Library errors (which components have violations)
-- [ ] Review relevant standards (Lambda Route Docstring, UI Library)
-- [ ] Create sprint branch `fix/validation-errors-s2`
-- [ ] Update context file with Sprint 2 details
+### Phase 1: Analysis & Setup ✅ COMPLETE
+- [x] Run fresh validation to identify all errors
+- [x] Document API Tracer errors (module-kb parameter naming)
+- [x] Document UI Library errors (12 files with Tailwind CSS)
+- [x] Document TypeScript errors (hardcoded @ai-sec references)
+- [x] Review relevant standards (Lambda Route Docstring, UI Library)
+- [x] Create sprint branch `fix/validation-errors-s2`
+- [x] Update context file with Sprint 2 details
 
-### Phase 2: API Tracer Fixes (7 errors)
-- [ ] For each of the 7 API Tracer errors:
-  - [ ] Identify the Lambda function with mismatch
-  - [ ] Review actual API Gateway routes for that Lambda
-  - [ ] Update Lambda docstring to match actual routes
-  - [ ] Follow template-first workflow
-  - [ ] Sync fix to test project
-  - [ ] Validate fix with API Tracer
+### Phase 2: API Tracer Fixes (13 errors) ✅ COMPLETE
+- [x] Fixed module-kb parameter naming consistency (workspaceId → wsId)
+- [x] Updated infrastructure (outputs.tf) with correct route patterns
+- [x] Updated Lambda handlers (lambda_function.py) to extract wsId
+- [x] Updated frontend API client (api.ts) with wsId parameters
+- [x] Updated frontend components (EvalDetailPage.tsx) with wsId
+- [x] Followed template-first workflow
+- [x] Synced fixes to test project
+- [x] Validated with API Tracer: 0 errors ✅
 
-### Phase 3: UI Library Fixes (2 errors)
-- [ ] For each of the 2 UI Library errors:
-  - [ ] Identify the component or file with violation
-  - [ ] Review UI Library standard requirements
-  - [ ] Fix component usage/imports
-  - [ ] Follow template-first workflow
-  - [ ] Sync fix to test project
-  - [ ] Validate fix with UI Library validator
+### Phase 3: UI Library Fixes (11 files with Tailwind CSS) - 73% COMPLETE
+- [x] NavLink.tsx - Converted to Material-UI Box, Link, Tooltip
+- [x] ResizeHandle.tsx - Converted to Material-UI Box with drag interaction
+- [x] ProfileCard.tsx (191 lines) - Converted to Material-UI Card, Typography, Avatar
+- [x] Sidebar.tsx (238 lines) - Converted to Material-UI Box, IconButton
+- [x] OrgSelector.tsx (240 lines) - Converted to Material-UI Select, MenuItem, FormControl
+- [x] Dashboard.tsx (255 lines) - Converted to Material-UI Grid, Button, Typography
+- [x] CreateOrganization.tsx (300 lines) - Converted to Material-UI TextField, Select, Alert
+- [x] SidebarUserMenu.tsx (406 lines) - Converted to Material-UI Box, Menu, MenuItem
+- [ ] OrgDetailsTab.tsx (573 lines) - **NEXT SESSION** - Organization details management
+- [ ] ModuleAdminDashboard.tsx (898 lines) - **NEXT SESSION** - Module admin dashboard
+- [ ] module-voice admin page - **NEXT SESSION** - System admin page for voice
+- [ ] Sync all 11 converted files to test project
+- [ ] Validate with UI Library validator (Target: 0 errors)
+
+**Progress:** 8 of 11 files converted (73%)  
+**Remaining:** 3 large files (1,471+ lines combined)  
+**Status:** Paused at 81% context usage - fresh session recommended
+
+### Phase 4: TypeScript Fixes (30+ errors)
+- [ ] Identify all files with hardcoded @ai-sec references
+- [ ] Update to use @{{PROJECT_NAME}} placeholder
+- [ ] Follow template-first workflow
+- [ ] Sync fixes to test project
+- [ ] Run `pnpm install` on test project
+- [ ] Validate with TypeScript validator
 
 **Pattern to Follow:**
 ```python
@@ -112,10 +140,13 @@ Routes - Category:
 
 ## Success Criteria
 
-- [ ] API Tracer validator shows 0 errors (down from 7)
-- [ ] UI Library validator shows 0 errors (down from 2)
-- [ ] All Lambda route docstrings accurately reflect API Gateway routes
-- [ ] All UI components comply with CORA UI standards
+- [x] API Tracer validator shows 0 errors (down from 13) ✅
+- [ ] UI Library validator shows 0 errors (12 files converted to Material-UI)
+- [ ] TypeScript validator shows 0 errors (placeholder substitution fixed)
+- [ ] All Lambda route parameters use consistent naming (wsId)
+- [ ] All UI components use Material-UI sx prop (no Tailwind classes)
+- [ ] All module references use @{{PROJECT_NAME}} placeholder
+- [ ] TypeScript validator auto-runs `pnpm install` if node_modules missing
 - [ ] No regressions introduced (other validator counts unchanged)
 - [ ] Fixes applied to templates first, then synced to test project
 - [ ] Changes documented in context file
@@ -161,20 +192,58 @@ Routes - Organization Management:
 
 ### 2. UI Library Validation
 
-**Standard:** CORA UI components must follow approved patterns and imports
+**Standard:** CORA UI components must use Material-UI only (no Tailwind CSS)
 
 **Common Issues:**
-- Incorrect component imports (using non-approved libraries)
-- Missing required component props
-- Improper component composition
+- Tailwind CSS classes in className props (use Material-UI sx prop instead)
+- Missing Material-UI component imports
+- Improper use of utility classes vs theme-based styling
+
+**Conversion Pattern:**
+```tsx
+// ❌ WRONG - Tailwind classes
+<div className="flex items-center gap-3 px-4 py-3">
+
+// ✅ CORRECT - Material-UI sx prop
+<Box sx={{ display: 'flex', alignItems: 'center', gap: 3, px: 4, py: 3 }}>
+```
 
 **Fix Workflow:**
 
-1. **Identify Violation** - Run UI Library validator to see specific issues
-2. **Review Standard** - Check CORA UI component standards
-3. **Update Component** - Fix component usage/imports in template
-4. **Sync & Test** - Sync to test project and re-validate
-5. **Iterate** - Repeat until validator passes
+1. **Identify Violation** - Run UI Library validator to see files with Tailwind
+2. **Convert to Material-UI** - Replace className with sx prop, use Box/Typography
+3. **Handle Dark Mode** - Use theme.palette.mode conditionals
+4. **Update Template** - Fix component in template first
+5. **Sync & Test** - Sync to test project and re-validate
+6. **Iterate** - Repeat until validator passes
+
+### 3. TypeScript Validation
+
+**Standard:** Template placeholders must be used for project-specific references
+
+**Common Issues:**
+- Hardcoded project names (`@ai-sec/api-client`) instead of placeholder
+- Missing module type declarations due to incorrect imports
+
+**Conversion Pattern:**
+```tsx
+// ❌ WRONG - Hardcoded project name
+import { apiClient } from '@ai-sec/api-client';
+import type { ModuleConfig } from '@ai-sec/shared-types';
+
+// ✅ CORRECT - Template placeholder
+import { apiClient } from '@{{PROJECT_NAME}}/api-client';
+import type { ModuleConfig } from '@{{PROJECT_NAME}}/shared-types';
+```
+
+**Fix Workflow:**
+
+1. **Identify Hardcoded References** - Find all `@ai-sec` or other project names
+2. **Replace with Placeholder** - Update to `@{{PROJECT_NAME}}`
+3. **Update Template** - Fix in template first
+4. **Sync & Test** - Sync to test project
+5. **Run pnpm install** - Install dependencies to resolve types
+6. **Validate** - Run TypeScript validator
 
 ---
 
@@ -249,5 +318,27 @@ python3 validation/cora-validate.py project <test-project-stack-path> --format t
 
 ---
 
+**Conversion Pattern Established:**
+- Replace Tailwind `className` with Material-UI `sx` prop
+- Use theme-aware dark mode: `theme.palette.mode === 'dark'`
+- Convert layout classes to Box/Grid components
+- Convert form elements to TextField/Select/Button
+- Maintain responsive design with MUI breakpoints
+- Preserve all functionality and accessibility
+- Use consistent color schemes across dark/light modes
+
+**Next Session Priorities:**
+1. Complete remaining 3 UI Library files (1,471+ lines)
+   - OrgDetailsTab.tsx (573 lines)
+   - ModuleAdminDashboard.tsx (898 lines)
+   - module-voice admin page
+2. Sync all 11 converted files to test project
+3. Run UI Library validation → Target: 0 errors
+4. Fix TypeScript placeholder issues (30+ @ai-sec → @{{PROJECT_NAME}})
+5. Run TypeScript validation → Target: 0 errors
+6. Sprint S2 complete
+
+---
+
 **Created:** January 26, 2026  
-**Last Updated:** January 26, 2026
+**Last Updated:** January 26, 2026 (Session 1 complete - API Tracer ✅, UI Library 73%)
