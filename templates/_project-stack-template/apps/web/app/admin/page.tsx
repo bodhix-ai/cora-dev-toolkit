@@ -89,7 +89,7 @@ export default function AdminPage() {
               "&:hover": { bgcolor: "action.hover" },
             }}
           >
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h5" gutterBottom>
               Organization Admin
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -109,7 +109,7 @@ export default function AdminPage() {
               "&:hover": { bgcolor: "action.hover" },
             }}
           >
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h5" gutterBottom>
               System Admin
             </Typography>
             <Typography variant="body2" color="text.secondary">
