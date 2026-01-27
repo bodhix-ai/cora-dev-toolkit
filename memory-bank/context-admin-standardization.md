@@ -18,7 +18,7 @@ Standardize all CORA admin pages (sys and org) with consistent:
 | S1 | `admin-page-s1` | `plan_admin-page-standardization-s1.md` | ✅ Complete | 2026-01-22 |
 | S2 | `admin-page-s2-completion` | `plan_admin-page-standardization-s2.md` | ✅ Complete | 2026-01-24 |
 | S3a | `admin-page-s3a` | `plan_admin-page-s3a.md` | ✅ Complete | 2026-01-25 (Session 5) |
-| S3b | TBD | `plan_admin-page-s3b.md` | 📋 Planned | - |
+| S3b | `admin-page-s3b` | `plan_admin-standardization-s3b.md` | � Active | 2026-01-27 |
 
 ## Sprint 3a Summary (Completed)
 
@@ -42,15 +42,37 @@ Standardize all CORA admin pages (sys and org) with consistent:
 
 **Impact:** Sys admins can now toggle functional modules on/off. Infrastructure ready for WS Plugin Architecture. Database tables comply with naming standards.
 
-## Sprint 3b Scope (Planned)
+## Sprint 3b Scope (Active)
 
-**Focus:** Admin Standards & Documentation
-- Admin page parity rule (both sys & org per module)
-- Module ADMINISTRATION.md template
-- Delegated admin concept documentation
-- Guide for module developers
+**Branch:** `admin-page-s3b`
+**Plan:** `docs/plans/plan_admin-standardization-s3b.md`
+**Started:** January 27, 2026
 
-**Not Started** - Awaiting definition and scoping.
+**Expanded Scope:**
+1. **Version Tracking Foundation** (4-6 hours)
+   - Toolkit and module versioning system
+   - Dependency tracking in module-registry.yaml
+   - Project version snapshots (.cora-version.yaml)
+   - Sync logging for upgrade traceability
+
+2. **Admin Route Standardization** (4-6 hours)
+   - Fix 84 admin route validator errors
+   - Update module-mgmt Lambda docstrings
+   - Update API Gateway routes in outputs.tf
+   - Update frontend API calls
+
+3. **Documentation** (2-3 hours)
+   - Admin page parity rule
+   - Module ADMINISTRATION.md template
+   - Delegated admin concept documentation
+   - Guide for module developers
+
+**Total Estimated Effort:** 12-18 hours
+
+**Why Expanded:**
+- Version tracking is critical for deploying updates to 4+ projects
+- Admin route fixes cannot be deployed sustainably without version tracking
+- Both are tightly coupled to deployment workflow
 
 ## Sprint 2 Summary (Completed)
 
