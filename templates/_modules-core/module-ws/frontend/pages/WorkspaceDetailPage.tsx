@@ -502,7 +502,7 @@ export function WorkspaceDetailPage({
                 <Paper variant="outlined" sx={{ p: 2 }}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
                     <Description color="primary" />
-                    <Typography variant="h6">Documents</Typography>
+                    <Typography variant="h5">Documents</Typography>
                   </Box>
                   <Typography variant="h4" sx={{ mb: 1 }}>
                     {documents?.length || 0}
@@ -518,7 +518,7 @@ export function WorkspaceDetailPage({
                 <Paper variant="outlined" sx={{ p: 2 }}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
                     <Assessment color="primary" />
-                    <Typography variant="h6">Evaluations</Typography>
+                    <Typography variant="h5">Evaluations</Typography>
                   </Box>
                   <Typography variant="h4" sx={{ mb: 1 }}>
                     {calculatedEvalStats.total}
@@ -539,8 +539,8 @@ export function WorkspaceDetailPage({
                       Created
                     </Typography>
                   </Box>
-                  <Typography variant="h6">
-                    {workspace?.createdAt 
+                  <Typography variant="h5">
+                    {workspace?.createdAt
                       ? new Date(workspace.createdAt).toLocaleDateString('en-US', {
                           year: 'numeric',
                           month: 'long',

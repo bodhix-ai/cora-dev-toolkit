@@ -264,7 +264,7 @@ export function OrgDelegationManager({
     <Box className={className}>
       {/* Header */}
       <Box sx={{ mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
+        <Typography variant="h5" gutterBottom>
           AI Configuration Delegation
         </Typography>
         <Typography variant="body2" color="text.secondary">
