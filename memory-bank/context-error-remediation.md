@@ -21,10 +21,17 @@ This initiative aims to achieve the **P1: Clean Project Baseline (Error-Free)** 
 | S2 | `fix/validation-errors-s2` | `plan_api-tracer-s2.md` | ✅ Complete | 2026-01-27 |
 | S3 | `fix/validation-errors-s3` | `plan_accessibility-frontend-s3.md` | ✅ Complete | 2026-01-27 |
 | S4 | `fix/validation-errors-s4` | `plan_validation-errors-s4.md` | ✅ Complete | 2026-01-27 |
+| Fix | `fix/create-project-config` | `plan_create-project-config.md` | ✅ Complete | 2026-01-27 |
 
 ## Current Sprint
 
-**Sprint S4 Complete** - Next sprint: S5 (Audit Column Compliance)
+**Fix Complete: Project Config & Validation** - Next sprint: S5 (Audit Column Compliance)
+
+**Fix Summary:**
+- **Branch:** `fix/create-project-config`
+- **Fixed:** `create-cora-project.sh` relative path issue
+- **Fixed:** Remaining validation errors in `module-eval` and `module-access`
+- **Verified:** Created `ai-ccat` project (0 errors)
 
 **Sprint S4 Summary:**
 - **Branch:** `fix/validation-errors-s4`
@@ -945,3 +952,31 @@ Successfully converted from Tailwind CSS to Material-UI:
 1. **Database Naming (5 errors)** - Part of broader API standards initiative
 2. **Admin Route (51 errors)** - Separate team/initiative
 3. **Remaining errors** - Other validators as needed
+
+### Session 5 (Jan 27, 2026) - Project Config Fix & Final Validation
+
+**Work Completed:**
+- Fixed `create-cora-project.sh` to handle relative config paths
+- Fixed remaining accessibility/auth errors in `module-eval` and `module-access` templates
+- Validated fixes by creating `ai-ccat` project
+- **Result:** 0 validation errors in new project
+
+---
+
+## Related Work
+
+**Sprint S5 (Next):**
+- Plan: `docs/plans/plan_audit-columns-s5.md`
+- Focus: Audit Column Compliance (8 tables)
+- Estimated: 3-4 hours
+
+**WS Plugin Architecture Initiative:**
+- Context: `memory-bank/context-ws-plugin-architecture.md`
+- Current Sprint: S3 (Active)
+- Handles: Workspace Plugin validator errors
+
+---
+
+**Created:** January 26, 2026  
+**Last Updated:** January 27, 2026  
+**Status:** ✅ COMPLETE - All validation errors addressed or deferred to S5
