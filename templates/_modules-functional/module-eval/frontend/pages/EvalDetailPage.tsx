@@ -972,6 +972,7 @@ function DocumentsTab({ documents, activeDocumentId }: DocumentsTabProps) {
               </Box>
               <IconButton
                 size="small"
+                aria-label={isExpanded ? "Collapse document details" : "Expand document details"}
                 sx={{
                   transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                   transition: 'transform 0.2s'
