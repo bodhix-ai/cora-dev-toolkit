@@ -674,6 +674,65 @@ module-kb routes EXIST for both sys and org but are malformed. They use `/admin/
 
 ---
 
+### January 27, 2026 - Sprint 3b Session 9
+
+**Status:** Module-Voice Admin Infrastructure - 50% Complete
+**Branch:** `admin-page-s3b`
+
+**Work Completed:**
+
+1. **Module-Voice Analysis - COMPLETE** ✅
+   - Discovered admin pages already exist (routes/admin/sys/voice, routes/admin/org/voice)
+   - Admin page components exist (SysVoiceConfigPage, OrgVoiceConfigPage)
+   - Backend admin routes are MISSING (all routes are data API routes)
+   - Created analysis document: `docs/plans/session-9-voice-admin-analysis.md`
+   - User selected **Option A: Complete implementation** (10-15 hours)
+
+2. **Infrastructure Updates - COMPLETE** ✅
+   - **File:** `templates/_modules-functional/module-voice/infrastructure/outputs.tf`
+   - **Added:** 16 admin routes:
+     - 6 sys admin credential routes (list, get, create, update, delete, validate)
+     - 5 org admin credential routes (list, get, create, update, delete)
+     - 5 org admin config routes (list, get, create, update, delete)
+   - **Total module routes:** 36 (16 admin + 20 data API)
+
+3. **Voice-Credentials Lambda - COMPLETE** ✅
+   - **File:** `templates/_modules-functional/module-voice/backend/lambdas/voice-credentials/lambda_function.py`
+   - **Updated:** Module docstring with 16 credential routes
+   - **Added:** Route detection for `/admin/sys/voice/credentials` and `/admin/org/voice/credentials`
+   - **Implemented:** 11 admin handler functions:
+     - **Sys admin (6):** list, get, create, update, delete, validate
+     - **Org admin (5):** list, get, create, update, delete
+   - **Pattern:** Platform credentials use org_id = NULL, org credentials use session org_id
+
+**Key Implementation Details:**
+- Sys admin routes manage platform-wide credentials (org_id = NULL)
+- Org admin routes use session org_id from user profile, not query parameters
+- Sys admin handlers support Daily.co, Deepgram, Cartesia credential management
+- Org admin handlers enable organization-specific credential overrides
+- All admin routes follow ADR-018 pattern: `/admin/{scope}/{module}/{resource}`
+
+**Remaining Work (4-5 hours):**
+- Voice-configs Lambda updates (5 org admin routes)
+- Frontend API updates (connect SysVoiceConfigPage to real endpoints)
+- Validation with admin-route-validator
+
+**Progress Summary:**
+- **6 of 8 modules complete** with full sys + org admin parity (kb, eval, mgmt, access, ai, ws)
+- **1 module 50% complete** (voice - credentials done, configs + frontend pending)
+- **1 module remaining** (chat - needs full admin infrastructure)
+
+**Files Modified (2):**
+- `templates/_modules-functional/module-voice/infrastructure/outputs.tf`
+- `templates/_modules-functional/module-voice/backend/lambdas/voice-credentials/lambda_function.py`
+
+**Next Session:**
+- Continue with voice-configs Lambda updates
+- Update frontend API (lib/api.ts)
+- Validate module-voice admin routes
+
+---
+
 ### January 24, 2026 - Sprint 2 Completion
 - Completed ADR-016 fixes for org admin authorization
 - Renamed branch from citations-review to admin-page-s2-completion

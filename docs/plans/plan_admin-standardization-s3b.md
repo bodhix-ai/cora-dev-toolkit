@@ -70,7 +70,8 @@ e m# Plan: Admin Standardization S3b - Route Standards & Version Tracking
 
 **Module Completion Status:**
 - ✅ **6 modules complete:** kb, eval, mgmt, access, ai, ws (sys + org admin pages)
-- ⏳ **2 modules remaining:** chat, voice
+- 🔄 **1 module 50% complete:** voice (credentials done, configs + frontend pending)
+- ⏳ **1 module remaining:** chat
 
 **Validation Results (Session 8):**
 - Ran admin-route-validator on `templates/_modules-core/` (6 modules)
@@ -82,19 +83,34 @@ e m# Plan: Admin Standardization S3b - Route Standards & Version Tracking
 - **Admin parity:** 1 of 2 modules (eval) has both sys + org routes
 - **Missing:** voice (needs admin infrastructure + 6 route pattern fixes)
 
-**Overall Status:**
-- **75% Complete:** 6 of 8 modules with full admin parity
-- **Remaining work:** chat (12-16 hours) + voice (12-16 hours + route fixes)
-
-**Voice Route Pattern Fixes (Session 8 Bonus):** ✅ COMPLETE
+**Voice Route Pattern Fixes (Session 8):** ✅ COMPLETE
 - Fixed deprecated `/api/voice/*` prefix (removed `/api/` prefix)
 - Updated 3 Lambda functions (10 routes total)
 - **Validation:** 8 errors → 2 errors (6 route pattern errors resolved!)
-- **Remaining:** 2 errors (missing admin infrastructure - future work)
+
+**Session 9: Module-Voice Admin Infrastructure (50% Complete)**
+- ✅ **Analysis COMPLETE** - Created `docs/plans/session-9-voice-admin-analysis.md`
+- ✅ **Infrastructure Updates COMPLETE** - Added 16 admin routes to outputs.tf
+  - 6 sys admin credential routes (list, get, create, update, delete, validate)
+  - 5 org admin credential routes (list, get, create, update, delete)
+  - 5 org admin config routes (list, get, create, update, delete)
+- ✅ **Voice-Credentials Lambda COMPLETE** - 11 admin handler functions implemented
+  - Sys admin (6): Platform credentials (org_id = NULL)
+  - Org admin (5): Organization credentials (session org_id)
+  - All routes follow ADR-018 pattern: `/admin/{scope}/{module}/{resource}`
+- ⏳ **Remaining (4-5 hours):**
+  - Voice-configs Lambda updates (5 org admin routes)
+  - Frontend API updates (connect SysVoiceConfigPage to real endpoints)
+  - Validation with admin-route-validator
+
+**Overall Status:**
+- **75% Complete:** 6 of 8 modules with full admin parity
+- **87.5% Complete:** Voice at 50% (credentials backend done, configs + frontend pending)
+- **Remaining work:** Voice completion (4-5 hours) + chat (12-16 hours)
 
 **Next Session:**
-- **Target:** module-voice admin infrastructure (12-16 hours) OR module-chat admin infrastructure (12-16 hours)
-- **Recommendation:** Voice route patterns already fixed, only needs admin UI now
+- **Target:** Complete module-voice (4-5 hours remaining)
+- **Tasks:** voice-configs Lambda + frontend API updates + validation
 
 ---
 
