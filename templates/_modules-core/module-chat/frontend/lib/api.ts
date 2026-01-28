@@ -161,10 +161,10 @@ async function apiRequest<T>(
 
 /**
  * List chat sessions for a workspace
- * GET /workspaces/{workspaceId}/chats
+ * GET /ws/{wsId}/chats
  */
 export async function listWorkspaceChats(
-  workspaceId: string,
+  wsId: string,
   token: string,
   options?: ListSessionsOptions
 ): Promise<ListSessionsResponse> {
@@ -177,20 +177,20 @@ export async function listWorkspaceChats(
     sort_order: options?.sortOrder,
   };
 
-  const url = buildUrl(`/workspaces/${workspaceId}/chats`, params);
+  const url = buildUrl(`/ws/${wsId}/chats`, params);
   return apiRequest<ListSessionsResponse>(url, token);
 }
 
 /**
  * Create a new chat session in a workspace
- * POST /workspaces/{workspaceId}/chats
+ * POST /ws/{wsId}/chats
  */
 export async function createWorkspaceChat(
-  workspaceId: string,
+  wsId: string,
   token: string,
   input?: CreateSessionInput
 ): Promise<ChatSession> {
-  return apiRequest<ChatSession>(`/workspaces/${workspaceId}/chats`, token, {
+  return apiRequest<ChatSession>(`/ws/${wsId}/chats`, token, {
     method: "POST",
     body: JSON.stringify({
       title: input?.title,

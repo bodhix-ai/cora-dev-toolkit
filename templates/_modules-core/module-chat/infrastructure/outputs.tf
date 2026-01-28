@@ -57,31 +57,31 @@ output "api_routes" {
     # =========================================================================
     {
       method      = "GET"
-      path        = "/workspaces/{workspaceId}/chats"
+      path        = "/ws/{wsId}/chats"
       integration = aws_lambda_function.chat_session.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/workspaces/{workspaceId}/chats"
+      path        = "/ws/{wsId}/chats"
       integration = aws_lambda_function.chat_session.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/workspaces/{workspaceId}/chats/{sessionId}"
+      path        = "/ws/{wsId}/chats/{sessionId}"
       integration = aws_lambda_function.chat_session.invoke_arn
       public      = false
     },
     {
       method      = "PATCH"
-      path        = "/workspaces/{workspaceId}/chats/{sessionId}"
+      path        = "/ws/{wsId}/chats/{sessionId}"
       integration = aws_lambda_function.chat_session.invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/workspaces/{workspaceId}/chats/{sessionId}"
+      path        = "/ws/{wsId}/chats/{sessionId}"
       integration = aws_lambda_function.chat_session.invoke_arn
       public      = false
     },

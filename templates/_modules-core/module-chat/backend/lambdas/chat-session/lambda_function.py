@@ -5,11 +5,11 @@ Handles chat session management including creation, retrieval, updates,
 KB grounding, sharing, and favorites.
 
 Routes - Workspace Scoped:
-- GET /workspaces/{workspaceId}/chats - List workspace chats
-- POST /workspaces/{workspaceId}/chats - Create workspace chat
-- GET /workspaces/{workspaceId}/chats/{sessionId} - Get chat details
-- PATCH /workspaces/{workspaceId}/chats/{sessionId} - Update chat (title, sharing)
-- DELETE /workspaces/{workspaceId}/chats/{sessionId} - Delete chat
+- GET /ws/{wsId}/chats - List workspace chats
+- POST /ws/{wsId}/chats - Create workspace chat
+- GET /ws/{wsId}/chats/{sessionId} - Get chat details
+- PATCH /ws/{wsId}/chats/{sessionId} - Update chat (title, sharing)
+- DELETE /ws/{wsId}/chats/{sessionId} - Delete chat
 
 Routes - User Level:
 - GET /users/me/chats - List user's personal chats
@@ -67,18 +67,18 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if http_method == 'OPTIONS':
             return common.success_response({})
         
-        # Workspace-scoped routes: /workspaces/{workspaceId}/chats...
-        if '/workspaces/' in path and '/chats' in path:
-            workspace_id = path_params.get('workspaceId')
+        # Workspace-scoped routes: /ws/{wsId}/chats...
+        if '/ws/' in path and '/chats' in path:
+            ws_id = path_params.get('wsId')
             session_id = path_params.get('sessionId')
             
             if http_method == 'GET':
                 if session_id:
                     return handle_get_chat(supabase_user_id, session_id)
                 else:
-                    return handle_list_workspace_chats(event, supabase_user_id, workspace_id)
+                    return handle_list_workspace_chats(event, supabase_user_id, ws_id)
             elif http_method == 'POST':
-                return handle_create_workspace_chat(event, supabase_user_id, workspace_id)
+                return handle_create_workspace_chat(event, supabase_user_id, ws_id)
             elif http_method == 'PATCH':
                 return handle_update_chat(event, supabase_user_id, session_id)
             elif http_method == 'DELETE':
@@ -157,7 +157,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 def handle_list_workspace_chats(
     event: Dict[str, Any],
     user_id: str,
-    workspace_id: str
+    ws_id: str
 ) -> Dict[str, Any]:
     """
     List chat sessions for a workspace.
@@ -167,7 +167,7 @@ def handle_list_workspace_chats(
     - offset: Pagination offset (default: 0)
     - filter: 'all' | 'mine' | 'shared' (default: 'all')
     """
-    workspace_id = common.validate_uuid(workspace_id, 'workspaceId')
+    ws_id = common.validate_uuid(ws_id, 'wsId')
     
     query_params = event.get('queryStringParameters', {}) or {}
     
@@ -188,7 +188,7 @@ def handle_list_workspace_chats(
     ws_membership = common.find_one(
         table='ws_members',
         filters={
-            'ws_id': workspace_id,
+            'ws_id': ws_id,
             'user_id': user_id
         }
     )
@@ -199,7 +199,7 @@ def handle_list_workspace_chats(
     # Get workspace to find org_id
     workspace = common.find_one(
         table='workspaces',
-        filters={'id': workspace_id}
+        filters={'id': ws_id}
     )
     
     if not workspace:
@@ -213,7 +213,7 @@ def handle_list_workspace_chats(
         chats = common.find_many(
             table='chat_sessions',
             filters={
-                'ws_id': workspace_id,
+                'ws_id': ws_id,
                 'created_by': user_id,
                 'is_deleted': False
             },
@@ -230,7 +230,7 @@ def handle_list_workspace_chats(
 {
                 'p_user_id': user_id,
                 'p_org_id': org_id,
-                'p_workspace_id': workspace_id
+                'p_workspace_id': ws_id
             }
         )
         # Filter to only shared chats
@@ -245,7 +245,7 @@ def handle_list_workspace_chats(
 {
                 'p_user_id': user_id,
                 'p_org_id': org_id,
-                'p_workspace_id': workspace_id
+                'p_workspace_id': ws_id
             }
         )
         chats = chats[offset:offset + limit]
@@ -322,7 +322,7 @@ def handle_list_user_chats(
 def handle_create_workspace_chat(
     event: Dict[str, Any],
     user_id: str,
-    workspace_id: str
+    ws_id: str
 ) -> Dict[str, Any]:
     """
     Create a new chat session in a workspace.
@@ -334,13 +334,13 @@ def handle_create_workspace_chat(
         "isSharedWithWorkspace": false  // Optional, default: false
     }
     """
-    workspace_id = common.validate_uuid(workspace_id, 'workspaceId')
+    ws_id = common.validate_uuid(ws_id, 'wsId')
     
     # Verify user has access to workspace
     ws_membership = common.find_one(
         table='ws_members',
         filters={
-            'ws_id': workspace_id,
+            'ws_id': ws_id,
             'user_id': user_id
         }
     )
@@ -351,7 +351,7 @@ def handle_create_workspace_chat(
     # Get workspace to find org_id
     workspace = common.find_one(
         table='workspaces',
-        filters={'id': workspace_id}
+        filters={'id': ws_id}
     )
     
     if not workspace:
@@ -369,7 +369,7 @@ def handle_create_workspace_chat(
     # Create the chat session
     chat_data = {
         'title': title,
-        'ws_id': workspace_id,
+        'ws_id': ws_id,
         'org_id': workspace['org_id'],
         'created_by': user_id,
         'is_shared_with_workspace': is_shared_with_workspace,
