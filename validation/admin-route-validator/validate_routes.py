@@ -34,9 +34,10 @@ VALID_MODULES = {
 }
 
 # Route patterns
-ADMIN_SYS_PATTERN = re.compile(r'^/admin/sys/([a-z]+)/([a-z][a-z0-9-]*)(/.*)?$')
-ADMIN_ORG_PATTERN = re.compile(r'^/admin/org/([a-z]+)/([a-z][a-z0-9-]*)(/.*)?$')
-ADMIN_WS_PATTERN = re.compile(r'^/admin/ws/\{wsId\}/([a-z]+)/([a-z][a-z0-9-]*)(/.*)?$')
+# Updated to support path parameters like {kbId}, {docId} at resource level
+ADMIN_SYS_PATTERN = re.compile(r'^/admin/sys/([a-z]+)/([a-z][a-z0-9-]*|\{[a-zA-Z]+\})(/.*)?$')
+ADMIN_ORG_PATTERN = re.compile(r'^/admin/org/([a-z]+)/([a-z][a-z0-9-]*|\{[a-zA-Z]+\})(/.*)?$')
+ADMIN_WS_PATTERN = re.compile(r'^/admin/ws/\{wsId\}/([a-z]+)/([a-z][a-z0-9-]*|\{[a-zA-Z]+\})(/.*)?$')
 DATA_API_PATTERN = re.compile(r'^/([a-z]+)(/.*)?$')
 
 # Anti-patterns to detect
