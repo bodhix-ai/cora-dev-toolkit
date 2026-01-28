@@ -149,13 +149,13 @@ output "api_routes" {
     # kb-base: Org admin routes
     {
       method      = "GET"
-      path        = "/admin/org/kb"
+      path        = "/admin/org/kb/bases"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/admin/org/kb"
+      path        = "/admin/org/kb/bases"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
@@ -180,13 +180,13 @@ output "api_routes" {
     # kb-base: Platform admin routes
     {
       method      = "GET"
-      path        = "/admin/sys/kb"
+      path        = "/admin/sys/kb/bases"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/admin/sys/kb"
+      path        = "/admin/sys/kb/bases"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },

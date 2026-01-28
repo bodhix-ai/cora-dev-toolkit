@@ -26,9 +26,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Endpoints:
     - GET    /orgs           - List user's organizations
     - POST   /orgs           - Create new organization
-    - GET    /orgs/:orgId    - Get organization details
-    - PUT    /orgs/:orgId    - Update organization
-    - DELETE /orgs/:orgId    - Delete organization
+    - GET    /orgs/{orgId}    - Get organization details
+    - PUT    /orgs/{orgId}    - Update organization
+    - DELETE /orgs/{orgId}    - Delete organization
     
     Args:
         event: API Gateway event
