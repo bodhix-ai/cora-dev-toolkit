@@ -1198,38 +1198,10 @@ def handle_sys_get_analytics(event: Dict[str, Any], user_info: Dict[str, Any]) -
     if not user_info.get('is_sys_admin'):
         raise common.ForbiddenError('sys_admin role required')
     
-    # Total sessions
-    total_sessions = common.execute_sql(
-        "SELECT COUNT(*) FROM chat_sessions WHERE is_deleted = false"
-    )[0]['count']
+    # Call RPC function for analytics
+    analytics = common.rpc('get_sys_chat_analytics')
     
-    # Total messages
-    total_messages = common.execute_sql(
-        "SELECT COUNT(*) FROM chat_messages"
-    )[0]['count']
-    
-    # Active sessions (last 24h, 7d, 30d)
-    active_24h = common.execute_sql(
-        "SELECT COUNT(*) FROM chat_sessions WHERE updated_at > NOW() - INTERVAL '24 hours' AND is_deleted = false"
-    )[0]['count']
-    
-    active_7d = common.execute_sql(
-        "SELECT COUNT(*) FROM chat_sessions WHERE updated_at > NOW() - INTERVAL '7 days' AND is_deleted = false"
-    )[0]['count']
-    
-    active_30d = common.execute_sql(
-        "SELECT COUNT(*) FROM chat_sessions WHERE updated_at > NOW() - INTERVAL '30 days' AND is_deleted = false"
-    )[0]['count']
-    
-    return common.success_response({
-        'totalSessions': total_sessions,
-        'totalMessages': total_messages,
-        'activeSessions': {
-            'last24Hours': active_24h,
-            'last7Days': active_7d,
-            'last30Days': active_30d
-        }
-    })
+    return common.success_response(analytics)
 
 
 def handle_sys_get_usage_stats(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
@@ -1237,19 +1209,10 @@ def handle_sys_get_usage_stats(event: Dict[str, Any], user_info: Dict[str, Any])
     if not user_info.get('is_sys_admin'):
         raise common.ForbiddenError('sys_admin role required')
     
-    # Most active orgs
-    active_orgs = common.execute_sql("""
-        SELECT o.id, o.name, COUNT(cs.id) as session_count
-        FROM orgs o
-        LEFT JOIN chat_sessions cs ON cs.org_id = o.id AND cs.is_deleted = false
-        GROUP BY o.id, o.name
-        ORDER BY session_count DESC
-        LIMIT 10
-    """)
+    # Call RPC function for most active orgs
+    active_orgs = common.rpc('get_sys_most_active_orgs', {'p_limit': 10})
     
-    return common.success_response({
-        'mostActiveOrgs': [{'orgId': r['id'], 'orgName': r['name'], 'sessionCount': r['session_count']} for r in active_orgs]
-    })
+    return common.success_response({'mostActiveOrgs': active_orgs})
 
 
 def handle_sys_get_token_stats(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
@@ -1571,23 +1534,10 @@ def handle_org_get_analytics(event: Dict[str, Any], user_info: Dict[str, Any]) -
     if user_info.get('org_role') not in ['org_admin', 'org_owner']:
         raise common.ForbiddenError('org_admin or org_owner role required')
     
-    # Total sessions
-    total_sessions = common.execute_sql(
-        "SELECT COUNT(*) FROM chat_sessions WHERE org_id = %s AND is_deleted = false",
-        [org_id]
-    )[0]['count']
+    # Call RPC function for org analytics
+    analytics = common.rpc('get_org_chat_analytics', {'p_org_id': org_id})
     
-    # Total messages
-    total_messages = common.execute_sql("""
-        SELECT COUNT(*) FROM chat_messages cm
-        JOIN chat_sessions cs ON cs.id = cm.session_id
-        WHERE cs.org_id = %s
-    """, [org_id])[0]['count']
-    
-    return common.success_response({
-        'totalSessions': total_sessions,
-        'totalMessages': total_messages
-    })
+    return common.success_response(analytics)
 
 
 def handle_org_get_user_stats(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
@@ -1599,20 +1549,10 @@ def handle_org_get_user_stats(event: Dict[str, Any], user_info: Dict[str, Any]) 
     if user_info.get('org_role') not in ['org_admin', 'org_owner']:
         raise common.ForbiddenError('org_admin or org_owner role required')
     
-    # Most active users
-    active_users = common.execute_sql("""
-        SELECT cs.created_by, up.display_name, COUNT(cs.id) as session_count
-        FROM chat_sessions cs
-        JOIN user_profiles up ON up.user_id = cs.created_by
-        WHERE cs.org_id = %s AND cs.is_deleted = false
-        GROUP BY cs.created_by, up.display_name
-        ORDER BY session_count DESC
-        LIMIT 10
-    """, [org_id])
+    # Call RPC function for most active users
+    active_users = common.rpc('get_org_most_active_users', {'p_org_id': org_id, 'p_limit': 10})
     
-    return common.success_response({
-        'mostActiveUsers': [{'userId': r['created_by'], 'userName': r['display_name'], 'sessionCount': r['session_count']} for r in active_users]
-    })
+    return common.success_response({'mostActiveUsers': active_users})
 
 
 def handle_org_get_workspace_stats(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
@@ -1624,20 +1564,10 @@ def handle_org_get_workspace_stats(event: Dict[str, Any], user_info: Dict[str, A
     if user_info.get('org_role') not in ['org_admin', 'org_owner']:
         raise common.ForbiddenError('org_admin or org_owner role required')
     
-    # Most active workspaces
-    active_workspaces = common.execute_sql("""
-        SELECT cs.ws_id, w.name, COUNT(cs.id) as session_count
-        FROM chat_sessions cs
-        JOIN workspaces w ON w.id = cs.ws_id
-        WHERE cs.org_id = %s AND cs.ws_id IS NOT NULL AND cs.is_deleted = false
-        GROUP BY cs.ws_id, w.name
-        ORDER BY session_count DESC
-        LIMIT 10
-    """, [org_id])
+    # Call RPC function for most active workspaces
+    active_workspaces = common.rpc('get_org_most_active_workspaces', {'p_org_id': org_id, 'p_limit': 10})
     
-    return common.success_response({
-        'mostActiveWorkspaces': [{'workspaceId': r['ws_id'], 'workspaceName': r['name'], 'sessionCount': r['session_count']} for r in active_workspaces]
-    })
+    return common.success_response({'mostActiveWorkspaces': active_workspaces})
 
 
 # =============================================================================
