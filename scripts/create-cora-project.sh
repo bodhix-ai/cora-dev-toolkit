@@ -556,7 +556,8 @@ resolve_module_dependencies() {
     # Get dependencies for this module
     local dependencies=""
     if command -v yq &> /dev/null; then
-      dependencies=$(yq ".modules.${current_module}.dependencies[]" "$REGISTRY_FILE" 2>/dev/null | tr '\n' ' ')
+      # Extract just the module names from dependency objects
+      dependencies=$(yq ".modules.${current_module}.dependencies[].module" "$REGISTRY_FILE" 2>/dev/null | tr '\n' ' ')
     else
       # Fallback: extract dependencies array (limited)
       dependencies=$(grep -A10 "^  ${current_module}:" "$REGISTRY_FILE" | grep "dependencies:" | sed 's/.*dependencies: *\[\(.*\)\].*/\1/' | tr ',' ' ')
