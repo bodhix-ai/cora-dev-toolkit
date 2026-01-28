@@ -733,6 +733,74 @@ module-kb routes EXIST for both sys and org but are malformed. They use `/admin/
 
 ---
 
+### January 27, 2026 - Sprint 3b Session 11
+
+**Status:** Workspace Route Standardization - Module-Chat & Eval Infrastructure Complete
+**Branch:** `admin-page-s3b`
+
+**Scope Discovery:**
+While preparing to add module-chat admin infrastructure, discovered significant workspace route inconsistencies across 3 modules (26 routes total):
+- **module-chat:** 5 routes with wrong path AND parameter (`/workspaces/{workspaceId}` → `/ws/{wsId}`)
+- **module-eval:** 10 routes with wrong path (`/workspaces/{wsId}` → `/ws/{wsId}`)
+- **module-ws:** 11 routes with wrong parameter (`/ws/{workspaceId}` → `/ws/{wsId}`)
+
+**Work Completed:**
+
+1. **Workspace Route Analysis - COMPLETE** ✅
+   - Created comprehensive analysis document: `docs/plans/session-11-ws-route-standardization.md`
+   - Identified all 26 affected routes across 3 modules
+   - Mapped route patterns and required changes
+   - Estimated 3-5 hours total effort
+
+2. **Module-Chat Standardization - COMPLETE** ✅ (5 routes)
+   - **Infrastructure:** `templates/_modules-core/module-chat/infrastructure/outputs.tf`
+     - Updated 5 routes: `/workspaces/{workspaceId}` → `/ws/{wsId}`
+   - **Backend Lambda:** `templates/_modules-core/module-chat/backend/lambdas/chat-session/lambda_function.py`
+     - Updated module docstring with new route patterns
+     - Updated route dispatcher: `'/workspaces/' in path` → `'/ws/' in path`
+     - Updated parameter extraction: `workspaceId` → `wsId`
+     - Updated 2 function signatures: `handle_list_workspace_chats()`, `handle_create_workspace_chat()`
+     - Updated all internal references from `workspace_id` to `ws_id`
+   - **Frontend API:** `templates/_modules-core/module-chat/frontend/lib/api.ts`
+     - Updated 2 functions: `listWorkspaceChats()`, `createWorkspaceChat()`
+     - Changed URLs: `/workspaces/${workspaceId}` → `/ws/${wsId}`
+     - Renamed parameters: `workspaceId` → `wsId`
+
+3. **Module-Eval Infrastructure Standardization - COMPLETE** ✅ (10 routes)
+   - **Infrastructure:** `templates/_modules-functional/module-eval/infrastructure/outputs.tf`
+     - Updated 10 workspace routes: `/workspaces/{wsId}` → `/ws/{wsId}`
+     - Preserved all 38 admin routes (no changes to `/admin/sys/eval/*` or `/admin/org/eval/*`)
+   - **Impact:** Only path prefix needed changing (parameter already correct)
+
+**Progress Summary:**
+- ✅ 15 of 26 routes fixed (58%)
+- ✅ module-chat: Complete (5 routes - infrastructure, backend, frontend)
+- ✅ module-eval: Infrastructure only (10 routes - backend docstrings + frontend API pending)
+- ⏳ module-ws: Not started (11 routes)
+
+**Remaining Work:**
+1. Module-eval backend Lambda docstrings (5-10 min)
+2. Module-eval frontend API (10-15 min)
+3. Module-ws full standardization (1-2 hours)
+4. Validation across all 3 modules
+
+**Files Modified (6 total):**
+- `templates/_modules-core/module-chat/infrastructure/outputs.tf`
+- `templates/_modules-core/module-chat/backend/lambdas/chat-session/lambda_function.py`
+- `templates/_modules-core/module-chat/frontend/lib/api.ts`
+- `templates/_modules-functional/module-eval/infrastructure/outputs.tf`
+- `docs/plans/session-11-ws-route-standardization.md` (NEW)
+
+**Key Learning:**
+Initial task was to add module-chat admin infrastructure, but discovered prerequisite standardization work needed first. Workspace route consistency must be established before adding new admin routes.
+
+**Next Session:**
+- Complete module-eval (backend + frontend)
+- Tackle module-ws standardization
+- Validate all changes with admin-route-validator
+
+---
+
 ### January 27, 2026 - Sprint 3b Session 10
 
 **Status:** Module-Voice Admin Infrastructure Complete
