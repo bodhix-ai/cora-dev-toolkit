@@ -5,11 +5,11 @@ Handles CRUD operations for voice-specific service credentials (Daily.co, Deepgr
 OpenAI credentials are managed via module-ai.
 
 Routes - Credentials:
-- GET /api/voice/credentials - List credentials for organization
-- GET /api/voice/credentials/{id} - Get credential by ID
-- POST /api/voice/credentials - Create credential
-- PUT /api/voice/credentials/{id} - Update credential
-- DELETE /api/voice/credentials/{id} - Delete credential
+- GET /voice/credentials - List credentials for organization
+- GET /voice/credentials/{id} - Get credential by ID
+- POST /voice/credentials - Create credential
+- PUT /voice/credentials/{id} - Update credential
+- DELETE /voice/credentials/{id} - Delete credential
 """
 
 import json
