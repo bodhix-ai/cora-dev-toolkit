@@ -150,6 +150,35 @@ async function apiRequest<T>(
   const response = await fetch(url, {
     ...options,
     headers,
+    credentials: "include", // Include cookies for session auth
+  });
+
+  return parseResponse<T>(response);
+}
+
+/**
+ * Make a session-authenticated API request (for admin routes)
+ * Uses session cookies instead of Bearer tokens
+ */
+async function sessionApiRequest<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const url = endpoint.startsWith("http") ? endpoint : `${getApiBase()}${endpoint}`;
+
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string>),
+  };
+
+  // Add Content-Type for requests with body
+  if (options.body && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+    credentials: "include", // Include cookies for session auth
   });
 
   return parseResponse<T>(response);
@@ -778,7 +807,7 @@ export async function sendMessage(
  * Get platform chat configuration (sys admin only)
  * GET /admin/sys/chat/config
  */
-export async function getSysAdminConfig(token: string): Promise<{
+export async function getSysAdminConfig(): Promise<{
   defaultTitleFormat: string;
   messageRetentionDays: number;
   sessionTimeoutMinutes: number;
@@ -789,7 +818,7 @@ export async function getSysAdminConfig(token: string): Promise<{
   streamingConfig?: Record<string, unknown>;
   citationDisplayConfig?: Record<string, unknown>;
 }> {
-  return apiRequest("/admin/sys/chat/config", token);
+  return sessionApiRequest("/admin/sys/chat/config");
 }
 
 /**
@@ -797,7 +826,6 @@ export async function getSysAdminConfig(token: string): Promise<{
  * PUT /admin/sys/chat/config
  */
 export async function updateSysAdminConfig(
-  token: string,
   config: {
     messageRetentionDays?: number;
     sessionTimeoutMinutes?: number;
@@ -807,7 +835,7 @@ export async function updateSysAdminConfig(
     defaultAiModel?: string;
   }
 ): Promise<{ message: string }> {
-  return apiRequest("/admin/sys/chat/config", token, {
+  return sessionApiRequest("/admin/sys/chat/config", {
     method: "PUT",
     body: JSON.stringify(config),
   });
@@ -817,7 +845,7 @@ export async function updateSysAdminConfig(
  * Get platform-wide chat analytics (sys admin only)
  * GET /admin/sys/chat/analytics
  */
-export async function getSysAdminAnalytics(token: string): Promise<{
+export async function getSysAdminAnalytics(): Promise<{
   totalSessions: number;
   totalMessages: number;
   activeSessions: {
@@ -826,33 +854,33 @@ export async function getSysAdminAnalytics(token: string): Promise<{
     last30Days: number;
   };
 }> {
-  return apiRequest("/admin/sys/chat/analytics", token);
+  return sessionApiRequest("/admin/sys/chat/analytics");
 }
 
 /**
  * Get detailed usage statistics (sys admin only)
  * GET /admin/sys/chat/analytics/usage
  */
-export async function getSysAdminUsageStats(token: string): Promise<{
+export async function getSysAdminUsageStats(): Promise<{
   mostActiveOrgs: Array<{
     orgId: string;
     orgName: string;
     sessionCount: number;
   }>;
 }> {
-  return apiRequest("/admin/sys/chat/analytics/usage", token);
+  return sessionApiRequest("/admin/sys/chat/analytics/usage");
 }
 
 /**
  * Get token usage statistics (sys admin only)
  * GET /admin/sys/chat/analytics/tokens
  */
-export async function getSysAdminTokenStats(token: string): Promise<{
+export async function getSysAdminTokenStats(): Promise<{
   totalTokensUsed: number;
   averageTokensPerMessage: number;
   message?: string;
 }> {
-  return apiRequest("/admin/sys/chat/analytics/tokens", token);
+  return sessionApiRequest("/admin/sys/chat/analytics/tokens");
 }
 
 /**
@@ -860,7 +888,6 @@ export async function getSysAdminTokenStats(token: string): Promise<{
  * GET /admin/sys/chat/sessions
  */
 export async function listSysAdminSessions(
-  token: string,
   options?: { limit?: number; offset?: number }
 ): Promise<
   Array<{
@@ -875,7 +902,7 @@ export async function listSysAdminSessions(
 > {
   const params = options ? { limit: options.limit, offset: options.offset } : undefined;
   const url = buildUrl("/admin/sys/chat/sessions", params);
-  return apiRequest(url, token);
+  return sessionApiRequest(url);
 }
 
 /**
@@ -883,8 +910,7 @@ export async function listSysAdminSessions(
  * GET /admin/sys/chat/sessions/{id}
  */
 export async function getSysAdminSession(
-  sessionId: string,
-  token: string
+  sessionId: string
 ): Promise<{
   id: string;
   title: string;
@@ -897,7 +923,7 @@ export async function getSysAdminSession(
   createdAt: string;
   updatedAt: string;
 }> {
-  return apiRequest(`/admin/sys/chat/sessions/${sessionId}`, token);
+  return sessionApiRequest(`/admin/sys/chat/sessions/${sessionId}`);
 }
 
 /**
@@ -905,10 +931,9 @@ export async function getSysAdminSession(
  * DELETE /admin/sys/chat/sessions/{id}
  */
 export async function deleteSysAdminSession(
-  sessionId: string,
-  token: string
+  sessionId: string
 ): Promise<{ message: string; id: string }> {
-  return apiRequest(`/admin/sys/chat/sessions/${sessionId}`, token, {
+  return sessionApiRequest(`/admin/sys/chat/sessions/${sessionId}`, {
     method: "DELETE",
   });
 }
@@ -921,14 +946,14 @@ export async function deleteSysAdminSession(
  * Get organization chat configuration (org admin)
  * GET /admin/org/chat/config
  */
-export async function getOrgAdminConfig(token: string): Promise<{
+export async function getOrgAdminConfig(): Promise<{
   messageRetentionDays: number;
   maxMessageLength: number;
   maxKbGroundings: number;
   sharingPolicy: Record<string, unknown>;
   usingPlatformDefaults: boolean;
 }> {
-  return apiRequest("/admin/org/chat/config", token);
+  return sessionApiRequest("/admin/org/chat/config");
 }
 
 /**
@@ -936,7 +961,6 @@ export async function getOrgAdminConfig(token: string): Promise<{
  * PUT /admin/org/chat/config
  */
 export async function updateOrgAdminConfig(
-  token: string,
   config: {
     messageRetentionDays?: number;
     maxMessageLength?: number;
@@ -944,7 +968,7 @@ export async function updateOrgAdminConfig(
     sharingPolicy?: Record<string, unknown>;
   }
 ): Promise<{ message: string }> {
-  return apiRequest("/admin/org/chat/config", token, {
+  return sessionApiRequest("/admin/org/chat/config", {
     method: "PUT",
     body: JSON.stringify(config),
   });
@@ -955,7 +979,6 @@ export async function updateOrgAdminConfig(
  * GET /admin/org/chat/sessions
  */
 export async function listOrgAdminSessions(
-  token: string,
   options?: { limit?: number; offset?: number }
 ): Promise<
   Array<{
@@ -969,7 +992,7 @@ export async function listOrgAdminSessions(
 > {
   const params = options ? { limit: options.limit, offset: options.offset } : undefined;
   const url = buildUrl("/admin/org/chat/sessions", params);
-  return apiRequest(url, token);
+  return sessionApiRequest(url);
 }
 
 /**
@@ -977,8 +1000,7 @@ export async function listOrgAdminSessions(
  * GET /admin/org/chat/sessions/{id}
  */
 export async function getOrgAdminSession(
-  sessionId: string,
-  token: string
+  sessionId: string
 ): Promise<{
   id: string;
   title: string;
@@ -990,7 +1012,7 @@ export async function getOrgAdminSession(
   createdAt: string;
   updatedAt: string;
 }> {
-  return apiRequest(`/admin/org/chat/sessions/${sessionId}`, token);
+  return sessionApiRequest(`/admin/org/chat/sessions/${sessionId}`);
 }
 
 /**
@@ -998,10 +1020,9 @@ export async function getOrgAdminSession(
  * DELETE /admin/org/chat/sessions/{id}
  */
 export async function deleteOrgAdminSession(
-  sessionId: string,
-  token: string
+  sessionId: string
 ): Promise<{ message: string; id: string }> {
-  return apiRequest(`/admin/org/chat/sessions/${sessionId}`, token, {
+  return sessionApiRequest(`/admin/org/chat/sessions/${sessionId}`, {
     method: "DELETE",
   });
 }
@@ -1011,10 +1032,9 @@ export async function deleteOrgAdminSession(
  * POST /admin/org/chat/sessions/{id}/restore
  */
 export async function restoreOrgAdminSession(
-  sessionId: string,
-  token: string
+  sessionId: string
 ): Promise<{ message: string; id: string }> {
-  return apiRequest(`/admin/org/chat/sessions/${sessionId}/restore`, token, {
+  return sessionApiRequest(`/admin/org/chat/sessions/${sessionId}/restore`, {
     method: "POST",
   });
 }
@@ -1023,39 +1043,39 @@ export async function restoreOrgAdminSession(
  * Get organization chat analytics (org admin)
  * GET /admin/org/chat/analytics
  */
-export async function getOrgAdminAnalytics(token: string): Promise<{
+export async function getOrgAdminAnalytics(): Promise<{
   totalSessions: number;
   totalMessages: number;
 }> {
-  return apiRequest("/admin/org/chat/analytics", token);
+  return sessionApiRequest("/admin/org/chat/analytics");
 }
 
 /**
  * Get user activity statistics (org admin)
  * GET /admin/org/chat/analytics/users
  */
-export async function getOrgAdminUserStats(token: string): Promise<{
+export async function getOrgAdminUserStats(): Promise<{
   mostActiveUsers: Array<{
     userId: string;
     userName: string;
     sessionCount: number;
   }>;
 }> {
-  return apiRequest("/admin/org/chat/analytics/users", token);
+  return sessionApiRequest("/admin/org/chat/analytics/users");
 }
 
 /**
  * Get workspace activity statistics (org admin)
  * GET /admin/org/chat/analytics/workspaces
  */
-export async function getOrgAdminWorkspaceStats(token: string): Promise<{
+export async function getOrgAdminWorkspaceStats(): Promise<{
   mostActiveWorkspaces: Array<{
     workspaceId: string;
     workspaceName: string;
     sessionCount: number;
   }>;
 }> {
-  return apiRequest("/admin/org/chat/analytics/workspaces", token);
+  return sessionApiRequest("/admin/org/chat/analytics/workspaces");
 }
 
 /**
@@ -1063,8 +1083,7 @@ export async function getOrgAdminWorkspaceStats(token: string): Promise<{
  * GET /admin/org/chat/messages/{id}
  */
 export async function getOrgAdminMessage(
-  messageId: string,
-  token: string
+  messageId: string
 ): Promise<{
   id: string;
   sessionId: string;
@@ -1076,5 +1095,5 @@ export async function getOrgAdminMessage(
   createdAt: string;
   createdBy?: string;
 }> {
-  return apiRequest(`/admin/org/chat/messages/${messageId}`, token);
+  return sessionApiRequest(`/admin/org/chat/messages/${messageId}`);
 }

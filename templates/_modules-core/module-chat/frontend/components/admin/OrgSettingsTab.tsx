@@ -33,7 +33,7 @@ interface ConfigState {
 }
 
 export function OrgSettingsTab(): React.ReactElement {
-  const { idToken } = useUser();
+  const { user } = useUser();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,12 +47,12 @@ export function OrgSettingsTab(): React.ReactElement {
 
   // Load current config
   useEffect(() => {
-    if (!idToken) return;
+    if (!user) return;
 
     const loadConfig = async () => {
       try {
         setLoading(true);
-        const data = await getOrgAdminConfig(idToken);
+        const data = await getOrgAdminConfig();
         setConfig({
           messageRetentionDays: data.messageRetentionDays,
           maxMessageLength: data.maxMessageLength,
@@ -68,17 +68,17 @@ export function OrgSettingsTab(): React.ReactElement {
     };
 
     loadConfig();
-  }, [idToken]);
+  }, [user]);
 
   const handleSave = async () => {
-    if (!idToken) return;
+    if (!user) return;
 
     try {
       setSaving(true);
       setError(null);
       setSuccess(null);
 
-      await updateOrgAdminConfig(idToken, {
+      await updateOrgAdminConfig({
         messageRetentionDays: config.messageRetentionDays,
         maxMessageLength: config.maxMessageLength,
         maxKbGroundings: config.maxKbGroundings,

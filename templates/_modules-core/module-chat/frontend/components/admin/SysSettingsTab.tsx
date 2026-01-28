@@ -34,7 +34,7 @@ interface ConfigState {
 }
 
 export function SysSettingsTab(): React.ReactElement {
-  const { profile, idToken } = useUser();
+  const { user } = useUser();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,12 +48,12 @@ export function SysSettingsTab(): React.ReactElement {
 
   // Load current config
   useEffect(() => {
-    if (!idToken) return;
+    if (!user) return;
 
     const loadConfig = async () => {
       try {
         setLoading(true);
-        const data = await getSysAdminConfig(idToken);
+        const data = await getSysAdminConfig();
         setConfig({
           messageRetentionDays: data.messageRetentionDays,
           sessionTimeoutMinutes: data.sessionTimeoutMinutes,
@@ -71,17 +71,17 @@ export function SysSettingsTab(): React.ReactElement {
     };
 
     loadConfig();
-  }, [idToken]);
+  }, [user]);
 
   const handleSave = async () => {
-    if (!idToken) return;
+    if (!user) return;
 
     try {
       setSaving(true);
       setError(null);
       setSuccess(null);
 
-      await updateSysAdminConfig(idToken, config);
+      await updateSysAdminConfig(config);
       setSuccess("Platform configuration updated successfully");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update configuration");

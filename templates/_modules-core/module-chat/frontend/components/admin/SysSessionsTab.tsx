@@ -57,7 +57,7 @@ interface SessionDetails extends Session {
 }
 
 export function SysSessionsTab(): React.ReactElement {
-  const { idToken } = useUser();
+  const { user } = useUser();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -69,12 +69,12 @@ export function SysSessionsTab(): React.ReactElement {
 
   // Load sessions
   useEffect(() => {
-    if (!idToken) return;
+    if (!user) return;
 
     const loadSessions = async () => {
       try {
         setLoading(true);
-        const data = await listSysAdminSessions(idToken, { limit: 100 });
+        const data = await listSysAdminSessions({ limit: 100 });
         setSessions(data);
         setError(null);
       } catch (err) {
@@ -85,13 +85,13 @@ export function SysSessionsTab(): React.ReactElement {
     };
 
     loadSessions();
-  }, [idToken]);
+  }, [user]);
 
   const handleViewDetails = async (sessionId: string) => {
-    if (!idToken) return;
+    if (!user) return;
 
     try {
-      const details = await getSysAdminSession(sessionId, idToken);
+      const details = await getSysAdminSession(sessionId);
       setSelectedSession(details);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load session details");
@@ -104,10 +104,10 @@ export function SysSessionsTab(): React.ReactElement {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!idToken || !sessionToDelete) return;
+    if (!user || !sessionToDelete) return;
 
     try {
-      await deleteSysAdminSession(sessionToDelete, idToken);
+      await deleteSysAdminSession(sessionToDelete);
       setSessions(sessions.filter((s) => s.id !== sessionToDelete));
       setSuccess("Session deleted successfully");
       setDeleteDialogOpen(false);

@@ -63,7 +63,7 @@ interface SessionDetails extends Session {
 }
 
 export function OrgSessionsTab(): React.ReactElement {
-  const { idToken } = useUser();
+  const { user } = useUser();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -75,12 +75,12 @@ export function OrgSessionsTab(): React.ReactElement {
 
   // Load sessions
   useEffect(() => {
-    if (!idToken) return;
+    if (!user) return;
 
     const loadSessions = async () => {
       try {
         setLoading(true);
-        const data = await listOrgAdminSessions(idToken, { limit: 100 });
+        const data = await listOrgAdminSessions({ limit: 100 });
         setSessions(data);
         setError(null);
       } catch (err) {
@@ -91,13 +91,13 @@ export function OrgSessionsTab(): React.ReactElement {
     };
 
     loadSessions();
-  }, [idToken]);
+  }, [user]);
 
   const handleViewDetails = async (sessionId: string) => {
-    if (!idToken) return;
+    if (!user) return;
 
     try {
-      const details = await getOrgAdminSession(sessionId, idToken);
+      const details = await getOrgAdminSession(sessionId);
       setSelectedSession(details);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load session details");
@@ -110,10 +110,10 @@ export function OrgSessionsTab(): React.ReactElement {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!idToken || !sessionToDelete) return;
+    if (!user || !sessionToDelete) return;
 
     try {
-      await deleteOrgAdminSession(sessionToDelete, idToken);
+      await deleteOrgAdminSession(sessionToDelete);
       // Update session in list to show deleted status
       setSessions(
         sessions.map((s) =>
@@ -132,16 +132,16 @@ export function OrgSessionsTab(): React.ReactElement {
   };
 
   const handleRestore = async (sessionId: string) => {
-    if (!idToken) return;
+    if (!user) return;
 
     try {
-      await restoreOrgAdminSession(sessionId, idToken);
+      await restoreOrgAdminSession(sessionId);
       // Reload sessions to update status
-      const data = await listOrgAdminSessions(idToken, { limit: 100 });
+      const data = await listOrgAdminSessions({ limit: 100 });
       setSessions(data);
       setSuccess("Session restored successfully");
       if (selectedSession?.id === sessionId) {
-        const details = await getOrgAdminSession(sessionId, idToken);
+        const details = await getOrgAdminSession(sessionId);
         setSelectedSession(details);
       }
     } catch (err) {

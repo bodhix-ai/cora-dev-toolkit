@@ -56,7 +56,7 @@ interface TokenData {
 }
 
 export function SysAnalyticsTab(): React.ReactElement {
-  const { idToken } = useUser();
+  const { user } = useUser();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
@@ -65,15 +65,15 @@ export function SysAnalyticsTab(): React.ReactElement {
 
   // Load analytics data
   useEffect(() => {
-    if (!idToken) return;
+    if (!user) return;
 
     const loadAnalytics = async () => {
       try {
         setLoading(true);
         const [analyticsData, usageData, tokenData] = await Promise.all([
-          getSysAdminAnalytics(idToken),
-          getSysAdminUsageStats(idToken),
-          getSysAdminTokenStats(idToken),
+          getSysAdminAnalytics(),
+          getSysAdminUsageStats(),
+          getSysAdminTokenStats(),
         ]);
 
         setAnalytics(analyticsData);
@@ -88,7 +88,7 @@ export function SysAnalyticsTab(): React.ReactElement {
     };
 
     loadAnalytics();
-  }, [idToken]);
+  }, [user]);
 
   if (loading) {
     return (
@@ -108,7 +108,7 @@ export function SysAnalyticsTab(): React.ReactElement {
 
   return (
     <Box>
-      <Typography variant="h6" gutterBottom>
+      <Typography variant="h4" gutterBottom>
         Platform Analytics
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
@@ -120,7 +120,7 @@ export function SysAnalyticsTab(): React.ReactElement {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h5" gutterBottom>
                 Total Sessions
               </Typography>
               <Typography variant="h3" color="primary">
@@ -133,7 +133,7 @@ export function SysAnalyticsTab(): React.ReactElement {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h5" gutterBottom>
                 Total Messages
               </Typography>
               <Typography variant="h3" color="primary">
@@ -147,7 +147,7 @@ export function SysAnalyticsTab(): React.ReactElement {
         <Grid item xs={12}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h5" gutterBottom>
                 Active Sessions
               </Typography>
               <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -190,7 +190,7 @@ export function SysAnalyticsTab(): React.ReactElement {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h5" gutterBottom>
                 Total Tokens Used
               </Typography>
               <Typography variant="h3" color="primary">
@@ -203,7 +203,7 @@ export function SysAnalyticsTab(): React.ReactElement {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h5" gutterBottom>
                 Avg Tokens/Message
               </Typography>
               <Typography variant="h3" color="primary">
@@ -217,7 +217,7 @@ export function SysAnalyticsTab(): React.ReactElement {
         <Grid item xs={12}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h5" gutterBottom>
                 Most Active Organizations
               </Typography>
               <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>
