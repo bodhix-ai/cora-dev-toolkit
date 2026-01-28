@@ -23,3 +23,7 @@ export type { KBGroundingSelectorProps } from "./KBGroundingSelector";
 
 export { ShareChatDialog } from "./ShareChatDialog";
 export type { ShareChatDialogProps } from "./ShareChatDialog";
+
+// === Admin Components ===
+export { SysChatAdmin } from "./admin/SysChatAdmin";
+export { OrgChatAdmin } from "./admin/OrgChatAdmin";
