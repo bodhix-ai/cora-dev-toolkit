@@ -53,7 +53,7 @@ interface WorkspaceStats {
 }
 
 export function OrgAnalyticsTab(): React.ReactElement {
-  const { user } = useUser();
+  const { isAuthenticated } = useUser();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
@@ -62,7 +62,7 @@ export function OrgAnalyticsTab(): React.ReactElement {
 
   // Load analytics data
   useEffect(() => {
-    if (!user) return;
+    if (!isAuthenticated) return;
 
     const loadAnalytics = async () => {
       try {
@@ -85,7 +85,7 @@ export function OrgAnalyticsTab(): React.ReactElement {
     };
 
     loadAnalytics();
-  }, [user]);
+  }, [isAuthenticated]);
 
   if (loading) {
     return (
@@ -117,7 +117,7 @@ export function OrgAnalyticsTab(): React.ReactElement {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h5" gutterBottom>
+              <Typography variant="h6" gutterBottom>
                 Total Sessions
               </Typography>
               <Typography variant="h3" color="primary">
@@ -130,7 +130,7 @@ export function OrgAnalyticsTab(): React.ReactElement {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h5" gutterBottom>
+              <Typography variant="h6" gutterBottom>
                 Total Messages
               </Typography>
               <Typography variant="h3" color="primary">
@@ -144,7 +144,7 @@ export function OrgAnalyticsTab(): React.ReactElement {
         <Grid item xs={12}>
           <Card>
             <CardContent>
-              <Typography variant="h5" gutterBottom>
+              <Typography variant="h6" gutterBottom>
                 Most Active Users
               </Typography>
               <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>
@@ -181,7 +181,7 @@ export function OrgAnalyticsTab(): React.ReactElement {
         <Grid item xs={12}>
           <Card>
             <CardContent>
-              <Typography variant="h5" gutterBottom>
+              <Typography variant="h6" gutterBottom>
                 Most Active Workspaces
               </Typography>
               <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>

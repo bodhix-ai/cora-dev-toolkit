@@ -59,8 +59,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         # Get user profile for role and org_id
         user_profile = common.find_one(
-            table='access_users',
-            filters={'okta_uid': okta_uid}
+            table='user_profiles',
+            filters={'id': supabase_user_id}
         )
         if not user_profile:
             raise common.NotFoundError('User profile not found')

@@ -263,13 +263,13 @@ output "api_routes" {
     },
     {
       method      = "GET"
-      path        = "/admin/sys/chat/sessions/{id}"
+      path        = "/admin/sys/chat/sessions/{sessionId}"
       integration = aws_lambda_function.chat_session.invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/admin/sys/chat/sessions/{id}"
+      path        = "/admin/sys/chat/sessions/{sessionId}"
       integration = aws_lambda_function.chat_session.invoke_arn
       public      = false
     },
@@ -297,19 +297,19 @@ output "api_routes" {
     },
     {
       method      = "GET"
-      path        = "/admin/org/chat/sessions/{id}"
+      path        = "/admin/org/chat/sessions/{sessionId}"
       integration = aws_lambda_function.chat_session.invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/admin/org/chat/sessions/{id}"
+      path        = "/admin/org/chat/sessions/{sessionId}"
       integration = aws_lambda_function.chat_session.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/admin/org/chat/sessions/{id}/restore"
+      path        = "/admin/org/chat/sessions/{sessionId}/restore"
       integration = aws_lambda_function.chat_session.invoke_arn
       public      = false
     },
@@ -337,7 +337,7 @@ output "api_routes" {
     # =========================================================================
     {
       method      = "GET"
-      path        = "/admin/org/chat/messages/{id}"
+      path        = "/admin/org/chat/messages/{messageId}"
       integration = aws_lambda_function.chat_message.invoke_arn
       public      = false
     }
