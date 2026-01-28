@@ -113,14 +113,36 @@ e m# Plan: Admin Standardization S3b - Route Standards & Version Tracking
   - 14 data API routes, 5 org admin config routes, 5 sys admin credential routes
 - ✅ **Committed & Pushed** - Commit `943731a` to `admin-page-s3b`
 
+**Session 11: Workspace Route Standardization - COMPLETE** ✅
+- ✅ **Analysis & Planning COMPLETE** - Created comprehensive analysis documents
+  - `docs/plans/session-11-ws-route-standardization.md` - Route analysis
+  - `docs/plans/session-11-chat-admin-analysis.md` - Module-chat requirements (deferred)
+  - Discovered 26 routes across 3 modules with inconsistent patterns
+- ✅ **Module-Chat Standardization COMPLETE** - 5 routes standardized
+  - Infrastructure: `/workspaces/{workspaceId}` → `/ws/{wsId}`
+  - Backend: 5 parameter extractions updated, 2 function signatures updated
+  - Frontend: 2 API functions updated
+- ✅ **Module-Eval Standardization COMPLETE** - 10 routes standardized
+  - Infrastructure: `/workspaces/{wsId}` → `/ws/{wsId}` (path only)
+  - Backend: Module docstring updated
+  - Frontend: 10 API functions updated
+- ✅ **Module-WS Standardization COMPLETE** - 11 routes standardized
+  - Infrastructure: `/ws/{workspaceId}` → `/ws/{wsId}` (parameter only)
+  - Backend: Module docstring + 14 parameter extractions updated
+  - Frontend: 11 API method signatures updated
+- ✅ **Documentation COMPLETE** - Created `docs/plans/session-11-ws-route-final-summary.md`
+- **Total Impact:** 26 routes standardized across 9 files (3 infrastructure, 3 backend, 3 frontend)
+- **Result:** All workspace routes now use consistent `/ws/{wsId}` pattern
+
 **Overall Status:**
 - **87.5% Complete:** 7 of 8 modules with full admin parity
-- **Remaining work:** module-chat (12-16 hours) - needs full admin infrastructure from scratch
+- **Prerequisite work complete:** All workspace routes now standardized
+- **Remaining work:** module-chat (14-17 hours) - needs full admin infrastructure from scratch
 
 **Next Session:**
 - **Target:** module-chat (final module)
 - **Scope:** Create full sys + org admin infrastructure from scratch
-- **Estimated:** 12-16 hours
+- **Estimated:** 14-17 hours (updated after workspace route standardization)
 
 ---
 

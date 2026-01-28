@@ -873,6 +873,91 @@ Module-voice now has complete admin infrastructure with 24 compliant routes. Org
 
 ---
 
+### January 27, 2026 - Sprint 3b Session 11
+
+**Status:** Workspace Route Standardization Complete
+**Branch:** `admin-page-s3b`
+
+**Scope Discovery:**
+While preparing to add module-chat admin infrastructure, discovered significant workspace route inconsistencies across 3 modules that needed prerequisite standardization.
+
+**Problem Identified:**
+- **module-chat:** 5 routes with wrong path AND parameter (`/workspaces/{workspaceId}` → `/ws/{wsId}`)
+- **module-eval:** 10 routes with wrong path (`/workspaces/{wsId}` → `/ws/{wsId}`)
+- **module-ws:** 11 routes with wrong parameter (`/ws/{workspaceId}` → `/ws/{wsId}`)
+- **Total:** 26 routes across 3 modules needed standardization
+
+**Work Completed:**
+
+1. **Analysis & Planning - COMPLETE** ✅
+   - Created `docs/plans/session-11-ws-route-standardization.md` - Full analysis of 26 affected routes
+   - Created `docs/plans/session-11-chat-admin-analysis.md` - Module-chat admin requirements (deferred after standardization)
+   - Estimated 3-5 hours for workspace route standardization
+
+2. **Module-Chat Standardization - COMPLETE** ✅ (5 routes)
+   - **Infrastructure:** `templates/_modules-core/module-chat/infrastructure/outputs.tf` - 5 routes updated
+   - **Backend:** `templates/_modules-core/module-chat/backend/lambdas/chat-session/lambda_function.py`
+     - Updated module docstring
+     - Updated route dispatcher: `'/workspaces/' in path` → `'/ws/' in path`
+     - Updated parameter extraction: `workspaceId` → `wsId` (5 extractions)
+     - Updated 2 function signatures
+   - **Frontend:** `templates/_modules-core/module-chat/frontend/lib/api.ts` - 2 API functions updated
+
+3. **Module-Eval Standardization - COMPLETE** ✅ (10 routes)
+   - **Infrastructure:** `templates/_modules-functional/module-eval/infrastructure/outputs.tf` - 10 routes updated
+   - **Backend:** `templates/_modules-functional/module-eval/backend/lambdas/eval-results/lambda_function.py` - Module docstring updated
+   - **Frontend:** `templates/_modules-functional/module-eval/frontend/lib/api.ts` - 10 API functions updated
+
+4. **Module-WS Standardization - COMPLETE** ✅ (11 routes)
+   - **Infrastructure:** `templates/_modules-core/module-ws/infrastructure/outputs.tf` - 11 routes updated
+   - **Backend:** `templates/_modules-core/module-ws/backend/lambdas/workspace/lambda_function.py`
+     - Updated module docstring
+     - Updated 14 parameter extractions: `path_parameters.get('workspaceId')` → `path_parameters.get('wsId')`
+   - **Frontend:** `templates/_modules-core/module-ws/frontend/lib/api.ts` - 11 API method signatures updated
+
+5. **Documentation - COMPLETE** ✅
+   - Created `docs/plans/session-11-ws-route-final-summary.md` - Complete session summary
+
+**Total Impact:**
+| Metric | Count |
+|--------|-------|
+| Modules Updated | 3 (chat, eval, ws) |
+| Routes Standardized | 26 (5 + 10 + 11) |
+| Files Modified | 9 (3 infrastructure, 3 backend, 3 frontend) |
+| Backend Parameter Updates | 19 (5 + 0 + 14) |
+| Frontend Function Updates | 23 (2 + 10 + 11) |
+
+**Standardization Result:**
+- **Before:** 3 different patterns (`/workspaces/{workspaceId}`, `/workspaces/{wsId}`, `/ws/{workspaceId}`)
+- **After:** 1 consistent pattern (`/ws/{wsId}`) - All 26 routes across all 3 modules
+
+**Files Changed (9 total):**
+1. `templates/_modules-core/module-chat/infrastructure/outputs.tf`
+2. `templates/_modules-core/module-chat/backend/lambdas/chat-session/lambda_function.py`
+3. `templates/_modules-core/module-chat/frontend/lib/api.ts`
+4. `templates/_modules-functional/module-eval/infrastructure/outputs.tf`
+5. `templates/_modules-functional/module-eval/backend/lambdas/eval-results/lambda_function.py`
+6. `templates/_modules-functional/module-eval/frontend/lib/api.ts`
+7. `templates/_modules-core/module-ws/infrastructure/outputs.tf`
+8. `templates/_modules-core/module-ws/backend/lambdas/workspace/lambda_function.py`
+9. `templates/_modules-core/module-ws/frontend/lib/api.ts`
+
+**Key Learning:**
+**Prerequisite standardization** - Before adding module-chat admin infrastructure, discovered and fixed foundational route inconsistencies. This "clean house first" approach prevents compounding technical debt.
+
+**CORA Standards Compliance:**
+All workspace routes now comply with:
+- **ADR-018:** API Route Structure Standard
+- **CORA naming conventions:** Short parameter names (`wsId` not `workspaceId`)
+- **Consistency:** All workspace-scoped routes use identical patterns
+
+**Next Steps:**
+1. Run admin-route-validator to confirm 0 errors
+2. Commit all 9 files with descriptive message
+3. **Next Session:** Module-chat admin infrastructure (14-17 hours) - full sys + org admin from scratch
+
+---
+
 ### January 24, 2026 - Sprint 2 Completion
 - Completed ADR-016 fixes for org admin authorization
 - Renamed branch from citations-review to admin-page-s2-completion
