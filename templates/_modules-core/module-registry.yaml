@@ -1,12 +1,14 @@
 # CORA Module Registry
-# Version: 1.0
-# Last Updated: 2026-01-17
+# Version: 2.0
+# Last Updated: 2026-01-27
 #
-# This registry defines all available CORA modules and their dependencies.
+# This registry defines all available CORA modules, their versions, and dependencies.
 # Used by create-cora-project.sh for dependency resolution and module installation.
+# Enhanced with version tracking for sustainable project upgrades.
 
-registry_version: "1.0"
-last_updated: "2026-01-17"
+registry_version: "2.0"
+last_updated: "2026-01-27"
+toolkit_version: "0.1.0"
 
 # Module paths (relative to toolkit root)
 core_modules_path: "templates/_modules-core"
@@ -23,7 +25,30 @@ modules:
     name: "Access & Identity Management"
     description: "Authentication, authorization, user management, and RBAC"
     required: true
+    version: "0.2.0"
+    min_toolkit_version: "0.1.0"
     dependencies: []
+    dependents:
+      - module-ai
+      - module-ws
+      - module-mgmt
+      - module-kb
+      - module-chat
+      - module-eval
+      - module-voice
+    breaking_changes:
+      "0.2.0":
+        - "Sidebar component interface changed"
+        - "Affects: module-mgmt (admin cards)"
+    changelog: |
+      0.2.0 (2026-01-27) - Admin standardization complete
+        - Sidebar ModuleGate integration
+        - Admin page patterns established (ADR-015, ADR-016)
+        - Module toggle infrastructure
+      0.1.0 (2026-01-15) - Initial release
+        - Core authentication and authorization
+        - User/org/role management
+        - NextAuth integration
     config_file: module.config.yaml
 
   module-ai:
@@ -32,7 +57,23 @@ modules:
     name: "AI Provider Management"
     description: "Multi-provider AI integration with credential management"
     required: true
-    dependencies: [module-access]
+    version: "0.1.0"
+    min_toolkit_version: "0.1.0"
+    dependencies:
+      - module: module-access
+        type: required
+        min_version: "0.1.0"
+        reason: "User authentication and authorization"
+    dependents:
+      - module-kb
+      - module-chat
+      - module-voice
+    breaking_changes: {}
+    changelog: |
+      0.1.0 (2026-01-15) - Initial release
+        - Multi-provider AI integration
+        - Credential management
+        - OpenAI, Anthropic, Google support
     config_file: module.config.yaml
 
   module-ws:
@@ -41,7 +82,25 @@ modules:
     name: "Workspace Management"
     description: "Multi-tenant workspace management with favorites, tags, and RBAC"
     required: true
-    dependencies: [module-access]
+    version: "0.1.0"
+    min_toolkit_version: "0.1.0"
+    dependencies:
+      - module: module-access
+        type: required
+        min_version: "0.1.0"
+        reason: "User authentication and org scoping"
+    dependents:
+      - module-kb
+      - module-chat
+      - module-eval
+      - module-voice
+    breaking_changes: {}
+    changelog: |
+      0.1.0 (2026-01-15) - Initial release
+        - Workspace creation and management
+        - Favorites and tagging
+        - RBAC for workspace access
+        - Plugin architecture foundation
     config_file: module.config.yaml
 
   module-mgmt:
@@ -50,7 +109,29 @@ modules:
     name: "Platform Management & Monitoring"
     description: "System health, logging, metrics, and administrative tools"
     required: true
-    dependencies: [module-access]
+    version: "0.1.0"
+    min_toolkit_version: "0.1.0"
+    dependencies:
+      - module: module-access
+        type: required
+        min_version: "0.1.0"
+        reason: "User authentication and admin authorization"
+      - module: module-ai
+        type: optional
+        min_version: "0.1.0"
+        reason: "Lambda warming configuration"
+      - module: module-ws
+        type: optional
+        min_version: "0.1.0"
+        reason: "Workspace-level monitoring"
+    dependents: []
+    breaking_changes: {}
+    changelog: |
+      0.1.0 (2026-01-15) - Initial release
+        - Module configuration UI
+        - Lambda warming management
+        - System health monitoring
+        - Module toggle infrastructure
     config_file: module.config.yaml
     
   module-kb:
@@ -59,7 +140,32 @@ modules:
     name: "Knowledge Base & RAG"
     description: "Vector search, knowledge retrieval, and RAG-based knowledge management"
     required: true
-    dependencies: [module-access, module-ai]
+    version: "0.3.0"
+    min_toolkit_version: "0.1.0"
+    dependencies:
+      - module: module-access
+        type: required
+        min_version: "0.1.0"
+        reason: "User authentication and org scoping"
+      - module: module-ws
+        type: required
+        min_version: "0.1.0"
+        reason: "Workspace-scoped knowledge bases"
+    dependents:
+      - module-chat
+      - module-eval
+    breaking_changes: {}
+    changelog: |
+      0.3.0 (2026-01-20) - Enhanced document management
+        - Document metadata support
+        - Improved citation tracking
+      0.2.0 (2026-01-17) - Vector search improvements
+        - Multiple embedding providers
+        - Semantic search refinements
+      0.1.0 (2026-01-15) - Initial release
+        - Core RAG functionality
+        - Document upload and processing
+        - Vector search
     config_file: module.config.yaml
     
   module-chat:
@@ -68,7 +174,36 @@ modules:
     name: "Chat & Messaging"
     description: "AI-powered chat interface with streaming, history, and knowledge grounding"
     required: true
-    dependencies: [module-access, module-ai, module-kb]
+    version: "0.2.0"
+    min_toolkit_version: "0.1.0"
+    dependencies:
+      - module: module-access
+        type: required
+        min_version: "0.1.0"
+        reason: "User authentication and authorization"
+      - module: module-ai
+        type: required
+        min_version: "0.1.0"
+        reason: "AI provider integration for chat responses"
+      - module: module-ws
+        type: required
+        min_version: "0.1.0"
+        reason: "Workspace-scoped chat sessions"
+      - module: module-kb
+        type: optional
+        min_version: "0.3.0"
+        reason: "Knowledge grounding for RAG-based responses"
+    dependents: []
+    breaking_changes: {}
+    changelog: |
+      0.2.0 (2026-01-18) - Enhanced chat features
+        - Streaming responses
+        - Chat history management
+        - Knowledge grounding integration
+      0.1.0 (2026-01-15) - Initial release
+        - Basic chat interface
+        - AI provider integration
+        - Message persistence
     config_file: module.config.yaml
   
   # ===== FUNCTIONAL MODULES =====
@@ -80,7 +215,38 @@ modules:
     name: "Model Evaluation"
     description: "AI model testing, evaluation, and performance analysis"
     required: false
-    dependencies: [module-access, module-ai]
+    version: "0.4.0"
+    min_toolkit_version: "0.1.0"
+    dependencies:
+      - module: module-access
+        type: required
+        min_version: "0.1.0"
+        reason: "User authentication and org scoping"
+      - module: module-ws
+        type: required
+        min_version: "0.1.0"
+        reason: "Workspace plugin context for workspace scoping"
+      - module: module-kb
+        type: optional
+        min_version: "0.3.0"
+        reason: "Knowledge base grounding for evaluations"
+    dependents: []
+    breaking_changes: {}
+    changelog: |
+      0.4.0 (2026-01-26) - TypeScript + Accessibility fixes
+        - All 46 TypeScript errors resolved
+        - Section 508 / WCAG 2.1 Level AA compliant
+        - 60 validation errors fixed
+      0.3.0 (2026-01-20) - Citations infrastructure
+        - Citation tracking in evaluations
+        - Document metadata support
+      0.2.0 (2026-01-15) - Scoring UI improvements
+        - Editable scores
+        - Status options
+      0.1.0 (2026-01-10) - Initial release
+        - Core evaluation engine
+        - Q&A mode
+        - Basic scoring
     config_file: module.config.yaml
     
   module-voice:
@@ -89,5 +255,27 @@ modules:
     name: "Voice Interviews"
     description: "AI-powered voice interviews with Daily.co WebRTC, real-time transcription, and ECS-based Pipecat bot orchestration"
     required: false
-    dependencies: [module-access, module-ai, module-kb]
+    version: "0.1.0"
+    min_toolkit_version: "0.1.0"
+    dependencies:
+      - module: module-access
+        type: required
+        min_version: "0.1.0"
+        reason: "User authentication and authorization"
+      - module: module-ai
+        type: required
+        min_version: "0.1.0"
+        reason: "AI provider integration for voice responses"
+      - module: module-ws
+        type: required
+        min_version: "0.1.0"
+        reason: "Workspace-scoped voice interviews"
+    dependents: []
+    breaking_changes: {}
+    changelog: |
+      0.1.0 (2026-01-15) - Initial release
+        - Daily.co WebRTC integration
+        - Real-time transcription
+        - ECS-based Pipecat bot orchestration
+        - Voice interview management
     config_file: module.config.yaml

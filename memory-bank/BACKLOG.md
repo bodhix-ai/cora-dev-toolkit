@@ -1,7 +1,7 @@
 # CORA Development Backlog
 
 **Purpose:** Prioritized list of initiatives for team coordination.  
-**Updated:** January 24, 2026
+**Updated:** January 27, 2026
 
 ---
 
@@ -27,8 +27,8 @@ This table is the **small, prioritized, team-coordination surface**. It should s
 | Priority | Lane | Initiative | Context File | Dependencies | Impact | Conflict Risk | Assigned To | Status |
 |----------|------|------------|--------------|--------------|--------|---------------|-------------|--------|
 | **P1** | A (WS/Types) | **WS Plugin Architecture S1** | `context-ws-plugin-architecture.md` | None | Unblocks functional modules as plugins; resolves ws type errors | **Medium** (shared types + module-ws) | - | ✅ Complete |
-| **P1** | F (UI/Admin UX) | **Admin Standardization S3 (Closeout)** | `context-admin-standardization.md` | None | **High UX impact**: removes inconsistencies that make the app feel unfinished; work is already close to done | **Medium/High** (often touches shared admin components) | - | ⏳ Ready |
-| **P1** | D (Tooling) | **Clean Project Baseline (Error-Free)** | *(new context needed)* | WS Plugin Architecture S1 (merged), Admin Standardization S3 (merged) | Establishes 0-error baseline (type-check + validation); prevents error accumulation | **Medium** (touches many modules for fixes) | - | 🚫 Blocked |
+| **P1** | F (UI/Admin UX) | **Admin Standardization S3b** | `context-admin-standardization.md` | None | **Critical deployment infrastructure**: Version tracking enables sustainable updates to 4+ projects + fixes 84 admin route errors (31% of remaining); unblocks Clean Baseline | **Medium/High** (admin components, scripts, versioning) | - | 🟡 Active (Session 1: Planning Complete) |
+| **P1** | D (Tooling) | **Clean Project Baseline (Error-Free)** | `context-error-remediation.md` | WS Plugin Architecture S1-S2 ✅, Admin Standardization S3b (active) | Establishes 0-error baseline; major progress: 430→121 errors (72% reduction) via Error Remediation S1-S4 | **Medium** (touches many modules for fixes) | - | 🚫 Blocked (S3b in progress) |
 | **P1** | D (Tooling) | **Test Project Resource Isolation** | *(new context needed)* | None | Enables parallel test environments (prevents AWS resource name collisions) | **Low/Medium** (scripts + infra vars) | - | ⏳ Ready |
 | **P2** | B (Eval Delivery) | **Module-Eval Citations** | `context-module-eval.md` | P1 WS Plugin Architecture (types/interfaces stable) | Enables debugging/scoring work; improves eval explainability | **Medium** (module-eval frontend/backend) | - | 🚫 Blocked |
 | **P3** | B (Eval Delivery) | **Eval Scoring Quality** | `context-module-eval.md` | P2 Citations working | Can’t reliably debug scoring without citations | **Medium** (module-eval) | - | 🚫 Blocked |
@@ -52,11 +52,13 @@ This table is the **small, prioritized, team-coordination surface**. It should s
 ## Dependency Graph
 
 ```
-P1: WS Plugin Architecture (no dependencies)
-    └── P2: Module-Eval Citations (needs P1 type errors fixed)
-        └── P3: Eval Scoring Quality (needs citations working to debug)
+P1: Admin Standardization S3b (active, no blockers)
+    └── P1: Clean Project Baseline (needs S3b admin route fixes + version tracking)
+        └── Module upgrade deployments enabled
 
-P1: Admin Standardization S3 (no dependencies; high UX impact; close to done)
+P1: WS Plugin Architecture S1-S2 ✅ Complete
+    └── P2: Module-Eval Citations (unblocked, ready when capacity available)
+        └── P3: Eval Scoring Quality (needs citations working to debug)
 
 P1: Test Project Resource Isolation (no dependencies)
     └── P4: CORA Workflow Optimization (recommended after resource isolation)
@@ -129,8 +131,9 @@ When a team starts work on an initiative:
 
 | Initiative | Context File | Completed | Notes |
 |------------|--------------|-----------|-------|
-| WS Plugin Architecture S1 | `context-ws-plugin-architecture.md` | 2026-01-25 | ADR-017 implementation, 100% module compliance |
-| Admin Standardization S2 | `context-admin-standardization.md` | 2026-01-24 | ADR-016 fixes |
+| Error Remediation S1-S4 | `context-error-remediation.md` | 2026-01-27 | 430→121 errors (72% reduction): TypeScript, API Tracer, Accessibility, Frontend Compliance, Next.js Routing, Admin Auth |
+| WS Plugin Architecture S1-S2 | `context-ws-plugin-architecture.md` | 2026-01-25 | ADR-017 implementation, module availability integration, 100% compliance |
+| Admin Standardization S2-S3a | `context-admin-standardization.md` | 2026-01-25 | ADR-016 fixes, module toggle patterns, DB table renames |
 
 ---
 

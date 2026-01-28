@@ -23,31 +23,31 @@ output "api_routes" {
   value = [
     {
       method      = "GET"
-      path        = "/admin/sys/mgmt/lambda-config"
+      path        = "/admin/sys/mgmt/schedule"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/admin/sys/mgmt/lambda-config/{configKey}"
+      path        = "/admin/sys/mgmt/schedule/{configKey}"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "PUT"
-      path        = "/admin/sys/mgmt/lambda-config/{configKey}"
+      path        = "/admin/sys/mgmt/schedule/{configKey}"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/admin/sys/mgmt/lambda-functions"
+      path        = "/admin/sys/mgmt/functions"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/admin/sys/mgmt/lambda-config/sync"
+      path        = "/admin/sys/mgmt/schedule/sync"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
@@ -85,6 +85,25 @@ output "api_routes" {
     {
       method      = "POST"
       path        = "/admin/sys/mgmt/modules"
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
+      public      = false
+    },
+    # Organization admin routes
+    {
+      method      = "GET"
+      path        = "/admin/org/mgmt/modules"
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/org/mgmt/modules/{name}"
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/org/mgmt/usage"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     }

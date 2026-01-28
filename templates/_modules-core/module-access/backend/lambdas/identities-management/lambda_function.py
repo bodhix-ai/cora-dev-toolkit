@@ -71,7 +71,15 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     
     Routes - Identity Management:
     - POST /identities/provision - Provision Okta user to Supabase
-    - GET /admin/users - List all platform users (platform admin only)
+    
+    Routes - System Admin:
+    - GET /admin/sys/access/users - List all platform users (platform admin only)
+    
+    Routes - Organization Admin:
+    - GET /admin/org/access/users - List users in organization (org_admin, org_owner)
+    - GET /admin/org/access/users/{userId} - View user details in organization (org_admin, org_owner)
+    - PUT /admin/org/access/users/{userId} - Update user role in organization (org_owner only)
+    - DELETE /admin/org/access/users/{userId} - Remove user from organization (org_owner only)
     
     Args:
         event: API Gateway event
@@ -88,8 +96,14 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         http_method = event['requestContext']['http']['method']
         path = event['requestContext']['http']['path']
         
-        if http_method == 'GET' and '/admin/users' in path:
+        if http_method == 'GET' and '/admin/sys/access/users' in path:
             return handle_list_users(event)
+        elif http_method == 'GET' and '/admin/org/access/users' in path:
+            return handle_org_list_users(event)
+        elif http_method == 'PUT' and '/admin/org/access/users/' in path:
+            return handle_org_update_user(event)
+        elif http_method == 'DELETE' and '/admin/org/access/users/' in path:
+            return handle_org_delete_user(event)
         elif http_method == 'POST':
             return handle_provision(event)
         elif http_method == 'OPTIONS':
@@ -324,4 +338,223 @@ def handle_provision(event: Dict[str, Any]) -> Dict[str, Any]:
         
     except Exception as e:
         print(f"Error provisioning identity: {str(e)}")
+        raise
+
+
+def handle_org_list_users(event: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    List users in the requesting user's organization
+    
+    This endpoint is accessible to org_admin (read-only) and org_owner.
+    Users can only see users in their own organization.
+    
+    Returns:
+        List of users in the organization with their roles
+    """
+    # Verify user is org admin or org owner
+    try:
+        user_info = common.get_user_from_event(event)
+        okta_uid = user_info['user_id']
+        org_id = user_info.get('org_id')
+        
+        if not org_id:
+            raise common.ForbiddenError('Organization context required')
+        
+        # Map Okta UID to Supabase user_id
+        supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
+        
+        # Get user's org membership to check role
+        membership = common.find_one('org_members', {
+            'user_id': supabase_user_id,
+            'org_id': org_id
+        })
+        
+        if not membership:
+            raise common.ForbiddenError('Not a member of this organization')
+        
+        org_role = membership.get('org_role')
+        if org_role not in ['org_admin', 'org_owner']:
+            raise common.ForbiddenError('Org admin or owner access required')
+            
+    except KeyError:
+        raise common.UnauthorizedError('Authentication required')
+    
+    # Use service role client to query org users
+    client = common.get_supabase_client()
+    
+    try:
+        # Query org members and join with user profiles
+        response = client.table('org_members').select(
+            'user_id, org_role, user_profiles(user_id, email, full_name, created_at)'
+        ).eq('org_id', org_id).execute()
+        
+        users = []
+        if response.data:
+            for member in response.data:
+                profile = member.get('user_profiles')
+                if profile:
+                    # Get most recent session for last sign-in time
+                    session_response = client.table('user_sessions').select(
+                        'started_at'
+                    ).eq('user_id', profile['user_id']).order('started_at', desc=True).limit(1).execute()
+                    
+                    users.append({
+                        'user_id': profile['user_id'],
+                        'email': profile['email'],
+                        'full_name': profile['full_name'],
+                        'org_role': member['org_role'],
+                        'created_at': profile['created_at'],
+                        'last_signin_at': session_response.data[0]['started_at'] if session_response.data else None
+                    })
+        
+        # Transform to camelCase
+        transformed_users = [common.format_record(user) for user in users]
+        
+        return common.success_response(transformed_users)
+        
+    except Exception as e:
+        print(f"Error listing org users: {str(e)}")
+        raise
+
+
+def handle_org_update_user(event: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Update user role in organization
+    
+    This endpoint is restricted to org_owner only.
+    Org owners can change other users' roles within their organization.
+    
+    Request body:
+    {
+        "org_role": "org_member" | "org_admin" | "org_owner"
+    }
+    
+    Returns:
+        Updated user information
+    """
+    # Verify user is org owner
+    try:
+        user_info = common.get_user_from_event(event)
+        okta_uid = user_info['user_id']
+        org_id = user_info.get('org_id')
+        
+        if not org_id:
+            raise common.ForbiddenError('Organization context required')
+        
+        # Map Okta UID to Supabase user_id
+        supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
+        
+        # Get user's org membership to check role
+        membership = common.find_one('org_members', {
+            'user_id': supabase_user_id,
+            'org_id': org_id
+        })
+        
+        if not membership or membership.get('org_role') != 'org_owner':
+            raise common.ForbiddenError('Org owner access required')
+            
+    except KeyError:
+        raise common.UnauthorizedError('Authentication required')
+    
+    # Get target user ID from path
+    path_parameters = event.get('pathParameters', {}) or {}
+    target_user_id = path_parameters.get('userId')
+    
+    if not target_user_id:
+        return common.bad_request_response('User ID required')
+    
+    # Parse request body
+    body = json.loads(event.get('body', '{}'))
+    new_role = body.get('org_role')
+    
+    if not new_role or new_role not in ['org_member', 'org_admin', 'org_owner']:
+        return common.bad_request_response('Valid org_role required (org_member, org_admin, or org_owner)')
+    
+    try:
+        # Verify target user is in the same org
+        target_membership = common.find_one('org_members', {
+            'user_id': target_user_id,
+            'org_id': org_id
+        })
+        
+        if not target_membership:
+            return common.not_found_response('User not found in this organization')
+        
+        # Update user's role
+        updated = common.update_one(
+            table='org_members',
+            filters={'user_id': target_user_id, 'org_id': org_id},
+            data={'org_role': new_role}
+        )
+        
+        return common.success_response(common.format_record(updated))
+        
+    except Exception as e:
+        print(f"Error updating org user: {str(e)}")
+        raise
+
+
+def handle_org_delete_user(event: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Remove user from organization
+    
+    This endpoint is restricted to org_owner only.
+    Org owners can remove users from their organization.
+    
+    Returns:
+        Success message
+    """
+    # Verify user is org owner
+    try:
+        user_info = common.get_user_from_event(event)
+        okta_uid = user_info['user_id']
+        org_id = user_info.get('org_id')
+        
+        if not org_id:
+            raise common.ForbiddenError('Organization context required')
+        
+        # Map Okta UID to Supabase user_id
+        supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
+        
+        # Get user's org membership to check role
+        membership = common.find_one('org_members', {
+            'user_id': supabase_user_id,
+            'org_id': org_id
+        })
+        
+        if not membership or membership.get('org_role') != 'org_owner':
+            raise common.ForbiddenError('Org owner access required')
+            
+    except KeyError:
+        raise common.UnauthorizedError('Authentication required')
+    
+    # Get target user ID from path
+    path_parameters = event.get('pathParameters', {}) or {}
+    target_user_id = path_parameters.get('userId')
+    
+    if not target_user_id:
+        return common.bad_request_response('User ID required')
+    
+    # Prevent self-deletion
+    if target_user_id == supabase_user_id:
+        return common.bad_request_response('Cannot remove yourself from the organization')
+    
+    try:
+        # Verify target user is in the same org
+        target_membership = common.find_one('org_members', {
+            'user_id': target_user_id,
+            'org_id': org_id
+        })
+        
+        if not target_membership:
+            return common.not_found_response('User not found in this organization')
+        
+        # Delete the membership
+        client = common.get_supabase_client()
+        client.table('org_members').delete().eq('user_id', target_user_id).eq('org_id', org_id).execute()
+        
+        return common.success_response({'message': 'User removed from organization'})
+        
+    except Exception as e:
+        print(f"Error deleting org user: {str(e)}")
         raise

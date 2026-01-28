@@ -286,69 +286,69 @@ export function createKbModuleClient(
 
     // Org Admin endpoints
     orgAdmin: {
-      listKbs: () => authenticatedClient.get<KnowledgeBase[]>("/admin/org/kbs"),
+      listKbs: () => authenticatedClient.get<KnowledgeBase[]>("/admin/org/kb"),
 
       createKb: (data) =>
-        authenticatedClient.post<KnowledgeBase>("/admin/org/kbs", data),
+        authenticatedClient.post<KnowledgeBase>("/admin/org/kb", data),
 
       getKb: (kbId) =>
-        authenticatedClient.get<KnowledgeBase>(`/admin/org/kbs/${kbId}`),
+        authenticatedClient.get<KnowledgeBase>(`/admin/org/kb/${kbId}`),
 
       updateKb: (kbId, data) =>
-        authenticatedClient.patch<KnowledgeBase>(`/admin/org/kbs/${kbId}`, data),
+        authenticatedClient.patch<KnowledgeBase>(`/admin/org/kb/${kbId}`, data),
 
       deleteKb: (kbId) =>
-        authenticatedClient.delete<void>(`/admin/org/kbs/${kbId}`),
+        authenticatedClient.delete<void>(`/admin/org/kb/${kbId}`),
 
       listDocuments: (kbId) =>
-        authenticatedClient.get<ListDocumentsResponse>(`/admin/org/kbs/${kbId}/documents`),
+        authenticatedClient.get<ListDocumentsResponse>(`/admin/org/kb/${kbId}/documents`),
 
       uploadDocument: (kbId, data) =>
         authenticatedClient.post<UploadDocumentResponse>(
-          `/admin/org/kbs/${kbId}/documents`,
+          `/admin/org/kb/${kbId}/documents`,
           data
         ),
 
       deleteDocument: (kbId, documentId) =>
         authenticatedClient.delete<void>(
-          `/admin/org/kbs/${kbId}/documents/${documentId}`
+          `/admin/org/kb/${kbId}/documents/${documentId}`
         ),
     },
 
     // System Admin endpoints
     sysAdmin: {
-      listKbs: () => authenticatedClient.get<KnowledgeBase[]>("/admin/sys/kbs"),
+      listKbs: () => authenticatedClient.get<KnowledgeBase[]>("/admin/sys/kb"),
 
       createKb: (data) =>
-        authenticatedClient.post<KnowledgeBase>("/admin/sys/kbs", data),
+        authenticatedClient.post<KnowledgeBase>("/admin/sys/kb", data),
 
       getKb: (kbId) =>
-        authenticatedClient.get<KnowledgeBase>(`/admin/sys/kbs/${kbId}`),
+        authenticatedClient.get<KnowledgeBase>(`/admin/sys/kb/${kbId}`),
 
       updateKb: (kbId, data) =>
-        authenticatedClient.patch<KnowledgeBase>(`/admin/sys/kbs/${kbId}`, data),
+        authenticatedClient.patch<KnowledgeBase>(`/admin/sys/kb/${kbId}`, data),
 
       deleteKb: (kbId) =>
-        authenticatedClient.delete<void>(`/admin/sys/kbs/${kbId}`),
+        authenticatedClient.delete<void>(`/admin/sys/kb/${kbId}`),
 
       associateOrg: (kbId, data) =>
-        authenticatedClient.post<void>(`/admin/sys/kbs/${kbId}/orgs`, data),
+        authenticatedClient.post<void>(`/admin/sys/kb/${kbId}/orgs`, data),
 
       removeOrg: (kbId, orgId) =>
-        authenticatedClient.delete<void>(`/admin/sys/kbs/${kbId}/orgs/${orgId}`),
+        authenticatedClient.delete<void>(`/admin/sys/kb/${kbId}/orgs/${orgId}`),
 
       listDocuments: (kbId) =>
-        authenticatedClient.get<ListDocumentsResponse>(`/admin/sys/kbs/${kbId}/documents`),
+        authenticatedClient.get<ListDocumentsResponse>(`/admin/sys/kb/${kbId}/documents`),
 
       uploadDocument: (kbId, data) =>
         authenticatedClient.post<UploadDocumentResponse>(
-          `/admin/sys/kbs/${kbId}/documents`,
+          `/admin/sys/kb/${kbId}/documents`,
           data
         ),
 
       deleteDocument: (kbId, documentId) =>
         authenticatedClient.delete<void>(
-          `/admin/sys/kbs/${kbId}/documents/${documentId}`
+          `/admin/sys/kb/${kbId}/documents/${documentId}`
         ),
     },
 

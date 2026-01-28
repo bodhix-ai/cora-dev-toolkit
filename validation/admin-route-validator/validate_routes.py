@@ -34,14 +34,15 @@ VALID_MODULES = {
 }
 
 # Route patterns
-ADMIN_SYS_PATTERN = re.compile(r'^/admin/sys/([a-z]+)/([a-z][a-z0-9-]*)(/.*)?$')
-ADMIN_ORG_PATTERN = re.compile(r'^/admin/org/([a-z]+)/([a-z][a-z0-9-]*)(/.*)?$')
-ADMIN_WS_PATTERN = re.compile(r'^/admin/ws/\{wsId\}/([a-z]+)/([a-z][a-z0-9-]*)(/.*)?$')
+# Updated to support path parameters like {kbId}, {docId} at resource level
+ADMIN_SYS_PATTERN = re.compile(r'^/admin/sys/([a-z]+)/([a-z][a-z0-9-]*|\{[a-zA-Z]+\})(/.*)?$')
+ADMIN_ORG_PATTERN = re.compile(r'^/admin/org/([a-z]+)/([a-z][a-z0-9-]*|\{[a-zA-Z]+\})(/.*)?$')
+ADMIN_WS_PATTERN = re.compile(r'^/admin/ws/\{wsId\}/([a-z]+)/([a-z][a-z0-9-]*|\{[a-zA-Z]+\})(/.*)?$')
 DATA_API_PATTERN = re.compile(r'^/([a-z]+)(/.*)?$')
 
 # Anti-patterns to detect
 ANTI_PATTERNS = [
-    (re.compile(r'^/admin/[a-z]+/[^/]+'), 'Missing scope (sys/org/ws) in admin route'),
+    (re.compile(r'^/admin/(?!sys/|org/|ws/)'), 'Missing scope (sys/org/ws) in admin route'),
     (re.compile(r'^/api/'), 'Do not use /api prefix for data routes'),
     (re.compile(r'^/admin/org/\{orgId\}'), 'Org ID should not be in path for org scope'),
     (re.compile(r'^/admin/ws/[a-z]+/'), 'Missing {wsId} in workspace admin route'),
@@ -74,10 +75,21 @@ class ValidationResult:
     compliant_routes: int = 0
     violations: List[Violation] = field(default_factory=list)
     routes_by_category: Dict[str, int] = field(default_factory=dict)
+    discovered_modules: Set[str] = field(default_factory=set)
+    modules_with_sys_admin: Set[str] = field(default_factory=set)
+    modules_with_org_admin: Set[str] = field(default_factory=set)
     
     @property
     def non_compliant_routes(self) -> int:
         return len([v for v in self.violations if v.severity == Severity.ERROR])
+    
+    @property
+    def modules_missing_sys_admin(self) -> Set[str]:
+        return self.discovered_modules - self.modules_with_sys_admin
+    
+    @property
+    def modules_missing_org_admin(self) -> Set[str]:
+        return self.discovered_modules - self.modules_with_org_admin
 
 
 def extract_routes_from_terraform(file_path: Path) -> List[Tuple[str, int]]:
@@ -251,6 +263,42 @@ def validate_route(route: str, file: str, line: int) -> List[Violation]:
     return violations
 
 
+def discover_modules(project_path: Path) -> Set[str]:
+    """Discover installed modules by scanning the packages/ directory."""
+    modules = set()
+    
+    # Check for packages/ directory (deployed project)
+    packages_dir = project_path / 'packages'
+    if packages_dir.exists() and packages_dir.is_dir():
+        for item in packages_dir.iterdir():
+            if item.is_dir() and item.name.startswith('module-'):
+                # Extract shortname: module-access -> access
+                shortname = item.name.replace('module-', '')
+                if shortname in VALID_MODULES:
+                    modules.add(shortname)
+    
+    # Check if path itself is a module directory (e.g., templates/_modules-core)
+    elif project_path.name in ['_modules-core', '_modules-functional']:
+        for item in project_path.iterdir():
+            if item.is_dir() and item.name.startswith('module-'):
+                shortname = item.name.replace('module-', '')
+                if shortname in VALID_MODULES:
+                    modules.add(shortname)
+    
+    # Check for templates/ directory (toolkit)
+    else:
+        for template_dir in ['_modules-core', '_modules-functional']:
+            template_path = project_path / template_dir
+            if template_path.exists() and template_path.is_dir():
+                for item in template_path.iterdir():
+                    if item.is_dir() and item.name.startswith('module-'):
+                        shortname = item.name.replace('module-', '')
+                        if shortname in VALID_MODULES:
+                            modules.add(shortname)
+    
+    return modules
+
+
 def find_route_files(project_path: Path) -> List[Tuple[Path, str]]:
     """Find all files that may contain route definitions."""
     files = []
@@ -271,6 +319,12 @@ def validate_project(project_path: Path, verbose: bool = False) -> ValidationRes
     """Validate all routes in a project."""
     result = ValidationResult()
     seen_routes: Set[str] = set()
+    
+    # Discover installed modules
+    result.discovered_modules = discover_modules(project_path)
+    
+    if verbose:
+        print(f"Discovered modules: {sorted(result.discovered_modules)}")
     
     files = find_route_files(project_path)
     
@@ -297,6 +351,20 @@ def validate_project(project_path: Path, verbose: bool = False) -> ValidationRes
             category = categorize_route(route)
             result.routes_by_category[category] = result.routes_by_category.get(category, 0) + 1
             
+            # Track module admin route presence
+            if category == 'sys_admin':
+                match = ADMIN_SYS_PATTERN.match(route)
+                if match:
+                    module = match.group(1)
+                    if module in result.discovered_modules:
+                        result.modules_with_sys_admin.add(module)
+            elif category == 'org_admin':
+                match = ADMIN_ORG_PATTERN.match(route)
+                if match:
+                    module = match.group(1)
+                    if module in result.discovered_modules:
+                        result.modules_with_org_admin.add(module)
+            
             # Validate
             violations = validate_route(route, str(file_path), line)
             
@@ -304,6 +372,27 @@ def validate_project(project_path: Path, verbose: bool = False) -> ValidationRes
                 result.compliant_routes += 1
             else:
                 result.violations.extend(violations)
+    
+    # Check for missing admin routes (admin page parity)
+    for module in result.modules_missing_sys_admin:
+        result.violations.append(Violation(
+            route=f'/admin/sys/{module}/*',
+            message=f"Module '{module}' is missing system admin routes",
+            severity=Severity.ERROR,
+            file='<module discovery>',
+            line=0,
+            suggestion=f"Add system admin routes for module-{module} (e.g., /admin/sys/{module}/config)",
+        ))
+    
+    for module in result.modules_missing_org_admin:
+        result.violations.append(Violation(
+            route=f'/admin/org/{module}/*',
+            message=f"Module '{module}' is missing organization admin routes",
+            severity=Severity.ERROR,
+            file='<module discovery>',
+            line=0,
+            suggestion=f"Add org admin routes for module-{module} (e.g., /admin/org/{module}/config)",
+        ))
     
     return result
 
@@ -321,6 +410,25 @@ def format_text_output(result: ValidationResult) -> str:
     lines.append(f"Compliant routes: {result.compliant_routes}")
     lines.append(f"Non-compliant routes: {result.non_compliant_routes}")
     lines.append("")
+    
+    # Module parity check
+    if result.discovered_modules:
+        lines.append("Admin Page Parity Check:")
+        lines.append(f"  Discovered modules: {len(result.discovered_modules)}")
+        lines.append(f"  Modules with sys admin routes: {len(result.modules_with_sys_admin)}")
+        lines.append(f"  Modules with org admin routes: {len(result.modules_with_org_admin)}")
+        lines.append("")
+        
+        if result.modules_missing_sys_admin or result.modules_missing_org_admin:
+            lines.append("  ❌ Missing admin routes:")
+            for module in sorted(result.modules_missing_sys_admin):
+                lines.append(f"    - {module}: missing sys admin routes")
+            for module in sorted(result.modules_missing_org_admin):
+                lines.append(f"    - {module}: missing org admin routes")
+            lines.append("")
+        else:
+            lines.append("  ✅ All modules have both sys and org admin routes")
+            lines.append("")
     
     # By category
     lines.append("Routes by category:")
@@ -372,6 +480,13 @@ def format_json_output(result: ValidationResult) -> str:
             'compliant_routes': result.compliant_routes,
             'non_compliant_routes': result.non_compliant_routes,
             'passed': result.non_compliant_routes == 0,
+        },
+        'module_parity': {
+            'discovered_modules': sorted(result.discovered_modules),
+            'modules_with_sys_admin': sorted(result.modules_with_sys_admin),
+            'modules_with_org_admin': sorted(result.modules_with_org_admin),
+            'modules_missing_sys_admin': sorted(result.modules_missing_sys_admin),
+            'modules_missing_org_admin': sorted(result.modules_missing_org_admin),
         },
         'routes_by_category': result.routes_by_category,
         'violations': [

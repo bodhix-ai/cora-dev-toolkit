@@ -1,6 +1,6 @@
 "use client";
 
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
 import { OrgDetails } from "@{{PROJECT_NAME}}/module-access";
 import { CircularProgress, Box, Alert } from "@mui/material";
 
@@ -20,6 +20,7 @@ import { CircularProgress, Box, Alert } from "@mui/material";
  */
 export default function OrgDetailsPage({ params }: { params: { id: string } }) {
   const { profile, loading, isAuthenticated, authAdapter } = useUser();
+  const { hasRole } = useRole();
 
   // Loading state
   if (loading) {
@@ -42,12 +43,8 @@ export default function OrgDetailsPage({ params }: { params: { id: string } }) {
   }
 
   // Authorization check - system admins OR org admins
-  const isSysAdmin = ["sys_owner", "sys_admin"].includes(
-    profile.sysRole || ""
-  );
-  const isOrgAdmin = ["org_owner", "org_admin"].includes(
-    profile.orgRole || ""
-  );
+  const isSysAdmin = hasRole("sys_owner") || hasRole("sys_admin");
+  const isOrgAdmin = hasRole("org_owner") || hasRole("org_admin");
 
   if (!isSysAdmin && !isOrgAdmin) {
     return (

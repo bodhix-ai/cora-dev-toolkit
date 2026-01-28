@@ -205,7 +205,7 @@ export function createAIEnablementClient(
       try {
         // authenticatedClient returns raw API response
         // Backend returns { success: true, data: [...] }
-        const response = await authenticatedClient.get<ProviderApiData[] | { data: ProviderApiData[] }>(`/providers`);
+        const response = await authenticatedClient.get<ProviderApiData[] | { data: ProviderApiData[] }>(`/admin/sys/ai/providers`);
         const providers = Array.isArray(response)
           ? response
           : Array.isArray(response?.data)
@@ -229,7 +229,7 @@ export function createAIEnablementClient(
     },
 
     getProvider: async (providerId: string) => {
-      const response = await authenticatedClient.get<ProviderApiData>(`/providers/${providerId}`);
+      const response = await authenticatedClient.get<ProviderApiData>(`/admin/sys/ai/providers/${providerId}`);
       if (response.success && response.data) {
         const transformed = transformProviderResponse(response.data);
         return { success: response.success, data: transformed };
@@ -239,7 +239,7 @@ export function createAIEnablementClient(
 
     createProvider: async (data: CreateProviderInput) => {
       const payload = transformProviderInput(data);
-      const response = await authenticatedClient.post<ProviderApiData>(`/providers`, payload);
+      const response = await authenticatedClient.post<ProviderApiData>(`/admin/sys/ai/providers`, payload);
       if (response.success && response.data) {
         const transformed = transformProviderResponse(response.data);
         return { success: response.success, data: transformed };
@@ -251,7 +251,7 @@ export function createAIEnablementClient(
       try {
         const payload = transformProviderInput(data);
         const response = await authenticatedClient.put<ProviderApiData>(
-          `/providers/${providerId}`,
+          `/admin/sys/ai/providers/${providerId}`,
           payload
         );
         if (response.success && response.data) {
@@ -272,14 +272,14 @@ export function createAIEnablementClient(
     },
 
     deleteProvider: async (providerId: string) => {
-      return authenticatedClient.delete(`/providers/${providerId}`);
+      return authenticatedClient.delete(`/admin/sys/ai/providers/${providerId}`);
     },
 
     // Model discovery
     discoverModels: async (providerId: string) => {
       try {
         const response = await authenticatedClient.post<{ success: boolean; discoveredCount: number; models: ModelApiData[] }>(
-          `/providers/${providerId}/discover`
+          `/admin/sys/ai/providers/${providerId}/discover`
         );
         if (response.success && response.data) {
           const transformedModels = response.data.models?.map(transformModelResponse) || [];
@@ -321,7 +321,7 @@ export function createAIEnablementClient(
     validateModels: async (providerId: string) => {
       try {
         const response = await authenticatedClient.post<ValidateModelsResponse>(
-          `/providers/${providerId}/validate-models`
+          `/admin/sys/ai/providers/${providerId}/validate-models`
         );
         if (response.success && response.data) {
           return { success: true, data: response.data };
@@ -359,7 +359,7 @@ export function createAIEnablementClient(
     getValidationStatus: async (providerId: string) => {
       try {
         const response = await authenticatedClient.get<{ status: string; currentModelId?: string; validated?: number; total?: number; available?: number; unavailable?: number }>(
-          `/providers/${providerId}/validation-status`
+          `/admin/sys/ai/providers/${providerId}/validation-status`
         );
         if (response.success && response.data) {
           return {
@@ -406,7 +406,7 @@ export function createAIEnablementClient(
     // Model operations
     getModels: async (providerId?: string) => {
       try {
-        const url = providerId ? `/models?providerId=${providerId}` : "/admin/ai/models";
+        const url = providerId ? `/admin/sys/ai/models?providerId=${providerId}` : "/admin/sys/ai/models";
         const response = await authenticatedClient.get<ModelApiData[] | { data: ModelApiData[] } | { data: { deployments: ModelApiData[] } }>(
           url
         );
@@ -441,7 +441,7 @@ export function createAIEnablementClient(
     },
 
     getModel: async (modelId: string) => {
-      const response = await authenticatedClient.get<ModelApiData>(`/models/${modelId}`);
+      const response = await authenticatedClient.get<ModelApiData>(`/admin/sys/ai/models/${modelId}`);
       if (response.success && response.data) {
         const transformed = transformModelResponse(response.data);
         return { success: response.success, data: transformed };
@@ -450,7 +450,7 @@ export function createAIEnablementClient(
     },
 
     testModel: async (modelId: string, data: TestModelInput) => {
-      return authenticatedClient.post(`/models/${modelId}/test`, data);
+      return authenticatedClient.post(`/admin/sys/ai/models/${modelId}/test`, data);
     },
   };
 }

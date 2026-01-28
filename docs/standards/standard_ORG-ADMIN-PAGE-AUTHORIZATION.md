@@ -11,7 +11,7 @@
 All organization-level admin pages (`/admin/org/*`) MUST follow a consistent authorization pattern to ensure:
 1. Correct role checking using the `useRole()` hook
 2. Proper access to organization context data
-3. Sys admin access for platform oversight
+3. Separate authorization from sys admin pages (org admins only)
 
 ## The Standard Pattern
 
@@ -24,7 +24,7 @@ import { Box, CircularProgress, Alert } from "@mui/material";
 export default function OrgAdminPage() {
   const { profile, loading, isAuthenticated } = useUser();
   const { currentOrganization: organization } = useOrganizationContext();
-  const { isOrgAdmin, isSysAdmin } = useRole();
+  const { isOrgAdmin } = useRole();
 
   // 1. Loading state
   if (loading) {
@@ -44,8 +44,9 @@ export default function OrgAdminPage() {
     );
   }
 
-  // 3. Authorization check - org admins OR sys admins can access
-  if (!isOrgAdmin && !isSysAdmin) {
+  // 3. Authorization check - org admins ONLY
+  // Sys admins needing access should add themselves to the org
+  if (!isOrgAdmin) {
     return (
       <Box p={4}>
         <Alert severity="error">
@@ -86,14 +87,17 @@ export default function OrgAdminPage() {
 ### 2. Authorization Check (REQUIRED)
 
 ```typescript
-const { isOrgAdmin, isSysAdmin } = useRole();
+const { isOrgAdmin } = useRole();
 
-if (!isOrgAdmin && !isSysAdmin) {
+if (!isOrgAdmin) {
   // Deny access
 }
 ```
 
-**Why both?** Sys admins need access to org-level pages for platform oversight.
+**Why org admins only?** 
+- Maintains clear separation between system (`/admin/sys/`) and organization (`/admin/org/`) administration
+- Sys admins requiring org access should add themselves to the organization with appropriate role
+- Enforces principle of least privilege - even platform admins use proper org roles
 
 ### 3. Organization Context (REQUIRED for data-driven pages)
 
@@ -151,20 +155,24 @@ const { currentOrganization: organization } = useOrganizationContext();
 <Component orgId={organization.orgId} />
 ```
 
-### ❌ Anti-Pattern 4: Not Allowing Sys Admins
+### ❌ Anti-Pattern 4: Allowing Sys Admins Without Org Role
 
 ```typescript
-// ❌ WRONG - Only checks org admin, blocks sys admins
-if (!isOrgAdmin) {
+// ❌ WRONG - Allows sys admins without org membership
+const { isOrgAdmin, isSysAdmin } = useRole();
+
+if (!isOrgAdmin && !isSysAdmin) {
   return <AccessDenied />;
 }
 ```
 
-**Why it's wrong:** Sys admins need access for platform oversight.
+**Why it's wrong:** Breaks separation of concerns. Sys admins should add themselves to the org with proper role if oversight is needed.
 
 **✅ Correct:**
 ```typescript
-if (!isOrgAdmin && !isSysAdmin) {
+const { isOrgAdmin } = useRole();
+
+if (!isOrgAdmin) {
   return <AccessDenied />;
 }
 ```
@@ -245,7 +253,7 @@ python3 ./validation/cora-validate.py project . --validators org-admin-auth
 | `organization.id` usage | ERROR | Should be `organization.orgId` |
 | `organization.name` usage | ERROR | Should be `organization.orgName` |
 | Missing `useRole()` import | WARNING | Should use hook for role checks |
-| Missing sys admin check | WARNING | Should allow both org and sys admins |
+| Allowing sys admins | WARNING | Should be org admins only |
 
 ---
 

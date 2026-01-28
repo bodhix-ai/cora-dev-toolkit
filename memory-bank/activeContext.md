@@ -15,18 +15,24 @@ This repository uses **initiative-scoped context files** to avoid merge conflict
 | Error Remediation & Clean Baseline | `context-error-remediation.md` | Eliminate validation errors | **P1** |
 | WS Plugin Architecture | `context-ws-plugin-architecture.md` | Module integration patterns | **P1** |
 | Module-Eval Development | `context-module-eval.md` | Eval features (citations, scoring) | P2, P3 |
-| Admin Standardization | `context-admin-standardization.md` | Admin page patterns | P4 |
+| Admin Standardization | `context-admin-standardization.md` | Version tracking + admin routes | **P1** 🟡 Active |
 | Module-Voice Development | `context-module-voice.md` | Voice interview features | - |
 | Module-KB Development | `context-module-kb.md` | Knowledge base features | - |
 
 ---
 
-## Current Priority Order (January 26, 2026)
+## Current Priority Order (January 27, 2026)
 
-1. **Error Remediation (S1: TypeScript)** - Eliminate 46 TypeScript errors in module-eval
-2. **WS Plugin Architecture (S3)** - Dynamic module configuration
-3. **Module-Eval Citations** - Complete citations implementation
-4. **Eval Scoring Quality** - Investigate and fix scoring issues
+1. **Admin Standardization S3b (Active)** - Version tracking + admin route fixes (84 errors) - 🟡 Session 1 Complete
+2. **Clean Project Baseline** - Achieve 0-error baseline (currently 121 errors, down from 430)
+3. **WS Plugin Architecture S3** - Dynamic module configuration (deferred, S1-S2 complete)
+4. **Module-Eval Citations** - Complete citations implementation (unblocked, awaiting capacity)
+5. **Test Project Resource Isolation** - Parallel test environments
+
+**Recent Completions:**
+- ✅ Error Remediation S1-S4 (430→121 errors, 72% reduction)
+- ✅ WS Plugin Architecture S1-S2 (ADR-017, module availability)
+- ✅ Admin Standardization S2-S3a (ADR-016, module toggles)
 
 ---
 
@@ -51,4 +57,4 @@ This repository uses **initiative-scoped context files** to avoid merge conflict
 
 ---
 
-**Updated:** January 26, 2026
+**Updated:** January 27, 2026

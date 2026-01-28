@@ -95,7 +95,7 @@ export function IdpConfigCard({ apiClient, onIdpChanged }: IdpConfigCardProps) {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get<IdpConfig[]>("/admin/idp-config");
+      const response = await apiClient.get<IdpConfig[]>("/admin/sys/access/idp");
       if (response.success) {
         setConfigs(response.data || []);
       } else {
@@ -118,7 +118,7 @@ export function IdpConfigCard({ apiClient, onIdpChanged }: IdpConfigCardProps) {
       setError(null);
 
       const response = await apiClient.put<IdpConfig>(
-        `/admin/idp-config/${providerType}`,
+        `/admin/sys/access/idp/${providerType}`,
         {
           config: configData,
         }
@@ -145,7 +145,7 @@ export function IdpConfigCard({ apiClient, onIdpChanged }: IdpConfigCardProps) {
       setError(null);
 
       const response = await apiClient.post<{ success: boolean }>(
-        `/admin/idp-config/${providerType}/activate`
+        `/admin/sys/access/idp/${providerType}/activate`
       );
 
       if (response.success) {

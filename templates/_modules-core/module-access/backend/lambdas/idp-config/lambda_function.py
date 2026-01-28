@@ -11,10 +11,10 @@ It intentionally does NOT:
 - Use typical org-scoped patterns (manages platform identity providers)
 - Follow org-specific CORA patterns (platform admin functionality)
 
-Routes:
-- GET    /admin/idp-config                         - List all IDP configurations
-- PUT    /admin/idp-config/{providerType}          - Update IDP configuration
-- POST   /admin/idp-config/{providerType}/activate - Activate an IDP provider
+Routes - System Admin:
+- GET    /admin/sys/access/idp                         - List all IDP configurations
+- PUT    /admin/sys/access/idp/{providerType}          - Update IDP configuration
+- POST   /admin/sys/access/idp/{providerType}/activate - Activate an IDP provider
 
 Note: Client secrets are stored in AWS Secrets Manager, not in the database.
 """

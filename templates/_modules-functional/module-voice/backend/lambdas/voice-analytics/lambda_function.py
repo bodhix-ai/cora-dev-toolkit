@@ -6,8 +6,8 @@ strengths, weaknesses, and recommendations. Analytics are created by
 a background process after interview transcripts are processed.
 
 Routes - Analytics:
-- GET /api/voice/analytics - List analytics for organization
-- GET /api/voice/analytics/{id} - Get analytics by session ID
+- GET /voice/analytics - List analytics for organization
+- GET /voice/analytics/{id} - Get analytics by session ID
 """
 
 import json

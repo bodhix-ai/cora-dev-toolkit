@@ -15,20 +15,20 @@ Routes - Chat Scoped:
 - POST /chats/{chatId}/kbs/{kbId}/toggle - Toggle KB access
 
 Routes - Org Admin:
-- GET /admin/org/kbs - List org KBs
-- POST /admin/org/kbs - Create org KB
-- GET /admin/org/kbs/{kbId} - Get org KB
-- PATCH /admin/org/kbs/{kbId} - Update org KB
-- DELETE /admin/org/kbs/{kbId} - Delete org KB
+- GET /admin/org/kb/bases - List org KBs
+- POST /admin/org/kb/bases - Create org KB
+- GET /admin/org/kb/{kbId} - Get org KB
+- PATCH /admin/org/kb/{kbId} - Update org KB
+- DELETE /admin/org/kb/{kbId} - Delete org KB
 
 Routes - Platform Admin:
-- GET /admin/sys/kbs - List system KBs
-- POST /admin/sys/kbs - Create system KB
-- GET /admin/sys/kbs/{kbId} - Get system KB
-- PATCH /admin/sys/kbs/{kbId} - Update system KB
-- DELETE /admin/sys/kbs/{kbId} - Delete system KB
-- POST /admin/sys/kbs/{kbId}/orgs - Associate KB with org
-- DELETE /admin/sys/kbs/{kbId}/orgs/{orgId} - Remove org association
+- GET /admin/sys/kb/bases - List system KBs
+- POST /admin/sys/kb/bases - Create system KB
+- GET /admin/sys/kb/{kbId} - Get system KB
+- PATCH /admin/sys/kb/{kbId} - Update system KB
+- DELETE /admin/sys/kb/{kbId} - Delete system KB
+- POST /admin/sys/kb/{kbId}/orgs - Associate KB with org
+- DELETE /admin/sys/kb/{kbId}/orgs/{orgId} - Remove org association
 """
 import json
 from typing import Dict, Any, List, Optional
@@ -71,9 +71,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return route_workspace_handlers(event, supabase_user_id, http_method, path, path_params)
         elif '/chats/' in path:
             return route_chat_handlers(event, supabase_user_id, http_method, path, path_params)
-        elif '/admin/org/kbs' in path:
+        elif '/admin/org/kb' in path:
             return route_org_admin_handlers(event, supabase_user_id, http_method, path, path_params)
-        elif '/admin/sys/kbs' in path:
+        elif '/admin/sys/kb' in path:
             return route_sys_admin_handlers(event, supabase_user_id, http_method, path, path_params)
         elif http_method == 'OPTIONS':
             # Handle CORS preflight

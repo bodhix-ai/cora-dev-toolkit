@@ -183,23 +183,23 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Handle ai_provider operations (platform-level, admin only)
     
-    Routes - AI Configuration:
-    - GET    /orgs/{orgId}/ai/config                 - Get organization AI configuration
+    Routes - System Admin - Provider Management:
+    - GET    /admin/sys/ai/providers                         - List all providers
+    - POST   /admin/sys/ai/providers                         - Create a new provider
+    - GET    /admin/sys/ai/providers/{providerId}            - Get a single provider by ID
+    - PUT    /admin/sys/ai/providers/{providerId}            - Update a provider
+    - DELETE /admin/sys/ai/providers/{providerId}            - Delete a provider
+    - POST   /admin/sys/ai/providers/{providerId}/discover   - Discover models for a provider
+    - POST   /admin/sys/ai/providers/{providerId}/validate-models - Start async model validation
+    - GET    /admin/sys/ai/providers/{providerId}/validation-status - Get validation progress
     
-    Routes - Provider Management:
-    - GET    /providers                              - List all providers
-    - GET    /providers/{providerId}                 - Get a single provider by ID
-    - POST   /providers                              - Create a new provider
-    - PUT    /providers/{providerId}                 - Update a provider
-    - DELETE /providers/{providerId}                 - Delete a provider
-    - POST   /providers/{providerId}/discover        - Discover models for a provider
-    - POST   /providers/{providerId}/validate-models - Start async model validation
-    - GET    /providers/{providerId}/validation-status - Get validation progress
+    Routes - System Admin - Model Management:
+    - GET    /admin/sys/ai/models                            - List all models
+    - GET    /admin/sys/ai/models/{modelId}                  - Get a single model by ID
+    - POST   /admin/sys/ai/models/{modelId}/test             - Test a specific model
     
-    Routes - Model Management:
-    - GET    /models                                 - List all models (with providerId query param)
-    - GET    /models/{modelId}                       - Get a single model by ID
-    - POST   /models/{modelId}/test                  - Test a specific model
+    Routes - Organization Admin:
+    - GET    /admin/org/ai/config                            - Get organization AI configuration
     """
     print(json.dumps(event, default=str))
     
@@ -220,40 +220,51 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         path = event.get('requestContext', {}).get('http', {}).get('path') or event.get('path', '')
         
         # Route to appropriate handler based on path and method
-        if '/orgs/' in path and '/ai/config' in path and http_method == 'GET':
-            if not path_params or not path_params.get('orgId'):
-                return common.bad_request_response('Organization ID is required')
-            return handle_get_org_ai_config(event, supabase_user_id, path_params['orgId'])
-        elif '/discover' in path and http_method == 'POST':
+        # Org admin routes
+        if '/admin/org/ai/config' in path and http_method == 'GET':
+            return handle_get_org_ai_config(event, supabase_user_id)
+        # Sys admin provider routes
+        elif '/admin/sys/ai/providers' in path and '/discover' in path and http_method == 'POST':
             if not path_params or not path_params.get('providerId'):
                 return common.bad_request_response('Provider ID is required')
             return handle_discover_models(event, supabase_user_id, path_params['providerId'])
-        elif '/validate-models' in path and http_method == 'POST':
+        elif '/admin/sys/ai/providers' in path and '/validate-models' in path and http_method == 'POST':
             if not path_params or not path_params.get('providerId'):
                 return common.bad_request_response('Provider ID is required')
             return handle_validate_models(event, supabase_user_id, path_params['providerId'])
-        elif '/validation-status' in path and http_method == 'GET':
+        elif '/admin/sys/ai/providers' in path and '/validation-status' in path and http_method == 'GET':
             if not path_params or not path_params.get('providerId'):
                 return common.bad_request_response('Provider ID is required')
             return handle_get_validation_status(supabase_user_id, path_params['providerId'])
-        elif '/models/' in path and '/test' in path and http_method == 'POST':
+        # Sys admin model routes
+        elif '/admin/sys/ai/models' in path and '/test' in path and http_method == 'POST':
             if not path_params or not path_params.get('modelId'):
                 return common.bad_request_response('Model ID is required')
             return handle_test_model(event, supabase_user_id, path_params['modelId'])
-        elif '/models' in path and http_method == 'GET':
+        elif '/admin/sys/ai/models' in path and path_params and path_params.get('modelId') and http_method == 'GET':
+            if not path_params or not path_params.get('modelId'):
+                return common.bad_request_response('Model ID is required')
+            model_id = common.validate_uuid(path_params['modelId'], 'modelId')
+            _require_admin_access(supabase_user_id)
+            model = common.find_one('ai_models', {'id': model_id})
+            if not model:
+                raise common.NotFoundError(f"AI Model with ID {model_id} not found.")
+            return common.success_response(common.format_record(model))
+        elif '/admin/sys/ai/models' in path and http_method == 'GET':
             return handle_get_models(event, supabase_user_id)
-        elif http_method == 'GET':
+        # Sys admin provider CRUD
+        elif '/admin/sys/ai/providers' in path and http_method == 'GET':
             if path_params and path_params.get('providerId'):
                 return handle_get_one(supabase_user_id, path_params['providerId'])
             else:
                 return handle_get_all(event, supabase_user_id)
-        elif http_method == 'POST':
+        elif '/admin/sys/ai/providers' in path and http_method == 'POST':
             return handle_create(event, supabase_user_id)
-        elif http_method == 'PUT':
+        elif '/admin/sys/ai/providers' in path and http_method == 'PUT':
             if not path_params or not path_params.get('providerId'):
                 return common.bad_request_response('Provider ID is required')
             return handle_update(event, supabase_user_id, path_params['providerId'])
-        elif http_method == 'DELETE':
+        elif '/admin/sys/ai/providers' in path and http_method == 'DELETE':
             if not path_params or not path_params.get('providerId'):
                 return common.bad_request_response('Provider ID is required')
             return handle_delete(supabase_user_id, path_params['providerId'])
@@ -278,18 +289,18 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         traceback.print_exc()
         return common.internal_error_response('Internal server error')
 
-def handle_get_org_ai_config(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[str, Any]:
+def handle_get_org_ai_config(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
     Get organization AI configuration.
     Returns list of available providers and models for this organization.
+    Org ID comes from user's session (user's current organization).
     """
-    # Validate org_id
-    org_id = common.validate_uuid(org_id, 'org_id')
+    # Get user's org_id from their profile
+    profile = common.find_one('user_profiles', {'user_id': user_id})
+    if not profile or not profile.get('org_id'):
+        raise common.ForbiddenError('User does not belong to an organization')
     
-    # Verify user has access to this organization
-    membership = common.find_one('org_members', {'user_id': user_id, 'org_id': org_id})
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this organization')
+    org_id = profile['org_id']
     
     try:
         # Get all active providers

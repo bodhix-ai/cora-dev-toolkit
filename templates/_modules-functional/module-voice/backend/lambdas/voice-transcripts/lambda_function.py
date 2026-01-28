@@ -6,9 +6,9 @@ retrieval, listing, and deletion. Transcripts are created by the
 Pipecat bot via WebSocket when interviews complete.
 
 Routes - Transcripts:
-- GET /api/voice/transcripts - List transcripts for organization
-- GET /api/voice/transcripts/{id} - Get transcript by ID
-- DELETE /api/voice/transcripts/{id} - Delete transcript
+- GET /voice/transcripts - List transcripts for organization
+- GET /voice/transcripts/{id} - Get transcript by ID
+- DELETE /voice/transcripts/{id} - Delete transcript
 """
 
 import json

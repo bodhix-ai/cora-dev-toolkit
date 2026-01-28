@@ -41,7 +41,7 @@ import { useAuth } from "@clerk/nextjs";
 export default function OrgAIAdminRoute() {
   const { profile, loading, isAuthenticated } = useUser();
   const { currentOrganization: organization } = useOrganizationContext();
-  const { isOrgAdmin, isSysAdmin } = useRole();
+  const { isOrgAdmin } = useRole();
   const clerkAuth = useAuth();
   const authAdapter = createClerkAuthAdapter(clerkAuth);
 
@@ -77,8 +77,9 @@ export default function OrgAIAdminRoute() {
     );
   }
 
-  // Authorization check - org_admin or org_owner required
-  if (!isOrgAdmin && !isSysAdmin) {
+  // Authorization check - org_admin or org_owner required (revised ADR-016)
+  // Sys admins needing access should add themselves to the org
+  if (!isOrgAdmin) {
     return (
       <Alert severity="error" sx={{ m: 2 }}>
         You do not have permission to access this page. Organization admin or

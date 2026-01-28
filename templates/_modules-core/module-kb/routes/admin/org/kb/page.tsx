@@ -24,7 +24,7 @@ import { CircularProgress, Box, Alert } from '@mui/material';
 export default function OrgKBAdminRoute() {
   const { profile, loading, isAuthenticated } = useUser();
   const { currentOrganization: organization } = useOrganizationContext();
-  const { isOrgAdmin, isSysAdmin } = useRole();
+  const { isOrgAdmin } = useRole();
 
   // Loading state
   if (loading) {
@@ -84,8 +84,9 @@ export default function OrgKBAdminRoute() {
     }
   }, [selectedKb?.id, refreshDocuments]);
 
-  // Check authorization - org admins OR sys admins can access (ADR-016)
-  if (!isOrgAdmin && !isSysAdmin) {
+  // Check authorization - org admins only (revised ADR-016)
+  // Sys admins needing access should add themselves to the org
+  if (!isOrgAdmin) {
     return (
       <Box p={4}>
         <Alert severity="error">

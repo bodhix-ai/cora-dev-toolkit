@@ -242,32 +242,30 @@ class AdminAuthValidator:
                 "rule": "org-admin-auth/use-role-hook"
             })
         
-        # Check for sys admin access (org admin pages should allow sys admins)
-        has_org_admin_only = re.search(r'if\s*\(\s*!isOrgAdmin\s*\)', content)
+        # Check for sys admin access (org admin pages should NOT allow sys admins)
+        # Per revised ADR-016, org and sys admin pages have separate authorization
         has_sys_admin_check = 'isSysAdmin' in content
+        has_org_admin_check = 'isOrgAdmin' in content
         
-        # Look for explicit org-only comments
-        org_only_patterns = [
-            r"// Org admin pages should only check org roles",
-            r"// org admins only \(no sys admin access\)",
-            r"const hasAccess = isOrgAdmin;",
+        # Look for patterns that incorrectly allow sys admins on org pages
+        # These patterns allow access when EITHER isOrgAdmin OR isSysAdmin is true
+        sys_admin_allowed_patterns = [
+            r"!isOrgAdmin\s*&&\s*!isSysAdmin",  # if (!isOrgAdmin && !isSysAdmin) - denies only if BOTH false
+            r"!isSysAdmin\s*&&\s*!isOrgAdmin",  # if (!isSysAdmin && !isOrgAdmin) - same thing reversed
+            r"isOrgAdmin\s*\|\|\s*isSysAdmin",  # if (isOrgAdmin || isSysAdmin) - allows either
+            r"isSysAdmin\s*\|\|\s*isOrgAdmin",  # if (isSysAdmin || isOrgAdmin) - same thing reversed
         ]
         
-        for pattern in org_only_patterns:
-            if re.search(pattern, content, re.IGNORECASE):
-                self.warnings.append({
+        for pattern in sys_admin_allowed_patterns:
+            if re.search(pattern, content):
+                line_num = self._find_line_number(content, pattern)
+                self.errors.append({
                     "file": rel_path,
-                    "message": "ADR-016: Org admin page does not allow sys admin access for platform oversight",
-                    "rule": "org-admin-auth/allow-sys-admin"
+                    "line": line_num,
+                    "message": "ADR-016: Org admin page allows sys admin access. Per revised ADR-016, org pages should only allow org admins. Sys admins should add themselves to the org with appropriate role.",
+                    "rule": "org-admin-auth/org-admins-only"
                 })
                 break
-        
-        if has_org_admin_only and not has_sys_admin_check:
-            self.warnings.append({
-                "file": rel_path,
-                "message": "ADR-016: Auth check for isOrgAdmin without isSysAdmin fallback",
-                "rule": "org-admin-auth/allow-sys-admin"
-            })
     
     def _find_line_number(self, content: str, pattern: str) -> int:
         """Find the line number of the first match of a pattern."""

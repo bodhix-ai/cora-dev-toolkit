@@ -808,14 +808,14 @@ export async function deleteCriteriaItem(
 
 /**
  * Create a new evaluation
- * POST /workspaces/{wsId}/eval
+ * POST /ws/{wsId}/eval
  */
 export async function createEvaluation(
   token: string,
   workspaceId: string,
   input: CreateEvaluationInput
 ): Promise<Evaluation> {
-  return apiRequest<Evaluation>(`/workspaces/${workspaceId}/eval`, token, {
+  return apiRequest<Evaluation>(`/ws/${workspaceId}/eval`, token, {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -823,7 +823,7 @@ export async function createEvaluation(
 
 /**
  * List evaluations for a workspace
- * GET /workspaces/{wsId}/eval
+ * GET /ws/{wsId}/eval
  */
 export async function listEvaluations(
   token: string,
@@ -837,13 +837,13 @@ export async function listEvaluations(
     limit: options?.limit,
     offset: options?.offset,
   };
-  const url = buildUrl(`/workspaces/${workspaceId}/eval`, params);
+  const url = buildUrl(`/ws/${workspaceId}/eval`, params);
   return apiRequest<ListEvaluationsResponse>(url, token);
 }
 
 /**
  * Get evaluation detail with results
- * GET /workspaces/{wsId}/eval/{id}
+ * GET /ws/{wsId}/eval/{id}
  */
 export async function getEvaluation(
   token: string,
@@ -851,14 +851,14 @@ export async function getEvaluation(
   evaluationId: string
 ): Promise<Evaluation> {
   return apiRequest<Evaluation>(
-    `/workspaces/${workspaceId}/eval/${evaluationId}`,
+    `/ws/${workspaceId}/eval/${evaluationId}`,
     token
   );
 }
 
 /**
  * Get evaluation status (for polling during processing)
- * GET /workspaces/{wsId}/eval/{id}/status
+ * GET /ws/{wsId}/eval/{id}/status
  */
 export async function getEvaluationStatus(
   token: string,
@@ -866,14 +866,14 @@ export async function getEvaluationStatus(
   evaluationId: string
 ): Promise<EvaluationStatusResponse> {
   return apiRequest<EvaluationStatusResponse>(
-    `/workspaces/${workspaceId}/eval/${evaluationId}/status`,
+    `/ws/${workspaceId}/eval/${evaluationId}/status`,
     token
   );
 }
 
 /**
  * Update draft evaluation with configuration and trigger processing
- * PATCH /workspaces/{wsId}/eval/{id}
+ * PATCH /ws/{wsId}/eval/{id}
  */
 export async function updateEvaluation(
   token: string,
@@ -882,7 +882,7 @@ export async function updateEvaluation(
   input: UpdateEvaluationInput
 ): Promise<Evaluation> {
   return apiRequest<Evaluation>(
-    `/workspaces/${workspaceId}/eval/${evaluationId}`,
+    `/ws/${workspaceId}/eval/${evaluationId}`,
     token,
     {
       method: "PATCH",
@@ -893,7 +893,7 @@ export async function updateEvaluation(
 
 /**
  * Delete (soft) an evaluation
- * DELETE /workspaces/{wsId}/eval/{id}
+ * DELETE /ws/{wsId}/eval/{id}
  */
 export async function deleteEvaluation(
   token: string,
@@ -901,7 +901,7 @@ export async function deleteEvaluation(
   evaluationId: string
 ): Promise<{ message: string; id: string }> {
   return apiRequest<{ message: string; id: string }>(
-    `/workspaces/${workspaceId}/eval/${evaluationId}`,
+    `/ws/${workspaceId}/eval/${evaluationId}`,
     token,
     { method: "DELETE" }
   );
@@ -913,7 +913,7 @@ export async function deleteEvaluation(
 
 /**
  * Edit a criteria result
- * PATCH /workspaces/{wsId}/eval/{id}/results/{resultId}
+ * PATCH /ws/{wsId}/eval/{id}/results/{resultId}
  */
 export async function editResult(
   token: string,
@@ -928,7 +928,7 @@ export async function editResult(
   message: string;
 }> {
   return apiRequest(
-    `/workspaces/${workspaceId}/eval/${evaluationId}/results/${resultId}`,
+    `/ws/${workspaceId}/eval/${evaluationId}/results/${resultId}`,
     token,
     {
       method: "PATCH",
@@ -939,7 +939,7 @@ export async function editResult(
 
 /**
  * Get edit history for a criteria result
- * GET /workspaces/{wsId}/eval/{id}/results/{resultId}/history
+ * GET /ws/{wsId}/eval/{id}/results/{resultId}/history
  */
 export async function getEditHistory(
   token: string,
@@ -948,7 +948,7 @@ export async function getEditHistory(
   resultId: string
 ): Promise<EditHistoryResponse> {
   return apiRequest<EditHistoryResponse>(
-    `/workspaces/${workspaceId}/eval/${evaluationId}/results/${resultId}/history`,
+    `/ws/${workspaceId}/eval/${evaluationId}/results/${resultId}/history`,
     token
   );
 }
@@ -959,7 +959,7 @@ export async function getEditHistory(
 
 /**
  * Export evaluation as PDF
- * GET /workspaces/{wsId}/eval/{id}/export/pdf
+ * GET /ws/{wsId}/eval/{id}/export/pdf
  */
 export async function exportPdf(
   token: string,
@@ -967,14 +967,14 @@ export async function exportPdf(
   evaluationId: string
 ): Promise<ExportResponse> {
   return apiRequest<ExportResponse>(
-    `/workspaces/${workspaceId}/eval/${evaluationId}/export/pdf`,
+    `/ws/${workspaceId}/eval/${evaluationId}/export/pdf`,
     token
   );
 }
 
 /**
  * Export evaluation as XLSX
- * GET /workspaces/{wsId}/eval/{id}/export/xlsx
+ * GET /ws/{wsId}/eval/{id}/export/xlsx
  */
 export async function exportXlsx(
   token: string,
@@ -982,7 +982,7 @@ export async function exportXlsx(
   evaluationId: string
 ): Promise<ExportResponse> {
   return apiRequest<ExportResponse>(
-    `/workspaces/${workspaceId}/eval/${evaluationId}/export/xlsx`,
+    `/ws/${workspaceId}/eval/${evaluationId}/export/xlsx`,
     token
   );
 }

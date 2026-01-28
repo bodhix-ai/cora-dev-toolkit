@@ -334,33 +334,18 @@ def get_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, 
     """
     Get organization-level AI configuration.
     Accessible to organization admins for their own organization.
-    
-    Path parameters:
-        organizationId: UUID of the organization
+    Org ID comes from user's session (user's current organization).
     
     Returns:
         Organization AI configuration with inherited platform defaults.
     """
     try:
-        # Get organization ID from path parameters
-        path_params = event.get("pathParameters", {})
-        organization_id = path_params.get("orgId")
+        # Get user's org_id from their profile
+        profile = common.find_one('user_profiles', {'user_id': user_id})
+        if not profile or not profile.get('org_id'):
+            raise common.ForbiddenError('User does not belong to an organization')
         
-        if not organization_id:
-            return common.bad_request_response("orgId is required.")
-        
-        organization_id = common.validate_uuid(organization_id, 'organizationId')
-        
-        # Verify user is admin of the organization or system admin
-        is_sys_admin = _is_sys_admin(user_id)
-        is_org_admin = _check_org_admin(user_id, organization_id)
-        
-        if not is_sys_admin and not is_org_admin:
-            logger.warning(
-                f"Access denied for user {user_id} - "
-                f"not admin of organization {organization_id}"
-            )
-            raise common.ForbiddenError("Access denied. Organization admin role required.")
+        organization_id = profile['org_id']
         
         logger.info(
             f"Organization admin access granted for user {user_id} "
@@ -508,9 +493,7 @@ def update_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[st
     """
     Update organization-level AI configuration.
     Accessible to organization admins for their own organization.
-    
-    Path parameters:
-        organizationId: UUID of the organization
+    Org ID comes from user's session (user's current organization).
     
     Request body:
         {
@@ -521,20 +504,15 @@ def update_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[st
         Updated organization AI configuration.
     """
     try:
-        # Get organization ID from path parameters
-        path_params = event.get("pathParameters", {})
-        organization_id = path_params.get("orgId")
+        # Get user's org_id from their profile
+        profile = common.find_one('user_profiles', {'user_id': user_id})
+        if not profile or not profile.get('org_id'):
+            raise common.ForbiddenError('User does not belong to an organization')
         
-        if not organization_id:
-            return common.bad_request_response("orgId is required.")
+        organization_id = profile['org_id']
         
-        organization_id = common.validate_uuid(organization_id, 'orgId')
-        
-        # Verify user is admin of the organization or system admin
-        is_sys_admin = _is_sys_admin(user_id)
-        is_org_admin = _check_org_admin(user_id, organization_id)
-        
-        if not is_sys_admin and not is_org_admin:
+        # Verify user is admin of the organization
+        if not _check_org_admin(user_id, organization_id):
             logger.warning(
                 f"Access denied for user {user_id} - "
                 f"not admin of organization {organization_id}"
@@ -1065,20 +1043,18 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
     """
     Main Lambda handler that routes requests to appropriate functions.
     
-    Supported routes:
-        # AI Configuration
-        GET  /admin/ai/config -> get_platform_ai_config_handler
-        PUT  /admin/ai/config -> update_platform_ai_config_handler
-        GET  /admin/ai/models -> list_models_handler
-        GET  /orgs/{organizationId}/ai/config -> get_org_ai_config_handler
-        PUT  /orgs/{organizationId}/ai/config -> update_org_ai_config_handler
-        
-        # AI Provider Configuration
-        GET  /admin/ai/rag-config -> get_sys_rag_config_handler
-        PUT  /admin/ai/rag-config -> update_sys_rag_config_handler
-        GET  /admin/ai/providers -> list_rag_providers_handler
-        POST /admin/ai/providers/test -> test_rag_provider_handler
-        GET  /admin/ai/providers/models -> get_rag_provider_models_handler
+    Routes - System Admin - AI Configuration:
+    - GET  /admin/sys/ai/config - Get platform AI configuration
+    - PUT  /admin/sys/ai/config - Update platform AI configuration
+    - GET  /admin/sys/ai/rag-config - Get platform RAG configuration
+    - PUT  /admin/sys/ai/rag-config - Update platform RAG configuration
+    - POST /admin/sys/ai/providers/test - Test AI provider connection
+    
+    Routes - Organization Admin - AI Configuration:
+    - GET  /admin/org/ai/config - Get organization AI configuration
+    - PUT  /admin/org/ai/config - Update organization AI configuration
+    
+    Note: Provider and model CRUD routes are handled by the provider Lambda.
     """
     logger.info(json.dumps(event, default=str))
     
@@ -1094,47 +1070,30 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         
         logger.info(f"AI Config Handler - Method: {http_method}, Path: {path}")
         
-        # Define route patterns
-        org_ai_config_pattern = re.compile(r'^/orgs/[^/]+/ai/config$')
-        
         # Route to appropriate handler
-        # AI Configuration routes
-        if path == "/admin/ai/config":
+        # System admin AI configuration routes
+        if path == "/admin/sys/ai/config":
             if http_method == "GET":
                 return get_platform_ai_config_handler(event, supabase_user_id)
             elif http_method == "PUT":
                 return update_platform_ai_config_handler(event, supabase_user_id)
         
-        elif path == "/admin/ai/models":
-            if http_method == "GET":
-                return list_models_handler(event, supabase_user_id)
-        
-        # Organization-level AI configuration routes
-        # Match /orgs/{orgId}/ai/config pattern using explicit regex
-        elif org_ai_config_pattern.match(path):
-            if http_method == "GET":
-                return get_org_ai_config_handler(event, supabase_user_id)
-            elif http_method == "PUT":
-                return update_org_ai_config_handler(event, supabase_user_id)
-        
-        # AI Provider Configuration routes
-        elif path == "/admin/ai/rag-config":
+        elif path == "/admin/sys/ai/rag-config":
             if http_method == "GET":
                 return get_sys_rag_config_handler(event, supabase_user_id)
             elif http_method == "PUT":
                 return update_sys_rag_config_handler(event, supabase_user_id)
         
-        elif path == "/admin/ai/providers":
-            if http_method == "GET":
-                return list_rag_providers_handler(event, supabase_user_id)
-        
-        elif path == "/admin/ai/providers/test":
+        elif path == "/admin/sys/ai/providers/test":
             if http_method == "POST":
                 return test_rag_provider_handler(event, supabase_user_id)
         
-        elif path == "/admin/ai/providers/models":
+        # Organization admin AI configuration routes
+        elif path == "/admin/org/ai/config":
             if http_method == "GET":
-                return get_rag_provider_models_handler(event, supabase_user_id)
+                return get_org_ai_config_handler(event, supabase_user_id)
+            elif http_method == "PUT":
+                return update_org_ai_config_handler(event, supabase_user_id)
         
         elif http_method == "OPTIONS":
             return common.success_response({})

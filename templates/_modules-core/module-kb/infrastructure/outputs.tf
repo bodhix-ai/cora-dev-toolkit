@@ -149,74 +149,74 @@ output "api_routes" {
     # kb-base: Org admin routes
     {
       method      = "GET"
-      path        = "/admin/org/kbs"
+      path        = "/admin/org/kb/bases"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/admin/org/kbs"
+      path        = "/admin/org/kb/bases"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/admin/org/kbs/{kbId}"
+      path        = "/admin/org/kb/{kbId}"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
     {
       method      = "PATCH"
-      path        = "/admin/org/kbs/{kbId}"
+      path        = "/admin/org/kb/{kbId}"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/admin/org/kbs/{kbId}"
+      path        = "/admin/org/kb/{kbId}"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
     # kb-base: Platform admin routes
     {
       method      = "GET"
-      path        = "/admin/sys/kbs"
+      path        = "/admin/sys/kb/bases"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/admin/sys/kbs"
+      path        = "/admin/sys/kb/bases"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/admin/sys/kbs/{kbId}"
+      path        = "/admin/sys/kb/{kbId}"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
     {
       method      = "PATCH"
-      path        = "/admin/sys/kbs/{kbId}"
+      path        = "/admin/sys/kb/{kbId}"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/admin/sys/kbs/{kbId}"
+      path        = "/admin/sys/kb/{kbId}"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/admin/sys/kbs/{kbId}/orgs"
+      path        = "/admin/sys/kb/{kbId}/orgs"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/admin/sys/kbs/{kbId}/orgs/{orgId}"
+      path        = "/admin/sys/kb/{kbId}/orgs/{orgId}"
       integration = aws_lambda_function.kb_base.invoke_arn
       public      = false
     },
@@ -291,44 +291,44 @@ output "api_routes" {
     # kb-document: Org admin document routes
     {
       method      = "POST"
-      path        = "/admin/org/kbs/{kbId}/documents"
+      path        = "/admin/org/kb/{kbId}/documents"
       integration = aws_lambda_function.kb_document.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/admin/org/kbs/{kbId}/documents"
+      path        = "/admin/org/kb/{kbId}/documents"
       integration = aws_lambda_function.kb_document.invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/admin/org/kbs/{kbId}/documents/{docId}"
+      path        = "/admin/org/kb/{kbId}/documents/{docId}"
       integration = aws_lambda_function.kb_document.invoke_arn
       public      = false
     },
     {
       method      = "PUT"
-      path        = "/admin/org/kbs/{kbId}/documents/{docId}/complete"
+      path        = "/admin/org/kb/{kbId}/documents/{docId}/complete"
       integration = aws_lambda_function.kb_document.invoke_arn
       public      = false
     },
     # kb-document: Platform admin document routes
     {
       method      = "POST"
-      path        = "/admin/sys/kbs/{kbId}/documents"
+      path        = "/admin/sys/kb/{kbId}/documents"
       integration = aws_lambda_function.kb_document.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/admin/sys/kbs/{kbId}/documents"
+      path        = "/admin/sys/kb/{kbId}/documents"
       integration = aws_lambda_function.kb_document.invoke_arn
       public      = false
     },
     {
       method      = "PUT"
-      path        = "/admin/sys/kbs/{kbId}/documents/{docId}/complete"
+      path        = "/admin/sys/kb/{kbId}/documents/{docId}/complete"
       integration = aws_lambda_function.kb_document.invoke_arn
       public      = false
     }

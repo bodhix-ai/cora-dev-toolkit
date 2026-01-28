@@ -11,7 +11,11 @@ import sys
 from pathlib import Path
 
 # Import from the main validator module
-from .validate_routes import validate_project, format_text_output, format_json_output
+# Support both relative imports (when run as module) and absolute imports (when run as script)
+try:
+    from .validate_routes import validate_project, format_text_output, format_json_output
+except ImportError:
+    from validate_routes import validate_project, format_text_output, format_json_output
 
 
 def main():

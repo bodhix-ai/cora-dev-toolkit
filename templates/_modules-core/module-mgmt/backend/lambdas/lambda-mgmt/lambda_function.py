@@ -5,20 +5,27 @@ This Lambda function provides API endpoints for managing Lambda warming
 configurations, EventBridge rules, and the module registry. It follows 
 CORA patterns with standard auth and super admin authorization.
 
-Routes - Lambda Config:
-- GET /admin/sys/mgmt/lambda-config - List all configurations
-- GET /admin/sys/mgmt/lambda-config/{configKey} - Get specific configuration
-- PUT /admin/sys/mgmt/lambda-config/{configKey} - Update configuration
-- GET /admin/sys/mgmt/lambda-functions - List Lambda functions
-- POST /admin/sys/mgmt/lambda-config/sync - Manual EventBridge sync
+Routes - Lambda Warming Schedule:
+- GET /admin/sys/mgmt/schedule - List all schedule configurations
+- GET /admin/sys/mgmt/schedule/{configKey} - Get specific configuration
+- PUT /admin/sys/mgmt/schedule/{configKey} - Update configuration
+- POST /admin/sys/mgmt/schedule/sync - Manual EventBridge sync
 
-Routes - Module Registry:
+Routes - Lambda Functions:
+- GET /admin/sys/mgmt/functions - List Lambda functions
+
+Routes - Module Registry (System Admin):
 - GET /admin/sys/mgmt/modules - List all registered modules
 - GET /admin/sys/mgmt/modules/{name} - Get specific module
 - PUT /admin/sys/mgmt/modules/{name} - Update module configuration
 - POST /admin/sys/mgmt/modules/{name}/enable - Enable a module
 - POST /admin/sys/mgmt/modules/{name}/disable - Disable a module
 - POST /admin/sys/mgmt/modules - Register a new module
+
+Routes - Module Registry (Organization Admin):
+- GET /admin/org/mgmt/modules - List modules (read-only)
+- GET /admin/org/mgmt/modules/{name} - View module details (read-only)
+- GET /admin/org/mgmt/usage - View organization's module usage stats
 """
 
 import json
@@ -103,35 +110,54 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         if org_id:
             logger.info(f"Request from org_id: {org_id}")
         
-        # Verify sys admin role
+        # Get user profile for role checking
         profile = common.find_one(
             table='user_profiles',
             filters={'user_id': supabase_user_id}
         )
         
-        if not profile or profile.get('sys_role') not in SYS_ADMIN_ROLES:
-            logger.warning(f"Access denied for user {supabase_user_id} - not sys admin")
-            return common.forbidden_response('System admin role required')
+        if not profile:
+            logger.warning(f"User profile not found for {supabase_user_id}")
+            return common.forbidden_response('User profile not found')
         
-        logger.info(f"System admin access granted for user {supabase_user_id}")
+        # Check if route requires sys admin or org admin
+        is_sys_admin = profile.get('sys_role') in SYS_ADMIN_ROLES
+        is_org_admin = profile.get('org_role') == 'org_admin'
+        
+        # System admin routes require sys_admin role
+        if path.startswith('/admin/sys/'):
+            if not is_sys_admin:
+                logger.warning(f"Access denied for user {supabase_user_id} - sys admin required")
+                return common.forbidden_response('System admin role required')
+            logger.info(f"System admin access granted for user {supabase_user_id}")
+        
+        # Organization admin routes require org_admin role + org verification
+        elif path.startswith('/admin/org/'):
+            if not is_org_admin:
+                logger.warning(f"Access denied for user {supabase_user_id} - org admin required")
+                return common.forbidden_response('Organization admin role required')
+            if not org_id:
+                logger.warning(f"Org admin missing org_id for {supabase_user_id}")
+                return common.forbidden_response('Organization context required')
+            logger.info(f"Organization admin access granted for user {supabase_user_id}, org: {org_id}")
         
         # Route dispatcher
-        if path.endswith('/admin/sys/mgmt/lambda-config') and http_method == 'GET':
+        if path.endswith('/admin/sys/mgmt/schedule') and http_method == 'GET':
             return handle_list_configs()
         
-        elif path.endswith('/admin/sys/mgmt/lambda-config/sync') and http_method == 'POST':
+        elif path.endswith('/admin/sys/mgmt/schedule/sync') and http_method == 'POST':
             return handle_sync_eventbridge(supabase_user_id)
         
-        elif '/admin/sys/mgmt/lambda-config/' in path and http_method == 'GET':
+        elif '/admin/sys/mgmt/schedule/' in path and http_method == 'GET':
             config_key = path_parameters.get('configKey')
             return handle_get_config(config_key)
         
-        elif '/admin/sys/mgmt/lambda-config/' in path and http_method == 'PUT':
+        elif '/admin/sys/mgmt/schedule/' in path and http_method == 'PUT':
             config_key = path_parameters.get('configKey')
             body = json.loads(event.get('body', '{}'))
             return handle_update_config(config_key, body, supabase_user_id)
         
-        elif path.endswith('/admin/sys/mgmt/lambda-functions') and http_method == 'GET':
+        elif path.endswith('/admin/sys/mgmt/functions') and http_method == 'GET':
             return handle_list_functions()
         
         # Module Registry Routes
@@ -160,6 +186,17 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
             body = json.loads(event.get('body', '{}'))
             return handle_update_module(module_name, body, supabase_user_id)
         
+        # Organization Admin Routes (read-only)
+        elif path.endswith('/admin/org/mgmt/modules') and http_method == 'GET':
+            return handle_list_modules(event)  # Reuse sys admin handler (read-only)
+        
+        elif '/admin/org/mgmt/modules/' in path and http_method == 'GET':
+            module_name = path_parameters.get('name')
+            return handle_get_module(module_name)  # Reuse sys admin handler (read-only)
+        
+        elif path.endswith('/admin/org/mgmt/usage') and http_method == 'GET':
+            return handle_org_module_usage(org_id)
+        
         else:
             return common.not_found_response(f'Route not found: {http_method} {path}')
     
@@ -186,9 +223,9 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
 
 def handle_list_configs() -> Dict[str, Any]:
     """
-    GET /admin/sys/mgmt/lambda-config
+    GET /admin/sys/mgmt/schedule
     
-    List all platform Lambda configurations.
+    List all Lambda warming schedule configurations.
     
     Returns:
         List of configuration objects (camelCase)
@@ -211,9 +248,9 @@ def handle_list_configs() -> Dict[str, Any]:
 
 def handle_get_config(config_key: str) -> Dict[str, Any]:
     """
-    GET /admin/sys/mgmt/lambda-config/{configKey}
+    GET /admin/sys/mgmt/schedule/{configKey}
     
-    Get a specific configuration by key.
+    Get a specific schedule configuration by key.
     
     Args:
         config_key: Configuration key (e.g., "lambda_warming")
@@ -247,9 +284,9 @@ def handle_update_config(
     user_id: str
 ) -> Dict[str, Any]:
     """
-    PUT /admin/sys/mgmt/lambda-config/{configKey}
+    PUT /admin/sys/mgmt/schedule/{configKey}
     
-    Update a configuration. If lambda_warming, also syncs EventBridge rules.
+    Update a schedule configuration. If lambda_warming, also syncs EventBridge rules.
     
     Args:
         config_key: Configuration key
@@ -327,7 +364,7 @@ def handle_update_config(
 
 def handle_list_functions() -> Dict[str, Any]:
     """
-    GET /admin/sys/mgmt/lambda-functions
+    GET /admin/sys/mgmt/functions
     
     List all Lambda functions in the environment.
     
@@ -350,7 +387,7 @@ def handle_list_functions() -> Dict[str, Any]:
 
 def handle_sync_eventbridge(user_id: str) -> Dict[str, Any]:
     """
-    POST /admin/sys/mgmt/lambda-config/sync
+    POST /admin/sys/mgmt/schedule/sync
     
     Manually trigger EventBridge rule synchronization.
     Useful for testing or fixing sync issues.
@@ -686,6 +723,57 @@ def handle_disable_module(
     except Exception as e:
         logger.exception(f'Error disabling module {module_name}: {str(e)}')
         raise
+
+
+def handle_org_module_usage(org_id: str) -> Dict[str, Any]:
+    """
+    GET /admin/org/mgmt/usage
+    
+    View module usage statistics for an organization.
+    
+    Args:
+        org_id: Organization ID
+    
+    Returns:
+        Module usage statistics for the organization
+    """
+    if not org_id:
+        raise common.ValidationError('Organization ID is required')
+    
+    try:
+        # Query usage stats for this organization
+        # Note: This table may not exist yet - handle gracefully
+        usage_stats = common.find_many(
+            table='mgmt_usage_modules',
+            filters={'org_id': org_id}
+        )
+        
+        # Transform to API format
+        result = {
+            'orgId': org_id,
+            'usage': [
+                {
+                    'moduleName': stat.get('module_name'),
+                    'usageCount': stat.get('usage_count', 0),
+                    'lastUsedAt': stat.get('last_used_at'),
+                }
+                for stat in usage_stats
+            ],
+            'totalModules': len(usage_stats),
+        }
+        
+        logger.info(f"Retrieved module usage stats for org {org_id}: {len(usage_stats)} modules")
+        return common.success_response(result)
+    
+    except Exception as e:
+        # If table doesn't exist yet, return empty result gracefully
+        logger.warning(f"Error retrieving usage stats for org {org_id}: {str(e)}")
+        return common.success_response({
+            'orgId': org_id,
+            'usage': [],
+            'totalModules': 0,
+            'message': 'Usage tracking not yet available'
+        })
 
 
 def handle_register_module(body: Dict[str, Any], user_id: str) -> Dict[str, Any]:
