@@ -15,27 +15,27 @@ Routes - Organization Admin:
 - PUT /admin/org/ws/settings - Update org workspace settings
 - GET /admin/org/ws/analytics - Get workspace analytics for organization
 - GET /admin/org/ws/workspaces - List all org workspaces (admin view)
-- POST /admin/org/ws/workspaces/{workspaceId}/restore - Admin restore workspace
-- DELETE /admin/org/ws/workspaces/{workspaceId} - Admin force delete workspace
+- POST /admin/org/ws/workspaces/{wsId}/restore - Admin restore workspace
+- DELETE /admin/org/ws/workspaces/{wsId} - Admin force delete workspace
 
 Routes - Workspaces:
 - GET /ws - List user's workspaces
 - POST /ws - Create new workspace
-- GET /ws/{workspaceId} - Get workspace details
-- PUT /ws/{workspaceId} - Update workspace
-- DELETE /ws/{workspaceId} - Soft delete workspace
-- POST /ws/{workspaceId}/restore - Restore deleted workspace
-- GET /ws/{workspaceId}/activity - Get workspace activity log
-- POST /ws/{workspaceId}/transfer - Transfer workspace ownership
+- GET /ws/{wsId} - Get workspace details
+- PUT /ws/{wsId} - Update workspace
+- DELETE /ws/{wsId} - Soft delete workspace
+- POST /ws/{wsId}/restore - Restore deleted workspace
+- GET /ws/{wsId}/activity - Get workspace activity log
+- POST /ws/{wsId}/transfer - Transfer workspace ownership
 
 Routes - Members:
-- GET /ws/{workspaceId}/members - List workspace members
-- POST /ws/{workspaceId}/members - Add member
-- PUT /ws/{workspaceId}/members/{memberId} - Update member role
-- DELETE /ws/{workspaceId}/members/{memberId} - Remove member
+- GET /ws/{wsId}/members - List workspace members
+- POST /ws/{wsId}/members - Add member
+- PUT /ws/{wsId}/members/{memberId} - Update member role
+- DELETE /ws/{wsId}/members/{memberId} - Remove member
 
 Routes - Favorites:
-- POST /ws/{workspaceId}/favorite - Toggle favorite
+- POST /ws/{wsId}/favorite - Toggle favorite
 - GET /ws/favorites - List user's favorites
 """
 
@@ -134,11 +134,11 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
             return handle_admin_list_workspaces(org_id, supabase_user_id, user_info, event)
         
         elif path.startswith('/admin/org/ws/workspaces/') and path.endswith('/restore') and http_method == 'POST':
-            workspace_id = path_parameters.get('workspaceId')
+            workspace_id = path_parameters.get('wsId')
             return handle_admin_restore_workspace(workspace_id, org_id, supabase_user_id, user_info)
         
         elif path.startswith('/admin/org/ws/workspaces/') and http_method == 'DELETE':
-            workspace_id = path_parameters.get('workspaceId')
+            workspace_id = path_parameters.get('wsId')
             return handle_admin_delete_workspace(workspace_id, org_id, supabase_user_id, user_info)
         
         # Route dispatcher - Workspaces
@@ -151,39 +151,39 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
             return handle_create_workspace(org_id, supabase_user_id, body)
         
         elif path.endswith('/restore') and http_method == 'POST':
-            workspace_id = path_parameters.get('workspaceId')
+            workspace_id = path_parameters.get('wsId')
             return handle_restore_workspace(workspace_id, supabase_user_id)
         
         elif path.endswith('/favorite') and http_method == 'POST':
-            workspace_id = path_parameters.get('workspaceId')
+            workspace_id = path_parameters.get('wsId')
             return handle_toggle_favorite(workspace_id, supabase_user_id)
         
         elif path.endswith('/activity') and http_method == 'GET':
-            workspace_id = path_parameters.get('workspaceId')
+            workspace_id = path_parameters.get('wsId')
             return handle_get_workspace_activity(workspace_id, supabase_user_id, user_info)
         
         elif path.endswith('/transfer') and http_method == 'POST':
-            workspace_id = path_parameters.get('workspaceId')
+            workspace_id = path_parameters.get('wsId')
             body = json.loads(event.get('body', '{}'))
             return handle_transfer_ownership(workspace_id, supabase_user_id, user_info, body)
         
         elif path.endswith('/members') and http_method == 'GET':
-            workspace_id = path_parameters.get('workspaceId')
+            workspace_id = path_parameters.get('wsId')
             return handle_list_members(workspace_id, supabase_user_id)
         
         elif path.endswith('/members') and http_method == 'POST':
-            workspace_id = path_parameters.get('workspaceId')
+            workspace_id = path_parameters.get('wsId')
             body = json.loads(event.get('body', '{}'))
             return handle_add_member(workspace_id, supabase_user_id, body)
         
         elif '/members/' in path and http_method == 'PUT':
-            workspace_id = path_parameters.get('workspaceId')
+            workspace_id = path_parameters.get('wsId')
             member_id = path_parameters.get('memberId')
             body = json.loads(event.get('body', '{}'))
             return handle_update_member(workspace_id, member_id, supabase_user_id, body)
         
         elif '/members/' in path and http_method == 'DELETE':
-            workspace_id = path_parameters.get('workspaceId')
+            workspace_id = path_parameters.get('wsId')
             member_id = path_parameters.get('memberId')
             return handle_remove_member(workspace_id, member_id, supabase_user_id)
         
@@ -191,16 +191,16 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
             return handle_list_favorites(org_id, supabase_user_id)
         
         elif path.startswith('/ws/') and http_method == 'GET':
-            workspace_id = path_parameters.get('workspaceId')
+            workspace_id = path_parameters.get('wsId')
             return handle_get_workspace(workspace_id, supabase_user_id)
         
         elif path.startswith('/ws/') and http_method == 'PUT':
-            workspace_id = path_parameters.get('workspaceId')
+            workspace_id = path_parameters.get('wsId')
             body = json.loads(event.get('body', '{}'))
             return handle_update_workspace(workspace_id, supabase_user_id, body)
         
         elif path.startswith('/ws/') and http_method == 'DELETE':
-            workspace_id = path_parameters.get('workspaceId')
+            workspace_id = path_parameters.get('wsId')
             return handle_delete_workspace(workspace_id, supabase_user_id)
         
         else:

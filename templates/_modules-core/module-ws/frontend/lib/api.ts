@@ -79,12 +79,12 @@ export class WorkspaceApiClient {
   /**
    * Get a single workspace by ID
    */
-  async getWorkspace(workspaceId: string, orgId: string): Promise<Workspace | null> {
+  async getWorkspace(wsId: string, orgId: string): Promise<Workspace | null> {
     try {
-      const response = await this.client.get<ApiResponse<{ workspace: Workspace }>>(`/ws/${workspaceId}?orgId=${orgId}`);
+      const response = await this.client.get<ApiResponse<{ workspace: Workspace }>>(`/ws/${wsId}?orgId=${orgId}`);
       return response?.data?.workspace || null;
     } catch (error) {
-      console.error(`Failed to get workspace ${workspaceId}:`, error);
+      console.error(`Failed to get workspace ${wsId}:`, error);
       return null;
     }
   }
@@ -109,15 +109,15 @@ export class WorkspaceApiClient {
   /**
    * Update a workspace
    */
-  async updateWorkspace(workspaceId: string, data: WorkspaceUpdateRequest, orgId: string): Promise<Workspace> {
+  async updateWorkspace(wsId: string, data: WorkspaceUpdateRequest, orgId: string): Promise<Workspace> {
     try {
-      const response = await this.client.put<ApiResponse<Workspace>>(`/ws/${workspaceId}?orgId=${orgId}`, data);
+      const response = await this.client.put<ApiResponse<Workspace>>(`/ws/${wsId}?orgId=${orgId}`, data);
       if (!response?.data) {
         throw new Error(response?.error || "Failed to update workspace");
       }
       return response.data;
     } catch (error) {
-      console.error(`Failed to update workspace ${workspaceId}:`, error);
+      console.error(`Failed to update workspace ${wsId}:`, error);
       throw new Error("Failed to update workspace");
     }
   }
@@ -125,14 +125,14 @@ export class WorkspaceApiClient {
   /**
    * Delete a workspace (soft delete by default)
    */
-  async deleteWorkspace(workspaceId: string, orgId: string, permanent = false): Promise<DeleteWorkspaceResponse> {
+  async deleteWorkspace(wsId: string, orgId: string, permanent = false): Promise<DeleteWorkspaceResponse> {
     try {
       const params = new URLSearchParams({ orgId: orgId });
       if (permanent) params.set("permanent", "true");
-      const response = await this.client.delete<ApiResponse<DeleteWorkspaceResponse>>(`/ws/${workspaceId}?${params.toString()}`);
+      const response = await this.client.delete<ApiResponse<DeleteWorkspaceResponse>>(`/ws/${wsId}?${params.toString()}`);
       return response?.data || { success: true };
     } catch (error) {
-      console.error(`Failed to delete workspace ${workspaceId}:`, error);
+      console.error(`Failed to delete workspace ${wsId}:`, error);
       throw new Error("Failed to delete workspace");
     }
   }
@@ -140,10 +140,10 @@ export class WorkspaceApiClient {
   /**
    * Restore a soft-deleted workspace
    */
-  async restoreWorkspace(workspaceId: string, orgId: string): Promise<Workspace> {
+  async restoreWorkspace(wsId: string, orgId: string): Promise<Workspace> {
     try {
       const response = await this.client.post<ApiResponse<Workspace>>(
-        `/ws/${workspaceId}/restore?orgId=${orgId}`,
+        `/ws/${wsId}/restore?orgId=${orgId}`,
         {}
       );
       if (!response?.data) {
@@ -151,7 +151,7 @@ export class WorkspaceApiClient {
       }
       return response.data;
     } catch (error) {
-      console.error(`Failed to restore workspace ${workspaceId}:`, error);
+      console.error(`Failed to restore workspace ${wsId}:`, error);
       throw new Error("Failed to restore workspace");
     }
   }
@@ -163,14 +163,14 @@ export class WorkspaceApiClient {
   /**
    * List members of a workspace
    */
-  async listMembers(workspaceId: string, orgId: string): Promise<WorkspaceMember[]> {
+  async listMembers(wsId: string, orgId: string): Promise<WorkspaceMember[]> {
     try {
       const response = await this.client.get<ApiResponse<{ members: WorkspaceMember[]; totalCount: number }>>(
-        `/ws/${workspaceId}/members?orgId=${orgId}`
+        `/ws/${wsId}/members?orgId=${orgId}`
       );
       return response?.data?.members || [];
     } catch (error) {
-      console.error(`Failed to list members for workspace ${workspaceId}:`, error);
+      console.error(`Failed to list members for workspace ${wsId}:`, error);
       return [];
     }
   }
@@ -178,10 +178,10 @@ export class WorkspaceApiClient {
   /**
    * Add a member to a workspace
    */
-  async addMember(workspaceId: string, data: AddMemberRequest, orgId: string): Promise<WorkspaceMember> {
+  async addMember(wsId: string, data: AddMemberRequest, orgId: string): Promise<WorkspaceMember> {
     try {
       const response = await this.client.post<ApiResponse<WorkspaceMember>>(
-        `/ws/${workspaceId}/members?orgId=${orgId}`,
+        `/ws/${wsId}/members?orgId=${orgId}`,
         data
       );
       if (!response?.data) {
@@ -189,7 +189,7 @@ export class WorkspaceApiClient {
       }
       return response.data;
     } catch (error) {
-      console.error(`Failed to add member to workspace ${workspaceId}:`, error);
+      console.error(`Failed to add member to workspace ${wsId}:`, error);
       throw new Error("Failed to add member");
     }
   }
@@ -198,14 +198,14 @@ export class WorkspaceApiClient {
    * Update a member's role
    */
   async updateMember(
-    workspaceId: string,
+    wsId: string,
     memberId: string,
     data: UpdateMemberRequest,
     orgId: string
   ): Promise<WorkspaceMember> {
     try {
       const response = await this.client.put<ApiResponse<WorkspaceMember>>(
-        `/ws/${workspaceId}/members/${memberId}?orgId=${orgId}`,
+        `/ws/${wsId}/members/${memberId}?orgId=${orgId}`,
         data
       );
       if (!response?.data) {
@@ -213,7 +213,7 @@ export class WorkspaceApiClient {
       }
       return response.data;
     } catch (error) {
-      console.error(`Failed to update member ${memberId} in workspace ${workspaceId}:`, error);
+      console.error(`Failed to update member ${memberId} in workspace ${wsId}:`, error);
       throw new Error("Failed to update member role");
     }
   }
@@ -221,11 +221,11 @@ export class WorkspaceApiClient {
   /**
    * Remove a member from a workspace
    */
-  async removeMember(workspaceId: string, memberId: string, orgId: string): Promise<void> {
+  async removeMember(wsId: string, memberId: string, orgId: string): Promise<void> {
     try {
-      await this.client.delete(`/ws/${workspaceId}/members/${memberId}?orgId=${orgId}`);
+      await this.client.delete(`/ws/${wsId}/members/${memberId}?orgId=${orgId}`);
     } catch (error) {
-      console.error(`Failed to remove member ${memberId} from workspace ${workspaceId}:`, error);
+      console.error(`Failed to remove member ${memberId} from workspace ${wsId}:`, error);
       throw new Error("Failed to remove member");
     }
   }
@@ -237,10 +237,10 @@ export class WorkspaceApiClient {
   /**
    * Toggle favorite status for a workspace
    */
-  async toggleFavorite(workspaceId: string, orgId: string): Promise<FavoriteToggleResponse> {
+  async toggleFavorite(wsId: string, orgId: string): Promise<FavoriteToggleResponse> {
     try {
       const response = await this.client.post<ApiResponse<FavoriteToggleResponse & { isFavorited?: boolean; favoritedAt?: string }>>(
-        `/ws/${workspaceId}/favorite?orgId=${orgId}`,
+        `/ws/${wsId}/favorite?orgId=${orgId}`,
         {}
       );
       
@@ -254,7 +254,7 @@ export class WorkspaceApiClient {
       }
       return { isFavorited: false };
     } catch (error) {
-      console.error(`Failed to toggle favorite for workspace ${workspaceId}:`, error);
+      console.error(`Failed to toggle favorite for workspace ${wsId}:`, error);
       throw new Error("Failed to update favorite status");
     }
   }
@@ -509,10 +509,10 @@ export class WorkspaceApiClient {
   /**
    * Admin restore workspace (org owner only)
    */
-  async adminRestoreWorkspace(workspaceId: string, orgId: string): Promise<Workspace> {
+  async adminRestoreWorkspace(wsId: string, orgId: string): Promise<Workspace> {
     try {
       const response = await this.client.post<ApiResponse<Workspace>>(
-        `/admin/org/ws/workspaces/${workspaceId}/restore?orgId=${orgId}`,
+        `/admin/org/ws/workspaces/${wsId}/restore?orgId=${orgId}`,
         {}
       );
       if (!response?.data) {
@@ -520,7 +520,7 @@ export class WorkspaceApiClient {
       }
       return response.data;
     } catch (error) {
-      console.error(`Failed to admin restore workspace ${workspaceId}:`, error);
+      console.error(`Failed to admin restore workspace ${wsId}:`, error);
       throw new Error("Failed to restore workspace");
     }
   }
@@ -528,11 +528,11 @@ export class WorkspaceApiClient {
   /**
    * Admin force delete workspace (org owner only)
    */
-  async adminForceDelete(workspaceId: string, orgId: string): Promise<void> {
+  async adminForceDelete(wsId: string, orgId: string): Promise<void> {
     try {
-      await this.client.delete(`/admin/org/ws/workspaces/${workspaceId}?orgId=${orgId}&force=true`);
+      await this.client.delete(`/admin/org/ws/workspaces/${wsId}?orgId=${orgId}&force=true`);
     } catch (error) {
-      console.error(`Failed to force delete workspace ${workspaceId}:`, error);
+      console.error(`Failed to force delete workspace ${wsId}:`, error);
       throw new Error("Failed to delete workspace");
     }
   }
