@@ -335,9 +335,110 @@ All 7 steps verified as complete from previous session:
 module-kb routes EXIST for both sys and org but are malformed. They use `/admin/sys/kbs` instead of `/admin/sys/kb/bases`. This is better than missing entirely - only needs path restructuring (1-2 hours) vs full route creation (3-4 hours).
 
 **Next Session:**
-- Begin Phase 2: Admin Page Parity & Route Standardization
-- Start with module-kb path fixes (quickest win)
-- Then address missing sys/org admin routes for other modules
+- Continue Phase 2: Module-by-Module Admin Parity
+- Next target: module-mgmt (route standardization + org routes)
+
+### January 27, 2026 - Sprint 3b Session 5
+
+**Status:** Module-Mgmt Route Standardization Complete (Sys + Org)
+**Branch:** `admin-page-s3b`
+
+**Work Completed:**
+
+1. **Module-Mgmt Route Standardization - COMPLETE** ✅
+   - Fixed all sys admin routes with intuitive naming:
+     - `/admin/sys/mgmt/lambda-config` → `/admin/sys/mgmt/schedule`
+     - `/admin/sys/mgmt/lambda-functions` → `/admin/sys/mgmt/functions`
+   - Applied singular/plural convention (schedule=singleton, functions=collection)
+   - User approved "schedule" naming for Lambda warming config
+
+2. **Module-Mgmt Org Admin Routes - COMPLETE** ✅
+   - Added 3 org admin routes to outputs.tf:
+     - `GET /admin/org/mgmt/modules` - List modules (read-only)
+     - `GET /admin/org/mgmt/modules/{name}` - View module details
+     - `GET /admin/org/mgmt/usage` - View org's module usage stats
+   
+3. **Backend Lambda Updates - COMPLETE** ✅
+   - Updated module docstring with new routes
+   - Added org admin authorization logic (sys vs org role checks)
+   - Added org admin route dispatcher
+   - Created `handle_org_module_usage()` function
+   - Updated all 5 function docstrings
+
+4. **Frontend Updates - COMPLETE** ✅
+   - Updated `module-mgmt/frontend/lib/api.ts` - 5 API endpoint calls
+   - Created `apps/web/app/admin/org/mgmt/page.tsx` - New org admin page
+
+**Files Changed (7 total):**
+- `templates/_modules-core/module-mgmt/infrastructure/outputs.tf`
+- `templates/_modules-core/module-mgmt/backend/lambdas/lambda-mgmt/lambda_function.py`
+- `templates/_modules-core/module-mgmt/frontend/lib/api.ts`
+- `templates/_project-stack-template/apps/web/app/admin/org/mgmt/page.tsx` (NEW)
+
+**Key Decisions:**
+- Used "schedule" instead of "lambda" or "config/lambda" for warming config (user approved)
+- Singular for singletons (`/schedule`), plural for collections (`/functions`, `/modules`)
+- Org admin routes are read-only (view modules/usage only, no modifications)
+
+**Progress Summary:**
+- **3 of 8 modules complete** (kb, eval, mgmt)
+- **5 modules remaining** (access, ai, ws, chat, voice)
+- Following module-by-module approach as defined in plan
+
+**Next Session:**
+- Target: module-access (Tier 1 work)
+- Needs: Route migration (4 routes) + org admin pages
+- Estimated: 8-10 hours for full module-access completion
+
+---
+
+### January 27, 2026 - Sprint 3b Session 4
+
+**Status:** Module-KB Route Standardization Complete
+**Branch:** `admin-page-s3b`
+
+**Work Completed:**
+
+1. **Module-KB Route Fixes - ALL 13 ROUTES CORRECTED** ✅
+   - Fixed malformed admin routes using plural `kbs` instead of singular `kb`
+   - Applied standard pattern: `/admin/{scope}/kb` where scope is sys or org
+   
+2. **Backend Lambda Updates (2 files):**
+   - `kb-base/lambda_function.py` - Updated 7 route docstrings + routing logic
+   - `kb-document/lambda_function.py` - Updated 4 route docstrings + routing logic
+   
+3. **Infrastructure Updates (1 file):**
+   - `infrastructure/outputs.tf` - Corrected 13 API Gateway route definitions:
+     - 5 kb-base org admin routes: `/admin/org/kbs` → `/admin/org/kb`
+     - 7 kb-base sys admin routes: `/admin/sys/kbs` → `/admin/sys/kb`
+     - 4 kb-document org admin routes
+     - 3 kb-document sys admin routes
+   
+4. **Frontend Updates (1 file):**
+   - `frontend/lib/api.ts` - Updated 17 API calls:
+     - 8 orgAdmin endpoints
+     - 9 sysAdmin endpoints
+
+**Key Decision:**
+- User approved singular design (`/admin/org/kb`) without redundant "bases" suffix
+- Aligns with chat/ws KB routes (`/chats/{chatId}/kb`, `/ws/{wsId}/kb`)
+- Maintains consistency with other modules (eval, mgmt use singular names)
+
+**Pattern Rationale:**
+- Chat & WS KBs: 1 per entity, implicit creation, entity-scoped routes
+- Org & Sys KBs: Multiple per scope, explicit admin creation, require admin pages
+- All admin routes follow `/admin/{scope}/{module}` pattern with singular module name
+
+**Files Changed:**
+- `templates/_modules-core/module-kb/backend/lambdas/kb-base/lambda_function.py`
+- `templates/_modules-core/module-kb/backend/lambdas/kb-document/lambda_function.py`
+- `templates/_modules-core/module-kb/infrastructure/outputs.tf`
+- `templates/_modules-core/module-kb/frontend/lib/api.ts`
+
+**Impact:**
+- Module-KB now compliant with ADR-018 route standards
+- Module-KB removed from validator error list (13 errors resolved)
+- Changes apply to new projects via templates; existing projects need sync
 
 ---
 

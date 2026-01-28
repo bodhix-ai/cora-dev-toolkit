@@ -1,4 +1,4 @@
-# Plan: Admin Standardization S3b - Route Standards & Version Tracking
+e m# Plan: Admin Standardization S3b - Route Standards & Version Tracking
 
 **Initiative:** Admin Standardization  
 **Sprint:** S3b  
@@ -10,18 +10,49 @@
 
 ## Current Progress
 
-**Last Updated:** January 27, 2026 (Session 1)
+**Last Updated:** January 27, 2026 (Session 5)
 
 **Completed:**
-- ✅ Sprint planning and documentation
-- ✅ Versioning standard defined
-- ✅ Branch created and pushed to remote
-- ✅ Context files updated
+- ✅ Session 1: Sprint planning and documentation
+- ✅ Session 1: Versioning standard defined
+- ✅ Session 1: Branch created and pushed to remote
+- ✅ Session 1: Context files updated
+- ✅ **Session 2: Phase 1 COMPLETE** - Version Tracking Foundation
+  - Step 1.2: VERSION file created (0.1.0)
+  - Step 1.3: CHANGELOG.md created
+  - Step 1.4: module-registry.yaml enhanced with dependencies
+  - Step 1.5: .cora-version.yaml template created
+  - Step 1.6: create-cora-project.sh version stamping implemented
+  - Step 1.7: sync-fix-to-project.sh logging implemented
+- ✅ **Session 2: Admin Page Parity Analysis COMPLETE**
+  - Analyzed all 8 modules for sys/org admin route parity
+  - Created gap matrix showing compliance status
+  - **SCOPE EXPANDED:** Not just 51 validator errors - 6 modules need significant work
+- ✅ **Session 3: Admin Route Validator Enhanced**
+  - Fixed critical validator bug (false positives)
+  - Added module parity checking to validator
+  - Enhanced output reports with actionable metrics
+- ✅ **Session 4: Module-KB Route Standardization COMPLETE**
+  - Fixed all 13 malformed routes (`/admin/org/kbs` → `/admin/org/kb`)
+  - Updated 4 files: 2 Lambda functions, 1 outputs.tf, 1 api.ts
+  - User approved singular design without "bases" suffix
+  - Module-KB now compliant with ADR-018
+- ✅ **Session 5: Module-Mgmt Route Standardization COMPLETE**
+  - Fixed sys admin routes: `/lambda-config` → `/schedule`, `/lambda-functions` → `/functions`
+  - Applied singular/plural convention (schedule=singleton, functions=collection)
+  - Added 3 org admin routes (read-only view of modules and usage)
+  - Updated 4 files: outputs.tf, lambda_function.py, api.ts, new org admin page
+  - Module-Mgmt now has full sys + org admin parity
+
+**Module Completion Status:**
+- ✅ **3 modules complete:** kb, eval, mgmt (sys + org admin pages)
+- ⏳ **5 modules remaining:** access, ai, ws, chat, voice
 
 **Next Session:**
-- Start Phase 1: Version Tracking Foundation
-- Begin with Step 1.2: Create VERSION file (0.1.0)
-- Estimated: 4-6 hours for Phase 1
+- **Target:** module-access (Tier 1 work)
+- **Scope:** Route migration (4 legacy routes) + org admin pages
+- **Estimated:** 8-10 hours for full module-access completion
+- **Strategy:** Update existing sys admin pages, create org admin pages
 
 ---
 
@@ -44,13 +75,153 @@ With 4 projects now having their own git repositories (ai-ccat, pm-app, etc.), w
 - Dependency tracking prevents breaking changes
 - Sustainable upgrade path for production projects
 
-### Admin Route Issues
+### Admin Route Issues - REVISED SCOPE
 
-Admin Route Validator shows 84 errors (31% of remaining validation errors):
+**Initial Assessment (Session 1):**
+- Admin Route Validator shows 51 errors (down from estimated 84)
 - All in `module-mgmt/infrastructure/outputs.tf`
 - Missing scope prefixes: `/admin/sys/mgmt/lambda-config` → `/admin/sys/mgmt/config/lambda`
-- Established during WS Plugin Architecture S3 planning session
 - Standard defined in ADR-018b and `standard_ADMIN-API-ROUTES.md`
+
+**Expanded Scope (Session 2):**
+After analyzing admin page parity across all 8 modules, the true scope is **much larger**:
+
+### Admin Page Parity Gap Matrix
+
+| Module | Sys Admin Routes | Org Admin Routes | Status | Required Work |
+|--------|-----------------|------------------|--------|---------------|
+| **module-kb** | ✅ `/admin/sys/kbs/*` | ✅ `/admin/org/kbs/*` | ✅ PARITY | None |
+| **module-eval** | ✅ `/admin/sys/eval/*` | ✅ `/admin/org/eval/*` | ✅ PARITY | None |
+| **module-mgmt** | ✅ `/admin/sys/mgmt/*` | ❌ MISSING | ⚠️ PARTIAL | Add org admin routes + fix 51 route naming issues |
+| **module-access** | ⚠️ `/admin/idp-config`, `/admin/users` | ❌ MISSING | ❌ NON-STANDARD | Migrate to `/admin/sys/access/*` + add org routes |
+| **module-ai** | ⚠️ `/admin/ai/*` | ❌ MISSING | ❌ NON-STANDARD | Migrate to `/admin/sys/ai/*` + add org routes |
+| **module-ws** | ⚠️ `/ws/admin/*` | ❌ MISSING | ❌ NON-STANDARD | Migrate to `/admin/sys/ws/*` + add org routes |
+| **module-chat** | ❌ NONE | ❌ NONE | ❌❌ MISSING | Create full admin infrastructure (sys + org) |
+| **module-voice** | ❌ NONE | ❌ NONE | ❌❌ MISSING | Create full admin infrastructure (sys + org) |
+
+### Work Tiers
+
+**Tier 1: Route Pattern Standardization (3 modules)**
+- module-access: 4 routes to migrate
+- module-ai: 8 routes to migrate
+- module-ws: 5 routes to migrate
+
+**Tier 2: Add Org Admin Routes (4 modules after Tier 1)**
+- module-mgmt: Add org-scoped config routes
+- module-access: Add org-scoped user/role management
+- module-ai: Add org-scoped AI provider config
+- module-ws: Add org-scoped workspace config
+
+**Tier 3: Create Admin Infrastructure (2 modules)**
+- module-chat: Full admin pages (sys + org) for chat config
+- module-voice: Full admin pages (sys + org) for voice config
+
+**Validator vs Business Requirement:**
+- **Validator (51 errors):** Only catches route naming issues within existing routes
+- **Business Requirement:** ALL modules must have BOTH sys AND org admin pages with proper patterns
+- **Real Scope:** 6 modules need work (not just mgmt's 51 route fixes)
+
+### Phase 2 Implementation Strategy: Module-by-Module
+
+**Prioritization Approach:** Address each module completely (both sys and org admin pages + proper routes) before moving to the next module.
+
+**Key Principle:** Update existing pages to use correct routes rather than rebuilding from scratch.
+
+#### Implementation Order
+
+**Module 1: module-mgmt (Start Here)**
+- **Current State:** Has sys admin page with non-standard routes, missing org admin page
+- **Work Required:**
+  1. Fix sys admin routes (51 route naming issues)
+     - Update `infrastructure/outputs.tf` - 4 route patterns
+     - Update `backend/lambda-mgmt/lambda_function.py` - docstrings + dispatcher
+     - Update `frontend/lib/api.ts` - 5 API calls
+  2. Create org admin page + routes
+     - Add `/admin/org/mgmt/*` routes for org-scoped config
+     - Lambda handler for org-scoped operations
+     - Frontend page at `routes/admin/org/mgmt/page.tsx`
+- **Estimated Effort:** 6-8 hours
+
+**Module 2: module-access**
+- **Current State:** Has legacy `/admin/users`, `/admin/idp-config` routes (no scope prefix)
+- **Work Required:**
+  1. Migrate sys admin routes to standard pattern
+     - `/admin/users` → `/admin/sys/access/users`
+     - `/admin/idp-config` → `/admin/sys/access/config/idp`
+     - Update Lambda function route dispatcher
+     - Update frontend API calls
+  2. Create org admin page + routes
+     - Add `/admin/org/access/*` routes for org-scoped user/role management
+     - Org-scoped Lambda handlers
+     - Frontend page at `routes/admin/org/access/page.tsx`
+- **Estimated Effort:** 8-10 hours
+
+**Module 3: module-ai**
+- **Current State:** Has `/admin/ai/*` routes (missing scope prefix)
+- **Work Required:**
+  1. Migrate sys admin routes to standard pattern
+     - `/admin/ai/config` → `/admin/sys/ai/config`
+     - `/admin/ai/providers` → `/admin/sys/ai/providers`
+     - 8 total routes to migrate
+     - Update Lambda handlers and frontend
+  2. Create org admin page + routes
+     - Add `/admin/org/ai/*` routes for org-scoped AI provider config
+     - Org-scoped Lambda handlers
+     - Frontend page at `routes/admin/org/ai/page.tsx`
+- **Estimated Effort:** 8-10 hours
+
+**Module 4: module-ws**
+- **Current State:** Has `/ws/admin/*` routes (non-standard pattern)
+- **Work Required:**
+  1. Migrate sys admin routes to standard pattern
+     - `/ws/admin/stats` → `/admin/sys/ws/stats`
+     - `/ws/admin/workspaces` → `/admin/sys/ws/workspaces`
+     - 5 total routes to migrate
+     - Update Lambda handlers and frontend
+  2. Create org admin page + routes
+     - Add `/admin/org/ws/*` routes for org-scoped workspace config
+     - Org-scoped Lambda handlers
+     - Frontend page at `routes/admin/org/ws/page.tsx`
+- **Estimated Effort:** 8-10 hours
+
+**Module 5: module-chat**
+- **Current State:** NO admin routes or pages
+- **Work Required:**
+  1. Create sys admin page + routes
+     - Add `/admin/sys/chat/*` routes for system-level chat config
+     - Lambda function for chat admin operations
+     - Frontend page at `routes/admin/sys/chat/page.tsx`
+  2. Create org admin page + routes
+     - Add `/admin/org/chat/*` routes for org-scoped chat config
+     - Org-scoped Lambda handlers
+     - Frontend page at `routes/admin/org/chat/page.tsx`
+- **Estimated Effort:** 12-16 hours (creating from scratch)
+
+**Module 6: module-voice**
+- **Current State:** NO admin routes or pages
+- **Work Required:**
+  1. Create sys admin page + routes
+     - Add `/admin/sys/voice/*` routes for system-level voice config
+     - Lambda function for voice admin operations
+     - Frontend page at `routes/admin/sys/voice/page.tsx`
+  2. Create org admin page + routes
+     - Add `/admin/org/voice/*` routes for org-scoped voice config
+     - Org-scoped Lambda handlers
+     - Frontend page at `routes/admin/org/voice/page.tsx`
+- **Estimated Effort:** 12-16 hours (creating from scratch)
+
+**Total Estimated Effort for Phase 2:** 54-70 hours (significantly larger than initially estimated 4-6 hours)
+
+#### Migration vs. Rebuild Decision Matrix
+
+| Module | Has Legacy Page? | Strategy |
+|--------|-----------------|----------|
+| module-mgmt | ✅ Yes (sys) | **Update** existing sys page routes + **Create** org page |
+| module-access | ✅ Yes (sys) | **Update** existing sys page routes + **Create** org page |
+| module-ai | ✅ Yes (sys) | **Update** existing sys page routes + **Create** org page |
+| module-ws | ✅ Yes (sys) | **Update** existing sys page routes + **Create** org page |
+| module-chat | ❌ No | **Create** both sys and org pages from scratch |
+| module-voice | ❌ No | **Create** both sys and org pages from scratch |
 
 ---
 
