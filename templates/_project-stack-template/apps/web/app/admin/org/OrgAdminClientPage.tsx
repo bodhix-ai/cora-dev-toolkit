@@ -23,7 +23,7 @@ const FUNCTIONAL_MODULES = ['chat', 'eval', 'voice'];
  */
 export default function OrgAdminClientPage({ adminCards }: OrgAdminClientPageProps) {
   const { profile, loading, isAuthenticated } = useUser();
-  const { isOrgAdmin, isSysAdmin } = useRole();
+  const { isOrgAdmin } = useRole();
   
   // Check runtime enabled state for functional modules
   const isChatEnabled = useModuleEnabled('module-chat');
@@ -72,8 +72,9 @@ export default function OrgAdminClientPage({ adminCards }: OrgAdminClientPagePro
     );
   }
 
-  // Authorization check - org admins OR sys admins can access
-  if (!isOrgAdmin && !isSysAdmin) {
+  // Authorization check - org admins only (revised ADR-016)
+  // Sys admins needing access should add themselves to the org
+  if (!isOrgAdmin) {
     return (
       <Box p={4}>
         <Alert severity="error">

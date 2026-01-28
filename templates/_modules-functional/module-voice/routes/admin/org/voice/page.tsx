@@ -26,7 +26,7 @@ import { OrgVoiceConfigPage } from "@{{PROJECT_NAME}}/module-voice";
 export default function OrgVoiceConfigRoute() {
   const { profile, loading, isAuthenticated } = useUser();
   const { currentOrganization: organization } = useOrganizationContext();
-  const { isOrgAdmin, isSysAdmin } = useRole();
+  const { isOrgAdmin } = useRole();
 
   // Loading state
   if (loading) {
@@ -48,8 +48,9 @@ export default function OrgVoiceConfigRoute() {
     );
   }
 
-  // Authorization check - org admins OR sys admins can access (ADR-016)
-  if (!isOrgAdmin && !isSysAdmin) {
+  // Authorization check - org admins only (revised ADR-016)
+  // Sys admins needing access should add themselves to the org
+  if (!isOrgAdmin) {
     return (
       <Box p={4}>
         <Alert severity="error">

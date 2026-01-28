@@ -57,7 +57,7 @@ interface SessionDetails extends Session {
 }
 
 export function SysSessionsTab(): React.ReactElement {
-  const { user } = useUser();
+  const { isAuthenticated } = useUser();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -69,7 +69,7 @@ export function SysSessionsTab(): React.ReactElement {
 
   // Load sessions
   useEffect(() => {
-    if (!user) return;
+    if (!isAuthenticated) return;
 
     const loadSessions = async () => {
       try {
@@ -85,10 +85,10 @@ export function SysSessionsTab(): React.ReactElement {
     };
 
     loadSessions();
-  }, [user]);
+  }, [isAuthenticated]);
 
   const handleViewDetails = async (sessionId: string) => {
-    if (!user) return;
+    if (!isAuthenticated) return;
 
     try {
       const details = await getSysAdminSession(sessionId);
@@ -104,7 +104,7 @@ export function SysSessionsTab(): React.ReactElement {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!user || !sessionToDelete) return;
+    if (!isAuthenticated || !sessionToDelete) return;
 
     try {
       await deleteSysAdminSession(sessionToDelete);

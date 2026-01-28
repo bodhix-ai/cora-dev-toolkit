@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser } from '@{{PROJECT_NAME}}/module-access';
+import { useUser, useRole } from '@{{PROJECT_NAME}}/module-access';
 
 interface OrgAIConfig {
   orgId: string;
@@ -25,7 +25,8 @@ interface OrgAIConfig {
 }
 
 export default function OrgAIAdminPage() {
-  const { user, isLoading: userLoading } = useUser();
+  const { profile, loading: userLoading, isAuthenticated } = useUser();
+  const { isOrgAdmin } = useRole();
   const [config, setConfig] = useState<OrgAIConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -36,13 +37,14 @@ export default function OrgAIAdminPage() {
   const [orgSystemPrompt, setOrgSystemPrompt] = useState('');
 
   // Check if user has permission to edit (org_owner only)
-  const canEdit = user?.orgRole === 'org_owner';
+  // Note: This page allows org_admin to view, but only org_owner to edit
+  const canEdit = profile?.role === 'org_owner';
 
   useEffect(() => {
-    if (!userLoading && user) {
+    if (!userLoading && profile) {
       fetchConfig();
     }
-  }, [userLoading, user]);
+  }, [userLoading, profile]);
 
   const fetchConfig = async () => {
     try {
@@ -128,7 +130,8 @@ export default function OrgAIAdminPage() {
     );
   }
 
-  if (!user) {
+  // Authentication check (Pattern A - ADR-015)
+  if (!isAuthenticated || !profile) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
@@ -138,8 +141,7 @@ export default function OrgAIAdminPage() {
     );
   }
 
-  const isOrgAdmin = user.orgRole === 'org_admin' || user.orgRole === 'org_owner';
-  
+  // Authorization check - org admins only (revised ADR-016)
   if (!isOrgAdmin) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">

@@ -56,7 +56,7 @@ interface TokenData {
 }
 
 export function SysAnalyticsTab(): React.ReactElement {
-  const { user } = useUser();
+  const { isAuthenticated } = useUser();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
@@ -65,7 +65,7 @@ export function SysAnalyticsTab(): React.ReactElement {
 
   // Load analytics data
   useEffect(() => {
-    if (!user) return;
+    if (!isAuthenticated) return;
 
     const loadAnalytics = async () => {
       try {
@@ -88,7 +88,7 @@ export function SysAnalyticsTab(): React.ReactElement {
     };
 
     loadAnalytics();
-  }, [user]);
+  }, [isAuthenticated]);
 
   if (loading) {
     return (

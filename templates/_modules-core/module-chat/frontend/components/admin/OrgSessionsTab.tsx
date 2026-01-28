@@ -63,7 +63,7 @@ interface SessionDetails extends Session {
 }
 
 export function OrgSessionsTab(): React.ReactElement {
-  const { user } = useUser();
+  const { isAuthenticated } = useUser();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -75,7 +75,7 @@ export function OrgSessionsTab(): React.ReactElement {
 
   // Load sessions
   useEffect(() => {
-    if (!user) return;
+    if (!isAuthenticated) return;
 
     const loadSessions = async () => {
       try {
@@ -91,10 +91,10 @@ export function OrgSessionsTab(): React.ReactElement {
     };
 
     loadSessions();
-  }, [user]);
+  }, [isAuthenticated]);
 
   const handleViewDetails = async (sessionId: string) => {
-    if (!user) return;
+    if (!isAuthenticated) return;
 
     try {
       const details = await getOrgAdminSession(sessionId);
@@ -110,7 +110,7 @@ export function OrgSessionsTab(): React.ReactElement {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!user || !sessionToDelete) return;
+    if (!isAuthenticated || !sessionToDelete) return;
 
     try {
       await deleteOrgAdminSession(sessionToDelete);
@@ -132,7 +132,7 @@ export function OrgSessionsTab(): React.ReactElement {
   };
 
   const handleRestore = async (sessionId: string) => {
-    if (!user) return;
+    if (!isAuthenticated) return;
 
     try {
       await restoreOrgAdminSession(sessionId);

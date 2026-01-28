@@ -34,7 +34,7 @@ interface ConfigState {
 }
 
 export function SysSettingsTab(): React.ReactElement {
-  const { user } = useUser();
+  const { isAuthenticated } = useUser();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +48,7 @@ export function SysSettingsTab(): React.ReactElement {
 
   // Load current config
   useEffect(() => {
-    if (!user) return;
+    if (!isAuthenticated) return;
 
     const loadConfig = async () => {
       try {
@@ -71,10 +71,10 @@ export function SysSettingsTab(): React.ReactElement {
     };
 
     loadConfig();
-  }, [user]);
+  }, [isAuthenticated]);
 
   const handleSave = async () => {
-    if (!user) return;
+    if (!isAuthenticated) return;
 
     try {
       setSaving(true);

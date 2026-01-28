@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Box, CircularProgress, Container, Typography } from "@mui/material";
+import { Box, CircularProgress, Container, Typography, Alert } from "@mui/material";
 import { useUser } from "@{{PROJECT_NAME}}/module-access";
 
 /**
@@ -14,25 +14,23 @@ import { useUser } from "@{{PROJECT_NAME}}/module-access";
  * This page redirects to the appropriate admin section based on user permissions:
  * - System admins → /admin/sys
  * - Organization admins → /admin/org
+ * 
+ * Required Roles:
+ * - Sys Admin: sys_owner, sys_admin
+ * - OR Org Admin: org_owner, org_admin
  */
 export default function AdminPage() {
   const router = useRouter();
   const { profile, loading, isAuthenticated } = useUser();
 
+  // Check user roles
+  const isSysAdmin = ["sys_owner", "sys_admin"].includes(profile?.sysRole || "");
+  const isOrgAdmin = profile?.organizations?.some(
+    (org) => ["org_owner", "org_admin"].includes(org.role || "")
+  );
+
   useEffect(() => {
-    if (loading) return;
-
-    if (!isAuthenticated || !profile) {
-      // Not authenticated, redirect to home
-      router.push("/");
-      return;
-    }
-
-    // Check user roles
-    const isSysAdmin = ["sys_owner", "sys_admin"].includes(profile.sysRole || "");
-    const isOrgAdmin = profile.organizations?.some(
-      (org) => ["org_owner", "org_admin"].includes(org.role || "")
-    );
+    if (loading || !isAuthenticated || !profile) return;
 
     // If user has only one role, redirect accordingly
     if (isSysAdmin && !isOrgAdmin) {
@@ -41,25 +39,36 @@ export default function AdminPage() {
       router.push("/admin/org");
     }
     // If user has both roles, show selection page (no redirect)
-  }, [profile, loading, isAuthenticated, router]);
-
-  // Check user roles for display
-  const isSysAdmin = ["sys_owner", "sys_admin"].includes(profile?.sysRole || "");
-  const isOrgAdmin = profile?.organizations?.some(
-    (org) => ["org_owner", "org_admin"].includes(org.role || "")
-  );
+  }, [profile, loading, isAuthenticated, router, isSysAdmin, isOrgAdmin]);
 
   // Loading state
   if (loading) {
     return (
-      <Container maxWidth="sm" sx={{ py: 8 }}>
-        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-          <CircularProgress />
-          <Typography variant="body1" color="text.secondary">
-            Loading...
-          </Typography>
-        </Box>
-      </Container>
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Authentication check
+  if (!isAuthenticated || !profile) {
+    return (
+      <Box p={4}>
+        <Alert severity="error">
+          You must be logged in to access this page.
+        </Alert>
+      </Box>
+    );
+  }
+
+  // Authorization check
+  if (!isSysAdmin && !isOrgAdmin) {
+    return (
+      <Box p={4}>
+        <Alert severity="error">
+          Access denied. Administrator role required.
+        </Alert>
+      </Box>
     );
   }
 

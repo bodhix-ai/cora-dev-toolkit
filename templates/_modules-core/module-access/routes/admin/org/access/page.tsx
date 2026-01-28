@@ -28,7 +28,7 @@ import NextLink from "next/link";
 export default function OrgAccessRoute() {
   const { profile, loading, isAuthenticated } = useUser();
   const { currentOrganization: organization } = useOrganizationContext();
-  const { isOrgAdmin, isSysAdmin, role } = useRole();
+  const { isOrgAdmin, role } = useRole();
 
   // Loading state
   if (loading) {
@@ -50,8 +50,9 @@ export default function OrgAccessRoute() {
     );
   }
 
-  // Authorization check - org admins OR sys admins can access (ADR-016)
-  if (!isOrgAdmin && !isSysAdmin) {
+  // Authorization check - org admins only (revised ADR-016)
+  // Sys admins needing access should add themselves to the org
+  if (!isOrgAdmin) {
     return (
       <Box p={4}>
         <Alert severity="error">

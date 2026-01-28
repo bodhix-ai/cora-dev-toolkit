@@ -54,7 +54,7 @@ interface OrgUser {
  * Authorization: org_admin (read-only), org_owner (full management)
  */
 export default function OrgAccessAdminPage() {
-  const { user, loading: authLoading } = useUser();
+  const { profile, loading: authLoading, isAuthenticated } = useUser();
   const [users, setUsers] = useState<OrgUser[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<OrgUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,13 +63,13 @@ export default function OrgAccessAdminPage() {
   const [editingUser, setEditingUser] = useState<OrgUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<OrgUser | null>(null);
 
-  const isOrgOwner = user?.currentOrgRole === "org_owner";
+  const isOrgOwner = profile?.currentOrgRole === "org_owner";
 
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && profile) {
       fetchUsers();
     }
-  }, [authLoading, user]);
+  }, [authLoading, profile]);
 
   useEffect(() => {
     filterUsers();
@@ -80,12 +80,12 @@ export default function OrgAccessAdminPage() {
       setLoading(true);
       setError(null);
       
-      if (!user?.authAdapter) {
+      if (!profile?.authAdapter) {
         setError("Authentication required");
         return;
       }
 
-      const token = await user.authAdapter.getToken();
+      const token = await profile.authAdapter.getToken();
       if (!token) {
         setError("Authentication required");
         return;
@@ -127,9 +127,9 @@ export default function OrgAccessAdminPage() {
 
   const handleUpdateRole = async (userId: string, newRole: string) => {
     try {
-      if (!user?.authAdapter) return;
+      if (!profile?.authAdapter) return;
 
-      const token = await user.authAdapter.getToken();
+      const token = await profile.authAdapter.getToken();
       if (!token) return;
 
       const apiClient = createCoraAuthenticatedClient(token);
@@ -148,9 +148,9 @@ export default function OrgAccessAdminPage() {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      if (!user?.authAdapter) return;
+      if (!profile?.authAdapter) return;
 
-      const token = await user.authAdapter.getToken();
+      const token = await profile.authAdapter.getToken();
       if (!token) return;
 
       const apiClient = createCoraAuthenticatedClient(token);
@@ -176,7 +176,7 @@ export default function OrgAccessAdminPage() {
     }
   };
 
-  // Check authorization
+  // Loading state
   if (authLoading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
@@ -185,12 +185,25 @@ export default function OrgAccessAdminPage() {
     );
   }
 
-  if (!user || !["org_admin", "org_owner"].includes(user.currentOrgRole || "")) {
+  // Authentication check (Pattern A - ADR-015)
+  if (!isAuthenticated || !profile) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">
           <AlertTitle>Access Denied</AlertTitle>
-          Organization admin access required. Current role: {user?.currentOrgRole || "none"}
+          You must be logged in to access this page.
+        </Alert>
+      </Box>
+    );
+  }
+
+  // Authorization check
+  if (!["org_admin", "org_owner"].includes(profile.currentOrgRole || "")) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          <AlertTitle>Access Denied</AlertTitle>
+          Organization admin access required. Current role: {profile?.currentOrgRole || "none"}
         </Alert>
       </Box>
     );
@@ -312,7 +325,7 @@ export default function OrgAccessAdminPage() {
                       <IconButton
                         size="small"
                         onClick={() => setDeletingUser(orgUser)}
-                        disabled={orgUser.userId === user.id}
+                        disabled={orgUser.userId === profile.id}
                         aria-label="Remove user"
                       >
                         <Delete fontSize="small" />

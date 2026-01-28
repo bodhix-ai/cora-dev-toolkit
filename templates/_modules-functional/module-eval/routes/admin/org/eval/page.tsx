@@ -28,7 +28,7 @@ type TabValue = 'config' | 'doc-types' | 'criteria' | 'prompts';
 export default function OrgEvalAdminPage() {
   const { profile, loading, isAuthenticated } = useUser();
   const { currentOrganization: organization } = useOrganizationContext();
-  const { isOrgAdmin, isSysAdmin } = useRole();
+  const { isOrgAdmin } = useRole();
   const [activeTab, setActiveTab] = useState<TabValue>('config');
 
   // Loading state
@@ -51,8 +51,9 @@ export default function OrgEvalAdminPage() {
     );
   }
 
-  // Authorization check - org admins OR sys admins can access
-  if (!isOrgAdmin && !isSysAdmin) {
+  // Authorization check - org admins only (revised ADR-016)
+  // Sys admins needing access should add themselves to the org
+  if (!isOrgAdmin) {
     return (
       <Box p={4}>
         <Alert severity="error">

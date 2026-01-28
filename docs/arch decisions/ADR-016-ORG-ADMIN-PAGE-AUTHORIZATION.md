@@ -65,9 +65,14 @@ The `useRole()` hook correctly computes:
 - `isSysAdmin` - by checking `profile.sysRole`
 
 **Additionally, org admin pages MUST:**
-1. Allow both org admins AND sys admins (for platform oversight)
+1. **Allow ONLY org admins** - Sys admins requiring org access must add themselves to the organization with appropriate role
 2. Use `currentOrganization` from `useOrganizationContext()` (not `organization`)
 3. Access org data via `organization.orgId` and `organization.orgName`
+
+**Rationale for Separate Authorization:**
+- Maintains clear separation between system-level (`/admin/sys/`) and organization-level (`/admin/org/`) administration
+- Sys admins can manage organization membership, allowing them to add themselves to any org when oversight is needed
+- Enforces principle of least privilege - even platform admins use proper org roles when managing specific organizations
 
 ---
 
@@ -81,13 +86,14 @@ import { useUser, useOrganizationContext, useRole } from "@{project}/module-acce
 export default function OrgAdminPage() {
   const { profile, loading, isAuthenticated } = useUser();
   const { currentOrganization: organization } = useOrganizationContext();
-  const { isOrgAdmin, isSysAdmin } = useRole();
+  const { isOrgAdmin } = useRole();
 
   if (loading) return <Loading />;
   if (!isAuthenticated || !profile) return <AuthRequired />;
   
-  // MUST allow both org admins AND sys admins
-  if (!isOrgAdmin && !isSysAdmin) return <AccessDenied />;
+  // Org admin pages require org admin role (org_owner or org_admin)
+  // Sys admins needing access should add themselves to the org
+  if (!isOrgAdmin) return <AccessDenied />;
   
   if (!organization) return <SelectOrg />;
 
@@ -140,9 +146,10 @@ Could create a new hook specifically for org admin page authorization.
 
 ✅ **Consistent Pattern** - All org admin pages use the same authorization approach  
 ✅ **Type Safety** - Using hooks prevents accessing non-existent fields  
-✅ **Sys Admin Access** - Platform admins can access org pages for oversight  
+✅ **Clear Separation** - Org and sys admin pages have distinct authorization  
 ✅ **Validation Support** - Pattern can be validated automatically  
 ✅ **Self-Documenting** - `useRole()` makes the authorization intent clear  
+✅ **Principle of Least Privilege** - Even sys admins use proper org roles  
 
 ### Negative
 
@@ -171,7 +178,7 @@ python3 ./validation/cora-validate.py project . --validators org-admin-auth
 - ERROR: Usage of `organization.id` (should be `orgId`)
 - ERROR: Usage of `organization.name` (should be `orgName`)
 - WARNING: Missing `useRole()` import
-- WARNING: Auth check without sys admin allowance
+- WARNING: Auth check allows sys admins (should be org admins only)
 
 ---
 

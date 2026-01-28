@@ -197,7 +197,9 @@ function Header({
       setLoadingWorkspace(true);
       try {
         const apiUrl = process.env.NEXT_PUBLIC_CORA_API_URL;
-        const response = await fetch(`${apiUrl}/ws/${workspaceId}`, {
+        // Use wsId variable name to match API Gateway route parameter naming
+        const wsId = workspaceId;
+        const response = await fetch(`${apiUrl}/ws/${wsId}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'

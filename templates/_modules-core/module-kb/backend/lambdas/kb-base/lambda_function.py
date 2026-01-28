@@ -15,15 +15,15 @@ Routes - Chat Scoped:
 - POST /chats/{chatId}/kbs/{kbId}/toggle - Toggle KB access
 
 Routes - Org Admin:
-- GET /admin/org/kb - List org KBs
-- POST /admin/org/kb - Create org KB
+- GET /admin/org/kb/bases - List org KBs
+- POST /admin/org/kb/bases - Create org KB
 - GET /admin/org/kb/{kbId} - Get org KB
 - PATCH /admin/org/kb/{kbId} - Update org KB
 - DELETE /admin/org/kb/{kbId} - Delete org KB
 
 Routes - Platform Admin:
-- GET /admin/sys/kb - List system KBs
-- POST /admin/sys/kb - Create system KB
+- GET /admin/sys/kb/bases - List system KBs
+- POST /admin/sys/kb/bases - Create system KB
 - GET /admin/sys/kb/{kbId} - Get system KB
 - PATCH /admin/sys/kb/{kbId} - Update system KB
 - DELETE /admin/sys/kb/{kbId} - Delete system KB

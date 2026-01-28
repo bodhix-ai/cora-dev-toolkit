@@ -1197,11 +1197,20 @@ def handle_sys_get_analytics(event: Dict[str, Any], user_info: Dict[str, Any]) -
     """Get platform-wide chat analytics."""
     if not user_info.get('is_sys_admin'):
         raise common.ForbiddenError('sys_admin role required')
-    
+
     # Call RPC function for analytics
     analytics = common.rpc('get_sys_chat_analytics')
-    
-    return common.success_response(analytics)
+
+    # Transform snake_case to camelCase for frontend
+    return common.success_response({
+        'totalSessions': analytics.get('total_sessions', 0),
+        'totalMessages': analytics.get('total_messages', 0),
+        'activeSessions': {
+            'last24Hours': analytics.get('active_sessions', {}).get('last_24_hours', 0),
+            'last7Days': analytics.get('active_sessions', {}).get('last_7_days', 0),
+            'last30Days': analytics.get('active_sessions', {}).get('last_30_days', 0)
+        }
+    })
 
 
 def handle_sys_get_usage_stats(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
@@ -1530,14 +1539,18 @@ def handle_org_get_analytics(event: Dict[str, Any], user_info: Dict[str, Any]) -
     org_id = user_info.get('org_id')
     if not org_id:
         raise common.ForbiddenError('Organization context required')
-    
+
     if user_info.get('org_role') not in ['org_admin', 'org_owner']:
         raise common.ForbiddenError('org_admin or org_owner role required')
-    
+
     # Call RPC function for org analytics
     analytics = common.rpc('get_org_chat_analytics', {'p_org_id': org_id})
-    
-    return common.success_response(analytics)
+
+    # Transform snake_case to camelCase for frontend
+    return common.success_response({
+        'totalSessions': analytics.get('total_sessions', 0),
+        'totalMessages': analytics.get('total_messages', 0)
+    })
 
 
 def handle_org_get_user_stats(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
