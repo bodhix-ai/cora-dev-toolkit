@@ -78,7 +78,7 @@ export function UsersTab({ authAdapter }: UsersTabProps) {
         return;
       }
       const apiClient = createCoraAuthenticatedClient(token);
-      const response = await apiClient.get<{ success: boolean; data: User[] }>("/admin/users");
+      const response = await apiClient.get<{ success: boolean; data: User[] }>("/admin/sys/access/users");
       if (response.success) {
         setUsers(response.data || []);
       } else {
