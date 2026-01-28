@@ -435,6 +435,85 @@ export async function deleteConfig(
 }
 
 // =============================================================================
+// ADMIN API - Organization Admin (Configs)
+// =============================================================================
+
+/**
+ * List voice configs (org admin)
+ * Uses org_id from user session
+ * GET /admin/org/voice/configs
+ */
+export async function adminListConfigs(
+  token: string,
+  options?: {
+    interviewType?: string;
+    isActive?: boolean;
+  }
+): Promise<VoiceConfig[]> {
+  const params: Record<string, string | number | boolean | undefined> = {
+    interviewType: options?.interviewType,
+    isActive: options?.isActive,
+  };
+
+  const url = buildUrl("/admin/org/voice/configs", params);
+  return apiRequest<VoiceConfig[]>(url, token);
+}
+
+/**
+ * Get a voice config by ID (org admin)
+ * GET /admin/org/voice/configs/{configId}
+ */
+export async function adminGetConfig(
+  configId: string,
+  token: string
+): Promise<VoiceConfig> {
+  return apiRequest<VoiceConfig>(`/admin/org/voice/configs/${configId}`, token);
+}
+
+/**
+ * Create a new voice config (org admin)
+ * Uses org_id from user session
+ * POST /admin/org/voice/configs
+ */
+export async function adminCreateConfig(
+  token: string,
+  input: Omit<CreateVoiceConfigRequest, 'orgId'>
+): Promise<VoiceConfig> {
+  return apiRequest<VoiceConfig>("/admin/org/voice/configs", token, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+/**
+ * Update a voice config (org admin)
+ * PUT /admin/org/voice/configs/{configId}
+ */
+export async function adminUpdateConfig(
+  configId: string,
+  token: string,
+  input: UpdateVoiceConfigRequest
+): Promise<VoiceConfig> {
+  return apiRequest<VoiceConfig>(`/admin/org/voice/configs/${configId}`, token, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+/**
+ * Delete a voice config (org admin)
+ * DELETE /admin/org/voice/configs/{configId}
+ */
+export async function adminDeleteConfig(
+  configId: string,
+  token: string
+): Promise<void> {
+  await apiRequest<void>(`/admin/org/voice/configs/${configId}`, token, {
+    method: "DELETE",
+  });
+}
+
+// =============================================================================
 // CREDENTIAL API
 // =============================================================================
 
