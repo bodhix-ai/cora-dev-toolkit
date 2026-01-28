@@ -339,37 +339,37 @@ output "api_routes" {
     # =========================================================================
     {
       method      = "POST"
-      path        = "/workspaces/{wsId}/eval"
+      path        = "/ws/{wsId}/eval"
       integration = aws_lambda_function.eval_results.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/workspaces/{wsId}/eval"
+      path        = "/ws/{wsId}/eval"
       integration = aws_lambda_function.eval_results.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/workspaces/{wsId}/eval/{evalId}"
+      path        = "/ws/{wsId}/eval/{evalId}"
       integration = aws_lambda_function.eval_results.invoke_arn
       public      = false
     },
     {
       method      = "PATCH"
-      path        = "/workspaces/{wsId}/eval/{evalId}"
+      path        = "/ws/{wsId}/eval/{evalId}"
       integration = aws_lambda_function.eval_results.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/workspaces/{wsId}/eval/{evalId}/status"
+      path        = "/ws/{wsId}/eval/{evalId}/status"
       integration = aws_lambda_function.eval_results.invoke_arn
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/workspaces/{wsId}/eval/{evalId}"
+      path        = "/ws/{wsId}/eval/{evalId}"
       integration = aws_lambda_function.eval_results.invoke_arn
       public      = false
     },
@@ -379,13 +379,13 @@ output "api_routes" {
     # =========================================================================
     {
       method      = "PATCH"
-      path        = "/workspaces/{wsId}/eval/{evalId}/results/{resultId}"
+      path        = "/ws/{wsId}/eval/{evalId}/results/{resultId}"
       integration = aws_lambda_function.eval_results.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/workspaces/{wsId}/eval/{evalId}/results/{resultId}/history"
+      path        = "/ws/{wsId}/eval/{evalId}/results/{resultId}/history"
       integration = aws_lambda_function.eval_results.invoke_arn
       public      = false
     },
@@ -395,13 +395,13 @@ output "api_routes" {
     # =========================================================================
     {
       method      = "GET"
-      path        = "/workspaces/{wsId}/eval/{evalId}/export/pdf"
+      path        = "/ws/{wsId}/eval/{evalId}/export/pdf"
       integration = aws_lambda_function.eval_results.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/workspaces/{wsId}/eval/{evalId}/export/xlsx"
+      path        = "/ws/{wsId}/eval/{evalId}/export/xlsx"
       integration = aws_lambda_function.eval_results.invoke_arn
       public      = false
     }
