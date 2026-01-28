@@ -68,6 +68,14 @@ e m# Plan: Admin Standardization S3b - Route Standards & Version Tracking
   - **Validation:** ✅ All 16 routes compliant (2 sys, 5 org, 9 data)
   - Module-WS achieved full sys + org admin parity
 
+**Session 15: OIDC Provider Automation - COMPLETE** ✅ (January 28, 2026)
+- ✅ **GitHub OIDC Provider Detection** - Automatic reuse of existing providers
+- ✅ **Template Module Enhanced** - Data source for OIDC discovery added
+- ✅ **Project Creation Script** - `check_github_oidc_provider()` function added
+- ✅ **Test Project Deployed** - ai-mod successfully deployed with OIDC reuse
+- ✅ **Validation Baseline** - 46 errors, 450 warnings (Bronze certification)
+- **Impact:** Multiple CORA projects can now coexist in same AWS account without manual configuration
+
 **Module Completion Status:**
 - ✅ **7 modules complete:** kb, eval, mgmt, access, ai, ws, voice (sys + org admin pages)
 - ⏳ **1 module remaining:** chat (needs full admin infrastructure from scratch)

@@ -1339,6 +1339,79 @@ All critical blocking errors resolved! Only accessibility warnings remain for us
 
 ---
 
+### January 28, 2026 - Sprint 3b Session 15
+
+**Status:** OIDC Provider Automation + Test Project Validation Baseline
+**Branch:** `admin-page-s3b`
+
+**Work Completed:**
+
+1. **GitHub OIDC Provider Automation - COMPLETE** ✅
+   - **Problem Solved:** Multiple CORA projects in same AWS account caused "EntityAlreadyExists" error
+   - **Solution:** Automatic detection and reuse of existing OIDC providers
+   
+2. **Template Module Enhanced** ✅
+   - **File:** `templates/_project-infra-template/modules/github-oidc-role/main.tf`
+   - **Added:** Data source to automatically discover existing OIDC providers
+   - **Pattern:** If `create_oidc_provider = false`, uses data source to find existing provider
+   - **No manual ARN lookup required**
+
+3. **Project Creation Script Enhanced** ✅
+   - **File:** `scripts/create-cora-project.sh`
+   - **Added:** `check_github_oidc_provider()` function
+   - **Logic:**
+     - Queries AWS IAM for existing GitHub OIDC providers
+     - If found, automatically sets `create_oidc_provider = false` in main.tf
+     - If not found, uses default `create_oidc_provider = true`
+   - **Graceful degradation:** Handles missing AWS CLI, jq, or credentials
+   - **Clear logging:** User sees exactly what's being detected and configured
+
+4. **Test Project Deployment - COMPLETE** ✅
+   - **Project:** ai-mod (both infra and stack repos)
+   - **Location:** /Users/aaron/code/bodhix/testing/test-admin/
+   - **Result:** Successfully deployed with OIDC role reuse
+   - **Verification:** Both `ai-sec-oidc-dev` and `ai-mod-oidc-dev` roles created
+   - Both roles share same OIDC provider (account-wide resource)
+   - User able to log into app for admin page testing
+
+5. **Validation Baseline Established** ✅
+   - **Test Project:** ~/code/bodhix/testing/test-admin/ai-mod-stack
+   - **Overall Status:** FAILED (Bronze certification)
+   - **Total Errors:** 46
+   - **Total Warnings:** 450
+   - **Passing Validators (11/18):** Structure, Portability, Import, External UID, CORA Compliance, API Response, Role Naming, RPC Function, DB Naming, UI Library, Next.js Routing, Workspace Plugin, Admin Route
+   - **Failing Validators (7/18):** Accessibility (6), API Tracer (6), Schema (1), Frontend Compliance (23), TypeScript (9), Admin Auth (0 errors but 7 warnings), Audit Column (1)
+
+**Key Achievements:**
+- ✅ Multiple CORA projects can now coexist in same AWS account
+- ✅ No manual OIDC provider ARN lookups required
+- ✅ Template-first workflow maintained (both template and ai-mod updated)
+- ✅ Clear validation baseline established for next session's error fixes
+
+**Files Modified (2 total):**
+- `templates/_project-infra-template/modules/github-oidc-role/main.tf`
+- `scripts/create-cora-project.sh`
+
+**Impact:**
+This automation removes a major blocker for deploying multiple CORA projects in the same AWS account. The smart detection means users don't need to manually configure OIDC provider settings for projects 2+.
+
+**Validation Baseline Summary:**
+| Category | Errors | Priority | Notes |
+|----------|--------|----------|-------|
+| Accessibility | 6 | Medium | Heading hierarchy (h3 → h5) |
+| API Tracer | 6 | High | Generic {id} instead of {sessionId}/{messageId} |
+| Schema | 1 | High | Voice credentials wrong column |
+| Frontend Compliance | 23 | Low | Missing aria-labels, any types |
+| TypeScript | 9 | High | Module imports, property access |
+| Audit Column | 1 | Medium | chat_sessions table missing columns |
+
+**Next Session:**
+- Address high-priority validation errors (API Tracer, Schema, TypeScript)
+- User will test admin pages in deployed application
+- Continue error remediation toward Gold certification
+
+---
+
 ### January 24, 2026 - Sprint 2 Completion
 - Completed ADR-016 fixes for org admin authorization
 - Renamed branch from citations-review to admin-page-s2-completion
