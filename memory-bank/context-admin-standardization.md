@@ -442,6 +442,74 @@ module-kb routes EXIST for both sys and org but are malformed. They use `/admin/
 
 ---
 
+### January 27, 2026 - Sprint 3b Session 6
+
+**Status:** Module-Access Route Standardization Complete (Sys + Org)
+**Branch:** `admin-page-s3b`
+
+**Work Completed:**
+
+1. **Module-Access Sys Admin Routes Migrated (4 routes)** ✅
+   - `/admin/idp-config` → `/admin/sys/access/idp`
+   - `/admin/idp-config/{providerType}` → `/admin/sys/access/idp/{providerType}`
+   - `/admin/idp-config/{providerType}/activate` → `/admin/sys/access/idp/{providerType}/activate`
+   - `/admin/users` → `/admin/sys/access/users`
+
+2. **Module-Access Org Admin Routes Added (4 new routes)** ✅
+   - `GET /admin/org/access/users` - List users in organization (org_admin, org_owner)
+   - `GET /admin/org/access/users/{userId}` - View user details in organization
+   - `PUT /admin/org/access/users/{userId}` - Update user role (org_owner only)
+   - `DELETE /admin/org/access/users/{userId}` - Remove user (org_owner only)
+
+3. **Backend Lambda Updates (2 files):** ✅
+   - `idp-config/lambda_function.py` - Updated route docstrings to reflect new paths
+   - `identities-management/lambda_function.py` - Updated route docstrings + added 3 org admin handlers:
+     - `handle_org_list_users()` - List users in org (org_admin + org_owner)
+     - `handle_org_update_user()` - Update user role (org_owner only)
+     - `handle_org_delete_user()` - Remove user from org (org_owner only)
+
+4. **Infrastructure Updates (1 file):** ✅
+   - `infrastructure/outputs.tf` - Updated 4 sys admin routes + added 4 org admin routes
+
+5. **Frontend Updates (2 files):** ✅
+   - `IdpConfigCard.tsx` - Updated 3 API calls to new sys admin routes
+   - `UsersTab.tsx` - Updated 1 API call to new sys admin route
+
+6. **New Org Admin Page Created:** ✅
+   - `apps/web/app/admin/org/access/page.tsx` - Complete org admin page with:
+     - User listing for organization
+     - Search and filter capabilities
+     - Role management UI (org_owner only)
+     - Delete user confirmation dialog
+     - Self-removal protection
+     - Pattern A authentication (useUser hook)
+
+**Key Features - Org Admin Page:**
+- **org_admin:** Read-only view of organization users
+- **org_owner:** Full management - change roles (member/admin/owner), remove users
+- Role-based UI - management actions only visible to org_owner
+- Safety features - can't remove yourself from the organization
+
+**Files Changed (7 total):**
+- `templates/_modules-core/module-access/backend/lambdas/idp-config/lambda_function.py`
+- `templates/_modules-core/module-access/backend/lambdas/identities-management/lambda_function.py`
+- `templates/_modules-core/module-access/infrastructure/outputs.tf`
+- `templates/_modules-core/module-access/frontend/components/admin/IdpConfigCard.tsx`
+- `templates/_modules-core/module-access/frontend/components/admin/UsersTab.tsx`
+- `templates/_project-stack-template/apps/web/app/admin/org/access/page.tsx` (NEW)
+
+**Progress Summary:**
+- **4 of 8 modules complete** (kb, eval, mgmt, access)
+- **4 modules remaining** (ai, ws, chat, voice)
+- Module-access achieved full sys + org admin parity
+
+**Next Session:**
+- Target: module-ai (Tier 1 work)
+- Needs: Route migration (8 routes) + org admin pages
+- Estimated: 8-10 hours for full module-ai completion
+
+---
+
 ### January 24, 2026 - Sprint 2 Completion
 - Completed ADR-016 fixes for org admin authorization
 - Renamed branch from citations-review to admin-page-s2-completion

@@ -10,7 +10,7 @@ e m# Plan: Admin Standardization S3b - Route Standards & Version Tracking
 
 ## Current Progress
 
-**Last Updated:** January 27, 2026 (Session 5)
+**Last Updated:** January 27, 2026 (Session 6)
 
 **Completed:**
 - ✅ Session 1: Sprint planning and documentation
@@ -43,15 +43,21 @@ e m# Plan: Admin Standardization S3b - Route Standards & Version Tracking
   - Added 3 org admin routes (read-only view of modules and usage)
   - Updated 4 files: outputs.tf, lambda_function.py, api.ts, new org admin page
   - Module-Mgmt now has full sys + org admin parity
+- ✅ **Session 6: Module-Access Route Standardization COMPLETE**
+  - Migrated 4 sys admin routes to standard pattern
+  - Added 4 org admin routes (list, view, update, delete users)
+  - Updated 7 files: 2 Lambda functions, 1 outputs.tf, 2 frontend components, 1 new org admin page
+  - Org admin page supports role-based access (org_admin: read-only, org_owner: full management)
+  - Module-Access achieved full sys + org admin parity
 
 **Module Completion Status:**
-- ✅ **3 modules complete:** kb, eval, mgmt (sys + org admin pages)
-- ⏳ **5 modules remaining:** access, ai, ws, chat, voice
+- ✅ **4 modules complete:** kb, eval, mgmt, access (sys + org admin pages)
+- ⏳ **4 modules remaining:** ai, ws, chat, voice
 
 **Next Session:**
-- **Target:** module-access (Tier 1 work)
-- **Scope:** Route migration (4 legacy routes) + org admin pages
-- **Estimated:** 8-10 hours for full module-access completion
+- **Target:** module-ai (Tier 1 work)
+- **Scope:** Route migration (8 legacy routes) + org admin pages
+- **Estimated:** 8-10 hours for full module-ai completion
 - **Strategy:** Update existing sys admin pages, create org admin pages
 
 ---
