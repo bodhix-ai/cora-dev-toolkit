@@ -5,20 +5,20 @@ Handles evaluation creation, retrieval, result editing, and report export.
 Triggers async processing via SQS for new evaluations.
 
 Routes - Evaluation CRUD:
-- POST /workspaces/{wsId}/eval - Create evaluation
-- GET /workspaces/{wsId}/eval - List evaluations
-- GET /workspaces/{wsId}/eval/{id} - Get evaluation detail
-- PATCH /workspaces/{wsId}/eval/{id} - Update draft evaluation (configure and trigger processing)
-- GET /workspaces/{wsId}/eval/{id}/status - Get progress status
-- DELETE /workspaces/{wsId}/eval/{id} - Delete evaluation
+- POST /ws/{wsId}/eval - Create evaluation
+- GET /ws/{wsId}/eval - List evaluations
+- GET /ws/{wsId}/eval/{id} - Get evaluation detail
+- PATCH /ws/{wsId}/eval/{id} - Update draft evaluation (configure and trigger processing)
+- GET /ws/{wsId}/eval/{id}/status - Get progress status
+- DELETE /ws/{wsId}/eval/{id} - Delete evaluation
 
 Routes - Result Editing:
-- PATCH /workspaces/{wsId}/eval/{id}/results/{resultId} - Edit result
-- GET /workspaces/{wsId}/eval/{id}/results/{resultId}/history - Get edit history
+- PATCH /ws/{wsId}/eval/{id}/results/{resultId} - Edit result
+- GET /ws/{wsId}/eval/{id}/results/{resultId}/history - Get edit history
 
 Routes - Export:
-- GET /workspaces/{wsId}/eval/{id}/export/pdf - Export PDF
-- GET /workspaces/{wsId}/eval/{id}/export/xlsx - Export XLSX
+- GET /ws/{wsId}/eval/{id}/export/pdf - Export PDF
+- GET /ws/{wsId}/eval/{id}/export/xlsx - Export XLSX
 """
 
 import json
