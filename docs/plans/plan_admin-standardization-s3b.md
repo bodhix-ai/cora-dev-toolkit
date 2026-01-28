@@ -86,9 +86,15 @@ e m# Plan: Admin Standardization S3b - Route Standards & Version Tracking
 - **75% Complete:** 6 of 8 modules with full admin parity
 - **Remaining work:** chat (12-16 hours) + voice (12-16 hours + route fixes)
 
+**Voice Route Pattern Fixes (Session 8 Bonus):** ✅ COMPLETE
+- Fixed deprecated `/api/voice/*` prefix (removed `/api/` prefix)
+- Updated 3 Lambda functions (10 routes total)
+- **Validation:** 8 errors → 2 errors (6 route pattern errors resolved!)
+- **Remaining:** 2 errors (missing admin infrastructure - future work)
+
 **Next Session:**
-- **Target:** module-voice route pattern fixes OR module-chat admin infrastructure
-- **Recommendation:** Fix voice route patterns first (1 hour), then tackle admin infrastructure
+- **Target:** module-voice admin infrastructure (12-16 hours) OR module-chat admin infrastructure (12-16 hours)
+- **Recommendation:** Voice route patterns already fixed, only needs admin UI now
 
 ---
 

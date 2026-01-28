@@ -501,9 +501,62 @@ module-kb routes EXIST for both sys and org but are malformed. They use `/admin/
 
 ---
 
+### January 27, 2026 - Sprint 3b Session 8
+
+**Status:** Module-WS + Voice Route Fixes Complete
+**Branch:** `admin-page-s3b`
+
+**Work Completed:**
+
+1. **Module-WS Route Standardization - COMPLETE** ✅
+   - Standardized 10 admin routes to `/admin/{scope}/ws/*` pattern
+   - Removed 1 deprecated route (`/ws/admin/stats`)
+   - Updated infrastructure outputs.tf (10 routes)
+   - Updated Lambda function (docstrings + dispatcher + 3 new handlers)
+   - Updated frontend api.ts (10 API calls)
+   - Created route mapping document: `docs/plans/session-8-ws-route-mapping.md`
+   - **Validation:** ✅ All 16 routes compliant (2 sys, 5 org, 9 data)
+   - Module-WS achieved full sys + org admin parity
+
+2. **Voice Route Pattern Fixes - COMPLETE** ✅
+   - Fixed deprecated `/api/voice/*` prefix pattern (removed `/api/` prefix)
+   - Updated 3 Lambda functions:
+     - `voice-transcripts/lambda_function.py` - 3 routes
+     - `voice-analytics/lambda_function.py` - 2 routes
+     - `voice-credentials/lambda_function.py` - 5 routes
+   - **Total:** 10 routes fixed (all `/api/voice/*` → `/voice/*`)
+   - **Validation Impact:** 8 errors → 2 errors (6 route pattern errors resolved)
+   - **Remaining errors:** 2 (missing admin infrastructure - future work)
+
+**Files Changed (7 total):**
+- `templates/_modules-core/module-ws/infrastructure/outputs.tf`
+- `templates/_modules-core/module-ws/backend/lambdas/workspace/lambda_function.py`
+- `templates/_modules-core/module-ws/frontend/lib/api.ts`
+- `templates/_modules-functional/module-voice/backend/lambdas/voice-transcripts/lambda_function.py`
+- `templates/_modules-functional/module-voice/backend/lambdas/voice-analytics/lambda_function.py`
+- `templates/_modules-functional/module-voice/backend/lambdas/voice-credentials/lambda_function.py`
+- `docs/plans/session-8-ws-route-mapping.md` (NEW)
+
+**Progress Summary:**
+- **6 of 8 modules complete** (kb, eval, mgmt, access, ai, ws) with full sys + org admin parity
+- **1 module partial** (voice - route patterns fixed, admin infrastructure pending)
+- **1 module remaining** (chat - needs full admin infrastructure)
+
+**Commits Pushed (4 total):**
+1. `7b67ef8` - feat(admin-s3b): standardize module-ai admin routes (Session 7)
+2. `6f08970` - feat(admin-s3b): standardize module-ws admin routes (Session 8)
+3. `63e75c7` - docs(admin-s3b): update context and plan for Sessions 7-8
+4. `1b46be3` - fix(admin-s3b): fix voice route patterns - remove /api prefix (Session 8)
+
+**Next Session:**
+- **Target:** module-voice OR module-chat admin infrastructure
+- **Recommendation:** Voice route patterns already fixed, only needs admin UI (12-16 hours)
+
+---
+
 ### January 27, 2026 - Sprint 3b Session 7
 
-**Status:** Module-AI Route Standardization Complete (Sys + Org)
+**Status:** Module-AI Route Standardization Complete
 **Branch:** `admin-page-s3b`
 
 **Work Completed:**
