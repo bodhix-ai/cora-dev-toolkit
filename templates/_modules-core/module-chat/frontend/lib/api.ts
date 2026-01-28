@@ -769,3 +769,312 @@ export async function sendMessage(
     );
   });
 }
+
+// =============================================================================
+// SYS ADMIN API
+// =============================================================================
+
+/**
+ * Get platform chat configuration (sys admin only)
+ * GET /admin/sys/chat/config
+ */
+export async function getSysAdminConfig(token: string): Promise<{
+  defaultTitleFormat: string;
+  messageRetentionDays: number;
+  sessionTimeoutMinutes: number;
+  maxMessageLength: number;
+  maxKbGroundings: number;
+  defaultAiProvider?: string;
+  defaultAiModel?: string;
+  streamingConfig?: Record<string, unknown>;
+  citationDisplayConfig?: Record<string, unknown>;
+}> {
+  return apiRequest("/admin/sys/chat/config", token);
+}
+
+/**
+ * Update platform chat configuration (sys admin only)
+ * PUT /admin/sys/chat/config
+ */
+export async function updateSysAdminConfig(
+  token: string,
+  config: {
+    messageRetentionDays?: number;
+    sessionTimeoutMinutes?: number;
+    maxMessageLength?: number;
+    maxKbGroundings?: number;
+    defaultAiProvider?: string;
+    defaultAiModel?: string;
+  }
+): Promise<{ message: string }> {
+  return apiRequest("/admin/sys/chat/config", token, {
+    method: "PUT",
+    body: JSON.stringify(config),
+  });
+}
+
+/**
+ * Get platform-wide chat analytics (sys admin only)
+ * GET /admin/sys/chat/analytics
+ */
+export async function getSysAdminAnalytics(token: string): Promise<{
+  totalSessions: number;
+  totalMessages: number;
+  activeSessions: {
+    last24Hours: number;
+    last7Days: number;
+    last30Days: number;
+  };
+}> {
+  return apiRequest("/admin/sys/chat/analytics", token);
+}
+
+/**
+ * Get detailed usage statistics (sys admin only)
+ * GET /admin/sys/chat/analytics/usage
+ */
+export async function getSysAdminUsageStats(token: string): Promise<{
+  mostActiveOrgs: Array<{
+    orgId: string;
+    orgName: string;
+    sessionCount: number;
+  }>;
+}> {
+  return apiRequest("/admin/sys/chat/analytics/usage", token);
+}
+
+/**
+ * Get token usage statistics (sys admin only)
+ * GET /admin/sys/chat/analytics/tokens
+ */
+export async function getSysAdminTokenStats(token: string): Promise<{
+  totalTokensUsed: number;
+  averageTokensPerMessage: number;
+  message?: string;
+}> {
+  return apiRequest("/admin/sys/chat/analytics/tokens", token);
+}
+
+/**
+ * List all chat sessions (all orgs, sys admin only)
+ * GET /admin/sys/chat/sessions
+ */
+export async function listSysAdminSessions(
+  token: string,
+  options?: { limit?: number; offset?: number }
+): Promise<
+  Array<{
+    id: string;
+    title: string;
+    orgId: string;
+    workspaceId?: string;
+    createdBy: string;
+    createdAt: string;
+    updatedAt: string;
+  }>
+> {
+  const params = options ? { limit: options.limit, offset: options.offset } : undefined;
+  const url = buildUrl("/admin/sys/chat/sessions", params);
+  return apiRequest(url, token);
+}
+
+/**
+ * Get chat session details (sys admin view)
+ * GET /admin/sys/chat/sessions/{id}
+ */
+export async function getSysAdminSession(
+  sessionId: string,
+  token: string
+): Promise<{
+  id: string;
+  title: string;
+  orgId: string;
+  workspaceId?: string;
+  createdBy: string;
+  isDeleted: boolean;
+  deletedAt?: string;
+  messageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}> {
+  return apiRequest(`/admin/sys/chat/sessions/${sessionId}`, token);
+}
+
+/**
+ * Force delete chat session (sys admin only)
+ * DELETE /admin/sys/chat/sessions/{id}
+ */
+export async function deleteSysAdminSession(
+  sessionId: string,
+  token: string
+): Promise<{ message: string; id: string }> {
+  return apiRequest(`/admin/sys/chat/sessions/${sessionId}`, token, {
+    method: "DELETE",
+  });
+}
+
+// =============================================================================
+// ORG ADMIN API
+// =============================================================================
+
+/**
+ * Get organization chat configuration (org admin)
+ * GET /admin/org/chat/config
+ */
+export async function getOrgAdminConfig(token: string): Promise<{
+  messageRetentionDays: number;
+  maxMessageLength: number;
+  maxKbGroundings: number;
+  sharingPolicy: Record<string, unknown>;
+  usingPlatformDefaults: boolean;
+}> {
+  return apiRequest("/admin/org/chat/config", token);
+}
+
+/**
+ * Update organization chat configuration (org admin)
+ * PUT /admin/org/chat/config
+ */
+export async function updateOrgAdminConfig(
+  token: string,
+  config: {
+    messageRetentionDays?: number;
+    maxMessageLength?: number;
+    maxKbGroundings?: number;
+    sharingPolicy?: Record<string, unknown>;
+  }
+): Promise<{ message: string }> {
+  return apiRequest("/admin/org/chat/config", token, {
+    method: "PUT",
+    body: JSON.stringify(config),
+  });
+}
+
+/**
+ * List all organization chat sessions (org admin)
+ * GET /admin/org/chat/sessions
+ */
+export async function listOrgAdminSessions(
+  token: string,
+  options?: { limit?: number; offset?: number }
+): Promise<
+  Array<{
+    id: string;
+    title: string;
+    workspaceId?: string;
+    createdBy: string;
+    createdAt: string;
+    updatedAt: string;
+  }>
+> {
+  const params = options ? { limit: options.limit, offset: options.offset } : undefined;
+  const url = buildUrl("/admin/org/chat/sessions", params);
+  return apiRequest(url, token);
+}
+
+/**
+ * Get chat session details (org admin view)
+ * GET /admin/org/chat/sessions/{id}
+ */
+export async function getOrgAdminSession(
+  sessionId: string,
+  token: string
+): Promise<{
+  id: string;
+  title: string;
+  workspaceId?: string;
+  createdBy: string;
+  isDeleted: boolean;
+  deletedAt?: string;
+  messageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}> {
+  return apiRequest(`/admin/org/chat/sessions/${sessionId}`, token);
+}
+
+/**
+ * Delete organization chat session (org admin)
+ * DELETE /admin/org/chat/sessions/{id}
+ */
+export async function deleteOrgAdminSession(
+  sessionId: string,
+  token: string
+): Promise<{ message: string; id: string }> {
+  return apiRequest(`/admin/org/chat/sessions/${sessionId}`, token, {
+    method: "DELETE",
+  });
+}
+
+/**
+ * Restore soft-deleted chat session (org admin)
+ * POST /admin/org/chat/sessions/{id}/restore
+ */
+export async function restoreOrgAdminSession(
+  sessionId: string,
+  token: string
+): Promise<{ message: string; id: string }> {
+  return apiRequest(`/admin/org/chat/sessions/${sessionId}/restore`, token, {
+    method: "POST",
+  });
+}
+
+/**
+ * Get organization chat analytics (org admin)
+ * GET /admin/org/chat/analytics
+ */
+export async function getOrgAdminAnalytics(token: string): Promise<{
+  totalSessions: number;
+  totalMessages: number;
+}> {
+  return apiRequest("/admin/org/chat/analytics", token);
+}
+
+/**
+ * Get user activity statistics (org admin)
+ * GET /admin/org/chat/analytics/users
+ */
+export async function getOrgAdminUserStats(token: string): Promise<{
+  mostActiveUsers: Array<{
+    userId: string;
+    userName: string;
+    sessionCount: number;
+  }>;
+}> {
+  return apiRequest("/admin/org/chat/analytics/users", token);
+}
+
+/**
+ * Get workspace activity statistics (org admin)
+ * GET /admin/org/chat/analytics/workspaces
+ */
+export async function getOrgAdminWorkspaceStats(token: string): Promise<{
+  mostActiveWorkspaces: Array<{
+    workspaceId: string;
+    workspaceName: string;
+    sessionCount: number;
+  }>;
+}> {
+  return apiRequest("/admin/org/chat/analytics/workspaces", token);
+}
+
+/**
+ * View message content (org admin read-only)
+ * GET /admin/org/chat/messages/{id}
+ */
+export async function getOrgAdminMessage(
+  messageId: string,
+  token: string
+): Promise<{
+  id: string;
+  sessionId: string;
+  role: string;
+  content: string;
+  metadata: Record<string, unknown>;
+  sessionTitle?: string;
+  sessionCreatedBy?: string;
+  createdAt: string;
+  createdBy?: string;
+}> {
+  return apiRequest(`/admin/org/chat/messages/${messageId}`, token);
+}
