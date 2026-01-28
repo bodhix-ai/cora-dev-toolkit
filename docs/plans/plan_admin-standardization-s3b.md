@@ -134,15 +134,34 @@ e m# Plan: Admin Standardization S3b - Route Standards & Version Tracking
 - **Total Impact:** 26 routes standardized across 9 files (3 infrastructure, 3 backend, 3 frontend)
 - **Result:** All workspace routes now use consistent `/ws/{wsId}` pattern
 
+**Session 12: Module-Chat Admin Infrastructure - Backend Complete** ✅
+- ✅ **Phase 1: Infrastructure (outputs.tf) COMPLETE** - Added 18 admin routes (8 sys + 10 org)
+  - Routes follow ADR-018 standard: `/admin/{scope}/chat/*`
+- ✅ **Phase 2: Database Schema COMPLETE** - Created 2 configuration tables
+  - `chat_cfg_sys_settings` - Platform-wide chat configuration
+  - `chat_cfg_org_settings` - Organization-specific overrides
+  - Added RLS policies for admin access control
+  - Fixed 2 schema issues during implementation
+- ✅ **Phase 3: Backend chat-session Lambda COMPLETE** - 17 admin handlers implemented
+  - 8 sys admin: config, analytics, usage stats, token stats, session management
+  - 9 org admin: config, session management, restore, analytics, user/workspace stats
+- ✅ **Phase 4: Backend chat-message Lambda COMPLETE** - 1 admin handler implemented
+  - `handle_org_get_message()` - Allows org admins to view message content for auditing
+- ✅ **Phase 5: Frontend API (api.ts) COMPLETE** - 18 TypeScript API functions added
+  - 8 sys admin functions, 10 org admin functions
+  - Full type definitions for all request/response objects
+- **Files Modified:** 6 (infrastructure, schema, 2 Lambda functions, frontend API)
+- **Progress:** Module-chat now has complete backend infrastructure (42 total routes: 24 data API + 18 admin)
+
 **Overall Status:**
-- **87.5% Complete:** 7 of 8 modules with full admin parity
-- **Prerequisite work complete:** All workspace routes now standardized
-- **Remaining work:** module-chat (14-17 hours) - needs full admin infrastructure from scratch
+- **Backend Infrastructure: 100% Complete** - All 8 modules have admin route infrastructure
+- **Admin UI: 87.5% Complete** - 7 of 8 modules with admin pages (chat pending)
+- **Remaining work:** module-chat Phase 6 (Admin Pages UI) + Phase 7 (Validation)
 
 **Next Session:**
-- **Target:** module-chat (final module)
-- **Scope:** Create full sys + org admin infrastructure from scratch
-- **Estimated:** 14-17 hours (updated after workspace route standardization)
+- **Target:** module-chat Phase 6 - Create `/admin/sys/chat` and `/admin/org/chat` pages
+- **Scope:** Admin UI for platform config, analytics, session management
+- **Estimated:** 4-6 hours (backend infrastructure already complete)
 
 ---
 

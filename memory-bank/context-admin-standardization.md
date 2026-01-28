@@ -958,6 +958,76 @@ All workspace routes now comply with:
 
 ---
 
+### January 27, 2026 - Sprint 3b Session 12
+
+**Status:** Module-Chat Admin Infrastructure - Backend Complete (Phases 1-5)
+**Branch:** `admin-page-s3b`
+
+**Scope:**
+Implemented full backend and frontend API infrastructure for module-chat admin features (the final module needing admin infrastructure).
+
+**Work Completed:**
+
+1. **Phase 1: Infrastructure (outputs.tf) - COMPLETE** ✅
+   - **File:** `templates/_modules-core/module-chat/infrastructure/outputs.tf`
+   - Added 18 admin routes (8 sys + 10 org)
+   - Routes follow ADR-018 standard: `/admin/{scope}/chat/*`
+
+2. **Phase 2: Database Schema - COMPLETE** ✅
+   - **File:** `templates/_modules-core/module-chat/db/schema/003-chat-cfg-settings.sql` (NEW)
+   - Created 2 configuration tables:
+     - `chat_cfg_sys_settings` - Platform-wide chat configuration
+     - `chat_cfg_org_settings` - Organization-specific overrides
+   - **File:** `templates/_modules-core/module-chat/db/schema/007-chat-rls.sql`
+   - Added RLS policies for admin access control
+   - Fixed 2 schema issues during implementation (function name, column name)
+
+3. **Phase 3: Backend chat-session Lambda - COMPLETE** ✅
+   - **File:** `templates/_modules-core/module-chat/backend/lambdas/chat-session/lambda_function.py`
+   - Added route dispatchers for sys and org admin routes
+   - Implemented 17 admin handler functions:
+     - **8 sys admin:** config, analytics, usage stats, token stats, session management
+     - **9 org admin:** config, session management, restore, analytics, user/workspace stats
+
+4. **Phase 4: Backend chat-message Lambda - COMPLETE** ✅
+   - **File:** `templates/_modules-core/module-chat/backend/lambdas/chat-message/lambda_function.py`
+   - Added 1 admin handler: `handle_org_get_message()`
+   - Allows org admins to view message content for auditing/support
+
+5. **Phase 5: Frontend API (api.ts) - COMPLETE** ✅
+   - **File:** `templates/_modules-core/module-chat/frontend/lib/api.ts`
+   - Added 18 TypeScript API functions (8 sys + 10 org)
+   - Full type definitions for all request/response objects
+
+**Files Modified (6 total):**
+1. `templates/_modules-core/module-chat/infrastructure/outputs.tf`
+2. `templates/_modules-core/module-chat/db/schema/003-chat-cfg-settings.sql` (NEW)
+3. `templates/_modules-core/module-chat/db/schema/007-chat-rls.sql`
+4. `templates/_modules-core/module-chat/backend/lambdas/chat-session/lambda_function.py`
+5. `templates/_modules-core/module-chat/backend/lambdas/chat-message/lambda_function.py`
+6. `templates/_modules-core/module-chat/frontend/lib/api.ts`
+
+**Key Features Implemented:**
+- **Sys Admin:** Platform-wide configuration, analytics across all orgs, force delete sessions
+- **Org Admin:** Org-specific settings, session management with soft delete/restore, usage analytics, message auditing
+- **Security:** Proper role-based access control via RLS policies
+- **Standards Compliance:** All routes follow ADR-018, all tables follow naming standards
+
+**Progress Impact:**
+- Module-chat now has **complete backend infrastructure** (42 total routes: 24 data API + 18 admin)
+- All 8 CORA modules now have admin route infrastructure
+- **Remaining work:** Phase 6 (Admin Pages UI) and Phase 7 (Validation)
+
+**Estimated Remaining Effort:**
+- Phase 6: Sys + Org admin pages (4-6 hours)
+- Phase 7: Validation with admin-route-validator (30 min)
+
+**Next Session:**
+- Target: Phase 6 - Create `/admin/sys/chat` and `/admin/org/chat` pages
+- Admin UI for platform config, analytics, session management
+
+---
+
 ### January 24, 2026 - Sprint 2 Completion
 - Completed ADR-016 fixes for org admin authorization
 - Renamed branch from citations-review to admin-page-s2-completion
