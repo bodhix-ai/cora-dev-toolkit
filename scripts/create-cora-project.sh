@@ -2222,6 +2222,74 @@ if ! $DRY_RUN && $WITH_CORE_MODULES; then
   consolidate_database_schemas "${STACK_DIR}"
 fi
 
+# --- Stamp Project Version ---
+stamp_project_version() {
+  local stack_dir="$1"
+  local version_file="${stack_dir}/.cora-version.yaml"
+  
+  log_step "Stamping project with toolkit and module versions..."
+  
+  # Check if .cora-version.yaml template exists
+  if [[ ! -f "$version_file" ]]; then
+    log_warn ".cora-version.yaml template not found at ${version_file}"
+    log_info "Skipping version stamping"
+    return
+  fi
+  
+  # Read toolkit version from VERSION file
+  local toolkit_version="unknown"
+  if [[ -f "${TOOLKIT_ROOT}/VERSION" ]]; then
+    toolkit_version=$(cat "${TOOLKIT_ROOT}/VERSION" | tr -d '[:space:]')
+    log_info "Toolkit version: ${toolkit_version}"
+  else
+    log_warn "VERSION file not found at ${TOOLKIT_ROOT}/VERSION"
+  fi
+  
+  # Get current date
+  local created_date=$(date +%Y-%m-%d)
+  
+  # Replace toolkit version and dates
+  sed -i '' "s/{{TOOLKIT_VERSION}}/${toolkit_version}/g" "$version_file" 2>/dev/null || \
+  sed -i "s/{{TOOLKIT_VERSION}}/${toolkit_version}/g" "$version_file"
+  
+  sed -i '' "s/{{CREATED_DATE}}/${created_date}/g" "$version_file" 2>/dev/null || \
+  sed -i "s/{{CREATED_DATE}}/${created_date}/g" "$version_file"
+  
+  # Read module versions from module-registry.yaml
+  if [[ -f "$REGISTRY_FILE" ]]; then
+    # Get version for each module
+    local modules=("module-access" "module-ai" "module-ws" "module-mgmt" "module-kb" "module-chat" "module-eval" "module-voice")
+    
+    for module in "${modules[@]}"; do
+      local module_version="unknown"
+      
+      # Get module version using yq or fallback to grep
+      if command -v yq &> /dev/null; then
+        module_version=$(yq ".modules.${module}.version // \"unknown\"" "$REGISTRY_FILE" | tr -d '[:space:]')
+      else
+        # Fallback: grep-based extraction
+        module_version=$(grep -A20 "^  ${module}:" "$REGISTRY_FILE" | grep "version:" | head -1 | sed 's/.*version: *"\([^"]*\)".*/\1/' | tr -d '[:space:]')
+        [[ -z "$module_version" ]] && module_version="unknown"
+      fi
+      
+      # Replace module version placeholder
+      local placeholder="{{MODULE_${module#module-}_VERSION}}"
+      local placeholder_upper=$(echo "$placeholder" | tr '[:lower:]' '[:upper:]' | sed 's/-/_/g')
+      
+      sed -i '' "s/${placeholder_upper}/${module_version}/g" "$version_file" 2>/dev/null || \
+      sed -i "s/${placeholder_upper}/${module_version}/g" "$version_file"
+      
+      log_info "  ${module}: ${module_version}"
+    done
+  else
+    log_warn "Module registry not found: ${REGISTRY_FILE}"
+  fi
+  
+  log_info "✅ Project version stamped: ${version_file}"
+  log_info "   Toolkit: ${toolkit_version}"
+  log_info "   Created: ${created_date}"
+}
+
 # --- Install Validation Dependencies ---
 install_validation_deps() {
   local stack_dir="$1"
@@ -2431,6 +2499,11 @@ if ! $DRY_RUN; then
   else
     log_warn "Validation directory not found in toolkit: ${TOOLKIT_ROOT}/validation"
   fi
+fi
+
+# --- Stamp Project Version ---
+if ! $DRY_RUN; then
+  stamp_project_version "$STACK_DIR"
 fi
 
 # --- Install Validation Dependencies ---

@@ -368,6 +368,35 @@ fi
 log_info "✅ File synced successfully"
 echo ""
 
+# --- Update Version Tracking ---
+# Update last_synced in .cora-version.yaml and log the sync
+VERSION_FILE="${PROJECT_PATH}/.cora-version.yaml"
+if [[ -f "$VERSION_FILE" ]]; then
+  log_step "Updating version tracking..."
+  
+  # Update last_synced timestamp
+  CURRENT_DATE=$(date +%Y-%m-%d)
+  sed -i '' "s/last_synced:.*/last_synced: \"${CURRENT_DATE}\"/" "$VERSION_FILE" 2>/dev/null || \
+  sed -i "s/last_synced:.*/last_synced: \"${CURRENT_DATE}\"/" "$VERSION_FILE"
+  
+  # Get toolkit version for logging
+  TOOLKIT_VERSION="unknown"
+  if [[ -f "${TOOLKIT_ROOT}/VERSION" ]]; then
+    TOOLKIT_VERSION=$(cat "${TOOLKIT_ROOT}/VERSION" | tr -d '[:space:]')
+  fi
+  
+  # Log the sync with timestamp
+  SYNC_LOG="${PROJECT_PATH}/.cora-sync.log"
+  SYNC_TIMESTAMP=$(date +"%Y-%m-%d %H:%M")
+  RELATIVE_FILE="${SOURCE_FILE#${TOOLKIT_ROOT}/templates/}"
+  echo "${SYNC_TIMESTAMP}: Synced ${RELATIVE_FILE} from toolkit ${TOOLKIT_VERSION}" >> "$SYNC_LOG"
+  
+  log_info "Updated version tracking:"
+  log_info "  last_synced: ${CURRENT_DATE}"
+  log_info "  Logged to: .cora-sync.log"
+  echo ""
+fi
+
 # --- Next Steps ---
 if [[ "$TARGET_INFRA" == "true" ]] || [[ "$DEST_FILE" == *"/lambdas/"* ]]; then
   log_info "Next steps for backend fix:"
