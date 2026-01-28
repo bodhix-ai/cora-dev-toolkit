@@ -13,7 +13,7 @@
  */
 
 import React from "react";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
 import { OrgWsAdmin } from "@{{PROJECT_NAME}}/module-ws";
 import { CircularProgress, Box, Alert } from "@mui/material";
 
@@ -29,6 +29,7 @@ import { CircularProgress, Box, Alert } from "@mui/material";
  */
 export default function OrganizationWsAdminPage() {
   const { profile, loading, isAuthenticated } = useUser();
+  const { hasRole } = useRole();
 
   // Show loading state while user profile is being fetched
   if (loading) {
@@ -58,11 +59,7 @@ export default function OrganizationWsAdminPage() {
   }
 
   // Check if user has org admin role
-  const isOrgAdmin = ["org_owner", "org_admin"].includes(
-    profile.orgRole || ""
-  );
-
-  if (!isOrgAdmin) {
+  if (!hasRole("org_owner") && !hasRole("org_admin")) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">

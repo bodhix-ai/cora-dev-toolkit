@@ -12,7 +12,7 @@
  */
 
 import React from "react";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
 import { CircularProgress, Box, Alert, Typography, Paper } from "@mui/material";
 import { useModuleRegistry } from "@{{PROJECT_NAME}}/module-mgmt";
 
@@ -27,6 +27,7 @@ import { useModuleRegistry } from "@{{PROJECT_NAME}}/module-mgmt";
  */
 export default function OrganizationManagementPage() {
   const { profile, loading, isAuthenticated } = useUser();
+  const { hasRole } = useRole();
   const { modules, loading: modulesLoading } = useModuleRegistry();
 
   // Show loading state while user profile is being fetched
@@ -57,9 +58,7 @@ export default function OrganizationManagementPage() {
   }
 
   // Check if user has org admin role
-  const isOrgAdmin = profile.orgRole === "org_admin";
-
-  if (!isOrgAdmin) {
+  if (!hasRole("org_admin")) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">
@@ -82,7 +81,7 @@ export default function OrganizationManagementPage() {
         <CircularProgress />
       ) : (
         <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h5" gutterBottom>
             Enabled Modules
           </Typography>
           <Typography variant="body2" color="text.secondary">
