@@ -17,16 +17,16 @@ Routes - Chat Scoped:
 - DELETE /chats/{chatId}/kb/documents/{docId} - Delete document
 
 Routes - Org Admin:
-- POST /admin/org/kbs/{kbId}/documents - Upload to org KB
-- GET /admin/org/kbs/{kbId}/documents - List org KB documents
-- PUT /admin/org/kbs/{kbId}/documents/{docId}/complete - Complete org KB document upload
-- DELETE /admin/org/kbs/{kbId}/documents/{docId} - Delete from org KB
+- POST /admin/org/kb/{kbId}/documents - Upload to org KB
+- GET /admin/org/kb/{kbId}/documents - List org KB documents
+- PUT /admin/org/kb/{kbId}/documents/{docId}/complete - Complete org KB document upload
+- DELETE /admin/org/kb/{kbId}/documents/{docId} - Delete from org KB
 
 Routes - Platform Admin:
-- POST /admin/sys/kbs/{kbId}/documents - Upload to system KB
-- GET /admin/sys/kbs/{kbId}/documents - List system KB documents
-- PUT /admin/sys/kbs/{kbId}/documents/{docId}/complete - Complete system KB document upload
-- DELETE /admin/sys/kbs/{kbId}/documents/{docId} - Delete from system KB
+- POST /admin/sys/kb/{kbId}/documents - Upload to system KB
+- GET /admin/sys/kb/{kbId}/documents - List system KB documents
+- PUT /admin/sys/kb/{kbId}/documents/{docId}/complete - Complete system KB document upload
+- DELETE /admin/sys/kb/{kbId}/documents/{docId} - Delete from system KB
 """
 
 import json
@@ -86,9 +86,9 @@ def lambda_handler(event, context):
             return handle_workspace_documents(http_method, path, path_params, event, user_id)
         elif '/chats/' in path and '/kb/documents' in path:
             return handle_chat_documents(http_method, path, path_params, event, user_id)
-        elif '/admin/org/kbs/' in path and '/documents' in path:
+        elif '/admin/org/kb/' in path and '/documents' in path:
             return handle_org_admin_documents(http_method, path, path_params, event, user_id)
-        elif '/admin/sys/kbs/' in path and '/documents' in path:
+        elif '/admin/sys/kb/' in path and '/documents' in path:
             return handle_sys_admin_documents(http_method, path, path_params, event, user_id)
         elif '/kb/documents/' in path and '/complete' in path:
             # Generic complete endpoint (not scope-specific)
