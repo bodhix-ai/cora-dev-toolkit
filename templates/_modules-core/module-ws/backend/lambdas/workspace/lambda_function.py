@@ -5,12 +5,18 @@ This Lambda function provides API endpoints for workspace management including
 CRUD operations, member management, favorites, and admin features. It follows
 CORA patterns with standard auth and role-based authorization.
 
-Routes - Sys (System-Level, no org_id required):
-- GET /ws/sys/analytics - Get cross-organization statistics (platform admin only)
+Routes - System Admin:
+- GET /admin/sys/ws/analytics - Get platform-wide workspace analytics (sys_admin only)
+- GET /admin/sys/ws/config - Get workspace module configuration (sys_admin only)
+- PUT /admin/sys/ws/config - Update workspace module configuration (sys_admin only)
 
-Routes - Org (Organization-Level, org_id required):
-- GET /ws/org/settings - Get org workspace settings
-- PUT /ws/org/settings - Update org workspace settings
+Routes - Organization Admin:
+- GET /admin/org/ws/settings - Get org workspace settings
+- PUT /admin/org/ws/settings - Update org workspace settings
+- GET /admin/org/ws/analytics - Get workspace analytics for organization
+- GET /admin/org/ws/workspaces - List all org workspaces (admin view)
+- POST /admin/org/ws/workspaces/{workspaceId}/restore - Admin restore workspace
+- DELETE /admin/org/ws/workspaces/{workspaceId} - Admin force delete workspace
 
 Routes - Workspaces:
 - GET /ws - List user's workspaces
@@ -31,17 +37,6 @@ Routes - Members:
 Routes - Favorites:
 - POST /ws/{workspaceId}/favorite - Toggle favorite
 - GET /ws/favorites - List user's favorites
-
-Routes - Config:
-- GET /ws/config - Get workspace config (platform-level)
-- PUT /ws/config - Update workspace config (platform admin only)
-
-Routes - Admin (Legacy, org-scoped):
-- GET /ws/admin/stats - Get workspace statistics (deprecated, use /ws/sys/analytics)
-- GET /ws/admin/analytics - Get workspace analytics
-- GET /ws/admin/workspaces - List all workspaces (admin)
-- POST /ws/admin/workspaces/{workspaceId}/restore - Restore deleted workspace (admin)
-- DELETE /ws/admin/workspaces/{workspaceId} - Delete workspace (admin)
 """
 
 import json
@@ -57,7 +52,7 @@ logger = logging.getLogger()
 logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
 
 # System routes that don't require org_id
-SYS_ROUTES = ['/ws/sys/analytics', '/ws/sys/stats', '/ws/config']
+SYS_ROUTES = ['/admin/sys/ws/analytics', '/admin/sys/ws/config']
 
 
 def is_sys_route(path: str) -> bool:
@@ -113,17 +108,38 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         else:
             logger.info(f"System route - no org_id required, user_id: {supabase_user_id}")
         
-        # Route dispatcher - System Routes (no org_id required)
-        if path == '/ws/sys/analytics' and http_method == 'GET':
+        # Route dispatcher - System Admin Routes (no org_id required)
+        if path == '/admin/sys/ws/analytics' and http_method == 'GET':
             return handle_sys_analytics(supabase_user_id, user_info)
         
-        # Route dispatcher - Org Routes (org_id required)
-        elif path == '/ws/org/settings' and http_method == 'GET':
+        elif path == '/admin/sys/ws/config' and http_method == 'GET':
+            return handle_get_config()
+        
+        elif path == '/admin/sys/ws/config' and http_method == 'PUT':
+            body = json.loads(event.get('body', '{}'))
+            return handle_update_config(supabase_user_id, user_info, body)
+        
+        # Route dispatcher - Organization Admin Routes (org_id required)
+        elif path == '/admin/org/ws/settings' and http_method == 'GET':
             return handle_get_org_settings(org_id, supabase_user_id, user_info)
         
-        elif path == '/ws/org/settings' and http_method == 'PUT':
+        elif path == '/admin/org/ws/settings' and http_method == 'PUT':
             body = json.loads(event.get('body', '{}'))
             return handle_update_org_settings(org_id, supabase_user_id, user_info, body)
+        
+        elif path == '/admin/org/ws/analytics' and http_method == 'GET':
+            return handle_admin_analytics(org_id, user_info)
+        
+        elif path == '/admin/org/ws/workspaces' and http_method == 'GET':
+            return handle_admin_list_workspaces(org_id, supabase_user_id, user_info, event)
+        
+        elif path.startswith('/admin/org/ws/workspaces/') and path.endswith('/restore') and http_method == 'POST':
+            workspace_id = path_parameters.get('workspaceId')
+            return handle_admin_restore_workspace(workspace_id, org_id, supabase_user_id, user_info)
+        
+        elif path.startswith('/admin/org/ws/workspaces/') and http_method == 'DELETE':
+            workspace_id = path_parameters.get('workspaceId')
+            return handle_admin_delete_workspace(workspace_id, org_id, supabase_user_id, user_info)
         
         # Route dispatcher - Workspaces
         # Note: path is /ws, /ws/{id}, /ws/{id}/members, etc.
@@ -173,21 +189,6 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         
         elif path == '/ws/favorites' and http_method == 'GET':
             return handle_list_favorites(org_id, supabase_user_id)
-        
-        # Config routes
-        elif path == '/ws/config' and http_method == 'GET':
-            return handle_get_config()
-        
-        elif path == '/ws/config' and http_method == 'PUT':
-            body = json.loads(event.get('body', '{}'))
-            return handle_update_config(supabase_user_id, user_info, body)
-        
-        # Admin routes (legacy)
-        elif path == '/ws/admin/stats' and http_method == 'GET':
-            return handle_admin_stats(user_info)
-        
-        elif path == '/ws/admin/analytics' and http_method == 'GET':
-            return handle_admin_analytics(org_id, user_info)
         
         elif path.startswith('/ws/') and http_method == 'GET':
             workspace_id = path_parameters.get('workspaceId')
@@ -1830,6 +1831,240 @@ def handle_update_config(
     
     except Exception as e:
         logger.exception(f'Error updating config: {str(e)}')
+        raise
+
+
+# =============================================================================
+# Organization Admin Handlers (New Routes)
+# =============================================================================
+
+def handle_admin_list_workspaces(
+    org_id: str,
+    user_id: str,
+    user_info: Dict[str, Any],
+    event: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    GET /admin/org/ws/workspaces
+    
+    List all workspaces in an organization (admin view).
+    Org admin or platform admin can access.
+    
+    Args:
+        org_id: Organization ID
+        user_id: Supabase user ID
+        user_info: User information from auth token
+        event: API Gateway event
+    
+    Returns:
+        List of all org workspaces with admin metadata
+    """
+    # Check authorization: org admin or platform admin
+    is_org_admin = _is_org_admin(org_id, user_id)
+    is_sys_admin = _is_sys_admin(user_id)
+    
+    if not is_org_admin and not is_sys_admin:
+        raise common.ForbiddenError('Only organization or sys administrators can list all org workspaces')
+    
+    try:
+        query_params = event.get('queryStringParameters') or {}
+        status = query_params.get('status', 'active')  # active, archived, all, deleted
+        
+        # Get all workspaces for organization
+        filters = {'org_id': org_id}
+        
+        if status == 'active':
+            filters['deleted_at'] = None
+            filters['status'] = 'active'
+        elif status == 'archived':
+            filters['deleted_at'] = None
+            filters['status'] = 'archived'
+        elif status == 'deleted':
+            # Only fetch deleted workspaces (deleted_at IS NOT NULL)
+            # This requires a special query since we can't directly filter for NOT NULL
+            pass  # Will handle below
+        # 'all' means no additional filters
+        
+        if status == 'deleted':
+            # Get all workspaces and filter manually for deleted ones
+            all_workspaces = common.find_many(table='workspaces', filters={'org_id': org_id})
+            workspaces = [w for w in all_workspaces if w.get('deleted_at') is not None]
+        else:
+            workspaces = common.find_many(table='workspaces', filters=filters)
+        
+        # Enrich with member counts and owner info
+        for workspace in workspaces:
+            # Get member count
+            members = common.find_many(
+                table='ws_members',
+                filters={'ws_id': workspace['id'], 'deleted_at': None}
+            )
+            workspace['member_count'] = len(members)
+            
+            # Get owner info
+            owners = [m for m in members if m.get('ws_role') == 'ws_owner']
+            if owners:
+                owner = owners[0]  # Get first owner
+                profile = common.find_one('user_profiles', {'user_id': owner['user_id']})
+                workspace['owner_name'] = profile.get('display_name') if profile else 'Unknown'
+                workspace['owner_email'] = profile.get('email') if profile else None
+        
+        result = {
+            'workspaces': [_transform_workspace(w) for w in workspaces],
+            'totalCount': len(workspaces),
+            'filters': {
+                'status': status,
+                'orgId': org_id
+            }
+        }
+        
+        logger.info(f"Admin retrieved {len(workspaces)} workspaces for org {org_id}")
+        return common.success_response(result)
+    
+    except Exception as e:
+        logger.exception(f'Error listing workspaces for org {org_id}: {str(e)}')
+        raise
+
+
+def handle_admin_restore_workspace(
+    workspace_id: str,
+    org_id: str,
+    user_id: str,
+    user_info: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    POST /admin/org/ws/workspaces/{workspaceId}/restore
+    
+    Admin restore a deleted workspace. Org admin or platform admin can restore.
+    Unlike user restore, this doesn't require the admin to have been an owner.
+    
+    Args:
+        workspace_id: Workspace UUID
+        org_id: Organization ID
+        user_id: Supabase user ID (admin performing restore)
+        user_info: User information from auth token
+    
+    Returns:
+        Restored workspace
+    """
+    if not workspace_id:
+        raise common.ValidationError('Workspace ID is required')
+    
+    # Check authorization: org admin or platform admin
+    is_org_admin = _is_org_admin(org_id, user_id)
+    is_sys_admin = _is_sys_admin(user_id)
+    
+    if not is_org_admin and not is_sys_admin:
+        raise common.ForbiddenError('Only organization or sys administrators can restore workspaces')
+    
+    # Verify workspace belongs to this org
+    workspace = common.find_one(
+        table='workspaces',
+        filters={'id': workspace_id}
+    )
+    if not workspace:
+        raise common.NotFoundError('Workspace not found')
+    
+    if workspace.get('org_id') != org_id:
+        raise common.ForbiddenError('Workspace does not belong to this organization')
+    
+    if not workspace.get('deleted_at'):
+        raise common.ValidationError('Workspace is not deleted')
+    
+    try:
+        # Restore workspace
+        restored = common.update_one(
+            table='workspaces',
+            filters={'id': workspace_id},
+            data={'deleted_at': None, 'updated_by': user_id}
+        )
+        
+        # Log activity
+        _log_activity(workspace_id, user_id, 'Workspace restored by admin')
+        
+        # Add metadata
+        restored['user_role'] = None  # Admin may not be a member
+        restored['is_favorited'] = False
+        
+        members = common.find_many(
+            table='ws_members',
+            filters={'ws_id': workspace_id, 'deleted_at': None}
+        )
+        restored['member_count'] = len(members)
+        
+        logger.info(f"Admin restored workspace {workspace_id}")
+        return common.success_response({
+            'message': 'Workspace restored successfully',
+            'workspace': _transform_workspace(restored)
+        })
+    
+    except Exception as e:
+        logger.exception(f'Error restoring workspace {workspace_id}: {str(e)}')
+        raise
+
+
+def handle_admin_delete_workspace(
+    workspace_id: str,
+    org_id: str,
+    user_id: str,
+    user_info: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    DELETE /admin/org/ws/workspaces/{workspaceId}
+    
+    Admin force delete a workspace. Org admin or platform admin can delete.
+    Unlike user delete, this doesn't require the admin to be an owner.
+    
+    Args:
+        workspace_id: Workspace UUID
+        org_id: Organization ID
+        user_id: Supabase user ID (admin performing delete)
+        user_info: User information from auth token
+    
+    Returns:
+        Deletion confirmation
+    """
+    if not workspace_id:
+        raise common.ValidationError('Workspace ID is required')
+    
+    # Check authorization: org admin or platform admin
+    is_org_admin = _is_org_admin(org_id, user_id)
+    is_sys_admin = _is_sys_admin(user_id)
+    
+    if not is_org_admin and not is_sys_admin:
+        raise common.ForbiddenError('Only organization or sys administrators can force delete workspaces')
+    
+    # Verify workspace belongs to this org
+    workspace = common.find_one(
+        table='workspaces',
+        filters={'id': workspace_id, 'deleted_at': None}
+    )
+    if not workspace:
+        raise common.NotFoundError('Workspace not found')
+    
+    if workspace.get('org_id') != org_id:
+        raise common.ForbiddenError('Workspace does not belong to this organization')
+    
+    try:
+        # Soft delete workspace
+        deleted = common.update_one(
+            table='workspaces',
+            filters={'id': workspace_id},
+            data={'deleted_at': 'NOW()', 'updated_by': user_id}
+        )
+        
+        # Log activity
+        _log_activity(workspace_id, user_id, 'Workspace deleted by admin')
+        
+        logger.info(f"Admin deleted workspace {workspace_id}")
+        return common.success_response({
+            'message': 'Workspace deleted successfully',
+            'workspaceId': workspace_id,
+            'deletedAt': deleted.get('deleted_at')
+        })
+    
+    except Exception as e:
+        logger.exception(f'Error deleting workspace {workspace_id}: {str(e)}')
         raise
 
 

@@ -279,12 +279,12 @@ export class WorkspaceApiClient {
   /**
    * Get workspace module configuration
    * 
-   * Note: orgId is optional - /ws/config is a SYS route (platform-level)
+   * Note: orgId is optional - sys admin route (platform-level)
    */
   async getConfig(orgId?: string): Promise<WorkspaceConfig | null> {
     try {
       // orgId is optional for platform-level config endpoint
-      const url = orgId ? `/ws/config?orgId=${orgId}` : `/ws/config`;
+      const url = orgId ? `/admin/sys/ws/config?orgId=${orgId}` : `/admin/sys/ws/config`;
       const response = await this.client.get<ApiResponse<{ config: WorkspaceConfig }>>(url);
       return response?.data?.config || null;
     } catch (error) {
@@ -299,7 +299,7 @@ export class WorkspaceApiClient {
   async updateConfig(data: Partial<WorkspaceConfig>, orgId: string): Promise<WorkspaceConfig> {
     try {
       const response = await this.client.put<ApiResponse<{ config: WorkspaceConfig }>>(
-        `/ws/config?orgId=${orgId}`,
+        `/admin/sys/ws/config?orgId=${orgId}`,
         data
       );
       if (!response?.data?.config) {
@@ -360,7 +360,7 @@ export class WorkspaceApiClient {
             colorsPct: number;
           };
         };
-      }>>('/ws/sys/analytics');
+      }>>('/admin/sys/ws/analytics');
       
       if (!response?.data?.analytics) return null;
       
@@ -401,7 +401,7 @@ export class WorkspaceApiClient {
           requireApproval: boolean;
           maxWorkspacesPerUser: number;
         };
-      }>>(`/ws/org/settings?orgId=${orgId}`);
+      }>>(`/admin/org/ws/settings?orgId=${orgId}`);
       return response?.data?.settings || null;
     } catch (error) {
       console.error("Failed to get org settings:", error);
@@ -432,7 +432,7 @@ export class WorkspaceApiClient {
           requireApproval: boolean;
           maxWorkspacesPerUser: number;
         };
-      }>>(`/ws/org/settings?orgId=${orgId}`, data);
+      }>>(`/admin/org/ws/settings?orgId=${orgId}`, data);
       if (!response?.data?.settings) {
         throw new Error(response?.error || "Failed to update org settings");
       }
@@ -471,7 +471,7 @@ export class WorkspaceApiClient {
       if (dateRange) params.set("date_range", dateRange);
 
       const response = await this.client.get<ApiResponse<{ analytics: WorkspaceAnalytics }>>(
-        `/ws/admin/analytics?${params.toString()}`
+        `/admin/org/ws/analytics?${params.toString()}`
       );
       // API returns { success: true, data: { analytics: {...} } } - unwrap the nested analytics
       return response?.data?.analytics || null;
@@ -497,7 +497,7 @@ export class WorkspaceApiClient {
       if (params?.offset) queryParams.set("offset", String(params.offset));
 
       const response = await this.client.get<ApiResponse<WorkspaceListResponse>>(
-        `/ws/admin/workspaces?${queryParams.toString()}`
+        `/admin/org/ws/workspaces?${queryParams.toString()}`
       );
       return response?.data || { workspaces: [], total: 0, limit: 50, offset: 0 };
     } catch (error) {
@@ -512,7 +512,7 @@ export class WorkspaceApiClient {
   async adminRestoreWorkspace(workspaceId: string, orgId: string): Promise<Workspace> {
     try {
       const response = await this.client.post<ApiResponse<Workspace>>(
-        `/ws/admin/workspaces/${workspaceId}/restore?orgId=${orgId}`,
+        `/admin/org/ws/workspaces/${workspaceId}/restore?orgId=${orgId}`,
         {}
       );
       if (!response?.data) {
@@ -530,7 +530,7 @@ export class WorkspaceApiClient {
    */
   async adminForceDelete(workspaceId: string, orgId: string): Promise<void> {
     try {
-      await this.client.delete(`/ws/admin/workspaces/${workspaceId}?orgId=${orgId}&force=true`);
+      await this.client.delete(`/admin/org/ws/workspaces/${workspaceId}?orgId=${orgId}&force=true`);
     } catch (error) {
       console.error(`Failed to force delete workspace ${workspaceId}:`, error);
       throw new Error("Failed to delete workspace");

@@ -145,76 +145,67 @@ output "api_routes" {
       description = "List user's favorite workspaces"
       public      = false
     },
-    # Workspace Config
+    # System Admin Routes (standardized pattern)
     {
       method      = "GET"
-      path        = "/ws/config"
+      path        = "/admin/sys/ws/analytics"
+      integration = aws_lambda_function.workspace.invoke_arn
+      description = "Get platform-wide workspace analytics"
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/sys/ws/config"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Get workspace module configuration"
       public      = false
     },
     {
       method      = "PUT"
-      path        = "/ws/config"
+      path        = "/admin/sys/ws/config"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Update workspace module configuration"
       public      = false
     },
-    # Org Admin Routes (sys/org pattern)
+    # Organization Admin Routes (standardized pattern)
     {
       method      = "GET"
-      path        = "/ws/org/settings"
+      path        = "/admin/org/ws/settings"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Get organization workspace settings"
       public      = false
     },
     {
       method      = "PUT"
-      path        = "/ws/org/settings"
+      path        = "/admin/org/ws/settings"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Update organization workspace settings"
       public      = false
     },
-    # Platform Admin Routes (sys pattern)
     {
       method      = "GET"
-      path        = "/ws/sys/analytics"
-      integration = aws_lambda_function.workspace.invoke_arn
-      description = "Get platform-wide workspace analytics"
-      public      = false
-    },
-    # Legacy Admin Routes (deprecated - use sys/org pattern)
-    {
-      method      = "GET"
-      path        = "/ws/admin/stats"
-      integration = aws_lambda_function.workspace.invoke_arn
-      description = "Get workspace statistics (org admin) - DEPRECATED"
-      public      = false
-    },
-    {
-      method      = "GET"
-      path        = "/ws/admin/analytics"
+      path        = "/admin/org/ws/analytics"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Get workspace analytics (org admin)"
       public      = false
     },
     {
       method      = "GET"
-      path        = "/ws/admin/workspaces"
+      path        = "/admin/org/ws/workspaces"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "List all org workspaces (admin view)"
       public      = false
     },
     {
       method      = "POST"
-      path        = "/ws/admin/workspaces/{workspaceId}/restore"
+      path        = "/admin/org/ws/workspaces/{workspaceId}/restore"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Admin restore workspace"
       public      = false
     },
     {
       method      = "DELETE"
-      path        = "/ws/admin/workspaces/{workspaceId}"
+      path        = "/admin/org/ws/workspaces/{workspaceId}"
       integration = aws_lambda_function.workspace.invoke_arn
       description = "Admin force delete workspace"
       public      = false
