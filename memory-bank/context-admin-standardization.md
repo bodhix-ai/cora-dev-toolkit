@@ -733,6 +733,78 @@ module-kb routes EXIST for both sys and org but are malformed. They use `/admin/
 
 ---
 
+### January 27, 2026 - Sprint 3b Session 10
+
+**Status:** Module-Voice Admin Infrastructure Complete
+**Branch:** `admin-page-s3b`
+
+**Work Completed:**
+
+1. **Voice-Configs Lambda - COMPLETE** ✅
+   - **File:** `templates/_modules-functional/module-voice/backend/lambdas/voice-configs/lambda_function.py`
+   - **Added:** Org admin route dispatcher for `/admin/org/voice/configs` pattern
+   - **Implemented:** 5 org admin handler functions:
+     - `handle_admin_list_configs()` - List configs for admin's organization (uses session org_id)
+     - `handle_admin_get_config()` - Get config with org verification
+     - `handle_admin_create_config()` - Create config using session org_id (no orgId param needed)
+     - `handle_admin_update_config()` - Update config with org verification
+     - `handle_admin_delete_config()` - Delete config with org verification + in-use check
+   - **Updated:** Module docstring with admin routes documentation
+   - **Pattern:** All admin routes use session org_id, not query parameters
+
+2. **Frontend API Updates - COMPLETE** ✅
+   - **File:** `templates/_modules-functional/module-voice/frontend/lib/api.ts`
+   - **Added:** 5 admin endpoint functions:
+     - `adminListConfigs()` - No orgId param needed (uses session)
+     - `adminGetConfig()` - Get by ID
+     - `adminCreateConfig()` - Omits orgId from input (Omit<CreateVoiceConfigRequest, 'orgId'>)
+     - `adminUpdateConfig()` - Update by ID
+     - `adminDeleteConfig()` - Delete by ID
+   - **All routes:** Follow `/admin/org/voice/{resource}` pattern
+
+3. **Validation - COMPLETE** ✅
+   - Ran admin-route-validator on module-voice
+   - **Result:** ✅ PASSED - 24/24 routes compliant
+     - 14 data API routes
+     - 5 org admin config routes
+     - 5 sys admin credential routes
+   - **No errors** - Full compliance with ADR-018
+
+**Key Implementation Details:**
+- Admin routes use user session org_id instead of query parameters
+- Org admin role verification (org_admin or org_owner required)
+- Session org_id extracted from user_info for all admin operations
+- Config delete checks if config is in use by sessions before allowing deletion
+
+**Progress Summary:**
+- **7 of 8 modules complete** with full sys + org admin parity:
+  - ✅ module-kb
+  - ✅ module-eval
+  - ✅ module-mgmt
+  - ✅ module-access
+  - ✅ module-ai
+  - ✅ module-ws
+  - ✅ module-voice (just completed!)
+- **1 module remaining:** module-chat (needs full admin infrastructure from scratch)
+
+**Files Modified (2):**
+- `templates/_modules-functional/module-voice/backend/lambdas/voice-configs/lambda_function.py`
+- `templates/_modules-functional/module-voice/frontend/lib/api.ts`
+
+**Committed & Pushed:**
+- Commit: `943731a` - "feat(admin-s3b): complete module-voice admin infrastructure (Session 10)"
+- Remote: ✅ Pushed successfully to `admin-page-s3b`
+
+**Impact:**
+Module-voice now has complete admin infrastructure with 24 compliant routes. Organizations can manage voice interview configs through admin pages with proper role-based access control.
+
+**Next Session:**
+- Target: module-chat (final module)
+- Scope: Create full sys + org admin infrastructure from scratch
+- Estimated: 12-16 hours
+
+---
+
 ### January 24, 2026 - Sprint 2 Completion
 - Completed ADR-016 fixes for org admin authorization
 - Renamed branch from citations-review to admin-page-s2-completion

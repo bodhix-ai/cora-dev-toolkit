@@ -10,7 +10,7 @@ e m# Plan: Admin Standardization S3b - Route Standards & Version Tracking
 
 ## Current Progress
 
-**Last Updated:** January 27, 2026 (Session 7)
+**Last Updated:** January 27, 2026 (Session 10)
 
 **Completed:**
 - ✅ Session 1: Sprint planning and documentation
@@ -69,9 +69,8 @@ e m# Plan: Admin Standardization S3b - Route Standards & Version Tracking
   - Module-WS achieved full sys + org admin parity
 
 **Module Completion Status:**
-- ✅ **6 modules complete:** kb, eval, mgmt, access, ai, ws (sys + org admin pages)
-- 🔄 **1 module 50% complete:** voice (credentials done, configs + frontend pending)
-- ⏳ **1 module remaining:** chat
+- ✅ **7 modules complete:** kb, eval, mgmt, access, ai, ws, voice (sys + org admin pages)
+- ⏳ **1 module remaining:** chat (needs full admin infrastructure from scratch)
 
 **Validation Results (Session 8):**
 - Ran admin-route-validator on `templates/_modules-core/` (6 modules)
@@ -98,19 +97,30 @@ e m# Plan: Admin Standardization S3b - Route Standards & Version Tracking
   - Sys admin (6): Platform credentials (org_id = NULL)
   - Org admin (5): Organization credentials (session org_id)
   - All routes follow ADR-018 pattern: `/admin/{scope}/{module}/{resource}`
-- ⏳ **Remaining (4-5 hours):**
-  - Voice-configs Lambda updates (5 org admin routes)
-  - Frontend API updates (connect SysVoiceConfigPage to real endpoints)
-  - Validation with admin-route-validator
+
+**Session 10: Module-Voice Admin Infrastructure - COMPLETE** ✅
+- ✅ **Voice-Configs Lambda COMPLETE** - 5 org admin handler functions implemented
+  - `handle_admin_list_configs()` - List configs for admin's organization
+  - `handle_admin_get_config()` - Get config with org verification
+  - `handle_admin_create_config()` - Create config using session org_id
+  - `handle_admin_update_config()` - Update config with org verification
+  - `handle_admin_delete_config()` - Delete config with org verification + in-use check
+- ✅ **Frontend API Updates COMPLETE** - 5 admin endpoint functions added
+  - `adminListConfigs()` - No orgId param needed (uses session)
+  - `adminGetConfig()`, `adminCreateConfig()`, `adminUpdateConfig()`, `adminDeleteConfig()`
+  - All routes follow `/admin/org/voice/{resource}` pattern
+- ✅ **Validation COMPLETE** - ✅ PASSED - 24/24 routes compliant
+  - 14 data API routes, 5 org admin config routes, 5 sys admin credential routes
+- ✅ **Committed & Pushed** - Commit `943731a` to `admin-page-s3b`
 
 **Overall Status:**
-- **75% Complete:** 6 of 8 modules with full admin parity
-- **87.5% Complete:** Voice at 50% (credentials backend done, configs + frontend pending)
-- **Remaining work:** Voice completion (4-5 hours) + chat (12-16 hours)
+- **87.5% Complete:** 7 of 8 modules with full admin parity
+- **Remaining work:** module-chat (12-16 hours) - needs full admin infrastructure from scratch
 
 **Next Session:**
-- **Target:** Complete module-voice (4-5 hours remaining)
-- **Tasks:** voice-configs Lambda + frontend API updates + validation
+- **Target:** module-chat (final module)
+- **Scope:** Create full sys + org admin infrastructure from scratch
+- **Estimated:** 12-16 hours
 
 ---
 
