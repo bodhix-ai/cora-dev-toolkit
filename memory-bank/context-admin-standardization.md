@@ -442,6 +442,117 @@ module-kb routes EXIST for both sys and org but are malformed. They use `/admin/
 
 ---
 
+### January 27, 2026 - Sprint 3b Session 8
+
+**Status:** Module-WS Route Standardization Complete (Sys + Org)
+**Branch:** `admin-page-s3b`
+
+**Work Completed:**
+
+1. **Module-WS Route Standardization - COMPLETE** ✅
+   - Created comprehensive route mapping document
+   - Standardized 10 admin routes to `/admin/{scope}/ws/*` pattern
+   - Removed 1 deprecated route (`/ws/admin/stats`)
+   
+2. **Infrastructure Updates - COMPLETE** ✅
+   - Updated outputs.tf with 10 standardized routes
+   - User-facing routes unchanged (14 routes preserved)
+   
+3. **Backend Lambda Updates - COMPLETE** ✅
+   - Updated module docstring with new route documentation
+   - Updated route dispatcher for sys admin routes (3)
+   - Updated route dispatcher for org admin routes (7)
+   - Added 3 new org admin handler functions:
+     - `handle_admin_list_workspaces()` - List all org workspaces
+     - `handle_admin_restore_workspace()` - Admin restore workspace
+     - `handle_admin_delete_workspace()` - Admin force delete workspace
+   
+4. **Frontend Updates - COMPLETE** ✅
+   - Updated api.ts with 10 route changes:
+     - `getSysAnalytics()`: `/ws/sys/analytics` → `/admin/sys/ws/analytics`
+     - `getConfig()`: `/ws/config` → `/admin/sys/ws/config`
+     - `updateConfig()`: `/ws/config` → `/admin/sys/ws/config`
+     - `getOrgSettings()`: `/ws/org/settings` → `/admin/org/ws/settings`
+     - `updateOrgSettings()`: `/ws/org/settings` → `/admin/org/ws/settings`
+     - `getAnalytics()`: `/ws/admin/analytics` → `/admin/org/ws/analytics`
+     - `adminListWorkspaces()`: `/ws/admin/workspaces` → `/admin/org/ws/workspaces`
+     - `adminRestoreWorkspace()`: `/ws/admin/workspaces/{id}/restore` → `/admin/org/ws/workspaces/{id}/restore`
+     - `adminForceDelete()`: `/ws/admin/workspaces/{id}` → `/admin/org/ws/workspaces/{id}`
+
+5. **Validation - COMPLETE** ✅
+   - Ran admin-route-validator on module-ws
+   - **Result:** ✅ PASSED - All 16 routes compliant
+   - 2 sys admin routes, 5 org admin routes, 9 data API routes
+
+**Files Changed (4 total):**
+- `templates/_modules-core/module-ws/infrastructure/outputs.tf`
+- `templates/_modules-core/module-ws/backend/lambdas/workspace/lambda_function.py`
+- `templates/_modules-core/module-ws/frontend/lib/api.ts`
+- `docs/plans/session-8-ws-route-mapping.md` (NEW - documentation)
+
+**Module Completion Status:**
+- ✅ **6 of 8 modules complete:** kb, eval, mgmt, access, ai, ws (sys + org admin pages)
+- ⏳ **2 modules remaining:** chat, voice
+
+**Next Session:**
+- **Target:** module-chat or module-voice (Tier 3 work)
+- **Scope:** Create full admin infrastructure from scratch (12-16 hours each)
+- **Strategy:** Full sys + org admin page creation
+
+---
+
+### January 27, 2026 - Sprint 3b Session 7
+
+**Status:** Module-AI Route Standardization Complete (Sys + Org)
+**Branch:** `admin-page-s3b`
+
+**Work Completed:**
+
+1. **Module-AI Route Standardization - COMPLETE** ✅
+   - Updated outputs.tf with 18 standardized routes (16 sys + 2 org)
+   - Routes consolidated from 3 patterns to unified `/admin/{scope}/ai/*` structure
+   
+2. **Module-AI Backend Updates - COMPLETE** ✅
+   - `provider/lambda_function.py` - Updated 11 route docstrings + dispatcher logic
+   - `ai-config-handler/lambda_function.py` - Updated 5 route docstrings + dispatcher logic
+   - Both Lambdas now get org_id from user session instead of path parameters
+   
+3. **Module-AI Frontend Updates - COMPLETE** ✅
+   - `frontend/lib/api.ts` - Updated 9 API endpoint calls to new standardized routes
+   - All client methods now use `/admin/sys/ai/*` pattern
+   
+4. **Module-AI Org Admin Page - COMPLETE** ✅
+   - Created `apps/web/app/admin/org/ai/page.tsx`
+   - Features: View platform defaults, edit org-specific AI settings
+   - Role-based UI: org_admin (read-only), org_owner (full edit)
+   - Combined prompt preview showing platform + org prompts
+
+**Validation Results:**
+- Ran admin-route-validator on templates/_modules-core/
+- **Total routes:** 101 scanned, 64 compliant, 9 non-compliant
+- **Module-AI:** ✅ 0 errors (fully compliant!)
+- **Admin Page Parity:** 4 of 6 modules have both sys + org routes
+  - ✅ Complete: kb, eval, mgmt, access, ai
+  - ❌ Missing: ws, chat
+
+**Files Changed (5 total):**
+- `templates/_modules-core/module-ai/infrastructure/outputs.tf`
+- `templates/_modules-core/module-ai/backend/lambdas/provider/lambda_function.py`
+- `templates/_modules-core/module-ai/backend/lambdas/ai-config-handler/lambda_function.py`
+- `templates/_modules-core/module-ai/frontend/lib/api.ts`
+- `templates/_project-stack-template/apps/web/app/admin/org/ai/page.tsx` (NEW)
+
+**Progress Summary:**
+- **5 of 8 modules complete** (kb, eval, mgmt, access, ai) - 63% of modules
+- **88% of Phase 2 complete** (15/17 items)
+- **3 modules remaining** (ws, chat, voice)
+
+**Next Session:**
+- Target: module-ws (5 routes to migrate + org admin pages)
+- Estimated: 6-8 hours for full module-ws completion
+
+---
+
 ### January 27, 2026 - Sprint 3b Session 6
 
 **Status:** Module-Access Route Standardization Complete (Sys + Org)

@@ -10,7 +10,7 @@ e m# Plan: Admin Standardization S3b - Route Standards & Version Tracking
 
 ## Current Progress
 
-**Last Updated:** January 27, 2026 (Session 6)
+**Last Updated:** January 27, 2026 (Session 7)
 
 **Completed:**
 - ✅ Session 1: Sprint planning and documentation
@@ -50,15 +50,45 @@ e m# Plan: Admin Standardization S3b - Route Standards & Version Tracking
   - Org admin page supports role-based access (org_admin: read-only, org_owner: full management)
   - Module-Access achieved full sys + org admin parity
 
+- ✅ **Session 7: Module-AI Route Standardization COMPLETE**
+  - Fixed 18 routes (16 sys + 2 org) to follow `/admin/{scope}/ai/*` pattern
+  - Updated 3 Lambda files: provider, ai-config-handler (docstrings + dispatcher)
+  - Updated frontend api.ts: 9 API endpoint calls
+  - Created org admin page: `apps/web/app/admin/org/ai/page.tsx`
+  - Role-based UI: org_admin (read-only), org_owner (full edit)
+  - Module-AI achieved full sys + org admin parity
+
+- ✅ **Session 8: Module-WS Route Standardization COMPLETE**
+  - Standardized 10 admin routes to `/admin/{scope}/ws/*` pattern
+  - Removed 1 deprecated route (`/ws/admin/stats`)
+  - Updated infrastructure outputs.tf (10 routes)
+  - Updated Lambda function (docstrings + dispatcher + 3 new handlers)
+  - Updated frontend api.ts (10 API calls)
+  - Created route mapping document: `docs/plans/session-8-ws-route-mapping.md`
+  - **Validation:** ✅ All 16 routes compliant (2 sys, 5 org, 9 data)
+  - Module-WS achieved full sys + org admin parity
+
 **Module Completion Status:**
-- ✅ **4 modules complete:** kb, eval, mgmt, access (sys + org admin pages)
-- ⏳ **4 modules remaining:** ai, ws, chat, voice
+- ✅ **6 modules complete:** kb, eval, mgmt, access, ai, ws (sys + org admin pages)
+- ⏳ **2 modules remaining:** chat, voice
+
+**Validation Results (Session 8):**
+- Ran admin-route-validator on `templates/_modules-core/` (6 modules)
+- **Total routes:** 100 scanned, 63 compliant, 7 non-compliant
+- **Admin parity:** 5 of 6 modules have both sys + org routes
+- **Missing:** chat (needs full admin infrastructure)
+- Ran admin-route-validator on `templates/_modules-functional/` (2 modules)
+- **Total routes:** 53 scanned, 34 compliant, 8 non-compliant
+- **Admin parity:** 1 of 2 modules (eval) has both sys + org routes
+- **Missing:** voice (needs admin infrastructure + 6 route pattern fixes)
+
+**Overall Status:**
+- **75% Complete:** 6 of 8 modules with full admin parity
+- **Remaining work:** chat (12-16 hours) + voice (12-16 hours + route fixes)
 
 **Next Session:**
-- **Target:** module-ai (Tier 1 work)
-- **Scope:** Route migration (8 legacy routes) + org admin pages
-- **Estimated:** 8-10 hours for full module-ai completion
-- **Strategy:** Update existing sys admin pages, create org admin pages
+- **Target:** module-voice route pattern fixes OR module-chat admin infrastructure
+- **Recommendation:** Fix voice route patterns first (1 hour), then tackle admin infrastructure
 
 ---
 
