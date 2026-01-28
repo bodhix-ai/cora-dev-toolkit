@@ -220,6 +220,126 @@ output "api_routes" {
       path        = "/chats/{sessionId}/stream"
       integration = aws_lambda_function.chat_stream.invoke_arn
       public      = false
+    },
+
+    # =========================================================================
+    # chat-session endpoints - Sys Admin (Platform Management)
+    # =========================================================================
+    {
+      method      = "GET"
+      path        = "/admin/sys/chat/config"
+      integration = aws_lambda_function.chat_session.invoke_arn
+      public      = false
+    },
+    {
+      method      = "PUT"
+      path        = "/admin/sys/chat/config"
+      integration = aws_lambda_function.chat_session.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/sys/chat/analytics"
+      integration = aws_lambda_function.chat_session.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/sys/chat/analytics/usage"
+      integration = aws_lambda_function.chat_session.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/sys/chat/analytics/tokens"
+      integration = aws_lambda_function.chat_session.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/sys/chat/sessions"
+      integration = aws_lambda_function.chat_session.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/sys/chat/sessions/{id}"
+      integration = aws_lambda_function.chat_session.invoke_arn
+      public      = false
+    },
+    {
+      method      = "DELETE"
+      path        = "/admin/sys/chat/sessions/{id}"
+      integration = aws_lambda_function.chat_session.invoke_arn
+      public      = false
+    },
+
+    # =========================================================================
+    # chat-session endpoints - Org Admin (Organization Management)
+    # =========================================================================
+    {
+      method      = "GET"
+      path        = "/admin/org/chat/config"
+      integration = aws_lambda_function.chat_session.invoke_arn
+      public      = false
+    },
+    {
+      method      = "PUT"
+      path        = "/admin/org/chat/config"
+      integration = aws_lambda_function.chat_session.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/org/chat/sessions"
+      integration = aws_lambda_function.chat_session.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/org/chat/sessions/{id}"
+      integration = aws_lambda_function.chat_session.invoke_arn
+      public      = false
+    },
+    {
+      method      = "DELETE"
+      path        = "/admin/org/chat/sessions/{id}"
+      integration = aws_lambda_function.chat_session.invoke_arn
+      public      = false
+    },
+    {
+      method      = "POST"
+      path        = "/admin/org/chat/sessions/{id}/restore"
+      integration = aws_lambda_function.chat_session.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/org/chat/analytics"
+      integration = aws_lambda_function.chat_session.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/org/chat/analytics/users"
+      integration = aws_lambda_function.chat_session.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/org/chat/analytics/workspaces"
+      integration = aws_lambda_function.chat_session.invoke_arn
+      public      = false
+    },
+
+    # =========================================================================
+    # chat-message endpoints - Org Admin (Message Viewing)
+    # =========================================================================
+    {
+      method      = "GET"
+      path        = "/admin/org/chat/messages/{id}"
+      integration = aws_lambda_function.chat_message.invoke_arn
+      public      = false
     }
   ]
 }
