@@ -1,12 +1,116 @@
 # Admin Standardization S3b - Error Tracking Plan
 
 **Created:** January 28, 2026  
-**Test Project:** ~/code/bodhix/test-admin/ai-mod-stack  
-**Baseline:** 61 validation errors (down from 72)
+**Test Project:** ~/code/bodhix/testing/test-admin/ai-mod-stack  
+**Baseline:** 46 validation errors (down from 61)  
+**Last Updated:** January 28, 2026 (Session 15)
 
 ## Overview
 
-This plan tracks the remaining validation errors discovered after initial template fixes in Sprint 3b Session 14.
+This plan tracks the remaining validation errors discovered after initial template fixes in Sprint 3b Session 14, with updated baseline from Session 15 test project validation.
+
+**Session 15 Update:**
+- New test project created: ai-mod at ~/code/bodhix/testing/test-admin/
+- Full validation suite executed on fresh project
+- Baseline: 46 errors, 450 warnings (Bronze certification)
+- User able to log in, ready for admin page testing
+
+---
+
+## Session 15 - Current Error Breakdown (46 errors)
+
+**Passing Validators (11/18):**
+✅ Structure, Portability, Import, External UID, CORA Compliance, API Response, Role Naming, RPC Function, DB Naming, UI Library, Next.js Routing, Workspace Plugin, Admin Route
+
+**Failing Validators (7/18):**
+
+### 1. Accessibility Validator (6 errors)
+**Issue:** Heading level skipped (h3 → h5, skipped h4)  
+**Files:**
+- `module-chat/frontend/components/admin/OrgAnalyticsTab.tsx` - 2 occurrences (lines 133, 147)
+- `module-chat/frontend/components/admin/SysAnalyticsTab.tsx` - 4 occurrences (lines 136, 150, 206, etc.)
+
+**Fix:** Change `<Typography variant="h5">` to `<Typography variant="h4">` to maintain heading hierarchy
+
+---
+
+### 2. API Tracer (6 errors)
+**Issue:** Generic {id} used instead of specific parameter names  
+**Violations:**
+- `/admin/sys/chat/sessions/{id}` - GET, DELETE (should be `{sessionId}`)
+- `/admin/org/chat/sessions/{id}` - GET, DELETE, `/admin/org/chat/sessions/{id}/restore` - POST (should be `{sessionId}`)
+
+**Fix:** Update `module-chat/infrastructure/outputs.tf` to use `{sessionId}` instead of `{id}`
+
+---
+
+### 3. Schema Validator (1 error)
+**Issue:** Voice credentials Lambda queries `user_profiles.okta_uid` column that doesn't exist  
+**File:** `module-voice/backend/lambdas/voice-credentials/lambda_function.py:61`  
+**Available columns:** id, avatar, avatar_url, created_at, created_by, current_org_id
+
+**Fix:** Change `filters={'okta_uid': okta_uid}` to `filters={'id': supabase_user_id}` (already converted on line 59)
+
+---
+
+### 4. Frontend Compliance (23 errors)
+**Issues:**
+- Missing `aria-label` on IconButton components (multiple files)
+- Using `any` type instead of specific types (EvalSummaryPanel.tsx:426)
+
+**Defer:** Low priority - requires systematic component audit (1-2 hours)
+
+---
+
+### 5. TypeScript Type Check (9 errors)
+**Issues:**
+- Module import errors: `@ai-mod/shared/workspace-plugin` not found
+- Module import errors: `@ai-mod/module-eval` not found
+- Property access errors: `'document' does not exist on type 'KbDocument'`
+
+**Files:**
+- `module-kb/frontend/hooks/useWorkspaceKB.ts:9`
+- `components/CreateEvaluationDialog.tsx:47, 319, 320`
+
+**Root Cause:** Build order or package.json dependencies may need adjustment
+
+---
+
+### 6. Audit Column Validator (1 error)
+**Issue:** `chat_sessions` table missing audit columns  
+**Expected:** created_at, created_by, updated_at, updated_by, deleted_at, deleted_by
+
+**Fix:** Add audit columns to `module-chat/db/schema/001-chat-tables.sql`
+
+---
+
+### 7. Admin Auth Validator (0 errors, 7 warnings)
+**Status:** Passing with warnings only (non-blocking)  
+**Warnings:**
+- Missing explicit role checks in some pages
+- Auth checks don't use Alert component
+
+---
+
+## Session 15 - Priority Recommendations
+
+**High Priority (Must Fix - 13 errors):**
+1. API Tracer (6 errors) - Path parameter naming
+2. Schema (1 error) - Voice credentials column
+3. TypeScript (9 errors) - Module imports and property access
+4. Audit Column (1 error) - chat_sessions table (Note: Already counted in other categories)
+
+**Medium Priority (User Testing - 6 errors):**
+5. Accessibility (6 errors) - Heading hierarchy (user will test admin pages)
+
+**Low Priority (Future Sprint - 23 errors):**
+6. Frontend Compliance (23 errors) - Missing aria-labels, any types
+
+**Non-Blocking:**
+7. Admin Auth (7 warnings) - Not blocking deployment
+
+**Total Critical Errors:** 13 (excluding accessibility pending user testing)  
+**Estimated Fix Time:** 1-2 hours
 
 ---
 
