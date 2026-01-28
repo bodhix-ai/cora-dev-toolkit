@@ -12,6 +12,9 @@ Routes - Messages:
 Routes - Context:
 - POST /chats/{sessionId}/context - Get RAG context for query
 - GET /chats/{sessionId}/history - Get formatted conversation history
+
+Routes - Org Admin:
+- GET /admin/org/chat/messages/{id} - View message content (org admin read-only)
 """
 
 import json
@@ -74,6 +77,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             session_id = path_params.get('sessionId')
             if http_method == 'GET':
                 return handle_get_history(event, supabase_user_id, org_id, session_id)
+        
+        # Org Admin routes: /admin/org/chat/messages/{id}
+        elif '/admin/org/chat/messages' in path:
+            message_id = path_params.get('id')
+            if http_method == 'GET' and message_id:
+                return handle_org_get_message(user_info, message_id)
         
         # Message routes: /chats/{sessionId}/messages...
         elif '/messages' in path:
@@ -490,6 +499,54 @@ def handle_get_history(
         'tokensEstimate': tokens_estimate,
         'count': len(messages)
     })
+
+
+# =============================================================================
+# ORG ADMIN HANDLERS
+# =============================================================================
+
+def handle_org_get_message(user_info: Dict[str, Any], message_id: str) -> Dict[str, Any]:
+    """
+    View message content (org admin read-only access).
+    
+    Allows org admins to view message content for auditing/support purposes.
+    The message must belong to a chat session in the admin's organization.
+    """
+    org_id = user_info.get('org_id')
+    if not org_id:
+        raise common.ForbiddenError('Organization context required')
+    
+    # Verify org_admin or org_owner role
+    if user_info.get('org_role') not in ['org_admin', 'org_owner']:
+        raise common.ForbiddenError('org_admin or org_owner role required')
+    
+    message_id = common.validate_uuid(message_id, 'messageId')
+    
+    # Get the message
+    message = common.find_one(
+        table='chat_messages',
+        filters={'id': message_id}
+    )
+    
+    if not message:
+        raise common.NotFoundError('Message not found')
+    
+    # Verify the message belongs to a session in this org
+    session = common.find_one(
+        table='chat_sessions',
+        filters={'id': message['session_id']}
+    )
+    
+    if not session or session['org_id'] != org_id:
+        raise common.NotFoundError('Message not found in this organization')
+    
+    result = _format_message_response(message)
+    
+    # Add session context for admin view
+    result['sessionTitle'] = session.get('title')
+    result['sessionCreatedBy'] = session.get('created_by')
+    
+    return common.success_response(result)
 
 
 # =============================================================================
