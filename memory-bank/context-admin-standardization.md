@@ -1204,6 +1204,141 @@ Sprint 3b achieved all core goals. Version tracking system is production-ready. 
 
 ---
 
+### January 28, 2026 - Sprint 3b Session 14b
+
+**Status:** Admin Auth Pattern Enforcement Complete - ADR-016 Revised
+**Branch:** `admin-page-s3b`
+
+**Work Completed:**
+
+1. **Updated ADR-016 Authorization Standard** ✅
+   - **Revised rule:** Org admin pages allow ONLY org admins (not sys admins)
+   - **Rationale:** Sys admins needing org access should add themselves to org with appropriate role
+   - **File:** `docs/arch decisions/ADR-016-ORG-ADMIN-PAGE-AUTHORIZATION.md`
+   - **File:** `docs/standards/standard_ADMIN-PAGE-AUTH.md`
+
+2. **Enhanced Admin Auth Validator** ✅
+   - Changed violations to report as ERRORS (not warnings)
+   - Updated patterns to detect `!isOrgAdmin && !isSysAdmin` as incorrect
+   - Added detection for Pattern A authentication requirements
+   - **File:** `validation/admin-auth-validator/validate_auth.py`
+
+3. **Fixed 7 Pages Allowing Sys Admin Access** ✅
+   - Removed `isSysAdmin` from `useRole()` destructuring
+   - Changed `!isOrgAdmin && !isSysAdmin` to `!isOrgAdmin`
+   - Added comments referencing revised ADR-016
+   
+   **Files fixed:**
+   - `_modules-core/module-access/routes/admin/org/access/page.tsx`
+   - `_project-stack-template/apps/web/app/admin/org/OrgAdminClientPage.tsx`
+   - `_modules-functional/module-eval/routes/admin/org/eval/page.tsx`
+   - `_project-stack-template/apps/web/app/admin/org/kb/page.tsx`
+   - `_modules-core/module-ai/routes/admin/org/ai/page.tsx`
+   - `_modules-functional/module-voice/routes/admin/org/voice/page.tsx`
+   - `_modules-core/module-kb/routes/admin/org/kb/page.tsx`
+
+4. **Fixed 2 Pages Missing Auth Checks** ✅
+   - Updated to use Pattern A authentication
+   - Changed from `const { user } = useUser()` to `const { profile, loading, isAuthenticated } = useUser()`
+   - Added proper auth check: `if (!isAuthenticated || !profile) { ... }`
+   - Fixed `profile.orgRole` usage to use `useRole()` hook instead
+   
+   **Files fixed:**
+   - `_project-stack-template/apps/web/app/admin/org/ai/page.tsx`
+   - `_project-stack-template/apps/web/app/admin/org/access/page.tsx`
+
+**Validation Results:**
+- **Before:** 9 errors
+- **After:** 0 errors ✅
+- **Status:** ✓ PASSED (12 non-blocking warnings remain)
+- **Total pages checked:** 35
+
+**Key Pattern Changes:**
+```typescript
+// OLD (WRONG - allowed either role):
+const { isOrgAdmin, isSysAdmin } = useRole();
+if (!isOrgAdmin && !isSysAdmin) { ... }
+
+// NEW (CORRECT - org admins only):
+const { isOrgAdmin } = useRole();
+if (!isOrgAdmin) { ... }
+
+// Authentication Pattern A:
+const { profile, loading, isAuthenticated } = useUser();
+if (!isAuthenticated || !profile) { ... }
+```
+
+**Impact:**
+- All org admin pages now correctly enforce org-only access per revised ADR-016
+- Sys admins needing org access must add themselves to the org with appropriate role
+- Validator properly detects and reports violations as errors
+- All template pages follow correct authorization patterns
+
+**Files Modified (11 total):**
+- 2 standard/ADR documents
+- 1 validator
+- 7 org admin pages (sys admin access removed)
+- 2 org admin pages (Pattern A auth added)
+
+**Estimated Time:** 45 minutes
+
+**Next Steps:**
+- Re-run full validation suite on test project
+- Document remaining errors in tracking plan
+- Continue with P2 frontend compliance fixes (optional)
+
+---
+
+### January 28, 2026 - Sprint 3b Session 14c
+
+**Status:** All Critical Errors Resolved - API Tracer & Schema Fixes
+**Branch:** `admin-page-s3b`
+
+**Work Completed:**
+
+1. **Fixed 6 API Tracer Errors (Path Parameter Naming)** ✅
+   - Chat admin routes were using generic `{id}` instead of specific parameter names
+   - Updated `templates/_modules-core/module-chat/infrastructure/outputs.tf`
+   - Changed 5 session routes to use `{sessionId}`
+   - Changed 1 message route to use `{messageId}`
+   - Follows ADR-018 standard for descriptive parameter names
+
+2. **Fixed 1 Schema Validator Error (Voice Credentials)** ✅
+   - Voice credentials Lambda was querying `user_profiles` with non-existent `okta_uid` column
+   - Updated `templates/_modules-functional/module-voice/backend/lambdas/voice-credentials/lambda_function.py`
+   - Changed `filters={'okta_uid': okta_uid}` to `filters={'id': supabase_user_id}`
+   - Lambda already converted okta_uid to supabase_user_id on line 59, just needed to use it
+
+3. **Deferred 6 Accessibility Errors** ⏸️
+   - Heading hierarchy issues in chat admin components (h3 → h5 skipping h4)
+   - Per user request, deferred to user testing tomorrow
+   - Files: OrgAnalyticsTab.tsx, SysAnalyticsTab.tsx
+
+**Validation Results:**
+- **Before Session 14c:** 13 errors (6 API tracer + 1 schema + 6 accessibility)
+- **After Session 14c:** 6 errors (accessibility only, deferred)
+- **Error Reduction:** 54% (13 → 6)
+
+**Total Sprint Progress:**
+- **Starting errors:** 61
+- **Ending errors:** 6 (all deferred)
+- **Total reduction:** 90% (55 errors fixed)
+
+**Files Modified (3 total):**
+- `templates/_modules-core/module-chat/infrastructure/outputs.tf` (API route parameters)
+- `templates/_modules-functional/module-voice/backend/lambdas/voice-credentials/lambda_function.py` (Schema query)
+- `templates/_modules-core/module-chat/frontend/components/admin/OrgAnalyticsTab.tsx` (Heading hierarchy - partial)
+
+**Impact:**
+All critical blocking errors resolved! Only accessibility warnings remain for user testing.
+
+**Next Steps:**
+- User testing tomorrow (accessibility heading hierarchy)
+- Documentation of final results
+- PR creation for Session 14 work
+
+---
+
 ### January 24, 2026 - Sprint 2 Completion
 - Completed ADR-016 fixes for org admin authorization
 - Renamed branch from citations-review to admin-page-s2-completion
