@@ -330,6 +330,287 @@ def update_platform_ai_config_handler(event: Dict[str, Any], user_id: str) -> Di
 # ORGANIZATION AI CONFIGURATION (Organization Admins)
 # ============================================================================
 
+def get_sys_org_ai_config_handler(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[str, Any]:
+    """
+    Get organization-level AI configuration (system admin viewing specific org).
+    Only accessible to system admins.
+    Org ID comes from URL path parameter.
+    
+    Returns:
+        Organization AI configuration with inherited platform defaults.
+    """
+    try:
+        # Require system admin access
+        _require_sys_admin(user_id)
+        
+        organization_id = org_id
+        
+        logger.info(
+            f"System admin {user_id} accessing AI config for organization {organization_id}"
+        )
+        
+        # Get organization AI configuration
+        org_config = common.find_one('ai_cfg_org_prompts', {'org_id': organization_id}, select='*')
+        
+        # Get platform defaults
+        platform_config = common.find_one('ai_cfg_sys_rag', {})
+        
+        if not platform_config:
+            return common.not_found_response("Platform AI configuration not found.")
+        
+        # Prepare platform config
+        platform_settings = {
+            "system_prompt": platform_config.get("system_prompt", ""),
+            "default_chat_deployment_id": platform_config.get("default_chat_model_id"),
+            "default_embedding_deployment_id": platform_config.get("default_embedding_model_id"),
+        }
+        
+        # Fetch model details for platform config
+        if platform_settings.get("default_embedding_deployment_id"):
+            emb_model = common.find_one(
+                'ai_models',
+                {'id': platform_settings["default_embedding_deployment_id"]}
+            )
+            
+            if emb_model:
+                model_record = common.format_record(emb_model)
+                capabilities = model_record.get('capabilities')
+                if isinstance(capabilities, str):
+                    try:
+                        capabilities = json.loads(capabilities)
+                    except json.JSONDecodeError:
+                        capabilities = {}
+                
+                platform_settings["embedding_deployment"] = {
+                    "id": model_record.get('id'),
+                    "providerType": model_record.get('providerId'),
+                    "provider": "Unknown",
+                    "modelId": model_record.get('modelId'),
+                    "modelName": model_record.get('displayName', model_record.get('modelId')),
+                    "deploymentName": "Default",
+                    "supportsChat": capabilities.get('chat', False),
+                    "supportsEmbeddings": capabilities.get('embedding', False),
+                    "deploymentStatus": model_record.get('status'),
+                    "createdAt": model_record.get('createdAt'),
+                    "updatedAt": model_record.get('updatedAt'),
+                    "description": model_record.get('description'),
+                    "capabilities": capabilities
+                }
+                
+                if model_record.get('providerId'):
+                    provider = common.find_one('ai_providers', {'id': model_record.get('providerId')})
+                    if provider:
+                        platform_settings["embedding_deployment"]["provider"] = provider.get('displayName') or provider.get('name')
+                        platform_settings["embedding_deployment"]["providerType"] = provider.get('providerType')
+        
+        if platform_settings.get("default_chat_deployment_id"):
+            chat_model = common.find_one(
+                'ai_models',
+                {'id': platform_settings["default_chat_deployment_id"]}
+            )
+            
+            if chat_model:
+                model_record = common.format_record(chat_model)
+                capabilities = model_record.get('capabilities')
+                if isinstance(capabilities, str):
+                    try:
+                        capabilities = json.loads(capabilities)
+                    except json.JSONDecodeError:
+                        capabilities = {}
+                        
+                platform_settings["chat_deployment"] = {
+                    "id": model_record.get('id'),
+                    "providerType": model_record.get('providerId'),
+                    "provider": "Unknown",
+                    "modelId": model_record.get('modelId'),
+                    "modelName": model_record.get('displayName', model_record.get('modelId')),
+                    "deploymentName": "Default",
+                    "supportsChat": capabilities.get('chat', False),
+                    "supportsEmbeddings": capabilities.get('embedding', False),
+                    "deploymentStatus": model_record.get('status'),
+                    "createdAt": model_record.get('createdAt'),
+                    "updatedAt": model_record.get('updatedAt'),
+                    "description": model_record.get('description'),
+                    "capabilities": capabilities
+                }
+                
+                if model_record.get('providerId'):
+                    provider = common.find_one('ai_providers', {'id': model_record.get('providerId')})
+                    if provider:
+                        platform_settings["chat_deployment"]["provider"] = provider.get('displayName') or provider.get('name')
+                        platform_settings["chat_deployment"]["providerType"] = provider.get('providerType')
+
+        # Combine prompt
+        org_system_prompt = org_config.get("org_system_prompt") if org_config else None
+        platform_prompt = platform_settings.get("system_prompt", "")
+        
+        combined_prompt = platform_prompt
+        if org_system_prompt:
+            combined_prompt = f"{platform_prompt}\n\n{org_system_prompt}" if platform_prompt else org_system_prompt
+
+        # Construct final response
+        config = {
+            "org_id": organization_id,
+            "org_system_prompt": org_system_prompt,
+            "policy_mission_type": org_config.get("policy_mission_type") if org_config else None,
+            "custom_system_prompt": org_config.get("custom_system_prompt") if org_config else None,
+            "custom_context_prompt": org_config.get("custom_context_prompt") if org_config else None,
+            "citation_style": org_config.get("citation_style") if org_config else None,
+            "include_page_numbers": org_config.get("include_page_numbers") if org_config else None,
+            "include_source_metadata": org_config.get("include_source_metadata") if org_config else None,
+            "response_tone": org_config.get("response_tone") if org_config else None,
+            "max_response_length": org_config.get("max_response_length") if org_config else None,
+            "created_by": org_config.get("created_by") if org_config else None,
+            "updated_by": org_config.get("updated_by") if org_config else None,
+            "created_at": org_config.get("created_at") if org_config else None,
+            "updated_at": org_config.get("updated_at") if org_config else None,
+            "platform_config": platform_settings,
+            "combined_prompt": combined_prompt
+        }
+        
+        return common.success_response(common.transform_record(config))
+    
+    except common.ForbiddenError as e:
+        return common.forbidden_response(str(e))
+    except Exception as e:
+        logger.exception(f"Error fetching organization AI configuration: {e}")
+        return common.internal_error_response(f"An unexpected error occurred: {str(e)}")
+
+
+def update_sys_org_ai_config_handler(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[str, Any]:
+    """
+    Update organization-level AI configuration (system admin updating specific org).
+    Only accessible to system admins.
+    Org ID comes from URL path parameter.
+    
+    Returns:
+        Updated organization AI configuration.
+    """
+    try:
+        # Require system admin access
+        _require_sys_admin(user_id)
+        
+        organization_id = org_id
+        
+        logger.info(
+            f"System admin {user_id} updating AI config for organization {organization_id}"
+        )
+        
+        # Parse request body
+        try:
+            body = json.loads(event.get("body", "{}"))
+        except json.JSONDecodeError:
+            return common.bad_request_response("Invalid JSON in request body.")
+        
+        if not body:
+            return common.bad_request_response("Request body is required.")
+        
+        # Transform camelCase to snake_case (API-PATTERNS standard)
+        body = {camel_to_snake(k): v for k, v in body.items()}
+        
+        # Prepare update data - only include fields that exist in ai_cfg_org_prompts table
+        valid_fields = [
+            'policy_mission_type',
+            'custom_system_prompt',
+            'custom_context_prompt',
+            'citation_style',
+            'include_page_numbers',
+            'include_source_metadata',
+            'response_tone',
+            'max_response_length',
+            'org_system_prompt'
+        ]
+        
+        update_data = {k: v for k, v in body.items() if k in valid_fields}
+        
+        if not update_data:
+            return common.bad_request_response("No valid fields to update.")
+        
+        # Add updated_by to track who made the change (CORA audit standard)
+        update_data['updated_by'] = user_id
+        
+        # Check if ai_cfg_org_prompts record exists
+        existing = common.find_one('ai_cfg_org_prompts', {'org_id': organization_id}, select='*')
+        
+        if existing:
+            # Update existing record
+            logger.info(f"Updating org AI configuration for organization {organization_id}")
+            
+            updated_config = common.update_one(
+                table='ai_cfg_org_prompts',
+                filters={'org_id': organization_id},
+                data=update_data
+            )
+        else:
+            # Insert new record
+            logger.info(f"Creating org AI configuration for organization {organization_id}")
+            
+            insert_data = {
+                "org_id": organization_id,
+                "created_by": user_id,  # CORA audit standard
+                "updated_by": user_id,  # Set on creation as well
+                **update_data
+            }
+            
+            updated_config = common.insert_one(table='ai_cfg_org_prompts', data=insert_data)
+        
+        if not updated_config:
+            logger.error("Update/insert failed - no record returned")
+            return common.internal_error_response("Failed to update organization AI configuration.")
+        
+        logger.info(f"Organization AI configuration updated for {organization_id} by sys admin {user_id}")
+        
+        # Return same response structure as GET handler
+        # Get platform defaults
+        platform_config = common.find_one('ai_cfg_sys_rag', {})
+        
+        if not platform_config:
+            return common.not_found_response("Platform AI configuration not found.")
+        
+        # Prepare platform config
+        platform_settings = {
+            "system_prompt": platform_config.get("system_prompt", ""),
+            "default_chat_deployment_id": platform_config.get("default_chat_model_id"),
+            "default_embedding_deployment_id": platform_config.get("default_embedding_model_id"),
+        }
+        
+        # Combine prompts
+        org_system_prompt = updated_config.get("org_system_prompt")
+        platform_prompt = platform_settings.get("system_prompt", "")
+        
+        combined_prompt = platform_prompt
+        if org_system_prompt:
+            combined_prompt = f"{platform_prompt}\n\n{org_system_prompt}" if platform_prompt else org_system_prompt
+
+        # Construct response
+        config = {
+            "org_id": organization_id,
+            "org_system_prompt": org_system_prompt,
+            "policy_mission_type": updated_config.get("policy_mission_type"),
+            "custom_system_prompt": updated_config.get("custom_system_prompt"),
+            "custom_context_prompt": updated_config.get("custom_context_prompt"),
+            "citation_style": updated_config.get("citation_style"),
+            "include_page_numbers": updated_config.get("include_page_numbers"),
+            "include_source_metadata": updated_config.get("include_source_metadata"),
+            "response_tone": updated_config.get("response_tone"),
+            "max_response_length": updated_config.get("max_response_length"),
+            "created_by": updated_config.get("created_by"),
+            "updated_by": updated_config.get("updated_by"),
+            "created_at": updated_config.get("created_at"),
+            "updated_at": updated_config.get("updated_at"),
+            "platform_config": platform_settings,
+            "combined_prompt": combined_prompt
+        }
+        
+        return common.success_response(common.transform_record(config))
+    
+    except common.ForbiddenError as e:
+        return common.forbidden_response(str(e))
+    except Exception as e:
+        logger.exception(f"Error updating organization AI configuration: {e}")
+        return common.internal_error_response(f"An unexpected error occurred: {str(e)}")
+
+
 def get_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """
     Get organization-level AI configuration.
@@ -1087,6 +1368,17 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         elif path == "/admin/sys/ai/providers/test":
             if http_method == "POST":
                 return test_rag_provider_handler(event, supabase_user_id)
+        
+        # System admin viewing specific org's AI configuration
+        elif path.startswith("/admin/sys/ai/orgs/") and path.endswith("/config"):
+            # Extract org_id from path: /admin/sys/ai/orgs/{orgId}/config
+            path_parts = path.split('/')
+            if len(path_parts) == 7:  # ['', 'admin', 'sys', 'ai', 'orgs', '{orgId}', 'config']
+                org_id = path_parts[5]
+                if http_method == "GET":
+                    return get_sys_org_ai_config_handler(event, supabase_user_id, org_id)
+                elif http_method == "PUT":
+                    return update_sys_org_ai_config_handler(event, supabase_user_id, org_id)
         
         # Organization admin AI configuration routes
         elif path == "/admin/org/ai/config":

@@ -502,19 +502,26 @@ def handle_delete(user_id: str, provider_id: str) -> Dict[str, Any]:
     return common.success_response({'message': 'Provider deleted successfully', 'id': provider_id})
 
 def handle_get_models(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
-    """Get all models for a specific provider (admin only)"""
+    """Get all models (optionally filtered by provider) (admin only)"""
     _require_admin_access(user_id)
     
     query_params = event.get('queryStringParameters', {}) or {}
-    provider_id = common.validate_required(query_params.get('providerId'), 'providerId')
-    provider_id = common.validate_uuid(provider_id, 'providerId')
+    provider_id = query_params.get('providerId')
     
-    # Verify provider exists
-    provider = common.find_one('ai_providers', {'id': provider_id})
-    if not provider:
-        raise common.NotFoundError(f"AI Provider with ID {provider_id} not found.")
+    if provider_id:
+        # Filter by specific provider
+        provider_id = common.validate_uuid(provider_id, 'providerId')
+        
+        # Verify provider exists
+        provider = common.find_one('ai_providers', {'id': provider_id})
+        if not provider:
+            raise common.NotFoundError(f"AI Provider with ID {provider_id} not found.")
+        
+        models = common.find_many(table='ai_models', filters={'provider_id': provider_id})
+    else:
+        # Return all models
+        models = common.find_many(table='ai_models', filters={})
     
-    models = common.find_many(table='ai_models', filters={'provider_id': provider_id})
     return common.success_response(common.format_records(models))
 
 def handle_discover_models(event: Dict[str, Any], user_id: str, provider_id: str) -> Dict[str, Any]:
