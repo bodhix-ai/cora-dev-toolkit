@@ -1,7 +1,10 @@
 # Plan: UI Testing Issues - Admin Pages
 
+**Initiative:** Admin Standardization  
+**Sprint:** S4  
+**Branch:** `admin-page-s4-ui-testing`  
 **Created:** January 28, 2026  
-**Status:** 🔴 Active - Discovering issues during admin page testing  
+**Status:** � Planned - Ready to start after S3b closure  
 **Test Environment:** ai-mod (~/code/bodhix/testing/test-admin/)
 
 ---
