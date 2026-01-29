@@ -679,7 +679,7 @@ export function WorkspaceDetailPage({
             {/* Evaluations List */}
             {!evalLoading && !evalError && evaluations.length > 0 && (
               <Grid container spacing={2}>
-                {evaluations.map((evaluation) => (
+                {evaluations.map((evaluation: Evaluation) => (
                   <Grid item xs={12} md={6} key={evaluation.id}>
                     <Paper 
                       sx={{ 
