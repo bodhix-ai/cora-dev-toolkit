@@ -140,10 +140,99 @@ def check_dict_keys(node: ast.AST, file_path: Path, line_offset: int = 0, parent
                             'severity': 'error'
                         })
     
+    # NEW: Check subscript assignments like: dict['snake_case_key'] = value
+    if isinstance(node, ast.Assign):
+        for target in node.targets:
+            if isinstance(target, ast.Subscript):
+                # Check if the subscript key is a snake_case string
+                if isinstance(target.slice, ast.Constant) and isinstance(target.slice.value, str):
+                    key = target.slice.value
+                    if is_snake_case(key):
+                        # Only flag if we're in a response context
+                        if is_in_response_context(node, ancestors):
+                            violations.append({
+                                'file': str(file_path),
+                                'line': target.lineno + line_offset,
+                                'violation': f'Snake_case key in response: {key}',
+                                'expected': snake_to_camel(key),
+                                'severity': 'error'
+                            })
+    
     # Recursively check nested structures, passing parent context and ancestors
     new_ancestors = ancestors + [node]
     for child in ast.iter_child_nodes(node):
         violations.extend(check_dict_keys(child, file_path, line_offset, node, new_ancestors))
+    
+    return violations
+
+
+def check_org_common_import(lambda_file: Path, content: str) -> List[Dict[str, Any]]:
+    """
+    Check if Lambda imports org_common (required for camelCase transformation).
+    
+    All Lambda functions MUST import org_common to access format_records() and other
+    transformation utilities. Without this import, responses will contain snake_case keys.
+    
+    Returns:
+        List of violations if org_common is not imported
+    """
+    violations = []
+    
+    # Check for org_common import
+    has_org_common = (
+        'import org_common' in content or
+        'from org_common' in content
+    )
+    
+    if not has_org_common:
+        violations.append({
+            'file': str(lambda_file),
+            'line': 1,
+            'violation': 'Lambda missing org_common import - camelCase transformation unavailable',
+            'expected': 'Add: import org_common as common',
+            'severity': 'error'
+        })
+    
+    return violations
+
+
+def check_format_records_usage(lambda_file: Path, tree: ast.AST, content: str) -> List[Dict[str, Any]]:
+    """
+    Check if Lambda uses format_records() for list data returned from database operations.
+    
+    When returning lists of database records, Lambdas should use:
+        transformed = common.format_records(db_results)
+    
+    This ensures all snake_case keys are converted to camelCase.
+    """
+    violations = []
+    
+    # Database functions that return data structures (often lists)
+    DB_LIST_FUNCTIONS = {'find_many', 'select', 'rpc'}
+    
+    # Check if file has any DB list operations
+    has_db_list_ops = any(func in content for func in DB_LIST_FUNCTIONS)
+    
+    if has_db_list_ops:
+        # Check if format_records is used
+        has_format_records = (
+            'format_records(' in content or
+            'format_record(' in content  # Also accept singular
+        )
+        
+        if not has_format_records:
+            # Find handler functions that use DB list operations
+            for node in ast.walk(tree):
+                if isinstance(node, ast.FunctionDef) and node.name.startswith('handle_'):
+                    func_content = ast.get_source_segment(content, node)
+                    if func_content and any(func in func_content for func in DB_LIST_FUNCTIONS):
+                        violations.append({
+                            'file': str(lambda_file),
+                            'line': node.lineno,
+                            'violation': f'Handler {node.name}() returns DB data without format_records() transformation',
+                            'expected': 'Add: transformed = common.format_records(db_results)',
+                            'severity': 'warning'
+                        })
     
     return violations
 
