@@ -20,7 +20,7 @@ import { CircularProgress, Box, Alert } from "@mui/material";
  */
 export default function OrgDetailsPage({ params }: { params: { id: string } }) {
   const { profile, loading, isAuthenticated, authAdapter } = useUser();
-  const { hasRole } = useRole();
+  const { isSysAdmin, isOrgAdmin } = useRole();
 
   // Loading state
   if (loading) {
@@ -43,9 +43,6 @@ export default function OrgDetailsPage({ params }: { params: { id: string } }) {
   }
 
   // Authorization check - system admins OR org admins
-  const isSysAdmin = hasRole("sys_owner") || hasRole("sys_admin");
-  const isOrgAdmin = hasRole("org_owner") || hasRole("org_admin");
-
   if (!isSysAdmin && !isOrgAdmin) {
     return (
       <Box p={4}>

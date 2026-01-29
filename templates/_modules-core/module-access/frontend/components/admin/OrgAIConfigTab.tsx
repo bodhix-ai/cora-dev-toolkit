@@ -95,7 +95,7 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
         return;
       }
       const apiClient = createCoraAuthenticatedClient(token);
-      const response = await apiClient.get<{ success: boolean; data: OrgAIConfig }>(`/orgs/${orgId}/ai/config`);
+      const response = await apiClient.get<{ success: boolean; data: OrgAIConfig }>(`/admin/sys/ai/orgs/${orgId}/config`);
 
       if (response.success && response.data) {
         setConfig(response.data);
@@ -136,7 +136,7 @@ export function OrgAIConfigTab({ orgId, authAdapter }: OrgAIConfigTabProps) {
       const apiClient = createCoraAuthenticatedClient(token);
       
       // Send all prompt engineering fields
-      const response = await apiClient.put<{ success: boolean } & OrgAIConfig>(`/orgs/${orgId}/ai/config`, {
+      const response = await apiClient.put<{ success: boolean } & OrgAIConfig>(`/admin/sys/ai/orgs/${orgId}/config`, {
         policyMissionType: formData.policyMissionType || null,
         customSystemPrompt: formData.customSystemPrompt || null,
         customContextPrompt: formData.customContextPrompt || null,

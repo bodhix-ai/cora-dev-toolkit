@@ -316,10 +316,10 @@ export function CreateEvaluationDialog({
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <Description fontSize="small" />
                       <Box>
-                        <Typography variant="body2">{doc.document?.name || doc.document?.fileName || 'Unnamed Document'}</Typography>
-                        {doc.document?.size && (
+                        <Typography variant="body2">{doc.filename || 'Unnamed Document'}</Typography>
+                        {doc.fileSize && (
                           <Typography variant="caption" color="text.secondary">
-                            {(doc.document.size / 1024).toFixed(0)} KB
+                            {(doc.fileSize / 1024).toFixed(0)} KB
                           </Typography>
                         )}
                       </Box>

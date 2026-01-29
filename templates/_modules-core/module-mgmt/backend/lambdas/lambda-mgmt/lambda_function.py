@@ -369,7 +369,7 @@ def handle_list_functions() -> Dict[str, Any]:
     List all Lambda functions in the environment.
     
     Returns:
-        List of Lambda function configurations
+        List of Lambda function configurations (camelCase per CORA standard)
     """
     try:
         environment = os.environ.get('ENVIRONMENT', 'dev')
@@ -377,8 +377,12 @@ def handle_list_functions() -> Dict[str, Any]:
         
         functions = manager.list_lambda_functions()
         
+        # Use shared org_common utility for snake_case → camelCase transformation
+        # This ensures consistency across all CORA modules (DRY principle)
+        transformed = common.format_records(functions)
+        
         logger.info(f"Retrieved {len(functions)} Lambda functions")
-        return common.success_response(functions)
+        return common.success_response(transformed)
     
     except Exception as e:
         logger.exception(f'Error listing Lambda functions: {str(e)}')

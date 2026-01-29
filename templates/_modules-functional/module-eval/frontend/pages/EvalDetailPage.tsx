@@ -66,6 +66,35 @@ import type { EvalCriteriaResult, Citation, CriteriaResultWithItem, EditResultIn
 import { useWorkspacePlugin } from "@{{PROJECT_NAME}}/shared/workspace-plugin";
 
 // =============================================================================
+// AUTHENTICATED FETCH HELPER
+// =============================================================================
+
+/**
+ * Authenticated fetch helper - wraps fetch() with Authorization header
+ * @param url - API endpoint URL
+ * @param token - Bearer token
+ * @param options - Fetch options
+ */
+async function authenticatedFetch(
+  url: string,
+  token: string | null,
+  options?: RequestInit
+): Promise<Response> {
+  if (!token) {
+    throw new Error('Authentication token required');
+  }
+  
+  return fetch(url, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    },
+  });
+}
+
+// =============================================================================
 // TYPES
 // =============================================================================
 
@@ -150,7 +179,15 @@ function TabNavigation({
 interface HeaderProps {
   title: string;
   status: string;
-  evaluation: any;
+  evaluation: {
+    complianceScore?: number;
+    scoreConfig?: {
+      categoricalMode: "boolean" | "detailed";
+      showDecimalScore: boolean;
+      statusOptions: Array<{ id: string; name: string; [key: string]: unknown }>;
+    };
+    [key: string]: unknown;
+  };
   workspaceId?: string;
   workspaceName?: string;
   token: string | null;
@@ -199,12 +236,7 @@ function Header({
         const apiUrl = process.env.NEXT_PUBLIC_CORA_API_URL;
         // Use wsId variable name to match API Gateway route parameter naming
         const wsId = workspaceId;
-        const response = await fetch(`${apiUrl}/ws/${wsId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        const response = await authenticatedFetch(`${apiUrl}/ws/${wsId}`, token);
         
         if (response.ok) {
           const data = await response.json();
@@ -283,6 +315,7 @@ function Header({
                     size="small"
                     onClick={() => onExpandAllChange(true)}
                     title="Expand all sections"
+                    aria-label="Expand all sections"
                     sx={{ 
                       border: 1, 
                       borderColor: 'divider',
@@ -295,6 +328,7 @@ function Header({
                     size="small"
                     onClick={() => onExpandAllChange(false)}
                     title="Collapse all sections"
+                    aria-label="Collapse all sections"
                     sx={{ 
                       border: 1, 
                       borderColor: 'divider',
@@ -326,7 +360,7 @@ function Header({
         {status === "completed" && (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <EvalExportButton
-              evaluation={evaluation}
+              evaluation={evaluation as any}
               onExport={onExport}
             />
           </Box>
@@ -362,9 +396,31 @@ function DraftConfiguration({
   const [error, setError] = useState<string | null>(null);
 
   // Direct API call state - replaces problematic hooks
-  const [docTypes, setDocTypes] = useState<any[]>([]);
-  const [criteriaSets, setCriteriaSets] = useState<any[]>([]);
-  const [documents, setDocuments] = useState<any[]>([]);
+  interface DocType {
+    id: string;
+    name: string;
+    [key: string]: unknown;
+  }
+  
+  interface CriteriaSet {
+    id: string;
+    name: string;
+    docTypeId: string;
+    [key: string]: unknown;
+  }
+  
+  interface Document {
+    id: string;
+    filename?: string;
+    name?: string;
+    fileName?: string;
+    title?: string;
+    [key: string]: unknown;
+  }
+  
+  const [docTypes, setDocTypes] = useState<DocType[]>([]);
+  const [criteriaSets, setCriteriaSets] = useState<CriteriaSet[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [loadingDocTypes, setLoadingDocTypes] = useState(true);
   const [loadingDocuments, setLoadingDocuments] = useState(true);
   const [orgId, setOrgId] = useState<string | null>(null);
@@ -379,12 +435,7 @@ function DraftConfiguration({
         
         console.log('[DraftConfig] Fetching user profile from:', apiUrl);
         
-        const meRes = await fetch(`${apiUrl}/profiles/me`, {
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        const meRes = await authenticatedFetch(`${apiUrl}/profiles/me`, token);
         
         if (!meRes.ok) {
           console.error('[DraftConfig] Failed to fetch user org:', meRes.status);
@@ -418,18 +469,8 @@ function DraftConfiguration({
         
         // Pass orgId as query parameter (camelCase per Lambda expectation)
         const [docTypesRes, criteriaSetsRes] = await Promise.all([
-          fetch(`${apiUrl}/admin/org/eval/doc-types?orgId=${orgId}`, {
-            headers: { 
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          }),
-          fetch(`${apiUrl}/admin/org/eval/criteria-sets?orgId=${orgId}`, {
-            headers: { 
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          })
+          authenticatedFetch(`${apiUrl}/admin/org/eval/doc-types?orgId=${orgId}`, token),
+          authenticatedFetch(`${apiUrl}/admin/org/eval/criteria-sets?orgId=${orgId}`, token)
         ]);
         
         if (!docTypesRes.ok || !criteriaSetsRes.ok) {
@@ -478,12 +519,7 @@ function DraftConfiguration({
         
         console.log('[DraftConfig] Fetching documents for workspace:', wsId);
         
-        const docsRes = await fetch(`${apiUrl}/ws/${wsId}/kb/documents`, {
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        const docsRes = await authenticatedFetch(`${apiUrl}/ws/${wsId}/kb/documents`, token);
         
         if (!docsRes.ok) {
           console.error('[DraftConfig] Documents API error:', docsRes.status);
@@ -633,11 +669,11 @@ function DraftConfiguration({
               multiple
               value={selectedDocIds}
               label="Documents"
-              onChange={(e: any) => {
-                const value = e.target.value;
+              onChange={(e) => {
+                const value = e.target.value as string | string[];
                 setSelectedDocIds(typeof value === 'string' ? [value] : value);
               }}
-              renderValue={(selected: any) => `${selected.length} document(s) selected`}
+              renderValue={(selected: string[]) => `${selected.length} document(s) selected`}
             >
               {loadingDocuments ? (
                 <MenuItem disabled>
@@ -646,7 +682,7 @@ function DraftConfiguration({
               ) : !Array.isArray(documents) || documents.length === 0 ? (
                 <MenuItem disabled>No documents in workspace KB</MenuItem>
               ) : (
-                documents.map((doc: any) => (
+                documents.map((doc: { id: string; filename?: string; name?: string; fileName?: string; title?: string }) => (
                   <MenuItem key={doc.id} value={doc.id}>
                     {doc.filename || doc.name || doc.fileName || doc.title || `Document ${doc.id.slice(0, 8)}`}
                   </MenuItem>
@@ -706,7 +742,6 @@ function ProcessingState({ evaluation }: ProcessingStateProps) {
     >
       <EvalProgressCard
         evaluation={evaluation}
-        showDetails
         sx={{ maxWidth: "md", width: "100%" }}
       />
       <Typography
@@ -809,7 +844,7 @@ interface DocumentMetadata {
   wordCount?: number;
   createdDate?: string; // ISO format
   paragraphCount?: number;
-  [key: string]: any; // Allow other fields but we'll filter out technical ones
+  [key: string]: string | number | boolean | undefined; // Allow other fields but we'll filter out technical ones
 }
 
 interface DocumentsTabProps {
@@ -923,7 +958,7 @@ function DocumentsTab({ documents, activeDocumentId }: DocumentsTabProps) {
         const hasMetadata = doc.metadata && Object.keys(doc.metadata).length > 0;
         
         // Filter metadata to show only user-relevant fields (omit technical details)
-        const displayMetadata: Record<string, any> = {};
+        const displayMetadata: Record<string, string | number> = {};
         if (doc.metadata) {
           // Fields to include
           if (doc.metadata.author) displayMetadata['Author'] = doc.metadata.author;
@@ -1175,16 +1210,16 @@ export function EvalDetailPage({
   if (evaluation.status === "draft") {
     return (
       <Box sx={{ p: 3, display: "flex", flexDirection: "column", gap: 3 }} className={className}>
-        <Header
-          title={evaluation.name || "Configure Evaluation"}
-          status={evaluation.status}
-          evaluation={evaluation}
-          workspaceId={workspaceId}
-          token={token}
-          onBack={onBack}
-          showBackButton={showBackButton}
-          onExport={handleExport}
-        />
+      <Header
+        title={evaluation.name || "Configure Evaluation"}
+        status={evaluation.status}
+        evaluation={evaluation as any}
+        workspaceId={workspaceId}
+        token={token}
+        onBack={onBack}
+        showBackButton={showBackButton}
+        onExport={handleExport}
+      />
         <DraftConfiguration
           evaluationId={evaluationId}
           evaluationName={evaluation.name}
@@ -1203,7 +1238,7 @@ export function EvalDetailPage({
         <Header
           title={evaluation.name || "Evaluation"}
           status={evaluation.status}
-          evaluation={evaluation}
+          evaluation={evaluation as any}
           workspaceId={workspaceId}
           token={token}
           onBack={onBack}
@@ -1211,7 +1246,7 @@ export function EvalDetailPage({
           onExport={handleExport}
         />
         <ProcessingState
-          evaluation={evaluation}
+          evaluation={evaluation as any}
         />
       </Box>
     );
@@ -1226,7 +1261,7 @@ export function EvalDetailPage({
       <Header
         title={evaluation.name || "Evaluation"}
         status={evaluation.status}
-        evaluation={evaluation}
+        evaluation={evaluation as any}
         workspaceId={workspaceId}
         token={token}
         onBack={onBack}

@@ -137,6 +137,8 @@ export function ColorPicker({ value, onChange, disabled }: ColorPickerProps) {
             onClick={() => onChange(color)}
             disabled={disabled}
             size="small"
+            aria-label={`Select color ${color}`}
+            aria-pressed={value === color}
             sx={{
               width: 24,
               height: 24,
@@ -149,8 +151,6 @@ export function ColorPicker({ value, onChange, disabled }: ColorPickerProps) {
                 transform: "scale(1.05)",
               },
             }}
-            aria-label={`Select color ${color}`}
-            aria-pressed={value === color}
           />
         ))}
       </Box>

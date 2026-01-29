@@ -157,7 +157,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 else:
                     return handle_sys_get_analytics(event, user_info)
             elif '/sessions' in path:
-                session_id = path_params.get('id')
+                session_id = path_params.get('sessionId')
                 if session_id:
                     if http_method == 'GET':
                         return handle_sys_get_session(user_info, session_id)
@@ -182,7 +182,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 else:
                     return handle_org_get_analytics(event, user_info)
             elif '/sessions' in path:
-                session_id = path_params.get('id')
+                session_id = path_params.get('sessionId')
                 if session_id:
                     if '/restore' in path:
                         return handle_org_restore_session(user_info, session_id)

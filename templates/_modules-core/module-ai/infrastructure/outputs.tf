@@ -164,6 +164,22 @@ output "api_routes" {
       description = "Update platform AI configuration"
       public      = false
     },
+    
+    # Platform AI Configuration (ai-config-handler)
+    {
+      method      = "GET"
+      path        = "/admin/sys/ai/orgs/{orgId}/config"
+      integration = aws_lambda_alias.ai_config_handler.invoke_arn
+      description = "Get organization AI configuration (sys admin viewing specific org)"
+      public      = false
+    },
+    {
+      method      = "PUT"
+      path        = "/admin/sys/ai/orgs/{orgId}/config"
+      integration = aws_lambda_alias.ai_config_handler.invoke_arn
+      description = "Update organization AI configuration (sys admin for specific org)"
+      public      = false
+    },
     {
       method      = "GET"
       path        = "/admin/sys/ai/rag-config"

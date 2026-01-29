@@ -869,6 +869,77 @@ create_github_repo() {
   log_info "Created: https://github.com/${GITHUB_ORG}/${repo_name}"
 }
 
+# --- Check for Existing GitHub OIDC Provider ---
+check_github_oidc_provider() {
+  local infra_dir="$1"
+  local config_file="$2"
+  
+  log_step "Checking for existing GitHub OIDC provider in AWS account..."
+  
+  # Get AWS profile from config file if available
+  local aws_profile=""
+  if [[ -f "$config_file" ]]; then
+    if command -v yq &> /dev/null; then
+      aws_profile=$(yq '.aws.profile // ""' "$config_file")
+    else
+      aws_profile=$(grep -A5 "^aws:" "$config_file" | grep "profile:" | sed 's/.*profile: *"\([^"]*\)".*/\1/' || echo "")
+    fi
+  fi
+  
+  # Skip check if no AWS profile configured
+  if [[ -z "$aws_profile" || "$aws_profile" == "null" ]]; then
+    log_info "No AWS profile configured, skipping OIDC provider check"
+    log_info "First project in account will create OIDC provider (default behavior)"
+    return
+  fi
+  
+  # Check if aws CLI is available
+  if ! command -v aws &> /dev/null; then
+    log_warn "AWS CLI not found, skipping OIDC provider check"
+    log_info "Install AWS CLI for automatic OIDC detection: brew install awscli"
+    log_info "First project will create OIDC provider (default behavior)"
+    return
+  fi
+  
+  # Check if jq is available (for JSON parsing)
+  if ! command -v jq &> /dev/null; then
+    log_warn "jq not found, skipping OIDC provider check"
+    log_info "Install jq for automatic OIDC detection: brew install jq"
+    log_info "First project will create OIDC provider (default behavior)"
+    return
+  fi
+  
+  # Query AWS for existing GitHub OIDC provider
+  log_info "Querying AWS account (profile: ${aws_profile})..."
+  local provider_arn=$(aws iam list-open-id-connect-providers --profile "$aws_profile" 2>/dev/null | \
+    jq -r '.OpenIDConnectProviderList[]?.Arn | select(contains("token.actions.githubusercontent.com"))' 2>/dev/null | head -1)
+  
+  if [[ -n "$provider_arn" ]]; then
+    log_info "✅ Found existing GitHub OIDC provider:"
+    log_info "   ${provider_arn}"
+    log_info ""
+    log_info "Configuring project to reuse existing provider..."
+    
+    # Update main.tf to set create_oidc_provider = false
+    local main_tf="${infra_dir}/envs/dev/main.tf"
+    if [[ -f "$main_tf" ]]; then
+      sed -i.bak 's/create_oidc_provider = true/create_oidc_provider = false  # Reuse existing provider/' "$main_tf" 2>/dev/null || \
+      sed -i.bak 's/create_oidc_provider = true/create_oidc_provider = false  # Reuse existing provider/' "$main_tf"
+      rm -f "${main_tf}.bak"
+      log_info "✅ Updated terraform: create_oidc_provider set to false"
+      log_info "   Module will discover and reuse existing OIDC provider automatically"
+    else
+      log_warn "main.tf not found at ${main_tf}"
+      log_info "You may need to manually set create_oidc_provider = false"
+    fi
+  else
+    log_info "No existing GitHub OIDC provider found in AWS account"
+    log_info "Terraform will create a new OIDC provider during deployment (default behavior)"
+  fi
+  
+  echo ""
+}
+
 # --- Create Infra Repository ---
 log_step "Creating ${INFRA_NAME}..."
 
@@ -888,6 +959,14 @@ else
   chmod +x "$INFRA_DIR"/bootstrap/*.sh 2>/dev/null || true
   
   log_info "Created ${INFRA_DIR}"
+  
+  # Check for existing GitHub OIDC provider and configure accordingly
+  # Use INPUT_CONFIG if provided, otherwise fall back to stack config
+  if [[ -n "$INPUT_CONFIG" ]]; then
+    check_github_oidc_provider "$INFRA_DIR" "$INPUT_CONFIG"
+  else
+    check_github_oidc_provider "$INFRA_DIR" "${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml"
+  fi
 fi
 
 # --- Create Stack Repository ---

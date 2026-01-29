@@ -19,9 +19,18 @@ resource "aws_iam_openid_connect_provider" "github" {
   thumbprint_list = var.thumbprints
 }
 
+# Lookup existing OIDC provider if not creating one
+data "aws_iam_openid_connect_provider" "github_existing" {
+  count = var.create_oidc_provider ? 0 : 1
+  url   = "https://token.actions.githubusercontent.com"
+}
+
 locals {
-  oidc_provider_arn = var.create_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : var.existing_oidc_provider_arn
-  role_name         = "${var.name_prefix}-${var.environment}"
+  # Use newly created provider, explicitly provided ARN, or discovered existing provider
+  oidc_provider_arn = var.create_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : (
+    var.existing_oidc_provider_arn != null ? var.existing_oidc_provider_arn : data.aws_iam_openid_connect_provider.github_existing[0].arn
+  )
+  role_name = "${var.name_prefix}-${var.environment}"
 }
 
 # IAM role with inline trust policy (avoids data source evaluation issues)

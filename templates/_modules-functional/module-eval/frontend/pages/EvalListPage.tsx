@@ -185,7 +185,6 @@ function ProcessingPanel({ evaluations, onSelect }: ProcessingPanelProps) {
           <Grid item xs={12} md={6} lg={4} key={evaluation.id}>
             <EvalProgressCard
               evaluation={evaluation}
-              showDetails
               onClick={() => onSelect(evaluation)}
             />
           </Grid>

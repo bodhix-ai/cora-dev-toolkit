@@ -15,47 +15,46 @@ This plan migrates 13 tables to comply with the updated DATABASE-NAMING standard
 
 ---
 
-## Validator Whitelist (Temporary - January 17, 2026)
+## Validator Whitelist Status (Updated: January 28, 2026)
 
-The following tables/indexes are **whitelisted in the Database Naming validator** (`scripts/validate-db-naming.py`) until their migration phases complete. This allows new modules to pass validation while deferring legacy module migrations.
+### ✅ Completed Migrations (Removed from Whitelist)
 
-### Legacy Module Errors (9 items - Whitelisted)
+**Phase 2: System Config Tables (module-mgmt) - ✅ COMPLETE**
+- ✅ `sys_lambda_config` → Migrated to `mgmt_cfg_sys_lambda`
+- ✅ `sys_module_registry` → Migrated to `mgmt_cfg_sys_modules`
+- ✅ `sys_module_usage` → Migrated to `mgmt_usage_modules`
+- Legacy schema files archived in templates (Session 15 - January 28, 2026)
 
-**Phase 1: Critical Auth Tables (module-access)**
-- `sys_idp_config` → Will be migrated to `sys_cfg_idp`
-- `sys_idp_audit_log` → Will be migrated to `sys_log_idp_audit`
+**Phase 6: Usage Tracking Tables - ✅ COMPLETE**
+- ✅ `sys_module_usage_daily` → Migrated to `mgmt_usage_modules_daily`
 
-**Phase 2: System Config Tables (module-mgmt)**
-- `sys_lambda_config` → Will be migrated to `sys_cfg_lambda`
+**Module-AI Index Naming - ✅ COMPLETE**
+- ✅ Index 'FOR' false positive resolved (template already correct: `idx_ai_models_vendor`)
+- Database migration applied: `scripts/migrations/20260128_fix_model_vendor_index.sql`
+- Session 15 - January 28, 2026
 
-**Phase 5: Log/History Tables (Deferred)**
+**Module-KB - ✅ COMPLETE**
+- ✅ `chat_session_kb` → `chat_session_kbs` - Fixed in templates (Session 151)
+
+### ⏸️ Remaining Whitelisted Items (Deferred)
+
+**Phase 1: Critical Auth Tables (module-access) - Can move to Cognito/OIDC**
+- `sys_idp_config` → Will be migrated to `access_cfg_sys_idp` (Cognito Phase 0)
+- `sys_idp_audit_log` → Will be migrated to `access_log_idp_audit` (Cognito Phase 0)
+
+**Phase 3: Workspace Tables (Deferred - Workspace Integration)**
+- `ws_activity_log` → Should use `ws_log_activity` (Rule 8 infix pattern)
+- Module-ws templates need updating (not yet fully templated)
+
+**Phase 5: Log/History Tables (Deferred - Low Priority)**
 - `user_auth_log` → Will be migrated to `user_log_auth`
 - `ai_model_validation_history` → Will be migrated to `ai_hist_model_validation`
 - `ai_model_validation_progress` → Will be migrated to `ai_state_validation`
 
-**Not Yet Scheduled (Needs Phase Assignment)**
-- `sys_module_registry` → Needs pluralization (not yet in plan)
-- `sys_module_usage` → Needs pluralization (Phase 6 - deferred)
-
-**Index Naming (module-ai)**
-- `ai_cfg_sys_rag_singleton` → Should be `idx_ai_cfg_sys_rag_singleton`
-
-### New Module Fixes (2 items - Fixed in Templates)
-
-**module-kb (Session 151 - January 17, 2026):**
-- ✅ `chat_session_kb` → `chat_session_kbs` - **FIXED in templates**
-  - Updated: `templates/_modules-core/module-kb/db/schema/010-chat-session-kb.sql`
-  - Updated: `templates/_modules-core/module-kb/db/schema/011-chat-rls-kb.sql`
-  - **Cleanup Required**: Before next test-module run, execute: `DROP TABLE IF EXISTS public.chat_session_kb CASCADE;`
-
-**module-ws (Not Yet Templated):**
-- `ws_activity_log` → `ws_activity_logs` - **Pending templating**
-  - Module-ws exists only in test projects (not templated yet)
-  - Fix will be applied when module-ws is templated
-
 ### Whitelist Removal Process
 
-As each migration phase completes, remove the corresponding tables/indexes from `LEGACY_WHITELIST` in `scripts/validate-db-naming.py`.
+✅ **Completed:** Removed Phase 2, Phase 6, module-ai index, module-kb items from validator whitelist  
+⏸️ **Remaining:** Phase 1 (auth), Phase 3 (workspace), Phase 5 (log/history) - will be removed as phases complete
 
 ---
 
