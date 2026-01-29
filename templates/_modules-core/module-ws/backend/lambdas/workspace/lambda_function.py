@@ -498,7 +498,7 @@ def handle_sys_analytics(user_id: str, user_info: Dict[str, Any]) -> Dict[str, A
                 filters={'org_id': org_id}
             )
             member_count = len(org_members)
-            stats['avg_per_user'] = round(stats['total'] / member_count, 2) if member_count > 0 else 0
+            stats['avgPerUser'] = round(stats['total'] / member_count, 2) if member_count > 0 else 0
         
         # Calculate feature adoption
         workspaces_with_favorites = len([
@@ -516,9 +516,9 @@ def handle_sys_analytics(user_id: str, user_info: Dict[str, Any]) -> Dict[str, A
         
         active_and_archived = active_count + archived_count
         feature_adoption = {
-            'favorites_pct': round((workspaces_with_favorites / active_and_archived * 100), 1) if active_and_archived > 0 else 0,
-            'tags_pct': round((workspaces_with_tags / active_and_archived * 100), 1) if active_and_archived > 0 else 0,
-            'colors_pct': round((workspaces_with_colors / active_and_archived * 100), 1) if active_and_archived > 0 else 0,
+            'favoritesPct': round((workspaces_with_favorites / active_and_archived * 100), 1) if active_and_archived > 0 else 0,
+            'tagsPct': round((workspaces_with_tags / active_and_archived * 100), 1) if active_and_archived > 0 else 0,
+            'colorsPct': round((workspaces_with_colors / active_and_archived * 100), 1) if active_and_archived > 0 else 0,
         }
         
         analytics = {
