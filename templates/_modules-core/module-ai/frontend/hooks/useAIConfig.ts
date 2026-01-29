@@ -123,7 +123,7 @@ export function usePlatformAIConfig(authAdapter: CoraAuthAdapter) {
       }
 
       const client = createCoraAuthenticatedClient(token);
-      const response = await client.get<ApiResponse<PlatformAIConfig>>("/admin/ai/config");
+      const response = await client.get<ApiResponse<PlatformAIConfig>>("/admin/sys/ai/config");
 
       // Handle wrapped response { success: true, data: {...} }
       const data = (response as { success: boolean; data: PlatformAIConfig })?.success && 
@@ -178,7 +178,7 @@ export function usePlatformAIConfig(authAdapter: CoraAuthAdapter) {
 
         const client = createCoraAuthenticatedClient(token);
         const data = await client.put<PlatformAIConfig>(
-          "/admin/ai/config",
+          "/admin/sys/ai/config",
           payload
         );
         setConfig(data);

@@ -135,10 +135,32 @@ export class LambdaMgmtApiClient {
   async listLambdaFunctions(): Promise<LambdaFunctionInfo[]> {
     try {
       const response = await this.client.get<{
-        data: LambdaFunctionInfo[];
+        data: Array<{
+          name: string;
+          arn: string;
+          memory_mb: number;
+          timeout_seconds: number;
+          runtime: string;
+          last_modified: string;
+          description?: string;
+          handler?: string;
+          version?: string;
+        }>;
       }>("/admin/sys/mgmt/functions");
-      // CORA API returns { success: true, data: [...] } - unwrap it
-      return response?.data || [];
+      
+      // Transform snake_case to camelCase (backend returns snake_case)
+      const data = response?.data || [];
+      return data.map(fn => ({
+        name: fn.name,
+        arn: fn.arn,
+        memoryMb: fn.memory_mb,
+        timeoutSeconds: fn.timeout_seconds,
+        runtime: fn.runtime,
+        lastModified: fn.last_modified,
+        description: fn.description,
+        handler: fn.handler,
+        version: fn.version,
+      }));
     } catch (error) {
       console.error("Failed to list Lambda functions:", error);
       return [];

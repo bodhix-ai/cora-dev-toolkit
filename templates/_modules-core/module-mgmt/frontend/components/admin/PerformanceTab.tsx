@@ -30,7 +30,12 @@ import { useLambdaFunctions } from "../../hooks/useLambdaFunctions";
  */
 function formatDate(dateString: string): string {
   try {
-    const date = new Date(dateString);
+    // Normalize timezone format: +0000 -> Z (or add colon: +00:00)
+    const normalizedDate = dateString.replace(/\+0000$/, 'Z');
+    const date = new Date(normalizedDate);
+    if (isNaN(date.getTime())) {
+      return dateString;
+    }
     return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
