@@ -423,7 +423,7 @@ function CollapsibleDetails({
               </Typography>
               {evaluation.documents && evaluation.documents.length > 0 ? (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {evaluation.documents?.map((doc: any, index: number) => (
+                  {evaluation.documents?.map((doc: EvaluationDocument, index: number) => (
                     <React.Fragment key={doc.id}>
                       <Link
                         component="button"

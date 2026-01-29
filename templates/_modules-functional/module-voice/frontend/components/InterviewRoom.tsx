@@ -96,8 +96,8 @@ export function InterviewRoom({
     join(options: { url: string; token?: string }): Promise<void>;
     leave(): Promise<void>;
     destroy(): Promise<void>;
-    on(event: string, handler: (data?: any) => void): void;
-    off(event: string, handler: (data?: any) => void): void;
+    on(event: string, handler: (data?: Record<string, unknown>) => void): void;
+    off(event: string, handler: (data?: Record<string, unknown>) => void): void;
   }
   
   interface DailyIframeConstructor {
@@ -144,8 +144,9 @@ export function InterviewRoom({
           onLeave?.();
         });
 
-        dailyFrame.on("error", (event: { errorMsg?: string }) => {
-          const err = new Error(event.errorMsg || "Unknown Daily.co error");
+        dailyFrame.on("error", (event?: Record<string, unknown>) => {
+          const errorMsg = typeof event?.errorMsg === 'string' ? event.errorMsg : 'Unknown Daily.co error';
+          const err = new Error(errorMsg);
           setError(err.message);
           onError?.(err);
         });

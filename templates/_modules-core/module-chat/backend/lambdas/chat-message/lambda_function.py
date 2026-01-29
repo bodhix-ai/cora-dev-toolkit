@@ -78,9 +78,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             if http_method == 'GET':
                 return handle_get_history(event, supabase_user_id, org_id, session_id)
         
-        # Org Admin routes: /admin/org/chat/messages/{id}
+        # Org Admin routes: /admin/org/chat/messages/{messageId}
         elif '/admin/org/chat/messages' in path:
-            message_id = path_params.get('id')
+            message_id = path_params.get('messageId')
             if http_method == 'GET' and message_id:
                 return handle_org_get_message(user_info, message_id)
         

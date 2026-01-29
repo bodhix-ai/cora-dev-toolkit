@@ -345,6 +345,7 @@ export function EvalResultsTable({
                               size="small"
                               onClick={() => onExport(evaluation, "pdf")}
                               title="Export PDF"
+                              aria-label="Export PDF"
                               color="primary"
                             >
                               <PdfIcon fontSize="small" />
@@ -353,6 +354,7 @@ export function EvalResultsTable({
                               size="small"
                               onClick={() => onExport(evaluation, "xlsx")}
                               title="Export Excel"
+                              aria-label="Export Excel"
                               color="success"
                             >
                               <ExcelIcon fontSize="small" />
@@ -364,6 +366,7 @@ export function EvalResultsTable({
                             size="small"
                             onClick={() => onDelete(evaluation)}
                             title="Delete"
+                            aria-label="Delete evaluation"
                             color="error"
                           >
                             <DeleteIcon fontSize="small" />

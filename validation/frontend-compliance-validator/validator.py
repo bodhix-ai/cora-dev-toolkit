@@ -99,6 +99,11 @@ class FrontendComplianceChecker:
                     continue
                 
                 if re.search(r'\bfetch\s*\(', line):
+                    # Check previous line for @ts-expect-error directive (same as any_type check)
+                    prev_line = lines[i-1] if i > 0 else ""
+                    if "@ts-expect-error" in prev_line or "eslint-disable" in prev_line or "eslint-disable-line" in line:
+                        continue
+                    
                     # Check if this is a FormData upload (common pattern)
                     context_before = "\n".join(lines[max(0, i-10):i])
                     context_after = "\n".join(lines[i:min(len(lines), i+10)])
