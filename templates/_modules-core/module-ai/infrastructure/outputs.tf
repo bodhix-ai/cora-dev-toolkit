@@ -164,6 +164,8 @@ output "api_routes" {
       description = "Update platform AI configuration"
       public      = false
     },
+    
+    # Platform AI Configuration (ai-config-handler)
     {
       method      = "GET"
       path        = "/admin/sys/ai/orgs/{orgId}/config"
