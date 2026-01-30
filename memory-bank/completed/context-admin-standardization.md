@@ -28,7 +28,8 @@ Standardize all CORA admin pages (sys and org) with consistent:
 | S1 | `admin-page-s1` | `plan_admin-page-standardization-s1.md` | ✅ Complete | 2026-01-22 |
 | S2 | `admin-page-s2-completion` | `plan_admin-page-standardization-s2.md` | ✅ Complete | 2026-01-24 |
 | S3a | `admin-page-s3a` | `plan_admin-page-s3a.md` | ✅ Complete | 2026-01-25 (Session 5) |
-| S3b | `admin-page-s3b` | `plan_admin-standardization-s3b.md` | � Active | 2026-01-27 |
+| S3b | `admin-page-s3b` | `plan_admin-standardization-s3b.md` | ✅ Complete | 2026-01-27 |
+| S4 | `admin-page-s4-ui-testing` | `plan_admin-page-s4-ui-testing.md` | ✅ Complete | 2026-01-30 |
 
 ## Sprint 3a Summary (Completed)
 

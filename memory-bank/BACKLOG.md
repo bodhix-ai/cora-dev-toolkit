@@ -26,9 +26,9 @@ This table is the **small, prioritized, team-coordination surface**. It should s
 
 | Priority | Lane | Initiative | Context File | Dependencies | Impact | Conflict Risk | Assigned To | Status |
 |----------|------|------------|--------------|--------------|--------|---------------|-------------|--------|
+| **P0** | E (Auth) | **Auth Standardization S1** | `context-auth-standardization.md` | None | **Blocking Bug Fix**: Fixes broken chat admin + standardizes fragile auth patterns across 8 modules | **High** (shared auth lib + all modules) | - | 🟡 Active |
 | **P1** | A (WS/Types) | **WS Plugin Architecture S1** | `context-ws-plugin-architecture.md` | None | Unblocks functional modules as plugins; resolves ws type errors | **Medium** (shared types + module-ws) | - | ✅ Complete |
-| **P1** | F (UI/Admin UX) | **Admin Standardization S3b** | `context-admin-standardization.md` | None | **Critical deployment infrastructure**: Version tracking enables sustainable updates to 4+ projects + fixes 84 admin route errors (31% of remaining); unblocks Clean Baseline | **Medium/High** (admin components, scripts, versioning) | - | 🟡 Active (Session 1: Planning Complete) |
-| **P1** | D (Tooling) | **Clean Project Baseline (Error-Free)** | `context-error-remediation.md` | WS Plugin Architecture S1-S2 ✅, Admin Standardization S3b (active) | Establishes 0-error baseline; major progress: 430→121 errors (72% reduction) via Error Remediation S1-S4 | **Medium** (touches many modules for fixes) | - | 🚫 Blocked (S3b in progress) |
+| **P1** | D (Tooling) | **Clean Project Baseline (Error-Free)** | `context-error-remediation.md` | WS Plugin Architecture S1-S2 ✅, Admin Standardization (Complete) | Establishes 0-error baseline; major progress: 430→121 errors (72% reduction) via Error Remediation S1-S4 | **Medium** (touches many modules for fixes) | - | ⏳ Ready |
 | **P1** | D (Tooling) | **Test Project Resource Isolation** | *(new context needed)* | None | Enables parallel test environments (prevents AWS resource name collisions) | **Low/Medium** (scripts + infra vars) | - | ⏳ Ready |
 | **P2** | B (Eval Delivery) | **Module-Eval Citations** | `context-module-eval.md` | P1 WS Plugin Architecture (types/interfaces stable) | Enables debugging/scoring work; improves eval explainability | **Medium** (module-eval frontend/backend) | - | 🚫 Blocked |
 | **P3** | B (Eval Delivery) | **Eval Scoring Quality** | `context-module-eval.md` | P2 Citations working | Can’t reliably debug scoring without citations | **Medium** (module-eval) | - | 🚫 Blocked |
@@ -52,9 +52,11 @@ This table is the **small, prioritized, team-coordination surface**. It should s
 ## Dependency Graph
 
 ```
-P1: Admin Standardization S3b (active, no blockers)
-    └── P1: Clean Project Baseline (needs S3b admin route fixes + version tracking)
-        └── Module upgrade deployments enabled
+P0: Auth Standardization (active, critical)
+    └── P1: Clean Project Baseline (needs stable auth patterns)
+
+P1: Admin Standardization (Complete)
+    └── P1: Clean Project Baseline (unblocked)
 
 P1: WS Plugin Architecture S1-S2 ✅ Complete
     └── P2: Module-Eval Citations (unblocked, ready when capacity available)
@@ -131,9 +133,9 @@ When a team starts work on an initiative:
 
 | Initiative | Context File | Completed | Notes |
 |------------|--------------|-----------|-------|
+| Admin Standardization S4 | `context-admin-standardization.md` | 2026-01-30 | Full admin route standardization, version tracking, UI testing. Transferred to Auth Standardization. |
 | Error Remediation S1-S4 | `context-error-remediation.md` | 2026-01-27 | 430→121 errors (72% reduction): TypeScript, API Tracer, Accessibility, Frontend Compliance, Next.js Routing, Admin Auth |
 | WS Plugin Architecture S1-S2 | `context-ws-plugin-architecture.md` | 2026-01-25 | ADR-017 implementation, module availability integration, 100% compliance |
-| Admin Standardization S2-S3a | `context-admin-standardization.md` | 2026-01-25 | ADR-016 fixes, module toggle patterns, DB table renames |
 
 ---
 
