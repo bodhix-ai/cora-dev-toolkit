@@ -25,6 +25,8 @@ import { OrgAnalyticsTab } from "./OrgAnalyticsTab";
 
 interface OrgChatAdminProps {
   authAdapter?: AuthAdapter;
+  orgId: string;
+  orgName?: string;
 }
 
 /**
@@ -43,7 +45,7 @@ interface OrgChatAdminProps {
  * <OrgChatAdmin authAdapter={authAdapter} />
  * ```
  */
-export function OrgChatAdmin({ authAdapter }: OrgChatAdminProps): React.ReactElement {
+export function OrgChatAdmin({ authAdapter, orgId, orgName }: OrgChatAdminProps): React.ReactElement {
   const [activeTab, setActiveTab] = useState(0);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -92,15 +94,15 @@ export function OrgChatAdmin({ authAdapter }: OrgChatAdminProps): React.ReactEle
       </Box>
 
       <Box role="tabpanel" hidden={activeTab !== 0} id="tabpanel-settings" aria-labelledby="tab-settings">
-        {activeTab === 0 && <OrgSettingsTab authAdapter={authAdapter} />}
+        {activeTab === 0 && <OrgSettingsTab authAdapter={authAdapter} orgId={orgId} />}
       </Box>
 
       <Box role="tabpanel" hidden={activeTab !== 1} id="tabpanel-sessions" aria-labelledby="tab-sessions">
-        {activeTab === 1 && <OrgSessionsTab authAdapter={authAdapter} />}
+        {activeTab === 1 && <OrgSessionsTab authAdapter={authAdapter} orgId={orgId} />}
       </Box>
 
       <Box role="tabpanel" hidden={activeTab !== 2} id="tabpanel-analytics" aria-labelledby="tab-analytics">
-        {activeTab === 2 && <OrgAnalyticsTab authAdapter={authAdapter} />}
+        {activeTab === 2 && <OrgAnalyticsTab authAdapter={authAdapter} orgId={orgId} />}
       </Box>
     </Box>
   );

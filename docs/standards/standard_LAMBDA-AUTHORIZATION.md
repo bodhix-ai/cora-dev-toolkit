@@ -96,6 +96,241 @@ def handle_admin_function_WRONG(user_info: Dict[str, Any], body: Dict[str, Any])
 
 ---
 
+## Centralized Router Auth Pattern (PREFERRED for Admin Routes)
+
+### Overview
+
+For Lambda functions handling **admin routes** (`/admin/sys/*`, `/admin/org/*`), the **PREFERRED** pattern is to centralize authorization at the router level. This eliminates code duplication and ensures consistent security enforcement.
+
+### Why Centralized Auth?
+
+**Problems with per-handler auth:**
+- ❌ Authorization logic duplicated across 10-20 handler functions
+- ❌ Easy to miss auth checks in new handlers
+- ❌ Inconsistent error messages
+- ❌ Database profile queried multiple times per request
+- ❌ Hard to audit security across all handlers
+
+**Benefits of centralized auth:**
+- ✅ Authorization checked ONCE at router level
+- ✅ Handlers focus on business logic only
+- ✅ Single profile query per request
+- ✅ Consistent error messages
+- ✅ Easy to audit (all auth in one place)
+- ✅ Follows DRY principle
+
+### Pattern: Centralized Router Auth
+
+**Reference Implementation:** `module-mgmt/backend/lambdas/lambda-mgmt/lambda_function.py`
+
+```python
+"""
+Module Admin Lambda - Example of Centralized Router Auth
+
+Routes - System Admin:
+- GET /admin/sys/mgmt/modules - List all modules
+- PUT /admin/sys/mgmt/modules/{name} - Update module
+
+Routes - Org Admin:
+- GET /admin/org/mgmt/modules - List org modules
+- GET /admin/org/mgmt/usage - View org usage
+"""
+
+import json
+import logging
+import os
+from typing import Any, Dict
+
+import org_common as common
+
+logger = logging.getLogger()
+logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
+
+# Define system admin roles as constant
+SYS_ADMIN_ROLES = ['sys_owner', 'sys_admin']
+
+
+def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
+    """
+    Main Lambda handler with CENTRALIZED authorization.
+    
+    All admin routes are protected at the router level.
+    Individual handlers do NOT need to check authorization.
+    """
+    try:
+        # 1. Extract route information
+        http_method = event.get('httpMethod', event.get('requestContext', {}).get('http', {}).get('method', ''))
+        path = event.get('path', event.get('rawPath', ''))
+        path_parameters = event.get('pathParameters') or {}
+        
+        logger.info(f"Request: {http_method} {path}")
+        
+        # 2. Standard CORA auth extraction (ONCE)
+        user_info = common.get_user_from_event(event)
+        okta_uid = user_info['user_id']
+        org_id = user_info.get('org_id')  # Extract for logging/audit
+        supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
+        
+        # 3. Single profile query (ONCE)
+        profile = common.find_one(
+            table='user_profiles',
+            filters={'user_id': supabase_user_id}
+        )
+        
+        if not profile:
+            logger.warning(f"User profile not found for {supabase_user_id}")
+            return common.forbidden_response('User profile not found')
+        
+        # 4. Role flags computed ONCE
+        is_sys_admin = profile.get('sys_role') in SYS_ADMIN_ROLES
+        is_org_admin = profile.get('org_role') in ['org_admin', 'org_owner']
+        
+        # 5. Route-level authorization (ONCE per route type)
+        if path.startswith('/admin/sys/'):
+            if not is_sys_admin:
+                logger.warning(f"Access denied for user {supabase_user_id} - sys admin required")
+                return common.forbidden_response('System admin role required')
+            logger.info(f"System admin access granted for user {supabase_user_id}")
+        
+        elif path.startswith('/admin/org/'):
+            if not is_org_admin:
+                logger.warning(f"Access denied for user {supabase_user_id} - org admin required")
+                return common.forbidden_response('Organization admin role required')
+            if not org_id:
+                logger.warning(f"Org admin missing org_id for {supabase_user_id}")
+                return common.forbidden_response('Organization context required')
+            logger.info(f"Organization admin access granted for user {supabase_user_id}, org: {org_id}")
+        
+        # 6. Route dispatcher - handlers receive pre-validated context
+        if path == '/admin/sys/mgmt/modules' and http_method == 'GET':
+            return handle_list_modules(event)  # No auth params needed!
+        
+        elif path.endswith('/admin/org/mgmt/usage') and http_method == 'GET':
+            return handle_org_module_usage(org_id)  # Pre-validated org_id
+        
+        # ... more routes
+        
+        else:
+            return common.not_found_response(f'Route not found: {http_method} {path}')
+    
+    except common.ForbiddenError as e:
+        return common.forbidden_response(str(e))
+    
+    except Exception as e:
+        logger.exception(f'Internal error: {str(e)}')\n        return common.internal_error_response('Internal server error')
+
+
+def handle_list_modules(event: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    GET /admin/sys/mgmt/modules
+    
+    List all registered modules.
+    
+    NOTE: No authorization check needed - already validated at router level!
+    """
+    # Business logic only - no auth checks!
+    query_params = event.get('queryStringParameters') or {}
+    module_type = query_params.get('type')
+    
+    filters = {'deleted_at': None}
+    if module_type:
+        filters['module_type'] = module_type
+    
+    modules = common.find_many(
+        table='mgmt_cfg_sys_modules',
+        filters=filters,
+        order='tier,module_name'
+    )
+    
+    return common.success_response({'modules': modules})
+
+
+def handle_org_module_usage(org_id: str) -> Dict[str, Any]:
+    """
+    GET /admin/org/mgmt/usage
+    
+    View module usage statistics for an organization.
+    
+    NOTE: org_id already validated at router level!
+    """
+    # Business logic only - no auth checks!
+    usage_stats = common.find_many(
+        table='mgmt_usage_modules',
+        filters={'org_id': org_id}
+    )
+    
+    return common.success_response({'usage': usage_stats})
+```
+
+### When to Use Each Pattern
+
+| Pattern | Use Case | Profile Queries | Auth Checks | Best For |
+|---------|----------|-----------------|-------------|----------|
+| **Centralized Router** | Admin routes (`/admin/*`) | 1 per request | 1 per route type | ✅ PREFERRED |
+| **Per-Handler** | Data API routes | 1 per handler | 1 per handler | Resource ownership |
+
+**Examples:**
+- ✅ **Use Centralized:** `/admin/sys/mgmt/*`, `/admin/org/mgmt/*` (uniform role requirements)
+- ✅ **Use Per-Handler:** `/kb/documents/{id}`, `/ws/{wsId}/members` (resource-specific ownership)
+
+### Migration from Per-Handler to Centralized
+
+If you have a Lambda with per-handler auth checks, migrate to centralized:
+
+**Before (Per-Handler - Duplicated):**
+```python
+def handle_sys_get_config(user_id: str) -> Dict[str, Any]:
+    # Duplicate auth check #1
+    profile = common.find_one('user_profiles', {'user_id': user_id})
+    if not profile or profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
+        raise common.ForbiddenError('sys_admin or sys_owner role required')
+    # Business logic...
+
+def handle_sys_update_config(user_id: str, body: Dict) -> Dict[str, Any]:
+    # Duplicate auth check #2
+    profile = common.find_one('user_profiles', {'user_id': user_id})
+    if not profile or profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
+        raise common.ForbiddenError('sys_admin or sys_owner role required')
+    # Business logic...
+
+# ... repeated 10-20 times across handlers
+```
+
+**After (Centralized - DRY):**
+```python
+def lambda_handler(event, context):
+    # Single auth check at router
+    profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
+    is_sys_admin = profile.get('sys_role') in ['sys_owner', 'sys_admin']
+    
+    if path.startswith('/admin/sys/'):
+        if not is_sys_admin:
+            return common.forbidden_response('System admin role required')
+    
+    # Dispatch to handlers - no auth needed!
+    return handle_sys_get_config()  # No user_id param!
+
+def handle_sys_get_config() -> Dict[str, Any]:
+    # Business logic only - no auth checks!
+    config = common.find_one(...)
+    return common.success_response(config)
+
+def handle_sys_update_config(body: Dict) -> Dict[str, Any]:
+    # Business logic only - no auth checks!
+    updated = common.update_one(...)
+    return common.success_response(updated)
+```
+
+### Key Takeaways
+
+1. **Admin Lambdas:** Use centralized router auth (module-mgmt pattern)
+2. **Data API Lambdas:** Use per-handler auth for resource ownership checks
+3. **Single Profile Query:** Query user_profiles ONCE at router level
+4. **Handlers Stay Focused:** Business logic only, no auth code duplication
+5. **Audit Trail:** All authorization logic in one place for easy review
+
+---
+
 ## Sys vs Org vs Ws Route Patterns
 
 CORA Lambda functions should categorize routes into **sys-level**, **org-level**, and **ws-level** to properly enforce org_id requirements and authorization.

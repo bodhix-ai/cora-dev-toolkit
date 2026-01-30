@@ -25,18 +25,51 @@
 
 ### Module-by-Module Auth Audit
 
-| Module | Sys Admin | Org Admin | Resource Auth | Pattern Quality |
-|--------|-----------|-----------|---------------|-----------------|
-| module-access | ✅ JWT-based | ✅ JWT-based | Profile ownership | ⭐⭐⭐ Good |
-| module-ai | ✅ JWT-based | ✅ JWT-based | Provider ownership | ⭐⭐⭐ Good |
-| module-ws | ✅ JWT-based | ✅ JWT-based | WS membership | ⭐⭐⭐ Good |
-| module-mgmt | ✅ JWT-based | ✅ JWT-based | N/A | ⭐⭐⭐ Good |
-| module-kb | ✅ JWT-based | ✅ JWT-based | KB access | ⭐⭐⭐ Good |
-| module-eval | ✅ JWT-based | ✅ JWT-based | Eval ownership | ⭐⭐⭐ Good |
-| module-voice | ✅ JWT-based | ✅ JWT-based | Session ownership | ⭐⭐⭐ Good |
-| module-chat | ❌ **BROKEN** | ❌ Inconsistent | Session ownership | ⭐ Poor |
+**Audit Date:** January 30, 2026  
+**Standard Reference:** `docs/standards/standard_LAMBDA-AUTHORIZATION.md` (Centralized Router Auth Pattern)
 
-**Key Finding:** 7/8 modules use JWT-based auth correctly. Chat module was passing `user_id` instead of JWT.
+| Module | Admin Routes | Auth Pattern | Profile Queries | Pattern Quality | Needs Update |
+|--------|--------------|--------------|-----------------|-----------------|--------------|
+| module-mgmt | ✅ Yes | ✅ **Centralized** | 1 per request | ⭐⭐⭐⭐⭐ **Reference** | ❌ No |
+| module-access | N/A | Per-handler | Per handler | ⭐⭐⭐ Good | N/A (data API) |
+| module-ai | ✅ Yes | ⚠️ Per-handler (helpers) | Per handler | ⭐⭐⭐ Acceptable | ✅ Yes |
+| module-ws | ✅ Yes | ⚠️ Per-handler | Per handler | ⭐⭐ Fair | ✅ Yes |
+| module-kb | ✅ Yes | ⚠️ Per-handler | Per handler | ⭐⭐ Fair | ✅ Yes |
+| module-eval | ✅ Yes | ⚠️ Per-handler | Per handler | ⭐⭐ Fair | ✅ Yes |
+| module-voice | ✅ Yes | ⚠️ Per-handler | Per handler | ⭐⭐ Fair | ✅ Yes |
+| module-chat | ✅ Yes | ❌ **Per-handler (broken)** | 17 per request | ⭐ **Poor** | ✅ **YES** |
+
+**Key Findings:**
+1. **Only 1/8 modules** use the centralized router auth pattern (module-mgmt)
+2. **7/8 modules** use per-handler auth checks (duplicate auth logic across handlers)
+3. **Module-chat** has the most severe issue: 17 duplicate profile queries per request
+4. **Module-ai** uses helper functions (`_require_admin_access()`) which is better than inline but still per-handler
+5. **Module-access** correctly uses per-handler auth because it handles data API routes (resource ownership), not admin routes
+
+**Pattern Analysis:**
+
+| Pattern | Modules | Profile Queries | Maintainability | Security Risk |
+|---------|---------|-----------------|-----------------|---------------|
+| **Centralized Router** | 1 (mgmt) | 1 per request | ✅ Excellent | ✅ Low |
+| **Per-handler (helpers)** | 1 (ai) | N per request | ⚠️ Fair | ⚠️ Medium |
+| **Per-handler (inline)** | 5 (ws, kb, eval, voice, chat) | N per request | ❌ Poor | ❌ High |
+| **Data API per-handler** | 1 (access) | Per handler | ✅ Appropriate | ✅ Low |
+
+**Impact Assessment:**
+
+**Current State Problems:**
+- ❌ **16x code duplication** across module-chat's 17 handlers
+- ❌ **17 profile queries** per request in module-chat (should be 1)
+- ❌ **Easy to forget auth checks** when adding new handlers
+- ❌ **Inconsistent error messages** across modules
+- ❌ **Hard to audit** security across scattered auth code
+
+**After Centralized Router Pattern:**
+- ✅ **1 profile query** per request (all modules)
+- ✅ **Single auth check** at router level
+- ✅ **Impossible to bypass** - all routes protected
+- ✅ **Consistent error messages**
+- ✅ **Easy to audit** - all auth in one place
 
 ---
 

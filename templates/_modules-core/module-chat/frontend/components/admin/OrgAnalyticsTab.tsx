@@ -53,7 +53,7 @@ interface WorkspaceStats {
 }
 
 export function OrgAnalyticsTab(): React.ReactElement {
-  const { isAuthenticated } = useUser();
+  const { isAuthenticated, authAdapter } = useUser();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
@@ -62,15 +62,22 @@ export function OrgAnalyticsTab(): React.ReactElement {
 
   // Load analytics data
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !authAdapter) return;
 
     const loadAnalytics = async () => {
       try {
         setLoading(true);
+        const token = await authAdapter.getToken();
+        if (!token) {
+          setError("Failed to get authentication token");
+          setLoading(false);
+          return;
+        }
+        
         const [analyticsData, userData, workspaceData] = await Promise.all([
-          getOrgAdminAnalytics(),
-          getOrgAdminUserStats(),
-          getOrgAdminWorkspaceStats(),
+          getOrgAdminAnalytics(token),
+          getOrgAdminUserStats(token),
+          getOrgAdminWorkspaceStats(token),
         ]);
 
         setAnalytics(analyticsData);
@@ -121,7 +128,7 @@ export function OrgAnalyticsTab(): React.ReactElement {
                 Total Sessions
               </Typography>
               <Typography variant="h3" color="primary">
-                {analytics?.totalSessions.toLocaleString() || 0}
+                {(analytics?.totalSessions ?? 0).toLocaleString()}
               </Typography>
             </CardContent>
           </Card>
@@ -134,7 +141,7 @@ export function OrgAnalyticsTab(): React.ReactElement {
                 Total Messages
               </Typography>
               <Typography variant="h3" color="primary">
-                {analytics?.totalMessages.toLocaleString() || 0}
+                {(analytics?.totalMessages ?? 0).toLocaleString()}
               </Typography>
             </CardContent>
           </Card>
