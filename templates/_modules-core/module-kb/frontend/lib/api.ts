@@ -286,10 +286,10 @@ export function createKbModuleClient(
 
     // Org Admin endpoints
     orgAdmin: {
-      listKbs: () => authenticatedClient.get<KnowledgeBase[]>("/admin/org/kb"),
+      listKbs: () => authenticatedClient.get<KnowledgeBase[]>("/admin/org/kb/bases"),
 
       createKb: (data) =>
-        authenticatedClient.post<KnowledgeBase>("/admin/org/kb", data),
+        authenticatedClient.post<KnowledgeBase>("/admin/org/kb/bases", data),
 
       getKb: (kbId) =>
         authenticatedClient.get<KnowledgeBase>(`/admin/org/kb/${kbId}`),
