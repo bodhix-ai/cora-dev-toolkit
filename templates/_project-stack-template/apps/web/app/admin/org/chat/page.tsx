@@ -29,7 +29,7 @@ import { CircularProgress, Box, Alert } from "@mui/material";
  */
 export default function OrganizationChatAdminPage() {
   const { profile, loading, isAuthenticated } = useUser();
-  const { hasRole } = useRole();
+  const { isOrgAdmin, isOrgOwner } = useRole();  // ✅ FIX: Use boolean flags, not hasRole()
 
   // Show loading state while user profile is being fetched
   if (loading) {
@@ -59,7 +59,7 @@ export default function OrganizationChatAdminPage() {
   }
 
   // Check if user has org admin role
-  if (!hasRole("org_owner") && !hasRole("org_admin")) {
+  if (!isOrgAdmin && !isOrgOwner) {  // ✅ FIX: Use boolean flags directly
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">
