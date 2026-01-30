@@ -1464,6 +1464,60 @@ This automation removes a major blocker for deploying multiple CORA projects in 
 
 ---
 
+### January 29, 2026 - Sprint S4 Session 1
+
+**Status:** Chat Admin Authentication Pattern Investigation
+**Branch:** `admin-page-s4-ui-testing`
+
+**Work Attempted:**
+
+1. **Sys Chat Admin Authentication Refactor - ATTEMPTED** ⚠️
+   - **Problem:** Chat admin endpoints returning errors
+   - **Hypothesis:** Token prop drilling causing authentication issues
+   - **Changes Made:**
+     - Removed token extraction at page level
+     - Updated all 3 sys admin tabs to use `authAdapter` from `useUser()`
+     - Each tab now handles authentication independently
+     - Updated `api.ts` to accept `authAdapter` parameter
+   - **Files Modified (6):**
+     - `templates/_project-stack-template/apps/web/app/admin/sys/chat/page.tsx`
+     - `templates/_modules-core/module-chat/frontend/components/admin/SysChatAdmin.tsx`
+     - `templates/_modules-core/module-chat/frontend/lib/api.ts`
+     - `templates/_modules-core/module-chat/frontend/components/admin/SysSettingsTab.tsx`
+     - `templates/_modules-core/module-chat/frontend/components/admin/SysAnalyticsTab.tsx`
+     - `templates/_modules-core/module-chat/frontend/components/admin/SysSessionsTab.tsx`
+   - **Result:** ❌ Issue persists after changes
+
+2. **Org Chat Admin hasRole Fix - COMPLETE** ✅
+   - **Problem:** Incorrect use of `hasRole()` function
+   - **Fix Applied:**
+     - Changed `const { hasRole } = useRole()` to `const { isOrgAdmin, isOrgOwner } = useRole()`
+     - Changed `if (!hasRole("org_owner") && !hasRole("org_admin"))` to `if (!isOrgAdmin && !isOrgOwner)`
+   - **File Modified (1):**
+     - `templates/_project-stack-template/apps/web/app/admin/org/chat/page.tsx`
+
+3. **All Changes Synced to Test Project** ✅
+   - Synced 7 files to test project: `~/code/bodhix/testing/test-admin/ai-mod-stack`
+   - Version tracking updated with sync timestamp
+
+**Investigation Notes:**
+- Chat authentication pattern refactor did not resolve the reported error
+- Org KB issue (#8) investigation showed template code is correct (orgId flows properly through component chain)
+- Eval hooks error (#9) requires more details from user to diagnose
+
+**Outstanding Issues:**
+- Issue #7: Org Chat hasRole Error - ✅ FIXED
+- Issue #8: Org KB API Client Missing - Templates are correct, may be environment-specific
+- Issue #9: Eval Hooks Render Error - Awaiting error details from user
+- Chat admin errors persist despite authentication pattern changes
+
+**Next Steps:**
+- Document work in plan and context
+- Commit changes with logical grouping
+- Further investigation needed for persistent chat admin errors
+
+---
+
 ### January 24, 2026 - Sprint 2 Completion
 - Completed ADR-016 fixes for org admin authorization
 - Renamed branch from citations-review to admin-page-s2-completion

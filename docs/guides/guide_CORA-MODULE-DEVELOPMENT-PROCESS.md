@@ -1564,6 +1564,452 @@ After adding module UI configuration:
 - [ ] Admin page created at path specified in config
 - [ ] User page created (if navigation enabled)
 
+#### 3.6.6: Admin Page Implementation (CRITICAL)
+
+**⚠️ IMPORTANT:** Admin pages (sys and org) must follow the established authentication pattern to work correctly. This section documents the CORA-standard pattern that all working modules use.
+
+**Common Error:** Extracting tokens at the page level and passing them as props to components. This breaks encapsulation and is inconsistent with CORA standards.
+
+##### The Correct Authentication Pattern
+
+**Authentication happens at THREE levels, each with specific responsibilities:**
+
+| Level | Responsibility | Extracts Token? | Uses authAdapter? |
+|-------|----------------|-----------------|-------------------|
+| **Page** | Check user has required role | ❌ NO | ❌ NO |
+| **Component/Tab** | Get authAdapter, pass to hooks/API | ❌ NO | ✅ YES (gets it, passes it) |
+| **Hook/API** | Extract token, make authenticated calls | ✅ YES | ✅ YES (uses it) |
+
+**Key Principle:** Token extraction happens at the **API/Hook layer**, NOT at the page or component level.
+
+##### Pattern 1: Admin Page Structure (Pattern A)
+
+**Location:** `apps/web/app/admin/sys/{module}/page.tsx` or `apps/web/app/admin/org/{module}/page.tsx`
+
+```typescript
+"use client";
+
+/**
+ * System {Module} Admin Page
+ *
+ * System-level {module} management page.
+ *
+ * Access: System admins only (sys_owner, sys_admin)
+ *
+ * @example
+ * Route: /admin/sys/{module}
+ */
+
+import React from "react";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { Sys{Module}Admin } from "@{{PROJECT_NAME}}/module-{module}";
+import { CircularProgress, Box, Alert } from "@mui/material";
+
+/**
+ * System {Module} Admin Page Component
+ *
+ * Renders the System {Module} admin interface with tabs for:
+ * - Settings configuration
+ * - Analytics and monitoring
+ * - Resource management
+ *
+ * Requires system admin role (sys_owner or sys_admin).
+ */
+export default function System{Module}AdminPage() {
+  const { profile, loading, isAuthenticated } = useUser();
+  
+  // ❌ WRONG: Do NOT extract authAdapter or token here
+  // const { authAdapter } = useUser();
+  // const [token, setToken] = useState(null);
+  // useEffect(() => { setToken(await authAdapter.getToken()); }, []);
+
+  // Show loading state while user profile is being fetched
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "400px",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Check if user is authenticated
+  if (!isAuthenticated || !profile) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          You must be logged in to access this page.
+        </Alert>
+      </Box>
+    );
+  }
+
+  // Check if user has system admin role
+  const isSysAdmin = ["sys_owner", "sys_admin"].includes(
+    profile.sysRole || ""
+  );
+
+  if (!isSysAdmin) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          Access denied. This page is only accessible to system administrators.
+        </Alert>
+      </Box>
+    );
+  }
+
+  // ✅ CORRECT: Pass NO props to component
+  // Component will handle its own authentication internally
+  return <Sys{Module}Admin />;
+}
+```
+
+**Key Points:**
+- Page checks user role (`profile.sysRole`)
+- Page does NOT extract `authAdapter` or tokens
+- Page passes NO authentication props to component
+- Component handles its own API authentication
+
+##### Pattern 2: Admin Component Structure
+
+**Location:** `module-{name}/frontend/components/admin/Sys{Module}Admin.tsx`
+
+```typescript
+/**
+ * System {Module} Admin Component
+ *
+ * Main admin interface with tabbed navigation for:
+ * - Settings management
+ * - Analytics dashboard
+ * - Resource administration
+ */
+
+import React, { useState } from "react";
+import {
+  Box,
+  Tabs,
+  Tab,
+  Typography,
+  Breadcrumbs,
+  Link,
+} from "@mui/material";
+import { NavigateNext as NavigateNextIcon } from "@mui/icons-material";
+import { SysSettingsTab } from "./SysSettingsTab";
+import { SysAnalyticsTab } from "./SysAnalyticsTab";
+import { SysResourcesTab } from "./SysResourcesTab";
+
+/**
+ * System {Module} Admin Component
+ * 
+ * ❌ WRONG: Do NOT accept token as prop
+ * export function Sys{Module}Admin({ token }: { token: string | null })
+ * 
+ * ✅ CORRECT: No authentication props
+ */
+export function Sys{Module}Admin(): React.ReactElement {
+  const [activeTab, setActiveTab] = useState(0);
+
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+  };
+
+  return (
+    <Box sx={{ width: "100%", p: 3 }}>
+      {/* Breadcrumbs */}
+      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} sx={{ mb: 3 }}>
+        <Link href="/admin">Admin</Link>
+        <Typography color="text.primary">{Module} Management</Typography>
+      </Breadcrumbs>
+
+      {/* Title */}
+      <Typography variant="h4" gutterBottom>
+        {Module} Management
+      </Typography>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onChange={handleTabChange} sx={{ mb: 3 }}>
+        <Tab label="Settings" />
+        <Tab label="Analytics" />
+        <Tab label="Resources" />
+      </Tabs>
+
+      {/* Tab Content - ✅ CORRECT: No token props passed */}
+      {activeTab === 0 && <SysSettingsTab />}
+      {activeTab === 1 && <SysAnalyticsTab />}
+      {activeTab === 2 && <SysResourcesTab />}
+    </Box>
+  );
+}
+```
+
+**Key Points:**
+- Component accepts NO authentication props
+- Tabs receive NO token props
+- Each tab handles its own authentication internally
+
+##### Pattern 3: Tab Component with API Calls
+
+**Location:** `module-{name}/frontend/components/admin/SysSettingsTab.tsx`
+
+```typescript
+/**
+ * System Settings Tab
+ *
+ * Manages platform-wide {module} configuration.
+ */
+
+import React from "react";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useSys{Module}Config } from "../../hooks/useSys{Module}Config";
+import { Box, CircularProgress, Alert } from "@mui/material";
+
+/**
+ * ❌ WRONG: Do NOT accept token as prop
+ * export function SysSettingsTab({ token }: { token: string | null })
+ * 
+ * ✅ CORRECT: Get authAdapter from useUser hook
+ */
+export function SysSettingsTab() {
+  const { authAdapter } = useUser();  // ✅ Get authAdapter HERE in the tab
+  
+  // ✅ Pass authAdapter to custom hook (NOT token)
+  const { config, loading, error, updateConfig } = useSys{Module}Config(authAdapter);
+
+  if (loading) return <CircularProgress />;
+  if (error) return <Alert severity="error">{error}</Alert>;
+
+  // Render settings form
+  return (
+    <Box>
+      {/* Configuration UI */}
+    </Box>
+  );
+}
+```
+
+**Key Points:**
+- Tab calls `useUser()` to get `authAdapter`
+- Tab passes `authAdapter` to custom hooks (NOT token)
+- Token extraction happens inside the hook/API layer
+
+##### Pattern 4: Custom Hook with API Calls
+
+**Location:** `module-{name}/frontend/hooks/useSys{Module}Config.ts`
+
+```typescript
+/**
+ * Hook for managing system {module} configuration
+ * 
+ * ❌ WRONG: Do NOT accept token
+ * export function useSys{Module}Config(token: string | null)
+ * 
+ * ✅ CORRECT: Accept authAdapter
+ */
+
+import { useState, useCallback, useEffect } from 'react';
+import type { AuthAdapter } from '@{{PROJECT_NAME}}/module-access';
+import { create{Module}Client } from '../lib/api';
+import type { {Module}Config } from '../types';
+
+export function useSys{Module}Config(authAdapter: AuthAdapter | null) {
+  const [config, setConfig] = useState<{Module}Config | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchConfig = useCallback(async () => {
+    if (!authAdapter) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // ✅ Pass authAdapter to API client factory
+      const api = create{Module}Client(authAdapter);
+      const data = await api.getSysConfig();
+      setConfig(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  }, [authAdapter]);
+
+  useEffect(() => {
+    fetchConfig();
+  }, [fetchConfig]);
+
+  return { config, loading, error, refetch: fetchConfig };
+}
+```
+
+##### Pattern 5: API Client Factory (Token Extraction)
+
+**Location:** `module-{name}/frontend/lib/api.ts`
+
+```typescript
+/**
+ * API client factory for {module}
+ * 
+ * ❌ WRONG: Do NOT accept token directly
+ * export async function getSysConfig(token: string)
+ * 
+ * ✅ CORRECT: Accept authAdapter, extract token internally
+ */
+
+import type { AuthAdapter } from '@{{PROJECT_NAME}}/module-access';
+import type { {Module}Config } from '../types';
+
+export interface {Module}ApiClient {
+  getSysConfig: () => Promise<{Module}Config>;
+  updateSysConfig: (config: Partial<{Module}Config>) => Promise<{Module}Config>;
+  // ... other methods
+}
+
+/**
+ * Creates an authenticated API client for {module}
+ * 
+ * @param authAdapter - Auth adapter from useUser() hook
+ * @returns API client with authenticated methods
+ */
+export function create{Module}Client(authAdapter: AuthAdapter): {Module}ApiClient {
+  return {
+    getSysConfig: async () => {
+      // ✅ Extract token HERE at API layer
+      const token = await authAdapter.getToken();
+      
+      const response = await fetch(`${API_BASE_URL}/admin/sys/{module}/config`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch config: ${response.statusText}`);
+      }
+
+      return response.json();
+    },
+
+    updateSysConfig: async (config: Partial<{Module}Config>) => {
+      // ✅ Extract token for each API call
+      const token = await authAdapter.getToken();
+      
+      const response = await fetch(`${API_BASE_URL}/admin/sys/{module}/config`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(config)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update config: ${response.statusText}`);
+      }
+
+      return response.json();
+    }
+  };
+}
+```
+
+**Key Points:**
+- API functions accept `authAdapter`, NOT `token`
+- Token extracted at API layer using `await authAdapter.getToken()`
+- Token extracted fresh for each API call (handles token refresh automatically)
+
+##### Anti-Pattern: Token Prop Drilling (DO NOT DO THIS)
+
+**❌ This is what we did WRONG in module-chat (DO NOT copy this pattern):**
+
+```typescript
+// ❌ Page extracts token and passes it down
+export default function SystemChatAdminPage() {
+  const { authAdapter } = useUser();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getToken = async () => {
+      const t = await authAdapter.getToken();
+      setToken(t);
+    };
+    getToken();
+  }, [authAdapter]);
+
+  return <SysChatAdmin token={token} />;  // ❌ Passing token as prop
+}
+
+// ❌ Component accepts and passes token
+export function SysChatAdmin({ token }: { token: string | null }) {
+  return <SysSettingsTab token={token} />;  // ❌ Prop drilling
+}
+
+// ❌ Tab accepts token
+export function SysSettingsTab({ token }: { token: string | null }) {
+  const config = await getSysConfig(token);  // ❌ Uses token directly
+}
+
+// ❌ API function accepts token
+export async function getSysConfig(token: string) {
+  return fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+}
+```
+
+**Why this pattern is WRONG:**
+1. **Breaks encapsulation** - Components shouldn't know about tokens
+2. **Prop drilling** - Token passed through multiple component levels
+3. **Inconsistent with CORA** - All other modules use authAdapter pattern
+4. **Token refresh issues** - Token may become stale during component lifecycle
+5. **Testing difficulty** - Harder to mock authentication in tests
+
+##### Admin Page Implementation Checklist
+
+When implementing admin pages (sys or org), verify:
+
+**Page Level:**
+- [ ] Uses Pattern A authentication (`useUser()` for auth check only)
+- [ ] Checks `profile.sysRole` for sys admin pages
+- [ ] Checks `profile.orgRole` or org membership for org admin pages
+- [ ] Does NOT extract `authAdapter` at page level
+- [ ] Does NOT extract or store token at page level
+- [ ] Passes NO authentication props to admin component
+
+**Component Level:**
+- [ ] Admin component accepts NO token props
+- [ ] Renders tabs with NO token props
+- [ ] Uses tabbed interface for different admin functions
+- [ ] Includes breadcrumb navigation
+
+**Tab Level:**
+- [ ] Each tab calls `useUser()` to get `authAdapter`
+- [ ] Passes `authAdapter` to custom hooks (NOT token)
+- [ ] Does NOT extract or store token
+- [ ] Handles loading and error states
+
+**Hook/API Level:**
+- [ ] Custom hooks accept `authAdapter` parameter
+- [ ] API client factory accepts `authAdapter` parameter
+- [ ] Token extracted using `await authAdapter.getToken()` at API call time
+- [ ] Token extracted fresh for each API call
+- [ ] Proper error handling for authentication failures
+
+**Reference Implementation:**
+- See `templates/_modules-core/module-mgmt/` for complete working example
+- See `templates/_project-stack-template/apps/web/app/admin/sys/mgmt/page.tsx` for page pattern
+- See `templates/_modules-core/module-mgmt/frontend/components/admin/ScheduleTab.tsx` for tab pattern
+
 ### Step 3.7: Documentation
 
 **AI generates:**
