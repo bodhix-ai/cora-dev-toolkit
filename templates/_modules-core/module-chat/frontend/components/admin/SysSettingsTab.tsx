@@ -21,7 +21,6 @@ import {
   CircularProgress,
   Grid,
 } from "@mui/material";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { getSysAdminConfig, updateSysAdminConfig } from "../../lib/api";
 
 interface ConfigState {
@@ -33,8 +32,16 @@ interface ConfigState {
   defaultAiModel?: string;
 }
 
-export function SysSettingsTab(): React.ReactElement {
-  const { isAuthenticated } = useUser();
+interface SysSettingsTabProps {
+  token: string;
+}
+
+/**
+ * ✅ KB PATTERN: Receives token (already extracted at page level)
+ * - Token retrieved once, passed down through component tree
+ * - Pass token directly to API functions
+ */
+export function SysSettingsTab({ token }: SysSettingsTabProps): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,12 +55,12 @@ export function SysSettingsTab(): React.ReactElement {
 
   // Load current config
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!token) return;
 
     const loadConfig = async () => {
       try {
         setLoading(true);
-        const data = await getSysAdminConfig();
+        const data = await getSysAdminConfig(token);
         setConfig({
           messageRetentionDays: data.messageRetentionDays,
           sessionTimeoutMinutes: data.sessionTimeoutMinutes,
@@ -71,17 +78,17 @@ export function SysSettingsTab(): React.ReactElement {
     };
 
     loadConfig();
-  }, [isAuthenticated]);
+  }, [token]);
 
   const handleSave = async () => {
-    if (!isAuthenticated) return;
+    if (!token) return;
 
     try {
       setSaving(true);
       setError(null);
       setSuccess(null);
 
-      await updateSysAdminConfig(config);
+      await updateSysAdminConfig(token, config);
       setSuccess("Platform configuration updated successfully");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update configuration");

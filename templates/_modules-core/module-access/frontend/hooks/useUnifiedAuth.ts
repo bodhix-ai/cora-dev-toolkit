@@ -23,7 +23,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { useSession, signOut as nextAuthSignOut } from "next-auth/react";
+import { useSession, signOut as nextAuthSignOut, getSession } from "next-auth/react";
 
 /**
  * Unified auth state interface
@@ -67,12 +67,20 @@ export function useUnifiedAuth(): UnifiedAuthState {
 
   const getToken = useCallback(async () => {
     try {
-      return accessToken;
+      // Fetch fresh session to avoid stale React state
+      const currentSession = await getSession();
+      const token = (currentSession as { accessToken?: string } | null)?.accessToken ?? null;
+      
+      if (!token) {
+        console.warn("[useUnifiedAuth] No token found in current session");
+      }
+      
+      return token;
     } catch (error) {
       console.error("[useUnifiedAuth] Error getting token:", error);
       return null;
     }
-  }, [accessToken]);
+  }, []); // No dependencies - always gets fresh session
 
   const signOut = useCallback(async () => {
     try {

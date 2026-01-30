@@ -22,6 +22,10 @@ import { SysSettingsTab } from "./SysSettingsTab";
 import { SysAnalyticsTab } from "./SysAnalyticsTab";
 import { SysSessionsTab } from "./SysSessionsTab";
 
+interface SysChatAdminProps {
+  token: string;
+}
+
 /**
  * System Chat Admin Page
  *
@@ -30,12 +34,17 @@ import { SysSessionsTab } from "./SysSessionsTab";
  * - Platform-wide analytics (usage across all orgs)
  * - Session management (view/delete sessions from any org)
  *
+ * ✅ KB PATTERN: Receives token (extracted once at page level)
+ * - Token retrieved once at mount, no repeated calls
+ * - Tabs receive token and pass to API functions
+ * - API functions accept token string directly
+ *
  * @example
  * ```tsx
- * <SysChatAdmin />
+ * <SysChatAdmin token={token} />
  * ```
  */
-export function SysChatAdmin(): React.ReactElement {
+export function SysChatAdmin({ token }: SysChatAdminProps): React.ReactElement {
   const [activeTab, setActiveTab] = useState(0);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -84,15 +93,15 @@ export function SysChatAdmin(): React.ReactElement {
       </Box>
 
       <Box role="tabpanel" hidden={activeTab !== 0} id="tabpanel-settings" aria-labelledby="tab-settings">
-        {activeTab === 0 && <SysSettingsTab />}
+        {activeTab === 0 && <SysSettingsTab token={token} />}
       </Box>
 
       <Box role="tabpanel" hidden={activeTab !== 1} id="tabpanel-analytics" aria-labelledby="tab-analytics">
-        {activeTab === 1 && <SysAnalyticsTab />}
+        {activeTab === 1 && <SysAnalyticsTab token={token} />}
       </Box>
 
       <Box role="tabpanel" hidden={activeTab !== 2} id="tabpanel-sessions" aria-labelledby="tab-sessions">
-        {activeTab === 2 && <SysSessionsTab />}
+        {activeTab === 2 && <SysSessionsTab token={token} />}
       </Box>
     </Box>
   );

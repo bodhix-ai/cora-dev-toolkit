@@ -5,6 +5,7 @@
  * Uses the CORA API Gateway with Bearer token authentication.
  */
 
+import type { AuthAdapter } from "@{{PROJECT_NAME}}/module-access";
 import type {
   ChatSession,
   ChatMessage,
@@ -150,7 +151,8 @@ async function apiRequest<T>(
   const response = await fetch(url, {
     ...options,
     headers,
-    credentials: "include", // Include cookies for session auth
+    // NOTE: credentials: 'include' removed - not needed for Bearer token auth
+    // Only session-based (cookie) auth needs credentials: 'include'
   });
 
   return parseResponse<T>(response);
@@ -806,8 +808,10 @@ export async function sendMessage(
 /**
  * Get platform chat configuration (sys admin only)
  * GET /admin/sys/chat/config
+ * 
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
  */
-export async function getSysAdminConfig(): Promise<{
+export async function getSysAdminConfig(token: string): Promise<{
   defaultTitleFormat: string;
   messageRetentionDays: number;
   sessionTimeoutMinutes: number;
@@ -818,14 +822,17 @@ export async function getSysAdminConfig(): Promise<{
   streamingConfig?: Record<string, unknown>;
   citationDisplayConfig?: Record<string, unknown>;
 }> {
-  return sessionApiRequest("/admin/sys/chat/config");
+  return apiRequest("/admin/sys/chat/config", token);
 }
 
 /**
  * Update platform chat configuration (sys admin only)
  * PUT /admin/sys/chat/config
+ * 
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
  */
 export async function updateSysAdminConfig(
+  token: string,
   config: {
     messageRetentionDays?: number;
     sessionTimeoutMinutes?: number;
@@ -835,7 +842,7 @@ export async function updateSysAdminConfig(
     defaultAiModel?: string;
   }
 ): Promise<{ message: string }> {
-  return sessionApiRequest("/admin/sys/chat/config", {
+  return apiRequest("/admin/sys/chat/config", token, {
     method: "PUT",
     body: JSON.stringify(config),
   });
@@ -844,8 +851,10 @@ export async function updateSysAdminConfig(
 /**
  * Get platform-wide chat analytics (sys admin only)
  * GET /admin/sys/chat/analytics
+ * 
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
  */
-export async function getSysAdminAnalytics(): Promise<{
+export async function getSysAdminAnalytics(token: string): Promise<{
   totalSessions: number;
   totalMessages: number;
   activeSessions: {
@@ -854,40 +863,47 @@ export async function getSysAdminAnalytics(): Promise<{
     last30Days: number;
   };
 }> {
-  return sessionApiRequest("/admin/sys/chat/analytics");
+  return apiRequest("/admin/sys/chat/analytics", token);
 }
 
 /**
  * Get detailed usage statistics (sys admin only)
  * GET /admin/sys/chat/analytics/usage
+ * 
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
  */
-export async function getSysAdminUsageStats(): Promise<{
+export async function getSysAdminUsageStats(token: string): Promise<{
   mostActiveOrgs: Array<{
     orgId: string;
     orgName: string;
     sessionCount: number;
   }>;
 }> {
-  return sessionApiRequest("/admin/sys/chat/analytics/usage");
+  return apiRequest("/admin/sys/chat/analytics/usage", token);
 }
 
 /**
  * Get token usage statistics (sys admin only)
  * GET /admin/sys/chat/analytics/tokens
+ * 
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
  */
-export async function getSysAdminTokenStats(): Promise<{
+export async function getSysAdminTokenStats(token: string): Promise<{
   totalTokensUsed: number;
   averageTokensPerMessage: number;
   message?: string;
 }> {
-  return sessionApiRequest("/admin/sys/chat/analytics/tokens");
+  return apiRequest("/admin/sys/chat/analytics/tokens", token);
 }
 
 /**
  * List all chat sessions (all orgs, sys admin only)
  * GET /admin/sys/chat/sessions
+ * 
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
  */
 export async function listSysAdminSessions(
+  token: string,
   options?: { limit?: number; offset?: number }
 ): Promise<
   Array<{
@@ -902,14 +918,17 @@ export async function listSysAdminSessions(
 > {
   const params = options ? { limit: options.limit, offset: options.offset } : undefined;
   const url = buildUrl("/admin/sys/chat/sessions", params);
-  return sessionApiRequest(url);
+  return apiRequest(url, token);
 }
 
 /**
  * Get chat session details (sys admin view)
  * GET /admin/sys/chat/sessions/{id}
+ * 
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
  */
 export async function getSysAdminSession(
+  token: string,
   sessionId: string
 ): Promise<{
   id: string;
@@ -923,17 +942,20 @@ export async function getSysAdminSession(
   createdAt: string;
   updatedAt: string;
 }> {
-  return sessionApiRequest(`/admin/sys/chat/sessions/${sessionId}`);
+  return apiRequest(`/admin/sys/chat/sessions/${sessionId}`, token);
 }
 
 /**
  * Force delete chat session (sys admin only)
  * DELETE /admin/sys/chat/sessions/{id}
+ * 
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
  */
 export async function deleteSysAdminSession(
+  token: string,
   sessionId: string
 ): Promise<{ message: string; id: string }> {
-  return sessionApiRequest(`/admin/sys/chat/sessions/${sessionId}`, {
+  return apiRequest(`/admin/sys/chat/sessions/${sessionId}`, token, {
     method: "DELETE",
   });
 }
@@ -945,22 +967,28 @@ export async function deleteSysAdminSession(
 /**
  * Get organization chat configuration (org admin)
  * GET /admin/org/chat/config
+ * 
+ * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
  */
-export async function getOrgAdminConfig(): Promise<{
+export async function getOrgAdminConfig(authAdapter: AuthAdapter): Promise<{
   messageRetentionDays: number;
   maxMessageLength: number;
   maxKbGroundings: number;
   sharingPolicy: Record<string, unknown>;
   usingPlatformDefaults: boolean;
 }> {
-  return sessionApiRequest("/admin/org/chat/config");
+  const token = await authAdapter.getToken();
+  return apiRequest("/admin/org/chat/config", token);
 }
 
 /**
  * Update organization chat configuration (org admin)
  * PUT /admin/org/chat/config
+ * 
+ * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
  */
 export async function updateOrgAdminConfig(
+  authAdapter: AuthAdapter,
   config: {
     messageRetentionDays?: number;
     maxMessageLength?: number;
@@ -968,7 +996,8 @@ export async function updateOrgAdminConfig(
     sharingPolicy?: Record<string, unknown>;
   }
 ): Promise<{ message: string }> {
-  return sessionApiRequest("/admin/org/chat/config", {
+  const token = await authAdapter.getToken();
+  return apiRequest("/admin/org/chat/config", token, {
     method: "PUT",
     body: JSON.stringify(config),
   });
@@ -977,8 +1006,11 @@ export async function updateOrgAdminConfig(
 /**
  * List all organization chat sessions (org admin)
  * GET /admin/org/chat/sessions
+ * 
+ * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
  */
 export async function listOrgAdminSessions(
+  authAdapter: AuthAdapter,
   options?: { limit?: number; offset?: number }
 ): Promise<
   Array<{
@@ -990,16 +1022,20 @@ export async function listOrgAdminSessions(
     updatedAt: string;
   }>
 > {
+  const token = await authAdapter.getToken();
   const params = options ? { limit: options.limit, offset: options.offset } : undefined;
   const url = buildUrl("/admin/org/chat/sessions", params);
-  return sessionApiRequest(url);
+  return apiRequest(url, token);
 }
 
 /**
  * Get chat session details (org admin view)
  * GET /admin/org/chat/sessions/{id}
+ * 
+ * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
  */
 export async function getOrgAdminSession(
+  authAdapter: AuthAdapter,
   sessionId: string
 ): Promise<{
   id: string;
@@ -1012,17 +1048,22 @@ export async function getOrgAdminSession(
   createdAt: string;
   updatedAt: string;
 }> {
-  return sessionApiRequest(`/admin/org/chat/sessions/${sessionId}`);
+  const token = await authAdapter.getToken();
+  return apiRequest(`/admin/org/chat/sessions/${sessionId}`, token);
 }
 
 /**
  * Delete organization chat session (org admin)
  * DELETE /admin/org/chat/sessions/{id}
+ * 
+ * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
  */
 export async function deleteOrgAdminSession(
+  authAdapter: AuthAdapter,
   sessionId: string
 ): Promise<{ message: string; id: string }> {
-  return sessionApiRequest(`/admin/org/chat/sessions/${sessionId}`, {
+  const token = await authAdapter.getToken();
+  return apiRequest(`/admin/org/chat/sessions/${sessionId}`, token, {
     method: "DELETE",
   });
 }
@@ -1030,11 +1071,15 @@ export async function deleteOrgAdminSession(
 /**
  * Restore soft-deleted chat session (org admin)
  * POST /admin/org/chat/sessions/{id}/restore
+ * 
+ * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
  */
 export async function restoreOrgAdminSession(
+  authAdapter: AuthAdapter,
   sessionId: string
 ): Promise<{ message: string; id: string }> {
-  return sessionApiRequest(`/admin/org/chat/sessions/${sessionId}/restore`, {
+  const token = await authAdapter.getToken();
+  return apiRequest(`/admin/org/chat/sessions/${sessionId}/restore`, token, {
     method: "POST",
   });
 }
@@ -1042,47 +1087,59 @@ export async function restoreOrgAdminSession(
 /**
  * Get organization chat analytics (org admin)
  * GET /admin/org/chat/analytics
+ * 
+ * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
  */
-export async function getOrgAdminAnalytics(): Promise<{
+export async function getOrgAdminAnalytics(authAdapter: AuthAdapter): Promise<{
   totalSessions: number;
   totalMessages: number;
 }> {
-  return sessionApiRequest("/admin/org/chat/analytics");
+  const token = await authAdapter.getToken();
+  return apiRequest("/admin/org/chat/analytics", token);
 }
 
 /**
  * Get user activity statistics (org admin)
  * GET /admin/org/chat/analytics/users
+ * 
+ * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
  */
-export async function getOrgAdminUserStats(): Promise<{
+export async function getOrgAdminUserStats(authAdapter: AuthAdapter): Promise<{
   mostActiveUsers: Array<{
     userId: string;
     userName: string;
     sessionCount: number;
   }>;
 }> {
-  return sessionApiRequest("/admin/org/chat/analytics/users");
+  const token = await authAdapter.getToken();
+  return apiRequest("/admin/org/chat/analytics/users", token);
 }
 
 /**
  * Get workspace activity statistics (org admin)
  * GET /admin/org/chat/analytics/workspaces
+ * 
+ * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
  */
-export async function getOrgAdminWorkspaceStats(): Promise<{
+export async function getOrgAdminWorkspaceStats(authAdapter: AuthAdapter): Promise<{
   mostActiveWorkspaces: Array<{
     workspaceId: string;
     workspaceName: string;
     sessionCount: number;
   }>;
 }> {
-  return sessionApiRequest("/admin/org/chat/analytics/workspaces");
+  const token = await authAdapter.getToken();
+  return apiRequest("/admin/org/chat/analytics/workspaces", token);
 }
 
 /**
  * View message content (org admin read-only)
  * GET /admin/org/chat/messages/{id}
+ * 
+ * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
  */
 export async function getOrgAdminMessage(
+  authAdapter: AuthAdapter,
   messageId: string
 ): Promise<{
   id: string;
@@ -1095,5 +1152,6 @@ export async function getOrgAdminMessage(
   createdAt: string;
   createdBy?: string;
 }> {
-  return sessionApiRequest(`/admin/org/chat/messages/${messageId}`);
+  const token = await authAdapter.getToken();
+  return apiRequest(`/admin/org/chat/messages/${messageId}`, token);
 }

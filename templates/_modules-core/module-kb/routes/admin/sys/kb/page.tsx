@@ -7,12 +7,14 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useUser } from '@{{PROJECT_NAME}}/module-access';
 import { 
   PlatformAdminKBPage, 
   useSysKbs, 
   useKbDocuments,
+  createAuthenticatedClient,
+  createKbModuleClient,
 } from '@{{PROJECT_NAME}}/module-kb';
 import type { KnowledgeBase } from '@{{PROJECT_NAME}}/module-kb';
 import { CircularProgress, Box, Alert } from '@mui/material';
@@ -31,7 +33,7 @@ interface OrgInfo {
  * Renders the PlatformAdminKBPage with data from hooks.
  */
 export default function SysKBAdminRoute() {
-  const { profile, loading, isAuthenticated } = useUser();
+  const { profile, loading, isAuthenticated, authAdapter } = useUser();
   
   // Selected KB state for document management
   const [selectedKb, setSelectedKb] = useState<KnowledgeBase | null>(null);
@@ -39,6 +41,34 @@ export default function SysKBAdminRoute() {
   // Org associations state
   const [allOrgs, setAllOrgs] = useState<OrgInfo[]>([]);
   const [orgsLoading, setOrgsLoading] = useState(false);
+  
+  // Create API client wrapper for KB module
+  const [apiClientWrapper, setApiClientWrapper] = useState<{ kb: any } | null>(null);
+  
+  // Initialize API client when auth is ready
+  useEffect(() => {
+    if (!authAdapter || !isAuthenticated) {
+      setApiClientWrapper(null);
+      return;
+    }
+    
+    // Create API client wrapper
+    const initClient = async () => {
+      try {
+        const token = await authAdapter.getToken();
+        if (token) {
+          const authenticatedClient = createAuthenticatedClient(token);
+          const kbClient = createKbModuleClient(authenticatedClient);
+          setApiClientWrapper({ kb: kbClient });
+        }
+      } catch (err) {
+        console.error('Failed to initialize KB API client:', err);
+        setApiClientWrapper(null);
+      }
+    };
+    
+    initClient();
+  }, [authAdapter, isAuthenticated]);
   
   // KB management hook
   const {
@@ -52,7 +82,8 @@ export default function SysKBAdminRoute() {
     removeOrg,
     refresh: refreshKbs,
   } = useSysKbs({
-    autoFetch: isAuthenticated,
+    apiClient: apiClientWrapper as any,
+    autoFetch: isAuthenticated && !!apiClientWrapper,
   });
   
   // Document management hook (for selected KB)

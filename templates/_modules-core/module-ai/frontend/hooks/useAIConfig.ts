@@ -312,7 +312,7 @@ export function useDeployments(
       }
 
       const client = createCoraAuthenticatedClient(token);
-      let url = "/admin/ai/models";
+      let url = "/admin/sys/ai/models";
       if (capability) {
         url += `?capability=${capability}`;
       }

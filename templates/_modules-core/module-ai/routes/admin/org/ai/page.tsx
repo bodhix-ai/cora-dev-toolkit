@@ -31,19 +31,15 @@ import {
   Psychology as PsychologyIcon,
 } from "@mui/icons-material";
 import NextLink from "next/link";
-import { createClerkAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
-import { useAuth } from "@clerk/nextjs";
 
 /**
  * Org AI Admin Page Route
  * Renders the OrgAIConfigPanel with organization context.
  */
 export default function OrgAIAdminRoute() {
-  const { profile, loading, isAuthenticated } = useUser();
+  const { profile, loading, isAuthenticated, authAdapter } = useUser();
   const { currentOrganization: organization } = useOrganizationContext();
   const { isOrgAdmin } = useRole();
-  const clerkAuth = useAuth();
-  const authAdapter = createClerkAuthAdapter(clerkAuth);
 
   // Loading state
   if (loading) {

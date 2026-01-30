@@ -1,7 +1,7 @@
 "use client";
 
 import { Box, Typography, CircularProgress } from "@mui/material";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
 import { SysVoiceConfigPage } from "@{{PROJECT_NAME}}/module-voice";
 
 /**
@@ -9,11 +9,12 @@ import { SysVoiceConfigPage } from "@{{PROJECT_NAME}}/module-voice";
  * 
  * Allows sys admins to configure voice settings system-wide.
  * 
- * Auth: sys_admin or higher
+ * Auth: sys_admin or sys_owner
  * Breadcrumbs: Sys Admin > Voice
  */
 export default function SysVoiceRoute() {
   const { profile, loading, isAuthenticated } = useUser();
+  const { isSysAdmin, isSysOwner } = useRole();
 
   // Pattern A: Auth checks
   if (loading) {
@@ -58,10 +59,8 @@ export default function SysVoiceRoute() {
     );
   }
 
-  // Check for sys admin role
-  const isSysAdmin = profile.role === "sys_admin" || profile.role === "super_admin";
-  
-  if (!isSysAdmin) {
+  // Check for sys admin or sys owner role
+  if (!isSysAdmin && !isSysOwner) {
     return (
       <Box
         sx={{

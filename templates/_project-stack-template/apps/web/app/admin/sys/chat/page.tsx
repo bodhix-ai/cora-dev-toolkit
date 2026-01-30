@@ -12,8 +12,8 @@
  * Route: /admin/sys/chat
  */
 
-import React from "react";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import React, { useEffect, useState } from "react";
+import { useUser, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/module-access";
 import { SysChatAdmin } from "@{{PROJECT_NAME}}/module-chat";
 import { CircularProgress, Box, Alert } from "@mui/material";
 
@@ -26,9 +26,41 @@ import { CircularProgress, Box, Alert } from "@mui/material";
  * - Session management across all organizations
  *
  * Requires system admin role (sys_owner or sys_admin).
+ * 
+ * ✅ KB PATTERN: Create authenticated API client at page level
+ * - Get token ONCE at mount
+ * - Create authenticated client
+ * - Pass client (not authAdapter) to component
  */
 export default function SystemChatAdminPage() {
-  const { profile, loading, isAuthenticated } = useUser();
+  const { profile, loading, isAuthenticated, authAdapter } = useUser();
+  const [token, setToken] = useState<string | null>(null);
+  const [tokenError, setTokenError] = useState<string | null>(null);
+
+  // Get token ONCE when auth is ready
+  useEffect(() => {
+    if (!authAdapter || !isAuthenticated) {
+      setToken(null);
+      return;
+    }
+
+    const initToken = async () => {
+      try {
+        const authToken = await authAdapter.getToken();
+        if (authToken) {
+          setToken(authToken);
+          setTokenError(null);
+        } else {
+          setTokenError("Failed to retrieve authentication token");
+        }
+      } catch (err) {
+        console.error('Failed to retrieve authentication token:', err);
+        setTokenError("Failed to retrieve authentication token");
+      }
+    };
+
+    initToken();
+  }, [authAdapter, isAuthenticated]);
 
   // Show loading state while user profile is being fetched
   if (loading) {
@@ -72,5 +104,33 @@ export default function SystemChatAdminPage() {
     );
   }
 
-  return <SysChatAdmin />;
+  // Show error if token retrieval failed
+  if (tokenError) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          {tokenError}
+        </Alert>
+      </Box>
+    );
+  }
+
+  // Show loading while token is being retrieved
+  if (!token) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "400px",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // ✅ KB PATTERN: Pass token (retrieved once at mount)
+  return <SysChatAdmin token={token} />;
 }

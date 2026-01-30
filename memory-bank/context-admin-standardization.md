@@ -3,6 +3,16 @@
 **Created:** January 24, 2026  
 **Primary Focus:** Admin page patterns, authentication, and URL structure
 
+## Current Test Environment
+
+**CRITICAL:** Always sync to the correct test project!
+
+**Current Test Project Path:** `/Users/aaron/code/bodhix/testing/admin-ui/ai-mod-stack`
+
+**Previous (DELETED) Path:** `~/code/bodhix/testing/test-admin/ai-mod-stack` ❌
+
+**Updated:** January 29, 2026 - Sprint S4 Session 2
+
 ## Initiative Overview
 
 Standardize all CORA admin pages (sys and org) with consistent:
@@ -1461,6 +1471,116 @@ This automation removes a major blocker for deploying multiple CORA projects in 
 - Address high-priority validation errors (API Tracer, Schema, TypeScript)
 - User will test admin pages in deployed application
 - Continue error remediation toward Gold certification
+
+---
+
+### January 30, 2026 - Sprint S4 Session 2
+
+**Status:** Sys Chat Admin Fixed - Backend & Frontend Complete
+**Branch:** `admin-page-s4-ui-testing`
+
+**Work Completed:**
+
+1. **Backend Lambda Auth Fix - DEPLOYED** ✅
+   - **Root Cause:** Chat Lambda was calling `common.is_sys_admin(jwt_token)` with Okta JWT
+   - **Error:** "No suitable key or wrong key type - RPC can't decode JWT"
+   - **Problem:** RPC function uses `auth.uid()` which only decodes Supabase JWTs, not Okta JWTs
+   - **Discovery:** Compared with working modules (mgmt, kb, ai, etc.) which query DB directly
+   - **Solution:** Updated all 8 sys admin handlers to query `user_profiles` table directly
+   - **Pattern Change:**
+     ```python
+     # Before (BROKEN):
+     is_authorized = common.is_sys_admin(jwt_token)
+     
+     # After (FIXED):
+     profile = common.find_one(table='user_profiles', filters={'user_id': user_id})
+     is_sys_admin = profile.get('sys_role') in ['sys_owner', 'sys_admin']
+     ```
+   - **File:** `templates/_modules-core/module-chat/backend/lambdas/chat-session/lambda_function.py`
+   - **Deployment:** Lambda rebuilt, deployed via Terraform
+   - **Status:** ✅ Deployed at 2026-01-30T05:29:44 UTC
+
+2. **Frontend Analytics Tab Fix - SYNCED** ✅
+   - **Problem:** `analytics?.totalSessions.toLocaleString()` threw error when undefined
+   - **Solution:** Nullish coalescing: `(analytics?.totalSessions ?? 0).toLocaleString()`
+   - **Locations:** 7 fixes across analytics display
+   - **File:** `templates/_modules-core/module-chat/frontend/components/admin/SysAnalyticsTab.tsx`
+   - **Status:** ✅ Synced to test project
+
+3. **Frontend Sessions Tab Fix - SYNCED** ✅
+   - **Problem:** `sessions.filter is not a function` (API returning non-array)
+   - **Solution:** Array safety checks: `Array.isArray(data) ? data : []`
+   - **File:** `templates/_modules-core/module-chat/frontend/components/admin/SysSessionsTab.tsx`
+   - **Status:** ✅ Synced to test project
+
+4. **Documentation Created** ✅
+   - **File:** `docs/plans/plan_auth-standardization.md`
+   - Comprehensive auth pattern analysis
+   - Proposes `cora_auth.py` library for standardization
+   - Migration plan for all 8 modules (8-13 hours)
+
+**Testing Results:**
+- ✅ `/admin/sys/chat` fully functional (all 3 tabs working)
+- 🔴 `/admin/org/chat` needs similar fixes
+
+**Key Insight:**
+Discovered critical auth pattern inconsistency: Chat was only module passing Okta JWT to RPC functions. All other modules query DB directly.
+
+**Time Spent:** ~2 hours
+
+---
+
+### January 29, 2026 - Sprint S4 Session 1
+
+**Status:** Authentication Pattern Investigation - Work Attempted
+**Branch:** `admin-page-s4-ui-testing`
+
+**Work Attempted:**
+
+1. **Sys Chat Admin Authentication Refactor - ATTEMPTED** ⚠️
+   - **Problem:** Chat admin endpoints returning errors
+   - **Hypothesis:** Token prop drilling causing authentication issues
+   - **Changes Made:**
+     - Removed token extraction at page level
+     - Updated all 3 sys admin tabs to use `authAdapter` from `useUser()`
+     - Each tab now handles authentication independently
+     - Updated `api.ts` to accept `authAdapter` parameter
+   - **Files Modified (6):**
+     - `templates/_project-stack-template/apps/web/app/admin/sys/chat/page.tsx`
+     - `templates/_modules-core/module-chat/frontend/components/admin/SysChatAdmin.tsx`
+     - `templates/_modules-core/module-chat/frontend/lib/api.ts`
+     - `templates/_modules-core/module-chat/frontend/components/admin/SysSettingsTab.tsx`
+     - `templates/_modules-core/module-chat/frontend/components/admin/SysAnalyticsTab.tsx`
+     - `templates/_modules-core/module-chat/frontend/components/admin/SysSessionsTab.tsx`
+   - **Result:** ❌ Issue persists after changes
+
+2. **Org Chat Admin hasRole Fix - COMPLETE** ✅
+   - **Problem:** Incorrect use of `hasRole()` function
+   - **Fix Applied:**
+     - Changed `const { hasRole } = useRole()` to `const { isOrgAdmin, isOrgOwner } = useRole()`
+     - Changed `if (!hasRole("org_owner") && !hasRole("org_admin"))` to `if (!isOrgAdmin && !isOrgOwner)`
+   - **File Modified (1):**
+     - `templates/_project-stack-template/apps/web/app/admin/org/chat/page.tsx`
+
+3. **All Changes Synced to Test Project** ✅
+   - Synced 7 files to test project: `~/code/bodhix/testing/test-admin/ai-mod-stack`
+   - Version tracking updated with sync timestamp
+
+**Investigation Notes:**
+- Chat authentication pattern refactor did not resolve the reported error
+- Org KB issue (#8) investigation showed template code is correct (orgId flows properly through component chain)
+- Eval hooks error (#9) requires more details from user to diagnose
+
+**Outstanding Issues:**
+- Issue #7: Org Chat hasRole Error - ✅ FIXED
+- Issue #8: Org KB API Client Missing - Templates are correct, may be environment-specific
+- Issue #9: Eval Hooks Render Error - Awaiting error details from user
+- Chat admin errors persist despite authentication pattern changes
+
+**Next Steps:**
+- Document work in plan and context
+- Commit changes with logical grouping
+- Further investigation needed for persistent chat admin errors
 
 ---
 

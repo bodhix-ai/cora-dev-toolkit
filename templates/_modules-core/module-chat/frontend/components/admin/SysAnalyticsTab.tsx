@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useEffect } from "react";
+import type { AuthAdapter } from "@{{PROJECT_NAME}}/module-access";
 import {
   Box,
   Card,
@@ -25,7 +26,6 @@ import {
   TableRow,
   Paper,
 } from "@mui/material";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import {
   getSysAdminAnalytics,
   getSysAdminUsageStats,
@@ -55,8 +55,16 @@ interface TokenData {
   averageTokensPerMessage: number;
 }
 
-export function SysAnalyticsTab(): React.ReactElement {
-  const { isAuthenticated } = useUser();
+interface SysAnalyticsTabProps {
+  token: string;
+}
+
+/**
+ * ✅ KB PATTERN: Receives token (already extracted at page level)
+ * - Token retrieved once, passed down through component tree
+ * - Pass token directly to API functions
+ */
+export function SysAnalyticsTab({ token }: SysAnalyticsTabProps): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
@@ -65,15 +73,15 @@ export function SysAnalyticsTab(): React.ReactElement {
 
   // Load analytics data
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!token) return;
 
     const loadAnalytics = async () => {
       try {
         setLoading(true);
         const [analyticsData, usageData, tokenData] = await Promise.all([
-          getSysAdminAnalytics(),
-          getSysAdminUsageStats(),
-          getSysAdminTokenStats(),
+          getSysAdminAnalytics(token),
+          getSysAdminUsageStats(token),
+          getSysAdminTokenStats(token),
         ]);
 
         setAnalytics(analyticsData);
@@ -88,7 +96,7 @@ export function SysAnalyticsTab(): React.ReactElement {
     };
 
     loadAnalytics();
-  }, [isAuthenticated]);
+  }, [token]);
 
   if (loading) {
     return (
@@ -124,7 +132,7 @@ export function SysAnalyticsTab(): React.ReactElement {
                 Total Sessions
               </Typography>
               <Typography variant="h3" color="primary">
-                {analytics?.totalSessions.toLocaleString() || 0}
+                {(analytics?.totalSessions ?? 0).toLocaleString()}
               </Typography>
             </CardContent>
           </Card>
@@ -137,7 +145,7 @@ export function SysAnalyticsTab(): React.ReactElement {
                 Total Messages
               </Typography>
               <Typography variant="h3" color="primary">
-                {analytics?.totalMessages.toLocaleString() || 0}
+                {(analytics?.totalMessages ?? 0).toLocaleString()}
               </Typography>
             </CardContent>
           </Card>
@@ -157,7 +165,7 @@ export function SysAnalyticsTab(): React.ReactElement {
                       Last 24 Hours
                     </Typography>
                     <Typography variant="h4" color="primary">
-                      {analytics?.activeSessions.last24Hours.toLocaleString() || 0}
+                      {(analytics?.activeSessions?.last24Hours ?? 0).toLocaleString()}
                     </Typography>
                   </Box>
                 </Grid>
@@ -167,7 +175,7 @@ export function SysAnalyticsTab(): React.ReactElement {
                       Last 7 Days
                     </Typography>
                     <Typography variant="h4" color="primary">
-                      {analytics?.activeSessions.last7Days.toLocaleString() || 0}
+                      {(analytics?.activeSessions?.last7Days ?? 0).toLocaleString()}
                     </Typography>
                   </Box>
                 </Grid>
@@ -177,7 +185,7 @@ export function SysAnalyticsTab(): React.ReactElement {
                       Last 30 Days
                     </Typography>
                     <Typography variant="h4" color="primary">
-                      {analytics?.activeSessions.last30Days.toLocaleString() || 0}
+                      {(analytics?.activeSessions?.last30Days ?? 0).toLocaleString()}
                     </Typography>
                   </Box>
                 </Grid>
@@ -194,7 +202,7 @@ export function SysAnalyticsTab(): React.ReactElement {
                 Total Tokens Used
               </Typography>
               <Typography variant="h3" color="primary">
-                {tokens?.totalTokensUsed.toLocaleString() || 0}
+                {(tokens?.totalTokensUsed ?? 0).toLocaleString()}
               </Typography>
             </CardContent>
           </Card>
@@ -207,7 +215,7 @@ export function SysAnalyticsTab(): React.ReactElement {
                 Avg Tokens/Message
               </Typography>
               <Typography variant="h3" color="primary">
-                {tokens?.averageTokensPerMessage.toLocaleString() || 0}
+                {(tokens?.averageTokensPerMessage ?? 0).toLocaleString()}
               </Typography>
             </CardContent>
           </Card>

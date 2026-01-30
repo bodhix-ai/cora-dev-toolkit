@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useEffect } from "react";
+import type { AuthAdapter } from "@{{PROJECT_NAME}}/module-access";
 import {
   Box,
   Card,
@@ -22,7 +23,6 @@ import {
   FormControlLabel,
   Switch,
 } from "@mui/material";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { getOrgAdminConfig, updateOrgAdminConfig } from "../../lib/api";
 
 interface ConfigState {
@@ -32,8 +32,15 @@ interface ConfigState {
   usingPlatformDefaults: boolean;
 }
 
-export function OrgSettingsTab(): React.ReactElement {
-  const { isAuthenticated } = useUser();
+interface OrgSettingsTabProps {
+  authAdapter?: AuthAdapter;
+}
+
+/**
+ * ✅ STANDARD PATTERN: Receives authAdapter as prop from parent
+ * No individual useUser() call - follows KB admin pattern
+ */
+export function OrgSettingsTab({ authAdapter }: OrgSettingsTabProps): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,12 +54,12 @@ export function OrgSettingsTab(): React.ReactElement {
 
   // Load current config
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!authAdapter) return;
 
     const loadConfig = async () => {
       try {
         setLoading(true);
-        const data = await getOrgAdminConfig();
+        const data = await getOrgAdminConfig(authAdapter);
         setConfig({
           messageRetentionDays: data.messageRetentionDays,
           maxMessageLength: data.maxMessageLength,
@@ -68,17 +75,17 @@ export function OrgSettingsTab(): React.ReactElement {
     };
 
     loadConfig();
-  }, [isAuthenticated]);
+  }, [authAdapter]);
 
   const handleSave = async () => {
-    if (!isAuthenticated) return;
+    if (!authAdapter) return;
 
     try {
       setSaving(true);
       setError(null);
       setSuccess(null);
 
-      await updateOrgAdminConfig({
+      await updateOrgAdminConfig(authAdapter, {
         messageRetentionDays: config.messageRetentionDays,
         maxMessageLength: config.maxMessageLength,
         maxKbGroundings: config.maxKbGroundings,

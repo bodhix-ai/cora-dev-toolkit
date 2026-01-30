@@ -246,6 +246,21 @@ export function OrgEvalCriteriaPageV2({
     }
   }, [token, orgId, loadData]);
 
+  // ✅ HOOK MUST BE CALLED BEFORE CONDITIONAL RETURNS
+  // Use criteria items hook when a set is selected
+  // Hook safely handles null values when no set is selected
+  const {
+    items: criteriaItems,
+    isLoading: itemsLoading,
+    add: addItem,
+    update: updateItem,
+    remove: removeItem,
+  } = useEvalCriteriaItems(
+    selectedSet ? token : null,
+    selectedSet ? orgId : null,
+    selectedSet ? selectedSet.id : null
+  );
+
   // Handlers
   const handleDocTypeFilterChange = useCallback((docTypeId: string | undefined) => {
     setFilterDocTypeId(docTypeId);
@@ -323,6 +338,8 @@ export function OrgEvalCriteriaPageV2({
     [token, orgId, loadData]
   );
 
+  // ✅ NOW conditional returns (after all hooks)
+  
   // Render loading state
   if (isLoading) {
     return (
@@ -340,19 +357,6 @@ export function OrgEvalCriteriaPageV2({
       </Box>
     );
   }
-
-  // Use criteria items hook when a set is selected
-  const {
-    items: criteriaItems,
-    isLoading: itemsLoading,
-    add: addItem,
-    update: updateItem,
-    remove: removeItem,
-  } = useEvalCriteriaItems(
-    selectedSet ? token : null,
-    selectedSet ? orgId : null,
-    selectedSet ? selectedSet.id : null
-  );
 
   // Render criteria item editor when a set is selected
   if (selectedSet) {
