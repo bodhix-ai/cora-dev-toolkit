@@ -68,6 +68,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     print(json.dumps(event, default=str))
     
     try:
+        # Extract JWT from Authorization header for RPC calls
+        headers = event.get('headers', {})
+        auth_header = headers.get('Authorization') or headers.get('authorization', '')
+        jwt_token = auth_header.replace('Bearer ', '').strip()
+        
         # Extract user info from authorizer
         user_info = common.get_user_from_event(event)
         okta_uid = user_info['user_id']
@@ -146,26 +151,26 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         elif '/admin/sys/chat' in path:
             if '/config' in path:
                 if http_method == 'GET':
-                    return handle_sys_get_config(user_info)
+                    return handle_sys_get_config(supabase_user_id)
                 elif http_method == 'PUT':
-                    return handle_sys_update_config(event, user_info)
+                    return handle_sys_update_config(event, supabase_user_id)
             elif '/analytics' in path:
                 if '/usage' in path:
-                    return handle_sys_get_usage_stats(event, user_info)
+                    return handle_sys_get_usage_stats(event, supabase_user_id)
                 elif '/tokens' in path:
-                    return handle_sys_get_token_stats(event, user_info)
+                    return handle_sys_get_token_stats(event, supabase_user_id)
                 else:
-                    return handle_sys_get_analytics(event, user_info)
+                    return handle_sys_get_analytics(event, supabase_user_id)
             elif '/sessions' in path:
                 session_id = path_params.get('sessionId')
                 if session_id:
                     if http_method == 'GET':
-                        return handle_sys_get_session(user_info, session_id)
+                        return handle_sys_get_session(supabase_user_id, session_id)
                     elif http_method == 'DELETE':
-                        return handle_sys_delete_session(user_info, session_id)
+                        return handle_sys_delete_session(supabase_user_id, session_id)
                 else:
                     if http_method == 'GET':
-                        return handle_sys_list_sessions(event, user_info)
+                        return handle_sys_list_sessions(event, supabase_user_id)
         
         # Org Admin routes: /admin/org/chat/*
         elif '/admin/org/chat' in path:
@@ -1133,10 +1138,15 @@ def handle_toggle_favorite(user_id: str, session_id: str) -> Dict[str, Any]:
 # SYS ADMIN HANDLERS
 # =============================================================================
 
-def handle_sys_get_config(user_info: Dict[str, Any]) -> Dict[str, Any]:
+def handle_sys_get_config(user_id: str) -> Dict[str, Any]:
     """Get platform chat configuration settings."""
-    # Verify sys_admin or sys_owner role
-    if not user_info.get('is_sys_admin') and not user_info.get('is_sys_owner'):
+    # Verify sys_admin role by querying user profile
+    profile = common.find_one(
+        table='user_profiles',
+        filters={'user_id': user_id}
+    )
+    
+    if not profile or profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
         raise common.ForbiddenError('sys_admin or sys_owner role required')
     
     config = common.find_one(
@@ -1160,9 +1170,15 @@ def handle_sys_get_config(user_info: Dict[str, Any]) -> Dict[str, Any]:
     })
 
 
-def handle_sys_update_config(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
+def handle_sys_update_config(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """Update platform chat configuration."""
-    if not user_info.get('is_sys_admin') and not user_info.get('is_sys_owner'):
+    # Verify sys_admin role by querying user profile
+    profile = common.find_one(
+        table='user_profiles',
+        filters={'user_id': user_id}
+    )
+    
+    if not profile or profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
         raise common.ForbiddenError('sys_admin or sys_owner role required')
     
     body = json.loads(event.get('body', '{}'))
@@ -1193,9 +1209,15 @@ def handle_sys_update_config(event: Dict[str, Any], user_info: Dict[str, Any]) -
     return common.success_response({'message': 'Configuration updated successfully'})
 
 
-def handle_sys_get_analytics(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
+def handle_sys_get_analytics(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """Get platform-wide chat analytics."""
-    if not user_info.get('is_sys_admin') and not user_info.get('is_sys_owner'):
+    # Verify sys_admin role by querying user profile
+    profile = common.find_one(
+        table='user_profiles',
+        filters={'user_id': user_id}
+    )
+    
+    if not profile or profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
         raise common.ForbiddenError('sys_admin or sys_owner role required')
 
     # Call RPC function for analytics
@@ -1213,9 +1235,15 @@ def handle_sys_get_analytics(event: Dict[str, Any], user_info: Dict[str, Any]) -
     })
 
 
-def handle_sys_get_usage_stats(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
+def handle_sys_get_usage_stats(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """Get detailed usage statistics."""
-    if not user_info.get('is_sys_admin') and not user_info.get('is_sys_owner'):
+    # Verify sys_admin role by querying user profile
+    profile = common.find_one(
+        table='user_profiles',
+        filters={'user_id': user_id}
+    )
+    
+    if not profile or profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
         raise common.ForbiddenError('sys_admin or sys_owner role required')
     
     # Call RPC function for most active orgs
@@ -1224,9 +1252,15 @@ def handle_sys_get_usage_stats(event: Dict[str, Any], user_info: Dict[str, Any])
     return common.success_response({'mostActiveOrgs': active_orgs})
 
 
-def handle_sys_get_token_stats(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
+def handle_sys_get_token_stats(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """Get token usage statistics."""
-    if not user_info.get('is_sys_admin') and not user_info.get('is_sys_owner'):
+    # Verify sys_admin role by querying user profile
+    profile = common.find_one(
+        table='user_profiles',
+        filters={'user_id': user_id}
+    )
+    
+    if not profile or profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
         raise common.ForbiddenError('sys_admin or sys_owner role required')
     
     # Token usage from metadata
@@ -1238,9 +1272,15 @@ def handle_sys_get_token_stats(event: Dict[str, Any], user_info: Dict[str, Any])
     })
 
 
-def handle_sys_list_sessions(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
+def handle_sys_list_sessions(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """List all chat sessions (all orgs)."""
-    if not user_info.get('is_sys_admin') and not user_info.get('is_sys_owner'):
+    # Verify sys_admin role by querying user profile
+    profile = common.find_one(
+        table='user_profiles',
+        filters={'user_id': user_id}
+    )
+    
+    if not profile or profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
         raise common.ForbiddenError('sys_admin or sys_owner role required')
     
     query_params = event.get('queryStringParameters', {}) or {}
@@ -1266,9 +1306,15 @@ def handle_sys_list_sessions(event: Dict[str, Any], user_info: Dict[str, Any]) -
     } for s in sessions])
 
 
-def handle_sys_get_session(user_info: Dict[str, Any], session_id: str) -> Dict[str, Any]:
+def handle_sys_get_session(user_id: str, session_id: str) -> Dict[str, Any]:
     """Get chat session details (sys admin view)."""
-    if not user_info.get('is_sys_admin') and not user_info.get('is_sys_owner'):
+    # Verify sys_admin role by querying user profile
+    profile = common.find_one(
+        table='user_profiles',
+        filters={'user_id': user_id}
+    )
+    
+    if not profile or profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
         raise common.ForbiddenError('sys_admin or sys_owner role required')
     
     session_id = common.validate_uuid(session_id, 'sessionId')
@@ -1302,9 +1348,15 @@ def handle_sys_get_session(user_info: Dict[str, Any], session_id: str) -> Dict[s
     })
 
 
-def handle_sys_delete_session(user_info: Dict[str, Any], session_id: str) -> Dict[str, Any]:
+def handle_sys_delete_session(user_id: str, session_id: str) -> Dict[str, Any]:
     """Force delete chat session (sys admin)."""
-    if not user_info.get('is_sys_admin') and not user_info.get('is_sys_owner'):
+    # Verify sys_admin role by querying user profile
+    profile = common.find_one(
+        table='user_profiles',
+        filters={'user_id': user_id}
+    )
+    
+    if not profile or profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
         raise common.ForbiddenError('sys_admin or sys_owner role required')
     
     session_id = common.validate_uuid(session_id, 'sessionId')
@@ -1687,3 +1739,12 @@ def _add_kb_grounding_internal(
         table='chat_session_kbs',
         data=grounding_data
     )
+
+
+def check_sys_admin_access(user_id: str) -> bool:
+    """Check if user is platform admin"""
+    profile = common.find_one(
+        table='user_profiles',
+        filters={'user_id': user_id}
+    )
+    return profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']
