@@ -13,7 +13,7 @@
  */
 
 import React from "react";
-import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole, useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
 import { OrgChatAdmin } from "@{{PROJECT_NAME}}/module-chat";
 import { CircularProgress, Box, Alert } from "@mui/material";
 
@@ -36,6 +36,7 @@ import { CircularProgress, Box, Alert } from "@mui/material";
 export default function OrganizationChatAdminPage() {
   const { profile, loading, isAuthenticated, authAdapter } = useUser();
   const { isOrgAdmin, isOrgOwner } = useRole();
+  const { currentOrganization: organization } = useOrganizationContext();
 
   // Show loading state while user profile is being fetched
   if (loading) {
@@ -75,6 +76,28 @@ export default function OrganizationChatAdminPage() {
     );
   }
 
-  // ✅ STANDARD PATTERN: Pass authAdapter to component
-  return <OrgChatAdmin authAdapter={authAdapter} />;
+  // Check if organization is loaded
+  if (!organization) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "400px",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // ✅ STANDARD PATTERN: Pass authAdapter and orgId to component (matches KB pattern)
+  return (
+    <OrgChatAdmin
+      authAdapter={authAdapter}
+      orgId={organization.orgId}
+      orgName={organization.orgName}
+    />
+  );
 }

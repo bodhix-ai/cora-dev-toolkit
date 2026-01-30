@@ -57,6 +57,9 @@ import json
 from typing import Any, Dict, List, Optional
 import org_common as common
 
+# System admin roles
+SYS_ADMIN_ROLES = ['sys_owner', 'sys_admin']
+
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
@@ -88,6 +91,55 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Extract path and path parameters
         path = event.get('rawPath', '') or event.get('path', '')
         path_params = event.get('pathParameters', {}) or {}
+        
+        # CENTRALIZED AUTH: Query user profile ONCE for admin routes
+        if '/admin/' in path:
+            org_id = user_info.get('org_id')  # Extract org_id for context
+            
+            # Log org context for audit trail
+            if org_id:
+                print(f"Request from org_id: {org_id}")
+            
+            profile = common.find_one(
+                table='user_profiles',
+                filters={'user_id': supabase_user_id}
+            )
+            
+            if not profile:
+                print(f"User profile not found for {supabase_user_id}")
+                return common.forbidden_response('User profile not found')
+            
+            # Compute sys admin flag from user_profiles.sys_role
+            is_sys_admin = profile.get('sys_role') in SYS_ADMIN_ROLES
+            
+            # Compute org admin flag from org_members.org_role (NOT user_profiles!)
+            if org_id:
+                org_membership = common.find_one(
+                    table='org_members',
+                    filters={
+                        'user_id': supabase_user_id,
+                        'org_id': org_id
+                    }
+                )
+                is_org_admin = org_membership and org_membership.get('org_role') in ['org_admin', 'org_owner']
+            else:
+                is_org_admin = False
+            
+            # Route-level authorization check
+            if path.startswith('/admin/sys/'):
+                if not is_sys_admin:
+                    print(f"Access denied for user {supabase_user_id} - sys admin required")
+                    return common.forbidden_response('System admin role required')
+                print(f"System admin access granted for user {supabase_user_id}")
+            
+            elif path.startswith('/admin/org/'):
+                if not is_org_admin:
+                    print(f"Access denied for user {supabase_user_id} - org admin required")
+                    return common.forbidden_response('Organization admin role required')
+                if not org_id:
+                    print(f"Org admin missing org_id for {supabase_user_id}")
+                    return common.forbidden_response('Organization context required')
+                print(f"Organization admin access granted for user {supabase_user_id}, org: {org_id}")
         
         # Route based on path patterns
         if http_method == 'OPTIONS':
@@ -176,9 +228,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         elif '/admin/org/chat' in path:
             if '/config' in path:
                 if http_method == 'GET':
-                    return handle_org_get_config(user_info)
+                    return handle_org_get_config(supabase_user_id, user_info)
                 elif http_method == 'PUT':
-                    return handle_org_update_config(event, user_info)
+                    return handle_org_update_config(event, supabase_user_id, user_info)
             elif '/analytics' in path:
                 if '/users' in path:
                     return handle_org_get_user_stats(event, user_info)
@@ -1140,15 +1192,7 @@ def handle_toggle_favorite(user_id: str, session_id: str) -> Dict[str, Any]:
 
 def handle_sys_get_config(user_id: str) -> Dict[str, Any]:
     """Get platform chat configuration settings."""
-    # Verify sys_admin role by querying user profile
-    profile = common.find_one(
-        table='user_profiles',
-        filters={'user_id': user_id}
-    )
-    
-    if not profile or profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
-        raise common.ForbiddenError('sys_admin or sys_owner role required')
-    
+    # Auth check done at router level
     config = common.find_one(
         table='chat_cfg_sys_settings',
         filters={'config_key': 'default'}
@@ -1172,15 +1216,7 @@ def handle_sys_get_config(user_id: str) -> Dict[str, Any]:
 
 def handle_sys_update_config(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """Update platform chat configuration."""
-    # Verify sys_admin role by querying user profile
-    profile = common.find_one(
-        table='user_profiles',
-        filters={'user_id': user_id}
-    )
-    
-    if not profile or profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
-        raise common.ForbiddenError('sys_admin or sys_owner role required')
-    
+    # Auth check done at router level
     body = json.loads(event.get('body', '{}'))
     
     update_data = {}
@@ -1211,15 +1247,7 @@ def handle_sys_update_config(event: Dict[str, Any], user_id: str) -> Dict[str, A
 
 def handle_sys_get_analytics(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """Get platform-wide chat analytics."""
-    # Verify sys_admin role by querying user profile
-    profile = common.find_one(
-        table='user_profiles',
-        filters={'user_id': user_id}
-    )
-    
-    if not profile or profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
-        raise common.ForbiddenError('sys_admin or sys_owner role required')
-
+    # Auth check done at router level
     # Call RPC function for analytics
     analytics = common.rpc('get_sys_chat_analytics')
 
@@ -1237,15 +1265,7 @@ def handle_sys_get_analytics(event: Dict[str, Any], user_id: str) -> Dict[str, A
 
 def handle_sys_get_usage_stats(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """Get detailed usage statistics."""
-    # Verify sys_admin role by querying user profile
-    profile = common.find_one(
-        table='user_profiles',
-        filters={'user_id': user_id}
-    )
-    
-    if not profile or profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
-        raise common.ForbiddenError('sys_admin or sys_owner role required')
-    
+    # Auth check done at router level
     # Call RPC function for most active orgs
     active_orgs = common.rpc('get_sys_most_active_orgs', {'p_limit': 10})
     
@@ -1254,15 +1274,7 @@ def handle_sys_get_usage_stats(event: Dict[str, Any], user_id: str) -> Dict[str,
 
 def handle_sys_get_token_stats(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """Get token usage statistics."""
-    # Verify sys_admin role by querying user profile
-    profile = common.find_one(
-        table='user_profiles',
-        filters={'user_id': user_id}
-    )
-    
-    if not profile or profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
-        raise common.ForbiddenError('sys_admin or sys_owner role required')
-    
+    # Auth check done at router level
     # Token usage from metadata
     # This is a placeholder - actual implementation would parse metadata JSONB
     return common.success_response({
@@ -1274,15 +1286,7 @@ def handle_sys_get_token_stats(event: Dict[str, Any], user_id: str) -> Dict[str,
 
 def handle_sys_list_sessions(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """List all chat sessions (all orgs)."""
-    # Verify sys_admin role by querying user profile
-    profile = common.find_one(
-        table='user_profiles',
-        filters={'user_id': user_id}
-    )
-    
-    if not profile or profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
-        raise common.ForbiddenError('sys_admin or sys_owner role required')
-    
+    # Auth check done at router level
     query_params = event.get('queryStringParameters', {}) or {}
     limit = common.validate_integer(query_params.get('limit', 50), 'limit', min_value=1, max_value=100)
     offset = common.validate_integer(query_params.get('offset', 0), 'offset', min_value=0)
@@ -1308,15 +1312,7 @@ def handle_sys_list_sessions(event: Dict[str, Any], user_id: str) -> Dict[str, A
 
 def handle_sys_get_session(user_id: str, session_id: str) -> Dict[str, Any]:
     """Get chat session details (sys admin view)."""
-    # Verify sys_admin role by querying user profile
-    profile = common.find_one(
-        table='user_profiles',
-        filters={'user_id': user_id}
-    )
-    
-    if not profile or profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
-        raise common.ForbiddenError('sys_admin or sys_owner role required')
-    
+    # Auth check done at router level
     session_id = common.validate_uuid(session_id, 'sessionId')
     
     session = common.find_one(
@@ -1350,15 +1346,7 @@ def handle_sys_get_session(user_id: str, session_id: str) -> Dict[str, Any]:
 
 def handle_sys_delete_session(user_id: str, session_id: str) -> Dict[str, Any]:
     """Force delete chat session (sys admin)."""
-    # Verify sys_admin role by querying user profile
-    profile = common.find_one(
-        table='user_profiles',
-        filters={'user_id': user_id}
-    )
-    
-    if not profile or profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
-        raise common.ForbiddenError('sys_admin or sys_owner role required')
-    
+    # Auth check done at router level
     session_id = common.validate_uuid(session_id, 'sessionId')
     
     # Hard delete
@@ -1377,15 +1365,12 @@ def handle_sys_delete_session(user_id: str, session_id: str) -> Dict[str, Any]:
 # ORG ADMIN HANDLERS
 # =============================================================================
 
-def handle_org_get_config(user_info: Dict[str, Any]) -> Dict[str, Any]:
+def handle_org_get_config(user_id: str, user_info: Dict[str, Any]) -> Dict[str, Any]:
     """Get organization chat configuration."""
+    # Auth check done at router level
     org_id = user_info.get('org_id')
     if not org_id:
-        raise common.ForbiddenError('Organization context required')
-    
-    # Verify org_admin or org_owner role
-    if user_info.get('org_role') not in ['org_admin', 'org_owner']:
-        raise common.ForbiddenError('org_admin or org_owner role required')
+        raise common.ValidationError('User is not associated with an organization')
     
     # Get org-specific config
     org_config = common.find_one(
@@ -1410,14 +1395,12 @@ def handle_org_get_config(user_info: Dict[str, Any]) -> Dict[str, Any]:
     return common.success_response(result)
 
 
-def handle_org_update_config(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
+def handle_org_update_config(event: Dict[str, Any], user_id: str, user_info: Dict[str, Any]) -> Dict[str, Any]:
     """Update organization chat configuration."""
+    # Auth check done at router level
     org_id = user_info.get('org_id')
     if not org_id:
-        raise common.ForbiddenError('Organization context required')
-    
-    if user_info.get('org_role') not in ['org_admin', 'org_owner']:
-        raise common.ForbiddenError('org_admin or org_owner role required')
+        raise common.ValidationError('User is not associated with an organization')
     
     body = json.loads(event.get('body', '{}'))
     
@@ -1454,12 +1437,10 @@ def handle_org_update_config(event: Dict[str, Any], user_info: Dict[str, Any]) -
 
 def handle_org_list_sessions(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
     """List all organization chat sessions."""
+    # Auth check done at router level
     org_id = user_info.get('org_id')
     if not org_id:
         raise common.ForbiddenError('Organization context required')
-    
-    if user_info.get('org_role') not in ['org_admin', 'org_owner']:
-        raise common.ForbiddenError('org_admin or org_owner role required')
     
     query_params = event.get('queryStringParameters', {}) or {}
     limit = common.validate_integer(query_params.get('limit', 50), 'limit', min_value=1, max_value=100)
@@ -1485,12 +1466,10 @@ def handle_org_list_sessions(event: Dict[str, Any], user_info: Dict[str, Any]) -
 
 def handle_org_get_session(user_info: Dict[str, Any], session_id: str) -> Dict[str, Any]:
     """Get chat session details (org admin view)."""
+    # Auth check done at router level
     org_id = user_info.get('org_id')
     if not org_id:
         raise common.ForbiddenError('Organization context required')
-    
-    if user_info.get('org_role') not in ['org_admin', 'org_owner']:
-        raise common.ForbiddenError('org_admin or org_owner role required')
     
     session_id = common.validate_uuid(session_id, 'sessionId')
     
@@ -1524,12 +1503,10 @@ def handle_org_get_session(user_info: Dict[str, Any], session_id: str) -> Dict[s
 
 def handle_org_delete_session(user_info: Dict[str, Any], session_id: str) -> Dict[str, Any]:
     """Delete organization chat session."""
+    # Auth check done at router level
     org_id = user_info.get('org_id')
     if not org_id:
         raise common.ForbiddenError('Organization context required')
-    
-    if user_info.get('org_role') not in ['org_admin', 'org_owner']:
-        raise common.ForbiddenError('org_admin or org_owner role required')
     
     session_id = common.validate_uuid(session_id, 'sessionId')
     
@@ -1556,12 +1533,10 @@ def handle_org_delete_session(user_info: Dict[str, Any], session_id: str) -> Dic
 
 def handle_org_restore_session(user_info: Dict[str, Any], session_id: str) -> Dict[str, Any]:
     """Restore soft-deleted chat session."""
+    # Auth check done at router level
     org_id = user_info.get('org_id')
     if not org_id:
         raise common.ForbiddenError('Organization context required')
-    
-    if user_info.get('org_role') not in ['org_admin', 'org_owner']:
-        raise common.ForbiddenError('org_admin or org_owner role required')
     
     session_id = common.validate_uuid(session_id, 'sessionId')
     
@@ -1588,12 +1563,10 @@ def handle_org_restore_session(user_info: Dict[str, Any], session_id: str) -> Di
 
 def handle_org_get_analytics(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
     """Get organization chat analytics."""
+    # Auth check done at router level
     org_id = user_info.get('org_id')
     if not org_id:
         raise common.ForbiddenError('Organization context required')
-
-    if user_info.get('org_role') not in ['org_admin', 'org_owner']:
-        raise common.ForbiddenError('org_admin or org_owner role required')
 
     # Call RPC function for org analytics
     analytics = common.rpc('get_org_chat_analytics', {'p_org_id': org_id})
@@ -1607,12 +1580,10 @@ def handle_org_get_analytics(event: Dict[str, Any], user_info: Dict[str, Any]) -
 
 def handle_org_get_user_stats(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
     """Get user activity statistics."""
+    # Auth check done at router level
     org_id = user_info.get('org_id')
     if not org_id:
         raise common.ForbiddenError('Organization context required')
-    
-    if user_info.get('org_role') not in ['org_admin', 'org_owner']:
-        raise common.ForbiddenError('org_admin or org_owner role required')
     
     # Call RPC function for most active users
     active_users = common.rpc('get_org_most_active_users', {'p_org_id': org_id, 'p_limit': 10})
@@ -1622,12 +1593,10 @@ def handle_org_get_user_stats(event: Dict[str, Any], user_info: Dict[str, Any]) 
 
 def handle_org_get_workspace_stats(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
     """Get workspace activity statistics."""
+    # Auth check done at router level
     org_id = user_info.get('org_id')
     if not org_id:
         raise common.ForbiddenError('Organization context required')
-    
-    if user_info.get('org_role') not in ['org_admin', 'org_owner']:
-        raise common.ForbiddenError('org_admin or org_owner role required')
     
     # Call RPC function for most active workspaces
     active_workspaces = common.rpc('get_org_most_active_workspaces', {'p_org_id': org_id, 'p_limit': 10})
@@ -1741,10 +1710,5 @@ def _add_kb_grounding_internal(
     )
 
 
-def check_sys_admin_access(user_id: str) -> bool:
-    """Check if user is platform admin"""
-    profile = common.find_one(
-        table='user_profiles',
-        filters={'user_id': user_id}
-    )
-    return profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']
+# Note: check_org_admin_access removed - authorization now handled at router level
+# Router queries org_members directly and passes org context via user_info

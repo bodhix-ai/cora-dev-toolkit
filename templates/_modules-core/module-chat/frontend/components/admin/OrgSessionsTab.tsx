@@ -63,7 +63,7 @@ interface SessionDetails extends Session {
 }
 
 export function OrgSessionsTab(): React.ReactElement {
-  const { isAuthenticated } = useUser();
+  const { isAuthenticated, authAdapter } = useUser();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -75,13 +75,20 @@ export function OrgSessionsTab(): React.ReactElement {
 
   // Load sessions
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !authAdapter) return;
 
     const loadSessions = async () => {
       try {
         setLoading(true);
-        const data = await listOrgAdminSessions({ limit: 100 });
-        setSessions(data);
+        const token = await authAdapter.getToken();
+        if (!token) {
+          setError("Failed to get authentication token");
+          setLoading(false);
+          return;
+        }
+        
+        const data = await listOrgAdminSessions(token, { limit: 100 });
+        setSessions(Array.isArray(data) ? data : []);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load sessions");
@@ -94,10 +101,16 @@ export function OrgSessionsTab(): React.ReactElement {
   }, [isAuthenticated]);
 
   const handleViewDetails = async (sessionId: string) => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !authAdapter) return;
 
     try {
-      const details = await getOrgAdminSession(sessionId);
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Failed to get authentication token");
+        return;
+      }
+      
+      const details = await getOrgAdminSession(token, sessionId);
       setSelectedSession(details);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load session details");
@@ -110,10 +123,16 @@ export function OrgSessionsTab(): React.ReactElement {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!isAuthenticated || !sessionToDelete) return;
+    if (!isAuthenticated || !authAdapter || !sessionToDelete) return;
 
     try {
-      await deleteOrgAdminSession(sessionToDelete);
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Failed to get authentication token");
+        return;
+      }
+      
+      await deleteOrgAdminSession(token, sessionToDelete);
       // Update session in list to show deleted status
       setSessions(
         sessions.map((s) =>
@@ -132,16 +151,22 @@ export function OrgSessionsTab(): React.ReactElement {
   };
 
   const handleRestore = async (sessionId: string) => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !authAdapter) return;
 
     try {
-      await restoreOrgAdminSession(sessionId);
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Failed to get authentication token");
+        return;
+      }
+      
+      await restoreOrgAdminSession(token, sessionId);
       // Reload sessions to update status
-      const data = await listOrgAdminSessions({ limit: 100 });
+      const data = await listOrgAdminSessions(token, { limit: 100 });
       setSessions(data);
       setSuccess("Session restored successfully");
       if (selectedSession?.id === sessionId) {
-        const details = await getOrgAdminSession(sessionId);
+        const details = await getOrgAdminSession(token, sessionId);
         setSelectedSession(details);
       }
     } catch (err) {
@@ -149,7 +174,7 @@ export function OrgSessionsTab(): React.ReactElement {
     }
   };
 
-  const filteredSessions = sessions.filter(
+  const filteredSessions = (Array.isArray(sessions) ? sessions : []).filter(
     (session) =>
       session.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       session.id.includes(searchTerm) ||

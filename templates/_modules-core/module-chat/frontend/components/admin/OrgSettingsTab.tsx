@@ -34,13 +34,14 @@ interface ConfigState {
 
 interface OrgSettingsTabProps {
   authAdapter?: AuthAdapter;
+  orgId: string;
 }
 
 /**
- * ✅ STANDARD PATTERN: Receives authAdapter as prop from parent
+ * ✅ STANDARD PATTERN: Receives authAdapter and orgId as props from parent
  * No individual useUser() call - follows KB admin pattern
  */
-export function OrgSettingsTab({ authAdapter }: OrgSettingsTabProps): React.ReactElement {
+export function OrgSettingsTab({ authAdapter, orgId }: OrgSettingsTabProps): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +60,14 @@ export function OrgSettingsTab({ authAdapter }: OrgSettingsTabProps): React.Reac
     const loadConfig = async () => {
       try {
         setLoading(true);
-        const data = await getOrgAdminConfig(authAdapter);
+        const token = await authAdapter.getToken();
+        if (!token) {
+          setError("Failed to get authentication token");
+          setLoading(false);
+          return;
+        }
+        
+        const data = await getOrgAdminConfig(token, orgId);
         setConfig({
           messageRetentionDays: data.messageRetentionDays,
           maxMessageLength: data.maxMessageLength,
@@ -85,7 +93,14 @@ export function OrgSettingsTab({ authAdapter }: OrgSettingsTabProps): React.Reac
       setError(null);
       setSuccess(null);
 
-      await updateOrgAdminConfig(authAdapter, {
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Failed to get authentication token");
+        setSaving(false);
+        return;
+      }
+
+      await updateOrgAdminConfig(token, orgId, {
         messageRetentionDays: config.messageRetentionDays,
         maxMessageLength: config.maxMessageLength,
         maxKbGroundings: config.maxKbGroundings,

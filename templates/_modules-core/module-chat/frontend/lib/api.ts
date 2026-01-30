@@ -966,29 +966,30 @@ export async function deleteSysAdminSession(
 
 /**
  * Get organization chat configuration (org admin)
- * GET /admin/org/chat/config
+ * GET /admin/org/chat/config?orgId={orgId}
  * 
- * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
  */
-export async function getOrgAdminConfig(authAdapter: AuthAdapter): Promise<{
+export async function getOrgAdminConfig(token: string, orgId: string): Promise<{
   messageRetentionDays: number;
   maxMessageLength: number;
   maxKbGroundings: number;
   sharingPolicy: Record<string, unknown>;
   usingPlatformDefaults: boolean;
 }> {
-  const token = await authAdapter.getToken();
-  return apiRequest("/admin/org/chat/config", token);
+  const url = buildUrl("/admin/org/chat/config", { orgId });
+  return apiRequest(url, token);
 }
 
 /**
  * Update organization chat configuration (org admin)
- * PUT /admin/org/chat/config
+ * PUT /admin/org/chat/config?orgId={orgId}
  * 
- * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
  */
 export async function updateOrgAdminConfig(
-  authAdapter: AuthAdapter,
+  token: string,
+  orgId: string,
   config: {
     messageRetentionDays?: number;
     maxMessageLength?: number;
@@ -996,8 +997,8 @@ export async function updateOrgAdminConfig(
     sharingPolicy?: Record<string, unknown>;
   }
 ): Promise<{ message: string }> {
-  const token = await authAdapter.getToken();
-  return apiRequest("/admin/org/chat/config", token, {
+  const url = buildUrl("/admin/org/chat/config", { orgId });
+  return apiRequest(url, token, {
     method: "PUT",
     body: JSON.stringify(config),
   });
@@ -1007,10 +1008,10 @@ export async function updateOrgAdminConfig(
  * List all organization chat sessions (org admin)
  * GET /admin/org/chat/sessions
  * 
- * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
  */
 export async function listOrgAdminSessions(
-  authAdapter: AuthAdapter,
+  token: string,
   options?: { limit?: number; offset?: number }
 ): Promise<
   Array<{
@@ -1022,7 +1023,6 @@ export async function listOrgAdminSessions(
     updatedAt: string;
   }>
 > {
-  const token = await authAdapter.getToken();
   const params = options ? { limit: options.limit, offset: options.offset } : undefined;
   const url = buildUrl("/admin/org/chat/sessions", params);
   return apiRequest(url, token);
@@ -1032,10 +1032,10 @@ export async function listOrgAdminSessions(
  * Get chat session details (org admin view)
  * GET /admin/org/chat/sessions/{id}
  * 
- * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
  */
 export async function getOrgAdminSession(
-  authAdapter: AuthAdapter,
+  token: string,
   sessionId: string
 ): Promise<{
   id: string;
@@ -1048,7 +1048,6 @@ export async function getOrgAdminSession(
   createdAt: string;
   updatedAt: string;
 }> {
-  const token = await authAdapter.getToken();
   return apiRequest(`/admin/org/chat/sessions/${sessionId}`, token);
 }
 
@@ -1056,13 +1055,12 @@ export async function getOrgAdminSession(
  * Delete organization chat session (org admin)
  * DELETE /admin/org/chat/sessions/{id}
  * 
- * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
  */
 export async function deleteOrgAdminSession(
-  authAdapter: AuthAdapter,
+  token: string,
   sessionId: string
 ): Promise<{ message: string; id: string }> {
-  const token = await authAdapter.getToken();
   return apiRequest(`/admin/org/chat/sessions/${sessionId}`, token, {
     method: "DELETE",
   });
@@ -1072,13 +1070,12 @@ export async function deleteOrgAdminSession(
  * Restore soft-deleted chat session (org admin)
  * POST /admin/org/chat/sessions/{id}/restore
  * 
- * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
  */
 export async function restoreOrgAdminSession(
-  authAdapter: AuthAdapter,
+  token: string,
   sessionId: string
 ): Promise<{ message: string; id: string }> {
-  const token = await authAdapter.getToken();
   return apiRequest(`/admin/org/chat/sessions/${sessionId}/restore`, token, {
     method: "POST",
   });
@@ -1088,13 +1085,12 @@ export async function restoreOrgAdminSession(
  * Get organization chat analytics (org admin)
  * GET /admin/org/chat/analytics
  * 
- * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
  */
-export async function getOrgAdminAnalytics(authAdapter: AuthAdapter): Promise<{
+export async function getOrgAdminAnalytics(token: string): Promise<{
   totalSessions: number;
   totalMessages: number;
 }> {
-  const token = await authAdapter.getToken();
   return apiRequest("/admin/org/chat/analytics", token);
 }
 
@@ -1102,16 +1098,15 @@ export async function getOrgAdminAnalytics(authAdapter: AuthAdapter): Promise<{
  * Get user activity statistics (org admin)
  * GET /admin/org/chat/analytics/users
  * 
- * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
  */
-export async function getOrgAdminUserStats(authAdapter: AuthAdapter): Promise<{
+export async function getOrgAdminUserStats(token: string): Promise<{
   mostActiveUsers: Array<{
     userId: string;
     userName: string;
     sessionCount: number;
   }>;
 }> {
-  const token = await authAdapter.getToken();
   return apiRequest("/admin/org/chat/analytics/users", token);
 }
 
@@ -1119,16 +1114,15 @@ export async function getOrgAdminUserStats(authAdapter: AuthAdapter): Promise<{
  * Get workspace activity statistics (org admin)
  * GET /admin/org/chat/analytics/workspaces
  * 
- * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
  */
-export async function getOrgAdminWorkspaceStats(authAdapter: AuthAdapter): Promise<{
+export async function getOrgAdminWorkspaceStats(token: string): Promise<{
   mostActiveWorkspaces: Array<{
     workspaceId: string;
     workspaceName: string;
     sessionCount: number;
   }>;
 }> {
-  const token = await authAdapter.getToken();
   return apiRequest("/admin/org/chat/analytics/workspaces", token);
 }
 
@@ -1136,10 +1130,10 @@ export async function getOrgAdminWorkspaceStats(authAdapter: AuthAdapter): Promi
  * View message content (org admin read-only)
  * GET /admin/org/chat/messages/{id}
  * 
- * ✅ FIXED: Now uses authAdapter for Bearer token auth (not cookies)
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
  */
 export async function getOrgAdminMessage(
-  authAdapter: AuthAdapter,
+  token: string,
   messageId: string
 ): Promise<{
   id: string;
@@ -1152,6 +1146,5 @@ export async function getOrgAdminMessage(
   createdAt: string;
   createdBy?: string;
 }> {
-  const token = await authAdapter.getToken();
   return apiRequest(`/admin/org/chat/messages/${messageId}`, token);
 }
