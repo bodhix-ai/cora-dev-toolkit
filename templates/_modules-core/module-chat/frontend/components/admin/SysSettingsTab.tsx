@@ -21,7 +21,6 @@ import {
   CircularProgress,
   Grid,
 } from "@mui/material";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { getSysAdminConfig, updateSysAdminConfig } from "../../lib/api";
 
 interface ConfigState {
@@ -33,11 +32,16 @@ interface ConfigState {
   defaultAiModel?: string;
 }
 
+interface SysSettingsTabProps {
+  token: string;
+}
+
 /**
- * ✅ CORRECT: No token prop - gets authAdapter from useUser hook
+ * ✅ KB PATTERN: Receives token (already extracted at page level)
+ * - Token retrieved once, passed down through component tree
+ * - Pass token directly to API functions
  */
-export function SysSettingsTab(): React.ReactElement {
-  const { isAuthenticated, authAdapter } = useUser();  // ✅ Get authAdapter here
+export function SysSettingsTab({ token }: SysSettingsTabProps): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,12 +55,12 @@ export function SysSettingsTab(): React.ReactElement {
 
   // Load current config
   useEffect(() => {
-    if (!isAuthenticated || !authAdapter) return;
+    if (!token) return;
 
     const loadConfig = async () => {
       try {
         setLoading(true);
-        const data = await getSysAdminConfig(authAdapter);  // ✅ Pass authAdapter
+        const data = await getSysAdminConfig(token);
         setConfig({
           messageRetentionDays: data.messageRetentionDays,
           sessionTimeoutMinutes: data.sessionTimeoutMinutes,
@@ -74,17 +78,17 @@ export function SysSettingsTab(): React.ReactElement {
     };
 
     loadConfig();
-  }, [isAuthenticated, authAdapter]);  // ✅ Updated dependency
+  }, [token]);
 
   const handleSave = async () => {
-    if (!isAuthenticated || !authAdapter) return;
+    if (!token) return;
 
     try {
       setSaving(true);
       setError(null);
       setSuccess(null);
 
-      await updateSysAdminConfig(authAdapter, config);  // ✅ Pass authAdapter
+      await updateSysAdminConfig(token, config);
       setSuccess("Platform configuration updated successfully");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update configuration");

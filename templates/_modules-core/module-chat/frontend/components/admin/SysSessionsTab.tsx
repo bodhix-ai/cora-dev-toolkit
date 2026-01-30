@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useEffect } from "react";
+import type { AuthAdapter } from "@{{PROJECT_NAME}}/module-access";
 import {
   Box,
   Card,
@@ -33,7 +34,6 @@ import {
   IconButton,
 } from "@mui/material";
 import { Delete as DeleteIcon, Visibility as VisibilityIcon } from "@mui/icons-material";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import {
   listSysAdminSessions,
   getSysAdminSession,
@@ -56,11 +56,16 @@ interface SessionDetails extends Session {
   messageCount: number;
 }
 
+interface SysSessionsTabProps {
+  token: string;
+}
+
 /**
- * ✅ CORRECT: No token prop - gets authAdapter from useUser hook
+ * ✅ KB PATTERN: Receives token (already extracted at page level)
+ * - Token retrieved once, passed down through component tree
+ * - Pass token directly to API functions
  */
-export function SysSessionsTab(): React.ReactElement {
-  const { isAuthenticated, authAdapter } = useUser();  // ✅ Get authAdapter here
+export function SysSessionsTab({ token }: SysSessionsTabProps): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -72,13 +77,14 @@ export function SysSessionsTab(): React.ReactElement {
 
   // Load sessions
   useEffect(() => {
-    if (!isAuthenticated || !authAdapter) return;
+    if (!token) return;
 
     const loadSessions = async () => {
       try {
         setLoading(true);
-        const data = await listSysAdminSessions(authAdapter, { limit: 100 });  // ✅ Pass authAdapter
-        setSessions(data);
+        const data = await listSysAdminSessions(token, { limit: 100 });
+        // Ensure data is an array
+        setSessions(Array.isArray(data) ? data : []);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load sessions");
@@ -88,13 +94,13 @@ export function SysSessionsTab(): React.ReactElement {
     };
 
     loadSessions();
-  }, [isAuthenticated, authAdapter]);  // ✅ Updated dependency
+  }, [token]);
 
   const handleViewDetails = async (sessionId: string) => {
-    if (!isAuthenticated || !authAdapter) return;
+    if (!token) return;
 
     try {
-      const details = await getSysAdminSession(authAdapter, sessionId);  // ✅ Pass authAdapter
+      const details = await getSysAdminSession(token, sessionId);
       setSelectedSession(details);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load session details");
@@ -107,10 +113,10 @@ export function SysSessionsTab(): React.ReactElement {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!isAuthenticated || !authAdapter || !sessionToDelete) return;
+    if (!token || !sessionToDelete) return;
 
     try {
-      await deleteSysAdminSession(authAdapter, sessionToDelete);  // ✅ Pass authAdapter
+      await deleteSysAdminSession(token, sessionToDelete);
       setSessions(sessions.filter((s) => s.id !== sessionToDelete));
       setSuccess("Session deleted successfully");
       setDeleteDialogOpen(false);
@@ -123,7 +129,8 @@ export function SysSessionsTab(): React.ReactElement {
     }
   };
 
-  const filteredSessions = sessions.filter(
+  // Safety check: ensure sessions is an array before filtering
+  const filteredSessions = (Array.isArray(sessions) ? sessions : []).filter(
     (session) =>
       session.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       session.id.includes(searchTerm) ||
