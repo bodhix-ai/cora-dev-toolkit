@@ -9,6 +9,7 @@
  */
 
 import React, { useState } from "react";
+import type { AuthAdapter } from "@{{PROJECT_NAME}}/module-access";
 import {
   Box,
   Tabs,
@@ -22,6 +23,10 @@ import { OrgSettingsTab } from "./OrgSettingsTab";
 import { OrgSessionsTab } from "./OrgSessionsTab";
 import { OrgAnalyticsTab } from "./OrgAnalyticsTab";
 
+interface OrgChatAdminProps {
+  authAdapter?: AuthAdapter;
+}
+
 /**
  * Organization Chat Admin Page
  *
@@ -30,12 +35,15 @@ import { OrgAnalyticsTab } from "./OrgAnalyticsTab";
  * - Session management (view/delete/restore sessions)
  * - Organization analytics (usage by users/workspaces)
  *
+ * ✅ STANDARD PATTERN: Receives authAdapter from page, passes to tabs
+ * Follows KB admin component pattern for consistent authentication.
+ *
  * @example
  * ```tsx
- * <OrgChatAdmin />
+ * <OrgChatAdmin authAdapter={authAdapter} />
  * ```
  */
-export function OrgChatAdmin(): React.ReactElement {
+export function OrgChatAdmin({ authAdapter }: OrgChatAdminProps): React.ReactElement {
   const [activeTab, setActiveTab] = useState(0);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -84,15 +92,15 @@ export function OrgChatAdmin(): React.ReactElement {
       </Box>
 
       <Box role="tabpanel" hidden={activeTab !== 0} id="tabpanel-settings" aria-labelledby="tab-settings">
-        {activeTab === 0 && <OrgSettingsTab />}
+        {activeTab === 0 && <OrgSettingsTab authAdapter={authAdapter} />}
       </Box>
 
       <Box role="tabpanel" hidden={activeTab !== 1} id="tabpanel-sessions" aria-labelledby="tab-sessions">
-        {activeTab === 1 && <OrgSessionsTab />}
+        {activeTab === 1 && <OrgSessionsTab authAdapter={authAdapter} />}
       </Box>
 
       <Box role="tabpanel" hidden={activeTab !== 2} id="tabpanel-analytics" aria-labelledby="tab-analytics">
-        {activeTab === 2 && <OrgAnalyticsTab />}
+        {activeTab === 2 && <OrgAnalyticsTab authAdapter={authAdapter} />}
       </Box>
     </Box>
   );

@@ -26,10 +26,16 @@ import { CircularProgress, Box, Alert } from "@mui/material";
  * - Organization analytics
  *
  * Requires organization admin role (org_owner or org_admin).
+ * 
+ * ✅ STANDARD PATTERN: Follows KB admin page pattern
+ * - Extract authAdapter at page level
+ * - Pass authAdapter down to component
+ * - Component passes to tabs
+ * - Tabs pass to API functions
  */
 export default function OrganizationChatAdminPage() {
-  const { profile, loading, isAuthenticated } = useUser();
-  const { isOrgAdmin, isOrgOwner } = useRole();  // ✅ FIX: Use boolean flags, not hasRole()
+  const { profile, loading, isAuthenticated, authAdapter } = useUser();
+  const { isOrgAdmin, isOrgOwner } = useRole();
 
   // Show loading state while user profile is being fetched
   if (loading) {
@@ -69,5 +75,6 @@ export default function OrganizationChatAdminPage() {
     );
   }
 
-  return <OrgChatAdmin />;
+  // ✅ STANDARD PATTERN: Pass authAdapter to component
+  return <OrgChatAdmin authAdapter={authAdapter} />;
 }
