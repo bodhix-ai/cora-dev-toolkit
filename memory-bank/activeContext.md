@@ -15,24 +15,24 @@ This repository uses **initiative-scoped context files** to avoid merge conflict
 | Error Remediation & Clean Baseline | `context-error-remediation.md` | Eliminate validation errors | **P1** |
 | WS Plugin Architecture | `context-ws-plugin-architecture.md` | Module integration patterns | **P1** |
 | Module-Eval Development | `context-module-eval.md` | Eval features (citations, scoring) | P2, P3 |
-| Admin Standardization | `context-admin-standardization.md` | Version tracking + admin routes | **P1** 🟡 Active |
+| Auth Standardization | `context-auth-standardization.md` | Centralized auth library | **P0** 🔴 Critical |
 | Module-Voice Development | `context-module-voice.md` | Voice interview features | - |
 | Module-KB Development | `context-module-kb.md` | Knowledge base features | - |
 
 ---
 
-## Current Priority Order (January 27, 2026)
+## Current Priority Order (January 30, 2026)
 
-1. **Admin Standardization S3b (Active)** - Version tracking + admin route fixes (84 errors) - 🟡 Session 1 Complete
-2. **Clean Project Baseline** - Achieve 0-error baseline (currently 121 errors, down from 430)
+1. **Auth Standardization (Critical)** - Centralized library + migrate chat module (broken)
+2. **Clean Project Baseline** - Achieve 0-error baseline
 3. **WS Plugin Architecture S3** - Dynamic module configuration (deferred, S1-S2 complete)
 4. **Module-Eval Citations** - Complete citations implementation (unblocked, awaiting capacity)
 5. **Test Project Resource Isolation** - Parallel test environments
 
 **Recent Completions:**
+- ✅ Admin Standardization S4 (Admin routes + Module Toggle, auth issues discovered)
 - ✅ Error Remediation S1-S4 (430→121 errors, 72% reduction)
 - ✅ WS Plugin Architecture S1-S2 (ADR-017, module availability)
-- ✅ Admin Standardization S2-S3a (ADR-016, module toggles)
 
 ---
 
@@ -57,4 +57,4 @@ This repository uses **initiative-scoped context files** to avoid merge conflict
 
 ---
 
-**Updated:** January 27, 2026
+**Updated:** January 30, 2026
