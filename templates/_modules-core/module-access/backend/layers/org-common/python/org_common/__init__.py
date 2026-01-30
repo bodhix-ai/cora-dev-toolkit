@@ -36,6 +36,25 @@ from .transform import (
     USER_PROFILE_FIELDS, ORG_MEMBER_FIELDS, WORKSPACE_CONFIG_FIELDS, LAMBDA_CONFIG_FIELDS
 )
 
+# ============================================================================
+# AUTH ROLE CONSTANTS (ADR-019: Auth Standardization)
+# ============================================================================
+# These constants define the valid role values for each admin level.
+# Use these instead of inline lists to ensure consistency across all modules.
+# See: docs/arch decisions/ADR-019-AUTH-STANDARDIZATION.md
+# ============================================================================
+
+SYS_ADMIN_ROLES = ['sys_owner', 'sys_admin']
+"""System admin roles - platform-wide administrative access"""
+
+ORG_ADMIN_ROLES = ['org_owner', 'org_admin']
+"""Organization admin roles - organization-scoped administrative access"""
+
+WS_ADMIN_ROLES = ['ws_owner', 'ws_admin']
+"""Workspace admin roles - workspace-scoped administrative access"""
+
+# ============================================================================
+
 # Utility function to extract user from event
 def get_user_from_event(event):
     """
@@ -238,6 +257,11 @@ def _categorize_ai_error_type(error_message: str) -> str:
 
 
 __all__ = [
+    # Auth role constants (ADR-019)
+    'SYS_ADMIN_ROLES',
+    'ORG_ADMIN_ROLES',
+    'WS_ADMIN_ROLES',
+    
     # Supabase client
     'get_supabase_client',
     'get_secret',
