@@ -40,16 +40,16 @@ The initiative is organized into 4 sprints:
 ## Sprint History
 
 | Sprint | Branch | Plan | Status | Completed |
-|--------|--------|------|--------|--------------|
-| S0 | `auth-standardization-s0` | `plan_auth-standardization-s0.md` | 🟡 Active | - |
-| S1 | TBD | `plan_auth-standardization-s1.md` (to be created) | ⚪ Planned | - |
-| S2 | TBD | `plan_auth-standardization-s2.md` (to be created) | ⚪ Planned | - |
-| S3 | TBD | `plan_auth-standardization-s3.md` (to be created) | ⚪ Planned | - |
+|--------|--------|------|--------|--------------
+| S0 | `auth-standardization-s0` | `plan_s0-auth-standardization.md` | 🟡 Active | - |
+| S1 | TBD | `plan_s1-auth-standardization.md` (to be created) | ⚪ Planned | - |
+| S2 | TBD | `plan_s2-auth-standardization.md` (to be created) | ⚪ Planned | - |
+| S3 | TBD | `plan_s3-auth-standardization.md` (to be created) | ⚪ Planned | - |
 
 ## Current Sprint: S0 - Analysis & Standards Definition
 
 - **Branch:** `auth-standardization-s0`
-- **Plan:** `docs/plans/plan_auth-standardization-s0.md`
+- **Plan:** `docs/plans/plan_s0-auth-standardization.md`
 - **Focus:** 
   - Audit all 27 lambdas for current auth patterns
   - Define standard patterns for sys, org, ws admin checks

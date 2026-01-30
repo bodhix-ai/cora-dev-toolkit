@@ -168,9 +168,15 @@ git checkout -b admin-page-s3
 
 ### Step 2.3: Create New Plan
 
-1. Create a new plan file in `docs/plans/`:
-   - Filename: `plan_<initiative>-<sprint-goal>.md`
-   - Example: `docs/plans/plan_ws-plugin-types.md`
+1. Create a new plan file in `docs/plans/` following the naming standard:
+   - **Planning Sprint:** `plan_s0-<initiative>.md` (scope analysis and planning)
+   - **First Sprint:** `plan_s1-<initiative>.md` (initial implementation)
+   - **Follow-on Sprints:** `plan_s2-<initiative>.md`, `plan_s3-<initiative>.md`, etc.
+   
+   Examples:
+   - `docs/plans/plan_s0-auth-standardization.md` (analysis sprint)
+   - `docs/plans/plan_s1-auth-standardization.md` (org admin sprint)
+   - `docs/plans/plan_s2-ws-plugin.md` (types implementation)
 
 2. **Plan Content Requirements:**
    - **Status:** `🟡 IN PROGRESS`
