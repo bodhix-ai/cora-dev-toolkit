@@ -32,12 +32,15 @@ import {
   Skeleton,
   Chip,
   Alert,
+  Breadcrumbs,
+  Link,
 } from "@mui/material";
 import {
   Warning as WarningIcon,
   Delete as DeleteIcon,
   Close as CloseIcon,
   Info as InfoIcon,
+  NavigateNext as NavigateNextIcon,
 } from "@mui/icons-material";
 import type { VoiceCredential } from "../types";
 
@@ -90,6 +93,22 @@ const VOICE_SERVICES = [
 function PageHeader() {
   return (
     <Box sx={{ mb: 4 }}>
+      <Breadcrumbs
+        separator={<NavigateNextIcon fontSize="small" />}
+        aria-label="breadcrumb"
+        sx={{ mb: 2 }}
+      >
+        <Link
+          underline="hover"
+          color="inherit"
+          href="/admin/sys"
+          sx={{ display: "flex", alignItems: "center" }}
+          aria-label="Navigate to Sys Admin"
+        >
+          Sys Admin
+        </Link>
+        <Typography color="text.primary">Voice</Typography>
+      </Breadcrumbs>
       <Typography variant="h4" component="h1" fontWeight="bold">
         Voice Service Configuration
       </Typography>
