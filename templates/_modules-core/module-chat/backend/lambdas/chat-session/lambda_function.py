@@ -57,9 +57,6 @@ import json
 from typing import Any, Dict, List, Optional
 import org_common as common
 
-# System admin roles
-SYS_ADMIN_ROLES = ['sys_owner', 'sys_admin']
-
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
@@ -109,10 +106,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 print(f"User profile not found for {supabase_user_id}")
                 return common.forbidden_response('User profile not found')
             
-            # Compute sys admin flag from user_profiles.sys_role
-            is_sys_admin = profile.get('sys_role') in SYS_ADMIN_ROLES
+            # Compute sys admin flag from user_profiles.sys_role (ADR-019)
+            is_sys_admin = profile.get('sys_role') in common.SYS_ADMIN_ROLES
             
-            # Compute org admin flag from org_members.org_role (NOT user_profiles!)
+            # Compute org admin flag from org_members.org_role (NOT user_profiles!) (ADR-019)
             if org_id:
                 org_membership = common.find_one(
                     table='org_members',
@@ -121,7 +118,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         'org_id': org_id
                     }
                 )
-                is_org_admin = org_membership and org_membership.get('org_role') in ['org_admin', 'org_owner']
+                is_org_admin = org_membership and org_membership.get('org_role') in common.ORG_ADMIN_ROLES
             else:
                 is_org_admin = False
             
