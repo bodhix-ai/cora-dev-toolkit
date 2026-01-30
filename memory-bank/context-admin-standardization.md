@@ -3,6 +3,16 @@
 **Created:** January 24, 2026  
 **Primary Focus:** Admin page patterns, authentication, and URL structure
 
+## Current Test Environment
+
+**CRITICAL:** Always sync to the correct test project!
+
+**Current Test Project Path:** `/Users/aaron/code/bodhix/testing/admin-ui/ai-mod-stack`
+
+**Previous (DELETED) Path:** `~/code/bodhix/testing/test-admin/ai-mod-stack` ❌
+
+**Updated:** January 29, 2026 - Sprint S4 Session 2
+
 ## Initiative Overview
 
 Standardize all CORA admin pages (sys and org) with consistent:
@@ -1464,9 +1474,65 @@ This automation removes a major blocker for deploying multiple CORA projects in 
 
 ---
 
+### January 30, 2026 - Sprint S4 Session 2
+
+**Status:** Sys Chat Admin Fixed - Backend & Frontend Complete
+**Branch:** `admin-page-s4-ui-testing`
+
+**Work Completed:**
+
+1. **Backend Lambda Auth Fix - DEPLOYED** ✅
+   - **Root Cause:** Chat Lambda was calling `common.is_sys_admin(jwt_token)` with Okta JWT
+   - **Error:** "No suitable key or wrong key type - RPC can't decode JWT"
+   - **Problem:** RPC function uses `auth.uid()` which only decodes Supabase JWTs, not Okta JWTs
+   - **Discovery:** Compared with working modules (mgmt, kb, ai, etc.) which query DB directly
+   - **Solution:** Updated all 8 sys admin handlers to query `user_profiles` table directly
+   - **Pattern Change:**
+     ```python
+     # Before (BROKEN):
+     is_authorized = common.is_sys_admin(jwt_token)
+     
+     # After (FIXED):
+     profile = common.find_one(table='user_profiles', filters={'user_id': user_id})
+     is_sys_admin = profile.get('sys_role') in ['sys_owner', 'sys_admin']
+     ```
+   - **File:** `templates/_modules-core/module-chat/backend/lambdas/chat-session/lambda_function.py`
+   - **Deployment:** Lambda rebuilt, deployed via Terraform
+   - **Status:** ✅ Deployed at 2026-01-30T05:29:44 UTC
+
+2. **Frontend Analytics Tab Fix - SYNCED** ✅
+   - **Problem:** `analytics?.totalSessions.toLocaleString()` threw error when undefined
+   - **Solution:** Nullish coalescing: `(analytics?.totalSessions ?? 0).toLocaleString()`
+   - **Locations:** 7 fixes across analytics display
+   - **File:** `templates/_modules-core/module-chat/frontend/components/admin/SysAnalyticsTab.tsx`
+   - **Status:** ✅ Synced to test project
+
+3. **Frontend Sessions Tab Fix - SYNCED** ✅
+   - **Problem:** `sessions.filter is not a function` (API returning non-array)
+   - **Solution:** Array safety checks: `Array.isArray(data) ? data : []`
+   - **File:** `templates/_modules-core/module-chat/frontend/components/admin/SysSessionsTab.tsx`
+   - **Status:** ✅ Synced to test project
+
+4. **Documentation Created** ✅
+   - **File:** `docs/plans/plan_auth-standardization.md`
+   - Comprehensive auth pattern analysis
+   - Proposes `cora_auth.py` library for standardization
+   - Migration plan for all 8 modules (8-13 hours)
+
+**Testing Results:**
+- ✅ `/admin/sys/chat` fully functional (all 3 tabs working)
+- 🔴 `/admin/org/chat` needs similar fixes
+
+**Key Insight:**
+Discovered critical auth pattern inconsistency: Chat was only module passing Okta JWT to RPC functions. All other modules query DB directly.
+
+**Time Spent:** ~2 hours
+
+---
+
 ### January 29, 2026 - Sprint S4 Session 1
 
-**Status:** Chat Admin Authentication Pattern Investigation
+**Status:** Authentication Pattern Investigation - Work Attempted
 **Branch:** `admin-page-s4-ui-testing`
 
 **Work Attempted:**
