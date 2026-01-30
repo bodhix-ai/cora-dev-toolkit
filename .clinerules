@@ -566,12 +566,107 @@ aws logs tail /aws/lambda/my-function
 aws apigatewayv2 get-routes --api-id abc123
 ```
 
+## Authentication & Authorization Standards
+
+**ADR Reference:** `docs/arch decisions/ADR-019-AUTH-STANDARDIZATION.md`
+
+### Standard Constants (REQUIRED)
+
+All authentication checks MUST use these constants from `org_common`:
+
+```python
+from org_common import SYS_ADMIN_ROLES, ORG_ADMIN_ROLES, WS_ADMIN_ROLES
+
+# CORRECT:
+if profile.get('sys_role') in SYS_ADMIN_ROLES:
+    # Allow sys admin operation
+
+# WRONG - DO NOT use inline lists:
+if profile.get('sys_role') in ['sys_owner', 'sys_admin']:  # ❌ WRONG
+```
+
+### Standard Helper Functions (REQUIRED)
+
+Use standard helper functions from `org_common.auth_helpers`:
+
+```python
+from org_common.auth_helpers import is_sys_admin, is_org_admin, is_ws_admin
+
+# CORRECT:
+if is_sys_admin(user_id):
+    # Allow sys admin operation
+
+# WRONG - DO NOT query directly:
+profile = common.find_one('user_profiles', {'user_id': user_id})  # ❌ WRONG
+if profile.get('sys_role') in ['sys_owner', 'sys_admin']:
+```
+
+### Centralized Router Auth Pattern (PREFERRED)
+
+**Prefer centralized authorization at the router level** (one check per request):
+
+```python
+def lambda_handler(event, context):
+    # Get user info ONCE per request
+    profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
+    path = event.get('rawPath', '')
+    
+    # Centralized auth checks
+    if path.startswith('/admin/sys/'):
+        if not common.is_sys_admin(profile.get('user_id')):
+            return common.forbidden_response('System admin role required')
+    
+    elif path.startswith('/admin/org/'):
+        if not common.is_org_admin(org_id, profile.get('user_id')):
+            return common.forbidden_response('Organization admin role required')
+    
+    # Route to handlers
+    return route_to_handler(event, context)
+```
+
+**Benefits:**
+- Single profile query per request (not per handler)
+- Impossible to forget auth check on new routes
+- Easy to audit and maintain
+- Performance optimized
+
+### Role Hierarchy (NO INHERITANCE)
+
+**CRITICAL:** There is NO automatic inheritance between role levels:
+
+- **sys_admin** → ONLY sys admin features (no auto org/ws access)
+- **org_admin** → ONLY org admin features (no auto sys/ws access)
+- **ws_admin** → ONLY workspace admin features (no auto sys/org access)
+
+A sys_admin does NOT automatically get org_admin or ws_admin privileges.
+
+### When Creating New Admin Routes
+
+1. **Use standard constants** - Never inline role lists
+2. **Use helper functions** - Never direct queries
+3. **Validate scope** - Always validate org_id/ws_id for scoped routes
+4. **Centralize auth** - Prefer router-level auth over per-handler
+5. **Document routes** - Use route docstring standard (ADR-018)
+
+### Validation
+
+Auth patterns are validated by `validation/auth-pattern-validator/`:
+- ✅ Uses standard constants
+- ✅ Uses helper functions
+- ✅ No duplicate auth checks
+- ✅ Validates scope parameters
+
+---
+
 ## Do NOT
 
 - **Do NOT update test projects before templates** - See CRITICAL rule above
 - **Do NOT make changes only to test projects** - Changes will be lost when project is deleted
 - **Do NOT use AWS CLI for infrastructure changes** - Terraform only! (See rule above)
 - **Do NOT deploy infrastructure manually** - All deployments through Terraform
+- **Do NOT use inline role lists** - Always use standard constants (SYS_ADMIN_ROLES, etc.)
+- **Do NOT duplicate auth checks** - Use centralized router auth pattern
+- **Do NOT assume role inheritance** - sys/org/ws admin are independent
 - Do not hardcode project-specific values (pm-app, us-east-1, etc.)
 - Do not create one-off solutions - everything should be reusable
 - Do not skip documentation - all changes need docs
