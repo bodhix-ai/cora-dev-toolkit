@@ -5,6 +5,7 @@
  * Uses the CORA API Gateway with Bearer token authentication.
  */
 
+import type { AuthAdapter } from "@{{PROJECT_NAME}}/module-access";
 import type {
   ChatSession,
   ChatMessage,
@@ -150,7 +151,8 @@ async function apiRequest<T>(
   const response = await fetch(url, {
     ...options,
     headers,
-    credentials: "include", // Include cookies for session auth
+    // NOTE: credentials: 'include' removed - not needed for Bearer token auth
+    // Only session-based (cookie) auth needs credentials: 'include'
   });
 
   return parseResponse<T>(response);
@@ -806,8 +808,10 @@ export async function sendMessage(
 /**
  * Get platform chat configuration (sys admin only)
  * GET /admin/sys/chat/config
+ * 
+ * ✅ CORRECT: Accepts authAdapter, extracts token internally
  */
-export async function getSysAdminConfig(): Promise<{
+export async function getSysAdminConfig(authAdapter: AuthAdapter): Promise<{
   defaultTitleFormat: string;
   messageRetentionDays: number;
   sessionTimeoutMinutes: number;
@@ -818,14 +822,18 @@ export async function getSysAdminConfig(): Promise<{
   streamingConfig?: Record<string, unknown>;
   citationDisplayConfig?: Record<string, unknown>;
 }> {
-  return sessionApiRequest("/admin/sys/chat/config");
+  const token = await authAdapter.getToken();  // ✅ Extract token here
+  return apiRequest("/admin/sys/chat/config", token);
 }
 
 /**
  * Update platform chat configuration (sys admin only)
  * PUT /admin/sys/chat/config
+ * 
+ * ✅ CORRECT: Accepts authAdapter, extracts token internally
  */
 export async function updateSysAdminConfig(
+  authAdapter: AuthAdapter,
   config: {
     messageRetentionDays?: number;
     sessionTimeoutMinutes?: number;
@@ -835,7 +843,8 @@ export async function updateSysAdminConfig(
     defaultAiModel?: string;
   }
 ): Promise<{ message: string }> {
-  return sessionApiRequest("/admin/sys/chat/config", {
+  const token = await authAdapter.getToken();  // ✅ Extract token here
+  return apiRequest("/admin/sys/chat/config", token, {
     method: "PUT",
     body: JSON.stringify(config),
   });
@@ -844,8 +853,10 @@ export async function updateSysAdminConfig(
 /**
  * Get platform-wide chat analytics (sys admin only)
  * GET /admin/sys/chat/analytics
+ * 
+ * ✅ CORRECT: Accepts authAdapter, extracts token internally
  */
-export async function getSysAdminAnalytics(): Promise<{
+export async function getSysAdminAnalytics(authAdapter: AuthAdapter): Promise<{
   totalSessions: number;
   totalMessages: number;
   activeSessions: {
@@ -854,40 +865,50 @@ export async function getSysAdminAnalytics(): Promise<{
     last30Days: number;
   };
 }> {
-  return sessionApiRequest("/admin/sys/chat/analytics");
+  const token = await authAdapter.getToken();
+  return apiRequest("/admin/sys/chat/analytics", token);
 }
 
 /**
  * Get detailed usage statistics (sys admin only)
  * GET /admin/sys/chat/analytics/usage
+ * 
+ * ✅ CORRECT: Accepts authAdapter, extracts token internally
  */
-export async function getSysAdminUsageStats(): Promise<{
+export async function getSysAdminUsageStats(authAdapter: AuthAdapter): Promise<{
   mostActiveOrgs: Array<{
     orgId: string;
     orgName: string;
     sessionCount: number;
   }>;
 }> {
-  return sessionApiRequest("/admin/sys/chat/analytics/usage");
+  const token = await authAdapter.getToken();
+  return apiRequest("/admin/sys/chat/analytics/usage", token);
 }
 
 /**
  * Get token usage statistics (sys admin only)
  * GET /admin/sys/chat/analytics/tokens
+ * 
+ * ✅ CORRECT: Accepts authAdapter, extracts token internally
  */
-export async function getSysAdminTokenStats(): Promise<{
+export async function getSysAdminTokenStats(authAdapter: AuthAdapter): Promise<{
   totalTokensUsed: number;
   averageTokensPerMessage: number;
   message?: string;
 }> {
-  return sessionApiRequest("/admin/sys/chat/analytics/tokens");
+  const token = await authAdapter.getToken();
+  return apiRequest("/admin/sys/chat/analytics/tokens", token);
 }
 
 /**
  * List all chat sessions (all orgs, sys admin only)
  * GET /admin/sys/chat/sessions
+ * 
+ * ✅ CORRECT: Accepts authAdapter, extracts token internally
  */
 export async function listSysAdminSessions(
+  authAdapter: AuthAdapter,
   options?: { limit?: number; offset?: number }
 ): Promise<
   Array<{
@@ -900,16 +921,20 @@ export async function listSysAdminSessions(
     updatedAt: string;
   }>
 > {
+  const token = await authAdapter.getToken();
   const params = options ? { limit: options.limit, offset: options.offset } : undefined;
   const url = buildUrl("/admin/sys/chat/sessions", params);
-  return sessionApiRequest(url);
+  return apiRequest(url, token);
 }
 
 /**
  * Get chat session details (sys admin view)
  * GET /admin/sys/chat/sessions/{id}
+ * 
+ * ✅ CORRECT: Accepts authAdapter, extracts token internally
  */
 export async function getSysAdminSession(
+  authAdapter: AuthAdapter,
   sessionId: string
 ): Promise<{
   id: string;
@@ -923,17 +948,22 @@ export async function getSysAdminSession(
   createdAt: string;
   updatedAt: string;
 }> {
-  return sessionApiRequest(`/admin/sys/chat/sessions/${sessionId}`);
+  const token = await authAdapter.getToken();
+  return apiRequest(`/admin/sys/chat/sessions/${sessionId}`, token);
 }
 
 /**
  * Force delete chat session (sys admin only)
  * DELETE /admin/sys/chat/sessions/{id}
+ * 
+ * ✅ CORRECT: Accepts authAdapter, extracts token internally
  */
 export async function deleteSysAdminSession(
+  authAdapter: AuthAdapter,
   sessionId: string
 ): Promise<{ message: string; id: string }> {
-  return sessionApiRequest(`/admin/sys/chat/sessions/${sessionId}`, {
+  const token = await authAdapter.getToken();
+  return apiRequest(`/admin/sys/chat/sessions/${sessionId}`, token, {
     method: "DELETE",
   });
 }

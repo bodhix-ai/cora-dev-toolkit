@@ -55,8 +55,11 @@ interface TokenData {
   averageTokensPerMessage: number;
 }
 
+/**
+ * ✅ CORRECT: No token prop - gets authAdapter from useUser hook
+ */
 export function SysAnalyticsTab(): React.ReactElement {
-  const { isAuthenticated } = useUser();
+  const { isAuthenticated, authAdapter } = useUser();  // ✅ Get authAdapter here
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
@@ -65,15 +68,15 @@ export function SysAnalyticsTab(): React.ReactElement {
 
   // Load analytics data
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !authAdapter) return;
 
     const loadAnalytics = async () => {
       try {
         setLoading(true);
         const [analyticsData, usageData, tokenData] = await Promise.all([
-          getSysAdminAnalytics(),
-          getSysAdminUsageStats(),
-          getSysAdminTokenStats(),
+          getSysAdminAnalytics(authAdapter),  // ✅ Pass authAdapter
+          getSysAdminUsageStats(authAdapter),
+          getSysAdminTokenStats(authAdapter),
         ]);
 
         setAnalytics(analyticsData);
@@ -88,7 +91,7 @@ export function SysAnalyticsTab(): React.ReactElement {
     };
 
     loadAnalytics();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authAdapter]);  // ✅ Updated dependency
 
   if (loading) {
     return (

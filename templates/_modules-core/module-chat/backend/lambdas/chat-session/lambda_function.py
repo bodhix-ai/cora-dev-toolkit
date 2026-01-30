@@ -1135,9 +1135,9 @@ def handle_toggle_favorite(user_id: str, session_id: str) -> Dict[str, Any]:
 
 def handle_sys_get_config(user_info: Dict[str, Any]) -> Dict[str, Any]:
     """Get platform chat configuration settings."""
-    # Verify sys_admin role
-    if not user_info.get('is_sys_admin'):
-        raise common.ForbiddenError('sys_admin role required')
+    # Verify sys_admin or sys_owner role
+    if not user_info.get('is_sys_admin') and not user_info.get('is_sys_owner'):
+        raise common.ForbiddenError('sys_admin or sys_owner role required')
     
     config = common.find_one(
         table='chat_cfg_sys_settings',
@@ -1162,8 +1162,8 @@ def handle_sys_get_config(user_info: Dict[str, Any]) -> Dict[str, Any]:
 
 def handle_sys_update_config(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
     """Update platform chat configuration."""
-    if not user_info.get('is_sys_admin'):
-        raise common.ForbiddenError('sys_admin role required')
+    if not user_info.get('is_sys_admin') and not user_info.get('is_sys_owner'):
+        raise common.ForbiddenError('sys_admin or sys_owner role required')
     
     body = json.loads(event.get('body', '{}'))
     
@@ -1195,8 +1195,8 @@ def handle_sys_update_config(event: Dict[str, Any], user_info: Dict[str, Any]) -
 
 def handle_sys_get_analytics(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
     """Get platform-wide chat analytics."""
-    if not user_info.get('is_sys_admin'):
-        raise common.ForbiddenError('sys_admin role required')
+    if not user_info.get('is_sys_admin') and not user_info.get('is_sys_owner'):
+        raise common.ForbiddenError('sys_admin or sys_owner role required')
 
     # Call RPC function for analytics
     analytics = common.rpc('get_sys_chat_analytics')
@@ -1215,8 +1215,8 @@ def handle_sys_get_analytics(event: Dict[str, Any], user_info: Dict[str, Any]) -
 
 def handle_sys_get_usage_stats(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
     """Get detailed usage statistics."""
-    if not user_info.get('is_sys_admin'):
-        raise common.ForbiddenError('sys_admin role required')
+    if not user_info.get('is_sys_admin') and not user_info.get('is_sys_owner'):
+        raise common.ForbiddenError('sys_admin or sys_owner role required')
     
     # Call RPC function for most active orgs
     active_orgs = common.rpc('get_sys_most_active_orgs', {'p_limit': 10})
@@ -1226,8 +1226,8 @@ def handle_sys_get_usage_stats(event: Dict[str, Any], user_info: Dict[str, Any])
 
 def handle_sys_get_token_stats(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
     """Get token usage statistics."""
-    if not user_info.get('is_sys_admin'):
-        raise common.ForbiddenError('sys_admin role required')
+    if not user_info.get('is_sys_admin') and not user_info.get('is_sys_owner'):
+        raise common.ForbiddenError('sys_admin or sys_owner role required')
     
     # Token usage from metadata
     # This is a placeholder - actual implementation would parse metadata JSONB
@@ -1240,8 +1240,8 @@ def handle_sys_get_token_stats(event: Dict[str, Any], user_info: Dict[str, Any])
 
 def handle_sys_list_sessions(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
     """List all chat sessions (all orgs)."""
-    if not user_info.get('is_sys_admin'):
-        raise common.ForbiddenError('sys_admin role required')
+    if not user_info.get('is_sys_admin') and not user_info.get('is_sys_owner'):
+        raise common.ForbiddenError('sys_admin or sys_owner role required')
     
     query_params = event.get('queryStringParameters', {}) or {}
     limit = common.validate_integer(query_params.get('limit', 50), 'limit', min_value=1, max_value=100)
@@ -1268,8 +1268,8 @@ def handle_sys_list_sessions(event: Dict[str, Any], user_info: Dict[str, Any]) -
 
 def handle_sys_get_session(user_info: Dict[str, Any], session_id: str) -> Dict[str, Any]:
     """Get chat session details (sys admin view)."""
-    if not user_info.get('is_sys_admin'):
-        raise common.ForbiddenError('sys_admin role required')
+    if not user_info.get('is_sys_admin') and not user_info.get('is_sys_owner'):
+        raise common.ForbiddenError('sys_admin or sys_owner role required')
     
     session_id = common.validate_uuid(session_id, 'sessionId')
     
@@ -1304,8 +1304,8 @@ def handle_sys_get_session(user_info: Dict[str, Any], session_id: str) -> Dict[s
 
 def handle_sys_delete_session(user_info: Dict[str, Any], session_id: str) -> Dict[str, Any]:
     """Force delete chat session (sys admin)."""
-    if not user_info.get('is_sys_admin'):
-        raise common.ForbiddenError('sys_admin role required')
+    if not user_info.get('is_sys_admin') and not user_info.get('is_sys_owner'):
+        raise common.ForbiddenError('sys_admin or sys_owner role required')
     
     session_id = common.validate_uuid(session_id, 'sessionId')
     

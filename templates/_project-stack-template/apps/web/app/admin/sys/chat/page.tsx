@@ -29,6 +29,9 @@ import { CircularProgress, Box, Alert } from "@mui/material";
  */
 export default function SystemChatAdminPage() {
   const { profile, loading, isAuthenticated } = useUser();
+  
+  // ✅ CORRECT: No token extraction at page level
+  // Token will be extracted by tabs/components at API call time
 
   // Show loading state while user profile is being fetched
   if (loading) {
@@ -72,5 +75,7 @@ export default function SystemChatAdminPage() {
     );
   }
 
+  // ✅ CORRECT: Pass NO authentication props to component
+  // Component will handle its own authentication internally
   return <SysChatAdmin />;
 }

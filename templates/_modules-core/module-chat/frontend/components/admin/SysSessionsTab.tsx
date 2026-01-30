@@ -56,8 +56,11 @@ interface SessionDetails extends Session {
   messageCount: number;
 }
 
+/**
+ * ✅ CORRECT: No token prop - gets authAdapter from useUser hook
+ */
 export function SysSessionsTab(): React.ReactElement {
-  const { isAuthenticated } = useUser();
+  const { isAuthenticated, authAdapter } = useUser();  // ✅ Get authAdapter here
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -69,12 +72,12 @@ export function SysSessionsTab(): React.ReactElement {
 
   // Load sessions
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !authAdapter) return;
 
     const loadSessions = async () => {
       try {
         setLoading(true);
-        const data = await listSysAdminSessions({ limit: 100 });
+        const data = await listSysAdminSessions(authAdapter, { limit: 100 });  // ✅ Pass authAdapter
         setSessions(data);
         setError(null);
       } catch (err) {
@@ -85,13 +88,13 @@ export function SysSessionsTab(): React.ReactElement {
     };
 
     loadSessions();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authAdapter]);  // ✅ Updated dependency
 
   const handleViewDetails = async (sessionId: string) => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !authAdapter) return;
 
     try {
-      const details = await getSysAdminSession(sessionId);
+      const details = await getSysAdminSession(authAdapter, sessionId);  // ✅ Pass authAdapter
       setSelectedSession(details);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load session details");
@@ -104,10 +107,10 @@ export function SysSessionsTab(): React.ReactElement {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!isAuthenticated || !sessionToDelete) return;
+    if (!isAuthenticated || !authAdapter || !sessionToDelete) return;
 
     try {
-      await deleteSysAdminSession(sessionToDelete);
+      await deleteSysAdminSession(authAdapter, sessionToDelete);  // ✅ Pass authAdapter
       setSessions(sessions.filter((s) => s.id !== sessionToDelete));
       setSuccess("Session deleted successfully");
       setDeleteDialogOpen(false);

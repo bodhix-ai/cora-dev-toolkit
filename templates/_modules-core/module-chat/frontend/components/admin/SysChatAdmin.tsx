@@ -30,6 +30,9 @@ import { SysSessionsTab } from "./SysSessionsTab";
  * - Platform-wide analytics (usage across all orgs)
  * - Session management (view/delete sessions from any org)
  *
+ * ✅ CORRECT: No authentication props needed
+ * Tabs handle their own authentication internally via useUser() hook
+ *
  * @example
  * ```tsx
  * <SysChatAdmin />

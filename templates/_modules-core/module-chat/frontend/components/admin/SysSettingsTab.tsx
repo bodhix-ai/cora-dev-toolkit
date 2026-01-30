@@ -33,8 +33,11 @@ interface ConfigState {
   defaultAiModel?: string;
 }
 
+/**
+ * ✅ CORRECT: No token prop - gets authAdapter from useUser hook
+ */
 export function SysSettingsTab(): React.ReactElement {
-  const { isAuthenticated } = useUser();
+  const { isAuthenticated, authAdapter } = useUser();  // ✅ Get authAdapter here
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,12 +51,12 @@ export function SysSettingsTab(): React.ReactElement {
 
   // Load current config
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !authAdapter) return;
 
     const loadConfig = async () => {
       try {
         setLoading(true);
-        const data = await getSysAdminConfig();
+        const data = await getSysAdminConfig(authAdapter);  // ✅ Pass authAdapter
         setConfig({
           messageRetentionDays: data.messageRetentionDays,
           sessionTimeoutMinutes: data.sessionTimeoutMinutes,
@@ -71,17 +74,17 @@ export function SysSettingsTab(): React.ReactElement {
     };
 
     loadConfig();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authAdapter]);  // ✅ Updated dependency
 
   const handleSave = async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !authAdapter) return;
 
     try {
       setSaving(true);
       setError(null);
       setSuccess(null);
 
-      await updateSysAdminConfig(config);
+      await updateSysAdminConfig(authAdapter, config);  // ✅ Pass authAdapter
       setSuccess("Platform configuration updated successfully");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update configuration");
