@@ -10,8 +10,11 @@
 The goal of this initiative is to standardize authentication patterns across all 8 CORA modules AND create integrated validation tools to enforce ADR-019 compliance.
 
 **Problem:**
-- Inconsistent auth checks (some use RPC, some direct SQL, some pass user_id instead of JWT)
-- Module-chat was broken due to incorrect pattern (passing Okta JWT to Supabase RPC)
+- **12 different implementations** of sys admin checks across modules
+- **11 different implementations** of org admin checks across modules
+- **4 different implementations** of workspace admin checks (only in module-ws)
+- Inconsistent auth checks (some use RPC, some direct SQL, some inline, some helpers)
+- Module-chat was broken due to incorrect pattern (passing user_id instead of JWT to RPC)
 - 2-8 hours wasted per module debugging auth issues
 - **No integrated validation for full auth lifecycle (frontend + backend)**
 - **Fragmented validation results make it hard to identify related issues**
@@ -31,7 +34,7 @@ The goal of this initiative is to standardize authentication patterns across all
 | S1 | `auth-standardization-s1` | `plan_s1-auth-standardization.md` | ✅ Complete | 2026-01-31 |
 | S2 | `auth-standardization-s2` | `plan_s2-auth-standardization.md` | 🟡 Active | - |
 
-## Current Sprint
+### 3. Workspace Role Assessment
 
 - **Branch:** `auth-standardization-s2`
 - **Plan:** `docs/plans/plan_s2-auth-standardization.md`
@@ -41,7 +44,7 @@ The goal of this initiative is to standardize authentication patterns across all
   2. Investigate key_consistency errors (679 errors)
   3. Run final validation to confirm fixes
 
-## Key Decisions
+Implementation: RPC function `is_ws_admin()` or helper `_is_ws_admin()` that calls the RPC.
 
 - **ADR-019 Standard:** Use parameterized RPC functions wrapped in Python helpers
 - **Database RPCs:** is_sys_admin(), is_org_admin(), is_ws_admin() in database
