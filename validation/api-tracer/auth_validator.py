@@ -1,0 +1,807 @@
+"""
+Auth Lifecycle Validator
+
+Validates authorization patterns across Frontend and Lambda layers per ADR-019.
+This module integrates with api-tracer to provide full-stack auth lifecycle validation.
+
+Reference: docs/arch decisions/ADR-019-AUTH-STANDARDIZATION.md
+"""
+
+import ast
+import re
+import logging
+from typing import Dict, List, Optional, Set, Tuple
+from dataclasses import dataclass, field
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class AuthIssue:
+    """Represents an authorization pattern issue."""
+    severity: str  # 'error' or 'warning'
+    issue_type: str  # See AuthIssueType
+    layer: str  # 'frontend', 'lambda', 'gateway'
+    file: str
+    line: int
+    route_path: Optional[str] = None
+    route_method: Optional[str] = None
+    issue: str = ""
+    suggestion: Optional[str] = None
+    standard_ref: Optional[str] = None  # Reference to standard doc
+
+
+class AuthIssueType:
+    """Constants for auth issue types."""
+    # Frontend issues
+    MISSING_USE_USER = 'missing_use_user'
+    MISSING_USE_ROLE = 'missing_use_role'
+    MISSING_ORG_CONTEXT = 'missing_org_context'
+    MISSING_LOADING_CHECK = 'missing_loading_check'
+    DIRECT_ROLE_ACCESS = 'direct_role_access'
+    MISSING_ORG_ID_IN_API_CALL = 'missing_org_id_in_api_call'  # API calls to /admin/org/* without orgId
+    
+    # Lambda issues
+    MISSING_CHECK_SYS_ADMIN = 'missing_check_sys_admin'
+    MISSING_CHECK_ORG_ADMIN = 'missing_check_org_admin'
+    MISSING_CHECK_WS_ADMIN = 'missing_check_ws_admin'
+    MISSING_ORG_CONTEXT_EXTRACTION = 'missing_org_context_extraction'
+    MISSING_EXTERNAL_UID_CONVERSION = 'missing_external_uid_conversion'
+    DIRECT_JWT_ROLE_ACCESS = 'direct_jwt_role_access'
+    AUTH_IN_HANDLER = 'auth_in_handler'  # Auth should be in router, not handler
+    DUPLICATE_AUTH_CHECK = 'duplicate_auth_check'
+
+
+class FrontendAuthValidator:
+    """
+    Validates frontend authorization patterns per ADR-019a.
+    
+    Checks:
+    - useUser() hook usage
+    - useRole() hook for admin pages
+    - useOrganizationContext() for org routes
+    - Loading state checks before role access
+    """
+    
+    def __init__(self):
+        self.issues: List[AuthIssue] = []
+        self.current_file: str = ""
+    
+    def validate_file(self, file_path: str, content: str) -> List[AuthIssue]:
+        """
+        Validate a TypeScript/TSX file for auth patterns.
+        
+        Args:
+            file_path: Path to the file
+            content: File content
+            
+        Returns:
+            List of AuthIssue objects
+        """
+        self.current_file = file_path
+        self.issues = []
+        
+        # Check API client files for orgId in org admin routes
+        if 'lib/api.ts' in file_path or 'lib/api.tsx' in file_path:
+            self._check_org_id_in_api_calls(content)
+            return self.issues
+        
+        # Determine route type from file path
+        route_type = self._detect_route_type(file_path)
+        
+        if route_type == 'none':
+            # Not an admin page, no auth requirements
+            return []
+        
+        # Check for required hooks
+        self._check_use_user(content, route_type)
+        self._check_use_role(content, route_type)
+        self._check_org_context(content, route_type)
+        self._check_loading_state(content, route_type)
+        self._check_direct_role_access(content)
+        
+        return self.issues
+    
+    def _detect_route_type(self, file_path: str) -> str:
+        """
+        Detect route type from file path.
+        
+        Returns:
+            'sys' for /admin/sys/* routes
+            'org' for /admin/org/* routes
+            'ws' for /admin/ws/* routes
+            'none' for non-admin routes
+        """
+        path_lower = file_path.lower()
+        
+        # Check for admin routes in app directory structure
+        # e.g., app/admin/sys/... or app/admin/platform/...
+        if '/admin/sys/' in path_lower or '/admin/platform/' in path_lower:
+            return 'sys'
+        elif '/admin/org/' in path_lower:
+            return 'org'
+        elif '/admin/ws/' in path_lower or '/workspace/' in path_lower:
+            return 'ws'
+        
+        # Also check for explicit route patterns in page.tsx files
+        if 'page.tsx' in path_lower or 'page.ts' in path_lower:
+            # Check parent directory name
+            parent = Path(file_path).parent.name.lower()
+            if parent in ['platform', 'system', 'sys']:
+                return 'sys'
+            elif parent in ['org', 'organization', 'organizations']:
+                return 'org'
+            elif parent in ['ws', 'workspace', 'workspaces']:
+                return 'ws'
+        
+        return 'none'
+    
+    def _check_use_user(self, content: str, route_type: str):
+        """Check for useUser() hook usage."""
+        # Pattern: import or call useUser
+        has_use_user = (
+            'useUser' in content or
+            'useSession' in content  # NextAuth pattern
+        )
+        
+        if not has_use_user and route_type != 'none':
+            self.issues.append(AuthIssue(
+                severity='error',
+                issue_type=AuthIssueType.MISSING_USE_USER,
+                layer='frontend',
+                file=self.current_file,
+                line=1,
+                issue="Admin page missing useUser() or useSession() hook",
+                suggestion="Add: const { user, isLoading } = useUser() or useSession()",
+                standard_ref="ADR-019a"
+            ))
+    
+    def _check_use_role(self, content: str, route_type: str):
+        """Check for useRole() hook in admin pages."""
+        has_use_role = 'useRole' in content
+        
+        # For sys admin pages, useRole is required
+        if route_type == 'sys' and not has_use_role:
+            self.issues.append(AuthIssue(
+                severity='error',
+                issue_type=AuthIssueType.MISSING_USE_ROLE,
+                layer='frontend',
+                file=self.current_file,
+                line=1,
+                issue="System admin page missing useRole() hook",
+                suggestion="Add: const { sysRole, isLoading } = useRole()",
+                standard_ref="ADR-019a"
+            ))
+        
+        # For org admin pages, useRole is required for role check
+        if route_type == 'org' and not has_use_role:
+            self.issues.append(AuthIssue(
+                severity='error',
+                issue_type=AuthIssueType.MISSING_USE_ROLE,
+                layer='frontend',
+                file=self.current_file,
+                line=1,
+                issue="Organization admin page missing useRole() hook",
+                suggestion="Add: const { orgRole, isLoading } = useRole()",
+                standard_ref="ADR-019a"
+            ))
+    
+    def _check_org_context(self, content: str, route_type: str):
+        """Check for useOrganizationContext() in org admin pages."""
+        has_org_context = (
+            'useOrganizationContext' in content or
+            'useOrgContext' in content or
+            'OrgContext' in content
+        )
+        
+        if route_type == 'org' and not has_org_context:
+            self.issues.append(AuthIssue(
+                severity='error',
+                issue_type=AuthIssueType.MISSING_ORG_CONTEXT,
+                layer='frontend',
+                file=self.current_file,
+                line=1,
+                issue="Organization admin page missing useOrganizationContext() hook",
+                suggestion="Add: const { orgId, organization } = useOrganizationContext()",
+                standard_ref="ADR-019a"
+            ))
+    
+    def _check_loading_state(self, content: str, route_type: str):
+        """Check for loading state checks before role access."""
+        has_loading_check = (
+            'isLoading' in content or
+            'loading' in content.lower() or
+            'status === "loading"' in content or
+            'status === \'loading\'' in content
+        )
+        
+        if route_type != 'none' and not has_loading_check:
+            self.issues.append(AuthIssue(
+                severity='warning',
+                issue_type=AuthIssueType.MISSING_LOADING_CHECK,
+                layer='frontend',
+                file=self.current_file,
+                line=1,
+                issue="Admin page may not check loading state before accessing role",
+                suggestion="Ensure loading state is checked: if (isLoading) return <LoadingSpinner />",
+                standard_ref="ADR-019a"
+            ))
+    
+    def _check_direct_role_access(self, content: str):
+        """Check for anti-pattern: directly accessing role from JWT/token."""
+        # Pattern: accessing role directly from token/claims
+        anti_patterns = [
+            r'token\.role',
+            r'claims\.role',
+            r'jwt\.role',
+            r'accessToken.*role',
+            r'session\.user\.role(?!\s*:)',  # Avoid false positive on type definitions
+        ]
+        
+        for pattern in anti_patterns:
+            match = re.search(pattern, content)
+            if match:
+                # Find line number
+                line = content[:match.start()].count('\n') + 1
+                self.issues.append(AuthIssue(
+                    severity='error',
+                    issue_type=AuthIssueType.DIRECT_ROLE_ACCESS,
+                    layer='frontend',
+                    file=self.current_file,
+                    line=line,
+                    issue="Direct role access from JWT/token detected (roles are NOT in JWT)",
+                    suggestion="Use useRole() hook which queries the database for roles",
+                    standard_ref="ADR-019"
+                ))
+                break
+    
+    def _check_org_id_in_api_calls(self, content: str):
+        """
+        Check that frontend API functions calling /admin/org/* routes include orgId.
+        
+        Per ADR-019a: All org admin API calls MUST include orgId as a query parameter.
+        This ensures the Lambda can extract org context for authorization.
+        
+        Pattern to detect:
+        - Function that fetches /admin/org/* route
+        - Must have orgId in buildUrl() or in query params
+        """
+        # Find all function definitions that call /admin/org/ routes
+        # Pattern: async function functionName(...) that contains '/admin/org/'
+        
+        lines = content.split('\n')
+        current_function = None
+        current_function_start = 0
+        current_function_content = []
+        brace_count = 0
+        in_function = False
+        
+        for i, line in enumerate(lines, 1):
+            # Detect function start
+            func_match = re.match(r'^export\s+async\s+function\s+(\w+)', line)
+            if func_match:
+                current_function = func_match.group(1)
+                current_function_start = i
+                current_function_content = [line]
+                brace_count = line.count('{') - line.count('}')
+                in_function = brace_count > 0
+                continue
+            
+            if in_function:
+                current_function_content.append(line)
+                brace_count += line.count('{') - line.count('}')
+                
+                if brace_count <= 0:
+                    # Function ended, analyze it
+                    func_content = '\n'.join(current_function_content)
+                    
+                    # Check if this function calls /admin/org/ routes
+                    if '/admin/org/' in func_content:
+                        # Check if orgId is passed to buildUrl or included in params
+                        has_org_id = (
+                            'orgId' in func_content or
+                            'org_id' in func_content
+                        )
+                        
+                        if not has_org_id:
+                            # Find the specific route being called
+                            route_match = re.search(r'["\'](/admin/org/[^"\']+)["\']', func_content)
+                            route = route_match.group(1) if route_match else '/admin/org/*'
+                            
+                            self.issues.append(AuthIssue(
+                                severity='error',
+                                issue_type=AuthIssueType.MISSING_ORG_ID_IN_API_CALL,
+                                layer='frontend',
+                                file=self.current_file,
+                                line=current_function_start,
+                                route_path=route,
+                                issue=f"API function '{current_function}' calls org admin route without orgId parameter",
+                                suggestion=f"Add orgId parameter: function {current_function}(token: string, orgId: string, ...) and include {{ orgId }} in buildUrl() params",
+                                standard_ref="ADR-019a"
+                            ))
+                    
+                    in_function = False
+                    current_function = None
+
+
+class LambdaAuthValidator:
+    """
+    Validates Lambda authorization patterns per ADR-019b.
+    
+    Checks:
+    - check_sys_admin() usage for /admin/sys/* routes
+    - check_org_admin() usage for /admin/org/* routes
+    - check_ws_admin() usage for /admin/ws/* routes
+    - get_org_context_from_event() for org routes
+    - External UID → Supabase UUID conversion
+    - Anti-pattern: No direct JWT role access
+    """
+    
+    def __init__(self):
+        self.issues: List[AuthIssue] = []
+        self.current_file: str = ""
+        # Store extracted routes for attribution
+        self.sys_routes: List[Tuple[str, str]] = []  # (method, path)
+        self.org_routes: List[Tuple[str, str]] = []
+        self.ws_routes: List[Tuple[str, str]] = []
+    
+    def validate_file(self, file_path: str, content: str) -> List[AuthIssue]:
+        """
+        Validate a Python Lambda file for auth patterns.
+        
+        Args:
+            file_path: Path to the file
+            content: File content
+            
+        Returns:
+            List of AuthIssue objects
+        """
+        self.current_file = file_path
+        self.issues = []
+        self.sys_routes = []
+        self.org_routes = []
+        self.ws_routes = []
+        
+        try:
+            tree = ast.parse(content, filename=file_path)
+        except SyntaxError as e:
+            logger.warning(f"Syntax error parsing {file_path}: {e}")
+            return []
+        
+        # Detect route types and extract actual route paths from docstring
+        route_types = self._detect_route_types(tree, content)
+        self._extract_routes_from_docstring(tree, content)
+        
+        if not route_types:
+            # Not an admin Lambda, no auth requirements
+            return []
+        
+        # Check for required auth patterns
+        self._check_external_uid_conversion(tree, content)
+        self._check_sys_admin_auth(tree, content, route_types)
+        self._check_org_admin_auth(tree, content, route_types)
+        self._check_ws_admin_auth(tree, content, route_types)
+        self._check_direct_jwt_access(tree, content)
+        self._check_centralized_auth(tree, content)
+        
+        return self.issues
+    
+    def _detect_route_types(self, tree: ast.AST, content: str) -> Set[str]:
+        """
+        Detect which admin route types this Lambda handles.
+        
+        Returns:
+            Set of route types: 'sys', 'org', 'ws'
+        """
+        route_types = set()
+        
+        # Check module docstring for route definitions
+        docstring = ast.get_docstring(tree) or ""
+        
+        # Also check lambda_handler docstring
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == 'lambda_handler':
+                handler_doc = ast.get_docstring(node) or ""
+                docstring += "\n" + handler_doc
+        
+        # Look for route patterns in docstring
+        if '/admin/sys/' in docstring or '/admin/platform/' in docstring:
+            route_types.add('sys')
+        if '/admin/org/' in docstring:
+            route_types.add('org')
+        if '/admin/ws/' in docstring:
+            route_types.add('ws')
+        
+        # Also check string literals in code
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                path = node.value
+                if '/admin/sys/' in path or '/admin/platform/' in path:
+                    route_types.add('sys')
+                if '/admin/org/' in path:
+                    route_types.add('org')
+                if '/admin/ws/' in path:
+                    route_types.add('ws')
+        
+        return route_types
+    
+    def _extract_routes_from_docstring(self, tree: ast.AST, content: str):
+        """
+        Extract actual route paths from docstring and categorize by type.
+        
+        Parses docstring format:
+        - GET /admin/org/chat/config - Description
+        - POST /admin/sys/users - Description
+        
+        Populates self.sys_routes, self.org_routes, self.ws_routes
+        """
+        # Get combined docstring
+        docstring = ast.get_docstring(tree) or ""
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == 'lambda_handler':
+                handler_doc = ast.get_docstring(node) or ""
+                docstring += "\n" + handler_doc
+        
+        # Pattern matches: - GET /path/here - Description
+        # Also matches: - GET /path/here
+        pattern = r'-\s+(GET|POST|PUT|DELETE|PATCH)\s+(/\S+)'
+        
+        for match in re.finditer(pattern, docstring):
+            method = match.group(1)
+            path = match.group(2)
+            
+            # Categorize by route type
+            if '/admin/sys/' in path or '/admin/platform/' in path:
+                self.sys_routes.append((method, path))
+            elif '/admin/org/' in path:
+                self.org_routes.append((method, path))
+            elif '/admin/ws/' in path:
+                self.ws_routes.append((method, path))
+    
+    def _check_external_uid_conversion(self, tree: ast.AST, content: str):
+        """Check for external UID to Supabase UUID conversion."""
+        # Required patterns for UID conversion
+        has_conversion = (
+            'get_supabase_user_id' in content or
+            'get_user_from_event' in content or
+            'user_auth_ext_ids' in content or
+            'external_uid' in content
+        )
+        
+        # Check if this file handles any admin routes
+        handles_admin = any(admin in content for admin in ['/admin/', 'admin/sys', 'admin/org', 'admin/ws'])
+        
+        if handles_admin and not has_conversion:
+            self.issues.append(AuthIssue(
+                severity='error',
+                issue_type=AuthIssueType.MISSING_EXTERNAL_UID_CONVERSION,
+                layer='lambda',
+                file=self.current_file,
+                line=1,
+                issue="Admin Lambda missing external UID → Supabase UUID conversion",
+                suggestion="Add: user_id = common.get_supabase_user_id(event) to convert Okta UID to Supabase UUID",
+                standard_ref="ADR-019b"
+            ))
+    
+    def _check_sys_admin_auth(self, tree: ast.AST, content: str, route_types: Set[str]):
+        """Check for check_sys_admin() usage in sys admin routes."""
+        if 'sys' not in route_types:
+            return
+        
+        has_sys_check = (
+            'check_sys_admin' in content or
+            'is_sys_admin' in content
+        )
+        
+        if not has_sys_check:
+            # Find where sys routes are defined
+            line = self._find_route_line(content, '/admin/sys/')
+            
+            # Create one error per route for clear attribution
+            if self.sys_routes:
+                for method, path in self.sys_routes:
+                    self.issues.append(AuthIssue(
+                        severity='error',
+                        issue_type=AuthIssueType.MISSING_CHECK_SYS_ADMIN,
+                        layer='lambda',
+                        file=self.current_file,
+                        line=line,
+                        route_path=path,
+                        route_method=method,
+                        issue=f"System admin route missing check_sys_admin() authorization",
+                        suggestion="Add: if not common.check_sys_admin(user_id): return common.forbidden_response('System admin required')",
+                        standard_ref="ADR-019b"
+                    ))
+            else:
+                # Fallback to file-level error if no routes extracted
+                self.issues.append(AuthIssue(
+                    severity='error',
+                    issue_type=AuthIssueType.MISSING_CHECK_SYS_ADMIN,
+                    layer='lambda',
+                    file=self.current_file,
+                    line=line,
+                    issue="System admin route missing check_sys_admin() authorization",
+                    suggestion="Add: if not common.check_sys_admin(user_id): return common.forbidden_response('System admin required')",
+                    standard_ref="ADR-019b"
+                ))
+    
+    def _check_org_admin_auth(self, tree: ast.AST, content: str, route_types: Set[str]):
+        """Check for check_org_admin() usage in org admin routes."""
+        if 'org' not in route_types:
+            return
+        
+        has_org_check = (
+            'check_org_admin' in content or
+            'is_org_admin' in content
+        )
+        
+        has_org_context = (
+            'get_org_context_from_event' in content or
+            'get_org_id' in content or
+            "['orgId']" in content or
+            '["orgId"]' in content
+        )
+        
+        line = self._find_route_line(content, '/admin/org/')
+        
+        if not has_org_check:
+            # Create one error per route for clear attribution
+            if self.org_routes:
+                for method, path in self.org_routes:
+                    self.issues.append(AuthIssue(
+                        severity='error',
+                        issue_type=AuthIssueType.MISSING_CHECK_ORG_ADMIN,
+                        layer='lambda',
+                        file=self.current_file,
+                        line=line,
+                        route_path=path,
+                        route_method=method,
+                        issue=f"Organization admin route missing check_org_admin() authorization",
+                        suggestion="Add: if not common.check_org_admin(user_id, org_id): return common.forbidden_response('Org admin required')",
+                        standard_ref="ADR-019b"
+                    ))
+            else:
+                # Fallback to file-level error if no routes extracted
+                self.issues.append(AuthIssue(
+                    severity='error',
+                    issue_type=AuthIssueType.MISSING_CHECK_ORG_ADMIN,
+                    layer='lambda',
+                    file=self.current_file,
+                    line=line,
+                    issue="Organization admin route missing check_org_admin() authorization",
+                    suggestion="Add: if not common.check_org_admin(user_id, org_id): return common.forbidden_response('Org admin required')",
+                    standard_ref="ADR-019b"
+                ))
+        
+        if not has_org_context:
+            # Create one error per route for clear attribution
+            if self.org_routes:
+                for method, path in self.org_routes:
+                    self.issues.append(AuthIssue(
+                        severity='error',
+                        issue_type=AuthIssueType.MISSING_ORG_CONTEXT_EXTRACTION,
+                        layer='lambda',
+                        file=self.current_file,
+                        line=line,
+                        route_path=path,
+                        route_method=method,
+                        issue=f"Organization admin route missing org context extraction",
+                        suggestion="Add: org_id = common.get_org_context_from_event(event)",
+                        standard_ref="ADR-019b"
+                    ))
+            else:
+                # Fallback to file-level error if no routes extracted
+                self.issues.append(AuthIssue(
+                    severity='error',
+                    issue_type=AuthIssueType.MISSING_ORG_CONTEXT_EXTRACTION,
+                    layer='lambda',
+                    file=self.current_file,
+                    line=line,
+                    issue="Organization admin route missing org context extraction",
+                    suggestion="Add: org_id = common.get_org_context_from_event(event)",
+                    standard_ref="ADR-019b"
+                ))
+    
+    def _check_ws_admin_auth(self, tree: ast.AST, content: str, route_types: Set[str]):
+        """Check for check_ws_admin() usage in ws admin routes."""
+        if 'ws' not in route_types:
+            return
+        
+        has_ws_check = (
+            'check_ws_admin' in content or
+            'is_ws_admin' in content
+        )
+        
+        if not has_ws_check:
+            line = self._find_route_line(content, '/admin/ws/')
+            
+            # Create one error per route for clear attribution
+            if self.ws_routes:
+                for method, path in self.ws_routes:
+                    self.issues.append(AuthIssue(
+                        severity='error',
+                        issue_type=AuthIssueType.MISSING_CHECK_WS_ADMIN,
+                        layer='lambda',
+                        file=self.current_file,
+                        line=line,
+                        route_path=path,
+                        route_method=method,
+                        issue=f"Workspace admin route missing check_ws_admin() authorization",
+                        suggestion="Add: if not common.check_ws_admin(user_id, ws_id): return common.forbidden_response('Workspace admin required')",
+                        standard_ref="ADR-019b"
+                    ))
+            else:
+                # Fallback to file-level error if no routes extracted
+                self.issues.append(AuthIssue(
+                    severity='error',
+                    issue_type=AuthIssueType.MISSING_CHECK_WS_ADMIN,
+                    layer='lambda',
+                    file=self.current_file,
+                    line=line,
+                    issue="Workspace admin route missing check_ws_admin() authorization",
+                    suggestion="Add: if not common.check_ws_admin(user_id, ws_id): return common.forbidden_response('Workspace admin required')",
+                    standard_ref="ADR-019b"
+                ))
+    
+    def _check_direct_jwt_access(self, tree: ast.AST, content: str):
+        """Check for anti-pattern: directly accessing role from JWT claims."""
+        # Anti-patterns for direct JWT role access
+        anti_patterns = [
+            r"authorizer.*\['role'\]",
+            r"authorizer.*\[\"role\"\]",
+            r'claims.*\.role',
+            r"jwt.*\['role'\]",
+            r"user_info.*\['role'\](?!.*#\s*OK)",  # Allow with # OK comment
+            r'token.*\.role',
+        ]
+        
+        for pattern in anti_patterns:
+            match = re.search(pattern, content)
+            if match:
+                line = content[:match.start()].count('\n') + 1
+                self.issues.append(AuthIssue(
+                    severity='error',
+                    issue_type=AuthIssueType.DIRECT_JWT_ROLE_ACCESS,
+                    layer='lambda',
+                    file=self.current_file,
+                    line=line,
+                    issue="Direct JWT role access detected (roles are NOT in JWT - they're in database)",
+                    suggestion="Use check_*_admin() helpers which query the database for roles",
+                    standard_ref="ADR-019"
+                ))
+                break
+    
+    def _check_centralized_auth(self, tree: ast.AST, content: str):
+        """
+        Check for centralized router auth pattern.
+        
+        Good pattern: Auth at router level (lambda_handler)
+        Bad pattern: Auth duplicated in each handler function
+        """
+        # Count auth checks
+        auth_check_count = 0
+        auth_check_locations = []
+        
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef):
+                func_content = ast.get_source_segment(content, node) if hasattr(ast, 'get_source_segment') else ""
+                
+                # Check for auth patterns in this function
+                auth_patterns = ['check_sys_admin', 'check_org_admin', 'check_ws_admin', 
+                                'is_sys_admin', 'is_org_admin', 'is_ws_admin']
+                
+                for pattern in auth_patterns:
+                    if pattern in func_content:
+                        auth_check_count += 1
+                        auth_check_locations.append(node.name)
+        
+        # If auth checks are in multiple handler functions, it's not centralized
+        handler_funcs = [loc for loc in auth_check_locations if loc.startswith('handle_')]
+        
+        if len(handler_funcs) > 1:
+            self.issues.append(AuthIssue(
+                severity='warning',
+                issue_type=AuthIssueType.AUTH_IN_HANDLER,
+                layer='lambda',
+                file=self.current_file,
+                line=1,
+                issue=f"Auth checks in multiple handler functions ({', '.join(handler_funcs)}). Consider centralizing in router.",
+                suggestion="Move auth checks to lambda_handler() router level per ADR-019 Centralized Router Auth pattern",
+                standard_ref="ADR-019b"
+            ))
+        
+        # Check for duplicate auth checks (same check appearing multiple times)
+        if auth_check_count > 3:  # More than 3 suggests duplication
+            self.issues.append(AuthIssue(
+                severity='warning',
+                issue_type=AuthIssueType.DUPLICATE_AUTH_CHECK,
+                layer='lambda',
+                file=self.current_file,
+                line=1,
+                issue=f"Found {auth_check_count} auth checks in file. This suggests duplication.",
+                suggestion="Centralize auth at router level to avoid duplication",
+                standard_ref="ADR-019b"
+            ))
+    
+    def _find_route_line(self, content: str, route_pattern: str) -> int:
+        """Find the line number where a route pattern appears."""
+        lines = content.split('\n')
+        for i, line in enumerate(lines, 1):
+            if route_pattern in line:
+                return i
+        return 1
+
+
+class AuthLifecycleValidator:
+    """
+    Full-stack auth lifecycle validator.
+    
+    Validates that auth patterns are consistent across Frontend → Gateway → Lambda
+    per ADR-019.
+    """
+    
+    def __init__(self):
+        self.frontend_validator = FrontendAuthValidator()
+        self.lambda_validator = LambdaAuthValidator()
+        self.issues: List[AuthIssue] = []
+    
+    def validate_frontend_file(self, file_path: str, content: str) -> List[AuthIssue]:
+        """Validate a frontend file."""
+        return self.frontend_validator.validate_file(file_path, content)
+    
+    def validate_lambda_file(self, file_path: str, content: str) -> List[AuthIssue]:
+        """Validate a Lambda file."""
+        return self.lambda_validator.validate_file(file_path, content)
+    
+    def validate_auth_lifecycle(
+        self, 
+        frontend_files: Dict[str, str], 
+        lambda_files: Dict[str, str],
+        route_mappings: Dict[str, Dict]
+    ) -> List[AuthIssue]:
+        """
+        Validate full auth lifecycle across all layers.
+        
+        Args:
+            frontend_files: Dict of {file_path: content} for frontend files
+            lambda_files: Dict of {file_path: content} for Lambda files
+            route_mappings: Dict mapping routes to their frontend/lambda files
+            
+        Returns:
+            List of all AuthIssue objects
+        """
+        all_issues = []
+        
+        # Validate frontend files
+        for file_path, content in frontend_files.items():
+            issues = self.validate_frontend_file(file_path, content)
+            all_issues.extend(issues)
+        
+        # Validate Lambda files
+        for file_path, content in lambda_files.items():
+            issues = self.validate_lambda_file(file_path, content)
+            all_issues.extend(issues)
+        
+        # TODO: Cross-layer validation using route_mappings
+        # This would check that if frontend calls an admin route,
+        # the Lambda has corresponding auth checks
+        
+        self.issues = all_issues
+        return all_issues
+    
+    def get_issues_by_route(self, route: str) -> List[AuthIssue]:
+        """Get all auth issues related to a specific route."""
+        return [issue for issue in self.issues if issue.route_path == route]
+    
+    def get_issues_by_layer(self, layer: str) -> List[AuthIssue]:
+        """Get all auth issues for a specific layer (frontend, lambda, gateway)."""
+        return [issue for issue in self.issues if issue.layer == layer]
+    
+    def get_errors(self) -> List[AuthIssue]:
+        """Get all error-level issues."""
+        return [issue for issue in self.issues if issue.severity == 'error']
+    
+    def get_warnings(self) -> List[AuthIssue]:
+        """Get all warning-level issues."""
+        return [issue for issue in self.issues if issue.severity == 'warning']

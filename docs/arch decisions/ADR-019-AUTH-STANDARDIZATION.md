@@ -1,280 +1,273 @@
-# ADR-019: Authentication and Authorization Standardization
+# ADR-019: CORA Authorization Standardization
 
-**Status:** Accepted  
-**Date:** January 30, 2026  
-**Deciders:** Engineering Team  
-**Related:** ADR-015 (Admin Page Auth Pattern), ADR-016 (Org Admin Page Authorization)
-
----
-
-## Context
-
-CORA modules have 27 Lambda functions with inconsistent authentication and authorization patterns across three admin levels (sys_admin, org_admin, ws_admin). This inconsistency has caused:
-
-- **Development inefficiency:** 2-8 hours wasted per module debugging auth issues
-- **Security risks:** Inconsistent implementation increases vulnerability surface
-- **Code duplication:** 5 lambdas with duplicate auth checks within the same function
-- **Maintenance burden:** 12 different sys admin implementations, 11 different org admin implementations
-- **Developer confusion:** No clear standard for implementing new admin features
-
-### Specific Problems Identified
-
-1. **No standard constants:** Some modules use inline lists `['sys_owner', 'sys_admin']`, others use constants
-2. **Inconsistent patterns:** Mix of RPC calls, direct SQL queries, inline checks, and helper functions
-3. **Duplicate checks:** Lambdas checking the same auth multiple times in different handlers
-4. **Wrong parameter types:** Some functions incorrectly passing `user_id` instead of `jwt` to RPCs
-5. **No workspace standardization:** Only module-ws has workspace admin patterns, other modules lack them
-6. **Performance issues:** Multiple profile queries per request in some lambdas (e.g., module-chat: 17 queries)
+**Status:** Approved  
+**Date:** January 30, 2026 (Updated: January 31, 2026)  
+**Decision Makers:** Product Team  
+**Impact:** Full-stack authorization across all CORA modules
 
 ---
 
-## Decision
+## Overview
 
-We will standardize authentication and authorization across all CORA modules using a three-tiered approach:
+This ADR is the **single authoritative source** for CORA authorization patterns. It defines the complete auth lifecycle from frontend to database, covering all three authorization levels: System (sys), Organization (org), and Workspace (ws).
 
-### 1. Standard Constants (DRY Principle)
+**Sub-documents:**
+- [ADR-019a: Frontend Authorization](./ADR-019a-AUTH-FRONTEND.md) - React hooks, context, loading states
+- [ADR-019b: Backend Authorization](./ADR-019b-AUTH-BACKEND.md) - Lambda patterns, RPC functions, database
 
-Define role constants in the org-common layer:
+---
 
+## The Problem
+
+CORA previously lacked consistent authorization patterns across layers, causing:
+- **2-8 hours wasted debugging auth issues per module**
+- Inconsistent implementations across frontend and backend
+- Developer confusion about which pattern to use
+- 17x duplicate auth checks in some modules (module-chat)
+- Security gaps from mismatched frontend/backend validation
+
+---
+
+## The Solution: Unified Auth Lifecycle
+
+All CORA authorization follows a consistent pattern from frontend to database:
+
+```mermaid
+flowchart TB
+    subgraph Frontend["Frontend (Next.js)"]
+        direction TB
+        F1[useUser hook] --> F2{Route Type?}
+        F2 -->|/admin/sys/*| F3a[useRole - check sysRole]
+        F2 -->|/admin/org/*| F3b[useRole + useOrganizationContext]
+        F2 -->|/admin/ws/*| F3c[useWorkspace context]
+        F3a --> F4[Loading state check]
+        F3b --> F4
+        F3c --> F4
+        F4 --> F5[API call with context IDs]
+    end
+    
+    subgraph Gateway["API Gateway"]
+        G1[Route Classification]
+        G1 -->|/admin/sys/*| G2a[Lambda Authorizer]
+        G1 -->|/admin/org/*| G2b[Lambda Authorizer + orgId param]
+        G1 -->|/admin/ws/*| G2c[Lambda Authorizer + wsId param]
+    end
+    
+    subgraph Lambda["Lambda (Centralized Router Auth)"]
+        direction TB
+        L1[get_user_from_event] --> L2[get_supabase_user_id]
+        L2 --> L3{Route Prefix?}
+        L3 -->|/admin/sys/*| L4a[check_sys_admin]
+        L3 -->|/admin/org/*| L4b["get_org_context_from_event<br/>check_org_admin"]
+        L3 -->|/admin/ws/*| L4c["get_ws_context_from_event<br/>check_ws_admin"]
+        L4a --> L5[403 or Execute Handler]
+        L4b --> L5
+        L4c --> L5
+    end
+    
+    subgraph Database["Database (Supabase RPC)"]
+        D1["user_auth_ext_ids<br/>external_uid → user_id"]
+        D2a["is_sys_admin<br/>user_profiles.sys_role"]
+        D2b["is_org_admin<br/>org_members.org_role"]
+        D2c["is_ws_admin<br/>ws_members.ws_role"]
+    end
+    
+    F5 --> G1
+    G2a --> L1
+    G2b --> L1
+    G2c --> L1
+    L2 --> D1
+    L4a --> D2a
+    L4b --> D2b
+    L4c --> D2c
+```
+
+---
+
+## Authorization Matrix
+
+This table defines the **single source of truth** for authorization patterns at each level:
+
+| Route Pattern | Frontend Hook | Lambda Helper | RPC Function | Database Table |
+|--------------|---------------|---------------|--------------|----------------|
+| `/admin/sys/*` | `useRole()` → check `sysRole` | `check_sys_admin(user_id)` | `is_sys_admin(p_user_id)` | `user_profiles.sys_role` |
+| `/admin/org/*` | `useRole()` + `useOrganizationContext()` | `check_org_admin(user_id, org_id)` | `is_org_admin(p_user_id, p_org_id)` | `org_members.org_role` |
+| `/admin/ws/*` | `useWorkspace()` | `check_ws_admin(user_id, ws_id)` | `is_ws_admin(p_user_id, p_ws_id)` | `ws_members.ws_role` |
+
+---
+
+## Role Definitions
+
+### System Level (Platform-Wide)
+
+| Role | Column | Description |
+|------|--------|-------------|
+| `sys_owner` | `user_profiles.sys_role` | Platform owner - full system access |
+| `sys_admin` | `user_profiles.sys_role` | System administrator - cross-org management |
+
+**Constants:**
 ```python
-# In org_common/__init__.py
 SYS_ADMIN_ROLES = ['sys_owner', 'sys_admin']
+```
+
+### Organization Level (Per-Org Membership)
+
+| Role | Column | Description |
+|------|--------|-------------|
+| `org_owner` | `org_members.org_role` | Organization owner - full org access |
+| `org_admin` | `org_members.org_role` | Organization admin - org management |
+
+**Constants:**
+```python
 ORG_ADMIN_ROLES = ['org_owner', 'org_admin']
+```
+
+### Workspace Level (Per-Workspace Membership)
+
+| Role | Column | Description |
+|------|--------|-------------|
+| `ws_owner` | `ws_members.ws_role` | Workspace owner - full workspace access |
+| `ws_admin` | `ws_members.ws_role` | Workspace admin - workspace management |
+| `ws_user` | `ws_members.ws_role` | Workspace user - standard access |
+
+**Constants:**
+```python
 WS_ADMIN_ROLES = ['ws_owner', 'ws_admin']
 ```
 
-### 2. Standard Helper Functions
+---
 
-Implement reusable helper functions in org-common layer:
+## Key Principles
 
-```python
-# In org_common/auth_helpers.py
+### 1. Two-Tier Identity Architecture
 
-def is_sys_admin(user_id: str) -> bool:
-    """Check if user has system admin privileges."""
-    profile = find_one('user_profiles', {'user_id': user_id})
-    return profile and profile.get('sys_role') in SYS_ADMIN_ROLES
-
-def is_org_admin(org_id: str, user_id: str) -> bool:
-    """Check if user has organization admin privileges."""
-    membership = find_one('org_members', {'org_id': org_id, 'user_id': user_id})
-    return membership and membership.get('org_role') in ORG_ADMIN_ROLES
-
-def is_ws_admin(ws_id: str, user_id: str) -> bool:
-    """Check if user has workspace admin privileges."""
-    result = rpc('is_ws_admin_or_owner', {'p_ws_id': ws_id, 'p_user_id': user_id})
-    return result is True
 ```
+┌─────────────────────────────────────────────────────────────┐
+│                   CORA Identity Architecture                 │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Tier 1: External Identity (Okta/Clerk)                     │
+│  ├─ JWT Token contains: external_uid (e.g., Okta user ID)   │
+│  ├─ Available in: user_info from get_user_from_event()      │
+│  └─ Does NOT contain: roles, permissions, profile data      │
+│                                                              │
+│  Tier 2: Internal Identity (Supabase)                       │
+│  ├─ Database stores: user_id (Supabase auth.users ID)       │
+│  ├─ Role tables: user_profiles, org_members, ws_members     │
+│  └─ Must query database to get authorization data           │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Critical:** JWT tokens do NOT contain role information. Roles are always in the database.
+
+### 2. Context Extraction (org_id, ws_id)
+
+Users can belong to multiple organizations and workspaces with different roles. The frontend provides context:
+
+- **Frontend** selects org/workspace and passes ID in request
+- **Lambda** extracts context using helper functions
+- **Database** validates membership and role
 
 ### 3. Centralized Router Auth Pattern
 
-Prefer centralized authorization at the router level (one check per request):
+Admin Lambdas use centralized authorization at the router level:
 
 ```python
-# At router level (lambda_handler entry point)
 def lambda_handler(event, context):
-    # Extract user info once
-    profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
-    path = event.get('rawPath', '')
-    
-    # System admin routes
+    # Single auth check at router
     if path.startswith('/admin/sys/'):
-        if not common.is_sys_admin(profile.get('user_id')):
-            return common.forbidden_response('System admin role required')
+        if not common.check_sys_admin(user_id):
+            return common.forbidden_response('System admin required')
     
-    # Organization admin routes
     elif path.startswith('/admin/org/'):
-        if not common.is_org_admin(org_id, profile.get('user_id')):
-            return common.forbidden_response('Organization admin role required')
+        org_id = common.get_org_context_from_event(event)
+        if not common.check_org_admin(user_id, org_id):
+            return common.forbidden_response('Org admin required')
     
-    # Workspace admin routes
-    elif path.startswith('/ws/admin/'):
-        if not common.is_ws_admin(ws_id, profile.get('user_id')):
-            return common.forbidden_response('Workspace admin role required')
-    
-    # Route to handlers
-    return route_to_handler(event, context)
+    # Handlers contain business logic only - no auth checks
+    return handle_route(...)
 ```
 
-### 4. No Role Inheritance
+### 4. Unified Auth Functions
 
-**Critical Decision:** There is NO automatic inheritance between admin levels.
+The **same RPC functions** are used in:
+- Lambda authorization checks
+- Row Level Security (RLS) policies
+- Database triggers
 
-```
-sys_admin → ONLY sys admin features (platform-wide operations)
-            NO automatic org_admin access
-            NO automatic ws_admin access
-            
-org_admin → ONLY org admin features (org-scoped operations)
-            NO automatic sys_admin access
-            NO automatic ws_admin access
-            
-ws_admin  → ONLY workspace admin features (ws-scoped operations)
-            NO automatic sys_admin access
-            NO automatic org_admin access
-```
-
-**Exception:** sys_admin can bypass RLS via the admin database role, but ONLY on `/admin/sys/*` routes. This does not grant org or workspace access without explicit membership.
-
-### 5. Resource Sharing Pattern
-
-Chat and voice sessions follow consistent authorization:
-
-1. **Owner check:** User created the resource → allow
-2. **Workspace sharing:** Resource linked to workspace → all workspace members can access
-3. **Direct sharing:** Resource explicitly shared via `{module}_shares` table
-
-Implementation via RPC functions for performance:
-
-```sql
-CREATE OR REPLACE FUNCTION can_access_chat(
-    p_resource_id uuid,
-    p_user_id uuid
-) RETURNS boolean AS $$
-    -- Check owner, workspace membership, and direct shares
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
+This guarantees consistency across all access paths.
 
 ---
 
-## Consequences
+## Implementation Details
 
-### Positive
+### Frontend Implementation
 
-1. **Single Source of Truth:** All auth logic in one place (org-common layer)
-2. **Performance Improvement:** Single profile query per request via centralized router auth
-3. **Reduced Code Duplication:** Standard constants and helpers eliminate 27+ duplicate implementations
-4. **Easier Validation:** Automated tools can verify compliance with standards
-5. **Better Security:** Consistent implementation reduces vulnerability surface
-6. **Developer Productivity:** Clear patterns reduce onboarding time by ~50%
-7. **Maintainability:** Changes to auth logic only need updates in one place
+See: [ADR-019a: Frontend Authorization](./ADR-019a-AUTH-FRONTEND.md)
 
-### Negative
+**Covers:**
+- useUser() hook requirements
+- useRole() hook for admin pages
+- useOrganizationContext() for org routes
+- Loading state patterns
+- API client configuration
 
-1. **Migration Effort:** 27 lambdas need updates (estimated 32-46 hours across 4 sprints)
-2. **Breaking Changes:** Existing auth patterns must be refactored
-3. **Testing Burden:** Each lambda needs comprehensive auth testing after migration
-4. **Coordination Required:** Changes to org-common layer affect all modules
-5. **Rollout Complexity:** Must migrate in phases to avoid disruption
+### Backend Implementation
 
-### Neutral
+See: [ADR-019b: Backend Authorization](./ADR-019b-AUTH-BACKEND.md)
 
-1. **Learning Curve:** Developers must learn the new standard patterns
-2. **Documentation Needs:** Comprehensive docs required for adoption
-3. **Validation Tooling:** Need to create/maintain auth pattern validators
-
----
-
-## Implementation
-
-### Phase 1: Foundation (Sprint S0 - Analysis)
-
-- [x] Audit all 27 lambdas for current auth patterns
-- [x] Define standard constants and helper functions
-- [x] Document role hierarchy and access rules
-- [ ] Create ADR (this document)
-- [ ] Update .clinerules with standards
-- [ ] Create validation script skeleton
-
-### Phase 2: Organization Admin (Sprint S1)
-
-- Migrate 11 lambdas with org admin routes
-- Focus on eliminating duplicate checks (invites: 3x, orgs: 2x)
-- Implement `ORG_ADMIN_ROLES` constant everywhere
-- Centralize router auth where possible
-
-### Phase 3: System Admin (Sprint S2)
-
-- Migrate 12 lambdas with sys admin routes
-- Implement `SYS_ADMIN_ROLES` constant everywhere
-- Centralize router auth where possible
-- Verify module-mgmt reference pattern
-
-### Phase 4: Workspace Admin + Sharing (Sprint S3)
-
-- Migrate 4 lambdas with workspace admin routes
-- Standardize workspace role checks via RPC
-- Implement consistent sharing patterns for chat/voice/kb
-- Create sharing RPC functions
+**Covers:**
+- Lambda centralized router pattern
+- org-common helper functions
+- External UID → Supabase UUID mapping
+- Database RPC functions
+- RLS policy patterns
 
 ---
 
 ## Validation
 
-### Automated Checks
+Authorization patterns are validated by the comprehensive api-tracer validator:
 
-Create validator script that checks:
-- ✅ All modules use standard constants (`SYS_ADMIN_ROLES`, `ORG_ADMIN_ROLES`, `WS_ADMIN_ROLES`)
-- ✅ No inline role lists (e.g., `['sys_owner', 'sys_admin']`)
-- ✅ No duplicate auth checks within same lambda
-- ✅ All org admin routes validate `org_id`
-- ✅ Centralized router auth used where possible
-- ✅ Helper functions used instead of direct SQL/RPC calls
+```bash
+# Run full auth lifecycle validation
+python validation/api-tracer/tracer.py --auth-check
+```
 
-### Manual Review
-
-Security review checklist:
-- [ ] No auth bypass vulnerabilities
-- [ ] Role hierarchy correctly enforced (no unintended inheritance)
-- [ ] All workspace resources properly authorized
-- [ ] Sharing patterns correctly implemented
-- [ ] Error messages don't leak sensitive information
+**Checks:**
+- Frontend: Hook usage, context extraction, loading states
+- Lambda: Helper function usage, centralized router pattern
+- Database: RPC function existence, parameter order
 
 ---
 
-## Alternatives Considered
+## Migration Notes
 
-### Alternative 1: Role Inheritance Model
+### Breaking Changes from Pre-ADR-019
 
-**Approach:** sys_admin automatically gets org_admin and ws_admin privileges.
-
-**Rejected because:**
-- Violates principle of least privilege
-- Creates security risk (platform admins shouldn't auto-access all orgs/workspaces)
-- Makes auditing difficult (hard to distinguish sys ops from org/ws ops)
-- CORA's multi-tenant model requires strict isolation
-
-### Alternative 2: Per-Lambda Auth (Status Quo)
-
-**Approach:** Each lambda implements auth checks independently.
-
-**Rejected because:**
-- Already proven problematic (duplicate code, inconsistent patterns)
-- High maintenance burden (changes require updating 27+ locations)
-- Performance issues (multiple profile queries per request)
-- Error-prone (easy to forget auth checks in new handlers)
-
-### Alternative 3: API Gateway Authorizer Only
-
-**Approach:** All auth logic in API Gateway Lambda authorizer.
-
-**Rejected because:**
-- Authorizer only validates JWT, not role-based access
-- Business logic auth (org_id, ws_id validation) still needed in Lambdas
-- Would require major architectural change
-- Doesn't solve the internal consistency problem
+1. **RPC function renames:**
+   - `is_ws_admin_or_owner()` → `is_ws_admin()`
+   
+2. **Parameter order standardized:**
+   - All functions: `(p_user_id UUID, p_context_id UUID?)`
+   
+3. **JWT-claims-based functions removed:**
+   - Old `is_sys_admin()` (no parameters) removed
+   - Old `is_org_admin()` (no parameters) removed
 
 ---
 
 ## References
 
-- **Original Discussion:** Admin Standardization Initiative (January 2026)
-- **Related Issue:** Module-chat auth broken (passing user_id instead of JWT)
-- **Prior Work:** ADR-015 (Admin Page Auth Pattern), ADR-016 (Org Admin Auth)
-- **Implementation Plan:** `docs/plans/plan_s0-auth-standardization.md`
-- **Context:** `memory-bank/context-auth-standardization.md`
+- [ADR-019a: Frontend Authorization](./ADR-019a-AUTH-FRONTEND.md)
+- [ADR-019b: Backend Authorization](./ADR-019b-AUTH-BACKEND.md)
+- [ADR-019 Appendix A: Options Comparison](./ADR-019-AUTH-STANDARDIZATION-APPENDIX-A-COMPARISON.md)
+- [Lambda Authorization Guide](../standards/standard_LAMBDA-AUTHORIZATION.md)
+- [Sprint Plan: S1 Auth Standardization](../plans/plan_s1-auth-standardization.md)
 
 ---
 
-## Notes
-
-**Performance Impact:** Centralized router auth reduces profile queries from N (per handler) to 1 (per request). For module-chat, this is a 17x reduction.
-
-**Security Impact:** Standardizing auth patterns makes security audits easier and reduces the attack surface by eliminating inconsistent implementations.
-
-**Developer Impact:** New developers can reference a single standard pattern instead of learning 27 different approaches. Estimated 50% reduction in auth-related onboarding time.
-
----
-
-**Status:** ✅ Accepted  
-**Next Steps:** Complete S0 deliverables, begin S1 (org admin migration)
+**Status:** ✅ Approved  
+**Next Step:** Implement validation suite and fix non-compliant code  
+**Tracking:** Sprint S1 of Auth Standardization Initiative

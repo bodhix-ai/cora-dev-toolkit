@@ -24,12 +24,21 @@ import {
   TableRow,
   Paper,
 } from "@mui/material";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, AuthAdapter } from "@{{PROJECT_NAME}}/module-access";
 import {
   getOrgAdminAnalytics,
   getOrgAdminUserStats,
   getOrgAdminWorkspaceStats,
 } from "../../lib/api";
+
+/**
+ * Props for OrgAnalyticsTab
+ * ADR-019: orgId and authAdapter passed from parent page
+ */
+interface OrgAnalyticsTabProps {
+  orgId: string;
+  authAdapter: AuthAdapter;
+}
 
 interface AnalyticsData {
   totalSessions: number;
@@ -52,8 +61,8 @@ interface WorkspaceStats {
   }>;
 }
 
-export function OrgAnalyticsTab(): React.ReactElement {
-  const { isAuthenticated, authAdapter } = useUser();
+export function OrgAnalyticsTab({ orgId, authAdapter }: OrgAnalyticsTabProps): React.ReactElement {
+  const { isAuthenticated } = useUser();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
@@ -75,9 +84,9 @@ export function OrgAnalyticsTab(): React.ReactElement {
         }
         
         const [analyticsData, userData, workspaceData] = await Promise.all([
-          getOrgAdminAnalytics(token),
-          getOrgAdminUserStats(token),
-          getOrgAdminWorkspaceStats(token),
+          getOrgAdminAnalytics(token, orgId),
+          getOrgAdminUserStats(token, orgId),
+          getOrgAdminWorkspaceStats(token, orgId),
         ]);
 
         setAnalytics(analyticsData);

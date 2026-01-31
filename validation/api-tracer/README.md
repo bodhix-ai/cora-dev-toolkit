@@ -591,3 +591,124 @@ Session 7 will add:
 
 **Session 7 Status:** ✅ Cross-layer validation complete
 **Dispatcher Pattern:** ✅ Docstring route parsing supported (Nov 30, 2025)
+**Auth Lifecycle Validation:** ✅ ADR-019 compliance (Jan 31, 2026)
+**Code Quality Validation:** ✅ Integrated validators (Jan 31, 2026)
+
+---
+
+## Auth Lifecycle Validation (ADR-019)
+
+Added in Session 4 of Auth Standardization Sprint.
+
+### Overview
+
+Validates auth patterns across frontend and Lambda layers per ADR-019:
+
+**Frontend Checks:**
+- `useUser()` / `useSession()` hook usage
+- `useRole()` hooks for admin pages
+- `useOrganizationContext()` for org routes
+- Loading state checks before render
+- Direct role access anti-pattern detection
+
+**Lambda Checks:**
+- `check_sys_admin()` for `/admin/sys/*` routes
+- `check_org_admin()` for `/admin/org/*` routes
+- `check_ws_admin()` for `/admin/ws/*` routes
+- `get_org_context_from_event()` for org context
+- External UID → Supabase UUID conversion
+- Direct JWT role access anti-pattern
+
+### CLI Options
+
+```bash
+# Disable auth validation
+python cli.py --path /project --no-auth
+
+# Run only auth validation
+python cli.py --path /project --auth-only
+```
+
+---
+
+## Code Quality Validation (Integrated)
+
+Added in Session 5 of Auth Standardization Sprint (Phase 1B).
+
+### Overview
+
+Consolidates 6 standalone validators into api-tracer for single-pass validation:
+
+| Validator | Category | Layer | Checks |
+|-----------|----------|-------|--------|
+| Import Validator | `import` | Lambda | org_common function signatures, deprecated params |
+| API Response Validator | `response_format` | Lambda + Frontend | camelCase keys in API responses |
+| Admin Route Validator | `route_naming` | Gateway | Route naming per ADR-018b |
+| Key Consistency Validator | `key_consistency` | Lambda | Dict key consistency (creation vs access) |
+| RPC Function Validator | `rpc` | Lambda | RPC function existence |
+| Role Naming Validator | `role_naming` | Lambda + Frontend | sys_role, org_role, ws_role standards |
+
+### CLI Options
+
+```bash
+# Disable code quality validation
+python cli.py --path /project --no-quality
+
+# Run only code quality validation
+python cli.py --path /project --quality-only
+```
+
+### Example Output (JSON)
+
+```json
+{
+  "summary": {
+    "code_quality_validation": {
+      "enabled": true,
+      "errors": 5,
+      "warnings": 2,
+      "total_issues": 7,
+      "by_category": {
+        "role_naming": 2,
+        "response_format": 3,
+        "import": 2
+      }
+    }
+  }
+}
+```
+
+### Issue Categories
+
+#### `role_naming` - Role Naming Standards
+Detects anti-patterns:
+- `global_role` → should be `sys_role`
+- `platform_admin` → should be `sys_admin`
+- `globalRole` (TS) → should be `sysRole`
+
+#### `response_format` - API Response Format
+Detects:
+- Snake_case keys in API responses
+- Snake_case interface properties in TypeScript
+
+#### `import` - org_common Import Signatures
+Detects:
+- Deprecated parameters (e.g., `order_by`)
+- Unknown parameters
+- Missing required parameters
+
+#### `key_consistency` - Dictionary Key Consistency
+Detects bugs where:
+- Function A creates `{'modelId': ...}`
+- Function B accesses `dict['model_id']` - MISMATCH!
+
+#### `route_naming` - Admin Route Naming (ADR-018b)
+Detects:
+- Missing scope (sys/org/ws) in admin routes
+- Invalid module shortnames
+- Trailing slashes
+- Uppercase in paths
+
+#### `rpc` - RPC Function Validation
+Detects:
+- RPC function calls to non-existent database functions

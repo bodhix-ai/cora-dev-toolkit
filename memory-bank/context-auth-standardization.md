@@ -1,12 +1,13 @@
 # Context: Authentication Standardization
 
-**Created:** January 30, 2026
-**Last Updated:** January 30, 2026 - Expanded Scope to All 27 Lambdas
-**Primary Focus:** Standardization of authentication patterns across all CORA modules (sys, org, ws admin)
+**Created:** January 30, 2026  
+**Updated:** January 31, 2026  
+**Primary Focus:** Standardization of authentication patterns across all CORA modules + Full Lifecycle Validation  
+**Current Sprint:** S2
 
 ## Initiative Overview
 
-The goal of this initiative is to standardize authentication and authorization patterns across **all 27 Lambda functions** in the 8 CORA modules. Currently, modules use inconsistent patterns for checking system admin, organization admin, and workspace admin privileges, leading to fragile code, security risks, and developer confusion.
+The goal of this initiative is to standardize authentication patterns across all 8 CORA modules AND create integrated validation tools to enforce ADR-019 compliance.
 
 **Problem:**
 - **12 different implementations** of sys admin checks across modules
@@ -15,266 +16,260 @@ The goal of this initiative is to standardize authentication and authorization p
 - Inconsistent auth checks (some use RPC, some direct SQL, some inline, some helpers)
 - Module-chat was broken due to incorrect pattern (passing user_id instead of JWT to RPC)
 - 2-8 hours wasted per module debugging auth issues
-- No standard pattern for workspace admin authorization
+- **No integrated validation for full auth lifecycle (frontend + backend)**
+- **Fragmented validation results make it hard to identify related issues**
+- **Standalone frontend/backend validators provide incomplete assurance**
 
 **Solution:**
-- Create standardized auth helper functions in `org-common` layer
-- Define standard patterns for sys_admin, org_admin, and ws_admin checks
-- Implement DRY principle: single source of truth for each auth level
-- Migrate all 27 lambdas to use standard patterns
-- Enforce standards via validation tools
-
-## Sprint Structure
-
-The initiative is organized into 4 sprints:
-
-| Sprint | Focus | Lambdas | Estimated Effort |
-|--------|-------|---------|------------------|
-| **S0** | Analysis & Standards Definition | All 27 | 4-6 hours |
-| **S1** | Org Admin Standardization | 11 lambdas | 8-12 hours |
-| **S2** | Sys Admin Standardization | 12 lambdas | 8-12 hours |
-| **S3** | WS Admin Standardization | 4 lambdas + shared resources | 12-16 hours |
-
-**Total Estimated Effort:** 32-46 hours (4-6 weeks at part-time pace)
+- Create helper functions in org-common layer (check_sys_admin, check_org_admin, check_ws_admin)
+- Implement ADR-019 standard patterns for Lambda authorization
+- **REVISED: Extend api-tracer to ALWAYS validate full auth lifecycle (no standalone validators)**
+- Auth validation integrated into api-tracer as a core feature, not an optional flag
 
 ## Sprint History
 
 | Sprint | Branch | Plan | Status | Completed |
-|--------|--------|------|--------|--------------
-| S0 | `auth-standardization-s0` | `plan_s0-auth-standardization.md` | 🟡 Active | - |
-| S1 | TBD | `plan_s1-auth-standardization.md` (to be created) | ⚪ Planned | - |
-| S2 | TBD | `plan_s2-auth-standardization.md` (to be created) | ⚪ Planned | - |
-| S3 | TBD | `plan_s3-auth-standardization.md` (to be created) | ⚪ Planned | - |
-
-## Current Sprint: S0 - Analysis & Standards Definition
-
-- **Branch:** `auth-standardization-s0`
-- **Plan:** `docs/plans/plan_s0-auth-standardization.md`
-- **Focus:** 
-  - Audit all 27 lambdas for current auth patterns
-  - Define standard patterns for sys, org, ws admin checks
-  - Document role hierarchy and access rules
-  - Create implementation roadmap for S1-S3
-
-## Lambda Inventory (27 Total)
-
-### Core Modules (18 Lambdas)
-
-**module-access (7):**
-- identities-management (sys admin)
-- idp-config (sys admin)
-- invites (org admin - 3 duplicate checks!)
-- members (sys + org admin)
-- org-email-domains (sys admin)
-- orgs (sys + org admin - 2 duplicate checks!)
-- profiles (sys admin)
-
-**module-ai (2):**
-- provider (sys admin via helper)
-- ai-config-handler (sys admin via helper)
-
-**module-chat (3):**
-- chat-session (sys + org admin - centralized router)
-- chat-message (org admin)
-- chat-stream (no admin routes)
-
-**module-kb (3):**
-- kb-processor (SQS - no admin routes)
-- kb-base (sys + org admin)
-- kb-document (sys + org admin)
-
-**module-mgmt (1):**
-- lambda-mgmt (sys + org admin - **REFERENCE PATTERN**)
-
-**module-ws (2):**
-- workspace (sys + org + ws admin - good helpers)
-- cleanup (internal - no admin routes)
-
-### Functional Modules (9 Lambdas)
-
-**module-eval (3):**
-- eval-config (sys + org admin)
-- eval-processor (SQS - no admin routes)
-- eval-results (sys + org admin)
-
-**module-voice (6):**
-- voice-analytics (needs analysis)
-- voice-configs (needs analysis)
-- voice-credentials (needs analysis)
-- voice-sessions (needs analysis)
-- voice-transcripts (needs analysis)
-- voice-websocket (needs analysis)
-
-## Key Architectural Decisions
-
-### 1. No Role Inheritance
-
-**CRITICAL:** Role levels are completely independent with NO inheritance:
-
-- **sys_admin** → ONLY sys admin features (platform-wide operations)
-- **org_admin** → ONLY org admin features (organization-scoped operations)
-- **ws_admin** → ONLY workspace admin features (workspace-scoped operations)
-
-A sys_admin does NOT automatically get org_admin or ws_admin privileges. They must be explicitly granted those roles for specific organizations/workspaces.
-
-**Exception:** sys_admin can bypass RLS using the admin role, but ONLY on admin/sys routes (e.g., `/admin/sys/*`). This does not grant them org or workspace access.
-
-### 2. Standard Function Location
-
-All standard auth helper functions will be implemented in the **org-common layer** (`module-access/backend/layers/org-common/python/org_common/`).
-
-This ensures:
-- Single source of truth (DRY)
-- Shared across all modules
-- Easy to update and maintain
-- Consistent performance optimization
+|--------|--------|------|--------|-----------|
+| S0 | `auth-standardization-s0` | `plan_s0-auth-standardization.md` | ✅ Complete | 2026-01-30 |
+| S1 | `auth-standardization-s1` | `plan_s1-auth-standardization.md` | ✅ Complete | 2026-01-31 |
+| S2 | `auth-standardization-s2` | `plan_s2-auth-standardization.md` | 🟡 Active | - |
 
 ### 3. Workspace Role Assessment
 
-All workspace role checks must use a single common method:
-- DRY principle (one place to update)
-- Performance-optimized (fastest execution)
-- Consistent across all modules
+- **Branch:** `auth-standardization-s2`
+- **Plan:** `docs/plans/plan_s2-auth-standardization.md`
+- **Focus:** Fix remaining auth validation errors across modules
+- **Priority:** 
+  1. Fix auth errors by module (41 remaining across 7 modules)
+  2. Investigate key_consistency errors (679 errors)
+  3. Run final validation to confirm fixes
 
 Implementation: RPC function `is_ws_admin()` or helper `_is_ws_admin()` that calls the RPC.
 
-### 4. Chat and Voice Sharing Pattern
-
-Chat and voice sessions follow similar authorization patterns:
-
-**Ownership:**
-- Each session has an `owner` (user_id)
-- Owner has full access to the session
-
-**Sharing Mechanisms:**
-- **Workspace sharing:** Session linked to workspace_id → all workspace members can access
-- **Direct sharing:** Session explicitly shared via `chat_shares` or `voice_shares` table
-
-**Authorization Check Order:**
-1. Is user the owner? → Allow
-2. Is session in a workspace the user is a member of? → Allow
-3. Is session directly shared with user? → Allow
-4. Otherwise → Deny
-
-### 5. Standard Auth Pattern
-
-**Preferred Pattern (from module-mgmt):**
-```python
-# At router level (once per request)
-profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
-
-# System admin routes
-if path.startswith('/admin/sys/'):
-    is_sys_admin = profile.get('sys_role') in SYS_ADMIN_ROLES
-    if not is_sys_admin:
-        return common.forbidden_response('System admin role required')
-
-# Organization admin routes
-elif path.startswith('/admin/org/'):
-    is_org_admin = profile.get('org_role') in ORG_ADMIN_ROLES  # Note: org_role is in org_members, not user_profiles!
-    if not is_org_admin:
-        return common.forbidden_response('Organization admin role required')
-
-# Workspace admin routes
-elif path.startswith('/ws/admin/'):
-    is_ws_admin = _is_ws_admin(workspace_id, user_id)
-    if not is_ws_admin:
-        return common.forbidden_response('Workspace admin role required')
-```
-
-**Benefits:**
-- Single profile query per request
-- Centralized authorization at router level
-- Clear, auditable security model
-- Impossible to forget auth check
-
-## Patterns to Standardize
-
-### Current Issues
-
-| Pattern | Count | Problem | Solution |
-|---------|-------|---------|----------|
-| Inline `sys_role in ['sys_owner', 'sys_admin']` | 4 | Duplicated code | Use constant `SYS_ADMIN_ROLES` |
-| Inline `org_role in ['org_admin', 'org_owner']` | 5 | Duplicated code | Use constant `ORG_ADMIN_ROLES` |
-| Per-handler auth checks | 15 | Multiple queries, error-prone | Centralized router auth |
-| Missing org_id validation | 3 | Security risk | Always validate org_id for org routes |
-| Wrong parameter type (user_id vs JWT) | 1 | Broken auth | Always use JWT for RPCs |
-
-### Standard Constants
-
-Add to `org_common/__init__.py`:
-```python
-# Role constants
-SYS_ADMIN_ROLES = ['sys_owner', 'sys_admin']
-ORG_ADMIN_ROLES = ['org_owner', 'org_admin']
-WS_ADMIN_ROLES = ['ws_owner', 'ws_admin']
-```
-
-### Standard Helper Functions
-
-Add to `org_common/auth_helpers.py` (new file):
-```python
-def is_sys_admin(user_id: str) -> bool:
-    """Check if user has sys admin privileges."""
-    profile = find_one('user_profiles', {'user_id': user_id})
-    return profile and profile.get('sys_role') in SYS_ADMIN_ROLES
-
-def is_org_admin(org_id: str, user_id: str) -> bool:
-    """Check if user has org admin privileges."""
-    membership = find_one('org_members', {'org_id': org_id, 'user_id': user_id})
-    return membership and membership.get('org_role') in ORG_ADMIN_ROLES
-
-def is_ws_admin(ws_id: str, user_id: str) -> bool:
-    """Check if user has workspace admin privileges."""
-    result = rpc('is_ws_admin_or_owner', {'p_ws_id': ws_id, 'p_user_id': user_id})
-    return result is True
-```
-
-## Success Criteria
-
-**Sprint S0 (Analysis):**
-- ✅ Complete audit of all 27 lambdas
-- ✅ Document current auth patterns and issues
-- ✅ Define standard patterns and constants
-- ✅ Create S1-S3 sprint plans
-
-**Sprint S1 (Org Admin):**
-- All 11 org admin lambdas use standard pattern
-- Single constant `ORG_ADMIN_ROLES` used everywhere
-- Centralized router auth where possible
-- No duplicate auth checks
-
-**Sprint S2 (Sys Admin):**
-- All 12 sys admin lambdas use standard pattern
-- Single constant `SYS_ADMIN_ROLES` used everywhere
-- Centralized router auth where possible
-- No duplicate auth checks
-
-**Sprint S3 (WS Admin):**
-- All workspace resources use standard `is_ws_admin()` helper
-- Chat and voice sharing patterns standardized
-- Workspace-scoped resources properly authorized
-- No duplicate auth checks
-
-**Overall Success:**
-- Zero auth-related bugs in production
-- Developer onboarding time reduced by 50%
-- Auth pattern validation in CI/CD
-- Comprehensive auth documentation
+- **ADR-019 Standard:** Use parameterized RPC functions wrapped in Python helpers
+- **Database RPCs:** is_sys_admin(), is_org_admin(), is_ws_admin() in database
+- **Python Helpers:** check_sys_admin(), check_org_admin(), check_ws_admin() in org-common
+- **Org Context:** Frontend passes orgId in request; Lambda extracts via get_org_context_from_event()
+- **Validation Strategy (REVISED):** Integrated full lifecycle auth validation in api-tracer
+  - Auth validation is CORE functionality, not an optional flag
+  - No standalone frontend/backend auth validators (they provide incomplete assurance)
+  - api-tracer ALWAYS validates full auth lifecycle (Frontend + Gateway + Lambda)
 
 ## Session Log
 
-### January 30, 2026 - Initiative Start
-- Initiative created following discovery of critical auth issues
-- Initial plan focused only on sys admin standardization
-- Plan created: `docs/plans/plan_auth-standardization.md`
-- Context file created
+### January 30, 2026 - Sprint S0 Complete
+- Initiative created following discovery of critical auth issues in Sprint S4
+- Comprehensive analysis: 27 lambdas audited (12 sys, 11 org, 4 ws admin)
+- Created ADR-019: Auth Standardization Strategy
+- Updated .clinerules with auth standards
+- Created validation script skeleton
+- Detailed S1-S3 implementation plans (143 steps)
+- PR #82 created for S0
+- Time: ~5-6 hours
 
-### January 30, 2026 - Scope Expansion
-- Scope expanded to cover sys, org, and ws admin across all 27 lambdas
-- Conducted comprehensive audit of all lambda functions
-- Identified 12 sys admin, 11 org admin, and 4 ws admin implementations
-- Defined S0-S3 sprint structure
-- Clarified role hierarchy: NO inheritance between levels
-- Documented chat/voice sharing patterns
-- Updated plan and context files with expanded scope
+### January 30, 2026 - Sprint S1 Session 1
+- Branch: `auth-standardization-s1`
+- Updated ADR-019 with org context extraction patterns
+- Updated Lambda Authorization Standard with complete flow diagrams
+- Initial validation analysis
+- Time: ~3-4 hours
+
+### January 31, 2026 - Sprint S1 Session 2
+**Focus:** Validation Suite Analysis & Design
+
+**Validators Analyzed:**
+- admin-auth-validator (Frontend ADR-015/016 patterns)
+- admin-route-validator (Route naming ADR-018b)
+- api-response-validator (camelCase validation)
+- api-tracer (Full-stack route matching)
+- external-uid-validator (UID conversion) - overlaps with ADR-019
+- rpc-function-validator (RPC existence)
+- lambda-auth-validator (empty placeholder)
+
+**Key Findings:**
+1. Existing validators validate frontend and backend separately
+2. No integrated view showing related auth issues by route
+3. external-uid-validator functionality should move to lambda-auth-validator
+4. api-tracer is best candidate for full lifecycle validation (already has full-stack context)
+
+**Decision: REVISED - Integrated Full Lifecycle Auth in api-tracer**
+- Auth validation integrated into api-tracer as CORE functionality (not optional flag)
+- No standalone frontend/backend auth validators (incomplete assurance)
+- api-tracer ALWAYS validates full auth lifecycle per route
+- Deprecate admin-auth-validator and external-uid-validator
+
+**Scope Expansion:**
+- Original: 8-12h (fix lambdas)
+- Revised: 16-24h (validation suite + fix lambdas)
+- Reason: Need enforcement mechanism before fixing issues
+
+**Documentation Updated:**
+- ADR-019 restructured as index doc with sub-docs
+- Plan updated with expanded scope and phases
+- Context updated with session log
+
+### January 31, 2026 - Sprint S1 Session 3 (Current)
+**Focus:** Standards Naming Convention & Documentation Structure
+
+**Standards Naming Convention Implemented:**
+- Created `00_index_STANDARDS.md` with naming convention and validator mapping
+- Approved numbering scheme:
+  - `00` = Index/Meta
+  - `01-09` = 4-Tier Architecture (front, api, back, data, quality)
+  - `10-19` = CORA Architecture
+  - `20-29` = Process (sprints, reviews)
+  - `30-39` = Operations (infra, devops, security)
+- Abbreviation: `std` (e.g., `03_std_back_AUTH.md`)
+
+**ADR-019 Sub-Documents Created:**
+- `ADR-019a-AUTH-FRONTEND.md` - Frontend authorization patterns
+- `ADR-019b-AUTH-BACKEND.md` - Backend authorization patterns
+
+**Standards Renamed:**
+| Old Name | New Name |
+|----------|----------|
+| `standard_LAMBDA-AUTHORIZATION.md` | `03_std_back_AUTH.md` |
+| `standard_CORA-FRONTEND.md` | `01_std_front_AUTH.md` |
+| `standard_API-PATTERNS.md` | `02_std_api_RESPONSE.md` |
+
+**Remaining Standards to Rename:**
+- `standard_DATABASE-NAMING.md` → `04_std_data_TABLE-NAMING.md`
+- `standard_BRANCHING-STRATEGY.md` → `31_std_devops_BRANCHING.md`
+- `standard_VERSIONING.md` → `31_std_devops_VERSIONING.md`
+- (Full mapping in `00_index_STANDARDS.md`)
+
+## Validation Suite Architecture (REVISED)
+
+**Key Insight:** api-tracer already parses Frontend, Gateway, and Lambda code. All applicable checks should run in a single pass to avoid redundant parsing.
+
+```
+api-tracer - Comprehensive Full-Stack Validator
+├── LAYER 1: Route Validation (existing)
+│   ├── Frontend → Gateway matching
+│   ├── Gateway → Lambda matching
+│   └── Path parameter validation
+│
+├── LAYER 2: Auth Lifecycle Validation (NEW)
+│   ├── Frontend auth: useUser(), useRole(), useOrganizationContext()
+│   ├── Lambda auth: check_*_admin(), external UID conversion
+│   └── Results grouped by route path
+│
+├── LAYER 3: Code Quality Checks (INTEGRATE)
+│   ├── Lambda Checks (already parsing Python):
+│   │   ├── import_validator - org_common signature validation
+│   │   ├── api-response-validator - camelCase response keys
+│   │   ├── python-key-consistency - dict key naming consistency
+│   │   └── rpc-function-validator - RPC call existence
+│   │
+│   ├── Frontend Checks (already parsing TypeScript):
+│   │   ├── api-response-validator - camelCase property access
+│   │   └── role-naming-validator - role naming standards
+│   │
+│   └── Gateway Checks (already parsing Terraform):
+│       └── admin-route-validator - route naming standards
+│
+└── Results grouped by route path (unified view)
+```
+
+**Single Parse, Multiple Checks:**
+```python
+# When api-tracer parses a Lambda file, run ALL applicable checks:
+lambda_ast = parse_lambda_file(path)
+
+# Route extraction (existing)
+routes = extract_routes(lambda_ast)
+
+# Auth validation (new)
+auth_issues = check_auth_patterns(lambda_ast)
+
+# Code quality (integrated from standalone validators)
+import_issues = check_org_common_imports(lambda_ast)
+response_issues = check_camelcase_responses(lambda_ast)
+key_issues = check_key_consistency(lambda_ast)
+rpc_issues = check_rpc_calls(lambda_ast, db_functions)
+```
+
+**Validators to Integrate into api-tracer:**
+
+| Validator | Current Status | Integration |
+|-----------|---------------|-------------|
+| admin-auth-validator | Standalone frontend | → api-tracer (auth layer) |
+| external-uid-validator | Standalone Lambda | → api-tracer (auth layer) |
+| import_validator | Standalone Lambda | → api-tracer (quality layer) |
+| api-response-validator | Standalone both | → api-tracer (quality layer) |
+| admin-route-validator | Standalone Gateway | → api-tracer (quality layer) |
+| python-key-consistency | Standalone Lambda | → api-tracer (quality layer) |
+| rpc-function-validator | Standalone Lambda | → api-tracer (quality layer) |
+| role-naming-validator | Standalone multi | → api-tracer (quality layer) |
+
+**Validators that remain standalone (different scope):**
+
+| Validator | Reason |
+|-----------|--------|
+| portability-validator | Scans all file types (.tf, .sh, .yaml, .env, etc.) |
+| db-naming-validator | Scans SQL schema files only |
+| a11y-validator | Scans HTML/React for accessibility |
+
+**Output Format (Unified View):**
+```
+Full Stack Validation Report
+
+Route: GET /admin/org/chat/config
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Gateway:
+    ✅ Route defined with authorizer
+    ✅ Route follows ADR-018b naming standard
+  Frontend:
+    ✅ useUser() present
+    ❌ Missing useOrganizationContext() for org route
+    ✅ camelCase property access
+  Lambda:
+    ✅ External UID conversion present
+    ❌ Missing check_org_admin()
+    ✅ org_common imports valid
+    ⚠️ Response key 'model_id' should be 'modelId'
+```
+
+## S1 Completion Summary (January 31, 2026)
+
+**What S1 Delivered:**
+1. ✅ Comprehensive validation suite (api-tracer with auth + code quality checks)
+2. ✅ Full documentation (ADR-019, ADR-019a, ADR-019b, standards naming convention)
+3. ✅ Chat Org Admin fully functional (Sprint S4 Issue #7 resolved)
+4. ✅ Validation baseline documented (1020 issues across 8 modules)
+5. ✅ org-common helper functions in templates
+
+**Metrics:**
+- Time: ~11 hours actual (estimated 12h)
+- Sessions: 7 sessions
+- Auth Errors Fixed: module-chat (8 → 0)
+- Remaining Auth Errors: 41 across 7 modules
+
+**Validation Results Baseline:**
+| Error Type | Count |
+|------------|-------|
+| quality_key_consistency | 679 |
+| quality_import | 31 |
+| auth_missing_org_context_extraction | 23 |
+| auth_missing_check_org_admin | 12 |
+| auth_missing_use_role | 6 |
+| auth_missing_check_sys_admin | 6 |
+| missing_lambda_handler | 2 |
+| auth_missing_org_context | 2 |
+
+## Next Steps (S2)
+
+1. **Fix auth errors by module** (41 remaining)
+   - module-voice: 11 errors
+   - module-ai: 8 errors  
+   - module-ws: 6 errors
+   - module-access: 6 errors
+   - module-kb: 5 errors
+   - module-eval: 3 errors
+   - module-mgmt: 2 errors
+
+2. **Investigate key_consistency errors** (679 errors)
+   - Determine if snake_case → camelCase migration needed
+   - Or if these are false positives
+
+3. **Final validation** after fixes complete

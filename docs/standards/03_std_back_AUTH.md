@@ -1,15 +1,22 @@
 # CORA Standard: Lambda Authorization Patterns
 
 **Status:** Active  
-**Version:** 2.0  
-**Last Updated:** January 11, 2026  
+**Version:** 3.0  
+**Last Updated:** January 31, 2026  
+**Authoritative Source:** [ADR-019: CORA Authorization Standardization](../arch%20decisions/ADR-019-AUTH-STANDARDIZATION.md)  
 **Related Standards:** [API Patterns](./standard_API-PATTERNS.md), [CORA Frontend](./standard_CORA-FRONTEND.md)
 
 ---
 
 ## Overview
 
-This document defines the standard patterns for implementing authorization in CORA Lambda functions. Following these patterns ensures consistent, secure, and maintainable authorization across all modules.
+This document provides **practical implementation guidance** for Lambda authorization patterns in CORA. For the authoritative specification, see:
+
+- **[ADR-019](../arch%20decisions/ADR-019-AUTH-STANDARDIZATION.md)** - Single source of truth for auth lifecycle
+- **[ADR-019a](../arch%20decisions/ADR-019a-AUTH-FRONTEND.md)** - Frontend authorization patterns
+- **[ADR-019b](../arch%20decisions/ADR-019b-AUTH-BACKEND.md)** - Backend authorization patterns
+
+This guide focuses on code examples and templates for common scenarios.
 
 ## Nomenclature
 
@@ -328,6 +335,137 @@ def handle_sys_update_config(body: Dict) -> Dict[str, Any]:
 3. **Single Profile Query:** Query user_profiles ONCE at router level
 4. **Handlers Stay Focused:** Business logic only, no auth code duplication
 5. **Audit Trail:** All authorization logic in one place for easy review
+
+---
+
+## Organization Context Extraction (ADR-019)
+
+**Critical Requirement:** For organization admin routes (`/admin/org/*`), the Lambda MUST extract `org_id` from the request.
+
+### Why org_id is in the Request, Not JWT
+
+**Important:** The JWT token does NOT contain `org_id` or role information. Here's why:
+
+- **Users can belong to multiple organizations** - A single user may have different roles in different orgs
+- **Frontend provides org context** - The UI lets users select which organization they're working in
+- **Selected org_id is passed in request** - Via query parameters, path parameters, or request body
+- **JWT only contains user identity** - The Okta/IDP token contains external_uid, email, name - NOT org_id or roles
+- **Roles are in the database** - `user_profiles` and `org_members` tables store authorization data
+
+### Standard Helper Function: `get_org_context_from_event()`
+
+**Function Signature:**
+```python
+def get_org_context_from_event(event) -> Optional[str]:
+    """
+    Extract organization ID from API Gateway event.
+    
+    Checks in order:
+    1. Path parameters (orgId)
+    2. Query parameters (orgId)  
+    3. Request body (orgId)
+    
+    Returns:
+        org_id (str) or None if not found
+    """
+```
+
+**Usage in Lambda:**
+
+```python
+elif path.startswith('/admin/org/'):\n    # Extract org_id from request (NOT from JWT!)
+    org_id = common.get_org_context_from_event(event)
+    
+    if not org_id:
+        return common.bad_request_response('Organization ID required in request')
+    
+    # Check org admin authorization using ADR-019 standard
+    if not common.check_org_admin(supabase_user_id, org_id):
+        return common.forbidden_response('Organization admin role required')
+```
+
+### Complete Org Admin Authorization Flow
+
+```mermaid
+sequenceDiagram
+    participant Frontend
+    participant Lambda
+    participant OrgCommon
+    participant Database
+    
+    Note over Frontend: User selects org in UI<br/>(e.g., "Acme Corp")
+    
+    Frontend->>Lambda: GET /admin/org/chat/config?orgId=uuid-123<br/>Authorization: Bearer <jwt>
+    
+    Note over Lambda: Extract JWT from header
+    Lambda->>OrgCommon: get_user_from_event(event)
+    OrgCommon-->>Lambda: user_info (okta_uid, email)
+    
+    Note over Lambda: Extract org_id from request
+    Lambda->>OrgCommon: get_org_context_from_event(event)
+    OrgCommon-->>Lambda: org_id = "uuid-123"
+    
+    Note over Lambda: Map external UID to Supabase UUID
+    Lambda->>OrgCommon: get_supabase_user_id_from_external_uid(okta_uid)
+    OrgCommon->>Database: SELECT auth_user_id<br/>FROM user_auth_ext_ids<br/>WHERE external_id = okta_uid
+    Database-->>OrgCommon: supabase_user_id
+    OrgCommon-->>Lambda: supabase_user_id
+    
+    Note over Lambda: Check org admin authorization
+    Lambda->>OrgCommon: check_org_admin(supabase_user_id, org_id)
+    OrgCommon->>Database: SELECT is_org_admin(p_user_id, p_org_id)
+    Database->>Database: Check org_members table<br/>WHERE user_id = p_user_id<br/>AND org_id = p_org_id<br/>AND org_role IN ('org_owner', 'org_admin')
+    Database-->>OrgCommon: TRUE/FALSE
+    OrgCommon-->>Lambda: TRUE/FALSE
+    
+    alt is_org_admin = TRUE
+        Note over Lambda: Authorization SUCCESS
+        Lambda->>Database: Execute business logic<br/>(get chat config)
+        Database-->>Lambda: Config data
+        Lambda-->>Frontend: 200 OK + data
+    else is_org_admin = FALSE
+        Note over Lambda: Authorization FAILED
+        Lambda-->>Frontend: 403 Forbidden<br/>"Organization admin role required"
+    end
+```
+
+### Flow Summary
+
+1. **Frontend passes orgId** - User selects org in UI; frontend passes it in query params, path params, or body
+2. **Lambda extracts JWT** - Gets external UID (Okta/IDP user ID) from Authorization header
+3. **Lambda extracts org_id** - Uses `get_org_context_from_event(event)` to get org_id from request
+4. **Lambda maps user identity** - Converts external UID to Supabase UUID via `user_auth_ext_ids` table
+5. **Lambda validates authorization** - Calls `check_org_admin(user_id, org_id)` helper
+6. **RPC function checks database** - `is_org_admin(p_user_id, p_org_id)` queries `org_members` table
+7. **Route executes** - If user has `org_owner` or `org_admin` role in that org
+
+### ADR-019 Standard Functions
+
+**Python Helpers (org-common):**
+```python
+# System admin check
+common.check_sys_admin(user_id: str) -> bool
+
+# Organization admin check  
+common.check_org_admin(user_id: str, org_id: str) -> bool
+
+# Workspace admin check
+common.check_ws_admin(user_id: str, ws_id: str) -> bool
+```
+
+**Database RPC Functions:**
+```sql
+-- System admin
+is_sys_admin(p_user_id UUID) RETURNS BOOLEAN
+
+-- Organization admin
+is_org_admin(p_user_id UUID, p_org_id UUID) RETURNS BOOLEAN
+
+-- Workspace admin
+is_ws_admin(p_user_id UUID, p_ws_id UUID) RETURNS BOOLEAN
+```
+
+**See:** `docs/arch decisions/ADR-019-AUTH-STANDARDIZATION.md` for complete specification.
 
 ---
 
