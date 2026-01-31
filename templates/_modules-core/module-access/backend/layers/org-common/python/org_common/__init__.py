@@ -53,7 +53,133 @@ ORG_ADMIN_ROLES = ['org_owner', 'org_admin']
 WS_ADMIN_ROLES = ['ws_owner', 'ws_admin']
 """Workspace admin roles - workspace-scoped administrative access"""
 
+def get_org_context_from_event(event):
+    """
+    Extract organization ID from API Gateway event (standardized method).
+    
+    The frontend is responsible for passing the selected org_id to the backend
+    since users can belong to multiple organizations. org_id is NOT in the JWT.
+    
+    Checks in order:
+    1. Path parameters (orgId)
+    2. Query parameters (orgId)
+    3. Request body (orgId)
+    
+    Args:
+        event: API Gateway event dict
+    
+    Returns:
+        org_id (str) or None if not found
+        
+    Usage:
+        org_id = common.get_org_context_from_event(event)
+        if not org_id:
+            return common.bad_request_response('Organization context required')
+    """
+    # Check path parameters
+    path_params = event.get('pathParameters', {}) or {}
+    if 'orgId' in path_params:
+        return path_params['orgId']
+    
+    # Check query parameters  
+    query_params = event.get('queryStringParameters', {}) or {}
+    if 'orgId' in query_params:
+        return query_params['orgId']
+    
+    # Check request body
+    body_str = event.get('body', '{}')
+    if body_str:
+        try:
+            body = json.loads(body_str)
+            if 'orgId' in body:
+                return body['orgId']
+        except:
+            pass
+    
+    # org_id not found in request
+    return None
+
 # ============================================================================
+# ADMIN AUTHORIZATION HELPERS (ADR-019: Auth Standardization)
+# ============================================================================
+# NEW STANDARD FUNCTIONS - Use these in all new code and migrations
+# These provide consistent authorization checks across all modules.
+# They wrap parameterized RPC functions that enforce auth at the database level.
+# See: docs/arch decisions/ADR-019-AUTH-STANDARDIZATION.md
+# ============================================================================
+
+def check_sys_admin(user_id: str) -> bool:
+    """
+    Check if user has system admin privileges.
+    
+    Checks if user has sys_owner OR sys_admin role.
+    Uses database RPC function check_sys_admin(p_user_id) for enforcement.
+    
+    Args:
+        user_id: Supabase user UUID
+        
+    Returns:
+        True if user has system admin access
+        
+    Usage:
+        if common.check_sys_admin(supabase_user_id):
+            # Allow platform-wide operation
+    """
+    from .db import rpc
+    
+    # ADR-019: Call new check_sys_admin RPC (backward compatible - doesn't touch old is_sys_admin)
+    result = rpc('check_sys_admin', {'p_user_id': user_id})
+    return result if isinstance(result, bool) else False
+
+
+def check_org_admin(user_id: str, org_id: str) -> bool:
+    """
+    Check if user has organization admin privileges.
+    
+    Checks if user has org_owner OR org_admin role in the specified org.
+    Uses database RPC function check_org_admin(p_user_id, p_org_id) for enforcement.
+    
+    Args:
+        user_id: Supabase user UUID
+        org_id: Organization UUID
+        
+    Returns:
+        True if user has org admin access
+        
+    Usage:
+        if common.check_org_admin(supabase_user_id, org_id):
+            # Allow org-scoped operation
+    """
+    from .db import rpc
+    
+    # ADR-019: Call new check_org_admin RPC (backward compatible - doesn't touch old is_org_admin)
+    result = rpc('check_org_admin', {'p_user_id': user_id, 'p_org_id': org_id})
+    return result if isinstance(result, bool) else False
+
+
+def check_ws_admin(user_id: str, ws_id: str) -> bool:
+    """
+    Check if user has workspace admin privileges.
+    
+    Checks if user has ws_owner OR ws_admin role in the specified workspace.
+    Uses database RPC function check_ws_admin(p_user_id, p_ws_id) for enforcement.
+    
+    Args:
+        user_id: Supabase user UUID
+        ws_id: Workspace UUID
+        
+    Returns:
+        True if user has workspace admin access
+        
+    Usage:
+        if common.check_ws_admin(supabase_user_id, ws_id):
+            # Allow workspace-scoped operation
+    """
+    from .db import rpc
+    
+    # ADR-019: Call new check_ws_admin RPC (backward compatible - doesn't touch old is_ws_admin_or_owner)
+    result = rpc('check_ws_admin', {'p_user_id': user_id, 'p_ws_id': ws_id})
+    return result if isinstance(result, bool) else False
 
 # Utility function to extract user from event
 def get_user_from_event(event):
@@ -261,6 +387,11 @@ __all__ = [
     'SYS_ADMIN_ROLES',
     'ORG_ADMIN_ROLES',
     'WS_ADMIN_ROLES',
+    
+    # Admin authorization helpers (ADR-019)
+    'check_sys_admin',
+    'check_org_admin',
+    'check_ws_admin',
     
     # Supabase client
     'get_supabase_client',
