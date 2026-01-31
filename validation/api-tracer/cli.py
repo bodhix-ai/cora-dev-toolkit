@@ -91,6 +91,26 @@ logger = logging.getLogger(__name__)
     is_flag=True,
     help='Parse Lambda handlers only (testing)'
 )
+@click.option(
+    '--no-auth',
+    is_flag=True,
+    help='Disable auth lifecycle validation (ADR-019)'
+)
+@click.option(
+    '--auth-only',
+    is_flag=True,
+    help='Run only auth lifecycle validation (ADR-019)'
+)
+@click.option(
+    '--no-quality',
+    is_flag=True,
+    help='Disable code quality validation (import signatures, response format, etc.)'
+)
+@click.option(
+    '--quality-only',
+    is_flag=True,
+    help='Run only code quality validation'
+)
 def validate(
     path: str, 
     output: str, 
@@ -101,7 +121,11 @@ def validate(
     prefer_terraform: bool,
     frontend_only: bool,
     gateway_only: bool,
-    lambda_only: bool
+    lambda_only: bool,
+    no_auth: bool,
+    auth_only: bool,
+    no_quality: bool,
+    quality_only: bool
 ):
     """
     Validate API contracts across frontend, API Gateway, and Lambda layers.
@@ -182,6 +206,19 @@ def validate(
         
         # Full validation (Session 7 implementation)
         logger.info(f"Validating API contracts for: {path}")
+        
+        # Auth validation mode handling
+        validate_auth = not no_auth
+        if auth_only:
+            validate_auth = True
+            logger.info("Running auth-only validation (ADR-019)")
+        
+        # Quality validation mode handling
+        validate_quality = not no_quality
+        if quality_only:
+            validate_quality = True
+            logger.info("Running quality-only validation")
+        
         validator = FullStackValidator(
             frontend_parser, 
             gateway_parser, 
@@ -189,9 +226,25 @@ def validate(
             aws_profile=aws_profile,
             api_id=api_id,
             aws_region=aws_region,
-            prefer_terraform=prefer_terraform
+            prefer_terraform=prefer_terraform,
+            validate_auth=validate_auth
         )
+        
+        # For auth-only mode, we still run full validation but can filter output
         report = validator.validate(path)
+        
+        # Log auth validation summary
+        if validate_auth and 'auth_validation' in report.summary:
+            auth_summary = report.summary['auth_validation']
+            logger.info(f"Auth validation: {auth_summary['errors']} errors, {auth_summary['warnings']} warnings")
+        
+        # Log code quality validation summary
+        if validate_quality and 'code_quality_validation' in report.summary:
+            quality_summary = report.summary['code_quality_validation']
+            logger.info(f"Code quality validation: {quality_summary['errors']} errors, {quality_summary['warnings']} warnings")
+            if quality_summary.get('by_category'):
+                for category, count in quality_summary['by_category'].items():
+                    logger.info(f"  - {category}: {count} issues")
         
         # Format and output report
         formatted_report = reporter.format_report(report, output)

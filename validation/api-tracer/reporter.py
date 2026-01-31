@@ -91,6 +91,23 @@ class Reporter:
         lines.append(f"Warnings: {Fore.YELLOW}{len([m for m in report.mismatches if m.severity == 'warning'])}{Style.RESET_ALL}")
         lines.append("")
         
+        # Auth validation summary
+        if 'auth_validation' in report.summary:
+            auth = report.summary['auth_validation']
+            if auth.get('enabled'):
+                lines.append(f"Auth Validation (ADR-019): {auth.get('errors', 0)} errors, {auth.get('warnings', 0)} warnings")
+        
+        # Code quality validation summary
+        if 'code_quality_validation' in report.summary:
+            quality = report.summary['code_quality_validation']
+            if quality.get('enabled'):
+                lines.append(f"Code Quality Validation: {quality.get('errors', 0)} errors, {quality.get('warnings', 0)} warnings")
+                by_category = quality.get('by_category', {})
+                if by_category:
+                    for category, count in by_category.items():
+                        lines.append(f"  - {category}: {count}")
+        lines.append("")
+        
         # Errors
         errors = [m for m in report.mismatches if m.severity == 'error']
         if errors:
@@ -197,6 +214,23 @@ class Reporter:
         warning_count = len([m for m in report.mismatches if m.severity == 'warning'])
         lines.append(f"**Errors:** {error_count}")
         lines.append(f"**Warnings:** {warning_count}")
+        lines.append("")
+        
+        # Auth validation summary
+        if 'auth_validation' in report.summary:
+            auth = report.summary['auth_validation']
+            if auth.get('enabled'):
+                lines.append(f"**Auth Validation (ADR-019):** {auth.get('errors', 0)} errors, {auth.get('warnings', 0)} warnings")
+        
+        # Code quality validation summary
+        if 'code_quality_validation' in report.summary:
+            quality = report.summary['code_quality_validation']
+            if quality.get('enabled'):
+                lines.append(f"**Code Quality Validation:** {quality.get('errors', 0)} errors, {quality.get('warnings', 0)} warnings")
+                by_category = quality.get('by_category', {})
+                if by_category:
+                    category_str = ", ".join([f"{cat}: {cnt}" for cat, cnt in by_category.items()])
+                    lines.append(f"  - Categories: {category_str}")
         lines.append("")
         
         # Errors
