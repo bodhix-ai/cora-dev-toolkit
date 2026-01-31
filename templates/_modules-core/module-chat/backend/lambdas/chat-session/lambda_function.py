@@ -89,53 +89,29 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         path = event.get('rawPath', '') or event.get('path', '')
         path_params = event.get('pathParameters', {}) or {}
         
-        # CENTRALIZED AUTH: Query user profile ONCE for admin routes
+        # CENTRALIZED AUTH: Use ADR-019 standard helper functions
         if '/admin/' in path:
-            org_id = user_info.get('org_id')  # Extract org_id for context
-            
-            # Log org context for audit trail
-            if org_id:
-                print(f"Request from org_id: {org_id}")
-            
-            profile = common.find_one(
-                table='user_profiles',
-                filters={'user_id': supabase_user_id}
-            )
-            
-            if not profile:
-                print(f"User profile not found for {supabase_user_id}")
-                return common.forbidden_response('User profile not found')
-            
-            # Compute sys admin flag from user_profiles.sys_role (ADR-019)
-            is_sys_admin = profile.get('sys_role') in common.SYS_ADMIN_ROLES
-            
-            # Compute org admin flag from org_members.org_role (NOT user_profiles!) (ADR-019)
-            if org_id:
-                org_membership = common.find_one(
-                    table='org_members',
-                    filters={
-                        'user_id': supabase_user_id,
-                        'org_id': org_id
-                    }
-                )
-                is_org_admin = org_membership and org_membership.get('org_role') in common.ORG_ADMIN_ROLES
-            else:
-                is_org_admin = False
-            
-            # Route-level authorization check
+            # Route-level authorization check using ADR-019 helpers
             if path.startswith('/admin/sys/'):
-                if not is_sys_admin:
+                # System admin check (ADR-019: uses RPC is_sys_admin)
+                if not common.check_sys_admin(supabase_user_id):
                     print(f"Access denied for user {supabase_user_id} - sys admin required")
                     return common.forbidden_response('System admin role required')
                 print(f"System admin access granted for user {supabase_user_id}")
             
             elif path.startswith('/admin/org/'):
-                if not is_org_admin:
-                    print(f"Access denied for user {supabase_user_id} - org admin required")
-                    return common.forbidden_response('Organization admin role required')
+                # Get org_id from request (path/query/body params)
+                org_id = common.get_org_context_from_event(event)
+                
                 if not org_id:
-                    print(f"Org admin missing org_id for {supabase_user_id}")
-                    return common.forbidden_response('Organization context required')
+                    print(f"Org admin missing org_id in request for {supabase_user_id}")
+                    return common.bad_request_response('Organization ID required in request')
+                
+                # Org admin check (ADR-019: uses RPC is_org_admin)
+                if not common.check_org_admin(supabase_user_id, org_id):
+                    print(f"Access denied for user {supabase_user_id} - org admin required for org {org_id}")
+                    return common.forbidden_response('Organization admin role required')
+                
                 print(f"Organization admin access granted for user {supabase_user_id}, org: {org_id}")
         
         # Route based on path patterns
@@ -223,30 +199,31 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         # Org Admin routes: /admin/org/chat/*
         elif '/admin/org/chat' in path:
+            # org_id was already extracted and validated at router level (line 104)
             if '/config' in path:
                 if http_method == 'GET':
-                    return handle_org_get_config(supabase_user_id, user_info)
+                    return handle_org_get_config(supabase_user_id, org_id)
                 elif http_method == 'PUT':
-                    return handle_org_update_config(event, supabase_user_id, user_info)
+                    return handle_org_update_config(event, supabase_user_id, org_id)
             elif '/analytics' in path:
                 if '/users' in path:
-                    return handle_org_get_user_stats(event, user_info)
+                    return handle_org_get_user_stats(event, org_id)
                 elif '/workspaces' in path:
-                    return handle_org_get_workspace_stats(event, user_info)
+                    return handle_org_get_workspace_stats(event, org_id)
                 else:
-                    return handle_org_get_analytics(event, user_info)
+                    return handle_org_get_analytics(event, org_id)
             elif '/sessions' in path:
                 session_id = path_params.get('sessionId')
                 if session_id:
                     if '/restore' in path:
-                        return handle_org_restore_session(user_info, session_id)
+                        return handle_org_restore_session(org_id, session_id)
                     elif http_method == 'GET':
-                        return handle_org_get_session(user_info, session_id)
+                        return handle_org_get_session(org_id, session_id)
                     elif http_method == 'DELETE':
-                        return handle_org_delete_session(user_info, session_id)
+                        return handle_org_delete_session(org_id, session_id)
                 else:
                     if http_method == 'GET':
-                        return handle_org_list_sessions(event, user_info)
+                        return handle_org_list_sessions(event, org_id)
         
         # Generic chat routes: /chats/{sessionId}
         elif '/chats/' in path:
@@ -1362,12 +1339,9 @@ def handle_sys_delete_session(user_id: str, session_id: str) -> Dict[str, Any]:
 # ORG ADMIN HANDLERS
 # =============================================================================
 
-def handle_org_get_config(user_id: str, user_info: Dict[str, Any]) -> Dict[str, Any]:
+def handle_org_get_config(user_id: str, org_id: str) -> Dict[str, Any]:
     """Get organization chat configuration."""
-    # Auth check done at router level
-    org_id = user_info.get('org_id')
-    if not org_id:
-        raise common.ValidationError('User is not associated with an organization')
+    # Auth check done at router level, org_id passed from router
     
     # Get org-specific config
     org_config = common.find_one(
@@ -1392,12 +1366,9 @@ def handle_org_get_config(user_id: str, user_info: Dict[str, Any]) -> Dict[str, 
     return common.success_response(result)
 
 
-def handle_org_update_config(event: Dict[str, Any], user_id: str, user_info: Dict[str, Any]) -> Dict[str, Any]:
+def handle_org_update_config(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[str, Any]:
     """Update organization chat configuration."""
-    # Auth check done at router level
-    org_id = user_info.get('org_id')
-    if not org_id:
-        raise common.ValidationError('User is not associated with an organization')
+    # Auth check done at router level, org_id passed from router
     
     body = json.loads(event.get('body', '{}'))
     
@@ -1432,12 +1403,9 @@ def handle_org_update_config(event: Dict[str, Any], user_id: str, user_info: Dic
     return common.success_response({'message': 'Organization configuration updated'})
 
 
-def handle_org_list_sessions(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
+def handle_org_list_sessions(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
     """List all organization chat sessions."""
-    # Auth check done at router level
-    org_id = user_info.get('org_id')
-    if not org_id:
-        raise common.ForbiddenError('Organization context required')
+    # Auth check done at router level, org_id passed from router
     
     query_params = event.get('queryStringParameters', {}) or {}
     limit = common.validate_integer(query_params.get('limit', 50), 'limit', min_value=1, max_value=100)
@@ -1461,12 +1429,9 @@ def handle_org_list_sessions(event: Dict[str, Any], user_info: Dict[str, Any]) -
     } for s in sessions])
 
 
-def handle_org_get_session(user_info: Dict[str, Any], session_id: str) -> Dict[str, Any]:
+def handle_org_get_session(org_id: str, session_id: str) -> Dict[str, Any]:
     """Get chat session details (org admin view)."""
-    # Auth check done at router level
-    org_id = user_info.get('org_id')
-    if not org_id:
-        raise common.ForbiddenError('Organization context required')
+    # Auth check done at router level, org_id passed from router
     
     session_id = common.validate_uuid(session_id, 'sessionId')
     
@@ -1498,12 +1463,9 @@ def handle_org_get_session(user_info: Dict[str, Any], session_id: str) -> Dict[s
     })
 
 
-def handle_org_delete_session(user_info: Dict[str, Any], session_id: str) -> Dict[str, Any]:
+def handle_org_delete_session(org_id: str, session_id: str) -> Dict[str, Any]:
     """Delete organization chat session."""
-    # Auth check done at router level
-    org_id = user_info.get('org_id')
-    if not org_id:
-        raise common.ForbiddenError('Organization context required')
+    # Auth check done at router level, org_id passed from router
     
     session_id = common.validate_uuid(session_id, 'sessionId')
     
@@ -1528,12 +1490,9 @@ def handle_org_delete_session(user_info: Dict[str, Any], session_id: str) -> Dic
     })
 
 
-def handle_org_restore_session(user_info: Dict[str, Any], session_id: str) -> Dict[str, Any]:
+def handle_org_restore_session(org_id: str, session_id: str) -> Dict[str, Any]:
     """Restore soft-deleted chat session."""
-    # Auth check done at router level
-    org_id = user_info.get('org_id')
-    if not org_id:
-        raise common.ForbiddenError('Organization context required')
+    # Auth check done at router level, org_id passed from router
     
     session_id = common.validate_uuid(session_id, 'sessionId')
     
@@ -1558,12 +1517,9 @@ def handle_org_restore_session(user_info: Dict[str, Any], session_id: str) -> Di
     })
 
 
-def handle_org_get_analytics(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
+def handle_org_get_analytics(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
     """Get organization chat analytics."""
-    # Auth check done at router level
-    org_id = user_info.get('org_id')
-    if not org_id:
-        raise common.ForbiddenError('Organization context required')
+    # Auth check done at router level, org_id passed from router
 
     # Call RPC function for org analytics
     analytics = common.rpc('get_org_chat_analytics', {'p_org_id': org_id})
@@ -1575,12 +1531,9 @@ def handle_org_get_analytics(event: Dict[str, Any], user_info: Dict[str, Any]) -
     })
 
 
-def handle_org_get_user_stats(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
+def handle_org_get_user_stats(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
     """Get user activity statistics."""
-    # Auth check done at router level
-    org_id = user_info.get('org_id')
-    if not org_id:
-        raise common.ForbiddenError('Organization context required')
+    # Auth check done at router level, org_id passed from router
     
     # Call RPC function for most active users
     active_users = common.rpc('get_org_most_active_users', {'p_org_id': org_id, 'p_limit': 10})
@@ -1588,12 +1541,9 @@ def handle_org_get_user_stats(event: Dict[str, Any], user_info: Dict[str, Any]) 
     return common.success_response({'mostActiveUsers': active_users})
 
 
-def handle_org_get_workspace_stats(event: Dict[str, Any], user_info: Dict[str, Any]) -> Dict[str, Any]:
+def handle_org_get_workspace_stats(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
     """Get workspace activity statistics."""
-    # Auth check done at router level
-    org_id = user_info.get('org_id')
-    if not org_id:
-        raise common.ForbiddenError('Organization context required')
+    # Auth check done at router level, org_id passed from router
     
     # Call RPC function for most active workspaces
     active_workspaces = common.rpc('get_org_most_active_workspaces', {'p_org_id': org_id, 'p_limit': 10})

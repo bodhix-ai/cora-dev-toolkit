@@ -1006,12 +1006,13 @@ export async function updateOrgAdminConfig(
 
 /**
  * List all organization chat sessions (org admin)
- * GET /admin/org/chat/sessions
+ * GET /admin/org/chat/sessions?orgId={orgId}
  * 
- * ✅ KB PATTERN: Accepts token string (extracted once at page level)
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
  */
 export async function listOrgAdminSessions(
   token: string,
+  orgId: string,
   options?: { limit?: number; offset?: number }
 ): Promise<
   Array<{
@@ -1023,19 +1024,20 @@ export async function listOrgAdminSessions(
     updatedAt: string;
   }>
 > {
-  const params = options ? { limit: options.limit, offset: options.offset } : undefined;
+  const params = { orgId, limit: options?.limit, offset: options?.offset };
   const url = buildUrl("/admin/org/chat/sessions", params);
   return apiRequest(url, token);
 }
 
 /**
  * Get chat session details (org admin view)
- * GET /admin/org/chat/sessions/{id}
+ * GET /admin/org/chat/sessions/{id}?orgId={orgId}
  * 
- * ✅ KB PATTERN: Accepts token string (extracted once at page level)
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
  */
 export async function getOrgAdminSession(
   token: string,
+  orgId: string,
   sessionId: string
 ): Promise<{
   id: string;
@@ -1048,92 +1050,101 @@ export async function getOrgAdminSession(
   createdAt: string;
   updatedAt: string;
 }> {
-  return apiRequest(`/admin/org/chat/sessions/${sessionId}`, token);
+  const url = buildUrl(`/admin/org/chat/sessions/${sessionId}`, { orgId });
+  return apiRequest(url, token);
 }
 
 /**
  * Delete organization chat session (org admin)
- * DELETE /admin/org/chat/sessions/{id}
+ * DELETE /admin/org/chat/sessions/{id}?orgId={orgId}
  * 
- * ✅ KB PATTERN: Accepts token string (extracted once at page level)
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
  */
 export async function deleteOrgAdminSession(
   token: string,
+  orgId: string,
   sessionId: string
 ): Promise<{ message: string; id: string }> {
-  return apiRequest(`/admin/org/chat/sessions/${sessionId}`, token, {
+  const url = buildUrl(`/admin/org/chat/sessions/${sessionId}`, { orgId });
+  return apiRequest(url, token, {
     method: "DELETE",
   });
 }
 
 /**
  * Restore soft-deleted chat session (org admin)
- * POST /admin/org/chat/sessions/{id}/restore
+ * POST /admin/org/chat/sessions/{id}/restore?orgId={orgId}
  * 
- * ✅ KB PATTERN: Accepts token string (extracted once at page level)
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
  */
 export async function restoreOrgAdminSession(
   token: string,
+  orgId: string,
   sessionId: string
 ): Promise<{ message: string; id: string }> {
-  return apiRequest(`/admin/org/chat/sessions/${sessionId}/restore`, token, {
+  const url = buildUrl(`/admin/org/chat/sessions/${sessionId}/restore`, { orgId });
+  return apiRequest(url, token, {
     method: "POST",
   });
 }
 
 /**
  * Get organization chat analytics (org admin)
- * GET /admin/org/chat/analytics
+ * GET /admin/org/chat/analytics?orgId={orgId}
  * 
- * ✅ KB PATTERN: Accepts token string (extracted once at page level)
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
  */
-export async function getOrgAdminAnalytics(token: string): Promise<{
+export async function getOrgAdminAnalytics(token: string, orgId: string): Promise<{
   totalSessions: number;
   totalMessages: number;
 }> {
-  return apiRequest("/admin/org/chat/analytics", token);
+  const url = buildUrl("/admin/org/chat/analytics", { orgId });
+  return apiRequest(url, token);
 }
 
 /**
  * Get user activity statistics (org admin)
- * GET /admin/org/chat/analytics/users
+ * GET /admin/org/chat/analytics/users?orgId={orgId}
  * 
- * ✅ KB PATTERN: Accepts token string (extracted once at page level)
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
  */
-export async function getOrgAdminUserStats(token: string): Promise<{
+export async function getOrgAdminUserStats(token: string, orgId: string): Promise<{
   mostActiveUsers: Array<{
     userId: string;
     userName: string;
     sessionCount: number;
   }>;
 }> {
-  return apiRequest("/admin/org/chat/analytics/users", token);
+  const url = buildUrl("/admin/org/chat/analytics/users", { orgId });
+  return apiRequest(url, token);
 }
 
 /**
  * Get workspace activity statistics (org admin)
- * GET /admin/org/chat/analytics/workspaces
+ * GET /admin/org/chat/analytics/workspaces?orgId={orgId}
  * 
- * ✅ KB PATTERN: Accepts token string (extracted once at page level)
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
  */
-export async function getOrgAdminWorkspaceStats(token: string): Promise<{
+export async function getOrgAdminWorkspaceStats(token: string, orgId: string): Promise<{
   mostActiveWorkspaces: Array<{
     workspaceId: string;
     workspaceName: string;
     sessionCount: number;
   }>;
 }> {
-  return apiRequest("/admin/org/chat/analytics/workspaces", token);
+  const url = buildUrl("/admin/org/chat/analytics/workspaces", { orgId });
+  return apiRequest(url, token);
 }
 
 /**
  * View message content (org admin read-only)
- * GET /admin/org/chat/messages/{id}
+ * GET /admin/org/chat/messages/{id}?orgId={orgId}
  * 
- * ✅ KB PATTERN: Accepts token string (extracted once at page level)
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
  */
 export async function getOrgAdminMessage(
   token: string,
+  orgId: string,
   messageId: string
 ): Promise<{
   id: string;
@@ -1146,5 +1157,6 @@ export async function getOrgAdminMessage(
   createdAt: string;
   createdBy?: string;
 }> {
-  return apiRequest(`/admin/org/chat/messages/${messageId}`, token);
+  const url = buildUrl(`/admin/org/chat/messages/${messageId}`, { orgId });
+  return apiRequest(url, token);
 }

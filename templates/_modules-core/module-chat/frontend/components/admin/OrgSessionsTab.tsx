@@ -39,13 +39,22 @@ import {
   Visibility as VisibilityIcon,
   Restore as RestoreIcon,
 } from "@mui/icons-material";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, AuthAdapter } from "@{{PROJECT_NAME}}/module-access";
 import {
   listOrgAdminSessions,
   getOrgAdminSession,
   deleteOrgAdminSession,
   restoreOrgAdminSession,
 } from "../../lib/api";
+
+/**
+ * Props for OrgSessionsTab
+ * ADR-019: orgId and authAdapter passed from parent page
+ */
+interface OrgSessionsTabProps {
+  orgId: string;
+  authAdapter: AuthAdapter;
+}
 
 interface Session {
   id: string;
@@ -62,8 +71,8 @@ interface SessionDetails extends Session {
   messageCount: number;
 }
 
-export function OrgSessionsTab(): React.ReactElement {
-  const { isAuthenticated, authAdapter } = useUser();
+export function OrgSessionsTab({ orgId, authAdapter }: OrgSessionsTabProps): React.ReactElement {
+  const { isAuthenticated } = useUser();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -87,7 +96,7 @@ export function OrgSessionsTab(): React.ReactElement {
           return;
         }
         
-        const data = await listOrgAdminSessions(token, { limit: 100 });
+        const data = await listOrgAdminSessions(token, orgId, { limit: 100 });
         setSessions(Array.isArray(data) ? data : []);
         setError(null);
       } catch (err) {
@@ -110,7 +119,7 @@ export function OrgSessionsTab(): React.ReactElement {
         return;
       }
       
-      const details = await getOrgAdminSession(token, sessionId);
+      const details = await getOrgAdminSession(token, orgId, sessionId);
       setSelectedSession(details);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load session details");
@@ -132,7 +141,7 @@ export function OrgSessionsTab(): React.ReactElement {
         return;
       }
       
-      await deleteOrgAdminSession(token, sessionToDelete);
+      await deleteOrgAdminSession(token, orgId, sessionToDelete);
       // Update session in list to show deleted status
       setSessions(
         sessions.map((s) =>
@@ -160,13 +169,13 @@ export function OrgSessionsTab(): React.ReactElement {
         return;
       }
       
-      await restoreOrgAdminSession(token, sessionId);
+      await restoreOrgAdminSession(token, orgId, sessionId);
       // Reload sessions to update status
-      const data = await listOrgAdminSessions(token, { limit: 100 });
+      const data = await listOrgAdminSessions(token, orgId, { limit: 100 });
       setSessions(data);
       setSuccess("Session restored successfully");
       if (selectedSession?.id === sessionId) {
-        const details = await getOrgAdminSession(token, sessionId);
+        const details = await getOrgAdminSession(token, orgId, sessionId);
         setSelectedSession(details);
       }
     } catch (err) {

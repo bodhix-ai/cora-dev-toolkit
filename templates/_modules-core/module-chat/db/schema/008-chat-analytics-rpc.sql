@@ -129,12 +129,12 @@ BEGIN
     FROM (
         SELECT 
             cs.created_by as "userId",
-            up.display_name as "userName",
+            COALESCE(up.full_name, up.email) as "userName",
             COUNT(cs.id) as "sessionCount"
         FROM chat_sessions cs
         JOIN user_profiles up ON up.user_id = cs.created_by
         WHERE cs.org_id = p_org_id AND cs.is_deleted = false
-        GROUP BY cs.created_by, up.display_name
+        GROUP BY cs.created_by, up.full_name, up.email
         ORDER BY "sessionCount" DESC
         LIMIT p_limit
     ) t;
