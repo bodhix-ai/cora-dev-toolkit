@@ -69,6 +69,18 @@ resource "aws_iam_role_policy" "voice_lambda_policy" {
         ])
       },
       {
+        # Voice credentials Lambda needs to manage secrets for platform/org voice credentials
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:CreateSecret",
+          "secretsmanager:PutSecretValue",
+          "secretsmanager:DeleteSecret",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:TagResource"
+        ]
+        Resource = "arn:aws:secretsmanager:*:*:secret:voice/*"
+      },
+      {
         Effect = "Allow"
         Action = [
           "ecs:RunTask",

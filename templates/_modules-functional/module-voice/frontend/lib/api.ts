@@ -699,6 +699,109 @@ export async function getOrgStats(
 }
 
 // =============================================================================
+// ADMIN API - System Admin (Credentials)
+// =============================================================================
+
+/**
+ * List platform voice credentials (sys admin)
+ * GET /admin/sys/voice/credentials
+ */
+export async function sysListCredentials(
+  token: string,
+  options?: {
+    serviceName?: string;
+    isActive?: boolean;
+  }
+): Promise<VoiceCredential[]> {
+  const params: Record<string, string | number | boolean | undefined> = {
+    serviceName: options?.serviceName,
+    isActive: options?.isActive,
+  };
+
+  const url = buildUrl("/admin/sys/voice/credentials", params);
+  return apiRequest<VoiceCredential[]>(url, token);
+}
+
+/**
+ * Get platform voice credential by ID (sys admin)
+ * GET /admin/sys/voice/credentials/{credentialId}
+ */
+export async function sysGetCredential(
+  credentialId: string,
+  token: string
+): Promise<VoiceCredential> {
+  return apiRequest<VoiceCredential>(`/admin/sys/voice/credentials/${credentialId}`, token);
+}
+
+/**
+ * Create platform voice credential (sys admin)
+ * POST /admin/sys/voice/credentials
+ */
+export async function sysCreateCredential(
+  token: string,
+  input: {
+    serviceName: "daily" | "deepgram" | "cartesia";
+    apiKey: string;
+    configMetadata?: Record<string, unknown>;
+  }
+): Promise<VoiceCredential> {
+  return apiRequest<VoiceCredential>("/admin/sys/voice/credentials", token, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+/**
+ * Update platform voice credential (sys admin)
+ * PUT /admin/sys/voice/credentials/{credentialId}
+ */
+export async function sysUpdateCredential(
+  credentialId: string,
+  token: string,
+  input: {
+    apiKey?: string;
+    configMetadata?: Record<string, unknown>;
+    isActive?: boolean;
+  }
+): Promise<VoiceCredential> {
+  return apiRequest<VoiceCredential>(`/admin/sys/voice/credentials/${credentialId}`, token, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+/**
+ * Delete platform voice credential (sys admin)
+ * DELETE /admin/sys/voice/credentials/{credentialId}
+ */
+export async function sysDeleteCredential(
+  credentialId: string,
+  token: string
+): Promise<void> {
+  await apiRequest<void>(`/admin/sys/voice/credentials/${credentialId}`, token, {
+    method: "DELETE",
+  });
+}
+
+/**
+ * Validate platform voice credential (sys admin)
+ * POST /admin/sys/voice/credentials/{credentialId}/validate
+ */
+export async function sysValidateCredential(
+  credentialId: string,
+  token: string
+): Promise<{
+  credentialId: string;
+  serviceName: string;
+  isValid: boolean;
+  message: string;
+}> {
+  return apiRequest(`/admin/sys/voice/credentials/${credentialId}/validate`, token, {
+    method: "POST",
+  });
+}
+
+// =============================================================================
 // WEBSOCKET HELPERS
 // =============================================================================
 

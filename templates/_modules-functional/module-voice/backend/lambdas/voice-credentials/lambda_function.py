@@ -30,7 +30,7 @@ Routes - Organization Admin:
 import json
 import os
 import boto3
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 import org_common as common
 
 
@@ -46,6 +46,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Main Lambda handler for voice credential operations.
     
     Routes requests to appropriate handlers based on HTTP method and path.
+    Uses centralized router-level authorization per ADR-019b.
     """
     print(json.dumps(event, default=str))
     
@@ -56,17 +57,6 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         # Convert external UID to Supabase UUID for database operations
         supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
-        
-        # Get user profile for role and org_id
-        user_profile = common.find_one(
-            table='user_profiles',
-            filters={'id': supabase_user_id}
-        )
-        if not user_profile:
-            raise common.NotFoundError('User profile not found')
-        
-        user_role = user_profile.get('role', '')
-        user_org_id = user_profile.get('org_id')
         
         # Extract HTTP method and path
         http_method = event.get('requestContext', {}).get('http', {}).get('method') or event.get('httpMethod')
@@ -81,13 +71,29 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return common.success_response({})
         
         # =============================================================================
+        # CENTRALIZED AUTHORIZATION (ADR-019b)
+        # =============================================================================
+        org_id: Optional[str] = None
+        
+        if '/admin/sys/voice/credentials' in path:
+            # System admin routes - verify sys admin role using standard helper
+            if not common.check_sys_admin(supabase_user_id):
+                return common.forbidden_response('System administrator access required')
+        
+        elif '/admin/org/voice/credentials' in path:
+            # Organization admin routes - extract org context and verify admin role
+            org_context = common.get_org_context_from_event(event)
+            org_id = org_context.get('org_id')
+            if not org_id:
+                return common.bad_request_response('Organization context required')
+            
+            if not common.check_org_admin(org_id, supabase_user_id):
+                return common.forbidden_response('Organization admin access required')
+        
+        # =============================================================================
         # SYSTEM ADMIN ROUTES
         # =============================================================================
         if '/admin/sys/voice/credentials' in path:
-            # Verify sys_admin role
-            if user_role not in ['sys_admin', 'super_admin']:
-                raise common.ForbiddenError('System administrator access required')
-            
             # POST /admin/sys/voice/credentials/{id}/validate - Validate credential
             if http_method == 'POST' and '/validate' in path:
                 credential_id = path_params.get('credentialId') or path_params.get('id')
@@ -120,35 +126,28 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # ORGANIZATION ADMIN ROUTES
         # =============================================================================
         if '/admin/org/voice/credentials' in path:
-            # Verify org admin role and org_id
-            if user_role not in ['org_admin', 'org_owner', 'sys_admin', 'super_admin']:
-                raise common.ForbiddenError('Organization administrator access required')
-            
-            if not user_org_id and user_role not in ['sys_admin', 'super_admin']:
-                raise common.ForbiddenError('Organization context required')
-            
             # GET /admin/org/voice/credentials - List org credentials
             if http_method == 'GET' and not path_params.get('credentialId') and not path_params.get('id'):
-                return handle_org_list_credentials(event, supabase_user_id, user_org_id)
+                return handle_org_list_credentials(event, supabase_user_id, org_id)
             
             # GET /admin/org/voice/credentials/{id} - Get org credential
             if http_method == 'GET' and (path_params.get('credentialId') or path_params.get('id')):
                 credential_id = path_params.get('credentialId') or path_params.get('id')
-                return handle_org_get_credential(event, supabase_user_id, user_org_id, credential_id)
+                return handle_org_get_credential(event, supabase_user_id, org_id, credential_id)
             
             # POST /admin/org/voice/credentials - Create org credential
             if http_method == 'POST':
-                return handle_org_create_credential(event, supabase_user_id, user_org_id)
+                return handle_org_create_credential(event, supabase_user_id, org_id)
             
             # PUT /admin/org/voice/credentials/{id} - Update org credential
             if http_method == 'PUT':
                 credential_id = path_params.get('credentialId') or path_params.get('id')
-                return handle_org_update_credential(event, supabase_user_id, user_org_id, credential_id)
+                return handle_org_update_credential(event, supabase_user_id, org_id, credential_id)
             
             # DELETE /admin/org/voice/credentials/{id} - Delete org credential
             if http_method == 'DELETE':
                 credential_id = path_params.get('credentialId') or path_params.get('id')
-                return handle_org_delete_credential(event, supabase_user_id, user_org_id, credential_id)
+                return handle_org_delete_credential(event, supabase_user_id, org_id, credential_id)
         
         # =============================================================================
         # DATA API ROUTES (Legacy)
