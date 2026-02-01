@@ -235,13 +235,13 @@ def validate(
         # Auth validation mode handling
         validate_auth = not no_auth
         validate_layer1 = True
-        validate_layer2 = False  # Layer 2 not implemented yet
+        validate_layer2 = False
         
         if auth_only or all_auth:
             validate_auth = True
             validate_layer1 = True
-            validate_layer2 = False  # Will enable when Layer 2 implemented
-            logger.info("Running all auth validation (Layer 1: admin auth)")
+            validate_layer2 = True  # Now enabled
+            logger.info("Running all auth validation (Layer 1: admin auth + Layer 2: resource permissions)")
         
         if layer1_only:
             validate_auth = True

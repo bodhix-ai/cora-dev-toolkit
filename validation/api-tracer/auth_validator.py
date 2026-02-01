@@ -927,26 +927,234 @@ class LambdaAuthValidator:
         return 1
 
 
+class ResourcePermissionValidator:
+    """
+    Validates resource permission patterns per ADR-019c.
+    
+    Checks:
+    - Org/workspace membership validation before resource access
+    - Resource ownership/permission checks (can_*, is_*_owner)
+    - No admin role override in data routes
+    - Scope validation before permission checks
+    """
+    
+    def __init__(self):
+        self.issues: List[AuthIssue] = []
+        self.current_file: str = ""
+    
+    def validate_file(self, file_path: str, content: str) -> List[AuthIssue]:
+        """
+        Validate a Python Lambda file for resource permission patterns.
+        
+        Args:
+            file_path: Path to the file
+            content: File content
+            
+        Returns:
+            List of AuthIssue objects
+        """
+        self.current_file = file_path
+        self.issues = []
+        
+        try:
+            tree = ast.parse(content, filename=file_path)
+        except SyntaxError as e:
+            logger.warning(f"Syntax error parsing {file_path}: {e}")
+            return []
+        
+        # Detect data routes (non-admin routes)
+        data_routes = self._detect_data_routes(tree, content)
+        
+        if not data_routes:
+            # Not a data route Lambda, no resource permission requirements
+            return []
+        
+        # Check for required patterns
+        self._check_org_membership_validation(tree, content, data_routes)
+        self._check_resource_permission_functions(tree, content, data_routes)
+        self._check_admin_role_override(tree, content, data_routes)
+        
+        return self.issues
+    
+    def _detect_data_routes(self, tree: ast.AST, content: str) -> List[Tuple[str, str]]:
+        """
+        Detect data routes (non-admin routes) from docstring.
+        
+        Returns:
+            List of (method, path) tuples for data routes
+        """
+        data_routes = []
+        
+        # Get combined docstring
+        docstring = ast.get_docstring(tree) or ""
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == 'lambda_handler':
+                handler_doc = ast.get_docstring(node) or ""
+                docstring += "\n" + handler_doc
+        
+        # Pattern matches: - GET /path/here - Description
+        pattern = r'-\s+(GET|POST|PUT|DELETE|PATCH)\s+(/\S+)'
+        
+        for match in re.finditer(pattern, docstring):
+            method = match.group(1)
+            path = match.group(2)
+            
+            # Skip admin routes
+            if '/admin/' not in path:
+                data_routes.append((method, path))
+        
+        return data_routes
+    
+    def _check_org_membership_validation(self, tree: ast.AST, content: str, data_routes: List[Tuple[str, str]]):
+        """
+        Check that org/workspace membership is validated before resource access.
+        
+        Per ADR-019c: Must call is_org_member() or can_access_org_resource()
+        before accessing org-scoped resources.
+        """
+        # Check for org membership functions
+        has_org_membership = (
+            'is_org_member' in content or
+            'can_access_org_resource' in content or
+            'is_ws_member' in content or
+            'can_access_ws_resource' in content
+        )
+        
+        if data_routes and not has_org_membership:
+            # Data routes exist but no membership validation
+            for method, path in data_routes:
+                self.issues.append(AuthIssue(
+                    severity='error',
+                    issue_type=AuthIssueType.RESOURCE_MISSING_ORG_MEMBERSHIP_CHECK,
+                    layer='lambda',
+                    file=self.current_file,
+                    line=1,
+                    route_path=path,
+                    route_method=method,
+                    issue=f"Data route {method} {path} missing org/workspace membership validation",
+                    suggestion="Add: if not common.can_access_org_resource(user_id, org_id): return common.forbidden_response('Not a member')",
+                    standard_ref="ADR-019c"
+                ))
+    
+    def _check_resource_permission_functions(self, tree: ast.AST, content: str, data_routes: List[Tuple[str, str]]):
+        """
+        Check for resource permission functions (can_*, is_*_owner).
+        
+        Per ADR-019c: Resource routes must check ownership or permissions.
+        """
+        # Check for permission functions
+        has_permission_check = (
+            re.search(r'can_\w+\(', content) or
+            re.search(r'is_\w+_owner\(', content) or
+            'can_access_' in content or
+            'can_edit_' in content or
+            'can_view_' in content
+        )
+        
+        if data_routes and not has_permission_check:
+            # Data routes exist but no permission checks
+            for method, path in data_routes:
+                self.issues.append(AuthIssue(
+                    severity='error',
+                    issue_type=AuthIssueType.RESOURCE_MISSING_OWNERSHIP_CHECK,
+                    layer='lambda',
+                    file=self.current_file,
+                    line=1,
+                    route_path=path,
+                    route_method=method,
+                    issue=f"Data route {method} {path} missing resource permission check",
+                    suggestion="Add: if not can_access_<resource>(user_id, resource_id): return common.forbidden_response('Access denied')",
+                    standard_ref="ADR-019c"
+                ))
+    
+    def _check_admin_role_override(self, tree: ast.AST, content: str, data_routes: List[Tuple[str, str]]):
+        """
+        Check for admin role override anti-pattern in data routes.
+        
+        Per ADR-019c: Admin roles do NOT provide automatic access to user resources.
+        """
+        # Check if admin checks are used in data routes
+        # This is an anti-pattern - admin roles shouldn't bypass resource permissions
+        has_admin_check = (
+            'check_sys_admin' in content or
+            'check_org_admin' in content or
+            'check_ws_admin' in content or
+            'is_sys_admin' in content or
+            'is_org_admin' in content
+        )
+        
+        # If we have data routes AND admin checks, this might be an override pattern
+        if data_routes and has_admin_check:
+            # Check if admin check is used as permission bypass
+            # Pattern: if is_*_admin(...): return success
+            admin_override_patterns = [
+                r'if.*check_sys_admin.*:.*return.*success',
+                r'if.*is_sys_admin.*:.*return',
+                r'if.*check_org_admin.*:.*return.*success',
+                r'if.*is_org_admin.*:.*return',
+            ]
+            
+            for pattern in admin_override_patterns:
+                if re.search(pattern, content, re.DOTALL):
+                    for method, path in data_routes:
+                        self.issues.append(AuthIssue(
+                            severity='warning',
+                            issue_type=AuthIssueType.RESOURCE_ADMIN_ROLE_OVERRIDE,
+                            layer='lambda',
+                            file=self.current_file,
+                            line=1,
+                            route_path=path,
+                            route_method=method,
+                            issue=f"Data route {method} {path} may use admin role as permission override",
+                            suggestion="Admin roles should NOT provide automatic access to user resources. Use explicit permission grants instead (ADR-019c)",
+                            standard_ref="ADR-019c"
+                        ))
+                    break
+
+
 class AuthLifecycleValidator:
     """
     Full-stack auth lifecycle validator.
     
     Validates that auth patterns are consistent across Frontend → Gateway → Lambda
     per ADR-019.
+    
+    Layer 1: Admin Authorization (ADR-019a/b) - /admin/* routes
+    Layer 2: Resource Permissions (ADR-019c) - /{module}/* data routes
     """
     
     def __init__(self):
         self.frontend_validator = FrontendAuthValidator()
         self.lambda_validator = LambdaAuthValidator()
+        self.resource_validator = ResourcePermissionValidator()
         self.issues: List[AuthIssue] = []
     
     def validate_frontend_file(self, file_path: str, content: str) -> List[AuthIssue]:
         """Validate a frontend file."""
         return self.frontend_validator.validate_file(file_path, content)
     
-    def validate_lambda_file(self, file_path: str, content: str) -> List[AuthIssue]:
-        """Validate a Lambda file."""
-        return self.lambda_validator.validate_file(file_path, content)
+    def validate_lambda_file(self, file_path: str, content: str, validate_layer2: bool = False) -> List[AuthIssue]:
+        """
+        Validate a Lambda file.
+        
+        Args:
+            file_path: Path to the file
+            content: File content
+            validate_layer2: If True, also run Layer 2 (resource permission) validation
+            
+        Returns:
+            List of AuthIssue objects
+        """
+        issues = []
+        
+        # Layer 1: Admin authorization validation
+        issues.extend(self.lambda_validator.validate_file(file_path, content))
+        
+        # Layer 2: Resource permission validation
+        if validate_layer2:
+            issues.extend(self.resource_validator.validate_file(file_path, content))
+        
+        return issues
     
     def validate_auth_lifecycle(
         self, 

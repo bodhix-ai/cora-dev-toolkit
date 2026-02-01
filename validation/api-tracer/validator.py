@@ -93,7 +93,7 @@ class FullStackValidator:
         
         # Auth lifecycle validation (ADR-019)
         if self.validate_auth:
-            self._validate_auth_lifecycle(project_path)
+            self._validate_auth_lifecycle(project_path, self.validate_layer2)
         
         # Code quality validation (integrated checks)
         self._validate_code_quality(project_path)
@@ -776,13 +776,17 @@ class FullStackValidator:
         self.code_quality_issues = code_quality_issues
         logger.info(f"Code quality validation complete: {len(code_quality_issues)} issues found")
     
-    def _validate_auth_lifecycle(self, project_path: str):
+    def _validate_auth_lifecycle(self, project_path: str, validate_layer2: bool = False):
         """
         Validate auth patterns across frontend and Lambda layers per ADR-019.
         
         This validates:
-        - Frontend: useUser(), useRole(), useOrganizationContext(), loading states
-        - Lambda: check_*_admin() helpers, external UID conversion, centralized auth
+        - Layer 1 (Admin Auth): useUser(), useRole(), check_*_admin() helpers
+        - Layer 2 (Resource Permissions): org membership, resource ownership checks
+        
+        Args:
+            project_path: Path to project root
+            validate_layer2: If True, also validate Layer 2 (resource permissions)
         """
         logger.info("Validating auth lifecycle patterns (ADR-019)...")
         
@@ -825,7 +829,11 @@ class FullStackValidator:
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:
                         content = f.read()
-                    issues = self.auth_validator.validate_lambda_file(str(file_path), content)
+                    issues = self.auth_validator.validate_lambda_file(
+                        str(file_path), 
+                        content,
+                        validate_layer2=validate_layer2
+                    )
                     auth_issues.extend(issues)
                 except Exception as e:
                     logger.warning(f"Failed to validate Lambda file {file_path}: {e}")
