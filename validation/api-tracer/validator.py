@@ -863,9 +863,18 @@ class FullStackValidator:
         errors = [m for m in self.mismatches if m.severity == 'error']
         warnings = [m for m in self.mismatches if m.severity == 'warning']
         
-        # Count auth-specific issues
+        # Count auth-specific issues (separated by layer)
         auth_errors = [m for m in self.mismatches if m.mismatch_type.startswith('auth_') and m.severity == 'error']
         auth_warnings = [m for m in self.mismatches if m.mismatch_type.startswith('auth_') and m.severity == 'warning']
+        
+        # Layer 1 (Admin Auth - ADR-019a/b)
+        # Note: auth issues are prefixed with "auth_" twice due to conversion from AuthIssue to APIMismatch
+        layer1_errors = [m for m in auth_errors if m.mismatch_type.startswith('auth_auth_admin_')]
+        layer1_warnings = [m for m in auth_warnings if m.mismatch_type.startswith('auth_auth_admin_')]
+        
+        # Layer 2 (Resource Permissions - ADR-019c)
+        layer2_errors = [m for m in auth_errors if m.mismatch_type.startswith('auth_auth_resource_')]
+        layer2_warnings = [m for m in auth_warnings if m.mismatch_type.startswith('auth_auth_resource_')]
         
         # Count code quality issues
         quality_errors = [m for m in self.mismatches if m.mismatch_type.startswith('quality_') and m.severity == 'error']
@@ -885,11 +894,23 @@ class FullStackValidator:
             'frontend_unique_endpoints': len(self.frontend_parser.get_unique_endpoints()),
             'gateway_unique_routes': len(self.gateway_parser.get_unique_routes()),
             'lambda_unique_routes': len(self.lambda_parser.get_unique_routes()),
-            # Auth-specific summary (ADR-019)
+            # Auth-specific summary (ADR-019) with layer breakdown
             'auth_validation': {
                 'enabled': self.validate_auth,
-                'errors': len(auth_errors),
-                'warnings': len(auth_warnings),
+                'layer1': {
+                    'name': 'Admin Authorization (ADR-019a/b)',
+                    'errors': len(layer1_errors),
+                    'warnings': len(layer1_warnings),
+                    'total': len(layer1_errors) + len(layer1_warnings)
+                },
+                'layer2': {
+                    'name': 'Resource Permissions (ADR-019c)',
+                    'errors': len(layer2_errors),
+                    'warnings': len(layer2_warnings),
+                    'total': len(layer2_errors) + len(layer2_warnings)
+                },
+                'total_errors': len(auth_errors),
+                'total_warnings': len(auth_warnings),
                 'total_issues': len(auth_errors) + len(auth_warnings)
             },
             # Code quality summary (integrated validators)

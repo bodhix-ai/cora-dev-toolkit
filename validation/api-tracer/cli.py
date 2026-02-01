@@ -285,7 +285,10 @@ def validate(
         # Log auth validation summary
         if validate_auth and 'auth_validation' in report.summary:
             auth_summary = report.summary['auth_validation']
-            logger.info(f"Auth validation: {auth_summary['errors']} errors, {auth_summary['warnings']} warnings")
+            # Support both old format (errors/warnings) and new format (total_errors/total_warnings)
+            errors = auth_summary.get('total_errors', auth_summary.get('errors', 0))
+            warnings = auth_summary.get('total_warnings', auth_summary.get('warnings', 0))
+            logger.info(f"Auth validation: {errors} errors, {warnings} warnings")
         
         # Log code quality validation summary
         if validate_quality and 'code_quality_validation' in report.summary:

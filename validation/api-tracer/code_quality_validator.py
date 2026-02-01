@@ -637,13 +637,13 @@ class ImportSignatureValidator:
             'deprecated': []
         },
         'success_response': {
-            'required': [],
-            'optional': {'data': None, 'message': None},
+            'required': ['data'],
+            'optional': {'status_code': 200},
             'deprecated': []
         },
         'error_response': {
-            'required': [],
-            'optional': {'message': None, 'status_code': 500},
+            'required': ['status_code', 'message'],
+            'optional': {'details': None},
             'deprecated': []
         },
     }
