@@ -29,13 +29,19 @@ The goal of this initiative is to standardize authentication patterns across all
 ## Sprint History
 
 | Sprint | Branch | Plan | Status | Completed |
-|--------|--------|------|--------|-----------|
+|--------|--------|------|--------|--------------|
 | S0 | `auth-standardization-s0` | `plan_s0-auth-standardization.md` | ✅ Complete | 2026-01-30 |
 | S1 | `auth-standardization-s1` | `plan_s1-auth-standardization.md` | ✅ Complete | 2026-01-31 |
 | S2 | `auth-standardization-s2` | `plan_s2-auth-standardization.md` | ✅ Complete | 2026-02-01 |
 | S3 | `auth-standardization-s3` | `plan_s3-auth-standardization.md` | 🟡 Active | - |
 
-### 3. Workspace Role Assessment
+### 3. Sprint S3: Resource Permission Validation & Implementation
+
+- **Branch:** `auth-standardization-s3`
+- **Plan:** `docs/plans/plan_s3-auth-standardization.md`
+- **Focus:** Extend validator for ADR-019c compliance + implement fixes across all modules
+- **Scope:** 312 errors, 138 warnings across 6 modules
+- **Estimated Duration:** 20-30 hours
 
 - **Branch:** `auth-standardization-s2`
 - **Plan:** `docs/plans/plan_s2-auth-standardization.md`
@@ -47,14 +53,19 @@ The goal of this initiative is to standardize authentication patterns across all
 
 Implementation: RPC function `is_ws_admin()` or helper `_is_ws_admin()` that calls the RPC.
 
-- **ADR-019 Standard:** Use parameterized RPC functions wrapped in Python helpers
-- **Database RPCs:** is_sys_admin(), is_org_admin(), is_ws_admin() in database
-- **Python Helpers:** check_sys_admin(), check_org_admin(), check_ws_admin() in org-common
-- **Org Context:** Frontend passes orgId in request; Lambda extracts via get_org_context_from_event()
-- **Validation Strategy (REVISED):** Integrated full lifecycle auth validation in api-tracer
-  - Auth validation is CORE functionality, not an optional flag
-  - No standalone frontend/backend auth validators (they provide incomplete assurance)
-  - api-tracer ALWAYS validates full auth lifecycle (Frontend + Gateway + Lambda)
+- **ADR-019a/b Standard (Layer 1):** Use parameterized RPC functions wrapped in Python helpers
+  - Database RPCs: is_sys_admin(), is_org_admin(), is_ws_admin()
+  - Python Helpers: check_sys_admin(), check_org_admin(), check_ws_admin() in org-common
+  - Org Context: Frontend passes orgId in request; Lambda extracts via get_org_context_from_event()
+- **ADR-019c Standard (Layer 2):** Use module-specific permission helpers for resource access
+  - Core membership: can_access_org_resource(), can_access_ws_resource() in org-common
+  - Module-specific: can_access_chat(), can_access_kb(), etc. in module layers
+  - Pattern: Membership check BEFORE permission check
+  - No admin role override in data routes
+- **Validation Strategy:** Integrated full lifecycle auth validation in api-tracer
+  - Layer 1: Admin auth validation (ADR-019a/b) - 100% compliant
+  - Layer 2: Resource permission validation (ADR-019c) - implementation in S3
+  - CLI flags: --layer1-only, --layer2-only, --all-auth
 
 ## Session Log
 
@@ -645,34 +656,76 @@ The 2 validation errors remaining in module-ws are correctly implemented resourc
 
 ## Session Log (S3)
 
-### February 1, 2026 - S3 Session 1 (Current)
-**Focus:** Validator Enhancement for Layer 2 (Resource Permissions) + Assessment
+### February 1, 2026 - S3 Session 1 ✅ COMPLETE
+**Focus:** Validator Enhancement for Layer 2 (Resource Permissions) + Assessment + Implementation Decision
 
-**Sprint Started:**
+**Phase 1-3: Validator Implementation ✅ COMPLETE**
 - ✅ Branch `auth-standardization-s3` created from main
 - ✅ Plan file `plan_s3-auth-standardization.md` created
 - ✅ Context file updated with S3 entry
+- ✅ Added layer distinction in `AuthIssueType` class (Layer 1 vs Layer 2 prefixes)
+- ✅ Added CLI flags: `--layer1-only`, `--layer2-only`, `--all-auth`
+- ✅ Created `ResourcePermissionValidator` class for ADR-019c compliance
+- ✅ Implemented data route detection (non-admin routes from docstrings)
+- ✅ Implemented org membership validation checks
+- ✅ Implemented resource ownership/permission checks
+- ✅ Implemented admin role override detection
+- ✅ Integrated Layer 2 validation into `AuthLifecycleValidator`
 
-**Sprint S3 Goals:**
-1. Enhance api-tracer validator with Layer 1 vs Layer 2 distinction
-2. Implement Layer 2 (resource permission) validation per ADR-019c
-3. Add CLI flags for layer control (`--layer1-only`, `--layer2-only`, `--all-auth`)
-4. Run assessment across all modules to measure Layer 2 compliance
-5. Make sprint scoping decision: fixes in S3 or defer to S4
+**Phase 4: Assessment ✅ COMPLETE**
 
-**Key Requirements:**
-- Clear separation of Layer 1 (admin auth) vs Layer 2 (resource perms) in reporting
-- Ability to toggle each layer on/off independently
-- Module filtering works with both layers
-- Assessment baseline documents scope before planning fixes
+Ran Layer 2 validation across all 8 modules:
 
-**Time Estimate:** 8-12 hours total
+| Module | Layer 2 Errors | Layer 2 Warnings | Total | Priority |
+|--------|---------------|------------------|-------|----------|
+| module-voice | 100 | 20 | 120 | ❌ High |
+| module-access | 84 | 20 | 104 | ❌ High |
+| module-kb | 58 | 40 | 98 | ❌ High |
+| module-chat | 48 | 44 | 92 | ❌ High |
+| module-eval | 20 | 0 | 20 | ⚠️ Medium |
+| module-ws | 2 | 14 | 16 | ✅ Low |
+| module-mgmt | 0 | 0 | 0 | ✅ Compliant |
+| module-ai | 0 | 0 | 0 | ✅ Compliant |
+| **TOTAL** | **312** | **138** | **450** | - |
 
----
+**Issue Breakdown:**
+- Missing org membership checks: ~95% of errors
+- Missing resource ownership checks: ~5% of errors
+- Admin role override (warnings): 138 warnings
 
-## Next Steps (S3)
+**Phase 5: Sprint Scoping Decision ✅ COMPLETE**
 
-**Phase 2:** Enhance validator architecture with layer distinction
-**Phase 3:** Implement Layer 2 validation logic
-**Phase 4:** Run assessment and document baseline
-**Phase 5:** Sprint scoping decision based on assessment
+**Decision:** ✅ **Implement all 312 Layer 2 fixes in S3** (Option A)
+
+**Rationale:**
+- Systematic approach: smallest to largest modules
+- Template-first workflow with validation after each module
+- Comprehensive fix ensures full ADR-019 compliance across both layers
+- Estimated effort: 20-30 hours
+
+**Updated S3 Plan:**
+- Phase 6: Implement core ADR-019c patterns (2-3h)
+- Phase 7: Fix module-ws (2 errors) - 1h
+- Phase 8: Fix module-eval (20 errors) - 2-3h
+- Phase 9: Fix module-chat (48 errors) - 4-5h
+- Phase 10: Fix module-kb (58 errors) - 5-6h
+- Phase 11: Fix module-access (84 errors) - 6-8h
+- Phase 12: Fix module-voice (100 errors) - 8-10h
+- Phase 13: Final validation and deployment - 2-3h
+
+**Files Created/Modified:**
+- `validation/api-tracer/auth_validator.py` - ResourcePermissionValidator class
+- `validation/api-tracer/validator.py` - Layer 2 integration
+- `validation/api-tracer/cli.py` - Layer control flags
+- `docs/plans/plan_s3-auth-standardization.md` - Updated with implementation phases
+- `memory-bank/context-auth-standardization.md` - Updated with S3 progress
+
+**Commits:**
+- `7d188b0` - docs: create S3 plan
+- `d456dab` - refactor: add layer distinction in auth validator
+- `9e05629` - feat: add CLI layer control flags
+- `5e08222` - feat: implement Layer 2 validation
+
+**Time:** ~3 hours
+
+**Next Session:** Begin Phase 6 - Implement core ADR-019c patterns in org-common and module layers

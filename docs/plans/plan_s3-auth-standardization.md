@@ -372,37 +372,363 @@ Estimated fix time: X-Y hours
 
 ---
 
-## Phase 5: Sprint Scoping Decision (30 minutes)
+## Phase 5: Sprint Scoping Decision ✅ COMPLETE
 
-### Step 5.1: Review Assessment Results
+### Assessment Results
 
-**Decision criteria:**
-- **Small scope** (≤10 errors): Include fixes in S3
-- **Medium scope** (11-30 errors): Prioritize critical modules in S3, defer rest to S4
-- **Large scope** (>30 errors): S3 = assessment only, fixes in S4+
+**Total Layer 2 Issues:** 312 errors, 138 warnings across 6 modules
 
-**Actions:**
-- [ ] Review baseline results
-- [ ] Calculate total fix effort
-- [ ] Make scoping decision
+**By Module (Priority Order):**
+1. module-ws (2 errors) - Quick win
+2. module-eval (20 errors) - Small scope
+3. module-chat (48 errors) - Medium scope
+4. module-kb (58 errors) - Medium scope
+5. module-access (84 errors) - Large scope
+6. module-voice (100 errors) - Largest scope
 
-**Expected Output:** Decision on S3 scope
+**Decision:** ✅ **Fix all 312 errors in S3** (Option A)
+- Estimated effort: 20-30 hours
+- Systematic approach: smallest to largest modules
+- Template-first workflow with validation after each module
 
 ---
 
-### Step 5.2: Update Plan Accordingly
+## Phase 6: Implement Core ADR-019c Patterns (2-3 hours)
 
-**If fixes in S3:**
-- [ ] Add Phase 6: Fix Layer 2 Issues
-- [ ] Prioritize modules by issue count
-- [ ] Estimate remaining sprint time
+### Step 6.1: Create Module-Specific Permission Helpers
 
-**If fixes deferred:**
-- [ ] Mark S3 complete after assessment
-- [ ] Create plan stub for S4
-- [ ] Document handoff items
+**Pattern:** Each module implements its own permission layer (ADR-019c design)
 
-**Expected Output:** Updated plan reflecting decision
+**Template structure:**
+```python
+# templates/_modules-*/backend/layers/*_common/python/*_common/permissions.py
+
+from org_common.db import call_rpc
+
+def can_access_<resource>(user_id: str, resource_id: str) -> bool:
+    """Check if user can access resource (ownership + future sharing)"""
+    # Check ownership
+    if call_rpc('is_<resource>_owner', {
+        'p_user_id': user_id, 
+        'p_resource_id': resource_id
+    }):
+        return True
+    
+    # Future: Check sharing
+    # if call_rpc('is_resource_shared_with', {...}):
+    #     return True
+    
+    return False
+```
+
+**Actions:**
+- [ ] Create `permissions.py` for module-chat
+- [ ] Create `permissions.py` for module-kb  
+- [ ] Create `permissions.py` for module-voice
+- [ ] Create `permissions.py` for module-eval
+- [ ] Create `permissions.py` for module-ws
+- [ ] Create `permissions.py` for module-access
+
+**Expected Output:** Permission helper template for each module
+
+---
+
+### Step 6.2: Update org-common with Core Membership Helpers
+
+**Already exists in templates from S2 work, verify:**
+- `can_access_org_resource(user_id, org_id)`
+- `can_access_ws_resource(user_id, ws_id)`
+- `check_resource_ownership()` (generic)
+- `check_rpc_permission()` (generic)
+
+**Actions:**
+- [ ] Verify org-common helpers exist
+- [ ] Test helpers in test project
+
+**Expected Output:** Core helpers available for all modules
+
+---
+
+## Phase 7: Fix module-ws (2 errors) - Quick Win (1 hour)
+
+**Errors:** 2 Layer 2 errors, 14 warnings
+
+**Lambda files:**
+- `workspace/lambda_function.py`
+
+**Pattern to implement:**
+```python
+# 1. Verify workspace membership
+if not common.can_access_ws_resource(user_id, ws_id):
+    return common.forbidden_response('Not a workspace member')
+
+# 2. Check resource permission (if needed)
+from ws_common.permissions import can_access_ws_resource
+if not can_access_ws_resource(user_id, ws_id):
+    return common.forbidden_response('Access denied')
+```
+
+**Actions:**
+- [ ] Create `ws_common/permissions.py`
+- [ ] Add membership checks to data routes
+- [ ] Run validation: `--module module-ws --layer2-only`
+- [ ] Deploy and test
+- [ ] Commit: "fix(module-ws): implement ADR-019c resource permissions"
+
+**Expected Output:** module-ws: 0 Layer 2 errors
+
+---
+
+## Phase 8: Fix module-eval (20 errors) (2-3 hours)
+
+**Errors:** 20 Layer 2 errors, 0 warnings
+
+**Lambda files:**
+- `eval-results/lambda_function.py`
+- `eval-prompts/lambda_function.py`
+
+**Pattern:**
+```python
+# In eval-results Lambda
+from eval_common.permissions import can_access_eval
+
+# Get eval
+eval = common.find_one('evals', {'id': eval_id})
+
+# Verify org membership
+if not common.can_access_org_resource(user_id, eval['org_id']):
+    return common.forbidden_response('Not a member')
+
+# Check eval permission
+if not can_access_eval(user_id, eval_id):
+    return common.forbidden_response('Access denied')
+```
+
+**Actions:**
+- [ ] Create `eval_common/permissions.py`
+- [ ] Implement `can_access_eval()`, `can_edit_eval()`
+- [ ] Add membership + permission checks to all eval data routes
+- [ ] Run validation: `--module module-eval --layer2-only`
+- [ ] Sync to test project and deploy
+- [ ] Test eval UI functionality
+- [ ] Commit: "fix(module-eval): implement ADR-019c resource permissions"
+
+**Expected Output:** module-eval: 0 Layer 2 errors
+
+---
+
+## Phase 9: Fix module-chat (48 errors) (4-5 hours)
+
+**Errors:** 48 Layer 2 errors, 44 warnings
+
+**Lambda files:**
+- `chat-session/lambda_function.py`
+- `chat-message/lambda_function.py`
+- `chat-stream/lambda_function.py`
+
+**Pattern:**
+```python
+# In chat-session Lambda
+from chat_common.permissions import can_access_chat, can_edit_chat
+
+# Get chat session
+session = common.find_one('chat_sessions', {'id': session_id})
+
+# Verify org membership
+if not common.can_access_org_resource(user_id, session['org_id']):
+    return common.forbidden_response('Not a member')
+
+# Check chat permission
+if not can_access_chat(user_id, session_id):
+    return common.forbidden_response('Access denied')
+```
+
+**Actions:**
+- [ ] Create `chat_common/permissions.py`
+- [ ] Implement `can_access_chat()`, `can_edit_chat()`, `can_share_chat()`
+- [ ] Add membership + permission checks to chat-session routes
+- [ ] Add membership + permission checks to chat-message routes
+- [ ] Add membership + permission checks to chat-stream routes
+- [ ] Run validation: `--module module-chat --layer2-only`
+- [ ] Sync to test project and deploy all 3 Lambdas
+- [ ] Test chat UI (create, view, edit, delete sessions)
+- [ ] Commit: "fix(module-chat): implement ADR-019c resource permissions"
+
+**Expected Output:** module-chat: 0 Layer 2 errors
+
+---
+
+## Phase 10: Fix module-kb (58 errors) (5-6 hours)
+
+**Errors:** 58 Layer 2 errors, 40 warnings
+
+**Lambda files:**
+- `kb-base/lambda_function.py`
+- `kb-document/lambda_function.py`
+
+**Pattern:**
+```python
+# In kb-base Lambda
+from kb_common.permissions import can_access_kb, can_edit_kb
+
+# Get KB
+kb = common.find_one('kb_bases', {'id': kb_id})
+
+# Verify org membership
+if not common.can_access_org_resource(user_id, kb['org_id']):
+    return common.forbidden_response('Not a member')
+
+# Check KB permission
+if not can_access_kb(user_id, kb_id):
+    return common.forbidden_response('Access denied')
+```
+
+**Actions:**
+- [ ] Create `kb_common/permissions.py`
+- [ ] Implement `can_access_kb()`, `can_edit_kb()`, `can_manage_kb()`
+- [ ] Add membership + permission checks to kb-base routes
+- [ ] Add membership + permission checks to kb-document routes
+- [ ] Run validation: `--module module-kb --layer2-only`
+- [ ] Sync to test project and deploy both Lambdas
+- [ ] Test KB UI (create, view, edit, delete bases/documents)
+- [ ] Commit: "fix(module-kb): implement ADR-019c resource permissions"
+
+**Expected Output:** module-kb: 0 Layer 2 errors
+
+---
+
+## Phase 11: Fix module-access (84 errors) (6-8 hours)
+
+**Errors:** 84 Layer 2 errors, 20 warnings
+
+**Lambda files:**
+- `orgs/lambda_function.py`
+- `invites/lambda_function.py`
+- `users/lambda_function.py`
+
+**Pattern:**
+```python
+# In users Lambda
+from access_common.permissions import can_access_user, can_edit_user
+
+# Get user profile
+user_profile = common.find_one('user_profiles', {'user_id': user_id})
+
+# Verify org membership (for org-scoped operations)
+if org_id and not common.can_access_org_resource(user_id, org_id):
+    return common.forbidden_response('Not a member')
+
+# Check user permission
+if not can_access_user(requesting_user_id, target_user_id):
+    return common.forbidden_response('Access denied')
+```
+
+**Actions:**
+- [ ] Create `access_common/permissions.py`
+- [ ] Implement `can_access_user()`, `can_edit_user()`, `can_view_org()`, `can_manage_invites()`
+- [ ] Add membership + permission checks to users routes
+- [ ] Add membership + permission checks to orgs routes
+- [ ] Add membership + permission checks to invites routes
+- [ ] Run validation: `--module module-access --layer2-only`
+- [ ] Sync to test project and deploy all 3 Lambdas
+- [ ] Test access UI (user profiles, org membership, invites)
+- [ ] Commit: "fix(module-access): implement ADR-019c resource permissions"
+
+**Expected Output:** module-access: 0 Layer 2 errors
+
+---
+
+## Phase 12: Fix module-voice (100 errors) (8-10 hours)
+
+**Errors:** 100 Layer 2 errors, 20 warnings
+
+**Lambda files:**
+- `voice-sessions/lambda_function.py`
+- `voice-analytics/lambda_function.py`
+
+**Pattern:**
+```python
+# In voice-sessions Lambda
+from voice_common.permissions import can_access_voice, can_edit_voice
+
+# Get voice session
+session = common.find_one('voice_sessions', {'id': session_id})
+
+# Verify org membership
+if not common.can_access_org_resource(user_id, session['org_id']):
+    return common.forbidden_response('Not a member')
+
+# Check voice permission
+if not can_access_voice(user_id, session_id):
+    return common.forbidden_response('Access denied')
+```
+
+**Actions:**
+- [ ] Create `voice_common/permissions.py`
+- [ ] Implement `can_access_voice()`, `can_edit_voice()`, `can_view_analytics()`
+- [ ] Add membership + permission checks to voice-sessions routes
+- [ ] Add membership + permission checks to voice-analytics routes
+- [ ] Run validation: `--module module-voice --layer2-only`
+- [ ] Sync to test project and deploy both Lambdas
+- [ ] Test voice UI (sessions, transcripts, analytics)
+- [ ] Commit: "fix(module-voice): implement ADR-019c resource permissions"
+
+**Expected Output:** module-voice: 0 Layer 2 errors
+
+---
+
+## Phase 13: Final Validation and Deployment (2-3 hours)
+
+### Step 13.1: Run Full Validation on All Modules
+
+**Actions:**
+- [ ] Run validator with both layers on all modules:
+  ```bash
+  python3 validation/api-tracer/cli.py validate \
+    --path ~/code/bodhix/testing/admin-ui/ai-mod-stack \
+    --all-auth \
+    --prefer-terraform
+  ```
+- [ ] Verify: 0 Layer 1 errors, 0 Layer 2 errors across all 8 modules
+- [ ] Document final results
+
+**Expected Output:** Clean validation across all modules
+
+---
+
+### Step 13.2: Update Templates with All Fixes
+
+**Actions:**
+- [ ] Verify all permission helpers are in templates
+- [ ] Verify all Lambda fixes are in templates
+- [ ] Run validation on templates directory
+- [ ] Commit: "feat: complete ADR-019c implementation across all modules"
+
+**Expected Output:** Templates ready for new projects
+
+---
+
+### Step 13.3: Deploy to Test Project
+
+**Actions:**
+- [ ] Deploy all updated Lambdas to test project
+- [ ] Run smoke tests on each module
+- [ ] Verify no regressions in admin functionality
+- [ ] Document any deployment issues
+
+**Expected Output:** Test project fully compliant with ADR-019
+
+---
+
+### Step 13.4: Create Deployment Guide
+
+**Actions:**
+- [ ] Document deployment order for existing projects
+- [ ] Create migration guide for pm-app
+- [ ] Document testing checklist
+- [ ] Create rollback plan
+
+**Expected Output:** Safe deployment guide for production
 
 ---
 
