@@ -15,9 +15,6 @@ import org_common as common
 # Get Lambda function name from environment
 LAMBDA_FUNCTION_NAME = os.environ.get('AWS_LAMBDA_FUNCTION_NAME', 'ai-provider-function')
 
-# System admin roles
-SYS_ADMIN_ROLES = ['sys_owner', 'sys_admin']
-
 # Error categorization patterns
 ERROR_CATEGORIES = {
     'requires_inference_profile': [
@@ -132,30 +129,6 @@ def detect_model_vendor(model_id: str, display_name: str = '') -> str:
     
     return 'unknown'
 
-def _check_admin_access(user_id: str) -> bool:
-    """
-    Check if user has system admin access.
-    Returns True if user has access, False otherwise.
-    """
-    try:
-        profile = common.find_one('user_profiles', {'user_id': user_id})
-        if not profile:
-            return False
-        
-        sys_role = profile.get('sys_role')
-        return sys_role in SYS_ADMIN_ROLES
-    except Exception as e:
-        print(f'Error checking admin access: {str(e)}')
-        return False
-
-def _require_admin_access(user_id: str):
-    """
-    Require system admin access, raise ForbiddenError if user doesn't have it.
-    """
-    if not _check_admin_access(user_id):
-        raise common.ForbiddenError('Access denied. System admin role required.')
-
-
 def get_supabase_user_id_from_okta_uid(okta_uid: str) -> Optional[str]:
     """
     Get Supabase user_id from Okta user ID
@@ -219,6 +192,18 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         path_params = event.get('pathParameters', {})
         path = event.get('requestContext', {}).get('http', {}).get('path') or event.get('path', '')
         
+        # Centralized Authorization (ADR-019 - Router-level auth)
+        if path.startswith('/admin/sys/'):
+            # All sys admin routes require system admin role
+            if not common.check_sys_admin(supabase_user_id):
+                return common.forbidden_response('System admin role required')
+        
+        elif path.startswith('/admin/org/'):
+            # All org admin routes require org admin role + org context
+            org_id = common.get_org_context_from_event(event)
+            if not common.check_org_admin(supabase_user_id, org_id):
+                return common.forbidden_response('Organization admin role required')
+        
         # Route to appropriate handler based on path and method
         # Org admin routes
         if '/admin/org/ai/config' in path and http_method == 'GET':
@@ -245,7 +230,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             if not path_params or not path_params.get('modelId'):
                 return common.bad_request_response('Model ID is required')
             model_id = common.validate_uuid(path_params['modelId'], 'modelId')
-            _require_admin_access(supabase_user_id)
+            if not common.check_sys_admin(supabase_user_id):
+                return common.forbidden_response('System admin role required')
             model = common.find_one('ai_models', {'id': model_id})
             if not model:
                 raise common.NotFoundError(f"AI Model with ID {model_id} not found.")
@@ -293,14 +279,10 @@ def handle_get_org_ai_config(event: Dict[str, Any], user_id: str) -> Dict[str, A
     """
     Get organization AI configuration.
     Returns list of available providers and models for this organization.
-    Org ID comes from user's session (user's current organization).
+    Org ID comes from orgId query parameter.
     """
-    # Get user's org_id from their profile
-    profile = common.find_one('user_profiles', {'user_id': user_id})
-    if not profile or not profile.get('org_id'):
-        raise common.ForbiddenError('User does not belong to an organization')
-    
-    org_id = profile['org_id']
+    # Authorization handled at router level (ADR-019)
+    org_id = common.get_org_context_from_event(event)
     
     try:
         # Get all active providers
@@ -342,7 +324,7 @@ def handle_get_org_ai_config(event: Dict[str, Any], user_id: str) -> Dict[str, A
 
 def handle_get_all(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """List all platform-level AI providers with model counts (admin only)"""
-    _require_admin_access(user_id)
+    # Authorization handled at router level (ADR-019)
     
     # Check if model counts are requested via query param
     query_params = event.get('queryStringParameters', {}) or {}
@@ -424,7 +406,7 @@ def handle_get_all(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
 
 def handle_get_one(user_id: str, provider_id: str) -> Dict[str, Any]:
     """Get a single AI provider by ID (admin only)"""
-    _require_admin_access(user_id)
+    # Authorization handled at router level (ADR-019)
     
     provider_id = common.validate_uuid(provider_id, 'provider_id')
     provider = common.find_one('ai_providers', {'id': provider_id})
@@ -435,7 +417,7 @@ def handle_get_one(user_id: str, provider_id: str) -> Dict[str, Any]:
 
 def handle_create(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """Create a new platform-level AI provider (admin only)"""
-    _require_admin_access(user_id)
+    # Authorization handled at router level (ADR-019)
     
     body = json.loads(event.get('body', '{}'))
     
@@ -456,7 +438,7 @@ def handle_create(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
 
 def handle_update(event: Dict[str, Any], user_id: str, provider_id: str) -> Dict[str, Any]:
     """Update a platform-level AI provider (admin only)"""
-    _require_admin_access(user_id)
+    # Authorization handled at router level (ADR-019)
     
     provider_id = common.validate_uuid(provider_id, 'provider_id')
     body = json.loads(event.get('body', '{}'))
@@ -488,7 +470,7 @@ def handle_update(event: Dict[str, Any], user_id: str, provider_id: str) -> Dict
 
 def handle_delete(user_id: str, provider_id: str) -> Dict[str, Any]:
     """Delete a platform-level AI provider (admin only)"""
-    _require_admin_access(user_id)
+    # Authorization handled at router level (ADR-019)
     
     provider_id = common.validate_uuid(provider_id, 'provider_id')
     
@@ -503,7 +485,7 @@ def handle_delete(user_id: str, provider_id: str) -> Dict[str, Any]:
 
 def handle_get_models(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     """Get all models (optionally filtered by provider) (admin only)"""
-    _require_admin_access(user_id)
+    # Authorization handled at router level (ADR-019)
     
     query_params = event.get('queryStringParameters', {}) or {}
     provider_id = query_params.get('providerId')
@@ -529,7 +511,7 @@ def handle_discover_models(event: Dict[str, Any], user_id: str, provider_id: str
     Discover available models from the provider and save them to the database (admin only).
     Currently supports AWS Bedrock provider.
     """
-    _require_admin_access(user_id)
+    # Authorization handled at router level (ADR-019)
     
     provider_id = common.validate_uuid(provider_id, 'provider_id')
     
@@ -602,7 +584,7 @@ def handle_validate_models(event: Dict[str, Any], user_id: str, provider_id: str
     Returns 202 immediately to avoid API Gateway timeout.
     Progress can be tracked via GET /providers/:id/validation-status
     """
-    _require_admin_access(user_id)
+    # Authorization handled at router level (ADR-019)
     
     provider_id = common.validate_uuid(provider_id, 'provider_id')
     
@@ -1000,7 +982,7 @@ def handle_get_validation_status(user_id: str, provider_id: str) -> Dict[str, An
     Get the current validation status for a provider (admin only).
     Returns the most recent validation progress record.
     """
-    _require_admin_access(user_id)
+    # Authorization handled at router level (ADR-019)
     
     provider_id = common.validate_uuid(provider_id, 'provider_id')
     
@@ -1058,7 +1040,7 @@ def handle_test_model(event: Dict[str, Any], user_id: str, model_id: str) -> Dic
     """
     Test a specific model by invoking it with a test prompt (admin only).
     """
-    _require_admin_access(user_id)
+    # Authorization handled at router level (ADR-019)
     
     model_id = common.validate_uuid(model_id, 'model_id')
     

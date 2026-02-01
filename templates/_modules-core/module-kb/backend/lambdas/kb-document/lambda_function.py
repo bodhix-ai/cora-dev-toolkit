@@ -169,16 +169,36 @@ def handle_chat_documents(method: str, path: str, path_params: Dict, event: Dict
 
 
 def handle_org_admin_documents(method: str, path: str, path_params: Dict, event: Dict, user_id: str):
-    """Handle org admin document operations."""
+    """
+    Handle org admin document operations.
+    
+    ADR-019 Compliant: Centralized router auth pattern
+    - Extract org context from event
+    - Check org admin access ONCE at router level
+    """
     kb_id = path_params.get('kbId')
     doc_id = path_params.get('docId')
     
     if not kb_id:
         return common.bad_request_response("Missing kbId")
     
-    # Verify org admin access to KB
-    if not check_org_admin_kb_access(user_id, kb_id):
-        return common.forbidden_response("Access denied to org KB")
+    # ========================================
+    # CENTRALIZED ORG CONTEXT EXTRACTION (ADR-019)
+    # ========================================
+    org_id = common.get_org_context_from_event(event)
+    if not org_id:
+        return common.bad_request_response('Organization context required. Pass orgId in query params or request body.')
+    
+    # ========================================
+    # CENTRALIZED AUTH CHECK (ADR-019)
+    # ========================================
+    if not common.check_org_admin(user_id, org_id):
+        return common.forbidden_response('Organization admin access required')
+    
+    # Verify KB belongs to this org
+    kb = common.find_one(table='kb_bases', filters={'id': kb_id, 'is_deleted': False})
+    if not kb or kb.get('org_id') != org_id:
+        return common.forbidden_response("KB does not belong to this organization")
     
     if method == 'GET':
         return handle_list_documents_by_kb(user_id, kb_id)

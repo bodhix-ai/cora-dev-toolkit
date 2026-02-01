@@ -227,9 +227,9 @@ export function useOrgAIConfig(authAdapter: CoraAuthAdapter, orgId: string) {
         return;
       }
 
-      const client = createCoraAuthenticatedClient(token, orgId);
+      const client = createCoraAuthenticatedClient(token);
       const response = await client.get<ApiResponse<OrgAIConfig>>(
-        `/orgs/${orgId}/ai/config`
+        `/admin/org/ai/config?orgId=${orgId}`
       );
 
       // Handle wrapped response { success: true, data: {...} }
@@ -261,9 +261,9 @@ export function useOrgAIConfig(authAdapter: CoraAuthAdapter, orgId: string) {
           throw new Error("No authentication token");
         }
 
-        const client = createCoraAuthenticatedClient(token, orgId);
+        const client = createCoraAuthenticatedClient(token);
         const data = await client.put<OrgAIConfig>(
-          `/orgs/${orgId}/ai/config`,
+          `/admin/org/ai/config?orgId=${orgId}`,
           updates
         );
         setConfig(data);

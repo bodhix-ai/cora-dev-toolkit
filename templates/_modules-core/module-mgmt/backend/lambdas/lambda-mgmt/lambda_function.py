@@ -41,9 +41,6 @@ from lambda_mgmt_common import EventBridgeManager
 logger = logging.getLogger()
 logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
 
-# System admin roles
-SYS_ADMIN_ROLES = ['sys_owner', 'sys_admin']
-
 
 def _transform_lambda_config(data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -100,45 +97,33 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         
         logger.info(f"Request: {http_method} {path}")
         
-        # Standard CORA auth extraction
+        # Standard CORA auth extraction (ADR-019)
         user_info = common.get_user_from_event(event)
         okta_uid = user_info['user_id']
-        org_id = user_info.get('org_id')  # Extract org_id for audit/logging
         supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
         
-        # Log org_id context for audit trail
-        if org_id:
-            logger.info(f"Request from org_id: {org_id}")
+        # Initialize org_id (will be extracted for org admin routes)
+        org_id = None
         
-        # Get user profile for role checking
-        profile = common.find_one(
-            table='user_profiles',
-            filters={'user_id': supabase_user_id}
-        )
-        
-        if not profile:
-            logger.warning(f"User profile not found for {supabase_user_id}")
-            return common.forbidden_response('User profile not found')
-        
-        # Check if route requires sys admin or org admin
-        is_sys_admin = profile.get('sys_role') in SYS_ADMIN_ROLES
-        is_org_admin = profile.get('org_role') == 'org_admin'
-        
-        # System admin routes require sys_admin role
+        # System admin routes require sys_admin role (ADR-019)
         if path.startswith('/admin/sys/'):
-            if not is_sys_admin:
+            if not common.check_sys_admin(supabase_user_id):
                 logger.warning(f"Access denied for user {supabase_user_id} - sys admin required")
                 return common.forbidden_response('System admin role required')
             logger.info(f"System admin access granted for user {supabase_user_id}")
         
-        # Organization admin routes require org_admin role + org verification
+        # Organization admin routes require org_admin role + org verification (ADR-019)
         elif path.startswith('/admin/org/'):
-            if not is_org_admin:
-                logger.warning(f"Access denied for user {supabase_user_id} - org admin required")
-                return common.forbidden_response('Organization admin role required')
+            # Extract org context from request (ADR-019 standard)
+            org_id = common.get_org_context_from_event(event)
             if not org_id:
                 logger.warning(f"Org admin missing org_id for {supabase_user_id}")
-                return common.forbidden_response('Organization context required')
+                return common.bad_request_response('Organization ID (orgId) is required')
+            
+            # Verify user is org admin for this organization
+            if not common.check_org_admin(supabase_user_id, org_id):
+                logger.warning(f"Access denied for user {supabase_user_id} - org admin required for org {org_id}")
+                return common.forbidden_response('Organization admin role required')
             logger.info(f"Organization admin access granted for user {supabase_user_id}, org: {org_id}")
         
         # Route dispatcher

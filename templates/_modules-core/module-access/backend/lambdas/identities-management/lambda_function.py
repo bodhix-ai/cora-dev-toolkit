@@ -96,14 +96,34 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         http_method = event['requestContext']['http']['method']
         path = event['requestContext']['http']['path']
         
+        # Centralized authentication for admin routes (ADR-019)
+        user_id = None
+        org_id = None
+        
+        if '/admin/' in path:
+            # Get user_id from JWT token
+            user_info = common.get_user_from_event(event)
+            okta_uid = user_info['user_id']
+            user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
+            
+            # System admin routes
+            if path.startswith('/admin/sys/'):
+                common.check_sys_admin(user_id)
+            
+            # Organization admin routes
+            elif path.startswith('/admin/org/'):
+                org_id = common.get_org_context_from_event(event)
+                common.check_org_admin(user_id, org_id)
+        
+        # Route to handlers (pass user_id and org_id for admin routes)
         if http_method == 'GET' and '/admin/sys/access/users' in path:
-            return handle_list_users(event)
+            return handle_list_users(user_id)
         elif http_method == 'GET' and '/admin/org/access/users' in path:
-            return handle_org_list_users(event)
+            return handle_org_list_users(user_id, org_id)
         elif http_method == 'PUT' and '/admin/org/access/users/' in path:
-            return handle_org_update_user(event)
+            return handle_org_update_user(event, user_id, org_id)
         elif http_method == 'DELETE' and '/admin/org/access/users/' in path:
-            return handle_org_delete_user(event)
+            return handle_org_delete_user(event, user_id, org_id)
         elif http_method == 'POST':
             return handle_provision(event)
         elif http_method == 'OPTIONS':
@@ -127,33 +147,19 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         return common.internal_error_response('Internal server error')
 
 
-def handle_list_users(event: Dict[str, Any]) -> Dict[str, Any]:
+def handle_list_users(user_id: str) -> Dict[str, Any]:
     """
     List all platform users with their roles and organization memberships
     
     This endpoint is restricted to platform admins only.
+    Authorization is handled at the router level (ADR-019).
+    
+    Args:
+        user_id: Authenticated user's Supabase user_id (already verified as sys_admin)
     
     Returns:
         List of users with profile and org membership information
     """
-    # Verify user is platform admin
-    try:
-        user_info = common.get_user_from_event(event)
-        okta_uid = user_info['user_id']
-        
-        # Map Okta UID to Supabase user_id using standard org_common function
-        supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
-        
-        # Get user profile to check sys_role
-        profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
-        if not profile:
-            raise common.UnauthorizedError('User profile not found')
-        
-        if profile.get('sys_role') not in ['sys_admin', 'sys_owner']:
-            raise common.ForbiddenError('Sys admin access required')
-    except KeyError:
-        raise common.UnauthorizedError('Authentication required')
-    
     # Use service role client to query all users
     client = common.get_supabase_client()
     
@@ -341,44 +347,20 @@ def handle_provision(event: Dict[str, Any]) -> Dict[str, Any]:
         raise
 
 
-def handle_org_list_users(event: Dict[str, Any]) -> Dict[str, Any]:
+def handle_org_list_users(user_id: str, org_id: str) -> Dict[str, Any]:
     """
     List users in the requesting user's organization
     
     This endpoint is accessible to org_admin (read-only) and org_owner.
-    Users can only see users in their own organization.
+    Authorization is handled at the router level (ADR-019).
+    
+    Args:
+        user_id: Authenticated user's Supabase user_id (already verified as org_admin)
+        org_id: Organization ID from request context (already validated)
     
     Returns:
         List of users in the organization with their roles
     """
-    # Verify user is org admin or org owner
-    try:
-        user_info = common.get_user_from_event(event)
-        okta_uid = user_info['user_id']
-        org_id = user_info.get('org_id')
-        
-        if not org_id:
-            raise common.ForbiddenError('Organization context required')
-        
-        # Map Okta UID to Supabase user_id
-        supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
-        
-        # Get user's org membership to check role
-        membership = common.find_one('org_members', {
-            'user_id': supabase_user_id,
-            'org_id': org_id
-        })
-        
-        if not membership:
-            raise common.ForbiddenError('Not a member of this organization')
-        
-        org_role = membership.get('org_role')
-        if org_role not in ['org_admin', 'org_owner']:
-            raise common.ForbiddenError('Org admin or owner access required')
-            
-    except KeyError:
-        raise common.UnauthorizedError('Authentication required')
-    
     # Use service role client to query org users
     client = common.get_supabase_client()
     
@@ -417,12 +399,18 @@ def handle_org_list_users(event: Dict[str, Any]) -> Dict[str, Any]:
         raise
 
 
-def handle_org_update_user(event: Dict[str, Any]) -> Dict[str, Any]:
+def handle_org_update_user(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[str, Any]:
     """
     Update user role in organization
     
     This endpoint is restricted to org_owner only.
-    Org owners can change other users' roles within their organization.
+    Authorization (org_admin minimum) is handled at router level (ADR-019).
+    Additional org_owner check is performed here for this sensitive operation.
+    
+    Args:
+        event: API Gateway event (for path parameters and body)
+        user_id: Authenticated user's Supabase user_id (already verified as org_admin)
+        org_id: Organization ID from request context (already validated)
     
     Request body:
     {
@@ -432,29 +420,14 @@ def handle_org_update_user(event: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Updated user information
     """
-    # Verify user is org owner
-    try:
-        user_info = common.get_user_from_event(event)
-        okta_uid = user_info['user_id']
-        org_id = user_info.get('org_id')
-        
-        if not org_id:
-            raise common.ForbiddenError('Organization context required')
-        
-        # Map Okta UID to Supabase user_id
-        supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
-        
-        # Get user's org membership to check role
-        membership = common.find_one('org_members', {
-            'user_id': supabase_user_id,
-            'org_id': org_id
-        })
-        
-        if not membership or membership.get('org_role') != 'org_owner':
-            raise common.ForbiddenError('Org owner access required')
-            
-    except KeyError:
-        raise common.UnauthorizedError('Authentication required')
+    # Additional check: verify user is org_owner for this sensitive operation
+    membership = common.find_one('org_members', {
+        'user_id': user_id,
+        'org_id': org_id
+    })
+    
+    if not membership or membership.get('org_role') != 'org_owner':
+        raise common.ForbiddenError('Org owner access required')
     
     # Get target user ID from path
     path_parameters = event.get('pathParameters', {}) or {}
@@ -494,39 +467,30 @@ def handle_org_update_user(event: Dict[str, Any]) -> Dict[str, Any]:
         raise
 
 
-def handle_org_delete_user(event: Dict[str, Any]) -> Dict[str, Any]:
+def handle_org_delete_user(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[str, Any]:
     """
     Remove user from organization
     
     This endpoint is restricted to org_owner only.
-    Org owners can remove users from their organization.
+    Authorization (org_admin minimum) is handled at router level (ADR-019).
+    Additional org_owner check is performed here for this sensitive operation.
+    
+    Args:
+        event: API Gateway event (for path parameters)
+        user_id: Authenticated user's Supabase user_id (already verified as org_admin)
+        org_id: Organization ID from request context (already validated)
     
     Returns:
         Success message
     """
-    # Verify user is org owner
-    try:
-        user_info = common.get_user_from_event(event)
-        okta_uid = user_info['user_id']
-        org_id = user_info.get('org_id')
-        
-        if not org_id:
-            raise common.ForbiddenError('Organization context required')
-        
-        # Map Okta UID to Supabase user_id
-        supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
-        
-        # Get user's org membership to check role
-        membership = common.find_one('org_members', {
-            'user_id': supabase_user_id,
-            'org_id': org_id
-        })
-        
-        if not membership or membership.get('org_role') != 'org_owner':
-            raise common.ForbiddenError('Org owner access required')
-            
-    except KeyError:
-        raise common.UnauthorizedError('Authentication required')
+    # Additional check: verify user is org_owner for this sensitive operation
+    membership = common.find_one('org_members', {
+        'user_id': user_id,
+        'org_id': org_id
+    })
+    
+    if not membership or membership.get('org_role') != 'org_owner':
+        raise common.ForbiddenError('Org owner access required')
     
     # Get target user ID from path
     path_parameters = event.get('pathParameters', {}) or {}
@@ -536,7 +500,7 @@ def handle_org_delete_user(event: Dict[str, Any]) -> Dict[str, Any]:
         return common.bad_request_response('User ID required')
     
     # Prevent self-deletion
-    if target_user_id == supabase_user_id:
+    if target_user_id == user_id:
         return common.bad_request_response('Cannot remove yourself from the organization')
     
     try:
