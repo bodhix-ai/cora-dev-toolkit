@@ -41,6 +41,7 @@ class AuthIssueType:
     MISSING_LOADING_CHECK = 'missing_loading_check'
     DIRECT_ROLE_ACCESS = 'direct_role_access'
     MISSING_ORG_ID_IN_API_CALL = 'missing_org_id_in_api_call'  # API calls to /admin/org/* without orgId
+    INVALID_HOOK_DESTRUCTURING = 'invalid_hook_destructuring'  # Destructured properties don't match hook return type
     
     # Lambda issues
     MISSING_CHECK_SYS_ADMIN = 'missing_check_sys_admin'
@@ -170,7 +171,7 @@ class FrontendAuthValidator:
                 file=self.current_file,
                 line=1,
                 issue="System admin page missing useRole() hook",
-                suggestion="Add: const { sysRole, isLoading } = useRole()",
+                suggestion="Add: const { isSysAdmin } = useRole() - useRole returns { role, hasPermission, isSysAdmin, isOrgAdmin }",
                 standard_ref="ADR-019a"
             ))
         
@@ -183,9 +184,13 @@ class FrontendAuthValidator:
                 file=self.current_file,
                 line=1,
                 issue="Organization admin page missing useRole() hook",
-                suggestion="Add: const { orgRole, isLoading } = useRole()",
+                suggestion="Add: const { isOrgAdmin } = useRole() - useRole returns { role, hasPermission, isSysAdmin, isOrgAdmin }",
                 standard_ref="ADR-019a"
             ))
+        
+        # Check for invalid useRole destructuring (if useRole is present)
+        if has_use_role:
+            self._check_use_role_destructuring(content)
     
     def _check_org_context(self, content: str, route_type: str):
         """Check for useOrganizationContext() in org admin pages."""
@@ -218,7 +223,7 @@ class FrontendAuthValidator:
         
         if route_type != 'none' and not has_loading_check:
             self.issues.append(AuthIssue(
-                severity='warning',
+                severity='error',
                 issue_type=AuthIssueType.MISSING_LOADING_CHECK,
                 layer='frontend',
                 file=self.current_file,
@@ -227,6 +232,109 @@ class FrontendAuthValidator:
                 suggestion="Ensure loading state is checked: if (isLoading) return <LoadingSpinner />",
                 standard_ref="ADR-019a"
             ))
+    
+    def _check_use_role_destructuring(self, content: str):
+        """
+        Check that useRole() destructuring uses valid properties.
+        
+        Valid properties: role, hasPermission, isSysAdmin, isOrgAdmin
+        Invalid properties: sysRole, orgRole, isLoading, loading, etc.
+        """
+        # Pattern to find useRole destructuring: const { ... } = useRole()
+        pattern = r'const\s*\{\s*([^}]+)\s*\}\s*=\s*useRole\s*\(\s*\)'
+        
+        match = re.search(pattern, content)
+        if not match:
+            return
+        
+        destructured = match.group(1)
+        line = content[:match.start()].count('\n') + 1
+        
+        # Valid properties from useRole hook
+        valid_props = {'role', 'hasPermission', 'isSysAdmin', 'isOrgAdmin'}
+        
+        # Common invalid properties (mistakes)
+        invalid_props = {
+            'sysRole': 'isSysAdmin (boolean)',
+            'orgRole': 'isOrgAdmin (boolean)', 
+            'isLoading': 'useRole does not return isLoading - use useUser().loading instead',
+            'loading': 'useRole does not return loading - use useUser().loading instead',
+            'roleLoading': 'useRole does not return roleLoading - use useUser().loading instead',
+        }
+        
+        # Parse the destructured properties
+        # Handle: prop, prop: alias, and nested destructuring
+        props = []
+        for part in destructured.split(','):
+            part = part.strip()
+            if ':' in part:
+                # prop: alias - get the prop name (left side)
+                prop = part.split(':')[0].strip()
+            else:
+                prop = part
+            if prop:
+                props.append(prop)
+        
+        # Check each property
+        for prop in props:
+            if prop in invalid_props:
+                self.issues.append(AuthIssue(
+                    severity='error',
+                    issue_type=AuthIssueType.INVALID_HOOK_DESTRUCTURING,
+                    layer='frontend',
+                    file=self.current_file,
+                    line=line,
+                    issue=f"Invalid useRole() destructuring: '{prop}' is not returned by useRole()",
+                    suggestion=f"useRole() returns {{ role, hasPermission, isSysAdmin, isOrgAdmin }}. Use {invalid_props[prop]}",
+                    standard_ref="ADR-019a"
+                ))
+            elif prop not in valid_props and not prop.startswith('_'):  # Allow _ for ignored vars
+                # Unknown property - warn
+                self.issues.append(AuthIssue(
+                    severity='warning',
+                    issue_type=AuthIssueType.INVALID_HOOK_DESTRUCTURING,
+                    layer='frontend',
+                    file=self.current_file,
+                    line=line,
+                    issue=f"Unknown useRole() property: '{prop}' - verify this is a valid return value",
+                    suggestion=f"useRole() returns {{ role, hasPermission, isSysAdmin, isOrgAdmin }}",
+                    standard_ref="ADR-019a"
+                ))
+
+    def _check_orgs_path_parameter_antipattern(self, content: str):
+        """
+        Check for anti-pattern: /orgs/${orgId}/... (path parameter instead of query parameter).
+        
+        Per ADR-019a: Org admin routes should use /admin/org/*?orgId= pattern.
+        Using /orgs/${orgId}/... bypasses centralized authorization checks.
+        """
+        # Pattern to detect /orgs/${orgId}/... or '/orgs/' + orgId template literal
+        patterns = [
+            r'["\']\/orgs\/\$\{orgId\}\/[^"\']*["\']',  # `/orgs/${orgId}/...`
+            r'`\/orgs\/\$\{orgId\}\/[^`]*`',            # Template literal with /orgs/${orgId}/
+        ]
+        
+        for pattern in patterns:
+            for match in re.finditer(pattern, content):
+                line = content[:match.start()].count('\n') + 1
+                route = match.group(0).strip('"\'`')
+                
+                # Extract the path after /orgs/${orgId}/
+                # e.g., /orgs/${orgId}/ai/config -> /admin/org/ai/config
+                path_match = re.search(r'/orgs/\$\{orgId\}/(.+)', route)
+                suggested_route = f"/admin/org/{path_match.group(1)}?orgId=${{orgId}}" if path_match else "/admin/org/*?orgId=${orgId}"
+                
+                self.issues.append(AuthIssue(
+                    severity='error',
+                    issue_type=AuthIssueType.MISSING_ORG_ID_IN_API_CALL,
+                    layer='frontend',
+                    file=self.current_file,
+                    line=line,
+                    route_path=route,
+                    issue=f"API call uses wrong endpoint pattern: '{route}' - should use /admin/org/* with orgId query param",
+                    suggestion=f"Change to: `{suggested_route}` (query parameter, not path parameter)",
+                    standard_ref="ADR-019a"
+                ))
     
     def _check_direct_role_access(self, content: str):
         """Check for anti-pattern: directly accessing role from JWT/token."""
@@ -263,14 +371,23 @@ class FrontendAuthValidator:
         Per ADR-019a: All org admin API calls MUST include orgId as a query parameter.
         This ensures the Lambda can extract org context for authorization.
         
-        Pattern to detect:
-        - Function that fetches /admin/org/* route
-        - Must have orgId in buildUrl() or in query params
-        """
-        # Find all function definitions that call /admin/org/ routes
-        # Pattern: async function functionName(...) that contains '/admin/org/'
+        Patterns to detect:
+        1. Traditional: export async function name(...) { ... '/admin/org/' ... }
+        2. Arrow in object: listKbs: () => client.get('/admin/org/kb/bases')
+        3. Arrow assigned: const listKbs = () => client.get('/admin/org/...')
         
+        Check: URL must contain ?orgId= or orgId in function parameters/URL template
+        
+        Also detects anti-pattern:
+        - /orgs/${orgId}/... (path parameter instead of query parameter)
+        """
         lines = content.split('\n')
+        
+        # First, check for anti-pattern: /orgs/${orgId}/... (path parameter)
+        # This is WRONG per ADR-019 - should use /admin/org/*?orgId= instead
+        self._check_orgs_path_parameter_antipattern(content)
+        
+        # Pattern 1: Traditional async function exports
         current_function = None
         current_function_start = 0
         current_function_content = []
@@ -323,6 +440,37 @@ class FrontendAuthValidator:
                     
                     in_function = False
                     current_function = None
+        
+        # Pattern 2: Arrow functions in object literals
+        # e.g., listKbs: () => client.get('/admin/org/kb/bases')
+        # Matches: propertyName: (...) => ...('/admin/org/...')
+        arrow_pattern = r'(\w+)\s*:\s*\([^)]*\)\s*=>\s*[^,\n]*["\'](/admin/org/[^"\']+)["\']'
+        
+        for match in re.finditer(arrow_pattern, content):
+            func_name = match.group(1)
+            route = match.group(2)
+            line = content[:match.start()].count('\n') + 1
+            
+            # Check if orgId is in the URL (either as query param or template)
+            url_part = content[match.start():match.end()]
+            has_org_id = (
+                '?orgId=' in url_part or
+                '${orgId}' in url_part or
+                'orgId' in match.group(0)  # Check full match
+            )
+            
+            if not has_org_id:
+                self.issues.append(AuthIssue(
+                    severity='error',
+                    issue_type=AuthIssueType.MISSING_ORG_ID_IN_API_CALL,
+                    layer='frontend',
+                    file=self.current_file,
+                    line=line,
+                    route_path=route,
+                    issue=f"API method '{func_name}' calls org admin route '{route}' without orgId parameter",
+                    suggestion=f"Add orgId to URL: `{route}?orgId=${{orgId}}` and add orgId as first function parameter",
+                    standard_ref="ADR-019a"
+                ))
 
 
 class LambdaAuthValidator:
@@ -696,30 +844,36 @@ class LambdaAuthValidator:
                         auth_check_count += 1
                         auth_check_locations.append(node.name)
         
-        # If auth checks are in multiple handler functions, it's not centralized
-        handler_funcs = [loc for loc in auth_check_locations if loc.startswith('handle_')]
+        # If auth checks are in multiple LEAF handler functions, it's not centralized
+        # Exclude sub-router functions which legitimately have auth at their entry point
+        sub_router_patterns = ['handle_workspace_', 'handle_chat_', 'handle_org_admin', 
+                               'handle_sys_admin', 'handle_ws_admin', 'route_']
+        leaf_handlers = [loc for loc in auth_check_locations 
+                        if loc.startswith('handle_') 
+                        and not any(loc.startswith(p) for p in sub_router_patterns)]
         
-        if len(handler_funcs) > 1:
+        if len(leaf_handlers) > 1:
             self.issues.append(AuthIssue(
-                severity='warning',
+                severity='error',
                 issue_type=AuthIssueType.AUTH_IN_HANDLER,
                 layer='lambda',
                 file=self.current_file,
                 line=1,
-                issue=f"Auth checks in multiple handler functions ({', '.join(handler_funcs)}). Consider centralizing in router.",
+                issue=f"Auth checks in multiple leaf handler functions ({', '.join(leaf_handlers)}). Consider centralizing in router.",
                 suggestion="Move auth checks to lambda_handler() router level per ADR-019 Centralized Router Auth pattern",
                 standard_ref="ADR-019b"
             ))
         
         # Check for duplicate auth checks (same check appearing multiple times)
-        if auth_check_count > 3:  # More than 3 suggests duplication
+        # Threshold of 6 allows for Lambdas with multiple route categories (org/sys/ws each with auth)
+        if auth_check_count > 6:  # More than 6 suggests actual duplication
             self.issues.append(AuthIssue(
-                severity='warning',
+                severity='error',
                 issue_type=AuthIssueType.DUPLICATE_AUTH_CHECK,
                 layer='lambda',
                 file=self.current_file,
                 line=1,
-                issue=f"Found {auth_check_count} auth checks in file. This suggests duplication.",
+                issue=f"Found {auth_check_count} auth checks in file. This suggests duplication (expected ≤6 for multi-category routers).",
                 suggestion="Centralize auth at router level to avoid duplication",
                 standard_ref="ADR-019b"
             ))

@@ -111,6 +111,12 @@ logger = logging.getLogger(__name__)
     is_flag=True,
     help='Run only code quality validation'
 )
+@click.option(
+    '--module',
+    type=str,
+    default=None,
+    help='Filter validation to a specific module (e.g., module-kb, module-chat). Speeds up iterative fixing.'
+)
 def validate(
     path: str, 
     output: str, 
@@ -125,7 +131,8 @@ def validate(
     no_auth: bool,
     auth_only: bool,
     no_quality: bool,
-    quality_only: bool
+    quality_only: bool,
+    module: str
 ):
     """
     Validate API contracts across frontend, API Gateway, and Lambda layers.
@@ -219,6 +226,10 @@ def validate(
             validate_quality = True
             logger.info("Running quality-only validation")
         
+        # Module filter for efficient per-module validation
+        if module:
+            logger.info(f"Filtering validation to module: {module}")
+        
         validator = FullStackValidator(
             frontend_parser, 
             gateway_parser, 
@@ -227,7 +238,8 @@ def validate(
             api_id=api_id,
             aws_region=aws_region,
             prefer_terraform=prefer_terraform,
-            validate_auth=validate_auth
+            validate_auth=validate_auth,
+            module_filter=module
         )
         
         # For auth-only mode, we still run full validation but can filter output
