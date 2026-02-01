@@ -33,24 +33,64 @@ class AuthIssue:
 
 
 class AuthIssueType:
-    """Constants for auth issue types."""
-    # Frontend issues
+    """
+    Constants for auth issue types.
+    
+    Layer 1 (Admin Auth - ADR-019a/b): /admin/* routes
+    Layer 2 (Resource Permissions - ADR-019c): /{module}/* data routes
+    """
+    # ============================================================================
+    # LAYER 1: Admin Authorization (ADR-019a/b)
+    # ============================================================================
+    
+    # Frontend issues (Layer 1)
+    ADMIN_MISSING_USE_USER = 'auth_admin_missing_use_user'
+    ADMIN_MISSING_USE_ROLE = 'auth_admin_missing_use_role'
+    ADMIN_MISSING_ORG_CONTEXT = 'auth_admin_missing_org_context'
+    ADMIN_MISSING_LOADING_CHECK = 'auth_admin_missing_loading_check'
+    ADMIN_DIRECT_ROLE_ACCESS = 'auth_admin_direct_role_access'
+    ADMIN_MISSING_ORG_ID_IN_API_CALL = 'auth_admin_missing_org_id_in_api_call'
+    ADMIN_INVALID_HOOK_DESTRUCTURING = 'auth_admin_invalid_hook_destructuring'
+    
+    # Lambda issues (Layer 1)
+    ADMIN_MISSING_CHECK_SYS_ADMIN = 'auth_admin_missing_check_sys_admin'
+    ADMIN_MISSING_CHECK_ORG_ADMIN = 'auth_admin_missing_check_org_admin'
+    ADMIN_MISSING_CHECK_WS_ADMIN = 'auth_admin_missing_check_ws_admin'
+    ADMIN_MISSING_ORG_CONTEXT_EXTRACTION = 'auth_admin_missing_org_context_extraction'
+    ADMIN_MISSING_EXTERNAL_UID_CONVERSION = 'auth_admin_missing_external_uid_conversion'
+    ADMIN_DIRECT_JWT_ROLE_ACCESS = 'auth_admin_direct_jwt_role_access'
+    ADMIN_AUTH_IN_HANDLER = 'auth_admin_auth_in_handler'
+    ADMIN_DUPLICATE_AUTH_CHECK = 'auth_admin_duplicate_auth_check'
+    
+    # ============================================================================
+    # LAYER 2: Resource Permissions (ADR-019c)
+    # ============================================================================
+    
+    # Lambda issues (Layer 2)
+    RESOURCE_MISSING_ORG_MEMBERSHIP_CHECK = 'auth_resource_missing_org_membership_check'
+    RESOURCE_MISSING_OWNERSHIP_CHECK = 'auth_resource_missing_ownership_check'
+    RESOURCE_ADMIN_ROLE_OVERRIDE = 'auth_resource_admin_role_override'
+    RESOURCE_MISSING_SCOPE_BEFORE_PERMISSION = 'auth_resource_missing_scope_before_permission'
+    
+    # ============================================================================
+    # BACKWARD COMPATIBILITY (Deprecated - use layer-prefixed names)
+    # ============================================================================
+    
+    # Old names (deprecated but kept for backward compatibility)
     MISSING_USE_USER = 'missing_use_user'
     MISSING_USE_ROLE = 'missing_use_role'
     MISSING_ORG_CONTEXT = 'missing_org_context'
     MISSING_LOADING_CHECK = 'missing_loading_check'
     DIRECT_ROLE_ACCESS = 'direct_role_access'
-    MISSING_ORG_ID_IN_API_CALL = 'missing_org_id_in_api_call'  # API calls to /admin/org/* without orgId
-    INVALID_HOOK_DESTRUCTURING = 'invalid_hook_destructuring'  # Destructured properties don't match hook return type
-    
-    # Lambda issues
+    MISSING_ORG_ID_IN_API_CALL = 'missing_org_id_in_api_call'
+    INVALID_HOOK_DESTRUCTURING = 'invalid_hook_destructuring'
     MISSING_CHECK_SYS_ADMIN = 'missing_check_sys_admin'
     MISSING_CHECK_ORG_ADMIN = 'missing_check_org_admin'
     MISSING_CHECK_WS_ADMIN = 'missing_check_ws_admin'
     MISSING_ORG_CONTEXT_EXTRACTION = 'missing_org_context_extraction'
     MISSING_EXTERNAL_UID_CONVERSION = 'missing_external_uid_conversion'
     DIRECT_JWT_ROLE_ACCESS = 'direct_jwt_role_access'
-    AUTH_IN_HANDLER = 'auth_in_handler'  # Auth should be in router, not handler
+    AUTH_IN_HANDLER = 'auth_in_handler'
     DUPLICATE_AUTH_CHECK = 'duplicate_auth_check'
 
 
@@ -149,7 +189,7 @@ class FrontendAuthValidator:
         if not has_use_user and route_type != 'none':
             self.issues.append(AuthIssue(
                 severity='error',
-                issue_type=AuthIssueType.MISSING_USE_USER,
+                issue_type=AuthIssueType.ADMIN_MISSING_USE_USER,
                 layer='frontend',
                 file=self.current_file,
                 line=1,
@@ -166,7 +206,7 @@ class FrontendAuthValidator:
         if route_type == 'sys' and not has_use_role:
             self.issues.append(AuthIssue(
                 severity='error',
-                issue_type=AuthIssueType.MISSING_USE_ROLE,
+                issue_type=AuthIssueType.ADMIN_MISSING_USE_ROLE,
                 layer='frontend',
                 file=self.current_file,
                 line=1,
@@ -179,7 +219,7 @@ class FrontendAuthValidator:
         if route_type == 'org' and not has_use_role:
             self.issues.append(AuthIssue(
                 severity='error',
-                issue_type=AuthIssueType.MISSING_USE_ROLE,
+                issue_type=AuthIssueType.ADMIN_MISSING_USE_ROLE,
                 layer='frontend',
                 file=self.current_file,
                 line=1,
@@ -203,7 +243,7 @@ class FrontendAuthValidator:
         if route_type == 'org' and not has_org_context:
             self.issues.append(AuthIssue(
                 severity='error',
-                issue_type=AuthIssueType.MISSING_ORG_CONTEXT,
+                issue_type=AuthIssueType.ADMIN_MISSING_ORG_CONTEXT,
                 layer='frontend',
                 file=self.current_file,
                 line=1,
@@ -224,7 +264,7 @@ class FrontendAuthValidator:
         if route_type != 'none' and not has_loading_check:
             self.issues.append(AuthIssue(
                 severity='error',
-                issue_type=AuthIssueType.MISSING_LOADING_CHECK,
+                issue_type=AuthIssueType.ADMIN_MISSING_LOADING_CHECK,
                 layer='frontend',
                 file=self.current_file,
                 line=1,
@@ -280,7 +320,7 @@ class FrontendAuthValidator:
             if prop in invalid_props:
                 self.issues.append(AuthIssue(
                     severity='error',
-                    issue_type=AuthIssueType.INVALID_HOOK_DESTRUCTURING,
+                    issue_type=AuthIssueType.ADMIN_INVALID_HOOK_DESTRUCTURING,
                     layer='frontend',
                     file=self.current_file,
                     line=line,
@@ -292,7 +332,7 @@ class FrontendAuthValidator:
                 # Unknown property - warn
                 self.issues.append(AuthIssue(
                     severity='warning',
-                    issue_type=AuthIssueType.INVALID_HOOK_DESTRUCTURING,
+                    issue_type=AuthIssueType.ADMIN_INVALID_HOOK_DESTRUCTURING,
                     layer='frontend',
                     file=self.current_file,
                     line=line,
@@ -326,7 +366,7 @@ class FrontendAuthValidator:
                 
                 self.issues.append(AuthIssue(
                     severity='error',
-                    issue_type=AuthIssueType.MISSING_ORG_ID_IN_API_CALL,
+                    issue_type=AuthIssueType.ADMIN_MISSING_ORG_ID_IN_API_CALL,
                     layer='frontend',
                     file=self.current_file,
                     line=line,
@@ -354,7 +394,7 @@ class FrontendAuthValidator:
                 line = content[:match.start()].count('\n') + 1
                 self.issues.append(AuthIssue(
                     severity='error',
-                    issue_type=AuthIssueType.DIRECT_ROLE_ACCESS,
+                    issue_type=AuthIssueType.ADMIN_DIRECT_ROLE_ACCESS,
                     layer='frontend',
                     file=self.current_file,
                     line=line,
@@ -623,7 +663,7 @@ class LambdaAuthValidator:
         if handles_admin and not has_conversion:
             self.issues.append(AuthIssue(
                 severity='error',
-                issue_type=AuthIssueType.MISSING_EXTERNAL_UID_CONVERSION,
+                issue_type=AuthIssueType.ADMIN_MISSING_EXTERNAL_UID_CONVERSION,
                 layer='lambda',
                 file=self.current_file,
                 line=1,
@@ -651,7 +691,7 @@ class LambdaAuthValidator:
                 for method, path in self.sys_routes:
                     self.issues.append(AuthIssue(
                         severity='error',
-                        issue_type=AuthIssueType.MISSING_CHECK_SYS_ADMIN,
+                        issue_type=AuthIssueType.ADMIN_MISSING_CHECK_SYS_ADMIN,
                         layer='lambda',
                         file=self.current_file,
                         line=line,
@@ -665,7 +705,7 @@ class LambdaAuthValidator:
                 # Fallback to file-level error if no routes extracted
                 self.issues.append(AuthIssue(
                     severity='error',
-                    issue_type=AuthIssueType.MISSING_CHECK_SYS_ADMIN,
+                    issue_type=AuthIssueType.ADMIN_MISSING_CHECK_SYS_ADMIN,
                     layer='lambda',
                     file=self.current_file,
                     line=line,
@@ -699,7 +739,7 @@ class LambdaAuthValidator:
                 for method, path in self.org_routes:
                     self.issues.append(AuthIssue(
                         severity='error',
-                        issue_type=AuthIssueType.MISSING_CHECK_ORG_ADMIN,
+                        issue_type=AuthIssueType.ADMIN_MISSING_CHECK_ORG_ADMIN,
                         layer='lambda',
                         file=self.current_file,
                         line=line,
@@ -713,7 +753,7 @@ class LambdaAuthValidator:
                 # Fallback to file-level error if no routes extracted
                 self.issues.append(AuthIssue(
                     severity='error',
-                    issue_type=AuthIssueType.MISSING_CHECK_ORG_ADMIN,
+                    issue_type=AuthIssueType.ADMIN_MISSING_CHECK_ORG_ADMIN,
                     layer='lambda',
                     file=self.current_file,
                     line=line,
@@ -728,7 +768,7 @@ class LambdaAuthValidator:
                 for method, path in self.org_routes:
                     self.issues.append(AuthIssue(
                         severity='error',
-                        issue_type=AuthIssueType.MISSING_ORG_CONTEXT_EXTRACTION,
+                        issue_type=AuthIssueType.ADMIN_MISSING_ORG_CONTEXT_EXTRACTION,
                         layer='lambda',
                         file=self.current_file,
                         line=line,
@@ -742,7 +782,7 @@ class LambdaAuthValidator:
                 # Fallback to file-level error if no routes extracted
                 self.issues.append(AuthIssue(
                     severity='error',
-                    issue_type=AuthIssueType.MISSING_ORG_CONTEXT_EXTRACTION,
+                    issue_type=AuthIssueType.ADMIN_MISSING_ORG_CONTEXT_EXTRACTION,
                     layer='lambda',
                     file=self.current_file,
                     line=line,
@@ -769,7 +809,7 @@ class LambdaAuthValidator:
                 for method, path in self.ws_routes:
                     self.issues.append(AuthIssue(
                         severity='error',
-                        issue_type=AuthIssueType.MISSING_CHECK_WS_ADMIN,
+                        issue_type=AuthIssueType.ADMIN_MISSING_CHECK_WS_ADMIN,
                         layer='lambda',
                         file=self.current_file,
                         line=line,
@@ -783,7 +823,7 @@ class LambdaAuthValidator:
                 # Fallback to file-level error if no routes extracted
                 self.issues.append(AuthIssue(
                     severity='error',
-                    issue_type=AuthIssueType.MISSING_CHECK_WS_ADMIN,
+                    issue_type=AuthIssueType.ADMIN_MISSING_CHECK_WS_ADMIN,
                     layer='lambda',
                     file=self.current_file,
                     line=line,
@@ -810,7 +850,7 @@ class LambdaAuthValidator:
                 line = content[:match.start()].count('\n') + 1
                 self.issues.append(AuthIssue(
                     severity='error',
-                    issue_type=AuthIssueType.DIRECT_JWT_ROLE_ACCESS,
+                    issue_type=AuthIssueType.ADMIN_DIRECT_JWT_ROLE_ACCESS,
                     layer='lambda',
                     file=self.current_file,
                     line=line,
@@ -855,7 +895,7 @@ class LambdaAuthValidator:
         if len(leaf_handlers) > 1:
             self.issues.append(AuthIssue(
                 severity='error',
-                issue_type=AuthIssueType.AUTH_IN_HANDLER,
+                issue_type=AuthIssueType.ADMIN_AUTH_IN_HANDLER,
                 layer='lambda',
                 file=self.current_file,
                 line=1,
@@ -869,7 +909,7 @@ class LambdaAuthValidator:
         if auth_check_count > 6:  # More than 6 suggests actual duplication
             self.issues.append(AuthIssue(
                 severity='error',
-                issue_type=AuthIssueType.DUPLICATE_AUTH_CHECK,
+                issue_type=AuthIssueType.ADMIN_DUPLICATE_AUTH_CHECK,
                 layer='lambda',
                 file=self.current_file,
                 line=1,
