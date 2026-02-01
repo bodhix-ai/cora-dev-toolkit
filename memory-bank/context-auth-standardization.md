@@ -3,7 +3,7 @@
 **Created:** January 30, 2026  
 **Updated:** February 1, 2026  
 **Primary Focus:** Standardization of authentication patterns across all CORA modules + Full Lifecycle Validation  
-**Current Sprint:** S3 (planned)
+**Current Sprint:** S3 (active)
 
 ## Initiative Overview
 
@@ -33,6 +33,7 @@ The goal of this initiative is to standardize authentication patterns across all
 | S0 | `auth-standardization-s0` | `plan_s0-auth-standardization.md` | ✅ Complete | 2026-01-30 |
 | S1 | `auth-standardization-s1` | `plan_s1-auth-standardization.md` | ✅ Complete | 2026-01-31 |
 | S2 | `auth-standardization-s2` | `plan_s2-auth-standardization.md` | ✅ Complete | 2026-02-01 |
+| S3 | `auth-standardization-s3` | `plan_s3-auth-standardization.md` | 🟡 Active | - |
 
 ### 3. Workspace Role Assessment
 
@@ -642,10 +643,36 @@ The 2 validation errors remaining in module-ws are correctly implemented resourc
 - **Modules Updated:** All 8 core modules
 - **New Standards Created:** ADR-019c, 03_std_back_RESOURCE-PERMISSIONS.md
 
-### Next Steps (S3)
+## Session Log (S3)
 
-Create `plan_s3-resource-permissions.md` to:
-1. Standardize resource permission patterns across all modules
-2. Update validator to distinguish Layer 1 (admin) from Layer 2 (resource) auth
-3. Create validation baseline for resource permission compliance
-4. Implement ADR-019c patterns across all modules
+### February 1, 2026 - S3 Session 1 (Current)
+**Focus:** Validator Enhancement for Layer 2 (Resource Permissions) + Assessment
+
+**Sprint Started:**
+- ✅ Branch `auth-standardization-s3` created from main
+- ✅ Plan file `plan_s3-auth-standardization.md` created
+- ✅ Context file updated with S3 entry
+
+**Sprint S3 Goals:**
+1. Enhance api-tracer validator with Layer 1 vs Layer 2 distinction
+2. Implement Layer 2 (resource permission) validation per ADR-019c
+3. Add CLI flags for layer control (`--layer1-only`, `--layer2-only`, `--all-auth`)
+4. Run assessment across all modules to measure Layer 2 compliance
+5. Make sprint scoping decision: fixes in S3 or defer to S4
+
+**Key Requirements:**
+- Clear separation of Layer 1 (admin auth) vs Layer 2 (resource perms) in reporting
+- Ability to toggle each layer on/off independently
+- Module filtering works with both layers
+- Assessment baseline documents scope before planning fixes
+
+**Time Estimate:** 8-12 hours total
+
+---
+
+## Next Steps (S3)
+
+**Phase 2:** Enhance validator architecture with layer distinction
+**Phase 3:** Implement Layer 2 validation logic
+**Phase 4:** Run assessment and document baseline
+**Phase 5:** Sprint scoping decision based on assessment
