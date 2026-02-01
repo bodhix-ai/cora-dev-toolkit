@@ -728,4 +728,139 @@ Ran Layer 2 validation across all 8 modules:
 
 **Time:** ~3 hours
 
-**Next Session:** Begin Phase 6 - Implement core ADR-019c patterns in org-common and module layers
+**Next Session:** Phase 6 - Implement core ADR-019c patterns
+
+### February 1, 2026 - S3 Session 2
+**Focus:** Reporter Enhancement - Layered Auth Validation Output
+
+**Problem:** Validation report showed auth issues as a single combined count, making it hard to distinguish Layer 1 (admin auth) from Layer 2 (resource permissions) compliance.
+
+**Solution Implemented:**
+- Updated validator to separate Layer 1 and Layer 2 auth issues in summary
+- Updated reporter to display layered breakdown with color coding
+- Fixed CLI to handle new summary structure
+- Fixed layer detection for doubled prefix pattern
+
+**Files Modified:**
+1. `validation/api-tracer/validator.py` (_generate_report method)
+   - Added layer separation logic
+   - Layer 1: `auth_auth_admin_*` prefix
+   - Layer 2: `auth_auth_resource_*` prefix
+   - Created nested summary structure with layer1/layer2 objects
+
+2. `validation/api-tracer/reporter.py` (_format_text method)
+   - Added color-coded layer breakdown display
+   - Green for 0 errors, Red for errors > 0, Yellow for warnings
+   - Fallback to simple summary for backward compatibility
+
+3. `validation/api-tracer/cli.py` (auth summary logging)
+   - Fixed to use `total_errors` and `total_warnings` instead of old keys
+   - Added backward compatibility for both old and new structures
+
+**Key Technical Finding:**
+Auth issues are prefixed with "auth_" twice during conversion from AuthIssue to APIMismatch, resulting in patterns like `auth_auth_admin_*` and `auth_auth_resource_*`. Layer detection logic updated to account for this.
+
+**Output Format:**
+```
+Auth Validation (ADR-019):
+  Layer 1 (Admin Auth): 0 errors, 0 warnings
+  Layer 2 (Resource Permissions): 0 errors, 14 warnings
+```
+
+**Verification:**
+- ✅ module-ws validation shows correct layer breakdown
+- ✅ Color coding displays correctly in terminal
+- ✅ Backward compatibility maintained
+
+**Time:** ~1.5 hours
+
+**Next Session:** Phase 6 - Implement core ADR-019c patterns in org-common and module layers
+
+### February 1, 2026 - S3 Session 2 ✅ COMPLETE
+**Focus:** Phase 6 - Core ADR-019c patterns + module-ws parameter order alignment + deployment
+
+**Phase 6 Progress: ✅ PARTIAL COMPLETE**
+
+**1. Sync Script Enhancement ✅ COMPLETE**
+- Updated `scripts/sync-fix-to-project.sh` to support `backend/layers/` paths
+- Added patterns for core and functional module layers
+- Layer files validated to only sync to stack repo (not infra)
+- Will streamline remaining module deployments
+
+**2. Module-ws Parameter Order Alignment ✅ COMPLETE**
+
+**Problem Identified:** Module-ws RPC functions used non-standard parameter order `(p_ws_id, p_user_id)` instead of ADR-019c standard `(p_user_id, p_ws_id)`. This inconsistency would complicate Layer 2 implementation.
+
+**Solution: Full Parameter Order Standardization**
+
+**Database RPCs Updated (4 functions):**
+- `is_ws_member(p_user_id, p_ws_id)` - Was `(p_ws_id, p_user_id)`
+- `is_ws_owner(p_user_id, p_ws_id)` - Was `(p_ws_id, p_user_id)`
+- `is_ws_admin_or_owner(p_user_id, p_ws_id)` - Was `(p_ws_id, p_user_id)`
+- `get_ws_role(p_user_id, p_ws_id)` - Was `(p_ws_id, p_user_id)`
+
+**Internal RPC Calls Updated (2 functions):**
+- `soft_delete_ws()` - Updated call to `is_ws_owner()`
+- `toggle_ws_favorite()` - Updated call to `is_ws_member()`
+
+**Lambda Wrapper Functions Updated:**
+- `_is_ws_member()` - Now passes `(user_id, workspace_id)`
+- `_is_ws_owner()` - Now passes `(user_id, workspace_id)`
+- `_is_ws_admin_or_owner()` - Now passes `(user_id, workspace_id)`
+
+**RLS Policies Verified:**
+- No RLS policies call these RPCs directly (no update needed)
+
+**Permissions Layer Created:**
+- Created `ws_common/permissions.py` with module-specific helpers
+- Functions: `is_ws_owner()`, `can_view_ws()`, `can_edit_ws()`, `can_manage_ws()`
+- All RPC calls use standard parameter order
+
+**Files Modified in Templates:**
+- `templates/_modules-core/module-ws/db/schema/007-workspace-rpc-functions.sql`
+- `templates/_modules-core/module-ws/backend/lambdas/workspace/lambda_function.py`
+- `templates/_modules-core/module-ws/backend/layers/ws_common/python/ws_common/permissions.py` (new)
+
+**3. Module-ws Deployment ✅ COMPLETE**
+
+Deployed parameter order changes to test environment following deploy-lambda workflow:
+
+**Build Results:**
+- `workspace.zip` - 16K (main workspace Lambda)
+- `cleanup.zip` - 4.0K (cleanup Lambda)
+
+**Deployment Results:**
+- ✅ `ai-mod-dev-ws-workspace` updated (11s)
+- ✅ `ai-mod-dev-ws-cleanup` updated (5s)
+- Zero-downtime blue-green deployment via Terraform
+
+**Test Project:** `/Users/aaron/code/bodhix/testing/admin-ui/ai-mod-stack`
+
+**4. Phase 6 Summary**
+
+**Completed:**
+- ✅ module-chat permissions.py (already existed from S2)
+- ✅ module-ws permissions.py (FULLY ALIGNED + DEPLOYED)
+- ✅ module-eval permissions.py (template created, not deployed)
+- ✅ Sync script enhanced for backend/layers
+
+**Remaining:**
+- ⏸️ module-kb permissions.py
+- ⏸️ module-access permissions.py
+- ⏸️ module-voice permissions.py
+
+**Key Decisions:**
+
+1. **Parameter Order Standardization is Critical:** Non-standard order in module-ws would have caused confusion and errors during Layer 2 implementation. Aligning now saves significant debugging time later.
+
+2. **Sync Script Enhancement Priority:** Supporting backend/layers/ paths in sync script will significantly accelerate remaining module deployments (kb, access, voice).
+
+**Commits:**
+- `2ebf5a7` - docs: update S3 plan and context with implementation scope
+
+**Time:** ~2 hours
+
+**Next Session:** 
+1. ⏳ Verify module-ws UI testing results
+2. Continue Phase 6 - Create permissions.py for module-kb, module-access, module-voice
+3. Consider starting Phase 7 (fix module-ws Layer 2 errors) if Phase 6 completes quickly

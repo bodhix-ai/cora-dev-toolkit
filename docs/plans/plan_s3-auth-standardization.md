@@ -27,11 +27,11 @@ Sprint S3 extends the api-tracer validator to assess compliance with ADR-019c (R
 ## Scope
 
 ### In Scope
-- [ ] Validator architecture: Layer 1 vs Layer 2 distinction
-- [ ] CLI flags for layer control (`--layer1-only`, `--layer2-only`, `--resource-perms`)
-- [ ] Layer 2 validation implementation (resource permission patterns)
-- [ ] Assessment report: baseline of non-compliance per module
-- [ ] Sprint scoping decision: fixes in S3 vs separate sprints
+- [x] Validator architecture: Layer 1 vs Layer 2 distinction ✅ (S3 Session 1)
+- [x] CLI flags for layer control (`--layer1-only`, `--layer2-only`, `--resource-perms`) ✅ (S3 Session 1)
+- [x] Layer 2 validation implementation (resource permission patterns) ✅ (S3 Session 1)
+- [x] Assessment report: baseline of non-compliance per module ✅ (S3 Session 1)
+- [x] Sprint scoping decision: fixes in S3 vs separate sprints ✅ (S3 Session 1)
 
 ### Out of Scope
 - Actual fixes to Layer 2 issues (dependent on assessment results)
@@ -47,15 +47,17 @@ Sprint S3 extends the api-tracer validator to assess compliance with ADR-019c (R
 **Actions:**
 - [x] Create branch `auth-standardization-s3` from main
 - [x] Create plan file `plan_s3-auth-standardization.md`
-- [ ] Update context file with S3 entry
+- [x] Update context file with S3 entry ✅ (S3 Session 1)
 
 **Expected Output:** Branch and plan ready
 
 ---
 
-## Phase 2: Enhance Validator Architecture (2-3 hours)
+## Phase 2: Enhance Validator Architecture ✅ COMPLETE
 
-### Step 2.1: Add Layer Distinction in Issue Types
+**Status:** ✅ Complete (S3 Session 1)
+
+### Step 2.1: Add Layer Distinction in Issue Types ✅ COMPLETE
 
 **Current state:** All auth issues use `auth_*` prefix without layer distinction.
 
@@ -75,11 +77,11 @@ auth_resource_missing_scope_before_permission
 ```
 
 **Actions:**
-- [ ] Update `AuthIssueType` class with layer-prefixed constants
-- [ ] Add new Layer 2 issue types
-- [ ] Update existing validators to use new issue type naming
+- [x] Update `AuthIssueType` class with layer-prefixed constants ✅ (S3 Session 1)
+- [x] Add new Layer 2 issue types ✅ (S3 Session 1)
+- [x] Update existing validators to use new issue type naming ✅ (S3 Session 1)
 
-**Expected Output:** Clear layer distinction in all issue types
+**Expected Output:** Clear layer distinction in all issue types ✅ COMPLETE
 
 ---
 
@@ -95,11 +97,11 @@ auth_resource_missing_scope_before_permission
 ```
 
 **Actions:**
-- [ ] Add CLI flags to `validation/api-tracer/cli.py`
-- [ ] Update `FullStackValidator.__init__()` to accept layer control params
-- [ ] Ensure backward compatibility with existing `--auth-only` flag
+- [x] Add CLI flags to `validation/api-tracer/cli.py` ✅ (S3 Session 1)
+- [x] Update `FullStackValidator.__init__()` to accept layer control params ✅ (S3 Session 1)
+- [x] Ensure backward compatibility with existing `--auth-only` flag ✅ (S3 Session 1)
 
-**Expected Output:** Granular control over which auth layers to validate
+**Expected Output:** Granular control over which auth layers to validate ✅ COMPLETE
 
 ---
 
@@ -136,15 +138,23 @@ By Module:
 ```
 
 **Actions:**
-- [ ] Update `validation/api-tracer/reporter.py` to group auth issues by layer
-- [ ] Add layer summaries to JSON output
-- [ ] Add layer summaries to markdown/text output
+- [x] Update `validation/api-tracer/reporter.py` to group auth issues by layer ✅ (S3 Session 1)
+- [x] Add layer summaries to JSON output ✅ (S3 Session 1)
+- [x] Add layer summaries to markdown/text output ✅ (S3 Session 1)
 
-**Expected Output:** Clear separation of Layer 1 vs Layer 2 issues in reports
+**Expected Output:** Clear separation of Layer 1 vs Layer 2 issues in reports ✅ COMPLETE
+
+**Session 2 Enhancement:** Reporter updated with color-coded layer breakdown display
+- Updated validator.py: `_generate_report()` to separate Layer 1/Layer 2 counts
+- Updated reporter.py: `_format_text()` with color-coded layer display
+- Updated cli.py: Handle new summary structure with backward compatibility
+- Fixed layer detection for doubled prefix (`auth_auth_admin_*`, `auth_auth_resource_*`)
 
 ---
 
-## Phase 3: Implement Layer 2 Validation (3-4 hours)
+## Phase 3: Implement Layer 2 Validation ✅ COMPLETE
+
+**Status:** ✅ Complete (S3 Session 1)
 
 ### Step 3.1: Detect Data Routes
 
@@ -155,11 +165,11 @@ By Module:
 - **Data routes:** `/{module}/*` (excluding `/admin/*`) → Layer 2 validation (new)
 
 **Actions:**
-- [ ] Add `_detect_data_routes()` method to `LambdaAuthValidator`
-- [ ] Extract data route patterns from Lambda docstrings
-- [ ] Categorize routes by type (admin vs data)
+- [x] Add `_detect_data_routes()` method to `LambdaAuthValidator` ✅ (S3 Session 1)
+- [x] Extract data route patterns from Lambda docstrings ✅ (S3 Session 1)
+- [x] Categorize routes by type (admin vs data) ✅ (S3 Session 1)
 
-**Expected Output:** List of data routes per Lambda file
+**Expected Output:** List of data routes per Lambda file ✅ COMPLETE
 
 ---
 
@@ -186,11 +196,11 @@ if not can_access_resource(user_id, resource_id):
 - Flag if missing or out of order
 
 **Actions:**
-- [ ] Add `_check_org_membership_before_resource()` method
-- [ ] Detect `is_org_member`, `is_ws_member`, `can_access_org_resource` calls
-- [ ] Validate call order (membership → permission)
+- [x] Add `_check_org_membership_before_resource()` method ✅ (S3 Session 1)
+- [x] Detect `is_org_member`, `is_ws_member`, `can_access_org_resource` calls ✅ (S3 Session 1)
+- [x] Validate call order (membership → permission) ✅ (S3 Session 1)
 
-**Expected Output:** Issues for missing/misordered membership checks
+**Expected Output:** Issues for missing/misordered membership checks ✅ COMPLETE
 
 ---
 
@@ -219,11 +229,11 @@ if not common.check_resource_ownership(user_id, 'chats', chat_id):
 - Flag if missing
 
 **Actions:**
-- [ ] Add `_check_resource_ownership()` method
-- [ ] Detect `can_*`, `is_*_owner`, `check_resource_ownership` patterns
-- [ ] Flag data routes without permission checks
+- [x] Add `_check_resource_ownership()` method ✅ (S3 Session 1)
+- [x] Detect `can_*`, `is_*_owner`, `check_resource_ownership` patterns ✅ (S3 Session 1)
+- [x] Flag data routes without permission checks ✅ (S3 Session 1)
 
-**Expected Output:** Issues for missing resource permission checks
+**Expected Output:** Issues for missing resource permission checks ✅ COMPLETE
 
 ---
 
@@ -249,11 +259,11 @@ if not can_access_chat(user_id, session_id):
 - If found, flag as anti-pattern (unless documented exception)
 
 **Actions:**
-- [ ] Add `_check_admin_role_override()` method
-- [ ] Detect admin checks in data route handlers
-- [ ] Allow exceptions with `# ADR-019c exception:` comment
+- [x] Add `_check_admin_role_override()` method ✅ (S3 Session 1)
+- [x] Detect admin checks in data route handlers ✅ (S3 Session 1)
+- [x] Allow exceptions with `# ADR-019c exception:` comment ✅ (S3 Session 1)
 
-**Expected Output:** Issues for admin override anti-patterns
+**Expected Output:** Issues for admin override anti-patterns ✅ COMPLETE
 
 ---
 
@@ -278,15 +288,17 @@ class ResourcePermissionValidator:
 ```
 
 **Actions:**
-- [ ] Create `ResourcePermissionValidator` class in `auth_validator.py`
-- [ ] Integrate with `AuthLifecycleValidator`
-- [ ] Add to `FullStackValidator` validation flow
+- [x] Create `ResourcePermissionValidator` class in `auth_validator.py` ✅ (S3 Session 1)
+- [x] Integrate with `AuthLifecycleValidator` ✅ (S3 Session 1)
+- [x] Add to `FullStackValidator` validation flow ✅ (S3 Session 1)
 
-**Expected Output:** Working Layer 2 validator
+**Expected Output:** Working Layer 2 validator ✅ COMPLETE
 
 ---
 
-## Phase 4: Run Assessment (1-2 hours)
+## Phase 4: Run Assessment ✅ COMPLETE
+
+**Status:** ✅ Complete (S3 Session 1)
 
 ### Step 4.1: Validate All Modules with Both Layers
 
@@ -310,11 +322,11 @@ done
 ```
 
 **Actions:**
-- [ ] Run validator on all modules
-- [ ] Capture output for each module
-- [ ] Generate summary report
+- [x] Run validator on all modules ✅ (S3 Session 1)
+- [x] Capture output for each module ✅ (S3 Session 1)
+- [x] Generate summary report ✅ (S3 Session 1)
 
-**Expected Output:** Validation results per module per layer
+**Expected Output:** Validation results per module per layer ✅ COMPLETE
 
 ---
 
@@ -393,9 +405,22 @@ Estimated fix time: X-Y hours
 
 ---
 
-## Phase 6: Implement Core ADR-019c Patterns (2-3 hours)
+## Phase 6: Implement Core ADR-019c Patterns (2-3 hours) ✅ PARTIAL COMPLETE
 
-### Step 6.1: Create Module-Specific Permission Helpers
+**Status:** 50% complete (3 of 6 modules + tooling)
+
+### Step 6.0: Infrastructure Improvements ✅ COMPLETE
+
+**Actions Completed:**
+- [x] Enhanced `scripts/sync-fix-to-project.sh` to support `backend/layers/` paths
+- [x] Added patterns for core and functional module layers
+- [x] Layer files validated to only sync to stack repo (not infra)
+
+**Impact:** Will significantly accelerate remaining module deployments (kb, access, voice)
+
+---
+
+### Step 6.1: Create Module-Specific Permission Helpers ✅ PARTIAL COMPLETE
 
 **Pattern:** Each module implements its own permission layer (ADR-019c design)
 
@@ -422,30 +447,56 @@ def can_access_<resource>(user_id: str, resource_id: str) -> bool:
 ```
 
 **Actions:**
-- [ ] Create `permissions.py` for module-chat
-- [ ] Create `permissions.py` for module-kb  
-- [ ] Create `permissions.py` for module-voice
-- [ ] Create `permissions.py` for module-eval
-- [ ] Create `permissions.py` for module-ws
+- [x] Create `permissions.py` for module-chat (already existed from S2)
+- [x] Create `permissions.py` for module-ws ✅ **DEPLOYED** (S3 Session 2-3)
+  - **Note:** Also aligned RPC parameter order to ADR-019c standard `(p_user_id, p_ws_id)`
+  - Updated 5 database RPCs, 2 internal RPC calls, Lambda wrappers
+  - **Bug Fix (S3 Session 3):** Fixed `toggle_ws_favorite` parameter mismatch
+    - Created migration `20260201_adr019c_workspace_rpc_param_align.sql` with DROP statements
+    - Fixed schema file parameter order: `(p_ws_id, p_user_id)` → `(p_user_id, p_ws_id)`
+    - Redeployed Lambda to test environment
+  - Status: Deployed to test environment, ready for UI testing
+- [x] Create `permissions.py` for module-eval (template created, not deployed)
+- [ ] Create `permissions.py` for module-kb
 - [ ] Create `permissions.py` for module-access
+- [ ] Create `permissions.py` for module-voice
 
 **Expected Output:** Permission helper template for each module
 
 ---
 
-### Step 6.2: Update org-common with Core Membership Helpers
+### Step 6.2: Update org-common with Core Membership Helpers ✅ COMPLETE
 
-**Already exists in templates from S2 work, verify:**
+**Already exists in templates from S2 work, verified:**
 - `can_access_org_resource(user_id, org_id)`
 - `can_access_ws_resource(user_id, ws_id)`
 - `check_resource_ownership()` (generic)
 - `check_rpc_permission()` (generic)
 
 **Actions:**
-- [ ] Verify org-common helpers exist
-- [ ] Test helpers in test project
+- [x] Verify org-common helpers exist
+- [x] Test helpers in test project
 
 **Expected Output:** Core helpers available for all modules
+
+---
+
+### Phase 6 Summary
+
+**Completed (3 of 6):**
+- ✅ module-chat (existed from S2)
+- ✅ module-ws (FULLY ALIGNED + DEPLOYED)
+- ✅ module-eval (template created)
+
+**Remaining (3 of 6):**
+- ⏸️ module-kb
+- ⏸️ module-access
+- ⏸️ module-voice
+
+**Next Session Goals:**
+1. Verify module-ws UI testing results
+2. Create permissions.py for module-kb, module-access, module-voice
+3. Consider starting Phase 7 if Phase 6 completes quickly
 
 ---
 
