@@ -313,7 +313,7 @@ def _get_user_ws_role(workspace_id: str, user_id: str) -> Optional[str]:
     """Get user's role in a workspace."""
     result = common.rpc(
         function_name='get_ws_role',
-        params={'p_ws_id': workspace_id, 'p_user_id': user_id}
+        params={'p_user_id': user_id, 'p_ws_id': workspace_id}  # ADR-019c: user_id first
     )
     return result
 
@@ -322,7 +322,7 @@ def _is_ws_member(workspace_id: str, user_id: str) -> bool:
     """Check if user is a member of the workspace."""
     result = common.rpc(
         function_name='is_ws_member',
-        params={'p_ws_id': workspace_id, 'p_user_id': user_id}
+        params={'p_user_id': user_id, 'p_ws_id': workspace_id}  # ADR-019c: user_id first
     )
     return result is True
 
@@ -331,7 +331,7 @@ def _is_ws_owner(workspace_id: str, user_id: str) -> bool:
     """Check if user is an owner of the workspace."""
     result = common.rpc(
         function_name='is_ws_owner',
-        params={'p_ws_id': workspace_id, 'p_user_id': user_id}
+        params={'p_user_id': user_id, 'p_ws_id': workspace_id}  # ADR-019c: user_id first
     )
     return result is True
 
@@ -340,7 +340,7 @@ def _is_ws_admin_or_owner(workspace_id: str, user_id: str) -> bool:
     """Check if user is admin or owner of the workspace."""
     result = common.rpc(
         function_name='is_ws_admin_or_owner',
-        params={'p_ws_id': workspace_id, 'p_user_id': user_id}
+        params={'p_user_id': user_id, 'p_ws_id': workspace_id}  # ADR-019c: user_id first
     )
     return result is True
 
@@ -966,8 +966,8 @@ def handle_delete_workspace(
         result = common.rpc(
             function_name='soft_delete_ws',
             params={
-                'p_workspace_id': workspace_id,
-                'p_user_id': user_id
+                'p_user_id': user_id,
+                'p_ws_id': workspace_id  # ADR-019c: user_id first, ws_id matches RPC signature
             }
         )
         
@@ -1014,8 +1014,8 @@ def handle_restore_workspace(
         result = common.rpc(
             function_name='restore_ws',
             params={
-                'p_workspace_id': workspace_id,
-                'p_user_id': user_id
+                'p_user_id': user_id,
+                'p_ws_id': workspace_id  # ADR-019c: user_id first, ws_id matches RPC signature
             }
         )
         
@@ -1079,13 +1079,9 @@ def handle_get_workspace_activity(
     if not workspace:
         raise common.NotFoundError('Workspace not found')
     
-    # Check authorization: workspace member OR org admin OR sys admin
-    is_member = _is_ws_member(workspace_id, user_id)
-    is_org_admin = _is_org_admin(workspace['org_id'], user_id)
-    is_sys_admin = _is_sys_admin(user_id)
-    
-    if not is_member and not is_org_admin and not is_sys_admin:
-        raise common.ForbiddenError('You do not have permission to view this workspace activity')
+    # Check authorization: workspace member only (ADR-019c: no admin override)
+    if not _is_ws_member(workspace_id, user_id):
+        raise common.ForbiddenError('You must be a workspace member to view activity')
     
     try:
         # Get activity log
@@ -1165,12 +1161,9 @@ def handle_transfer_ownership(
     if not workspace:
         raise common.NotFoundError('Workspace not found')
     
-    # Check authorization: org admin OR platform admin (NOT just ws_owner)
-    is_org_admin = _is_org_admin(workspace['org_id'], user_id)
-    is_sys_admin = _is_sys_admin(user_id)
-    
-    if not is_org_admin and not is_sys_admin:
-        raise common.ForbiddenError('Only organization or sys administrators can transfer workspace ownership')
+    # Check authorization: workspace owner only (ADR-019c: no admin override)
+    if not _is_ws_owner(workspace_id, user_id):
+        raise common.ForbiddenError('Only workspace owners can transfer ownership')
     
     # Validate new owner is in the organization
     org_member = common.find_one(
@@ -1601,8 +1594,8 @@ def handle_toggle_favorite(
         result = common.rpc(
             function_name='toggle_ws_favorite',
             params={
-                'p_workspace_id': workspace_id,
-                'p_user_id': user_id
+                'p_user_id': user_id,
+                'p_ws_id': workspace_id  # ADR-019c: user_id first, ws_id matches RPC signature
             }
         )
         
