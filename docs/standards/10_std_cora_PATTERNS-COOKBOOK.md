@@ -1043,6 +1043,545 @@ describe('EntityList', () => {
 
 ---
 
+---
+
+## 11. Admin Authorization Patterns
+
+### Pattern: Centralized Router-Level Authorization
+
+**Problem**: Admin routes need role-based access control without duplicating checks.
+
+**Solution**: Implement centralized authorization at the Lambda router level.
+
+### ✅ Backend: Centralized Admin Auth
+
+```python
+"""
+Lambda with centralized admin authorization.
+
+This pattern checks admin roles ONCE per request at the router level,
+preventing duplicated auth checks in individual handlers.
+"""
+
+import json
+from typing import Dict, Any
+import org_common as common
+from org_common.auth_helpers import (
+    check_sys_admin,
+    check_org_admin,
+    check_ws_admin,
+    get_org_context_from_event
+)
+
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    """Lambda handler with centralized admin authorization"""
+    print(json.dumps(event, default=str))
+    
+    try:
+        # Extract user
+        user_info = common.get_user_from_event(event)
+        user_id = common.get_supabase_user_id_from_external_uid(user_info['user_id'])
+        
+        # Get path for routing
+        path = event.get('rawPath', '')
+        http_method = event.get('httpMethod')
+        
+        # Centralized admin authorization
+        if path.startswith('/admin/sys/'):
+            # System admin routes
+            if not check_sys_admin(user_id):
+                return common.forbidden_response('System admin role required')
+        
+        elif path.startswith('/admin/org/'):
+            # Organization admin routes
+            org_id = get_org_context_from_event(event)
+            if not check_org_admin(org_id, user_id):
+                return common.forbidden_response('Organization admin role required')
+        
+        elif path.startswith('/admin/ws/'):
+            # Workspace admin routes
+            ws_id = event.get('pathParameters', {}).get('ws_id')
+            if not ws_id:
+                return common.bad_request_response('ws_id path parameter required')
+            
+            ws_id = common.validate_uuid(ws_id, 'ws_id')
+            if not check_ws_admin(ws_id, user_id):
+                return common.forbidden_response('Workspace admin role required')
+        
+        # Route to handlers (auth already verified)
+        return route_to_handler(user_id, event)
+    
+    except common.ValidationError as e:
+        return common.bad_request_response(str(e))
+    except common.ForbiddenError as e:
+        return common.forbidden_response(str(e))
+    except Exception as e:
+        print(f'Error: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        return common.internal_error_response('Internal server error')
+
+
+def route_to_handler(user_id: str, event: Dict[str, Any]) -> Dict[str, Any]:
+    """Route to specific handler (auth already checked)"""
+    path = event.get('rawPath', '')
+    http_method = event.get('httpMethod')
+    
+    # System admin routes
+    if path == '/admin/sys/settings' and http_method == 'GET':
+        return handle_get_sys_settings(user_id)
+    elif path == '/admin/sys/settings' and http_method == 'PUT':
+        return handle_update_sys_settings(user_id, event)
+    
+    # Org admin routes
+    elif path == '/admin/org/settings' and http_method == 'GET':
+        return handle_get_org_settings(user_id, event)
+    elif path == '/admin/org/settings' and http_method == 'PUT':
+        return handle_update_org_settings(user_id, event)
+    
+    else:
+        return common.method_not_allowed_response()
+
+
+def handle_get_sys_settings(user_id: str) -> Dict[str, Any]:
+    """Get system settings (sys admin already verified)"""
+    settings = common.find_many('sys_settings', filters={}, order='key.asc')
+    return common.success_response(common.format_records(settings))
+
+
+def handle_update_sys_settings(user_id: str, event: Dict[str, Any]) -> Dict[str, Any]:
+    """Update system settings (sys admin already verified)"""
+    body = json.loads(event.get('body', '{}'))
+    
+    # Validate input
+    key = common.validate_required(body.get('key'), 'key')
+    value = common.validate_required(body.get('value'), 'value')
+    
+    # Update or insert
+    existing = common.find_one('sys_settings', {'key': key})
+    if existing:
+        updated = common.update_one(
+            'sys_settings',
+            filters={'key': key},
+            data={'value': value, 'updated_by': user_id}
+        )
+    else:
+        updated = common.insert_one(
+            'sys_settings',
+            data={'key': key, 'value': value, 'created_by': user_id}
+        )
+    
+    return common.success_response(common.format_record(updated))
+
+
+def handle_get_org_settings(user_id: str, event: Dict[str, Any]) -> Dict[str, Any]:
+    """Get org settings (org admin already verified, org_id extracted)"""
+    org_id = get_org_context_from_event(event)
+    
+    settings = common.find_one('org_settings', {'org_id': org_id})
+    if not settings:
+        return common.not_found_response('Organization settings not found')
+    
+    return common.success_response(common.format_record(settings))
+```
+
+### ✅ Frontend: Admin Page Authorization
+
+```typescript
+// Admin page with role check
+'use client';
+import { useRole, useOrganizationContext } from '@cora/auth';
+import { Alert, CircularProgress } from '@mui/material';
+
+export default function OrgAdminSettingsPage() {
+  const { isOrgAdmin, loading: roleLoading } = useRole();
+  const { currentOrganization } = useOrganizationContext();
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Wait for role check
+  if (roleLoading) {
+    return <CircularProgress />;
+  }
+  
+  // Verify org admin role
+  if (!isOrgAdmin) {
+    return (
+      <Alert severity="error">
+        Organization admin role required to access this page.
+      </Alert>
+    );
+  }
+  
+  // Load settings
+  useEffect(() => {
+    if (!currentOrganization) return;
+    
+    const fetchSettings = async () => {
+      try {
+        const token = await authAdapter.getToken();
+        const response = await fetch(
+          `/admin/org/settings?orgId=${currentOrganization.id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          setSettings(data.data);
+        }
+      } catch (err) {
+        console.error('Error loading settings:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchSettings();
+  }, [currentOrganization]);
+  
+  if (loading) {
+    return <CircularProgress />;
+  }
+  
+  return (
+    <div>
+      <h1>Organization Settings</h1>
+      {/* Render settings UI */}
+    </div>
+  );
+}
+```
+
+### ✅ Org Context Extraction Pattern
+
+```python
+"""
+Organization context extraction from query params or path params.
+
+CRITICAL: All /admin/org/* routes MUST include orgId for multi-tenant isolation.
+"""
+
+from org_common.auth_helpers import get_org_context_from_event
+
+def handle_org_admin_route(user_id: str, event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handler for org admin route"""
+    # Extract org_id (checks query params and path params)
+    try:
+        org_id = get_org_context_from_event(event)
+    except ValueError as e:
+        return common.bad_request_response(str(e))
+    
+    # Auth already verified by router (check_org_admin)
+    # Now fetch org-specific data
+    data = common.find_many('some_table', {'org_id': org_id})
+    return common.success_response(common.format_records(data))
+```
+
+### Admin Role Constants
+
+```python
+"""
+Use standard role constants from org_common.
+
+NEVER use inline role lists like ['sys_owner', 'sys_admin'].
+"""
+
+from org_common import SYS_ADMIN_ROLES, ORG_ADMIN_ROLES, WS_ADMIN_ROLES
+
+# ✅ CORRECT
+def is_system_admin(profile: dict) -> bool:
+    return profile.get('sys_role') in SYS_ADMIN_ROLES
+
+# ❌ WRONG - inline list
+def is_system_admin_wrong(profile: dict) -> bool:
+    return profile.get('sys_role') in ['sys_owner', 'sys_admin']  # Don't do this
+```
+
+---
+
+## 12. Resource Permission Patterns
+
+### Pattern: Resource Access with Permission Check
+
+**Problem**: Users need to access their own resources with proper authorization.
+
+**Solution**: Verify org membership, then check resource permission (ownership/sharing).
+
+### ✅ Backend: Resource Access Handler
+
+```python
+"""
+Resource access handler with layered permission checks.
+
+Three-step pattern:
+1. Fetch resource (to get org_id)
+2. Verify org membership (prevent cross-org access)
+3. Check resource permission (ownership/sharing)
+"""
+
+import org_common as common
+from org_common.resource_permissions import can_access_org_resource
+
+# Import module-specific permissions from module's own layer
+from chat_common.permissions import can_access_chat, can_edit_chat
+
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    """Handle chat resource requests"""
+    try:
+        # Extract user
+        user_info = common.get_user_from_event(event)
+        user_id = common.get_supabase_user_id_from_external_uid(user_info['user_id'])
+        
+        # Route to handlers
+        path = event.get('rawPath', '')
+        http_method = event.get('httpMethod')
+        
+        if http_method == 'GET' and '/sessions/' in path:
+            return handle_get_session(user_id, event)
+        elif http_method == 'PUT' and '/sessions/' in path:
+            return handle_update_session(user_id, event)
+        elif http_method == 'GET' and path.endswith('/sessions'):
+            return handle_list_sessions(user_id, event)
+        else:
+            return common.method_not_allowed_response()
+    
+    except common.ValidationError as e:
+        return common.bad_request_response(str(e))
+    except common.ForbiddenError as e:
+        return common.forbidden_response(str(e))
+    except Exception as e:
+        print(f'Error: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        return common.internal_error_response('Internal server error')
+
+
+def handle_get_session(user_id: str, event: Dict[str, Any]) -> Dict[str, Any]:
+    """Get single chat session with permission check"""
+    session_id = event['pathParameters']['session_id']
+    session_id = common.validate_uuid(session_id, 'session_id')
+    
+    # Step 1: Fetch resource
+    session = common.find_one('chat_sessions', {'id': session_id})
+    if not session:
+        return common.not_found_response('Session not found')
+    
+    # Step 2: Verify org membership (prevent cross-org access)
+    if not can_access_org_resource(user_id, session['org_id']):
+        return common.forbidden_response('Not a member of this organization')
+    
+    # Step 3: Check resource permission (ownership/sharing)
+    if not can_access_chat(user_id, session_id):
+        return common.forbidden_response('Access denied')
+    
+    # User has permission - return resource
+    return common.success_response(common.format_record(session))
+
+
+def handle_update_session(user_id: str, event: Dict[str, Any]) -> Dict[str, Any]:
+    """Update chat session (requires edit permission)"""
+    session_id = event['pathParameters']['session_id']
+    session_id = common.validate_uuid(session_id, 'session_id')
+    
+    body = json.loads(event.get('body', '{}'))
+    
+    # Step 1: Fetch resource
+    session = common.find_one('chat_sessions', {'id': session_id})
+    if not session:
+        return common.not_found_response('Session not found')
+    
+    # Step 2: Verify org membership
+    if not can_access_org_resource(user_id, session['org_id']):
+        return common.forbidden_response('Not a member of this organization')
+    
+    # Step 3: Check edit permission (may be stricter than view)
+    if not can_edit_chat(user_id, session_id):
+        return common.forbidden_response('Edit permission required')
+    
+    # User can edit - update resource
+    allowed_fields = ['title', 'status', 'metadata']
+    update_data = {k: v for k, v in body.items() if k in allowed_fields}
+    update_data['updated_by'] = user_id
+    
+    updated = common.update_one(
+        'chat_sessions',
+        filters={'id': session_id},
+        data=update_data
+    )
+    
+    return common.success_response(common.format_record(updated))
+
+
+def handle_list_sessions(user_id: str, event: Dict[str, Any]) -> Dict[str, Any]:
+    """List user's chat sessions (org-scoped)"""
+    query_params = event.get('queryStringParameters', {}) or {}
+    
+    # Extract org_id
+    org_id = query_params.get('orgId')
+    if not org_id:
+        return common.bad_request_response('orgId query parameter is required')
+    
+    org_id = common.validate_uuid(org_id, 'orgId')
+    
+    # Verify org membership
+    if not can_access_org_resource(user_id, org_id):
+        return common.forbidden_response('Not a member of this organization')
+    
+    # List user's sessions in this org (owned by user)
+    sessions = common.find_many(
+        'chat_sessions',
+        filters={'org_id': org_id, 'created_by': user_id},
+        order='created_at.desc'
+    )
+    
+    return common.success_response(common.format_records(sessions))
+```
+
+### ✅ Module-Specific Permission Layer
+
+```python
+"""
+Module-specific resource permissions.
+
+CRITICAL: These functions live in the module's own backend layer,
+NOT in org-common (to avoid dependencies on optional modules).
+
+File: module-chat/backend/layers/chat_common/python/chat_common/permissions.py
+"""
+
+from org_common.db import call_rpc
+
+def can_access_chat(user_id: str, session_id: str) -> bool:
+    """
+    Check if user can view chat session.
+    
+    Access granted if:
+    - User owns the chat
+    - Chat is shared with user (future)
+    """
+    # Check ownership
+    if call_rpc('is_chat_owner', {'p_user_id': user_id, 'p_session_id': session_id}):
+        return True
+    
+    # TODO: Check sharing when implemented
+    # if call_rpc('is_chat_shared_with', {'p_user_id': user_id, 'p_session_id': session_id}):
+    #     return True
+    
+    return False
+
+
+def can_edit_chat(user_id: str, session_id: str) -> bool:
+    """
+    Check if user can send messages in chat session.
+    
+    Access granted if:
+    - User is the owner
+    - User has an edit share (future)
+    
+    Note: View-only shares do NOT grant edit permission.
+    """
+    # For now, only owner can edit
+    return call_rpc('is_chat_owner', {'p_user_id': user_id, 'p_session_id': session_id})
+```
+
+### ✅ Database RPC Functions
+
+```sql
+-- Ownership check RPC
+CREATE OR REPLACE FUNCTION is_chat_owner(p_user_id UUID, p_session_id UUID)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM chat_sessions
+    WHERE id = p_session_id AND created_by = p_user_id
+  );
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- Membership check RPC (from org-common)
+CREATE OR REPLACE FUNCTION is_org_member(p_org_id UUID, p_user_id UUID)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM org_members
+    WHERE org_id = p_org_id 
+      AND person_id = p_user_id 
+      AND active = true
+  );
+$$ LANGUAGE sql SECURITY DEFINER;
+```
+
+### ❌ NEVER: Admin Role Override
+
+```python
+# ❌ WRONG - do NOT add admin override to resource permissions
+def can_access_chat_wrong(user_id: str, session_id: str, org_id: str) -> bool:
+    """WRONG: This grants admins automatic access to all user chats"""
+    
+    # Check ownership
+    if is_chat_owner(user_id, session_id):
+        return True
+    
+    # ❌ WRONG - violates least privilege principle
+    if is_org_admin(org_id, user_id):
+        return True  # DO NOT DO THIS
+    
+    return False
+
+# ✅ CORRECT - only ownership and sharing
+def can_access_chat_correct(user_id: str, session_id: str) -> bool:
+    """CORRECT: Admin roles do NOT grant automatic access"""
+    
+    # Check ownership
+    if is_chat_owner(user_id, session_id):
+        return True
+    
+    # Check sharing (future)
+    if is_chat_shared_with(user_id, session_id):
+        return True
+    
+    # NO admin override
+    return False
+```
+
+### Frontend: Resource Access
+
+```typescript
+// Frontend resource access (backend enforces permissions)
+export function useChatSession(sessionId: string) {
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const token = await authAdapter.getToken();
+        const response = await fetch(`/chat/sessions/${sessionId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setSession(data.data);
+        } else if (response.status === 403) {
+          setError('Access denied');
+        } else if (response.status === 404) {
+          setError('Session not found');
+        }
+      } catch (err) {
+        setError('Failed to load session');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchSession();
+  }, [sessionId]);
+  
+  return { session, loading, error };
+}
+```
+
+---
+
 ## Summary
 
 This cookbook provides production-ready patterns for all common CORA development scenarios. Follow these patterns to ensure:
@@ -1052,10 +1591,12 @@ This cookbook provides production-ready patterns for all common CORA development
 - ✅ **Type Safety**: Full TypeScript support
 - ✅ **Error Handling**: Comprehensive error coverage
 - ✅ **Testability**: All patterns are easily testable
+- ✅ **Authorization**: Both admin and resource permissions implemented correctly
 
 ## See Also
 
-- [CORA Frontend Standards](./CORA-FRONTEND-STANDARDS.md)
-- [CORA Patterns Checklist](./CORA-PATTERNS-CHECKLIST.md)
-- [Module Development Guide](./MODULE-DEVELOPMENT-GUIDE.md)
-- [API Response Standard](../architecture/API_RESPONSE_STANDARD.md)
+- [CORA Principles](./10_std_cora_PRINCIPLES.md) - Core CORA principles including auth hierarchy
+- [ADR-019: CORA Authorization Standardization](../arch%20decisions/ADR-019-AUTH-STANDARDIZATION.md) - Complete authorization strategy
+- [03_std_back_AUTH.md](./03_std_back_AUTH.md) - Backend admin auth standard
+- [03_std_back_RESOURCE-PERMISSIONS.md](./03_std_back_RESOURCE-PERMISSIONS.md) - Resource permission standard
+- [CORA Patterns Checklist](./10_std_cora_PATTERNS-CHECKLIST.md) - Validation checklist

@@ -664,48 +664,316 @@ def handle_get(event, user_id):
 
 #### 3.2.1a: Authorization Patterns (CRITICAL)
 
-**⚠️ IMPORTANT:** All Lambda functions must implement proper authorization checks.
+**⚠️ IMPORTANT:** All Lambda functions must implement proper authorization following CORA's 2-layer architecture.
 
-**See:** [Lambda Authorization Standard](../../standards/standard_LAMBDA-AUTHORIZATION.md) for comprehensive patterns.
+**See:** 
+- [ADR-019: CORA Authorization Standardization](../../arch%20decisions/ADR-019-AUTH-STANDARDIZATION.md)
+- [03_std_back_AUTH.md](../../standards/03_std_back_AUTH.md) - Admin authorization
+- [03_std_back_RESOURCE-PERMISSIONS.md](../../standards/03_std_back_RESOURCE-PERMISSIONS.md) - Resource permissions
 
-**Common Authorization Bug to Avoid:**
+### CORA Authorization Architecture: Two Distinct Layers
 
-❌ **WRONG - Do NOT check role in JWT:**
-```python
-# This will FAIL - roles are not in JWT!
-user_role = user_info.get('role')  
-if user_role not in ['platform_admin']:
-    raise access.ForbiddenError()
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   CORA Authorization Layers                  │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Layer 1: Admin Authorization (ADR-019a/b)                  │
+│  ├─ Routes: /admin/sys/*, /admin/org/*, /admin/ws/*        │
+│  ├─ Purpose: Module configuration and management            │
+│  ├─ Functions: check_sys_admin, check_org_admin,           │
+│  │             check_ws_admin, get_org_context_from_event   │
+│  └─ Pattern: Centralized router-level authorization        │
+│                                                              │
+│  Layer 2: Resource Permissions (ADR-019c)                   │
+│  ├─ Routes: /{module}/*                                     │
+│  ├─ Purpose: User data access and operations                │
+│  ├─ Functions: can_access_*, is_*_owner, is_*_member       │
+│  └─ Pattern: 3-step permission check per request           │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-✅ **CORRECT - Query database for role:**
+### Layer 1: Admin Authorization (Module Configuration)
+
+**Use Case:** Admin routes that configure module settings, manage module-level resources, or perform admin operations.
+
+**Pattern: Centralized Router-Level Authorization**
+
 ```python
-# Step 1: Get Okta UID from JWT
-okta_uid = user_info['user_id']
+# backend/lambdas/{module}-admin/lambda_function.py
 
-# Step 2: Map to Supabase user_id
-supabase_user_id = access.get_supabase_user_id_from_external_uid(okta_uid)
+from org_common.auth_helpers import (
+    check_sys_admin,
+    check_org_admin,
+    check_ws_admin,
+    get_org_context_from_event
+)
 
-# Step 3: Query user profile for role
-profile = access.find_one('user_profiles', {'user_id': supabase_user_id})
+def lambda_handler(event: dict, context: Any) -> dict:
+    """Admin Lambda with centralized authorization"""
+    user_id = common.get_supabase_user_id_from_external_uid(
+        common.get_user_from_event(event)['user_id']
+    )
+    
+    path = event.get('rawPath', '')
+    
+    # Centralized admin auth checks (ONE check per request)
+    if path.startswith('/admin/sys/'):
+        # System admin routes
+        if not check_sys_admin(user_id):
+            return common.forbidden_response('System admin role required')
+    
+    elif path.startswith('/admin/org/'):
+        # Organization admin routes
+        org_id = get_org_context_from_event(event)
+        if not check_org_admin(org_id, user_id):
+            return common.forbidden_response('Organization admin role required')
+    
+    elif path.startswith('/admin/ws/'):
+        # Workspace admin routes
+        ws_id = extract_path_param(event, 'ws_id')
+        if not check_ws_admin(ws_id, user_id):
+            return common.forbidden_response('Workspace admin role required')
+    
+    # Route to handlers (auth already verified)
+    return route_to_handler(user_id, event)
 
-# Step 4: Check authorization
-if not profile or profile.get('global_role') not in ['platform_admin', 'platform_owner']:
-    raise access.ForbiddenError('Platform admin access required')
+
+def handle_get_sys_config(user_id: str) -> dict:
+    """Get system config (sys admin already verified)"""
+    config = common.find_one('{module}_sys_config', {})
+    return common.success_response(common.format_record(config))
+
+
+def handle_get_org_config(user_id: str, event: dict) -> dict:
+    """Get org config (org admin already verified)"""
+    org_id = get_org_context_from_event(event)
+    config = common.find_one('{module}_org_config', {'org_id': org_id})
+    return common.success_response(common.format_record(config))
 ```
 
-**Why this matters:** JWT tokens contain ONLY the external identity provider's user ID (Okta UID). Roles and permissions are stored in the **database** (user_profiles table), not in JWT tokens.
+**Key Points:**
+- Auth check happens ONCE at router level
+- Use standard helper functions from org_common
+- No inline role checks (`['sys_owner', 'sys_admin']`)
+- Use `get_org_context_from_event()` to extract org_id
+- Handlers don't need auth checks (already verified)
 
-**Authorization Checklist:**
+### Layer 2: Resource Permissions (User Data Access)
 
-- [ ] Platform admin endpoints: Query `user_profiles.global_role`
-- [ ] Organization admin endpoints: Check both `global_role` and `org_members.org_role`
-- [ ] User ID mapping: Always use `get_supabase_user_id_from_external_uid()`
-- [ ] Never check `user_info.get('role')` - it doesn't exist!
-- [ ] Add authorization comments in code
-- [ ] Test with different user roles
+**Use Case:** Data routes where users access their own resources (chats, documents, sessions).
 
-**See full patterns for:** Platform admin, org admin, org member, resource owner, and module-specific role authorization in the [Lambda Authorization Standard](../../standards/standard_LAMBDA-AUTHORIZATION.md).
+**Pattern: 3-Step Permission Check**
+
+```python
+# backend/lambdas/{module}-data/lambda_function.py
+
+from org_common.resource_permissions import can_access_org_resource
+# Module-specific permissions in module's own layer:
+from {module}_common.permissions import can_access_{entity}, can_edit_{entity}
+
+def handle_get_{entity}(user_id: str, event: dict) -> dict:
+    """Get {entity} with permission check"""
+    {entity}_id = extract_path_param(event, '{entity}_id')
+    
+    # Step 1: Fetch resource
+    {entity} = common.find_one('{entity}', {'id': {entity}_id})
+    if not {entity}:
+        return common.not_found_response('{Entity} not found')
+    
+    # Step 2: Verify org membership (prevent cross-org access)
+    if not can_access_org_resource(user_id, {entity}['org_id']):
+        return common.forbidden_response('Not a member of this organization')
+    
+    # Step 3: Check resource permission (ownership/sharing)
+    if not can_access_{entity}(user_id, {entity}_id):
+        return common.forbidden_response('Access denied')
+    
+    return common.success_response(common.format_record({entity}))
+
+
+def handle_update_{entity}(user_id: str, event: dict) -> dict:
+    """Update {entity} (requires edit permission)"""
+    {entity}_id = extract_path_param(event, '{entity}_id')
+    body = json.loads(event.get('body', '{}'))
+    
+    # Fetch and verify
+    {entity} = common.find_one('{entity}', {'id': {entity}_id})
+    if not {entity}:
+        return common.not_found_response('{Entity} not found')
+    
+    if not can_access_org_resource(user_id, {entity}['org_id']):
+        return common.forbidden_response('Not a member of this organization')
+    
+    # Check edit permission (may be stricter than view)
+    if not can_edit_{entity}(user_id, {entity}_id):
+        return common.forbidden_response('Edit permission required')
+    
+    # Update
+    updated = common.update_one(
+        '{entity}',
+        filters={'id': {entity}_id},
+        data={**body, 'updated_by': user_id}
+    )
+    
+    return common.success_response(common.format_record(updated))
+
+
+def handle_list_{entities}(user_id: str, event: dict) -> dict:
+    """List user's {entities} (org-scoped)"""
+    query_params = event.get('queryStringParameters', {}) or {}
+    
+    org_id = query_params.get('orgId')
+    if not org_id:
+        return common.bad_request_response('orgId query parameter required')
+    
+    org_id = common.validate_uuid(org_id, 'orgId')
+    
+    # Verify org membership
+    if not can_access_org_resource(user_id, org_id):
+        return common.forbidden_response('Not a member of this organization')
+    
+    # List user's resources
+    {entities} = common.find_many(
+        '{entity}',
+        filters={'org_id': org_id, 'created_by': user_id},
+        order='created_at.desc'
+    )
+    
+    return common.success_response(common.format_records({entities}))
+```
+
+**Key Points:**
+- THREE steps: Fetch resource → Verify org membership → Check resource permission
+- Use `can_access_org_resource()` from org-common
+- Use module-specific `can_access_*()` from module's own layer
+- NO admin role override (admins don't auto-access user data)
+
+### Module-Specific Permission Layer
+
+**CRITICAL:** Permission functions for module-specific resources live in the MODULE's backend layer, NOT in org-common.
+
+```
+module-{name}/
+└── backend/
+    └── layers/
+        └── {module}_common/
+            └── python/
+                └── {module}_common/
+                    ├── __init__.py
+                    └── permissions.py  # Module-specific permissions
+```
+
+**File:** `backend/layers/{module}_common/python/{module}_common/permissions.py`
+
+```python
+"""
+Module-specific resource permissions.
+
+CRITICAL: These functions live in the MODULE's backend layer,
+NOT in org-common (to avoid dependencies on optional modules).
+"""
+
+from org_common.db import call_rpc
+
+def can_access_{entity}(user_id: str, {entity}_id: str) -> bool:
+    """
+    Check if user can access {entity}.
+    
+    Access granted if:
+    - User owns the {entity}
+    - {Entity} is shared with user (future)
+    
+    NOTE: Admin roles do NOT grant automatic access.
+    """
+    # Check ownership
+    if call_rpc('is_{entity}_owner', {
+        'p_user_id': user_id,
+        'p_{entity}_id': {entity}_id
+    }):
+        return True
+    
+    # TODO: Check sharing when implemented
+    return False
+
+def can_edit_{entity}(user_id: str, {entity}_id: str) -> bool:
+    """Check if user can edit {entity} (requires ownership)"""
+    return call_rpc('is_{entity}_owner', {
+        'p_user_id': user_id,
+        'p_{entity}_id': {entity}_id
+    })
+```
+
+### Database RPC Functions
+
+```sql
+-- backend/db/rpcs/001-{module}-permissions.sql
+
+-- Ownership check
+CREATE OR REPLACE FUNCTION is_{entity}_owner(p_user_id UUID, p_{entity}_id UUID)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM {entity}
+    WHERE id = p_{entity}_id AND created_by = p_user_id
+  );
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- Membership check (from org-common - already exists)
+-- is_org_member(p_org_id UUID, p_user_id UUID)
+```
+
+### ❌ NEVER: Admin Role Override
+
+```python
+# ❌ WRONG - do NOT add admin override to resource permissions
+def can_access_{entity}_wrong(user_id: str, {entity}_id: str, org_id: str) -> bool:
+    if is_{entity}_owner(user_id, {entity}_id):
+        return True
+    
+    # ❌ WRONG - violates least privilege
+    if is_org_admin(org_id, user_id):
+        return True  # DO NOT DO THIS
+    
+    return False
+
+# ✅ CORRECT - only ownership and sharing
+def can_access_{entity}_correct(user_id: str, {entity}_id: str) -> bool:
+    if is_{entity}_owner(user_id, {entity}_id):
+        return True
+    
+    if is_{entity}_shared_with(user_id, {entity}_id):  # Future
+        return True
+    
+    return False  # NO admin override
+```
+
+**Why:** Principle of least privilege. Admins should not have carte blanche access to user data.
+
+### Authorization Implementation Checklist
+
+**For Admin Routes (`/admin/*`):**
+- [ ] Lambda uses centralized router-level auth
+- [ ] Uses `check_sys_admin()`, `check_org_admin()`, or `check_ws_admin()`
+- [ ] Uses `get_org_context_from_event()` for org admin routes
+- [ ] NO inline role checks (no `['sys_owner', 'sys_admin']`)
+- [ ] Handlers assume auth already verified
+
+**For Data Routes (`/{module}/*`):**
+- [ ] Lambda implements 3-step permission check
+- [ ] Step 1: Fetch resource
+- [ ] Step 2: Verify org membership with `can_access_org_resource()`
+- [ ] Step 3: Check resource permission with module-specific `can_access_*()`
+- [ ] Module-specific permissions in module's own layer (not org-common)
+- [ ] Database RPC functions created (`is_*_owner`)
+- [ ] NO admin role override in resource permissions
+
+**Common Mistakes to Avoid:**
+- ❌ Checking roles in JWT (roles are in database, not JWT)
+- ❌ Inline role lists (`['sys_owner', 'sys_admin']`)
+- ❌ Admin override in resource permissions
+- ❌ Missing org membership check before resource permission
+- ❌ Module-specific permissions in org-common (creates dependencies)
 
 #### 3.2.2: Common Layer (Shared Methods)
 

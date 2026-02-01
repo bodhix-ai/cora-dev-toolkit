@@ -14,7 +14,7 @@ import { SysVoiceConfigPage } from "@{{PROJECT_NAME}}/module-voice";
  */
 export default function SysVoiceRoute() {
   const { profile, loading, isAuthenticated } = useUser();
-  const { isSysAdmin, isSysOwner } = useRole();
+  const { isSysAdmin } = useRole();
 
   // Pattern A: Auth checks
   if (loading) {
@@ -59,8 +59,8 @@ export default function SysVoiceRoute() {
     );
   }
 
-  // Check for sys admin or sys owner role
-  if (!isSysAdmin && !isSysOwner) {
+  // Check for sys admin role (includes sys_owner)
+  if (!isSysAdmin) {
     return (
       <Box
         sx={{

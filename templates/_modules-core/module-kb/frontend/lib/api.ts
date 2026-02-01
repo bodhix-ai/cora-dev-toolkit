@@ -101,21 +101,25 @@ export interface KbModuleApiClient {
   };
 
   // Org Admin endpoints
+  // ADR-019: All org admin calls MUST include orgId for authorization
   orgAdmin: {
-    listKbs: () => Promise<ApiResponse<KnowledgeBase[]>>;
-    createKb: (data: CreateKbInput) => Promise<ApiResponse<KnowledgeBase>>;
-    getKb: (kbId: string) => Promise<ApiResponse<KnowledgeBase>>;
+    listKbs: (orgId: string) => Promise<ApiResponse<KnowledgeBase[]>>;
+    createKb: (orgId: string, data: CreateKbInput) => Promise<ApiResponse<KnowledgeBase>>;
+    getKb: (orgId: string, kbId: string) => Promise<ApiResponse<KnowledgeBase>>;
     updateKb: (
+      orgId: string,
       kbId: string,
       data: UpdateKbInput
     ) => Promise<ApiResponse<KnowledgeBase>>;
-    deleteKb: (kbId: string) => Promise<ApiResponse<void>>;
-    listDocuments: (kbId: string) => Promise<ApiResponse<ListDocumentsResponse>>;
+    deleteKb: (orgId: string, kbId: string) => Promise<ApiResponse<void>>;
+    listDocuments: (orgId: string, kbId: string) => Promise<ApiResponse<ListDocumentsResponse>>;
     uploadDocument: (
+      orgId: string,
       kbId: string,
       data: UploadDocumentInput
     ) => Promise<ApiResponse<UploadDocumentResponse>>;
     deleteDocument: (
+      orgId: string,
       kbId: string,
       documentId: string
     ) => Promise<ApiResponse<void>>;
@@ -285,33 +289,35 @@ export function createKbModuleClient(
     },
 
     // Org Admin endpoints
+    // ADR-019: All org admin calls include orgId for authorization
     orgAdmin: {
-      listKbs: () => authenticatedClient.get<KnowledgeBase[]>("/admin/org/kb/bases"),
+      listKbs: (orgId) => 
+        authenticatedClient.get<KnowledgeBase[]>(`/admin/org/kb/bases?orgId=${orgId}`),
 
-      createKb: (data) =>
-        authenticatedClient.post<KnowledgeBase>("/admin/org/kb/bases", data),
+      createKb: (orgId, data) =>
+        authenticatedClient.post<KnowledgeBase>(`/admin/org/kb/bases?orgId=${orgId}`, data),
 
-      getKb: (kbId) =>
-        authenticatedClient.get<KnowledgeBase>(`/admin/org/kb/${kbId}`),
+      getKb: (orgId, kbId) =>
+        authenticatedClient.get<KnowledgeBase>(`/admin/org/kb/${kbId}?orgId=${orgId}`),
 
-      updateKb: (kbId, data) =>
-        authenticatedClient.patch<KnowledgeBase>(`/admin/org/kb/${kbId}`, data),
+      updateKb: (orgId, kbId, data) =>
+        authenticatedClient.patch<KnowledgeBase>(`/admin/org/kb/${kbId}?orgId=${orgId}`, data),
 
-      deleteKb: (kbId) =>
-        authenticatedClient.delete<void>(`/admin/org/kb/${kbId}`),
+      deleteKb: (orgId, kbId) =>
+        authenticatedClient.delete<void>(`/admin/org/kb/${kbId}?orgId=${orgId}`),
 
-      listDocuments: (kbId) =>
-        authenticatedClient.get<ListDocumentsResponse>(`/admin/org/kb/${kbId}/documents`),
+      listDocuments: (orgId, kbId) =>
+        authenticatedClient.get<ListDocumentsResponse>(`/admin/org/kb/${kbId}/documents?orgId=${orgId}`),
 
-      uploadDocument: (kbId, data) =>
+      uploadDocument: (orgId, kbId, data) =>
         authenticatedClient.post<UploadDocumentResponse>(
-          `/admin/org/kb/${kbId}/documents`,
+          `/admin/org/kb/${kbId}/documents?orgId=${orgId}`,
           data
         ),
 
-      deleteDocument: (kbId, documentId) =>
+      deleteDocument: (orgId, kbId, documentId) =>
         authenticatedClient.delete<void>(
-          `/admin/org/kb/${kbId}/documents/${documentId}`
+          `/admin/org/kb/${kbId}/documents/${documentId}?orgId=${orgId}`
         ),
     },
 

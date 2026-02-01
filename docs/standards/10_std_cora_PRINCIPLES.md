@@ -4,7 +4,11 @@
 
 ## Core Principles
 
-### 1. Authentication Dependency
+### 1. Authentication & Authorization Hierarchy
+
+CORA implements a clear separation between **authentication** (who you are) and **authorization** (what you can do).
+
+#### 1.1 Authentication Dependency
 
 **Principle:** All CORA modules MUST use the NextAuth factory pattern for authentication.
 
@@ -69,8 +73,182 @@ export default function Page() {
 **Documentation:**
 
 - **[MODULE-NEXTAUTH-PATTERN.md](../development/MODULE-NEXTAUTH-PATTERN.md)** - Complete implementation guide
-- **[ADR-004: NextAuth API Client Pattern](./ADR-004-NEXTAUTH-API-CLIENT-PATTERN.md)** - Architecture decision
+- **[ADR-004: NextAuth API Client Pattern](./ADR-004-NEXTAUTH-API-CLIENT.md)** - Architecture decision
 - **[MODULE-DEVELOPMENT-CHECKLIST.md](../development/MODULE-DEVELOPMENT-CHECKLIST.md)** - Verification checklist
+
+---
+
+#### 1.2 Authorization Hierarchy (Two Layers)
+
+**Principle:** CORA implements two distinct authorization layers with different purposes and patterns.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   CORA Authorization Layers                  │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Layer 1: Admin Authorization                               │
+│  ├─ Routes: /admin/sys/*, /admin/org/*, /admin/ws/*        │
+│  ├─ Purpose: Module configuration and management            │
+│  ├─ Functions: check_sys_admin, check_org_admin,           │
+│  │             check_ws_admin, get_org_context_from_event   │
+│  └─ Standards: ADR-019a (Frontend), ADR-019b (Backend)     │
+│                                                              │
+│  Layer 2: Resource Permissions                              │
+│  ├─ Routes: /{module}/*                                     │
+│  ├─ Purpose: User data access and operations                │
+│  ├─ Functions: can_access_*, is_*_owner, is_*_member       │
+│  └─ Standards: ADR-019c                                     │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Why Two Layers:**
+
+- **Layer 1 (Admin Auth)**: Controls who can *configure* modules (platform owners, org admins)
+- **Layer 2 (Resource Perms)**: Controls who can *access data* (resource owners, shared users)
+- **Separation of Concerns**: Admin roles do NOT grant automatic access to user data
+- **Least Privilege**: Users can manage settings without accessing everyone's data
+
+**Layer 1: Admin Authorization Pattern**
+
+```python
+# Backend: Admin route authorization
+from org_common.auth_helpers import check_sys_admin, check_org_admin, get_org_context_from_event
+
+def lambda_handler(event: dict, context: Any) -> dict:
+    # Extract user
+    user_id = common.get_supabase_user_id_from_external_uid(
+        common.get_user_from_event(event)['user_id']
+    )
+    
+    path = event.get('rawPath', '')
+    
+    # Centralized admin auth checks
+    if path.startswith('/admin/sys/'):
+        if not check_sys_admin(user_id):
+            return common.forbidden_response('System admin role required')
+    
+    elif path.startswith('/admin/org/'):
+        org_id = get_org_context_from_event(event)
+        if not check_org_admin(org_id, user_id):
+            return common.forbidden_response('Organization admin role required')
+    
+    # Route to handler
+    return route_to_handler(user_id, event)
+```
+
+```typescript
+// Frontend: Admin page authorization
+'use client';
+import { useRole, useOrganizationContext } from '@cora/auth';
+
+export default function OrgAdminPage() {
+  const { isOrgAdmin } = useRole();
+  const { currentOrganization } = useOrganizationContext();
+  
+  if (!isOrgAdmin) {
+    return <AccessDenied message="Organization admin role required" />;
+  }
+  
+  return <AdminInterface orgId={currentOrganization.id} />;
+}
+```
+
+**Layer 2: Resource Permission Pattern**
+
+```python
+# Backend: Resource access authorization
+from org_common.resource_permissions import can_access_org_resource
+# Module-specific permissions in module layers:
+from chat_common.permissions import can_access_chat
+
+def handle_get_chat(user_id: str, event: dict) -> dict:
+    session_id = extract_path_param(event, 'session_id')
+    
+    # 1. Fetch resource
+    session = common.find_one('chat_sessions', {'id': session_id})
+    if not session:
+        return common.not_found_response('Session not found')
+    
+    # 2. Verify org membership (prevent cross-org access)
+    if not can_access_org_resource(user_id, session['org_id']):
+        return common.forbidden_response('Not a member of this organization')
+    
+    # 3. Check resource permission (ownership/sharing)
+    if not can_access_chat(user_id, session_id):
+        return common.forbidden_response('Access denied')
+    
+    return common.success_response(common.format_record(session))
+```
+
+**CRITICAL: No Admin Override**
+
+Admin roles (sys_admin, org_admin, ws_admin) do NOT automatically grant access to user resources:
+
+```python
+# ❌ WRONG - do NOT add admin override to resource permissions
+def can_access_chat(user_id: str, session_id: str) -> bool:
+    if is_chat_owner(user_id, session_id):
+        return True
+    
+    # ❌ WRONG - violates least privilege
+    # if is_org_admin(org_id, user_id):
+    #     return True
+    
+    return False
+
+# ✅ CORRECT - only ownership and sharing
+def can_access_chat(user_id: str, session_id: str) -> bool:
+    if is_chat_owner(user_id, session_id):
+        return True
+    
+    if is_chat_shared_with(user_id, session_id):  # Future
+        return True
+    
+    return False
+```
+
+**Why:** Principle of least privilege, compliance requirements, user trust.
+
+**Module-Specific Permission Functions**
+
+Each functional module implements its own permission layer to avoid adding dependencies to org-common:
+
+```
+module-chat/
+└── backend/
+    └── layers/
+        └── chat_common/
+            └── python/
+                └── chat_common/
+                    ├── __init__.py
+                    └── permissions.py  # Chat-specific: can_access_chat(), can_edit_chat()
+
+module-voice/
+└── backend/
+    └── layers/
+        └── voice_common/
+            └── python/
+                └── voice_common/
+                    └── permissions.py  # Voice-specific: can_access_voice()
+```
+
+**Why module-specific layers:**
+- org-common doesn't depend on optional modules
+- New modules don't require org-common updates
+- Each module controls its own permission logic
+
+**Documentation:**
+
+- **[ADR-019: CORA Authorization Standardization](../arch%20decisions/ADR-019-AUTH-STANDARDIZATION.md)** - Complete authorization strategy
+- **[ADR-019a: Frontend Authorization](../arch%20decisions/ADR-019a-AUTH-FRONTEND.md)** - Frontend patterns
+- **[ADR-019b: Backend Admin Authorization](../arch%20decisions/ADR-019b-AUTH-BACKEND.md)** - Admin auth patterns
+- **[ADR-019c: Resource Permissions](../arch%20decisions/ADR-019c-AUTH-RESOURCE-PERMISSIONS.md)** - Resource permission patterns
+- **[03_std_back_AUTH.md](./03_std_back_AUTH.md)** - Backend admin auth standard
+- **[03_std_back_RESOURCE-PERMISSIONS.md](./03_std_back_RESOURCE-PERMISSIONS.md)** - Resource permission standard
+
+---
 
 ### 2. Module-First Development
 

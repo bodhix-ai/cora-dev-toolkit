@@ -22,6 +22,8 @@ export { AIEnablementAdmin } from "./components/admin/AIEnablementAdmin";
 export { ProvidersTab } from "./components/admin/ProvidersTab";
 export { ModelsTab } from "./components/admin/ModelsTab";
 export { PlatformConfigTab } from "./components/admin/PlatformConfigTab";
+export { default as OrgAIConfigPanel } from "./components/OrgAIConfigPanel";
+export { PlatformAIConfigPanel } from "./components/PlatformAIConfigPanel";
 
 // Hooks
 export { useProviders } from "./hooks/useProviders";

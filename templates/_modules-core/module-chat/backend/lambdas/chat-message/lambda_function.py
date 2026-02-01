@@ -82,7 +82,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         elif '/admin/org/chat/messages' in path:
             message_id = path_params.get('messageId')
             if http_method == 'GET' and message_id:
-                return handle_org_get_message(user_info, message_id)
+                return handle_org_get_message(event, supabase_user_id, message_id)
         
         # Message routes: /chats/{sessionId}/messages...
         elif '/messages' in path:
@@ -505,20 +505,19 @@ def handle_get_history(
 # ORG ADMIN HANDLERS
 # =============================================================================
 
-def handle_org_get_message(user_info: Dict[str, Any], message_id: str) -> Dict[str, Any]:
+def handle_org_get_message(event: Dict[str, Any], user_id: str, message_id: str) -> Dict[str, Any]:
     """
     View message content (org admin read-only access).
     
     Allows org admins to view message content for auditing/support purposes.
     The message must belong to a chat session in the admin's organization.
     """
-    org_id = user_info.get('org_id')
-    if not org_id:
-        raise common.ForbiddenError('Organization context required')
+    # Extract org context from request (ADR-019)
+    org_id = common.get_org_context_from_event(event)
     
-    # Verify org_admin or org_owner role
-    if user_info.get('org_role') not in ['org_admin', 'org_owner']:
-        raise common.ForbiddenError('org_admin or org_owner role required')
+    # Verify org admin permission (ADR-019)
+    if not common.check_org_admin(user_id, org_id):
+        raise common.ForbiddenError('Organization admin role required')
     
     message_id = common.validate_uuid(message_id, 'messageId')
     

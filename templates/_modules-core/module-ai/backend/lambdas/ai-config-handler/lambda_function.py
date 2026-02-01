@@ -29,72 +29,6 @@ from ai_common import (
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# System admin roles
-SYS_ADMIN_ROLES = ['sys_owner', 'sys_admin']
-
-# Organization admin roles
-ORG_ADMIN_ROLES = ['org_owner', 'org_admin']
-
-
-def _is_sys_admin(user_id: str) -> bool:
-    """
-    Verify that the user has system admin role.
-    
-    Args:
-        user_id: Supabase user ID
-        
-    Returns:
-        True if user has system admin role, False otherwise
-    """
-    try:
-        profile = common.find_one('user_profiles', {'user_id': user_id})
-        if not profile:
-            return False
-        
-        sys_role = profile.get('sys_role')
-        return sys_role in SYS_ADMIN_ROLES
-    except Exception as e:
-        logger.error(f"Error checking system admin role: {e}")
-        return False
-
-
-def _require_sys_admin(user_id: str):
-    """
-    Require system admin access, raise ForbiddenError if user doesn't have it.
-    
-    Args:
-        user_id: Supabase user ID
-        
-    Raises:
-        ForbiddenError: If user doesn't have system admin role
-    """
-    if not _is_sys_admin(user_id):
-        raise common.ForbiddenError('Access denied. System admin role required.')
-
-
-def _check_org_admin(user_id: str, organization_id: str) -> bool:
-    """
-    Verify that the user has admin role in the specified organization.
-    
-    Args:
-        user_id: Supabase user ID
-        organization_id: Organization UUID
-        
-    Returns:
-        True if user is org admin, False otherwise
-    """
-    try:
-        membership = common.find_one(
-            'org_members',
-            {'user_id': user_id, 'organization_id': organization_id}
-        )
-        if not membership:
-            return False
-        
-        return membership.get('role') in ORG_ADMIN_ROLES
-    except Exception as e:
-        logger.error(f"Error checking org admin role: {e}")
-        return False
 
 
 # ============================================================================
@@ -113,9 +47,7 @@ def list_models_handler(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         List of available models with their capabilities.
     """
     try:
-        _require_sys_admin(user_id)
-        
-        logger.info(f"System admin access granted for user {user_id}")
+        # Authorization handled at router level (ADR-019)
         
         # Get capability filter from query parameters
         query_params = event.get("queryStringParameters") or {}
@@ -165,9 +97,7 @@ def get_platform_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[
         Platform AI configuration including default models and system prompt.
     """
     try:
-        _require_sys_admin(user_id)
-        
-        logger.info(f"System admin access granted for user {user_id}")
+        # Authorization handled at router level (ADR-019)
         
         # Get platform AI configuration
         config = common.find_one('ai_cfg_sys_rag', {})
@@ -219,9 +149,7 @@ def update_platform_ai_config_handler(event: Dict[str, Any], user_id: str) -> Di
         Updated platform AI configuration.
     """
     try:
-        _require_sys_admin(user_id)
-        
-        logger.info(f"System admin access granted for user {user_id}")
+        # Authorization handled at router level (ADR-019)
         
         # Parse request body
         try:
@@ -340,14 +268,8 @@ def get_sys_org_ai_config_handler(event: Dict[str, Any], user_id: str, org_id: s
         Organization AI configuration with inherited platform defaults.
     """
     try:
-        # Require system admin access
-        _require_sys_admin(user_id)
-        
+        # Authorization handled at router level (ADR-019)
         organization_id = org_id
-        
-        logger.info(
-            f"System admin {user_id} accessing AI config for organization {organization_id}"
-        )
         
         # Get organization AI configuration
         org_config = common.find_one('ai_cfg_org_prompts', {'org_id': organization_id}, select='*')
@@ -487,14 +409,8 @@ def update_sys_org_ai_config_handler(event: Dict[str, Any], user_id: str, org_id
         Updated organization AI configuration.
     """
     try:
-        # Require system admin access
-        _require_sys_admin(user_id)
-        
+        # Authorization handled at router level (ADR-019)
         organization_id = org_id
-        
-        logger.info(
-            f"System admin {user_id} updating AI config for organization {organization_id}"
-        )
         
         # Parse request body
         try:
@@ -615,23 +531,15 @@ def get_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str, 
     """
     Get organization-level AI configuration.
     Accessible to organization admins for their own organization.
-    Org ID comes from user's session (user's current organization).
+    Org ID comes from orgId query parameter.
     
     Returns:
         Organization AI configuration with inherited platform defaults.
     """
     try:
-        # Get user's org_id from their profile
-        profile = common.find_one('user_profiles', {'user_id': user_id})
-        if not profile or not profile.get('org_id'):
-            raise common.ForbiddenError('User does not belong to an organization')
-        
-        organization_id = profile['org_id']
-        
-        logger.info(
-            f"Organization admin access granted for user {user_id} "
-            f"to organization {organization_id}"
-        )
+        # Authorization handled at router level (ADR-019)
+        # org_id already extracted and validated by router
+        organization_id = common.get_org_context_from_event(event)
         
         # Get organization AI configuration
         org_config = common.find_one('ai_cfg_org_prompts', {'org_id': organization_id}, select='*')
@@ -774,7 +682,7 @@ def update_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[st
     """
     Update organization-level AI configuration.
     Accessible to organization admins for their own organization.
-    Org ID comes from user's session (user's current organization).
+    Org ID comes from orgId query parameter.
     
     Request body:
         {
@@ -785,20 +693,12 @@ def update_org_ai_config_handler(event: Dict[str, Any], user_id: str) -> Dict[st
         Updated organization AI configuration.
     """
     try:
-        # Get user's org_id from their profile
-        profile = common.find_one('user_profiles', {'user_id': user_id})
-        if not profile or not profile.get('org_id'):
-            raise common.ForbiddenError('User does not belong to an organization')
-        
-        organization_id = profile['org_id']
+        # Get org_id from request (ADR-019 standard)
+        organization_id = common.get_org_context_from_event(event)
         
         # Verify user is admin of the organization
-        if not _check_org_admin(user_id, organization_id):
-            logger.warning(
-                f"Access denied for user {user_id} - "
-                f"not admin of organization {organization_id}"
-            )
-            raise common.ForbiddenError("Access denied. Organization admin role required.")
+        if not common.check_org_admin(user_id, organization_id):
+            return common.forbidden_response('Organization admin role required')
         
         logger.info(
             f"Organization admin access granted for user {user_id} "
@@ -1010,9 +910,7 @@ def get_sys_rag_config_handler(event: Dict[str, Any], user_id: str) -> Dict[str,
         Platform RAG configuration including provider settings.
     """
     try:
-        _require_sys_admin(user_id)
-        
-        logger.info(f"System admin access granted for user {user_id}")
+        # Authorization handled at router level (ADR-019)
         
         # Get platform RAG configuration
         rag_config = common.find_one(
@@ -1060,9 +958,7 @@ def update_sys_rag_config_handler(event: Dict[str, Any], user_id: str) -> Dict[s
         Updated platform RAG configuration.
     """
     try:
-        _require_sys_admin(user_id)
-        
-        logger.info(f"System admin access granted for user {user_id}")
+        # Authorization handled at router level (ADR-019)
         
         # Parse request body
         try:
@@ -1146,9 +1042,7 @@ def list_rag_providers_handler(event: Dict[str, Any], user_id: str) -> Dict[str,
         List of AI providers with their status and capabilities.
     """
     try:
-        _require_sys_admin(user_id)
-        
-        logger.info(f"System admin access granted for user {user_id}")
+        # Authorization handled at router level (ADR-019)
         
         # Get all AI providers
         providers = common.find_many(
@@ -1185,9 +1079,7 @@ def test_rag_provider_handler(event: Dict[str, Any], user_id: str) -> Dict[str, 
         Connection test results.
     """
     try:
-        _require_sys_admin(user_id)
-        
-        logger.info(f"System admin access granted for user {user_id}")
+        # Authorization handled at router level (ADR-019)
         
         # Parse request body
         try:
@@ -1253,9 +1145,7 @@ def get_rag_provider_models_handler(event: Dict[str, Any], user_id: str) -> Dict
         List of AI models with their capabilities.
     """
     try:
-        _require_sys_admin(user_id)
-        
-        logger.info(f"System admin access granted for user {user_id}")
+        # Authorization handled at router level (ADR-019)
         
         # Get query parameters
         query_params = event.get('queryStringParameters') or {}
@@ -1350,6 +1240,21 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         path = event.get("path") or event.get("rawPath", "")
         
         logger.info(f"AI Config Handler - Method: {http_method}, Path: {path}")
+        
+        # Centralized Authorization (ADR-019 - Router-level auth)
+        org_id = None
+        if path.startswith("/admin/sys/"):
+            # All sys admin routes require system admin role
+            if not common.check_sys_admin(supabase_user_id):
+                return common.forbidden_response('System admin role required')
+            logger.info(f"System admin access granted for user {supabase_user_id}")
+        
+        elif path.startswith("/admin/org/"):
+            # All org admin routes require org admin role + org context
+            org_id = common.get_org_context_from_event(event)
+            if not common.check_org_admin(supabase_user_id, org_id):
+                return common.forbidden_response('Organization admin role required')
+            logger.info(f"Org admin access granted for user {supabase_user_id}, org {org_id}")
         
         # Route to appropriate handler
         # System admin AI configuration routes

@@ -752,6 +752,191 @@ To use this script, simply copy it into your module's `backend` directory and ma
 chmod +x backend/build.sh
 ```
 
+## Phase 4b: Authorization Implementation
+
+**See:** [ADR-019: CORA Authorization Standardization](../arch%20decisions/ADR-019-AUTH-STANDARDIZATION.md)
+
+CORA modules must implement authorization following the 2-layer architecture.
+
+### Layer 1: Admin Authorization (If Module Has Admin Routes)
+
+If your module has admin configuration pages (e.g., `/admin/sys/{module}`, `/admin/org/{module}`), implement centralized router-level authorization.
+
+**Update Lambda handler to add centralized auth:**
+
+```python
+from org_common.auth_helpers import check_sys_admin, check_org_admin, get_org_context_from_event
+
+def lambda_handler(event, context):
+    """Handle staffing admin API requests"""
+    try:
+        user_info = extract_user(event)
+        user_id = user_info['user_id']
+        
+        supabase = get_supabase_client()
+        supabase.rpc('set_session_user_id', {'user_id': user_id}).execute()
+        
+        path = event.get('rawPath', '')
+        
+        # Centralized admin authorization
+        if path.startswith('/admin/sys/staffing/'):
+            if not check_sys_admin(user_id):
+                return error_response(403, 'System admin role required')
+        
+        elif path.startswith('/admin/org/staffing/'):
+            org_id = get_org_context_from_event(event)
+            if not check_org_admin(org_id, user_id):
+                return error_response(403, 'Organization admin role required')
+        
+        # Route to handlers (auth already verified)
+        return route_by_method(event)
+    
+    except Exception as e:
+        print(f'Error: {str(e)}')
+        return error_response(500, 'Internal server error')
+```
+
+**Key Points:**
+- Auth check happens ONCE at router level
+- Use standard helpers from org_common (no inline role checks)
+- Handlers don't need auth checks (already verified)
+
+### Layer 2: Resource Permissions (For User Data Routes)
+
+If your module has user data routes (e.g., `/staffing/candidates`), implement 3-step permission checks.
+
+**Step 1: Create Database RPC Functions**
+
+**db/schema/006-permissions.sql:**
+
+```sql
+-- Ownership check for candidates
+CREATE OR REPLACE FUNCTION is_candidate_owner(p_user_id UUID, p_candidate_id UUID)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM staffing_candidates
+    WHERE id = p_candidate_id AND created_by = p_user_id
+  );
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- Membership check (already exists in org-common)
+-- is_org_member(p_org_id UUID, p_user_id UUID)
+```
+
+**Step 2: Create Module Permission Layer**
+
+**backend/layers/staffing-common/python/staffing_common/permissions.py:**
+
+```python
+"""
+Module-specific resource permissions.
+
+CRITICAL: These functions live in the MODULE's layer,
+NOT in org-common (avoids dependencies on optional modules).
+"""
+
+from org_common.db import call_rpc
+
+def can_access_candidate(user_id: str, candidate_id: str) -> bool:
+    """
+    Check if user can access candidate.
+    
+    Access granted if:
+    - User owns the candidate
+    - Candidate is shared with user (future)
+    
+    NOTE: Admin roles do NOT grant automatic access.
+    """
+    # Check ownership
+    if call_rpc('is_candidate_owner', {
+        'p_user_id': user_id,
+        'p_candidate_id': candidate_id
+    }):
+        return True
+    
+    # TODO: Check sharing when implemented
+    return False
+
+def can_edit_candidate(user_id: str, candidate_id: str) -> bool:
+    """Check if user can edit candidate (requires ownership)"""
+    return call_rpc('is_candidate_owner', {
+        'p_user_id': user_id,
+        'p_candidate_id': candidate_id
+    })
+```
+
+**Step 3: Update Lambda Handlers with 3-Step Permission Check**
+
+```python
+from org_common.resource_permissions import can_access_org_resource
+from staffing_common.permissions import can_access_candidate, can_edit_candidate
+
+def handle_get_candidate(supabase, user_id, candidate_id):
+    """Get single candidate with permission check"""
+    
+    # Step 1: Fetch resource
+    result = supabase.table('staffing_candidates').select('*').eq('id', candidate_id).execute()
+    if not result.data:
+        return error_response(404, 'Candidate not found')
+    
+    candidate = result.data[0]
+    
+    # Step 2: Verify org membership (prevent cross-org access)
+    if not can_access_org_resource(user_id, candidate['org_id']):
+        return error_response(403, 'Not a member of this organization')
+    
+    # Step 3: Check resource permission (ownership/sharing)
+    if not can_access_candidate(user_id, candidate_id):
+        return error_response(403, 'Access denied')
+    
+    return success_response(candidate)
+
+
+def handle_update_candidate(supabase, user_id, candidate_id, data):
+    """Update candidate (requires edit permission)"""
+    
+    # Fetch and verify
+    result = supabase.table('staffing_candidates').select('org_id').eq('id', candidate_id).execute()
+    if not result.data:
+        return error_response(404, 'Candidate not found')
+    
+    candidate = result.data[0]
+    
+    # Verify org membership
+    if not can_access_org_resource(user_id, candidate['org_id']):
+        return error_response(403, 'Not a member of this organization')
+    
+    # Check edit permission (may be stricter than view)
+    if not can_edit_candidate(user_id, candidate_id):
+        return error_response(403, 'Edit permission required')
+    
+    # Update
+    update_result = supabase.table('staffing_candidates').update(data).eq('id', candidate_id).execute()
+    return success_response(update_result.data[0])
+```
+
+**CRITICAL:** Admin roles do NOT automatically grant access to user resources (least privilege principle).
+
+### Authorization Checklist
+
+**For Admin Routes:**
+- [ ] Lambda uses centralized router-level auth
+- [ ] Uses `check_sys_admin()`, `check_org_admin()`, or `check_ws_admin()`
+- [ ] Uses `get_org_context_from_event()` for org admin routes
+- [ ] NO inline role checks (no `['sys_owner', 'sys_admin']`)
+- [ ] Handlers assume auth already verified
+
+**For Data Routes:**
+- [ ] Database RPC functions created (`is_*_owner`)
+- [ ] Module-specific permissions in module's own layer (not org-common)
+- [ ] Lambda implements 3-step permission check:
+  - [ ] Step 1: Fetch resource
+  - [ ] Step 2: Verify org membership with `can_access_org_resource()`
+  - [ ] Step 3: Check resource permission with module-specific `can_access_*()`
+- [ ] NO admin role override in resource permissions
+
+---
+
 ## Phase 5: Frontend TypeScript Types
 
 **frontend/types/index.ts:**

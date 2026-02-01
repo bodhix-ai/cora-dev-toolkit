@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
 import { CircularProgress, Box, Alert } from "@mui/material";
 import { PlatformAdminConfigPage } from "@{{PROJECT_NAME}}/module-ws";
 
@@ -15,9 +15,12 @@ import { PlatformAdminConfigPage } from "@{{PROJECT_NAME}}/module-ws";
  * - Usage Summary: Real API calls to /ws/sys/analytics for cross-org statistics
  * 
  * Access: Platform admins only (sys_owner, sys_admin)
+ * 
+ * Authorization: ADR-019a compliant (useRole)
  */
 export default function WorkspaceSystemConfigPage() {
-  const { profile, loading, isAuthenticated } = useUser();
+  const { loading, isAuthenticated } = useUser();
+  const { isSysAdmin } = useRole();
 
   // Loading state
   if (loading) {
@@ -29,7 +32,7 @@ export default function WorkspaceSystemConfigPage() {
   }
 
   // Authentication check
-  if (!isAuthenticated || !profile) {
+  if (!isAuthenticated) {
     return (
       <Box p={4}>
         <Alert severity="error">
@@ -40,7 +43,6 @@ export default function WorkspaceSystemConfigPage() {
   }
 
   // Authorization check (sys admin only)
-  const isSysAdmin = ['sys_owner', 'sys_admin'].includes(profile.sysRole || '');
   if (!isSysAdmin) {
     return (
       <Box p={4}>

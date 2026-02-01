@@ -88,25 +88,28 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         # System routes don't require org_id
         org_id = None
         if not is_sys_route(path):
-            # Get org_id from query parameters OR request body (for POST/PUT)
-            # Accept both snake_case (org_id) and camelCase (orgId) for flexibility
-            query_params = event.get('queryStringParameters') or {}
-            org_id = query_params.get('org_id') or query_params.get('orgId')
+            # Use standard ADR-019b helper for org context extraction
+            org_id = common.get_org_context_from_event(event)
             
-            # For POST/PUT requests, also check the request body for org_id
-            if not org_id and http_method in ('POST', 'PUT'):
-                try:
-                    body = json.loads(event.get('body', '{}'))
-                    org_id = body.get('org_id') or body.get('orgId')
-                except json.JSONDecodeError:
-                    pass
-
             if not org_id:
-                return common.bad_request_response('org_id is required (in query params or request body)')
+                return common.bad_request_response('org_id is required in query params')
             
             logger.info(f"Request from org_id: {org_id}, user_id: {supabase_user_id}")
         else:
             logger.info(f"System route - no org_id required, user_id: {supabase_user_id}")
+        
+        # Centralized Authorization (ADR-019 - Router-level auth)
+        if path.startswith('/admin/sys/ws/'):
+            # All sys admin routes require system admin role
+            if not common.check_sys_admin(supabase_user_id):
+                return common.forbidden_response('System admin role required')
+            logger.info(f"System admin access granted for user {supabase_user_id}")
+        
+        elif path.startswith('/admin/org/ws/'):
+            # All org admin routes require org admin role + org context
+            if not common.check_org_admin(supabase_user_id, org_id):
+                return common.forbidden_response('Organization admin role required')
+            logger.info(f"Org admin access granted for user {supabase_user_id}, org {org_id}")
         
         # Route dispatcher - System Admin Routes (no org_id required)
         if path == '/admin/sys/ws/analytics' and http_method == 'GET':
@@ -450,10 +453,6 @@ def handle_sys_analytics(user_id: str, user_info: Dict[str, Any]) -> Dict[str, A
     Returns:
         Platform-wide workspace statistics with org breakdown
     """
-    # Check if user has sys admin role
-    if not _is_sys_admin(user_id):
-        raise common.ForbiddenError('Only sys administrators can access system analytics')
-    
     try:
         # Get all workspaces across all organizations
         all_workspaces = common.find_many(table='workspaces', filters={})
@@ -562,13 +561,6 @@ def handle_get_org_settings(
     Returns:
         Organization workspace settings
     """
-    # Check authorization: org admin or platform admin
-    is_org_admin = _is_org_admin(org_id, user_id)
-    is_sys_admin = _is_sys_admin(user_id)
-    
-    if not is_org_admin and not is_sys_admin:
-        raise common.ForbiddenError('Only organization or sys administrators can access org settings')
-    
     try:
         # Get or create default settings
         settings = common.find_one(
@@ -616,13 +608,6 @@ def handle_update_org_settings(
     Returns:
         Updated organization workspace settings
     """
-    # Check authorization: org admin or platform admin
-    is_org_admin = _is_org_admin(org_id, user_id)
-    is_sys_admin = _is_sys_admin(user_id)
-    
-    if not is_org_admin and not is_sys_admin:
-        raise common.ForbiddenError('Only organization or sys administrators can update org settings')
-    
     # Allowed fields for update
     allowed_fields = ['allow_user_creation', 'require_approval', 'max_workspaces_per_user']
     update_data = {k: v for k, v in body.items() if k in allowed_fields and v is not None}
@@ -1740,10 +1725,6 @@ def handle_update_config(
     Returns:
         Updated configuration
     """
-    # Check if user has platform admin role
-    if not _is_sys_admin(user_id):
-        raise common.ForbiddenError('Only sys administrators can update workspace configuration')
-    
     # Map camelCase to snake_case for field names
     # Accept both formats for flexibility (frontend sends camelCase, DB uses snake_case)
     field_mapping = {
@@ -1859,13 +1840,6 @@ def handle_admin_list_workspaces(
     Returns:
         List of all org workspaces with admin metadata
     """
-    # Check authorization: org admin or platform admin
-    is_org_admin = _is_org_admin(org_id, user_id)
-    is_sys_admin = _is_sys_admin(user_id)
-    
-    if not is_org_admin and not is_sys_admin:
-        raise common.ForbiddenError('Only organization or sys administrators can list all org workspaces')
-    
     try:
         query_params = event.get('queryStringParameters') or {}
         status = query_params.get('status', 'active')  # active, archived, all, deleted
@@ -1950,13 +1924,6 @@ def handle_admin_restore_workspace(
     if not workspace_id:
         raise common.ValidationError('Workspace ID is required')
     
-    # Check authorization: org admin or platform admin
-    is_org_admin = _is_org_admin(org_id, user_id)
-    is_sys_admin = _is_sys_admin(user_id)
-    
-    if not is_org_admin and not is_sys_admin:
-        raise common.ForbiddenError('Only organization or sys administrators can restore workspaces')
-    
     # Verify workspace belongs to this org
     workspace = common.find_one(
         table='workspaces',
@@ -2027,13 +1994,6 @@ def handle_admin_delete_workspace(
     if not workspace_id:
         raise common.ValidationError('Workspace ID is required')
     
-    # Check authorization: org admin or platform admin
-    is_org_admin = _is_org_admin(org_id, user_id)
-    is_sys_admin = _is_sys_admin(user_id)
-    
-    if not is_org_admin and not is_sys_admin:
-        raise common.ForbiddenError('Only organization or sys administrators can force delete workspaces')
-    
     # Verify workspace belongs to this org
     workspace = common.find_one(
         table='workspaces',
@@ -2085,14 +2045,6 @@ def handle_admin_stats(user_info: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Platform-wide workspace statistics
     """
-    # Check if user has sys admin role
-    # Must query database for sys_role (not in JWT)
-    okta_uid = user_info['user_id']
-    supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
-    
-    if not _is_sys_admin(supabase_user_id):
-        raise common.ForbiddenError('Only sys administrators can access these statistics')
-    
     try:
         # Get total workspace counts
         all_workspaces = common.find_many(table='workspaces', filters={})
@@ -2145,16 +2097,6 @@ def handle_admin_analytics(org_id: str, user_info: Dict[str, Any]) -> Dict[str, 
     Returns:
         Organization workspace analytics
     """
-    # Check if user has appropriate admin role
-    okta_uid = user_info['user_id']
-    supabase_user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
-    
-    is_org_admin = _is_org_admin(org_id, supabase_user_id)
-    is_sys_admin = _is_sys_admin(supabase_user_id)
-    
-    if not is_org_admin and not is_sys_admin:
-        raise common.ForbiddenError('Only administrators can access analytics')
-    
     try:
         # Get all workspaces for organization
         workspaces = common.find_many(

@@ -8,7 +8,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { useUser } from '@{{PROJECT_NAME}}/module-access';
+import { useUser, useRole } from '@{{PROJECT_NAME}}/module-access';
 import { 
   PlatformAdminKBPage, 
   useSysKbs, 
@@ -33,7 +33,9 @@ interface OrgInfo {
  * Renders the PlatformAdminKBPage with data from hooks.
  */
 export default function SysKBAdminRoute() {
+  // ✅ ADR-019a: All auth hooks at top
   const { profile, loading, isAuthenticated, authAdapter } = useUser();
+  const { isSysAdmin } = useRole();
   
   // Selected KB state for document management
   const [selectedKb, setSelectedKb] = useState<KnowledgeBase | null>(null);
@@ -171,9 +173,7 @@ export default function SysKBAdminRoute() {
     );
   }
 
-  // Check if user has system admin role
-  const isSysAdmin = ['sys_owner', 'sys_admin'].includes(profile.sysRole || '');
-  
+  // ✅ ADR-019a: Check role using useRole() hook (not inline role list)
   if (!isSysAdmin) {
     return (
       <Box p={4}>

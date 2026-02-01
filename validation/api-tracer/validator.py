@@ -37,7 +37,8 @@ class FullStackValidator:
         api_id: Optional[str] = None,
         aws_region: str = 'us-east-1',
         prefer_terraform: bool = False,
-        validate_auth: bool = True
+        validate_auth: bool = True,
+        module_filter: Optional[str] = None
     ):
         """Initialize validator with parsers and optional AWS configuration."""
         self.frontend_parser = frontend_parser
@@ -59,6 +60,9 @@ class FullStackValidator:
         # Code quality validation (integrated checks)
         self.code_quality_validator = CodeQualityValidator()
         self.code_quality_issues: List[CodeQualityIssue] = []
+        
+        # Module filter for efficient per-module validation (e.g., 'module-kb')
+        self.module_filter = module_filter
     
     def validate(self, project_path: str) -> ValidationReport:
         """
@@ -100,9 +104,12 @@ class FullStackValidator:
         """Parse frontend, gateway, and Lambda layers."""
         project = Path(project_path)
         
-        # Parse frontend (packages directory)
+        # Parse frontend (packages directory or specific module)
         logger.info("Parsing frontend API calls...")
-        frontend_path = project / 'packages'
+        if self.module_filter:
+            frontend_path = project / 'packages' / self.module_filter
+        else:
+            frontend_path = project / 'packages'
         if frontend_path.exists():
             self.frontend_parser.parse_directory(str(frontend_path))
         
@@ -111,7 +118,8 @@ class FullStackValidator:
             call for call in self.frontend_parser.api_calls
             if '_module-template' not in call.file
         ]
-        logger.info(f"Found {len(self.frontend_parser.api_calls)} frontend API calls (excluding templates)")
+        module_info = f" (filtered to {self.module_filter})" if self.module_filter else ""
+        logger.info(f"Found {len(self.frontend_parser.api_calls)} frontend API calls{module_info} (excluding templates)")
         
         # Parse API Gateway routes - try AWS first, fallback to Terraform
         logger.info("Parsing API Gateway routes...")
@@ -150,7 +158,14 @@ class FullStackValidator:
             # Parse from CORA module infrastructure outputs
             # CORA modules are named module-* (e.g., module-ws, module-ai, module-mgmt)
             all_gateway_routes = []
-            for module_path in (project / 'packages').glob('module-*/infrastructure/outputs.tf'):
+            
+            # Use module filter if specified
+            if self.module_filter:
+                glob_pattern = f'{self.module_filter}/infrastructure/outputs.tf'
+            else:
+                glob_pattern = 'module-*/infrastructure/outputs.tf'
+            
+            for module_path in (project / 'packages').glob(glob_pattern):
                 # Skip _module-template
                 if '_module-template' in str(module_path):
                     logger.info(f"Skipping template module: {module_path}")
@@ -162,11 +177,15 @@ class FullStackValidator:
             
             # Update gateway_parser.routes with accumulated routes
             self.gateway_parser.routes = all_gateway_routes
-            logger.info(f"Found {len(self.gateway_parser.routes)} API Gateway routes from Terraform (excluding templates)")
+            module_info = f" (filtered to {self.module_filter})" if self.module_filter else ""
+            logger.info(f"Found {len(self.gateway_parser.routes)} API Gateway routes from Terraform{module_info} (excluding templates)")
         
-        # Parse Lambda handlers
+        # Parse Lambda handlers (specific module or all)
         logger.info("Parsing Lambda handlers...")
-        lambda_path = project / 'packages'
+        if self.module_filter:
+            lambda_path = project / 'packages' / self.module_filter
+        else:
+            lambda_path = project / 'packages'
         if lambda_path.exists():
             self.lambda_parser.parse_directory(str(lambda_path))
         
@@ -175,7 +194,8 @@ class FullStackValidator:
             route for route in self.lambda_parser.routes
             if '_module-template' not in route.file
         ]
-        logger.info(f"Found {len(self.lambda_parser.routes)} Lambda route handlers (excluding templates)")
+        module_info = f" (filtered to {self.module_filter})" if self.module_filter else ""
+        logger.info(f"Found {len(self.lambda_parser.routes)} Lambda route handlers{module_info} (excluding templates)")
         
         # Enhance Lambda path inference using Gateway route definitions
         self._enhance_lambda_path_inference(project)
@@ -687,8 +707,11 @@ class FullStackValidator:
         project = Path(project_path)
         code_quality_issues = []
         
-        # Validate Lambda files
-        lambda_path = project / 'packages'
+        # Validate Lambda files (filtered by module if specified)
+        if self.module_filter:
+            lambda_path = project / 'packages' / self.module_filter
+        else:
+            lambda_path = project / 'packages'
         if lambda_path.exists():
             for file_path in lambda_path.glob("**/lambda_function.py"):
                 # Skip templates
@@ -703,8 +726,11 @@ class FullStackValidator:
                 except Exception as e:
                     logger.warning(f"Failed to validate Lambda file {file_path}: {e}")
         
-        # Validate frontend files
-        frontend_path = project / 'packages'
+        # Validate frontend files (filtered by module if specified)
+        if self.module_filter:
+            frontend_path = project / 'packages' / self.module_filter
+        else:
+            frontend_path = project / 'packages'
         if frontend_path.exists():
             for ext in ['tsx', 'ts']:
                 for file_path in frontend_path.glob(f"**/*.{ext}"):
@@ -759,8 +785,11 @@ class FullStackValidator:
         project = Path(project_path)
         auth_issues = []
         
-        # Validate frontend files (admin pages)
-        frontend_path = project / 'packages'
+        # Validate frontend files (admin pages) - filtered by module if specified
+        if self.module_filter:
+            frontend_path = project / 'packages' / self.module_filter
+        else:
+            frontend_path = project / 'packages'
         if frontend_path.exists():
             for ext in ['tsx', 'ts']:
                 for file_path in frontend_path.glob(f"**/*.{ext}"):
@@ -778,8 +807,11 @@ class FullStackValidator:
                         except Exception as e:
                             logger.warning(f"Failed to validate frontend file {file_path}: {e}")
         
-        # Validate Lambda files
-        lambda_path = project / 'packages'
+        # Validate Lambda files (filtered by module if specified)
+        if self.module_filter:
+            lambda_path = project / 'packages' / self.module_filter
+        else:
+            lambda_path = project / 'packages'
         if lambda_path.exists():
             for file_path in lambda_path.glob("**/lambda_function.py"):
                 # Skip templates

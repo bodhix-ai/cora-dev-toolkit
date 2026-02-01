@@ -20,7 +20,7 @@ Routes - Organization Admin (Configs):
 """
 
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 import org_common as common
 
 
@@ -29,6 +29,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Main Lambda handler for voice config operations.
     
     Routes requests to appropriate handlers based on HTTP method and path.
+    Uses centralized router-level authorization per ADR-019b.
     """
     print(json.dumps(event, default=str))
     
@@ -45,7 +46,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if not http_method:
             return common.bad_request_response('HTTP method not found in request')
         
-        path = event.get('requestContext', {}).get('http', {}).get('path') or event.get('path', '')
+        path = event.get('rawPath', '') or event.get('path', '')
         
         # Extract path parameters
         path_params = event.get('pathParameters', {}) or {}
@@ -55,35 +56,45 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return common.success_response({})
         
         # =============================================================================
+        # CENTRALIZED AUTHORIZATION (ADR-019b)
+        # =============================================================================
+        org_id: Optional[str] = None
+        
+        if path.startswith('/admin/org/voice/configs'):
+            # Organization admin routes - extract org context and verify admin role
+            org_context = common.get_org_context_from_event(event)
+            org_id = org_context.get('org_id')
+            if not org_id:
+                return common.bad_request_response('Organization context required')
+            
+            if not common.check_org_admin(org_id, supabase_user_id):
+                return common.forbidden_response('Organization admin access required')
+        
+        # =============================================================================
         # ORGANIZATION ADMIN ROUTES
         # =============================================================================
         
-        # Admin routes use session org_id, not query parameters
         if path.startswith('/admin/org/voice/configs'):
-            # Verify org admin or org owner role
-            user_role = user_info.get('role', '')
-            if 'org_admin' not in user_role and 'org_owner' not in user_role:
-                return common.forbidden_response('Organization admin access required')
             
             # GET /admin/org/voice/configs - List configs
             if http_method == 'GET' and not path_params.get('configId'):
-                return handle_admin_list_configs(event, supabase_user_id, user_info)
+                return handle_admin_list_configs(event, supabase_user_id, org_id)
             
             # GET /admin/org/voice/configs/{configId} - Get config by ID
             if http_method == 'GET' and path_params.get('configId'):
-                return handle_admin_get_config(event, supabase_user_id, user_info, path_params['configId'])
+                return handle_admin_get_config(event, supabase_user_id, org_id, path_params['configId'])
             
             # POST /admin/org/voice/configs - Create config
             if http_method == 'POST':
-                return handle_admin_create_config(event, supabase_user_id, user_info)
+                return handle_admin_create_config(event, supabase_user_id, org_id)
             
             # PUT /admin/org/voice/configs/{configId} - Update config
             if http_method == 'PUT':
-                return handle_admin_update_config(event, supabase_user_id, user_info, path_params['configId'])
+                return handle_admin_update_config(event, supabase_user_id, org_id, path_params['configId'])
             
             # DELETE /admin/org/voice/configs/{configId} - Delete config
             if http_method == 'DELETE':
-                return handle_admin_delete_config(event, supabase_user_id, user_info, path_params['configId'])
+                return handle_admin_delete_config(event, supabase_user_id, org_id, path_params['configId'])
         
         # =============================================================================
         # DATA API ROUTES
@@ -131,19 +142,15 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 # ORGANIZATION ADMIN HANDLERS
 # =============================================================================
 
-def handle_admin_list_configs(event: Dict[str, Any], user_id: str, user_info: Dict[str, Any]) -> Dict[str, Any]:
+def handle_admin_list_configs(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[str, Any]:
     """
     List voice configs for admin's organization.
     
-    Uses org_id from user session (no query parameters needed).
+    org_id is validated by centralized auth in lambda_handler.
     Query parameters:
     - isActive: Filter by active status
     - interviewType: Filter by interview type
     """
-    org_id = user_info.get('org_id')
-    if not org_id:
-        raise common.ValidationError('User is not associated with an organization')
-    
     query_params = event.get('queryStringParameters', {}) or {}
     
     # Build filters
@@ -168,16 +175,13 @@ def handle_admin_list_configs(event: Dict[str, Any], user_id: str, user_info: Di
     return common.success_response(result)
 
 
-def handle_admin_get_config(event: Dict[str, Any], user_id: str, user_info: Dict[str, Any], config_id: str) -> Dict[str, Any]:
+def handle_admin_get_config(event: Dict[str, Any], user_id: str, org_id: str, config_id: str) -> Dict[str, Any]:
     """
     Get voice config by ID (org admin).
     
+    org_id is validated by centralized auth in lambda_handler.
     Verifies config belongs to admin's organization.
     """
-    org_id = user_info.get('org_id')
-    if not org_id:
-        raise common.ValidationError('User is not associated with an organization')
-    
     config_id = common.validate_uuid(config_id, 'configId')
     
     # Get config
@@ -198,11 +202,11 @@ def handle_admin_get_config(event: Dict[str, Any], user_id: str, user_info: Dict
     return common.success_response(result)
 
 
-def handle_admin_create_config(event: Dict[str, Any], user_id: str, user_info: Dict[str, Any]) -> Dict[str, Any]:
+def handle_admin_create_config(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[str, Any]:
     """
     Create a new voice config (org admin).
     
-    Uses org_id from user session.
+    org_id is validated by centralized auth in lambda_handler.
     Request body:
     {
         "name": "Technical Interview v1",
@@ -211,10 +215,6 @@ def handle_admin_create_config(event: Dict[str, Any], user_id: str, user_info: D
         "configJson": { ... Pipecat config ... }
     }
     """
-    org_id = user_info.get('org_id')
-    if not org_id:
-        raise common.ValidationError('User is not associated with an organization')
-    
     body = json.loads(event.get('body', '{}'))
     
     # Validate required fields
@@ -266,10 +266,11 @@ def handle_admin_create_config(event: Dict[str, Any], user_id: str, user_info: D
     return common.created_response(result)
 
 
-def handle_admin_update_config(event: Dict[str, Any], user_id: str, user_info: Dict[str, Any], config_id: str) -> Dict[str, Any]:
+def handle_admin_update_config(event: Dict[str, Any], user_id: str, org_id: str, config_id: str) -> Dict[str, Any]:
     """
     Update voice config (org admin).
     
+    org_id is validated by centralized auth in lambda_handler.
     Verifies config belongs to admin's organization.
     Request body:
     {
@@ -279,10 +280,6 @@ def handle_admin_update_config(event: Dict[str, Any], user_id: str, user_info: D
         "isActive": true
     }
     """
-    org_id = user_info.get('org_id')
-    if not org_id:
-        raise common.ValidationError('User is not associated with an organization')
-    
     config_id = common.validate_uuid(config_id, 'configId')
     
     # Get existing config
@@ -349,17 +346,14 @@ def handle_admin_update_config(event: Dict[str, Any], user_id: str, user_info: D
     return common.success_response(result)
 
 
-def handle_admin_delete_config(event: Dict[str, Any], user_id: str, user_info: Dict[str, Any], config_id: str) -> Dict[str, Any]:
+def handle_admin_delete_config(event: Dict[str, Any], user_id: str, org_id: str, config_id: str) -> Dict[str, Any]:
     """
     Delete voice config (org admin).
     
+    org_id is validated by centralized auth in lambda_handler.
     Verifies config belongs to admin's organization.
     Only configs not referenced by any sessions can be deleted.
     """
-    org_id = user_info.get('org_id')
-    if not org_id:
-        raise common.ValidationError('User is not associated with an organization')
-    
     config_id = common.validate_uuid(config_id, 'configId')
     
     # Get config

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Box, CircularProgress, Alert } from "@mui/material";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole, useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
 import { OrgAdminManagementPage } from "@{{PROJECT_NAME}}/module-ws";
 
 /**
@@ -18,22 +18,18 @@ import { OrgAdminManagementPage } from "@{{PROJECT_NAME}}/module-ws";
  * - Analytics: Workspace usage statistics and insights
  * - Settings: Organization-level workspace settings
  * 
- * Access: Org admins (org_owner, org_admin) + Platform admins
+ * Access: Org admins (org_owner, org_admin)
  * Note: This page REQUIRES current org context from user session
+ * 
+ * Authorization: ADR-019a compliant (useRole + useOrganizationContext)
  */
 
 export default function WorkspaceOrgManagementRoute() {
-  const { profile, loading: userLoading, isAuthenticated } = useUser();
+  const { loading: userLoading, isAuthenticated } = useUser();
+  const { isOrgAdmin } = useRole();
+  const { orgId, organization } = useOrganizationContext();
 
-  // Get current org from profile
-  const currentOrgId = profile?.currentOrgId;
-
-  // Check if user has org admin role for current org
-  const isOrgAdmin = profile?.organizations?.some(
-    (org) => org.orgId === currentOrgId && ["org_owner", "org_admin"].includes(org.role)
-  );
-
-  // Org admin pages should only check org roles (no sys admin access)
+  // Org admin pages should only check org roles
   const hasAccess = isOrgAdmin;
 
   // Show loading state while user profile is being fetched
@@ -46,7 +42,7 @@ export default function WorkspaceOrgManagementRoute() {
   }
 
   // Check if user is authenticated
-  if (!isAuthenticated || !profile) {
+  if (!isAuthenticated) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">
@@ -57,7 +53,7 @@ export default function WorkspaceOrgManagementRoute() {
   }
 
   // Check if user has an organization selected
-  if (!currentOrgId) {
+  if (!orgId) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="warning">
@@ -81,7 +77,7 @@ export default function WorkspaceOrgManagementRoute() {
   // Render the full OrgAdminManagementPage component with proper props
   return (
     <OrgAdminManagementPage
-      orgId={currentOrgId}
+      orgId={orgId}
       isOrgAdmin={hasAccess}
     />
   );
