@@ -9,11 +9,22 @@
 
 ## Overview
 
-This ADR is the **single authoritative source** for CORA authorization patterns. It defines the complete auth lifecycle from frontend to database, covering all three authorization levels: System (sys), Organization (org), and Workspace (ws).
+This ADR documents the **decision rationale and justification** for CORA authorization standardization. It defines the complete auth lifecycle from frontend to database, covering all three authorization levels: System (sys), Organization (org), and Workspace (ws).
 
-**Sub-documents:**
+### Documentation Structure
+
+| Type | Purpose | Documents |
+|------|---------|-----------|
+| **ADR** (this doc) | Decision analysis, justification (WHY) | ADR-019, ADR-019a, ADR-019b |
+| **Standards** | Active compliance rules (WHAT) | `03_std_back_AUTH.md`, `01_std_front_ORG-ADMIN-PAGE-AUTH.md` |
+
+**Decision Rationale (ADRs):**
 - [ADR-019a: Frontend Authorization](./ADR-019a-AUTH-FRONTEND.md) - React hooks, context, loading states
 - [ADR-019b: Backend Authorization](./ADR-019b-AUTH-BACKEND.md) - Lambda patterns, RPC functions, database
+
+**Implementation Standards (for validation compliance):**
+- [Backend Auth Standard](../standards/03_std_back_AUTH.md) - Lambda authorization patterns
+- [Frontend Org Admin Auth](../standards/01_std_front_ORG-ADMIN-PAGE-AUTH.md) - Org admin page patterns
 
 ---
 
@@ -260,14 +271,20 @@ python validation/api-tracer/tracer.py --auth-check
 
 ## References
 
+### Decision Documents (ADRs)
 - [ADR-019a: Frontend Authorization](./ADR-019a-AUTH-FRONTEND.md)
 - [ADR-019b: Backend Authorization](./ADR-019b-AUTH-BACKEND.md)
 - [ADR-019 Appendix A: Options Comparison](./ADR-019-AUTH-STANDARDIZATION-APPENDIX-A-COMPARISON.md)
-- [Lambda Authorization Guide](../standards/standard_LAMBDA-AUTHORIZATION.md)
-- [Sprint Plan: S1 Auth Standardization](../plans/plan_s1-auth-standardization.md)
+
+### Implementation Standards (Active Compliance Rules)
+- [Backend Auth Standard](../standards/03_std_back_AUTH.md) - Lambda authorization patterns
+- [Frontend Org Admin Auth](../standards/01_std_front_ORG-ADMIN-PAGE-AUTH.md) - Org admin page patterns
+
+### Related Plans
+- [Sprint Plan: S2 Auth Standardization](../plans/plan_s2-auth-standardization.md)
 
 ---
 
 **Status:** ✅ Approved  
-**Next Step:** Implement validation suite and fix non-compliant code  
-**Tracking:** Sprint S1 of Auth Standardization Initiative
+**Next Step:** Fix remaining auth errors across modules (S2)  
+**Tracking:** Sprint S2 of Auth Standardization Initiative - Phase 1 Complete

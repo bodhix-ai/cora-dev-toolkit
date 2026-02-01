@@ -351,6 +351,130 @@ def handle_delete(user_id, org_id, path):
 
 ---
 
+### 10. Admin Authorization (Layer 1)
+
+**See:** [ADR-019: CORA Authorization Standardization](../arch%20decisions/ADR-019-AUTH-STANDARDIZATION.md)
+
+**❌ WRONG (Inline role checks):**
+
+```python
+# Checking roles in JWT or with inline lists
+user_profile = find_one('user_profiles', {'user_id': user_id})
+if user_profile.get('sys_role') not in ['sys_owner', 'sys_admin']:
+    return error_response('Forbidden', 403)
+```
+
+**✅ CORRECT (Following org-common pattern):**
+
+```python
+from org_common.auth_helpers import check_sys_admin, check_org_admin, get_org_context_from_event
+
+def lambda_handler(event, context):
+    user_id = get_supabase_user_id_from_external_uid(
+        get_user_from_event(event)['user_id']
+    )
+    
+    path = event.get('rawPath', '')
+    
+    # Centralized admin authorization at router level
+    if path.startswith('/admin/sys/'):
+        if not check_sys_admin(user_id):
+            return error_response('System admin role required', 403)
+    
+    elif path.startswith('/admin/org/'):
+        org_id = get_org_context_from_event(event)
+        if not check_org_admin(org_id, user_id):
+            return error_response('Organization admin role required', 403)
+    
+    # Route to handlers (auth already verified)
+    return route_to_handler(user_id, event)
+```
+
+**Key Points:**
+- Auth check happens ONCE at router level
+- Use standard helpers (no inline role lists)
+- Handlers don't need auth checks (already verified)
+
+**Reference:** `templates/_project-stack-template/org-common/python/org_common/auth_helpers.py`
+
+---
+
+### 11. Resource Permissions (Layer 2)
+
+**See:** [03_std_back_RESOURCE-PERMISSIONS.md](./03_std_back_RESOURCE-PERMISSIONS.md)
+
+**❌ WRONG (Missing permission checks):**
+
+```python
+def handle_get_resource(user_id, resource_id):
+    # Only fetching - no permission check!
+    resource = find_one('my_resource', {'id': resource_id})
+    return success_response(resource)
+```
+
+**✅ CORRECT (Following 3-step pattern):**
+
+```python
+from org_common.resource_permissions import can_access_org_resource
+from my_module_common.permissions import can_access_my_resource
+
+def handle_get_resource(user_id, resource_id):
+    # Step 1: Fetch resource
+    resource = find_one('my_resource', {'id': resource_id})
+    if not resource:
+        raise NotFoundError('Resource not found')
+    
+    # Step 2: Verify org membership (prevent cross-org access)
+    if not can_access_org_resource(user_id, resource['org_id']):
+        return error_response('Not a member of this organization', 403)
+    
+    # Step 3: Check resource permission (ownership/sharing)
+    if not can_access_my_resource(user_id, resource_id):
+        return error_response('Access denied', 403)
+    
+    return success_response(resource)
+```
+
+**Module Permission Layer Pattern:**
+
+```python
+# In backend/layers/my_module_common/python/my_module_common/permissions.py
+from org_common.db import call_rpc
+
+def can_access_my_resource(user_id: str, resource_id: str) -> bool:
+    """Check if user can access resource (ownership/sharing)"""
+    # Check ownership
+    if call_rpc('is_my_resource_owner', {
+        'p_user_id': user_id,
+        'p_resource_id': resource_id
+    }):
+        return True
+    
+    # Check sharing (future)
+    return False
+```
+
+**Database RPC Pattern:**
+
+```sql
+-- In db/schema/permissions.sql
+CREATE OR REPLACE FUNCTION is_my_resource_owner(p_user_id UUID, p_resource_id UUID)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM my_resource
+    WHERE id = p_resource_id AND created_by = p_user_id
+  );
+$$ LANGUAGE sql SECURITY DEFINER;
+```
+
+**CRITICAL:** 
+- Module-specific permissions live in MODULE layer (not org-common)
+- Admin roles do NOT automatically grant resource access
+
+**Reference:** `templates/_project-stack-template/org-common/python/org_common/resource_permissions.py`
+
+---
+
 ## Common Mistakes to Avoid
 
 ### ❌ Mistake 1: Not Using org-common Helpers

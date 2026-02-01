@@ -654,6 +654,103 @@ from module_mgmt.backend.mgmt_common import get_lambda_config
 
 ---
 
+## Authorization Integration
+
+**See:** [ADR-019: CORA Authorization Standardization](../arch%20decisions/ADR-019-AUTH-STANDARDIZATION.md)
+
+CORA implements a 2-layer authorization architecture that all core modules support:
+
+### Layer 1: Admin Authorization
+
+**Routes:** `/admin/sys/*`, `/admin/org/*`, `/admin/ws/*`  
+**Purpose:** Module configuration and management by admins
+
+**Core Module Roles:**
+
+| Module | Admin Auth Role |
+|--------|----------------|
+| `module-access` | Provides `check_sys_admin()`, `check_org_admin()`, `check_ws_admin()` helper functions |
+| `module-ai` | Uses helpers for AI provider config (sys admin), model config (org admin) |
+| `module-mgmt` | Uses helpers for Lambda config (sys admin), module registry (sys admin) |
+
+**Backend Pattern (Centralized Router-Level):**
+```python
+from org_common.auth_helpers import check_sys_admin, check_org_admin
+
+def lambda_handler(event, context):
+    user_id = common.get_supabase_user_id_from_external_uid(
+        common.get_user_from_event(event)['user_id']
+    )
+    
+    path = event.get('rawPath', '')
+    
+    # Admin auth at router level
+    if path.startswith('/admin/sys/'):
+        if not check_sys_admin(user_id):
+            return common.forbidden_response('System admin role required')
+    
+    return route_to_handler(user_id, event)
+```
+
+**Frontend Pattern:**
+```typescript
+// Admin pages check roles with useRole() hook
+import { useRole } from '@{project}/module-access';
+
+export default function AdminPage() {
+  const { isSysAdmin, loading } = useRole();
+  
+  if (!isSysAdmin) {
+    return <Alert severity="error">System admin role required</Alert>;
+  }
+  
+  return <AdminInterface />;
+}
+```
+
+### Layer 2: Resource Permissions
+
+**Routes:** `/{module}/*` (data routes)  
+**Purpose:** User data access based on ownership/sharing
+
+**Core Module Roles:**
+
+| Module | Resource Permission Role |
+|--------|-------------------------|
+| `module-access` | Provides `can_access_org_resource()`, `can_access_ws_resource()` core helpers |
+| `module-ai` | N/A (config only, no user resources) |
+| `module-mgmt` | N/A (config only, no user resources) |
+
+**Note:** Functional modules implement their own resource permissions in their module layers (NOT in org-common).
+
+**Backend Pattern (3-Step Permission Check):**
+```python
+from org_common.resource_permissions import can_access_org_resource
+from {module}_common.permissions import can_access_{resource}
+
+def handle_get_{resource}(user_id, event, {resource}_id):
+    # Step 1: Fetch resource
+    resource = common.find_one('{resource}', {'id': {resource}_id})
+    if not resource:
+        return common.not_found_response('Not found')
+    
+    # Step 2: Verify org membership
+    if not can_access_org_resource(user_id, resource['org_id']):
+        return common.forbidden_response('Not a member')
+    
+    # Step 3: Check resource permission
+    if not can_access_{resource}(user_id, {resource}_id):
+        return common.forbidden_response('Access denied')
+    
+    return common.success_response(resource)
+```
+
+**CRITICAL:** Admin roles do NOT automatically grant access to user resources (least privilege principle).
+
+**See:** [03_std_back_RESOURCE-PERMISSIONS.md](./03_std_back_RESOURCE-PERMISSIONS.md) for complete patterns.
+
+---
+
 ## Validation Requirements
 
 Core modules must pass all validation checks:
@@ -663,6 +760,7 @@ Core modules must pass all validation checks:
 3. **Tier Compliance** - Dependencies follow tier rules
 4. **Import Validation** - No circular dependencies
 5. **Documentation** - README and API docs present
+6. **Authorization Compliance** - Admin routes use standard helpers, no inline role checks
 
 Run validation:
 
