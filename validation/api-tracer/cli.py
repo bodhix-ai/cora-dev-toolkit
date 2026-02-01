@@ -99,7 +99,22 @@ logger = logging.getLogger(__name__)
 @click.option(
     '--auth-only',
     is_flag=True,
-    help='Run only auth lifecycle validation (ADR-019)'
+    help='Run only auth lifecycle validation (ADR-019) - both layers'
+)
+@click.option(
+    '--layer1-only',
+    is_flag=True,
+    help='Run only Layer 1 (admin auth) validation (ADR-019a/b)'
+)
+@click.option(
+    '--layer2-only',
+    is_flag=True,
+    help='Run only Layer 2 (resource permission) validation (ADR-019c)'
+)
+@click.option(
+    '--all-auth',
+    is_flag=True,
+    help='Run both Layer 1 and Layer 2 auth validation (default when auth enabled)'
 )
 @click.option(
     '--no-quality',
@@ -130,6 +145,9 @@ def validate(
     lambda_only: bool,
     no_auth: bool,
     auth_only: bool,
+    layer1_only: bool,
+    layer2_only: bool,
+    all_auth: bool,
     no_quality: bool,
     quality_only: bool,
     module: str
@@ -216,9 +234,26 @@ def validate(
         
         # Auth validation mode handling
         validate_auth = not no_auth
-        if auth_only:
+        validate_layer1 = True
+        validate_layer2 = False  # Layer 2 not implemented yet
+        
+        if auth_only or all_auth:
             validate_auth = True
-            logger.info("Running auth-only validation (ADR-019)")
+            validate_layer1 = True
+            validate_layer2 = False  # Will enable when Layer 2 implemented
+            logger.info("Running all auth validation (Layer 1: admin auth)")
+        
+        if layer1_only:
+            validate_auth = True
+            validate_layer1 = True
+            validate_layer2 = False
+            logger.info("Running Layer 1 validation only (admin auth - ADR-019a/b)")
+        
+        if layer2_only:
+            validate_auth = True
+            validate_layer1 = False
+            validate_layer2 = True
+            logger.info("Running Layer 2 validation only (resource permissions - ADR-019c)")
         
         # Quality validation mode handling
         validate_quality = not no_quality
@@ -239,6 +274,8 @@ def validate(
             aws_region=aws_region,
             prefer_terraform=prefer_terraform,
             validate_auth=validate_auth,
+            validate_layer1=validate_layer1,
+            validate_layer2=validate_layer2,
             module_filter=module
         )
         

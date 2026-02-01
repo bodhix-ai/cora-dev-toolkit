@@ -38,6 +38,8 @@ class FullStackValidator:
         aws_region: str = 'us-east-1',
         prefer_terraform: bool = False,
         validate_auth: bool = True,
+        validate_layer1: bool = True,
+        validate_layer2: bool = False,
         module_filter: Optional[str] = None
     ):
         """Initialize validator with parsers and optional AWS configuration."""
@@ -55,6 +57,8 @@ class FullStackValidator:
         
         # Auth lifecycle validation (ADR-019)
         self.validate_auth = validate_auth
+        self.validate_layer1 = validate_layer1  # Layer 1: Admin auth (ADR-019a/b)
+        self.validate_layer2 = validate_layer2  # Layer 2: Resource permissions (ADR-019c)
         self.auth_validator = AuthLifecycleValidator() if validate_auth else None
         
         # Code quality validation (integrated checks)
