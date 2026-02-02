@@ -13,7 +13,7 @@ import json
 import os
 from typing import Dict, Any, Optional
 import org_common as common
-from access_common.permissions import can_view_members
+from access_common.permissions import can_view_members, can_edit_profile
 
 
 def _transform_user(user: Dict[str, Any]) -> Dict[str, Any]:
@@ -244,7 +244,24 @@ def handle_provision(event: Dict[str, Any]) -> Dict[str, Any]:
     # Extract user info from authorizer (if already authenticated)
     try:
         user_info = common.get_user_from_event(event)
-        user_id = user_info['user_id']
+        okta_uid = user_info['user_id']
+        user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
+        
+        # ADR-019c: If user is authenticated, verify they have profile access
+        # This ensures only valid users can call provisioning endpoint
+        if user_id:
+            # Get user's profile to check platform role
+            profile = common.find_one(
+                table='user_profiles',
+                filters={'user_id': user_id}
+            )
+            
+            is_sys_admin = profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']
+            
+            # If not sys_admin, verify user has valid profile access
+            if not is_sys_admin and not can_edit_profile(user_id, user_id):
+                raise common.ForbiddenError('Access denied to provision identities')
+        
         # Use org_id from token if not provided in body
         if not org_id and 'org_id' in user_info:
             org_id = user_info['org_id']

@@ -108,9 +108,23 @@ def handle_list_invites(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
     external_uid = user_info['user_id']  # External UID (email from Okta)
     user_id = common.get_supabase_user_id_from_external_uid(external_uid)
     
-    # ADR-019c: Check resource permission (org_admin or org_owner)
-    if not can_manage_invites(user_id, org_id):
-        raise common.ForbiddenError('Organization admin access required')
+    # Get user's profile to check platform role
+    profile = common.find_one(
+        table='user_profiles',
+        filters={'user_id': user_id}
+    )
+    
+    is_sys_admin = profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']
+    
+    # ADR-019c: Two-step pattern for resource permissions
+    if not is_sys_admin:
+        # Step 1: Verify org membership
+        if not common.can_access_org_resource(user_id, org_id):
+            raise common.ForbiddenError('Not a member of organization')
+        
+        # Step 2: Check resource permission
+        if not can_manage_invites(user_id, org_id):
+            raise common.ForbiddenError('Organization admin access required')
     
     # Query invites table
     invites = common.find_many(
@@ -167,9 +181,23 @@ def handle_create_invite(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
     external_uid = user_info['user_id']  # External UID (email from Okta)
     user_id = common.get_supabase_user_id_from_external_uid(external_uid)
     
-    # ADR-019c: Check resource permission (org_admin or org_owner)
-    if not can_manage_invites(user_id, org_id):
-        raise common.ForbiddenError('Organization admin access required')
+    # Get user's profile to check platform role
+    profile = common.find_one(
+        table='user_profiles',
+        filters={'user_id': user_id}
+    )
+    
+    is_sys_admin = profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']
+    
+    # ADR-019c: Two-step pattern for resource permissions
+    if not is_sys_admin:
+        # Step 1: Verify org membership
+        if not common.can_access_org_resource(user_id, org_id):
+            raise common.ForbiddenError('Not a member of organization')
+        
+        # Step 2: Check resource permission
+        if not can_manage_invites(user_id, org_id):
+            raise common.ForbiddenError('Organization admin access required')
     
     # Parse request body
     body = json.loads(event.get('body', '{}'))
@@ -250,9 +278,23 @@ def handle_delete_invite(event: Dict[str, Any], org_id: str, invite_id: str) -> 
     external_uid = user_info['user_id']  # External UID (email from Okta)
     user_id = common.get_supabase_user_id_from_external_uid(external_uid)
     
-    # ADR-019c: Check resource permission (org_admin or org_owner)
-    if not can_manage_invites(user_id, org_id):
-        raise common.ForbiddenError('Organization admin access required')
+    # Get user's profile to check platform role
+    profile = common.find_one(
+        table='user_profiles',
+        filters={'user_id': user_id}
+    )
+    
+    is_sys_admin = profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']
+    
+    # ADR-019c: Two-step pattern for resource permissions
+    if not is_sys_admin:
+        # Step 1: Verify org membership
+        if not common.can_access_org_resource(user_id, org_id):
+            raise common.ForbiddenError('Not a member of organization')
+        
+        # Step 2: Check resource permission
+        if not can_manage_invites(user_id, org_id):
+            raise common.ForbiddenError('Organization admin access required')
     
     # Verify invite exists and belongs to this org
     invite = common.find_one(

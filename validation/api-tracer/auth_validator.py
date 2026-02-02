@@ -1011,6 +1011,8 @@ class ResourcePermissionValidator:
         
         Per ADR-019c: Must call is_org_member() or can_access_org_resource()
         before accessing org-scoped resources.
+        
+        Platform-level routes (without {orgId} or {wsId} in path) are exempt.
         """
         # Check for org membership functions
         has_org_membership = (
@@ -1022,7 +1024,12 @@ class ResourcePermissionValidator:
         
         if data_routes and not has_org_membership:
             # Data routes exist but no membership validation
+            # Filter out platform-level routes that don't require org membership
             for method, path in data_routes:
+                # Skip platform-level routes
+                if self._is_platform_level_route(path):
+                    continue
+                
                 self.issues.append(AuthIssue(
                     severity='error',
                     issue_type=AuthIssueType.RESOURCE_MISSING_ORG_MEMBERSHIP_CHECK,
@@ -1041,6 +1048,8 @@ class ResourcePermissionValidator:
         Check for resource permission functions (can_*, is_*_owner).
         
         Per ADR-019c: Resource routes must check ownership or permissions.
+        
+        Platform-level routes use different permission patterns (e.g., can_edit_profile for self-service).
         """
         # Check for permission functions
         has_permission_check = (
@@ -1053,7 +1062,12 @@ class ResourcePermissionValidator:
         
         if data_routes and not has_permission_check:
             # Data routes exist but no permission checks
+            # Filter out platform-level routes that have different permission patterns
             for method, path in data_routes:
+                # Skip platform-level routes (they use self-service permission checks)
+                if self._is_platform_level_route(path):
+                    continue
+                
                 self.issues.append(AuthIssue(
                     severity='error',
                     issue_type=AuthIssueType.RESOURCE_MISSING_OWNERSHIP_CHECK,
@@ -1067,11 +1081,48 @@ class ResourcePermissionValidator:
                     standard_ref="ADR-019c"
                 ))
     
+    def _is_platform_level_route(self, path: str) -> bool:
+        """
+        Check if a route is platform-level (not org-scoped).
+        
+        Platform-level routes:
+        - Self-service routes: /profiles/me, /users/me
+        - Provisioning routes: /identities/provision
+        - Routes without {orgId} or {wsId} in path
+        
+        Returns:
+            True if route is platform-level, False if org-scoped
+        """
+        # Self-service routes (user accessing own data)
+        platform_patterns = [
+            r'/profiles/me',
+            r'/users/me',
+            r'/identities/provision',
+        ]
+        
+        for pattern in platform_patterns:
+            if re.search(pattern, path):
+                return True
+        
+        # Check if route has org/workspace scope in path
+        has_org_scope = (
+            '{orgId}' in path or
+            '{org_id}' in path or
+            '{wsId}' in path or
+            '{ws_id}' in path or
+            '{workspaceId}' in path
+        )
+        
+        # If no org/workspace scope in path, it's platform-level
+        return not has_org_scope
+    
     def _check_admin_role_override(self, tree: ast.AST, content: str, data_routes: List[Tuple[str, str]]):
         """
         Check for admin role override anti-pattern in data routes.
         
         Per ADR-019c: Admin roles do NOT provide automatic access to user resources.
+        
+        Platform-level routes are exempt (they may legitimately check admin roles).
         """
         # Check if admin checks are used in data routes
         # This is an anti-pattern - admin roles shouldn't bypass resource permissions
@@ -1097,6 +1148,10 @@ class ResourcePermissionValidator:
             for pattern in admin_override_patterns:
                 if re.search(pattern, content, re.DOTALL):
                     for method, path in data_routes:
+                        # Skip platform-level routes (they may legitimately check admin roles)
+                        if self._is_platform_level_route(path):
+                            continue
+                        
                         self.issues.append(AuthIssue(
                             severity='warning',
                             issue_type=AuthIssueType.RESOURCE_ADMIN_ROLE_OVERRIDE,

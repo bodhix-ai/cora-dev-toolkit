@@ -135,9 +135,23 @@ def authorize_domain_management(user_id: str, org_id: str) -> bool:
     Raises:
         common.ForbiddenError: If user lacks permission
     """
-    # ADR-019c: Use permission helper for resource access
-    if not can_manage_email_domains(user_id, org_id):
-        raise common.ForbiddenError("Insufficient permissions to manage email domains")
+    # Get user's profile to check platform role
+    profile = common.find_one(
+        table='user_profiles',
+        filters={'user_id': user_id}
+    )
+    
+    is_sys_admin = profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']
+    
+    # ADR-019c: Two-step pattern for resource permissions
+    if not is_sys_admin:
+        # Step 1: Verify org membership
+        if not common.can_access_org_resource(user_id, org_id):
+            raise common.ForbiddenError('Not a member of organization')
+        
+        # Step 2: Check resource permission
+        if not can_manage_email_domains(user_id, org_id):
+            raise common.ForbiddenError("Insufficient permissions to manage email domains")
     
     return True
 

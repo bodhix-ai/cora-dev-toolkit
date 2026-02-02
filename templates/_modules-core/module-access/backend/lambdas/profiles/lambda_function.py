@@ -7,8 +7,7 @@ import logging
 from typing import Optional, Dict, Any
 import org_common as common
 from org_common.supabase_client import get_supabase_client
-# Note: Profiles Lambda handles self-service operations (/profiles/me)
-# No org-scoped resource permissions needed (ADR-019c Layer 2)
+from access_common.permissions import can_view_profile, can_edit_profile
 
 # Configure logging
 logger = logging.getLogger()
@@ -753,6 +752,11 @@ def handle_login(user_id: str, event: Dict[str, Any]) -> Dict[str, Any]:
         # Get the Supabase user ID from external UID
         supabase_user_id = common.get_supabase_user_id_from_external_uid(user_id)
         
+        # ADR-019c: Verify user can access their own profile (self-service)
+        # This validates the user exists and has a valid profile
+        if not can_edit_profile(supabase_user_id, supabase_user_id):
+            raise common.ForbiddenError('Access denied to profile')
+        
         # Get user's profile to find their current org
         profile = common.find_one(
             table='user_profiles',
@@ -823,6 +827,11 @@ def handle_logout(user_id: str) -> Dict[str, Any]:
         # Get the Supabase user ID from external UID
         supabase_user_id = common.get_supabase_user_id_from_external_uid(user_id)
         
+        # ADR-019c: Verify user can access their own profile (self-service)
+        # This validates the user exists and has a valid profile
+        if not can_edit_profile(supabase_user_id, supabase_user_id):
+            raise common.ForbiddenError('Access denied to profile')
+        
         # End all active sessions for this user
         # Note: We update all sessions where ended_at IS NULL
         ended_count = 0
@@ -884,6 +893,11 @@ def handle_update_profile(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
     
     # The user_id is the external UID (Clerk/Okta). Get the Supabase user ID.
     supabase_user_id = common.get_supabase_user_id_from_external_uid(user_id)
+
+    # ADR-019c: Verify user can edit their own profile (self-service)
+    # This validates the user exists and has a valid profile
+    if not can_edit_profile(supabase_user_id, supabase_user_id):
+        raise common.ForbiddenError('Access denied to profile')
 
     # Get the current profile using the Supabase user ID
     current_profile = common.find_one(
