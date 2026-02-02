@@ -1,11 +1,12 @@
 # WS Plugin Architecture (Sprint 3) - Dynamic Module Configuration
 
-**Status**: 🟡 IN PROGRESS  
+**Status**: 🟡 IN PROGRESS (Phase 1 Complete ✅)  
 **Priority**: **P2**  
 **Estimated Duration**: 6-8 hours (Phase 0 prerequisite already complete)  
 **Created**: 2026-01-25  
 **Updated**: 2026-01-25 (Added Phase 0 - DB naming migration integration)  
 **Updated**: 2026-01-25 (Phase 0 completed by other team)  
+**Updated**: 2026-02-02 (Phase 1 implemented and deployed)  
 **Branch**: `feature/ws-plugin-arch-s3`  
 **Context**: `memory-bank/context-ws-plugin-architecture.md`  
 **Dependencies**: Sprint 2 (Complete) ✅, Phase 0 (Complete) ✅  
@@ -178,32 +179,45 @@ CREATE VIEW sys_lambda_config AS SELECT * FROM mgmt_cfg_sys_lambda;
 
 ---
 
-## Phase 1: Database Schema - Config Override Tables (2h)
+## Phase 1: Database Schema - Config Override Tables (2h) ✅ COMPLETE
+
+**Status:** ✅ Complete (2026-02-02)  
+**Duration:** ~1 hour (faster than estimated)
 
 **Note:** These new tables reference the migrated `mgmt_cfg_sys_modules` from Phase 0.
 
-### mgmt_cfg_org_modules Table
+### mgmt_cfg_org_modules Table ✅
 
-- [ ] Create migration for `mgmt_cfg_org_modules` table
-- [ ] Fields: org_id, module_name, is_enabled, config_overrides, feature_flag_overrides
-- [ ] RLS policies: Org admins can manage their org's config
-- [ ] Default values: Inherit from `mgmt_cfg_sys_modules`
-- [ ] Foreign key: `module_name` references `mgmt_cfg_sys_modules(module_name)`
+- [x] Create schema file `003-mgmt-cfg-org-modules.sql`
+- [x] Fields: org_id, module_name, is_enabled, config_overrides, feature_flag_overrides
+- [x] RLS policies: Org admins can manage their org's config
+- [x] Trigger validation: Cannot enable if system disabled
+- [x] Foreign keys: `module_name` → `mgmt_cfg_sys_modules`, `org_id` → `orgs`
+- [x] Indexes for performance
 
-### mgmt_cfg_ws_modules Table
+### mgmt_cfg_ws_modules Table ✅
 
-- [ ] Create migration for `mgmt_cfg_ws_modules` table
-- [ ] Fields: ws_id, module_name, is_enabled, config_overrides, feature_flag_overrides
-- [ ] RLS policies: Workspace admins can manage their workspace config
-- [ ] Cascade: Cannot enable if org/system disabled
-- [ ] Foreign key: `ws_id` references `workspaces(id)` (per ADR-011 - use ws_id not workspace_id)
+- [x] Create schema file `004-mgmt-cfg-ws-modules.sql`
+- [x] Fields: ws_id, module_name, is_enabled, config_overrides, feature_flag_overrides
+- [x] RLS policies: Workspace admins can manage their workspace config
+- [x] Trigger validation: Cannot enable if org/system disabled
+- [x] Foreign keys: `module_name` → `mgmt_cfg_sys_modules`, `ws_id` → `workspaces`
+- [x] Indexes for performance
 
-### Config Resolution Function
+### Config Resolution Functions ✅
 
-- [ ] Create database function: `resolve_module_config(p_ws_id UUID, p_module_name VARCHAR)`
-- [ ] Implements cascade: `mgmt_cfg_sys_modules` → `mgmt_cfg_org_modules` → `mgmt_cfg_ws_modules`
-- [ ] Returns fully resolved config object (JSONB)
-- [ ] Optimized with appropriate indexes
+- [x] Create schema file `005-resolve-module-config.sql`
+- [x] `resolve_module_config(p_ws_id, p_module_name)` - Full cascade (sys → org → ws)
+- [x] `resolve_org_module_config(p_org_id, p_module_name)` - Org cascade (sys → org)
+- [x] `resolve_all_modules_for_workspace(p_ws_id)` - All modules for workspace
+- [x] `resolve_all_modules_for_org(p_org_id)` - All modules for org
+- [x] JSONB merging for config and feature_flags
+- [x] Optimized with appropriate indexes
+
+**Implementation Notes:**
+- Replaced CHECK constraints with trigger-based validation (PostgreSQL limitation)
+- Fixed table/column naming: `ws_members` and `ws_id` (not `workspace_members`/`workspace_id`)
+- All SQL files successfully deployed and tested
 
 ---
 
