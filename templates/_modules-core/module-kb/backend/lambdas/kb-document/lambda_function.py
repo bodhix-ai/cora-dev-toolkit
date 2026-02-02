@@ -38,6 +38,7 @@ from typing import Dict, Any, Optional, List
 
 import boto3
 import org_common as common
+from kb_common.permissions import can_view_kb_document, can_edit_kb_document
 
 # Environment variables
 S3_BUCKET = os.environ.get('S3_BUCKET') or os.environ.get('KB_S3_BUCKET')
@@ -115,17 +116,36 @@ def lambda_handler(event, context):
 
 
 def handle_workspace_documents(method: str, path: str, path_params: Dict, event: Dict, user_id: str):
-    """Handle workspace-scoped document operations."""
+    """
+    Handle workspace-scoped document operations.
+    
+    ADR-019c Compliant: Two-step authorization pattern
+    - Step 1: Verify workspace membership
+    - Step 2: Check document-level permissions (where applicable)
+    """
     workspace_id = path_params.get('wsId')
     doc_id = path_params.get('docId')
     
     if not workspace_id:
         return common.bad_request_response("Missing wsId")
     
-    # Verify workspace access
-    if not check_workspace_access(user_id, workspace_id):
-        return common.forbidden_response("Access denied to workspace")
+    # ========================================
+    # STEP 1: VERIFY WORKSPACE MEMBERSHIP (ADR-019c)
+    # ========================================
+    if not common.can_access_ws_resource(user_id, workspace_id):
+        return common.forbidden_response("Not a workspace member")
     
+    # ========================================
+    # STEP 2: CHECK DOCUMENT PERMISSIONS (ADR-019c)
+    # ========================================
+    if doc_id and method in ['GET', 'DELETE']:
+        # For document-specific operations, verify document permissions
+        if method == 'GET' and not can_view_kb_document(user_id, doc_id):
+            return common.forbidden_response("Cannot access this document")
+        elif method == 'DELETE' and not can_edit_kb_document(user_id, doc_id):
+            return common.forbidden_response("Cannot delete this document")
+    
+    # Route to handlers
     if method == 'PUT' and doc_id and '/complete' in path:
         return handle_complete_upload(user_id, doc_id)
     elif method == 'GET' and doc_id and '/download' in path:
@@ -825,19 +845,6 @@ def verify_upload_permission(user_id: str, kb_id: str) -> bool:
         return result if isinstance(result, bool) else False
     except Exception as e:
         print(f"Error verifying upload permission: {str(e)}")
-        return False
-
-
-def check_workspace_access(user_id: str, workspace_id: str) -> bool:
-    """Check if user is workspace member."""
-    try:
-        membership = common.find_one(
-            table='ws_members',
-            filters={'ws_id': workspace_id, 'user_id': user_id}
-        )
-        return membership is not None
-    except Exception as e:
-        print(f"Error checking workspace access: {str(e)}")
         return False
 
 

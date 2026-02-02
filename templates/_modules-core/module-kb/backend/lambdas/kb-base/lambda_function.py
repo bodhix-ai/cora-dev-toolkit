@@ -33,6 +33,7 @@ Routes - Platform Admin:
 import json
 from typing import Dict, Any, List, Optional
 import org_common as common
+from kb_common.permissions import can_view_kb, can_edit_kb, can_delete_kb
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -108,7 +109,9 @@ def route_workspace_handlers(event: Dict[str, Any], user_id: str, method: str, p
     """
     Route workspace-scoped requests
     
-    ADR-019: Centralized auth at router level
+    ADR-019c: Two-step auth pattern
+    - Step 1: Workspace membership check
+    - Step 2: Resource permission check (where applicable)
     """
     workspace_id = path_params.get('wsId')
     if not workspace_id:
@@ -117,16 +120,15 @@ def route_workspace_handlers(event: Dict[str, Any], user_id: str, method: str, p
     workspace_id = common.validate_uuid(workspace_id, 'workspace_id')
     
     # ========================================
-    # CENTRALIZED AUTH CHECK (ADR-019)
+    # ADR-019c: STEP 1 - Workspace Membership
     # ========================================
-    # Check workspace access for all routes
-    if not check_workspace_access(user_id, workspace_id):
-        return common.forbidden_response('You do not have access to this workspace')
+    if not common.can_access_ws_resource(user_id, workspace_id):
+        return common.forbidden_response('Not a workspace member')
     
     # For write operations, require ws_admin
     is_write_operation = method in ['POST', 'PATCH', 'DELETE']
     if is_write_operation and '/toggle' in path:
-        if not check_ws_admin_access(user_id, workspace_id):
+        if not common.is_ws_admin(user_id, workspace_id):
             return common.forbidden_response('Only workspace admins can toggle KB access')
     
     # ========================================
@@ -146,7 +148,7 @@ def route_workspace_handlers(event: Dict[str, Any], user_id: str, method: str, p
             return handle_get_workspace_kb(user_id, workspace_id)
         elif method == 'POST':
             # Require admin for KB creation
-            if not check_ws_admin_access(user_id, workspace_id):
+            if not common.is_ws_admin(user_id, workspace_id):
                 return common.forbidden_response('Only workspace admins can create workspace KBs')
             return handle_create_workspace_kb(event, user_id, workspace_id)
     elif '/kb/' in path:
@@ -155,7 +157,7 @@ def route_workspace_handlers(event: Dict[str, Any], user_id: str, method: str, p
             return common.bad_request_response('KB ID is required')
         if method == 'PATCH':
             # Require admin for KB update
-            if not check_ws_admin_access(user_id, workspace_id):
+            if not common.is_ws_admin(user_id, workspace_id):
                 return common.forbidden_response('Only workspace admins can update workspace KBs')
             return handle_update_kb(event, user_id, kb_id)
     
@@ -1149,28 +1151,6 @@ def get_kb_stats(kb_id: str) -> Dict[str, Any]:
         'chunkCount': chunk_count,
         'totalSize': total_size
     }
-
-
-def check_workspace_access(user_id: str, workspace_id: str) -> bool:
-    """Check if user has access to workspace"""
-    membership = common.find_one(
-        table='ws_members',
-        filters={'ws_id': workspace_id, 'user_id': user_id}
-    )
-    return membership is not None
-
-
-def check_ws_admin_access(user_id: str, workspace_id: str) -> bool:
-    """Check if user is workspace admin"""
-    membership = common.find_one(
-        table='ws_members',
-        filters={
-            'ws_id': workspace_id,
-            'user_id': user_id,
-            'ws_role': ['ws_owner', 'ws_admin']
-        }
-    )
-    return membership is not None
 
 
 def check_chat_access(user_id: str, chat_id: str) -> bool:
