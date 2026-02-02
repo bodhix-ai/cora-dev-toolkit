@@ -27,7 +27,7 @@ See: docs/standards/03_std_back_RESOURCE-PERMISSIONS.md
 """
 
 from typing import Optional, List, Dict, Any
-from org_common.db import call_rpc
+from org_common import rpc
 
 
 def is_ws_owner(user_id: str, ws_id: str) -> bool:
@@ -51,7 +51,7 @@ def is_ws_owner(user_id: str, ws_id: str) -> bool:
         >>>     common.delete_one('workspaces', {'id': ws_id})
     """
     # ADR-019c: RPC function expects (p_user_id, p_ws_id) parameter order
-    return call_rpc('is_ws_owner', {
+    return rpc(function_name='is_ws_owner', params={
         'p_user_id': user_id,
         'p_ws_id': ws_id
     })
@@ -80,7 +80,7 @@ def can_view_ws(user_id: str, ws_id: str) -> bool:
         >>>     members = common.find_many('workspace_members', {'ws_id': ws_id})
     """
     # ADR-019c: RPC function expects (p_user_id, p_ws_id) parameter order
-    return call_rpc('is_ws_member', {
+    return rpc(function_name='is_ws_member', params={
         'p_user_id': user_id,
         'p_ws_id': ws_id
     })
@@ -113,7 +113,7 @@ def can_edit_ws(user_id: str, ws_id: str) -> bool:
         >>>     })
     """
     # ADR-019c: RPC function expects (p_user_id, p_ws_id) parameter order
-    return call_rpc('is_ws_admin_or_owner', {
+    return rpc(function_name='is_ws_admin_or_owner', params={
         'p_user_id': user_id,
         'p_ws_id': ws_id
     })
@@ -183,7 +183,7 @@ def get_accessible_workspaces(
         >>>     print(f"{ws['name']} ({ws['user_role']}) - {ws['member_count']} members")
     """
     # Use existing get_ws_with_member_info RPC function
-    result = call_rpc('get_ws_with_member_info', {
+    result = rpc(function_name='get_ws_with_member_info', params={
         'p_org_id': org_id,
         'p_user_id': user_id,
         'p_favorites_only': favorites_only,
