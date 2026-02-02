@@ -302,8 +302,9 @@ Route: GET /admin/org/chat/config
 - Backend standard created: `03_std_back_RESOURCE-PERMISSIONS.md`
 
 ### Test Environment
-- **Stack Path:** `/Users/aaron/code/bodhix/testing/test-auth/ai-mod-stack`
-- **Infra Path:** `/Users/aaron/code/bodhix/testing/test-auth/ai-mod-infra`
+- **Stack Path:** `/Users/aaron/code/bodhix/testing/perm/ai-mod-stack`
+- **Infra Path:** `/Users/aaron/code/bodhix/testing/perm/ai-mod-infra`
+- **Note:** Updated 2026-02-02 to use new test project created in /perm directory
 
 ## Session Log (S2)
 

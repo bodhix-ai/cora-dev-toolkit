@@ -1360,44 +1360,42 @@ def handle_get_kb(user_id, event, kb_id):
 
 ---
 
-## Phase 11: Fix module-access (84 errors) (6-8 hours)
+## Phase 11: Fix module-access (84 errors) ✅ COMPLETE
 
-**Errors:** 84 Layer 2 errors, 20 warnings
+**Status:** ✅ Complete (2026-02-02)  
+**Time:** ~5 hours  
+**Errors:** 84 → 0 Layer 2 errors  
+**Session Plan:** `docs/plans/session_plan_s3-phase11-module-access.md`
 
 **Lambda files:**
-- `orgs/lambda_function.py`
-- `invites/lambda_function.py`
-- `users/lambda_function.py`
+- `orgs/lambda_function.py` ✅
+- `invites/lambda_function.py` ✅
+- `members/lambda_function.py` ✅
+- `profiles/lambda_function.py` ✅
+- `identities-management/lambda_function.py` ✅
+- `idp-config/lambda_function.py` ✅
+- `org-email-domains/lambda_function.py` ✅
 
-**Pattern:**
-```python
-# In users Lambda
-from access_common.permissions import can_access_user, can_edit_user
+**Database RPC Functions:**
+- `can_view_org()`, `can_edit_org()`, `can_delete_org()`
+- `can_view_members()`, `can_manage_members()`
+- `can_view_invites()`, `can_manage_invites()`
+- `can_view_profile()`, `can_edit_profile()`
+- `can_manage_email_domains()`
 
-# Get user profile
-user_profile = common.find_one('user_profiles', {'user_id': user_id})
+**Permission Layer:**
+- Created `access_common/permissions.py` with 10 permission helpers
+- All helpers wrap database RPC functions
 
-# Verify org membership (for org-scoped operations)
-if org_id and not common.can_access_org_resource(user_id, org_id):
-    return common.forbidden_response('Not a member')
+**Validation Results:**
+- **Layer 1 (Admin Auth):** 0 errors, 0 warnings ✅
+- **Layer 2 (Resource Permissions):** 0 errors, 0 warnings ✅
+- **Code Quality:** 74 errors (68 key_consistency, 6 import) - NOT auth-related
 
-# Check user permission
-if not can_access_user(requesting_user_id, target_user_id):
-    return common.forbidden_response('Access denied')
-```
-
-**Actions:**
-- [ ] Create `access_common/permissions.py`
-- [ ] Implement `can_access_user()`, `can_edit_user()`, `can_view_org()`, `can_manage_invites()`
-- [ ] Add membership + permission checks to users routes
-- [ ] Add membership + permission checks to orgs routes
-- [ ] Add membership + permission checks to invites routes
-- [ ] Run validation: `--module module-access --layer2-only`
-- [ ] Sync to test project and deploy all 3 Lambdas
-- [ ] Test access UI (user profiles, org membership, invites)
-- [ ] Commit: "fix(module-access): implement ADR-019c resource permissions"
-
-**Expected Output:** module-access: 0 Layer 2 errors
+**Deployment:**
+- All 7 Lambdas + access_common layer built and deployed
+- Terraform: 20 added, 26 changed, 20 destroyed
+- Zero-downtime blue-green deployment
 
 ---
 
