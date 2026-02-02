@@ -21,6 +21,7 @@ import json
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 import org_common as common
+from chat_common.permissions import can_view_chat, can_edit_chat, is_chat_owner
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -137,19 +138,22 @@ def handle_list_messages(
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check permission to view chat
-    can_view = common.rpc(
-        
-'can_view_chat',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource (ADR-019c)
+    session = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
     
-    if not can_view:
-        raise common.ForbiddenError('You do not have access to this chat')
+    if not session:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, session['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check resource permission (ADR-019c)
+    if not can_view_chat(user_id, session_id):
+        raise common.ForbiddenError('Access denied to chat session')
     
     query_params = event.get('queryStringParameters', {}) or {}
     
@@ -226,27 +230,21 @@ def handle_send_message(
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Get session with org_id filter for multi-tenancy (CORA Compliance)
+    # 1. Fetch resource (ADR-019c)
     session = common.find_one(
         table='chat_sessions',
-        filters={'id': session_id, 'org_id': org_id, 'is_deleted': False}
+        filters={'id': session_id, 'is_deleted': False}
     )
     
     if not session:
-        raise common.NotFoundError('Chat session not found or access denied')
+        raise common.NotFoundError('Chat session not found')
     
-    # Check permission to add messages
-    can_add = common.rpc(
-        
-'can_add_messages',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
-    )
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, session['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
     
-    if not can_add:
+    # 3. Check resource permission (ADR-019c)
+    if not can_edit_chat(user_id, session_id):
         raise common.ForbiddenError('You do not have permission to send messages to this chat')
     
     body = json.loads(event.get('body', '{}'))
@@ -297,19 +295,22 @@ def handle_get_message(
     session_id = common.validate_uuid(session_id, 'sessionId')
     message_id = common.validate_uuid(message_id, 'messageId')
     
-    # Check permission to view chat
-    can_view = common.rpc(
-        
-'can_view_chat',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource (ADR-019c)
+    session = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
     
-    if not can_view:
-        raise common.ForbiddenError('You do not have access to this chat')
+    if not session:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, session['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check resource permission (ADR-019c)
+    if not can_view_chat(user_id, session_id):
+        raise common.ForbiddenError('Access denied to chat session')
     
     message = common.find_one(
         table='chat_messages',
@@ -360,19 +361,22 @@ def handle_get_rag_context(
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check permission to view chat
-    can_view = common.rpc(
-        
-'can_view_chat',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource (ADR-019c)
+    session = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
     
-    if not can_view:
-        raise common.ForbiddenError('You do not have access to this chat')
+    if not session:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, session['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check resource permission (ADR-019c)
+    if not can_view_chat(user_id, session_id):
+        raise common.ForbiddenError('Access denied to chat session')
     
     body = json.loads(event.get('body', '{}'))
     
@@ -444,19 +448,22 @@ def handle_get_history(
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check permission to view chat
-    can_view = common.rpc(
-        
-'can_view_chat',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource (ADR-019c)
+    session = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
     
-    if not can_view:
-        raise common.ForbiddenError('You do not have access to this chat')
+    if not session:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, session['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check resource permission (ADR-019c)
+    if not can_view_chat(user_id, session_id):
+        raise common.ForbiddenError('Access denied to chat session')
     
     query_params = event.get('queryStringParameters', {}) or {}
     

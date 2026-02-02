@@ -56,6 +56,7 @@ Routes - Org Admin (Organization Management):
 import json
 from typing import Any, Dict, List, Optional
 import org_common as common
+from chat_common.permissions import can_view_chat, can_edit_chat, is_chat_owner
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -572,20 +573,7 @@ def handle_get_chat(user_id: str, session_id: str) -> Dict[str, Any]:
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check permission using RPC
-    can_view = common.rpc(
-        
-'can_view_chat',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
-    )
-    
-    if not can_view:
-        raise common.ForbiddenError('You do not have access to this chat')
-    
+    # 1. Fetch resource
     chat = common.find_one(
         table='chat_sessions',
         filters={'id': session_id, 'is_deleted': False}
@@ -593,6 +581,14 @@ def handle_get_chat(user_id: str, session_id: str) -> Dict[str, Any]:
     
     if not chat:
         raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check resource permission
+    if not can_view_chat(user_id, session_id):
+        raise common.ForbiddenError('You do not have access to this chat')
     
     result = _format_chat_response(chat, user_id)
     
@@ -634,18 +630,21 @@ def handle_update_chat(
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check ownership
-    is_owner = common.rpc(
-        
-'is_chat_owner',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource (needed for org check)
+    chat = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
     
-    if not is_owner:
+    if not chat:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check ownership
+    if not is_chat_owner(user_id, session_id):
         raise common.ForbiddenError('Only the chat owner can update this chat')
     
     body = json.loads(event.get('body', '{}'))
@@ -684,18 +683,21 @@ def handle_delete_chat(user_id: str, session_id: str) -> Dict[str, Any]:
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check ownership
-    is_owner = common.rpc(
-        
-'is_chat_owner',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource
+    chat = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
     
-    if not is_owner:
+    if not chat:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check ownership
+    if not is_chat_owner(user_id, session_id):
         raise common.ForbiddenError('Only the chat owner can delete this chat')
     
     # Soft delete
@@ -725,18 +727,21 @@ def handle_list_grounded_kbs(user_id: str, session_id: str) -> Dict[str, Any]:
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check permission
-    can_view = common.rpc(
-        
-'can_view_chat',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource
+    chat = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
     
-    if not can_view:
+    if not chat:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check resource permission
+    if not can_view_chat(user_id, session_id):
         raise common.ForbiddenError('You do not have access to this chat')
     
     grounded_kbs = common.rpc(
@@ -768,18 +773,21 @@ def handle_add_kb_grounding(
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check ownership
-    is_owner = common.rpc(
-        
-'is_chat_owner',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource
+    chat = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
     
-    if not is_owner:
+    if not chat:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check ownership
+    if not is_chat_owner(user_id, session_id):
         raise common.ForbiddenError('Only the chat owner can add KB grounding')
     
     body = json.loads(event.get('body', '{}'))
@@ -840,18 +848,21 @@ def handle_remove_kb_grounding(
     session_id = common.validate_uuid(session_id, 'sessionId')
     kb_id = common.validate_uuid(kb_id, 'kbId')
     
-    # Check ownership
-    is_owner = common.rpc(
-        
-'is_chat_owner',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource
+    chat = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
     
-    if not is_owner:
+    if not chat:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check ownership
+    if not is_chat_owner(user_id, session_id):
         raise common.ForbiddenError('Only the chat owner can remove KB grounding')
     
     # Find and delete the grounding
@@ -890,18 +901,21 @@ def handle_list_shares(user_id: str, session_id: str) -> Dict[str, Any]:
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check permission
-    can_view = common.rpc(
-        
-'can_view_chat',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource
+    chat = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
     
-    if not can_view:
+    if not chat:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check resource permission
+    if not can_view_chat(user_id, session_id):
         raise common.ForbiddenError('You do not have access to this chat')
     
     shares = common.find_many(
@@ -951,20 +965,6 @@ def handle_create_share(
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check ownership
-    is_owner = common.rpc(
-        
-'is_chat_owner',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
-    )
-    
-    if not is_owner:
-        raise common.ForbiddenError('Only the chat owner can share this chat')
-    
     body = json.loads(event.get('body', '{}'))
     
     share_user_id = body.get('userId')
@@ -981,7 +981,7 @@ def handle_create_share(
     if share_user_id == user_id:
         raise common.ValidationError('Cannot share with yourself')
     
-    # Verify target user exists and is in the same org
+    # 1. Fetch resource
     chat = common.find_one(
         table='chat_sessions',
         filters={'id': session_id, 'is_deleted': False}
@@ -989,6 +989,14 @@ def handle_create_share(
     
     if not chat:
         raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check ownership
+    if not is_chat_owner(user_id, session_id):
+        raise common.ForbiddenError('Only the chat owner can share this chat')
     
     target_membership = common.find_one(
         table='org_members',
@@ -1072,16 +1080,21 @@ def handle_delete_share(
     if not share:
         raise common.NotFoundError('Share not found')
     
-    # Check permissions: owner can delete any, user can delete their own
-    is_owner = common.rpc(
-        
-'is_chat_owner',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource
+    chat = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
+    
+    if not chat:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check permissions: owner can delete any, user can delete their own
+    is_owner = is_chat_owner(user_id, session_id)
     
     is_self_share = share['shared_with_user_id'] == user_id
     
@@ -1111,18 +1124,21 @@ def handle_toggle_favorite(user_id: str, session_id: str) -> Dict[str, Any]:
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check permission
-    can_view = common.rpc(
-        
-'can_view_chat',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource
+    chat = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
     
-    if not can_view:
+    if not chat:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check resource permission
+    if not can_view_chat(user_id, session_id):
         raise common.ForbiddenError('You do not have access to this chat')
     
     # Check if already favorited
