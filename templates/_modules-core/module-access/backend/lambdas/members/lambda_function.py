@@ -5,6 +5,10 @@ Handles CRUD operations for organization membership
 import json
 from typing import Dict, Any, Optional
 import org_common as common
+from access_common.permissions import (
+    can_view_members,
+    can_manage_members,
+)
 
 
 
@@ -136,19 +140,15 @@ def handle_list_members(user_id: str, org_id: str, event: Dict[str, Any]) -> Dic
         
         is_sys_admin = profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']
         
-        # Sys admins can view any org's members
+        # ADR-019c: Two-step pattern for resource permissions
         if not is_sys_admin:
-            # Check if user is member
-            user_membership = common.find_one(
-                table='org_members',
-                filters={
-                    'org_id': org_id,
-                    'user_id': supabase_user_id
-                }
-            )
+            # Step 1: Verify org membership
+            if not common.can_access_org_resource(supabase_user_id, org_id):
+                raise common.ForbiddenError('Not a member of organization')
             
-            if not user_membership:
-                raise common.ForbiddenError('You do not have access to this organization')
+            # Step 2: Check resource permission
+            if not can_view_members(supabase_user_id, org_id):
+                raise common.ForbiddenError('Access denied to view members')
         
         # Build filters
         filters = {'org_id': org_id}
@@ -228,20 +228,23 @@ def handle_add_member(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
         if not supabase_user_id:
             raise common.UnauthorizedError('User not found in system')
         
-        # Check if user is org_owner (required for membership management)
-        user_membership = common.find_one(
-            table='org_members',
-            filters={
-                'org_id': org_id,
-                'user_id': supabase_user_id
-            }
+        # Get user's profile to check platform role
+        profile = common.find_one(
+            table='user_profiles',
+            filters={'user_id': supabase_user_id}
         )
         
-        if not user_membership:
-            raise common.ForbiddenError('You do not have access to this organization')
+        is_sys_admin = profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']
         
-        if user_membership['org_role'] != 'org_owner':
-            raise common.ForbiddenError('Only org owners can manage membership')
+        # ADR-019c: Two-step pattern for resource permissions
+        if not is_sys_admin:
+            # Step 1: Verify org membership
+            if not common.can_access_org_resource(supabase_user_id, org_id):
+                raise common.ForbiddenError('Not a member of organization')
+            
+            # Step 2: Check resource permission
+            if not can_manage_members(supabase_user_id, org_id):
+                raise common.ForbiddenError('Only org admins and owners can manage membership')
         
         # Find user by email
         target_profile = common.find_one(
@@ -318,20 +321,23 @@ def handle_update_member(
         if not supabase_user_id:
             raise common.UnauthorizedError('User not found in system')
         
-        # Check if user is org_owner
-        user_membership = common.find_one(
-            table='org_members',
-            filters={
-                'org_id': org_id,
-                'user_id': supabase_user_id
-            }
+        # Get user's profile to check platform role
+        profile = common.find_one(
+            table='user_profiles',
+            filters={'user_id': supabase_user_id}
         )
         
-        if not user_membership:
-            raise common.ForbiddenError('You do not have access to this organization')
+        is_sys_admin = profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']
         
-        if user_membership['org_role'] != 'org_owner':
-            raise common.ForbiddenError('Only org owners can manage membership')
+        # ADR-019c: Two-step pattern for resource permissions
+        if not is_sys_admin:
+            # Step 1: Verify org membership
+            if not common.can_access_org_resource(supabase_user_id, org_id):
+                raise common.ForbiddenError('Not a member of organization')
+            
+            # Step 2: Check resource permission
+            if not can_manage_members(supabase_user_id, org_id):
+                raise common.ForbiddenError('Only org admins and owners can manage membership')
         
         # Get target member
         target_member = common.find_one(
@@ -399,20 +405,23 @@ def handle_remove_member(user_id: str, org_id: str, member_id: str) -> Dict[str,
         if not supabase_user_id:
             raise common.UnauthorizedError('User not found in system')
         
-        # Check if user is org_owner
-        user_membership = common.find_one(
-            table='org_members',
-            filters={
-                'org_id': org_id,
-                'user_id': supabase_user_id
-            }
+        # Get user's profile to check platform role
+        profile = common.find_one(
+            table='user_profiles',
+            filters={'user_id': supabase_user_id}
         )
         
-        if not user_membership:
-            raise common.ForbiddenError('You do not have access to this organization')
+        is_sys_admin = profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']
         
-        if user_membership['org_role'] != 'org_owner':
-            raise common.ForbiddenError('Only org owners can manage membership')
+        # ADR-019c: Two-step pattern for resource permissions
+        if not is_sys_admin:
+            # Step 1: Verify org membership
+            if not common.can_access_org_resource(supabase_user_id, org_id):
+                raise common.ForbiddenError('Not a member of organization')
+            
+            # Step 2: Check resource permission
+            if not can_manage_members(supabase_user_id, org_id):
+                raise common.ForbiddenError('Only org admins and owners can manage membership')
         
         # Get target member
         target_member = common.find_one(

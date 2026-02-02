@@ -196,8 +196,100 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- ========================================
+-- ADR-019c: Resource Permission Functions
+-- Added: 2026-02-02
+-- ========================================
+
+-- Function: Check if user is the owner of a KB base
+CREATE OR REPLACE FUNCTION is_kb_owner(p_user_id UUID, p_kb_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_kb RECORD;
+BEGIN
+    SELECT * INTO v_kb FROM public.kb_bases 
+    WHERE id = p_kb_id AND is_deleted = false;
+    
+    IF v_kb IS NULL THEN
+        RETURN false;
+    END IF;
+    
+    RETURN v_kb.created_by = p_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function: Check if user can view KB (ownership + future sharing)
+CREATE OR REPLACE FUNCTION can_view_kb(p_user_id UUID, p_kb_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+    -- Currently: ownership only
+    -- Future: will include sharing logic
+    RETURN is_kb_owner(p_user_id, p_kb_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function: Check if user can edit KB (ownership + future edit permissions)
+CREATE OR REPLACE FUNCTION can_edit_kb(p_user_id UUID, p_kb_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+    -- Currently: ownership only
+    -- Future: will include edit permission shares
+    RETURN is_kb_owner(p_user_id, p_kb_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function: Check if user can delete KB (ownership only)
+CREATE OR REPLACE FUNCTION can_delete_kb(p_user_id UUID, p_kb_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN is_kb_owner(p_user_id, p_kb_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function: Check if user can view KB document
+CREATE OR REPLACE FUNCTION can_view_kb_document(p_user_id UUID, p_doc_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_doc RECORD;
+BEGIN
+    SELECT * INTO v_doc FROM public.kb_docs 
+    WHERE id = p_doc_id AND is_deleted = false;
+    
+    IF v_doc IS NULL THEN
+        RETURN false;
+    END IF;
+    
+    -- Check KB access
+    RETURN can_view_kb(p_user_id, v_doc.kb_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function: Check if user can edit/delete KB document
+CREATE OR REPLACE FUNCTION can_edit_kb_document(p_user_id UUID, p_doc_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_doc RECORD;
+BEGIN
+    SELECT * INTO v_doc FROM public.kb_docs 
+    WHERE id = p_doc_id AND is_deleted = false;
+    
+    IF v_doc IS NULL THEN
+        RETURN false;
+    END IF;
+    
+    -- Check KB edit permission
+    RETURN can_edit_kb(p_user_id, v_doc.kb_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Comments
 COMMENT ON FUNCTION can_access_kb IS 'Check if user can access a KB based on scope and 4-level inheritance';
 COMMENT ON FUNCTION can_upload_to_kb IS 'Check if user can upload documents to a KB';
 COMMENT ON FUNCTION get_accessible_kbs_for_workspace IS 'Get all KBs accessible in a workspace context';
 COMMENT ON FUNCTION search_kb_chunks IS 'Semantic search across multiple KBs using pgvector';
+COMMENT ON FUNCTION is_kb_owner IS 'Check if user is owner of KB base';
+COMMENT ON FUNCTION can_view_kb IS 'Check if user can view KB (ownership + future sharing)';
+COMMENT ON FUNCTION can_edit_kb IS 'Check if user can edit KB (ownership + future edit permissions)';
+COMMENT ON FUNCTION can_delete_kb IS 'Check if user can delete KB (ownership only)';
+COMMENT ON FUNCTION can_view_kb_document IS 'Check if user can view KB document';
+COMMENT ON FUNCTION can_edit_kb_document IS 'Check if user can edit/delete KB document';

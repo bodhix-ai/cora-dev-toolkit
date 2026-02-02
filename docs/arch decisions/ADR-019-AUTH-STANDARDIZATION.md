@@ -9,39 +9,84 @@
 
 ## Overview
 
-This ADR documents the **decision rationale and justification** for CORA authorization standardization. It defines the complete auth lifecycle from frontend to database, covering all three authorization levels: System (sys), Organization (org), and Workspace (ws).
+This ADR documents the **decision rationale and justification** for CORA authorization standardization. It defines the complete auth lifecycle from frontend to database, covering **two authorization layers**: admin authorization and resource permissions.
+
+### Two-Layer Architecture
+
+CORA authorization operates at two distinct layers:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   CORA Authorization Layers                  │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Layer 1: Admin Authorization (ADR-019a/b)                  │
+│  ├─ Routes: /admin/sys/*, /admin/org/*, /admin/ws/*        │
+│  ├─ Purpose: Module configuration and management            │
+│  ├─ Functions: check_sys_admin, check_org_admin, etc.      │
+│  └─ Roles: sys_admin, org_admin, ws_admin                  │
+│                                                              │
+│  Layer 2: Resource Permissions (ADR-019c)                   │
+│  ├─ Routes: /{module}/*                                     │
+│  ├─ Purpose: User data access and operations                │
+│  ├─ Functions: can_*, is_*_owner, is_*_member              │
+│  └─ Patterns: Ownership, membership, sharing               │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Layer 1 (Admin Authorization):**
+- Controls access to **administrative features** (module configuration, system settings)
+- Routes: `/admin/sys/*`, `/admin/org/*`, `/admin/ws/*`
+- Based on admin roles: sys_admin, org_admin, ws_admin
+- Documented in: ADR-019a (frontend), ADR-019b (backend)
+
+**Layer 2 (Resource Permissions):**
+- Controls access to **user data and resources** (chats, documents, evaluations)
+- Routes: `/{module}/*` (e.g., `/chat/sessions`, `/eval/results`)
+- Based on ownership, membership, and sharing
+- Documented in: ADR-019c
+- **Important:** Admin roles do NOT automatically grant access to user resources
 
 ### Documentation Structure
 
 | Type | Purpose | Documents |
-|------|---------|-----------|
-| **ADR** (this doc) | Decision analysis, justification (WHY) | ADR-019, ADR-019a, ADR-019b |
-| **Standards** | Active compliance rules (WHAT) | `03_std_back_AUTH.md`, `01_std_front_ORG-ADMIN-PAGE-AUTH.md` |
+|------|---------|--------------|
+| **ADR** (this doc) | Decision analysis, justification (WHY) | ADR-019, ADR-019a, ADR-019b, ADR-019c |
+| **Standards** | Active compliance rules (WHAT) | `03_std_back_AUTH.md`, `03_std_back_RESOURCE-PERMISSIONS.md` |
 
 **Decision Rationale (ADRs):**
-- [ADR-019a: Frontend Authorization](./ADR-019a-AUTH-FRONTEND.md) - React hooks, context, loading states
-- [ADR-019b: Backend Authorization](./ADR-019b-AUTH-BACKEND.md) - Lambda patterns, RPC functions, database
+- [ADR-019a: Frontend Authorization](./ADR-019a-AUTH-FRONTEND.md) - React hooks, context, loading states (Layer 1)
+- [ADR-019b: Backend Authorization](./ADR-019b-AUTH-BACKEND.md) - Lambda patterns, RPC functions, database (Layer 1)
+- [ADR-019c: Resource Permissions](./ADR-019c-AUTH-RESOURCE-PERMISSIONS.md) - Ownership, membership, sharing (Layer 2)
 
 **Implementation Standards (for validation compliance):**
-- [Backend Auth Standard](../standards/03_std_back_AUTH.md) - Lambda authorization patterns
+- [Backend Auth Standard](../standards/03_std_back_AUTH.md) - Lambda authorization patterns (Layer 1)
+- [Backend Resource Permissions](../standards/03_std_back_RESOURCE-PERMISSIONS.md) - Resource permission patterns (Layer 2)
 - [Frontend Org Admin Auth](../standards/01_std_front_ORG-ADMIN-PAGE-AUTH.md) - Org admin page patterns
 
 ---
 
 ## The Problem
 
-CORA previously lacked consistent authorization patterns across layers, causing:
+CORA previously lacked consistent authorization patterns at both layers, causing:
 - **2-8 hours wasted debugging auth issues per module**
 - Inconsistent implementations across frontend and backend
-- Developer confusion about which pattern to use
+- Developer confusion about which pattern to use (admin vs resource permissions)
 - 17x duplicate auth checks in some modules (module-chat)
 - Security gaps from mismatched frontend/backend validation
+- No standardized pattern for resource ownership and sharing
+- Confusion about when admin roles should grant access vs. explicit permissions
 
 ---
 
-## The Solution: Unified Auth Lifecycle
+## The Solution: Two-Layer Auth Architecture
 
-All CORA authorization follows a consistent pattern from frontend to database:
+CORA authorization uses two distinct layers, each with consistent patterns from frontend to database:
+
+### Layer 1: Admin Authorization (ADR-019a/b)
+
+For administrative features and module configuration:
 
 ```mermaid
 flowchart TB
@@ -95,9 +140,34 @@ flowchart TB
 
 ---
 
-## Authorization Matrix
+### Layer 2: Resource Permissions (ADR-019c)
 
-This table defines the **single source of truth** for authorization patterns at each level:
+For user data access and resource operations:
+
+```
+User → API → Lambda → Database RPC
+         │      │         │
+         │      │         └─ is_*_owner(user_id, resource_id)
+         │      │         └─ is_org_member(user_id, org_id)  
+         │      │         └─ can_access_*(user_id, resource_id)
+         │      │
+         │      └─ Membership check THEN permission check
+         │      └─ NO admin role override (explicit grants only)
+         │
+         └─ Resource filtered by backend (no frontend auth)
+```
+
+**Key Differences from Layer 1:**
+- Routes: `/{module}/*` (not `/admin/*`)
+- Purpose: Data access (not configuration)
+- Based on: Ownership + membership + sharing (not admin roles)
+- Admin override: **NO** automatic access (must be explicitly granted)
+
+---
+
+## Authorization Matrix (Layer 1)
+
+This table defines the **single source of truth** for Layer 1 admin authorization patterns:
 
 | Route Pattern | Frontend Hook | Lambda Helper | RPC Function | Database Table |
 |--------------|---------------|---------------|--------------|----------------|
@@ -157,7 +227,7 @@ WS_ADMIN_ROLES = ['ws_owner', 'ws_admin']
 │                   CORA Identity Architecture                 │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
-│  Tier 1: External Identity (Okta/Clerk)                     │
+│  Tier 1: External Identity (Okta/Amazon Cognito)                     │
 │  ├─ JWT Token contains: external_uid (e.g., Okta user ID)   │
 │  ├─ Available in: user_info from get_user_from_event()      │
 │  └─ Does NOT contain: roles, permissions, profile data      │
@@ -272,19 +342,47 @@ python validation/api-tracer/tracer.py --auth-check
 ## References
 
 ### Decision Documents (ADRs)
-- [ADR-019a: Frontend Authorization](./ADR-019a-AUTH-FRONTEND.md)
-- [ADR-019b: Backend Authorization](./ADR-019b-AUTH-BACKEND.md)
+- [ADR-019a: Frontend Authorization](./ADR-019a-AUTH-FRONTEND.md) - Layer 1 frontend patterns
+- [ADR-019b: Backend Authorization](./ADR-019b-AUTH-BACKEND.md) - Layer 1 backend patterns
+- [ADR-019c: Resource Permissions](./ADR-019c-AUTH-RESOURCE-PERMISSIONS.md) - Layer 2 resource permissions
 - [ADR-019 Appendix A: Options Comparison](./ADR-019-AUTH-STANDARDIZATION-APPENDIX-A-COMPARISON.md)
 
 ### Implementation Standards (Active Compliance Rules)
-- [Backend Auth Standard](../standards/03_std_back_AUTH.md) - Lambda authorization patterns
+- [Backend Auth Standard](../standards/03_std_back_AUTH.md) - Lambda authorization patterns (Layer 1)
+- [Backend Resource Permissions](../standards/03_std_back_RESOURCE-PERMISSIONS.md) - Resource permission patterns (Layer 2)
 - [Frontend Org Admin Auth](../standards/01_std_front_ORG-ADMIN-PAGE-AUTH.md) - Org admin page patterns
 
 ### Related Plans
-- [Sprint Plan: S2 Auth Standardization](../plans/plan_s2-auth-standardization.md)
+- [Sprint Plan: S2 Auth Standardization](../plans/plan_s2-auth-standardization.md) - Layer 1 implementation
+- [Sprint Plan: S3 Auth Standardization](../plans/plan_s3-auth-standardization.md) - Layer 2 implementation
+
+---
+
+## Validation
+
+Authorization patterns at both layers are validated by the api-tracer validator:
+
+```bash
+# Validate both layers
+python3 validation/api-tracer/cli.py validate --path <stack-path> --all-auth
+
+# Validate only Layer 1 (admin auth)
+python3 validation/api-tracer/cli.py validate --path <stack-path> --layer1-only
+
+# Validate only Layer 2 (resource permissions)
+python3 validation/api-tracer/cli.py validate --path <stack-path> --layer2-only
+```
+
+**Validation Output:**
+```
+Auth Validation (ADR-019):
+  Layer 1 (Admin Auth): 0 errors, 0 warnings
+  Layer 2 (Resource Permissions): 0 errors, 0 warnings
+```
 
 ---
 
 **Status:** ✅ Approved  
-**Next Step:** Fix remaining auth errors across modules (S2)  
-**Tracking:** Sprint S2 of Auth Standardization Initiative - Phase 1 Complete
+**Layers:** Layer 1 (S2 Complete) | Layer 2 (S3 In Progress)  
+**Tracking:** Sprint S3 of Auth Standardization Initiative  
+**Next Step:** Complete Layer 2 resource permission implementation across all modules

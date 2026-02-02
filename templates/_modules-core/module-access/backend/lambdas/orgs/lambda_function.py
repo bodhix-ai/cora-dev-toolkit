@@ -5,6 +5,11 @@ Handles CRUD operations for organizations
 import json
 from typing import Dict, Any
 import org_common as common
+from access_common.permissions import (
+    can_view_org,
+    can_edit_org,
+    can_delete_org,
+)
 
 # Allowed MUI icons for org branding (AI-related)
 ALLOWED_ORG_ICONS = [
@@ -204,18 +209,6 @@ def handle_get_org(user_id: str, org_id: str) -> Dict[str, Any]:
     org_id = common.validate_uuid(org_id, 'org_id')
     
     try:
-        # Check if user is member (RLS will enforce this, but we check explicitly)
-        membership = common.find_one(
-            table='org_members',
-            filters={
-                'org_id': org_id,
-                'user_id': user_id
-            }
-        )
-        
-        if not membership:
-            raise common.ForbiddenError('You do not have access to this organization')
-        
         # Get organization details
         org = common.find_one(
             table='orgs',
@@ -224,6 +217,24 @@ def handle_get_org(user_id: str, org_id: str) -> Dict[str, Any]:
         
         if not org:
             raise common.NotFoundError('Organization not found')
+        
+        # ADR-019c Layer 2: Two-step authorization pattern
+        # Step 1: Verify org membership (prevents cross-org access)
+        if not common.can_access_org_resource(user_id, org_id):
+            raise common.ForbiddenError('Not a member of organization')
+        
+        # Step 2: Check resource permission (membership-based view)
+        if not can_view_org(user_id, org_id):
+            raise common.ForbiddenError('You do not have access to this organization')
+        
+        # Get membership for role info (needed for response)
+        membership = common.find_one(
+            table='org_members',
+            filters={
+                'org_id': org_id,
+                'user_id': user_id
+            }
+        )
         
         # Get member count
         member_count_result = common.find_many(
@@ -413,7 +424,6 @@ def handle_update_org(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
     }
     
     Requires org_admin or org_owner role
-    Platform admins can update domain configuration
     """
     # Validate org_id
     org_id = common.validate_uuid(org_id, 'org_id')
@@ -422,15 +432,25 @@ def handle_update_org(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
     body = json.loads(event.get('body', '{}'))
     
     try:
-        # Get user's profile to check platform role
-        profile = common.find_one(
-            table='user_profiles',
-            filters={'user_id': user_id}
+        # Get organization to verify it exists
+        org = common.find_one(
+            table='orgs',
+            filters={'id': org_id}
         )
         
-        is_sys_admin = profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']
+        if not org:
+            raise common.NotFoundError('Organization not found')
         
-        # Check if user has admin access (RLS enforces this via can_modify_org_data)
+        # ADR-019c Layer 2: Two-step authorization pattern
+        # Step 1: Verify org membership (prevents cross-org access)
+        if not common.can_access_org_resource(user_id, org_id):
+            raise common.ForbiddenError('Not a member of organization')
+        
+        # Step 2: Check resource permission (org_admin or org_owner)
+        if not can_edit_org(user_id, org_id):
+            raise common.ForbiddenError('Only org admins and owners can update organizations')
+        
+        # Get membership for role info (needed for response)
         membership = common.find_one(
             table='org_members',
             filters={
@@ -438,14 +458,6 @@ def handle_update_org(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[
                 'user_id': user_id
             }
         )
-        
-        # Sys admins can update any org, regular users must be org admin/owner
-        if not is_sys_admin:
-            if not membership:
-                raise common.ForbiddenError('You do not have access to this organization')
-            
-            if membership['org_role'] not in ['org_admin', 'org_owner']:
-                raise common.ForbiddenError('Only org admins and owners can update organizations')
         
         # Build update data
         update_data = {}
@@ -596,19 +608,22 @@ def handle_delete_org(user_id: str, org_id: str) -> Dict[str, Any]:
     org_id = common.validate_uuid(org_id, 'org_id')
     
     try:
-        # Check if user is org_owner
-        membership = common.find_one(
-            table='org_members',
-            filters={
-                'org_id': org_id,
-                'user_id': user_id
-            }
+        # Get organization to verify it exists
+        org = common.find_one(
+            table='orgs',
+            filters={'id': org_id}
         )
         
-        if not membership:
-            raise common.ForbiddenError('You do not have access to this organization')
+        if not org:
+            raise common.NotFoundError('Organization not found')
         
-        if membership['org_role'] != 'org_owner':
+        # ADR-019c Layer 2: Two-step authorization pattern
+        # Step 1: Verify org membership (prevents cross-org access)
+        if not common.can_access_org_resource(user_id, org_id):
+            raise common.ForbiddenError('Not a member of organization')
+        
+        # Step 2: Check resource permission (org_owner only)
+        if not can_delete_org(user_id, org_id):
             raise common.ForbiddenError('Only org owners can delete organizations')
         
         # Delete organization (cascade will handle org_members)

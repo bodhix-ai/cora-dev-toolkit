@@ -47,12 +47,24 @@ Determine the test project path from `memory-bank/activeContext.md` and sync to 
 
 ### Path Patterns & Target Repos
 
+**CRITICAL: Lambda Layers**
+- **Lambda layers** (org-common, access_common, chat_common, etc.) → STACK repo
+- Layers live at: `{project}-stack/packages/module-{name}/backend/layers/`
+- When fixing Lambda code, consider if layer code also needs updating
+- Module build.sh builds BOTH Lambdas and layers
+
+**2-Tier Auth Architecture (ADR-019):**
+- **Layer 1 (Admin Auth):** `/admin/*` routes - sys/org/ws admin checks
+- **Layer 2 (Resource Permissions):** `/{module}/*` routes - ownership/membership checks
+- Layer fixes may require BOTH Lambda and layer file updates
+
 | Code Type | Target Repo | Example Path | Example File |
 |-----------|-------------|--------------|--------------|
 | Frontend components | `{project}-stack` | `~/code/bodhix/testing/test-optim/ai-sec-stack` | `InviteMemberDialog.tsx` |
 | Frontend pages | `{project}-stack` | `~/code/bodhix/testing/test-optim/ai-sec-stack` | `EvalListPage.tsx` |
 | Module hooks/types | `{project}-stack` | `~/code/bodhix/testing/test-optim/ai-sec-stack` | `useEvaluations.ts` |
 | Functional module Lambda | `{project}-stack` | `~/code/bodhix/testing/test-optim/ai-sec-stack` | `module-access/invites/lambda_function.py` |
+| **Lambda layer** | `{project}-stack` | `~/code/bodhix/testing/test-optim/ai-sec-stack` | `module-access/layers/access_common/permissions.py` |
 | Authorizer Lambda | `{project}-infra` | `~/code/bodhix/testing/test-optim/ai-sec-infra` | `lambdas/authorizer/lambda_function.py` |
 | Terraform configs | `{project}-infra` | `~/code/bodhix/testing/test-optim/ai-sec-infra` | `main.tf`, `variables.tf` |
 

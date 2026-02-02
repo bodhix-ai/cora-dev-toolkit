@@ -22,6 +22,7 @@ Routes - Organization Admin (Configs):
 import json
 from typing import Any, Dict, Optional
 import org_common as common
+import voice_common.permissions as voice_permissions
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -415,13 +416,9 @@ def handle_list_configs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         raise common.ValidationError('orgId query parameter is required')
     org_id = common.validate_uuid(org_id, 'orgId')
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': org_id, 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this organization')
+    # Step 1: Verify org membership
+    if not common.can_access_org_resource(user_id, org_id):
+        raise common.ForbiddenError('Not a member of this organization')
     
     # Build filters
     filters = {'org_id': org_id}
@@ -451,7 +448,7 @@ def handle_get_config(event: Dict[str, Any], user_id: str, config_id: str) -> Di
     """
     config_id = common.validate_uuid(config_id, 'id')
     
-    # Get config
+    # Step 1: Fetch resource
     config = common.find_one(
         table='voice_configs',
         filters={'id': config_id}
@@ -460,13 +457,13 @@ def handle_get_config(event: Dict[str, Any], user_id: str, config_id: str) -> Di
     if not config:
         raise common.NotFoundError('Config not found')
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': config['org_id'], 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this config')
+    # Step 2: Verify org membership
+    if not common.can_access_org_resource(user_id, config['org_id']):
+        raise common.ForbiddenError('Not a member of this organization')
+    
+    # Step 3: Check resource permission
+    if not voice_permissions.can_view_voice_config(user_id, config_id):
+        raise common.ForbiddenError('You do not have permission to view this config')
     
     result = _format_config_response(config)
     
@@ -510,13 +507,9 @@ def handle_create_config(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     if not isinstance(config_json, dict):
         raise common.ValidationError('configJson must be a JSON object')
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': org_id, 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this organization')
+    # Step 1: Verify org membership (for creation, only org membership needed)
+    if not common.can_access_org_resource(user_id, org_id):
+        raise common.ForbiddenError('Not a member of this organization')
     
     # Check for duplicate name
     existing = common.find_one(
@@ -564,7 +557,7 @@ def handle_update_config(event: Dict[str, Any], user_id: str, config_id: str) ->
     """
     config_id = common.validate_uuid(config_id, 'id')
     
-    # Get existing config
+    # Step 1: Fetch resource
     config = common.find_one(
         table='voice_configs',
         filters={'id': config_id}
@@ -573,13 +566,13 @@ def handle_update_config(event: Dict[str, Any], user_id: str, config_id: str) ->
     if not config:
         raise common.NotFoundError('Config not found')
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': config['org_id'], 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this config')
+    # Step 2: Verify org membership
+    if not common.can_access_org_resource(user_id, config['org_id']):
+        raise common.ForbiddenError('Not a member of this organization')
+    
+    # Step 3: Check resource permission
+    if not voice_permissions.can_edit_voice_config(user_id, config_id):
+        raise common.ForbiddenError('You do not have permission to edit this config')
     
     body = json.loads(event.get('body', '{}'))
     update_data = {}
@@ -640,7 +633,7 @@ def handle_delete_config(event: Dict[str, Any], user_id: str, config_id: str) ->
     """
     config_id = common.validate_uuid(config_id, 'id')
     
-    # Get config
+    # Step 1: Fetch resource
     config = common.find_one(
         table='voice_configs',
         filters={'id': config_id}
@@ -649,13 +642,13 @@ def handle_delete_config(event: Dict[str, Any], user_id: str, config_id: str) ->
     if not config:
         raise common.NotFoundError('Config not found')
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': config['org_id'], 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this config')
+    # Step 2: Verify org membership
+    if not common.can_access_org_resource(user_id, config['org_id']):
+        raise common.ForbiddenError('Not a member of this organization')
+    
+    # Step 3: Check resource permission (deleting is an edit operation)
+    if not voice_permissions.can_edit_voice_config(user_id, config_id):
+        raise common.ForbiddenError('You do not have permission to delete this config')
     
     # Check if config is in use
     sessions_using = common.find_many(
