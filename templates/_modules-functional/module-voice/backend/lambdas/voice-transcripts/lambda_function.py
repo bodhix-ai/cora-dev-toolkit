@@ -16,6 +16,7 @@ import os
 import boto3
 from typing import Any, Dict
 import org_common as common
+import voice_common.permissions as voice_permissions
 
 
 # Environment variables
@@ -107,13 +108,9 @@ def handle_list_transcripts(event: Dict[str, Any], user_id: str) -> Dict[str, An
         raise common.ValidationError('orgId query parameter is required')
     org_id = common.validate_uuid(org_id, 'orgId')
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': org_id, 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this organization')
+    # Step 1: Verify org membership
+    if not common.can_access_org_resource(user_id, org_id):
+        raise common.ForbiddenError('Not a member of this organization')
     
     # Pagination
     limit = common.validate_integer(
@@ -170,7 +167,7 @@ def handle_get_transcript(event: Dict[str, Any], user_id: str, transcript_id: st
     transcript_id = common.validate_uuid(transcript_id, 'id')
     query_params = event.get('queryStringParameters', {}) or {}
     
-    # Get transcript
+    # Step 1: Fetch resource
     transcript = common.find_one(
         table='voice_transcripts',
         filters={'id': transcript_id}
@@ -179,13 +176,13 @@ def handle_get_transcript(event: Dict[str, Any], user_id: str, transcript_id: st
     if not transcript:
         raise common.NotFoundError('Transcript not found')
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': transcript['org_id'], 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this transcript')
+    # Step 2: Verify org membership
+    if not common.can_access_org_resource(user_id, transcript['org_id']):
+        raise common.ForbiddenError('Not a member of this organization')
+    
+    # Step 3: Check resource permission
+    if not voice_permissions.can_view_voice_transcript(user_id, transcript_id):
+        raise common.ForbiddenError('You do not have permission to view this transcript')
     
     # Check if we should include full text
     include_text = query_params.get('includeText', 'true').lower() != 'false'
@@ -231,11 +228,11 @@ def handle_delete_transcript(event: Dict[str, Any], user_id: str, transcript_id:
     Delete voice transcript.
     
     Also deletes associated S3 object if present.
-    Only org admins can delete transcripts.
+    Only org admins can delete transcripts (Layer 1 admin auth).
     """
     transcript_id = common.validate_uuid(transcript_id, 'id')
     
-    # Get transcript
+    # Step 1: Fetch resource
     transcript = common.find_one(
         table='voice_transcripts',
         filters={'id': transcript_id}
@@ -244,14 +241,15 @@ def handle_delete_transcript(event: Dict[str, Any], user_id: str, transcript_id:
     if not transcript:
         raise common.NotFoundError('Transcript not found')
     
-    # Verify org membership with admin role
+    # Step 2: Verify org membership
+    if not common.can_access_org_resource(user_id, transcript['org_id']):
+        raise common.ForbiddenError('Not a member of this organization')
+    
+    # Step 3: Verify org admin role (Layer 1 admin check for delete operation)
     membership = common.find_one(
         table='org_members',
         filters={'org_id': transcript['org_id'], 'user_id': user_id}
     )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this transcript')
-    
     if membership.get('role') not in ['admin', 'owner']:
         raise common.ForbiddenError('Only org admins can delete transcripts')
     

@@ -12,12 +12,35 @@ echo -e "${GREEN}Building module-voice backend (zip-based)...${NC}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LAMBDAS_DIR="${SCRIPT_DIR}/lambdas"
+LAYERS_DIR="${SCRIPT_DIR}/layers"
 BUILD_DIR="${SCRIPT_DIR}/.build"
 
 # Clean previous builds
 echo -e "${YELLOW}Cleaning previous builds...${NC}"
 rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
+
+# ========================================
+# Build Lambda Layers
+# ========================================
+echo -e "${GREEN}--- Building voice_common layer ---${NC}"
+LAYER_BUILD_DIR="${BUILD_DIR}/voice_common_layer"
+mkdir -p "${LAYER_BUILD_DIR}/python"
+
+# Copy voice_common layer code
+if [ -d "${LAYERS_DIR}/voice_common/python/voice_common" ]; then
+  cp -r "${LAYERS_DIR}/voice_common/python/voice_common" "${LAYER_BUILD_DIR}/python/"
+  
+  # Create layer ZIP
+  (
+    cd "${LAYER_BUILD_DIR}"
+    zip -r "${BUILD_DIR}/voice_common_layer.zip" python/ -q
+  )
+  
+  echo -e "${GREEN}✓ Layer built: ${BUILD_DIR}/voice_common_layer.zip${NC}"
+else
+  echo -e "${YELLOW}⚠ voice_common layer not found, skipping${NC}"
+fi
 
 # ========================================
 # Build Lambda Functions
