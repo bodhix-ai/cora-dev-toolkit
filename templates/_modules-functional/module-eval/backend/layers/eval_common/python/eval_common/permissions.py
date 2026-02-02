@@ -27,7 +27,7 @@ See: docs/standards/03_std_back_RESOURCE-PERMISSIONS.md
 """
 
 from typing import Optional, List, Dict, Any
-from org_common.db import call_rpc
+from org_common import rpc
 
 
 def is_eval_owner(user_id: str, eval_id: str) -> bool:
@@ -50,7 +50,7 @@ def is_eval_owner(user_id: str, eval_id: str) -> bool:
         >>>     # Allow delete operation
         >>>     common.delete_one('evaluations', {'id': eval_id})
     """
-    return call_rpc('is_eval_owner', {
+    return rpc(function_name='is_eval_owner', params={
         'p_user_id': user_id,
         'p_eval_id': eval_id
     })
@@ -79,7 +79,7 @@ def can_view_eval(user_id: str, eval_id: str) -> bool:
         >>>     eval = common.find_one('evaluations', {'id': eval_id})
         >>>     results = common.find_many('eval_results', {'eval_id': eval_id})
     """
-    return call_rpc('can_view_eval', {
+    return rpc(function_name='can_view_eval', params={
         'p_user_id': user_id,
         'p_eval_id': eval_id
     })
@@ -112,7 +112,7 @@ def can_edit_eval(user_id: str, eval_id: str) -> bool:
         >>>         'description': new_description
         >>>     })
     """
-    return call_rpc('can_edit_eval', {
+    return rpc(function_name='can_edit_eval', params={
         'p_user_id': user_id,
         'p_eval_id': eval_id
     })
@@ -146,7 +146,7 @@ def can_run_eval(user_id: str, eval_id: str) -> bool:
         >>>         'status': 'running'
         >>>     })
     """
-    return call_rpc('can_run_eval', {
+    return rpc(function_name='can_run_eval', params={
         'p_user_id': user_id,
         'p_eval_id': eval_id
     })
@@ -188,7 +188,7 @@ def get_accessible_evals(
         >>> for eval in evals:
         >>>     print(f"{eval['name']} ({eval['access_type']})")
     """
-    result = call_rpc('get_accessible_evals', {
+    result = rpc(function_name='get_accessible_evals', params={
         'p_user_id': user_id,
         'p_org_id': org_id,
         'p_ws_id': ws_id
