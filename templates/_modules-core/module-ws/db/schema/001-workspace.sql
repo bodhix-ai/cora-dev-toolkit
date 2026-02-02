@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS public.workspaces (
     updated_by UUID REFERENCES auth.users(id),
     
     -- Constraints
-    CONSTRAINT workspaces_status_check CHECK (status IN ('active', 'archived')),
+    CONSTRAINT workspaces_status_check CHECK (status IN ('active', 'archived', 'deleted')),
     CONSTRAINT workspaces_color_check CHECK (color ~ '^#[0-9A-Fa-f]{6}$'),
     CONSTRAINT workspaces_retention_check CHECK (retention_days > 0)
 );

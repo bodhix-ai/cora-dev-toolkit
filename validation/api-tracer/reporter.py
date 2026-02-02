@@ -131,14 +131,33 @@ class Reporter:
         lines.append(f"Warnings: {Fore.YELLOW}{len([m for m in report.mismatches if m.severity == 'warning'])}{Style.RESET_ALL}")
         lines.append("")
         
-        # Auth validation summary
+        # Auth validation summary (with layer breakdown)
         if 'auth_validation' in report.summary:
             auth = report.summary['auth_validation']
             if auth.get('enabled'):
-                auth_errors = auth.get('errors', 0)
-                auth_warnings = auth.get('warnings', 0)
-                auth_color = Fore.GREEN if auth_errors == 0 else Fore.RED
-                lines.append(f"Auth Validation (ADR-019): {auth_color}{auth_errors} errors{Style.RESET_ALL}, {Fore.YELLOW}{auth_warnings} warnings{Style.RESET_ALL}")
+                # Check if layer breakdown is available
+                if 'layer1' in auth and 'layer2' in auth:
+                    lines.append(f"{Fore.CYAN}Auth Validation (ADR-019):{Style.RESET_ALL}")
+                    
+                    # Layer 1: Admin Authorization
+                    l1 = auth['layer1']
+                    l1_errors = l1.get('errors', 0)
+                    l1_warnings = l1.get('warnings', 0)
+                    l1_color = Fore.GREEN if l1_errors == 0 else Fore.RED
+                    lines.append(f"  Layer 1 (Admin Auth): {l1_color}{l1_errors} errors{Style.RESET_ALL}, {Fore.YELLOW}{l1_warnings} warnings{Style.RESET_ALL}")
+                    
+                    # Layer 2: Resource Permissions
+                    l2 = auth['layer2']
+                    l2_errors = l2.get('errors', 0)
+                    l2_warnings = l2.get('warnings', 0)
+                    l2_color = Fore.GREEN if l2_errors == 0 else Fore.RED
+                    lines.append(f"  Layer 2 (Resource Permissions): {l2_color}{l2_errors} errors{Style.RESET_ALL}, {Fore.YELLOW}{l2_warnings} warnings{Style.RESET_ALL}")
+                else:
+                    # Fallback to simple summary if layer breakdown unavailable
+                    auth_errors = auth.get('total_errors', auth.get('errors', 0))
+                    auth_warnings = auth.get('total_warnings', auth.get('warnings', 0))
+                    auth_color = Fore.GREEN if auth_errors == 0 else Fore.RED
+                    lines.append(f"Auth Validation (ADR-019): {auth_color}{auth_errors} errors{Style.RESET_ALL}, {Fore.YELLOW}{auth_warnings} warnings{Style.RESET_ALL}")
         
         # Code quality validation summary
         if 'code_quality_validation' in report.summary:

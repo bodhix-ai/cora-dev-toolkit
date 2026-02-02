@@ -276,6 +276,32 @@ elif [[ "$REL_PATH" =~ ^_modules-functional/(module-[^/]+)/backend/lambdas/(.+)$
     DEST_FILE="${PROJECT_PATH}/lambdas/${MODULE_NAME}/${LAMBDA_PATH}"
   fi
 
+# Core module backend layers - stack repo only
+elif [[ "$REL_PATH" =~ ^_modules-core/(module-[^/]+)/backend/layers/(.+)$ ]]; then
+  MODULE_NAME="${BASH_REMATCH[1]}"
+  LAYER_PATH="${BASH_REMATCH[2]}"
+  
+  if [[ "$IS_STACK_REPO" == "true" ]]; then
+    # Stack repo: packages/module-{name}/backend/layers/...
+    DEST_FILE="${PROJECT_PATH}/packages/${MODULE_NAME}/backend/layers/${LAYER_PATH}"
+  else
+    log_error "Layer files should be synced to stack repo, not infra repo"
+    exit 1
+  fi
+
+# Functional module backend layers - stack repo only
+elif [[ "$REL_PATH" =~ ^_modules-functional/(module-[^/]+)/backend/layers/(.+)$ ]]; then
+  MODULE_NAME="${BASH_REMATCH[1]}"
+  LAYER_PATH="${BASH_REMATCH[2]}"
+  
+  if [[ "$IS_STACK_REPO" == "true" ]]; then
+    # Stack repo: packages/module-{name}/backend/layers/...
+    DEST_FILE="${PROJECT_PATH}/packages/${MODULE_NAME}/backend/layers/${LAYER_PATH}"
+  else
+    log_error "Layer files should be synced to stack repo, not infra repo"
+    exit 1
+  fi
+
 # Stack template: _project-stack-template/... → ...
 elif [[ "$REL_PATH" == _project-stack-template/* ]]; then
   DEST_FILE="${PROJECT_PATH}/${REL_PATH#_project-stack-template/}"

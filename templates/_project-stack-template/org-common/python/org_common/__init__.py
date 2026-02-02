@@ -4,7 +4,7 @@ org_common - Common utilities for CORA modules
 This package provides CORE functionality for all CORA modules, including:
 - Database operations (db.py)
 - Core resource permissions (resource_permissions.py)
-- Response formatting
+- Response formatting (responses.py)
 - Validation helpers
 - Error classes
 
@@ -38,7 +38,22 @@ from .resource_permissions import (
     check_rpc_permission,
 )
 
-# Export core permission functions
+# Import response builders
+from .responses import (
+    success_response,
+    error_response,
+    created_response,
+    no_content_response,
+    bad_request_response,
+    unauthorized_response,
+    forbidden_response,
+    not_found_response,
+    conflict_response,
+    internal_error_response,
+    method_not_allowed_response,
+)
+
+# Export core permission functions and response builders
 __all__ = [
     # Core membership checks (always available)
     'can_access_org_resource',
@@ -47,4 +62,17 @@ __all__ = [
     # Generic helpers for new modules
     'check_resource_ownership',
     'check_rpc_permission',
+    
+    # Response builders
+    'success_response',
+    'error_response',
+    'created_response',
+    'no_content_response',
+    'bad_request_response',
+    'unauthorized_response',
+    'forbidden_response',
+    'not_found_response',
+    'conflict_response',
+    'internal_error_response',
+    'method_not_allowed_response',
 ]

@@ -33,24 +33,64 @@ class AuthIssue:
 
 
 class AuthIssueType:
-    """Constants for auth issue types."""
-    # Frontend issues
+    """
+    Constants for auth issue types.
+    
+    Layer 1 (Admin Auth - ADR-019a/b): /admin/* routes
+    Layer 2 (Resource Permissions - ADR-019c): /{module}/* data routes
+    """
+    # ============================================================================
+    # LAYER 1: Admin Authorization (ADR-019a/b)
+    # ============================================================================
+    
+    # Frontend issues (Layer 1)
+    ADMIN_MISSING_USE_USER = 'auth_admin_missing_use_user'
+    ADMIN_MISSING_USE_ROLE = 'auth_admin_missing_use_role'
+    ADMIN_MISSING_ORG_CONTEXT = 'auth_admin_missing_org_context'
+    ADMIN_MISSING_LOADING_CHECK = 'auth_admin_missing_loading_check'
+    ADMIN_DIRECT_ROLE_ACCESS = 'auth_admin_direct_role_access'
+    ADMIN_MISSING_ORG_ID_IN_API_CALL = 'auth_admin_missing_org_id_in_api_call'
+    ADMIN_INVALID_HOOK_DESTRUCTURING = 'auth_admin_invalid_hook_destructuring'
+    
+    # Lambda issues (Layer 1)
+    ADMIN_MISSING_CHECK_SYS_ADMIN = 'auth_admin_missing_check_sys_admin'
+    ADMIN_MISSING_CHECK_ORG_ADMIN = 'auth_admin_missing_check_org_admin'
+    ADMIN_MISSING_CHECK_WS_ADMIN = 'auth_admin_missing_check_ws_admin'
+    ADMIN_MISSING_ORG_CONTEXT_EXTRACTION = 'auth_admin_missing_org_context_extraction'
+    ADMIN_MISSING_EXTERNAL_UID_CONVERSION = 'auth_admin_missing_external_uid_conversion'
+    ADMIN_DIRECT_JWT_ROLE_ACCESS = 'auth_admin_direct_jwt_role_access'
+    ADMIN_AUTH_IN_HANDLER = 'auth_admin_auth_in_handler'
+    ADMIN_DUPLICATE_AUTH_CHECK = 'auth_admin_duplicate_auth_check'
+    
+    # ============================================================================
+    # LAYER 2: Resource Permissions (ADR-019c)
+    # ============================================================================
+    
+    # Lambda issues (Layer 2)
+    RESOURCE_MISSING_ORG_MEMBERSHIP_CHECK = 'auth_resource_missing_org_membership_check'
+    RESOURCE_MISSING_OWNERSHIP_CHECK = 'auth_resource_missing_ownership_check'
+    RESOURCE_ADMIN_ROLE_OVERRIDE = 'auth_resource_admin_role_override'
+    RESOURCE_MISSING_SCOPE_BEFORE_PERMISSION = 'auth_resource_missing_scope_before_permission'
+    
+    # ============================================================================
+    # BACKWARD COMPATIBILITY (Deprecated - use layer-prefixed names)
+    # ============================================================================
+    
+    # Old names (deprecated but kept for backward compatibility)
     MISSING_USE_USER = 'missing_use_user'
     MISSING_USE_ROLE = 'missing_use_role'
     MISSING_ORG_CONTEXT = 'missing_org_context'
     MISSING_LOADING_CHECK = 'missing_loading_check'
     DIRECT_ROLE_ACCESS = 'direct_role_access'
-    MISSING_ORG_ID_IN_API_CALL = 'missing_org_id_in_api_call'  # API calls to /admin/org/* without orgId
-    INVALID_HOOK_DESTRUCTURING = 'invalid_hook_destructuring'  # Destructured properties don't match hook return type
-    
-    # Lambda issues
+    MISSING_ORG_ID_IN_API_CALL = 'missing_org_id_in_api_call'
+    INVALID_HOOK_DESTRUCTURING = 'invalid_hook_destructuring'
     MISSING_CHECK_SYS_ADMIN = 'missing_check_sys_admin'
     MISSING_CHECK_ORG_ADMIN = 'missing_check_org_admin'
     MISSING_CHECK_WS_ADMIN = 'missing_check_ws_admin'
     MISSING_ORG_CONTEXT_EXTRACTION = 'missing_org_context_extraction'
     MISSING_EXTERNAL_UID_CONVERSION = 'missing_external_uid_conversion'
     DIRECT_JWT_ROLE_ACCESS = 'direct_jwt_role_access'
-    AUTH_IN_HANDLER = 'auth_in_handler'  # Auth should be in router, not handler
+    AUTH_IN_HANDLER = 'auth_in_handler'
     DUPLICATE_AUTH_CHECK = 'duplicate_auth_check'
 
 
@@ -149,7 +189,7 @@ class FrontendAuthValidator:
         if not has_use_user and route_type != 'none':
             self.issues.append(AuthIssue(
                 severity='error',
-                issue_type=AuthIssueType.MISSING_USE_USER,
+                issue_type=AuthIssueType.ADMIN_MISSING_USE_USER,
                 layer='frontend',
                 file=self.current_file,
                 line=1,
@@ -166,7 +206,7 @@ class FrontendAuthValidator:
         if route_type == 'sys' and not has_use_role:
             self.issues.append(AuthIssue(
                 severity='error',
-                issue_type=AuthIssueType.MISSING_USE_ROLE,
+                issue_type=AuthIssueType.ADMIN_MISSING_USE_ROLE,
                 layer='frontend',
                 file=self.current_file,
                 line=1,
@@ -179,7 +219,7 @@ class FrontendAuthValidator:
         if route_type == 'org' and not has_use_role:
             self.issues.append(AuthIssue(
                 severity='error',
-                issue_type=AuthIssueType.MISSING_USE_ROLE,
+                issue_type=AuthIssueType.ADMIN_MISSING_USE_ROLE,
                 layer='frontend',
                 file=self.current_file,
                 line=1,
@@ -203,7 +243,7 @@ class FrontendAuthValidator:
         if route_type == 'org' and not has_org_context:
             self.issues.append(AuthIssue(
                 severity='error',
-                issue_type=AuthIssueType.MISSING_ORG_CONTEXT,
+                issue_type=AuthIssueType.ADMIN_MISSING_ORG_CONTEXT,
                 layer='frontend',
                 file=self.current_file,
                 line=1,
@@ -224,7 +264,7 @@ class FrontendAuthValidator:
         if route_type != 'none' and not has_loading_check:
             self.issues.append(AuthIssue(
                 severity='error',
-                issue_type=AuthIssueType.MISSING_LOADING_CHECK,
+                issue_type=AuthIssueType.ADMIN_MISSING_LOADING_CHECK,
                 layer='frontend',
                 file=self.current_file,
                 line=1,
@@ -280,7 +320,7 @@ class FrontendAuthValidator:
             if prop in invalid_props:
                 self.issues.append(AuthIssue(
                     severity='error',
-                    issue_type=AuthIssueType.INVALID_HOOK_DESTRUCTURING,
+                    issue_type=AuthIssueType.ADMIN_INVALID_HOOK_DESTRUCTURING,
                     layer='frontend',
                     file=self.current_file,
                     line=line,
@@ -292,7 +332,7 @@ class FrontendAuthValidator:
                 # Unknown property - warn
                 self.issues.append(AuthIssue(
                     severity='warning',
-                    issue_type=AuthIssueType.INVALID_HOOK_DESTRUCTURING,
+                    issue_type=AuthIssueType.ADMIN_INVALID_HOOK_DESTRUCTURING,
                     layer='frontend',
                     file=self.current_file,
                     line=line,
@@ -326,7 +366,7 @@ class FrontendAuthValidator:
                 
                 self.issues.append(AuthIssue(
                     severity='error',
-                    issue_type=AuthIssueType.MISSING_ORG_ID_IN_API_CALL,
+                    issue_type=AuthIssueType.ADMIN_MISSING_ORG_ID_IN_API_CALL,
                     layer='frontend',
                     file=self.current_file,
                     line=line,
@@ -354,7 +394,7 @@ class FrontendAuthValidator:
                 line = content[:match.start()].count('\n') + 1
                 self.issues.append(AuthIssue(
                     severity='error',
-                    issue_type=AuthIssueType.DIRECT_ROLE_ACCESS,
+                    issue_type=AuthIssueType.ADMIN_DIRECT_ROLE_ACCESS,
                     layer='frontend',
                     file=self.current_file,
                     line=line,
@@ -623,7 +663,7 @@ class LambdaAuthValidator:
         if handles_admin and not has_conversion:
             self.issues.append(AuthIssue(
                 severity='error',
-                issue_type=AuthIssueType.MISSING_EXTERNAL_UID_CONVERSION,
+                issue_type=AuthIssueType.ADMIN_MISSING_EXTERNAL_UID_CONVERSION,
                 layer='lambda',
                 file=self.current_file,
                 line=1,
@@ -651,7 +691,7 @@ class LambdaAuthValidator:
                 for method, path in self.sys_routes:
                     self.issues.append(AuthIssue(
                         severity='error',
-                        issue_type=AuthIssueType.MISSING_CHECK_SYS_ADMIN,
+                        issue_type=AuthIssueType.ADMIN_MISSING_CHECK_SYS_ADMIN,
                         layer='lambda',
                         file=self.current_file,
                         line=line,
@@ -665,7 +705,7 @@ class LambdaAuthValidator:
                 # Fallback to file-level error if no routes extracted
                 self.issues.append(AuthIssue(
                     severity='error',
-                    issue_type=AuthIssueType.MISSING_CHECK_SYS_ADMIN,
+                    issue_type=AuthIssueType.ADMIN_MISSING_CHECK_SYS_ADMIN,
                     layer='lambda',
                     file=self.current_file,
                     line=line,
@@ -699,7 +739,7 @@ class LambdaAuthValidator:
                 for method, path in self.org_routes:
                     self.issues.append(AuthIssue(
                         severity='error',
-                        issue_type=AuthIssueType.MISSING_CHECK_ORG_ADMIN,
+                        issue_type=AuthIssueType.ADMIN_MISSING_CHECK_ORG_ADMIN,
                         layer='lambda',
                         file=self.current_file,
                         line=line,
@@ -713,7 +753,7 @@ class LambdaAuthValidator:
                 # Fallback to file-level error if no routes extracted
                 self.issues.append(AuthIssue(
                     severity='error',
-                    issue_type=AuthIssueType.MISSING_CHECK_ORG_ADMIN,
+                    issue_type=AuthIssueType.ADMIN_MISSING_CHECK_ORG_ADMIN,
                     layer='lambda',
                     file=self.current_file,
                     line=line,
@@ -728,7 +768,7 @@ class LambdaAuthValidator:
                 for method, path in self.org_routes:
                     self.issues.append(AuthIssue(
                         severity='error',
-                        issue_type=AuthIssueType.MISSING_ORG_CONTEXT_EXTRACTION,
+                        issue_type=AuthIssueType.ADMIN_MISSING_ORG_CONTEXT_EXTRACTION,
                         layer='lambda',
                         file=self.current_file,
                         line=line,
@@ -742,7 +782,7 @@ class LambdaAuthValidator:
                 # Fallback to file-level error if no routes extracted
                 self.issues.append(AuthIssue(
                     severity='error',
-                    issue_type=AuthIssueType.MISSING_ORG_CONTEXT_EXTRACTION,
+                    issue_type=AuthIssueType.ADMIN_MISSING_ORG_CONTEXT_EXTRACTION,
                     layer='lambda',
                     file=self.current_file,
                     line=line,
@@ -769,7 +809,7 @@ class LambdaAuthValidator:
                 for method, path in self.ws_routes:
                     self.issues.append(AuthIssue(
                         severity='error',
-                        issue_type=AuthIssueType.MISSING_CHECK_WS_ADMIN,
+                        issue_type=AuthIssueType.ADMIN_MISSING_CHECK_WS_ADMIN,
                         layer='lambda',
                         file=self.current_file,
                         line=line,
@@ -783,7 +823,7 @@ class LambdaAuthValidator:
                 # Fallback to file-level error if no routes extracted
                 self.issues.append(AuthIssue(
                     severity='error',
-                    issue_type=AuthIssueType.MISSING_CHECK_WS_ADMIN,
+                    issue_type=AuthIssueType.ADMIN_MISSING_CHECK_WS_ADMIN,
                     layer='lambda',
                     file=self.current_file,
                     line=line,
@@ -810,7 +850,7 @@ class LambdaAuthValidator:
                 line = content[:match.start()].count('\n') + 1
                 self.issues.append(AuthIssue(
                     severity='error',
-                    issue_type=AuthIssueType.DIRECT_JWT_ROLE_ACCESS,
+                    issue_type=AuthIssueType.ADMIN_DIRECT_JWT_ROLE_ACCESS,
                     layer='lambda',
                     file=self.current_file,
                     line=line,
@@ -855,7 +895,7 @@ class LambdaAuthValidator:
         if len(leaf_handlers) > 1:
             self.issues.append(AuthIssue(
                 severity='error',
-                issue_type=AuthIssueType.AUTH_IN_HANDLER,
+                issue_type=AuthIssueType.ADMIN_AUTH_IN_HANDLER,
                 layer='lambda',
                 file=self.current_file,
                 line=1,
@@ -869,7 +909,7 @@ class LambdaAuthValidator:
         if auth_check_count > 6:  # More than 6 suggests actual duplication
             self.issues.append(AuthIssue(
                 severity='error',
-                issue_type=AuthIssueType.DUPLICATE_AUTH_CHECK,
+                issue_type=AuthIssueType.ADMIN_DUPLICATE_AUTH_CHECK,
                 layer='lambda',
                 file=self.current_file,
                 line=1,
@@ -887,26 +927,234 @@ class LambdaAuthValidator:
         return 1
 
 
+class ResourcePermissionValidator:
+    """
+    Validates resource permission patterns per ADR-019c.
+    
+    Checks:
+    - Org/workspace membership validation before resource access
+    - Resource ownership/permission checks (can_*, is_*_owner)
+    - No admin role override in data routes
+    - Scope validation before permission checks
+    """
+    
+    def __init__(self):
+        self.issues: List[AuthIssue] = []
+        self.current_file: str = ""
+    
+    def validate_file(self, file_path: str, content: str) -> List[AuthIssue]:
+        """
+        Validate a Python Lambda file for resource permission patterns.
+        
+        Args:
+            file_path: Path to the file
+            content: File content
+            
+        Returns:
+            List of AuthIssue objects
+        """
+        self.current_file = file_path
+        self.issues = []
+        
+        try:
+            tree = ast.parse(content, filename=file_path)
+        except SyntaxError as e:
+            logger.warning(f"Syntax error parsing {file_path}: {e}")
+            return []
+        
+        # Detect data routes (non-admin routes)
+        data_routes = self._detect_data_routes(tree, content)
+        
+        if not data_routes:
+            # Not a data route Lambda, no resource permission requirements
+            return []
+        
+        # Check for required patterns
+        self._check_org_membership_validation(tree, content, data_routes)
+        self._check_resource_permission_functions(tree, content, data_routes)
+        self._check_admin_role_override(tree, content, data_routes)
+        
+        return self.issues
+    
+    def _detect_data_routes(self, tree: ast.AST, content: str) -> List[Tuple[str, str]]:
+        """
+        Detect data routes (non-admin routes) from docstring.
+        
+        Returns:
+            List of (method, path) tuples for data routes
+        """
+        data_routes = []
+        
+        # Get combined docstring
+        docstring = ast.get_docstring(tree) or ""
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == 'lambda_handler':
+                handler_doc = ast.get_docstring(node) or ""
+                docstring += "\n" + handler_doc
+        
+        # Pattern matches: - GET /path/here - Description
+        pattern = r'-\s+(GET|POST|PUT|DELETE|PATCH)\s+(/\S+)'
+        
+        for match in re.finditer(pattern, docstring):
+            method = match.group(1)
+            path = match.group(2)
+            
+            # Skip admin routes
+            if '/admin/' not in path:
+                data_routes.append((method, path))
+        
+        return data_routes
+    
+    def _check_org_membership_validation(self, tree: ast.AST, content: str, data_routes: List[Tuple[str, str]]):
+        """
+        Check that org/workspace membership is validated before resource access.
+        
+        Per ADR-019c: Must call is_org_member() or can_access_org_resource()
+        before accessing org-scoped resources.
+        """
+        # Check for org membership functions
+        has_org_membership = (
+            'is_org_member' in content or
+            'can_access_org_resource' in content or
+            'is_ws_member' in content or
+            'can_access_ws_resource' in content
+        )
+        
+        if data_routes and not has_org_membership:
+            # Data routes exist but no membership validation
+            for method, path in data_routes:
+                self.issues.append(AuthIssue(
+                    severity='error',
+                    issue_type=AuthIssueType.RESOURCE_MISSING_ORG_MEMBERSHIP_CHECK,
+                    layer='lambda',
+                    file=self.current_file,
+                    line=1,
+                    route_path=path,
+                    route_method=method,
+                    issue=f"Data route {method} {path} missing org/workspace membership validation",
+                    suggestion="Add: if not common.can_access_org_resource(user_id, org_id): return common.forbidden_response('Not a member')",
+                    standard_ref="ADR-019c"
+                ))
+    
+    def _check_resource_permission_functions(self, tree: ast.AST, content: str, data_routes: List[Tuple[str, str]]):
+        """
+        Check for resource permission functions (can_*, is_*_owner).
+        
+        Per ADR-019c: Resource routes must check ownership or permissions.
+        """
+        # Check for permission functions
+        has_permission_check = (
+            re.search(r'can_\w+\(', content) or
+            re.search(r'is_\w+_owner\(', content) or
+            'can_access_' in content or
+            'can_edit_' in content or
+            'can_view_' in content
+        )
+        
+        if data_routes and not has_permission_check:
+            # Data routes exist but no permission checks
+            for method, path in data_routes:
+                self.issues.append(AuthIssue(
+                    severity='error',
+                    issue_type=AuthIssueType.RESOURCE_MISSING_OWNERSHIP_CHECK,
+                    layer='lambda',
+                    file=self.current_file,
+                    line=1,
+                    route_path=path,
+                    route_method=method,
+                    issue=f"Data route {method} {path} missing resource permission check",
+                    suggestion="Add: if not can_access_<resource>(user_id, resource_id): return common.forbidden_response('Access denied')",
+                    standard_ref="ADR-019c"
+                ))
+    
+    def _check_admin_role_override(self, tree: ast.AST, content: str, data_routes: List[Tuple[str, str]]):
+        """
+        Check for admin role override anti-pattern in data routes.
+        
+        Per ADR-019c: Admin roles do NOT provide automatic access to user resources.
+        """
+        # Check if admin checks are used in data routes
+        # This is an anti-pattern - admin roles shouldn't bypass resource permissions
+        has_admin_check = (
+            'check_sys_admin' in content or
+            'check_org_admin' in content or
+            'check_ws_admin' in content or
+            'is_sys_admin' in content or
+            'is_org_admin' in content
+        )
+        
+        # If we have data routes AND admin checks, this might be an override pattern
+        if data_routes and has_admin_check:
+            # Check if admin check is used as permission bypass
+            # Pattern: if is_*_admin(...): return success
+            admin_override_patterns = [
+                r'if.*check_sys_admin.*:.*return.*success',
+                r'if.*is_sys_admin.*:.*return',
+                r'if.*check_org_admin.*:.*return.*success',
+                r'if.*is_org_admin.*:.*return',
+            ]
+            
+            for pattern in admin_override_patterns:
+                if re.search(pattern, content, re.DOTALL):
+                    for method, path in data_routes:
+                        self.issues.append(AuthIssue(
+                            severity='warning',
+                            issue_type=AuthIssueType.RESOURCE_ADMIN_ROLE_OVERRIDE,
+                            layer='lambda',
+                            file=self.current_file,
+                            line=1,
+                            route_path=path,
+                            route_method=method,
+                            issue=f"Data route {method} {path} may use admin role as permission override",
+                            suggestion="Admin roles should NOT provide automatic access to user resources. Use explicit permission grants instead (ADR-019c)",
+                            standard_ref="ADR-019c"
+                        ))
+                    break
+
+
 class AuthLifecycleValidator:
     """
     Full-stack auth lifecycle validator.
     
     Validates that auth patterns are consistent across Frontend → Gateway → Lambda
     per ADR-019.
+    
+    Layer 1: Admin Authorization (ADR-019a/b) - /admin/* routes
+    Layer 2: Resource Permissions (ADR-019c) - /{module}/* data routes
     """
     
     def __init__(self):
         self.frontend_validator = FrontendAuthValidator()
         self.lambda_validator = LambdaAuthValidator()
+        self.resource_validator = ResourcePermissionValidator()
         self.issues: List[AuthIssue] = []
     
     def validate_frontend_file(self, file_path: str, content: str) -> List[AuthIssue]:
         """Validate a frontend file."""
         return self.frontend_validator.validate_file(file_path, content)
     
-    def validate_lambda_file(self, file_path: str, content: str) -> List[AuthIssue]:
-        """Validate a Lambda file."""
-        return self.lambda_validator.validate_file(file_path, content)
+    def validate_lambda_file(self, file_path: str, content: str, validate_layer2: bool = False) -> List[AuthIssue]:
+        """
+        Validate a Lambda file.
+        
+        Args:
+            file_path: Path to the file
+            content: File content
+            validate_layer2: If True, also run Layer 2 (resource permission) validation
+            
+        Returns:
+            List of AuthIssue objects
+        """
+        issues = []
+        
+        # Layer 1: Admin authorization validation
+        issues.extend(self.lambda_validator.validate_file(file_path, content))
+        
+        # Layer 2: Resource permission validation
+        if validate_layer2:
+            issues.extend(self.resource_validator.validate_file(file_path, content))
+        
+        return issues
     
     def validate_auth_lifecycle(
         self, 

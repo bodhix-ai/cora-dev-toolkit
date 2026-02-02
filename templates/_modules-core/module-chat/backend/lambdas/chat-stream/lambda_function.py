@@ -32,6 +32,7 @@ import os
 import logging
 from typing import Any, Dict, Generator, List, Optional, Union
 import org_common as common
+from chat_common.permissions import can_view_chat, can_edit_chat, is_chat_owner
 
 # Configure logging
 logger = logging.getLogger()
@@ -180,29 +181,24 @@ def response_stream_handler(event: Dict[str, Any], context: Any) -> Generator[st
         # Parse request body
         body = json.loads(event.get('body', '{}'))
         
-        # Check permission to add messages
-        can_add = common.rpc(
-            
-'can_add_messages',
-            
-{
-                'p_user_id': supabase_user_id,
-                'p_session_id': session_id
-            }
-        )
-        
-        if not can_add:
-            yield _sse_event('error', {'message': 'You do not have permission to send messages to this chat'})
-            return
-        
-        # Get session info with org_id filter for multi-tenancy (CORA Compliance)
+        # 1. Fetch resource (ADR-019c)
         session = common.find_one(
             table='chat_sessions',
-            filters={'id': session_id, 'org_id': org_id, 'is_deleted': False}
+            filters={'id': session_id, 'is_deleted': False}
         )
         
         if not session:
-            yield _sse_event('error', {'message': 'Chat session not found or access denied'})
+            yield _sse_event('error', {'message': 'Chat session not found'})
+            return
+        
+        # 2. Verify org membership (ADR-019c: MUST come before permission check)
+        if not common.can_access_org_resource(supabase_user_id, session['org_id']):
+            yield _sse_event('error', {'message': 'Not a member of organization'})
+            return
+        
+        # 3. Check resource permission (ADR-019c)
+        if not can_edit_chat(supabase_user_id, session_id):
+            yield _sse_event('error', {'message': 'You do not have permission to send messages to this chat'})
             return
         
         # Extract parameters
@@ -251,28 +247,22 @@ def handle_stream_sync(
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check permission to add messages
-    can_add = common.rpc(
-        
-'can_add_messages',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
-    )
-    
-    if not can_add:
-        raise common.ForbiddenError('You do not have permission to send messages to this chat')
-    
-    # Get session info with org_id filter for multi-tenancy (CORA Compliance)
+    # 1. Fetch resource (ADR-019c)
     session = common.find_one(
         table='chat_sessions',
-        filters={'id': session_id, 'org_id': org_id, 'is_deleted': False}
+        filters={'id': session_id, 'is_deleted': False}
     )
     
     if not session:
-        raise common.NotFoundError('Chat session not found or access denied')
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, session['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check resource permission (ADR-019c)
+    if not can_edit_chat(user_id, session_id):
+        raise common.ForbiddenError('You do not have permission to send messages to this chat')
     
     # Extract parameters
     user_message = body.get('message')

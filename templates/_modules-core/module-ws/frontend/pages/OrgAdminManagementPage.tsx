@@ -111,6 +111,10 @@ export function OrgAdminManagementPage({
   const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(null);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
+  // Filter state
+  const [statusFilter, setStatusFilter] = useState<WorkspaceStatus | "all">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
   // Org-level settings state
   const [allowUserCreation, setAllowUserCreation] = useState(true);
   const [requireApproval, setRequireApproval] = useState(false);
@@ -201,7 +205,7 @@ export function OrgAdminManagementPage({
       const client = createWorkspaceApiClient(session.accessToken as string);
       const result = await client.listWorkspaces({
         orgId: orgId,
-        status: undefined, // Get all statuses
+        status: "all" as any, // Get all statuses (active, archived, deleted)
         limit: 1000,
       });
       
@@ -358,6 +362,24 @@ export function OrgAdminManagementPage({
     }
   };
 
+  // Filter workspaces by status and search query
+  const filteredWorkspaces = workspaces.filter((ws) => {
+    // Status filter
+    if (statusFilter !== "all" && ws.status !== statusFilter) {
+      return false;
+    }
+    
+    // Search filter (matches workspace name or tags)
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesName = ws.name.toLowerCase().includes(query);
+      const matchesTags = ws.tags.some(tag => tag.toLowerCase().includes(query));
+      return matchesName || matchesTags;
+    }
+    
+    return true;
+  });
+
   const getStatusChipColor = (
     status: WorkspaceStatus
   ): "success" | "default" | "warning" => {
@@ -365,9 +387,9 @@ export function OrgAdminManagementPage({
       case "active":
         return "success";
       case "archived":
-        return "default";
+        return "warning";  // Orange to match user workspace page
       default:
-        return "warning";
+        return "default";
     }
   };
 
@@ -465,11 +487,53 @@ export function OrgAdminManagementPage({
         <>
           {/* All Workspaces Tab */}
           <TabPanel value={activeTab} index={0}>
+            {/* Filters */}
+            <Box sx={{ mb: 3 }}>
+              {/* Search by name */}
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search workspaces by name or tags..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                sx={{ mb: 2 }}
+                InputProps={{
+                  startAdornment: (
+                    <Box sx={{ mr: 1, display: "flex", alignItems: "center" }}>
+                      <Typography variant="body2" color="text.secondary">🔍</Typography>
+                    </Box>
+                  ),
+                }}
+              />
+              
+              {/* Status Filter */}
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <Chip
+                  label={`All (${workspaces.length})`}
+                  color={statusFilter === "all" ? "primary" : "default"}
+                  onClick={() => setStatusFilter("all")}
+                  sx={{ cursor: "pointer" }}
+                />
+                <Chip
+                  label={`Active (${workspaces.filter(ws => ws.status === "active").length})`}
+                  color={statusFilter === "active" ? "primary" : "default"}
+                  onClick={() => setStatusFilter("active")}
+                  sx={{ cursor: "pointer" }}
+                />
+                <Chip
+                  label={`Archived (${workspaces.filter(ws => ws.status === "archived").length})`}
+                  color={statusFilter === "archived" ? "primary" : "default"}
+                  onClick={() => setStatusFilter("archived")}
+                  sx={{ cursor: "pointer" }}
+                />
+              </Box>
+            </Box>
+
             {workspacesLoading ? (
               <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
                 <CircularProgress />
               </Box>
-            ) : workspaces.length > 0 ? (
+            ) : filteredWorkspaces.length > 0 ? (
               <Paper>
                 {/* Bulk Actions Bar */}
                 {selectedIds.length > 0 && (
@@ -483,7 +547,7 @@ export function OrgAdminManagementPage({
                     }}
                   >
                     <Typography variant="body2">
-                      {selectedIds.length} workspace(s) selected
+                      {selectedIds.length} of {filteredWorkspaces.length} workspace(s) selected
                     </Typography>
                     <Box sx={{ display: "flex", gap: 1 }}>
                       <Button
@@ -515,12 +579,18 @@ export function OrgAdminManagementPage({
                       <TableRow>
                         <TableCell padding="checkbox">
                           <Checkbox
-                            checked={selectedIds.length === workspaces.length}
+                            checked={filteredWorkspaces.length > 0 && selectedIds.length === filteredWorkspaces.length}
                             indeterminate={
                               selectedIds.length > 0 &&
-                              selectedIds.length < workspaces.length
+                              selectedIds.length < filteredWorkspaces.length
                             }
-                            onChange={(e) => handleSelectAll(e.target.checked)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedIds(filteredWorkspaces.map((ws) => ws.id));
+                              } else {
+                                setSelectedIds([]);
+                              }
+                            }}
                             aria-label="Select all workspaces"
                           />
                         </TableCell>
@@ -534,7 +604,7 @@ export function OrgAdminManagementPage({
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {workspaces.map((workspace) => (
+                      {filteredWorkspaces.map((workspace) => (
                         <TableRow
                           key={workspace.id}
                           hover
@@ -609,13 +679,22 @@ export function OrgAdminManagementPage({
                   </Table>
                 </TableContainer>
               </Paper>
-            ) : (
+            ) : workspaces.length === 0 ? (
               <Paper sx={{ p: 6, textAlign: "center" }}>
                 <Typography variant="h5" color="text.secondary" gutterBottom>
                   No workspaces found
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Workspaces created by organization members will appear here
+                </Typography>
+              </Paper>
+            ) : (
+              <Paper sx={{ p: 6, textAlign: "center" }}>
+                <Typography variant="h5" color="text.secondary" gutterBottom>
+                  No {statusFilter} workspaces
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Try selecting a different status filter
                 </Typography>
               </Paper>
             )}
