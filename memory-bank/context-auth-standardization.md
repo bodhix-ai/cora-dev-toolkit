@@ -29,7 +29,7 @@ The goal of this initiative is to standardize authentication patterns across all
 ## Sprint History
 
 | Sprint | Branch | Plan | Status | Completed |
-|--------|--------|------|--------|-----------|
+|--------|--------|------|--------|--------------|
 | S0 | `auth-standardization-s0` | `plan_s0-auth-standardization.md` | ✅ Complete | 2026-01-30 |
 | S1 | `auth-standardization-s1` | `plan_s1-auth-standardization.md` | ✅ Complete | 2026-01-31 |
 | S2 | `auth-standardization-s2` | `plan_s2-auth-standardization.md` | ✅ Complete | 2026-02-01 |
