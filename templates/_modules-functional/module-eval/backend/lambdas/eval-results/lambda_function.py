@@ -35,6 +35,8 @@ import sys
 sys.path.insert(0, '/opt/python')
 
 import org_common as common
+from org_common import can_access_org_resource
+from eval_common.permissions import can_view_eval, can_edit_eval, is_eval_owner as eval_is_owner
 import boto3
 
 # Configure logging
@@ -121,7 +123,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Main evaluation CRUD
         if eval_id:
             if http_method == 'GET':
-                return handle_get_evaluation(eval_id, ws_id, org_id)
+                return handle_get_evaluation(eval_id, ws_id, org_id, supabase_user_id)
             elif http_method == 'PATCH':
                 return handle_update_evaluation(event, eval_id, ws_id, org_id, supabase_user_id)
             elif http_method == 'DELETE':
@@ -421,7 +423,7 @@ def handle_list_evaluations(event: Dict[str, Any], workspace_id: str) -> Dict[st
     })
 
 
-def handle_get_evaluation(eval_id: str, workspace_id: str, org_id: str) -> Dict[str, Any]:
+def handle_get_evaluation(eval_id: str, workspace_id: str, org_id: str, user_id: str) -> Dict[str, Any]:
     """Get detailed evaluation with all results."""
     eval_id = common.validate_uuid(eval_id, 'id')
     
@@ -429,6 +431,14 @@ def handle_get_evaluation(eval_id: str, workspace_id: str, org_id: str) -> Dict[
     evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'ws_id': workspace_id})
     if not evaluation:
         raise common.NotFoundError('Evaluation not found')
+    
+    # ADR-019c: Verify org membership (Layer 2 - Step 1)
+    if not can_access_org_resource(user_id, org_id):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # ADR-019c: Check resource permission (Layer 2 - Step 2)
+    if not can_view_eval(user_id, eval_id):
+        raise common.ForbiddenError('Access denied to evaluation')
     
     result = common.format_record(evaluation)
     
@@ -623,6 +633,14 @@ def handle_update_evaluation(
     if not evaluation:
         raise common.NotFoundError('Evaluation not found')
     
+    # ADR-019c: Verify org membership (Layer 2 - Step 1)
+    if not can_access_org_resource(user_id, org_id):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # ADR-019c: Check resource permission (Layer 2 - Step 2)
+    if not can_edit_eval(user_id, eval_id):
+        raise common.ForbiddenError('Access denied to evaluation')
+    
     # Verify evaluation is in draft status
     if evaluation.get('status') != 'draft':
         raise common.ValidationError('Only draft evaluations can be updated')
@@ -773,6 +791,10 @@ def handle_delete_evaluation(eval_id: str, workspace_id: str, user_id: str) -> D
     if not evaluation:
         raise common.NotFoundError('Evaluation not found')
     
+    # ADR-019c: Check resource permission (ownership required for delete)
+    if not eval_is_owner(user_id, eval_id):
+        raise common.ForbiddenError('Only evaluation owner can delete')
+    
     # Soft delete
     common.update_one(
         'eval_doc_summaries',
@@ -818,6 +840,10 @@ def handle_edit_result(
     evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'ws_id': workspace_id})
     if not evaluation:
         raise common.NotFoundError('Evaluation not found')
+    
+    # ADR-019c: Check resource permission (edit required for result editing)
+    if not can_edit_eval(user_id, eval_id):
+        raise common.ForbiddenError('Access denied to evaluation')
     
     # Verify result exists and belongs to evaluation
     criteria_result = common.find_one('eval_criteria_results', {'id': result_id, 'eval_summary_id': eval_id})
@@ -898,6 +924,10 @@ def handle_get_edit_history(
     if not evaluation:
         raise common.NotFoundError('Evaluation not found')
     
+    # ADR-019c: Check resource permission (view required for history)
+    if not can_view_eval(user_id, eval_id):
+        raise common.ForbiddenError('Access denied to evaluation')
+    
     # Verify result exists
     criteria_result = common.find_one('eval_criteria_results', {'id': result_id, 'eval_summary_id': eval_id})
     if not criteria_result:
@@ -949,6 +979,10 @@ def handle_export_pdf(
     evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'ws_id': workspace_id})
     if not evaluation:
         raise common.NotFoundError('Evaluation not found')
+    
+    # ADR-019c: Check resource permission (view required for export)
+    if not can_view_eval(user_id, eval_id):
+        raise common.ForbiddenError('Access denied to evaluation')
     
     if evaluation.get('status') != 'completed':
         raise common.ValidationError('Cannot export incomplete evaluation')
@@ -1086,6 +1120,10 @@ def handle_export_xlsx(
     evaluation = common.find_one('eval_doc_summaries', {'id': eval_id, 'ws_id': workspace_id})
     if not evaluation:
         raise common.NotFoundError('Evaluation not found')
+    
+    # ADR-019c: Check resource permission (view required for export)
+    if not can_view_eval(user_id, eval_id):
+        raise common.ForbiddenError('Access denied to evaluation')
     
     if evaluation.get('status') != 'completed':
         raise common.ValidationError('Cannot export incomplete evaluation')
