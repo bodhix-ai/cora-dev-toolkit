@@ -6,6 +6,7 @@ import json
 import logging
 from typing import Optional, Dict, Any
 import org_common as common
+from access_common.permissions import can_manage_email_domains
 
 # Configure logging
 logger = logging.getLogger()
@@ -118,7 +119,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
 def authorize_domain_management(user_id: str, org_id: str) -> bool:
     """
-    Check if user can manage email domains for organization
+    Check if user can manage email domains for organization (ADR-019c Layer 2)
     
     User must be:
     - Platform owner/admin (can manage all orgs), OR
@@ -134,27 +135,11 @@ def authorize_domain_management(user_id: str, org_id: str) -> bool:
     Raises:
         common.ForbiddenError: If user lacks permission
     """
-    # Check platform admin access
-    profile = common.find_one(
-        table='user_profiles',
-        filters={'user_id': user_id}
-    )
+    # ADR-019c: Use permission helper for resource access
+    if not can_manage_email_domains(user_id, org_id):
+        raise common.ForbiddenError("Insufficient permissions to manage email domains")
     
-    if profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']:
-        logger.info(f"Sys admin {user_id} authorized for org {org_id}")
-        return True
-    
-    # Check org-level access
-    membership = common.find_one(
-        table='org_members',
-        filters={'user_id': user_id, 'org_id': org_id}
-    )
-    
-    if membership and membership.get('role') in ['org_owner', 'org_admin']:
-        logger.info(f"Org admin {user_id} authorized for org {org_id}")
-        return True
-    
-    raise common.ForbiddenError("Insufficient permissions to manage email domains")
+    return True
 
 
 def handle_list_domains(user_id: str, org_id: str) -> Dict[str, Any]:

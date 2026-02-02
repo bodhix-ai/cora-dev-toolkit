@@ -7,6 +7,8 @@ import logging
 from typing import Optional, Dict, Any
 import org_common as common
 from org_common.supabase_client import get_supabase_client
+# Note: Profiles Lambda handles self-service operations (/profiles/me)
+# No org-scoped resource permissions needed (ADR-019c Layer 2)
 
 # Configure logging
 logger = logging.getLogger()
@@ -922,8 +924,8 @@ def handle_update_profile(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
     # Check if user is trying to update sys_role (accept both camelCase and snake_case)
     if 'sysRole' in body or 'sys_role' in body:
         sys_role_value = body.get('sysRole') or body.get('sys_role')
-        # Only sys_admin or sys_owner can update sys_role
-        if current_profile['sys_role'] not in ['sys_admin', 'sys_owner']:
+        # Only sys_admin or sys_owner can update sys_role (Layer 1 - admin auth)
+        if current_profile['sys_role'] not in common.SYS_ADMIN_ROLES:
             raise common.ForbiddenError('Only sys admins can update sys role')
         
         # Validate new role

@@ -36,9 +36,6 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 logger = logging.getLogger()
 logger.setLevel(LOG_LEVEL)
 
-# Platform admin roles
-SYS_ADMIN_ROLES = ['sys_owner', 'sys_admin']
-
 
 def get_supabase_user_id_from_okta_uid(okta_uid: str) -> Optional[str]:
     """
@@ -119,7 +116,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
 
 def is_sys_admin(okta_uid: str) -> bool:
-    """Check if user has sys admin role."""
+    """Check if user has sys admin role (ADR-019 Layer 1 - admin auth)."""
     try:
         # Map Okta UID to Supabase user_id using standard org_common function
         supabase_user_id = common.get_supabase_user_id_from_external_uid(okta_uid)
@@ -128,7 +125,7 @@ def is_sys_admin(okta_uid: str) -> bool:
         profile = common.find_one('user_profiles', {'user_id': supabase_user_id})
         
         if profile:
-            return profile.get('sys_role') in SYS_ADMIN_ROLES
+            return profile.get('sys_role') in common.SYS_ADMIN_ROLES
         return False
         
     except Exception as e:

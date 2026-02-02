@@ -10,6 +10,7 @@ Routes - Invites:
 import json
 from typing import Dict, Any, Optional
 import org_common as common
+from access_common.permissions import can_manage_invites
 
 
 def get_supabase_user_id_from_okta_uid(okta_uid: str) -> Optional[str]:
@@ -107,9 +108,8 @@ def handle_list_invites(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
     external_uid = user_info['user_id']  # External UID (email from Okta)
     user_id = common.get_supabase_user_id_from_external_uid(external_uid)
     
-    # Verify user has admin access to this organization
-    membership = common.find_one('org_members', {'user_id': user_id, 'org_id': org_id})
-    if not membership or membership.get('org_role') not in ['org_admin', 'org_owner']:
+    # ADR-019c: Check resource permission (org_admin or org_owner)
+    if not can_manage_invites(user_id, org_id):
         raise common.ForbiddenError('Organization admin access required')
     
     # Query invites table
@@ -167,9 +167,8 @@ def handle_create_invite(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
     external_uid = user_info['user_id']  # External UID (email from Okta)
     user_id = common.get_supabase_user_id_from_external_uid(external_uid)
     
-    # Verify user has admin access to this organization
-    membership = common.find_one('org_members', {'user_id': user_id, 'org_id': org_id})
-    if not membership or membership.get('org_role') not in ['org_admin', 'org_owner']:
+    # ADR-019c: Check resource permission (org_admin or org_owner)
+    if not can_manage_invites(user_id, org_id):
         raise common.ForbiddenError('Organization admin access required')
     
     # Parse request body
@@ -251,9 +250,8 @@ def handle_delete_invite(event: Dict[str, Any], org_id: str, invite_id: str) -> 
     external_uid = user_info['user_id']  # External UID (email from Okta)
     user_id = common.get_supabase_user_id_from_external_uid(external_uid)
     
-    # Verify user has admin access to this organization
-    membership = common.find_one('org_members', {'user_id': user_id, 'org_id': org_id})
-    if not membership or membership.get('org_role') not in ['org_admin', 'org_owner']:
+    # ADR-019c: Check resource permission (org_admin or org_owner)
+    if not can_manage_invites(user_id, org_id):
         raise common.ForbiddenError('Organization admin access required')
     
     # Verify invite exists and belongs to this org

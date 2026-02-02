@@ -13,6 +13,7 @@ import json
 import os
 from typing import Dict, Any, Optional
 import org_common as common
+from access_common.permissions import can_view_members
 
 
 def _transform_user(user: Dict[str, Any]) -> Dict[str, Any]:
@@ -352,7 +353,8 @@ def handle_org_list_users(user_id: str, org_id: str) -> Dict[str, Any]:
     List users in the requesting user's organization
     
     This endpoint is accessible to org_admin (read-only) and org_owner.
-    Authorization is handled at the router level (ADR-019).
+    Authorization is handled at the router level (ADR-019 Layer 1).
+    Additional ADR-019c (Layer 2) permission check below.
     
     Args:
         user_id: Authenticated user's Supabase user_id (already verified as org_admin)
@@ -361,6 +363,10 @@ def handle_org_list_users(user_id: str, org_id: str) -> Dict[str, Any]:
     Returns:
         List of users in the organization with their roles
     """
+    # ADR-019c: Check resource permission (org_admin or org_owner)
+    if not can_view_members(user_id, org_id):
+        raise common.ForbiddenError('You do not have access to view members in this organization')
+    
     # Use service role client to query org users
     client = common.get_supabase_client()
     
