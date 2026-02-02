@@ -132,7 +132,7 @@ def handle_workspace_documents(method: str, path: str, path_params: Dict, event:
     # ========================================
     # STEP 1: VERIFY WORKSPACE MEMBERSHIP (ADR-019c)
     # ========================================
-    if not common.can_access_ws_resource(user_id, workspace_id):
+    if not _is_ws_member(workspace_id, user_id):
         return common.forbidden_response("Not a workspace member")
     
     # ========================================
@@ -163,16 +163,50 @@ def handle_workspace_documents(method: str, path: str, path_params: Dict, event:
 
 
 def handle_chat_documents(method: str, path: str, path_params: Dict, event: Dict, user_id: str):
-    """Handle chat-scoped document operations."""
+    """
+    Handle chat-scoped document operations.
+    
+    ADR-019c Compliant: Two-step authorization pattern
+    - Step 1: Verify workspace membership (if chat is workspace-bound)
+    - Step 2: Check chat-level permissions (ownership/sharing)
+    """
     chat_id = path_params.get('chatId')
     doc_id = path_params.get('docId')
     
     if not chat_id:
         return common.bad_request_response("Missing chatId")
     
-    # Verify chat access
+    # ========================================
+    # STEP 1: GET CHAT AND VERIFY WORKSPACE MEMBERSHIP (ADR-019c)
+    # ========================================
+    chat = common.find_one(
+        table='chat_sessions',
+        filters={'id': chat_id, 'is_deleted': False}
+    )
+    
+    if not chat:
+        return common.not_found_response("Chat not found")
+    
+    # If chat is workspace-bound, verify workspace membership first
+    if chat.get('workspace_id'):
+        if not _is_ws_member(chat['workspace_id'], user_id):
+            return common.forbidden_response("Not a workspace member")
+    
+    # ========================================
+    # STEP 2: CHECK CHAT-SPECIFIC PERMISSIONS (ADR-019c)
+    # ========================================
     if not check_chat_access(user_id, chat_id):
         return common.forbidden_response("Access denied to chat")
+    
+    # ========================================
+    # STEP 3: DOCUMENT-LEVEL PERMISSION CHECKS (ADR-019c)
+    # ========================================
+    if doc_id and method in ['GET', 'DELETE']:
+        # For document-specific operations, verify document permissions
+        if method == 'GET' and not can_view_kb_document(user_id, doc_id):
+            return common.forbidden_response("Cannot access this document")
+        elif method == 'DELETE' and not can_edit_kb_document(user_id, doc_id):
+            return common.forbidden_response("Cannot delete this document")
     
     if method == 'PUT' and doc_id and '/complete' in path:
         return handle_complete_upload(user_id, doc_id)
@@ -846,6 +880,24 @@ def verify_upload_permission(user_id: str, kb_id: str) -> bool:
     except Exception as e:
         print(f"Error verifying upload permission: {str(e)}")
         return False
+
+
+def _is_ws_member(workspace_id: str, user_id: str) -> bool:
+    """Check if user is a member of the workspace."""
+    result = common.rpc(
+        function_name='is_ws_member',
+        params={'p_user_id': user_id, 'p_ws_id': workspace_id}
+    )
+    return result is True
+
+
+def _is_ws_admin_or_owner(workspace_id: str, user_id: str) -> bool:
+    """Check if user is admin or owner of the workspace."""
+    result = common.rpc(
+        function_name='is_ws_admin_or_owner',
+        params={'p_user_id': user_id, 'p_ws_id': workspace_id}
+    )
+    return result is True
 
 
 def check_chat_access(user_id: str, chat_id: str) -> bool:

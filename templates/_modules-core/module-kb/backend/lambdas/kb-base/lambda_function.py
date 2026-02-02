@@ -122,13 +122,13 @@ def route_workspace_handlers(event: Dict[str, Any], user_id: str, method: str, p
     # ========================================
     # ADR-019c: STEP 1 - Workspace Membership
     # ========================================
-    if not common.can_access_ws_resource(user_id, workspace_id):
+    if not _is_ws_member(workspace_id, user_id):
         return common.forbidden_response('Not a workspace member')
     
     # For write operations, require ws_admin
     is_write_operation = method in ['POST', 'PATCH', 'DELETE']
     if is_write_operation and '/toggle' in path:
-        if not common.is_ws_admin(user_id, workspace_id):
+        if not _is_ws_admin_or_owner(workspace_id, user_id):
             return common.forbidden_response('Only workspace admins can toggle KB access')
     
     # ========================================
@@ -148,7 +148,7 @@ def route_workspace_handlers(event: Dict[str, Any], user_id: str, method: str, p
             return handle_get_workspace_kb(user_id, workspace_id)
         elif method == 'POST':
             # Require admin for KB creation
-            if not common.is_ws_admin(user_id, workspace_id):
+            if not _is_ws_admin_or_owner(workspace_id, user_id):
                 return common.forbidden_response('Only workspace admins can create workspace KBs')
             return handle_create_workspace_kb(event, user_id, workspace_id)
     elif '/kb/' in path:
@@ -157,7 +157,7 @@ def route_workspace_handlers(event: Dict[str, Any], user_id: str, method: str, p
             return common.bad_request_response('KB ID is required')
         if method == 'PATCH':
             # Require admin for KB update
-            if not common.is_ws_admin(user_id, workspace_id):
+            if not _is_ws_admin_or_owner(workspace_id, user_id):
                 return common.forbidden_response('Only workspace admins can update workspace KBs')
             return handle_update_kb(event, user_id, kb_id)
     
@@ -1151,6 +1151,24 @@ def get_kb_stats(kb_id: str) -> Dict[str, Any]:
         'chunkCount': chunk_count,
         'totalSize': total_size
     }
+
+
+def _is_ws_member(workspace_id: str, user_id: str) -> bool:
+    """Check if user is a member of the workspace."""
+    result = common.rpc(
+        function_name='is_ws_member',
+        params={'p_user_id': user_id, 'p_ws_id': workspace_id}
+    )
+    return result is True
+
+
+def _is_ws_admin_or_owner(workspace_id: str, user_id: str) -> bool:
+    """Check if user is admin or owner of the workspace."""
+    result = common.rpc(
+        function_name='is_ws_admin_or_owner',
+        params={'p_user_id': user_id, 'p_ws_id': workspace_id}
+    )
+    return result is True
 
 
 def check_chat_access(user_id: str, chat_id: str) -> bool:
