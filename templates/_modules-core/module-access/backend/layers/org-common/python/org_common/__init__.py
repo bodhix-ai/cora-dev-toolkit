@@ -181,6 +181,42 @@ def check_ws_admin(user_id: str, ws_id: str) -> bool:
     result = rpc('check_ws_admin', {'p_user_id': user_id, 'p_ws_id': ws_id})
     return result if isinstance(result, bool) else False
 
+
+# ============================================================================
+# RESOURCE PERMISSION HELPERS (ADR-019c: Layer 2)
+# ============================================================================
+# These functions check if a user can access resources at the org/ws level.
+# They MUST be called BEFORE resource-specific permission checks per ADR-019c.
+# See: docs/arch decisions/ADR-019c-AUTH-RESOURCE-PERMISSIONS.md
+# ============================================================================
+
+def can_access_org_resource(user_id: str, org_id: str) -> bool:
+    """
+    Check if user can access organization resources (ADR-019c Layer 2).
+    
+    This is the standard membership check for org-scoped resources.
+    MUST be called BEFORE resource permission checks per ADR-019c.
+    
+    Args:
+        user_id: Supabase user UUID
+        org_id: Organization UUID
+        
+    Returns:
+        True if user is a member of the organization
+        
+    Usage:
+        # ADR-019c Two-Step Check:
+        # 1. Verify org membership (this function)
+        if not common.can_access_org_resource(user_id, resource['org_id']):
+            return common.forbidden_response('Not a member of organization')
+        
+        # 2. Check resource permission
+        if not can_view_resource(user_id, resource_id):
+            return common.forbidden_response('Access denied')
+    """
+    # Wrapper around is_org_member with standardized parameter order
+    return is_org_member(org_id, user_id)
+
 # Utility function to extract user from event
 def get_user_from_event(event):
     """
@@ -392,6 +428,9 @@ __all__ = [
     'check_sys_admin',
     'check_org_admin',
     'check_ws_admin',
+    
+    # Resource permission helpers (ADR-019c)
+    'can_access_org_resource',
     
     # Supabase client
     'get_supabase_client',

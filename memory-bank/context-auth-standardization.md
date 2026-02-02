@@ -776,7 +776,41 @@ Auth Validation (ADR-019):
 
 **Next Session:** Phase 6 - Implement core ADR-019c patterns in org-common and module layers
 
-### February 1, 2026 - S3 Session 3 (Current)
+### February 1, 2026 - S3 Session 6 ✅ COMPLETE
+**Focus:** Add missing `can_access_org_resource` function to org_common
+
+**Root Cause Investigation:**
+- During Phase 8 & 9 (module-eval, module-chat), Lambda handlers were updated to use `common.can_access_org_resource(user_id, org_id)`
+- This function was specified in ADR-019c but never actually added to org_common
+- Result: 19 Layer 2 import errors across module-chat and module-eval
+
+**Fix Implementation:**
+1. **Added missing function** to org_common `__init__.py`:
+   ```python
+   def can_access_org_resource(user_id: str, org_id: str) -> bool:
+       """Check if user can access organization resources (ADR-019c Layer 2)."""
+       return is_org_member(org_id, user_id)
+   ```
+2. **Exported function** in `__all__` list
+3. **No database migration required** - wraps existing `is_org_member()` RPC function
+
+**Validation Results:**
+- **Before:** ~261 Layer 2 errors (19 import errors + 242 other errors)
+- **After:** 242 Layer 2 errors
+- **Fixed:** 19 import errors (100% of can_access_org_resource errors)
+
+**Files Modified:**
+- `templates/_modules-core/module-access/backend/layers/org-common/python/org_common/__init__.py`
+
+**Test Project:** `/Users/aaron/code/bodhix/testing/auth/ai-mod-stack`
+
+**Time:** ~1 hour
+
+**Next:** Continue S3 with remaining 242 Layer 2 errors across other modules
+
+---
+
+### February 1, 2026 - S3 Session 3 ✅ COMPLETE
 **Focus:** Workspace filter bug fix + module-chat Layer 2 analysis
 
 **Workspace Filter Bug Fix: ✅ COMPLETE**
@@ -812,7 +846,45 @@ Ran full validation on module-chat:
 
 **Time:** ~2 hours
 
-**Next Session:** Phase 9 implementation - Add ADR-019c pattern to all module-chat Lambda handlers
+**Next:** Phase 9 implementation - Wire up ADR-019c permission checks in module-chat Lambdas
+
+---
+
+### February 1, 2026 - S3 Session 5 ✅ COMPLETE
+**Focus:** Phase 9 - module-chat complete implementation (all 3 Lambdas)
+
+**Accomplishments:**
+
+1. **All 3 Lambda Updates ✅**
+   - **chat-session (10 handlers):** get, update, delete, list KB groundings, add/remove KB, list/create/delete shares, toggle favorite
+   - **chat-message (5 handlers):** list messages, send message, get message, get RAG context, get history
+   - **chat-stream (2 handlers):** response stream handler, stream sync handler
+   - Pattern: Fetch resource → Verify org membership → Check resource permission
+   - Used existing permission helpers: `can_view_chat()`, `can_edit_chat()`, `is_chat_owner()`
+
+2. **Build & Deployment ✅**
+   - Synced all 3 Lambdas to test project: `/Users/aaron/code/bodhix/testing/test-auth/ai-mod-stack`
+   - Built all 3 module-chat Lambdas successfully:
+     - chat-session.zip: 19M
+     - chat-message.zip: 6.6M
+     - chat-stream.zip: 31M
+
+3. **Validation ✅**
+   - **Layer 2: 48 → 0 errors (100% complete)** ✅
+   - All 17 handlers across 3 Lambdas now ADR-019c compliant
+   - 44 warnings (admin role override) are EXPECTED per ADR-019c
+
+**Files Modified in Templates:**
+- `templates/_modules-core/module-chat/backend/lambdas/chat-session/lambda_function.py`
+- `templates/_modules-core/module-chat/backend/lambdas/chat-message/lambda_function.py`
+- `templates/_modules-core/module-chat/backend/lambdas/chat-stream/lambda_function.py`
+- `docs/plans/session_plan_s3-phase9-chat-session-handlers.md` (updated to complete)
+
+**Session Plan:** `docs/plans/session_plan_s3-phase9-chat-session-handlers.md`
+
+**Time:** ~1.5 hours
+
+**Next:** Phase 10 (module-kb) - 58 errors, or commit Phase 9 changes
 
 ---
 
