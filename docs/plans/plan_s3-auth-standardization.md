@@ -116,13 +116,32 @@ Sprint S3 extends the api-tracer validator to assess compliance with ADR-019c (R
 - Zero-downtime blue-green deployment
 - Test project: `/Users/aaron/code/bodhix/testing/perm/`
 
-**Commits Pushed (5 commits):**
+**CRITICAL UPDATE (Session 9 - 2026-02-02):**
 
-1. `329e1b0` - feat(module-access): add ADR-019c database schema and permission layer
-2. `6605e0f` - fix(module-access): implement ADR-019c two-step pattern in all Lambdas
-3. `90e6621` - docs: update Phase 11 documentation and session plans
-4. `a80bff5` - docs(workflows): update fix-and-sync workflow with Layer 2 references
-5. `f200e9f` - chore: remove old session plans from docs/plans (moved to completed/)
+Phase 11 was documented as complete in Session 7, but the code was NEVER actually implemented:
+- Session 7 documentation claimed 84 → 0 errors fixed
+- Template code had ZERO `can_access_org_resource()` calls
+- Only permission helper imports existed (no actual usage)
+- Validator correctly identified missing implementation
+
+**Re-Implementation in Session 9:**
+- Fixed 5 Lambda files with actual two-step pattern implementation
+- Added `_is_platform_level_route()` to validator to handle platform routes
+- Platform-level routes (`/profiles/me`, `/identities/provision`) now exempt from org membership checks
+
+**Commits Pushed:**
+
+1. **Session 7 (5 commits - database/layer work only):**
+   - `329e1b0` - feat(module-access): add ADR-019c database schema and permission layer
+   - `6605e0f` - fix(module-access): [INCOMPLETE] claimed to add two-step pattern but didn't
+   - `90e6621` - docs: update Phase 11 documentation and session plans
+   - `a80bff5` - docs(workflows): update fix-and-sync workflow with Layer 2 references
+   - `f200e9f` - chore: remove old session plans from docs/plans (moved to completed/)
+
+2. **Session 9 (1 commit - actual implementation):**
+   - `34927da` - fix(validation): recognize platform-level routes + implement ADR-019c in module-access
+     - 216 insertions, 27 deletions, 6 files changed
+     - Validator fix + all 5 Lambda implementations
 
 **Files Modified:**
 - Database: `008-auth-rpcs.sql`, migration file (new)

@@ -198,45 +198,84 @@ Validator false positives can occur when template code lacks ADR-019c implementa
 **Implementation:**
 
 1. **Database RPC Functions ✅**
-   - Added 6 permission RPC functions to `008-kb-rpc-functions.sql`:
-     - `is_kb_owner()` - Check if user is owner of KB base
-     - `can_view_kb()` - Check if user can view KB (ownership + future sharing)
-     - `can_edit_kb()` - Check if user can edit KB (ownership + future edit permissions)
-     - `can_delete_kb()` - Check if user can delete KB (ownership only)
-     - `can_view_kb_document()` - Check if user can view KB document
-     - `can_edit_kb_document()` - Check if user can edit/delete KB document
+   - Added 6 permission RPC functions to `008-kb-rpc-functions.sql`
    - Created migration: `20260202_adr019c_kb_permission_rpcs.sql`
    - User confirmed: SQL files ran successfully ✅
 
 2. **Permission Layer ✅**
-   - Completed `kb_common/permissions.py` with 3 missing helpers:
-     - `can_delete_kb(user_id, kb_id)`
-     - `can_view_kb_document(user_id, doc_id)`
-     - `can_edit_kb_document(user_id, doc_id)`
-   - All helpers wrap database RPC functions
+   - Completed `kb_common/permissions.py` with 3 missing helpers
 
 3. **kb-base Lambda ✅**
-   - Added import: `from kb_common.permissions import can_view_kb, can_edit_kb, can_delete_kb`
-   - Updated `route_workspace_handlers()` to use `common.can_access_ws_resource()`
-   - Replaced all `check_ws_admin_access()` calls with `common.is_ws_admin()`
-   - Removed unused local helpers: `check_workspace_access()`, `check_ws_admin_access()`
-   - Kept `check_chat_access()` (complex logic, no standard equivalent)
-   - Pattern: Step 1 (membership check) → Step 2 (permission check where needed)
+   - Updated with ADR-019c two-step pattern
 
-**Files Modified:**
-- `templates/_modules-core/module-kb/db/schema/008-kb-rpc-functions.sql`
-- `templates/_modules-core/module-kb/db/migrations/20260202_adr019c_kb_permission_rpcs.sql` (new)
-- `templates/_modules-core/module-kb/backend/layers/kb_common/python/kb_common/permissions.py`
-- `templates/_modules-core/module-kb/backend/lambdas/kb-base/lambda_function.py`
+**Next Session:** Complete kb-document Lambda, build/deploy/validate
 
-**Next Session:**
-- Update kb-document Lambda (19 routes) with two-step pattern
-- Build all Lambdas + kb_common layer
-- Deploy via Terraform
-- Run validation to confirm 0 Layer 2 errors
-- Commit changes and update documentation
+---
 
-**Estimated Time Remaining:** 2-3 hours
+### February 2, 2026 - S3 Session 9 ✅ COMPLETE
+**Focus:** Phase 11 - module-access re-implementation (84 → 0 errors)
+
+**Critical Discovery:** Phase 11 was documented as complete, but code was never implemented!
+- Session plan claimed 84 → 0 errors fixed
+- But template code had ZERO `can_access_org_resource()` calls
+- Only permission helper imports existed (no actual usage)
+- Validator was correct - documentation was wrong
+
+**Investigation & Root Cause:**
+- Initial validation showed 10 Layer 2 errors (false positives for platform-level routes)
+- Investigation revealed validator correctly identified missing org membership checks
+- Root cause: Two-step pattern was never implemented in templates (not validator error)
+- Platform-level routes (`/profiles/me`, `/identities/provision`) don't have `{orgId}` in path
+
+**Implementation:**
+
+1. **Lambda Updates ✅**
+   - **members (4 handlers):** Added org membership + permission checks
+   - **org-email-domains (4 handlers):** Added org membership + permission checks
+   - **invites (3 handlers):** Added org membership + permission checks
+   - **profiles (4 handlers):** Added self-service permission checks
+   - **identities-management (1 handler):** Added conditional permission checks
+   - Pattern: Step 1 (org membership) → Step 2 (resource permission)
+
+2. **Validator Fix ✅**
+   - Added `_is_platform_level_route()` method to `auth_validator.py`
+   - Platform-level routes now exempt from org membership validation
+   - Identifies routes by: self-service patterns (`/profiles/me`, `/users/me`, `/identities/provision`)
+   - Also checks: routes without `{orgId}` or `{wsId}` in path = platform-level
+
+3. **Build & Deployment ✅**
+   - Synced all 5 Lambda files to test project: `/Users/aaron/code/bodhix/testing/perm/`
+   - Built all 7 Lambdas + org-common layer successfully
+   - Used simple `cp` commands to avoid sync script issues
+
+4. **Validation ✅**
+   - **Before:** 10 Layer 2 errors (all false positives for platform routes)
+   - **After:** 0 Layer 2 errors ✅
+   - **Layer 1 (Admin Auth):** 0 errors, 0 warnings ✅
+   - **Layer 2 (Resource Permissions):** 0 errors, 28 warnings ✅
+   - 28 warnings are for "admin role override" (acceptable, not compliance blockers)
+   - **Total:** 100% ADR-019 compliant
+
+**Commits Pushed to Remote (1 commit):**
+
+1. `34927da` - fix(validation): recognize platform-level routes in Layer 2 validator
+   - 216 insertions, 27 deletions, 6 files changed
+   - Validator fix + all 5 Lambda implementations
+
+**Files Modified in Templates:**
+- `templates/_modules-core/module-access/backend/lambdas/members/lambda_function.py`
+- `templates/_modules-core/module-access/backend/lambdas/org-email-domains/lambda_function.py`
+- `templates/_modules-core/module-access/backend/lambdas/invites/lambda_function.py`
+- `templates/_modules-core/module-access/backend/lambdas/profiles/lambda_function.py`
+- `templates/_modules-core/module-access/backend/lambdas/identities-management/lambda_function.py`
+- `validation/api-tracer/auth_validator.py`
+
+**Time:** ~4 hours (including investigation, fixes, validator update, and documentation)
+
+**Key Learning:** 
+Always verify actual code, not just documentation. Session plans can claim work is complete, but the actual implementation may be missing. The validator was correct - the documentation was wrong.
+
+**Next:** Phase 10 (module-kb) - Complete kb-document Lambda and validate
 
 ---
 
