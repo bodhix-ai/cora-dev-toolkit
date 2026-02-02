@@ -18,6 +18,9 @@ export function useOrganizationContext() {
   return {
     organizations,
     currentOrganization: currentOrg,
+    // ADR-019 compliant properties for org admin pages
+    orgId: currentOrg?.orgId || null,
+    organization: currentOrg,
     switchOrganization: async (orgId: string) => {
       console.log(
         "[useOrganizationContext] switchOrganization called with orgId:",

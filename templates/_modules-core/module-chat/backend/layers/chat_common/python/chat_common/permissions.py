@@ -27,7 +27,7 @@ See: docs/standards/03_std_back_RESOURCE-PERMISSIONS.md
 """
 
 from typing import Optional, List, Dict, Any
-from org_common.db import call_rpc
+from org_common import rpc
 
 
 def is_chat_owner(user_id: str, session_id: str) -> bool:
@@ -50,7 +50,7 @@ def is_chat_owner(user_id: str, session_id: str) -> bool:
         >>>     # Allow delete operation
         >>>     common.delete_one('chat_sessions', {'id': session_id})
     """
-    return call_rpc('is_chat_owner', {
+    return rpc(function_name='is_chat_owner', params={
         'p_user_id': user_id,
         'p_session_id': session_id
     })
@@ -79,7 +79,7 @@ def can_view_chat(user_id: str, session_id: str) -> bool:
         >>>     session = common.find_one('chat_sessions', {'id': session_id})
         >>>     messages = common.find_many('chat_messages', {'session_id': session_id})
     """
-    return call_rpc('can_view_chat', {
+    return rpc(function_name='can_view_chat', params={
         'p_user_id': user_id,
         'p_session_id': session_id
     })
@@ -113,7 +113,7 @@ def can_edit_chat(user_id: str, session_id: str) -> bool:
         >>>         'content': message_content
         >>>     })
     """
-    return call_rpc('can_edit_chat', {
+    return rpc(function_name='can_edit_chat', params={
         'p_user_id': user_id,
         'p_session_id': session_id
     })
@@ -155,7 +155,7 @@ def get_accessible_chats(
         >>> for chat in chats:
         >>>     print(f"{chat['title']} ({chat['access_type']})")
     """
-    result = call_rpc('get_accessible_chats', {
+    result = rpc(function_name='get_accessible_chats', params={
         'p_user_id': user_id,
         'p_org_id': org_id,
         'p_ws_id': ws_id
