@@ -302,8 +302,8 @@ Route: GET /admin/org/chat/config
 - Backend standard created: `03_std_back_RESOURCE-PERMISSIONS.md`
 
 ### Test Environment
-- **Stack Path:** `/Users/aaron/code/bodhix/testing/admin-ui/ai-mod-stack`
-- **Infra Path:** `/Users/aaron/code/bodhix/testing/admin-ui/ai-mod-infra`
+- **Stack Path:** `/Users/aaron/code/bodhix/testing/test-auth/ai-mod-stack`
+- **Infra Path:** `/Users/aaron/code/bodhix/testing/test-auth/ai-mod-infra`
 
 ## Session Log (S2)
 
@@ -776,6 +776,46 @@ Auth Validation (ADR-019):
 
 **Next Session:** Phase 6 - Implement core ADR-019c patterns in org-common and module layers
 
+### February 1, 2026 - S3 Session 3 (Current)
+**Focus:** Workspace filter bug fix + module-chat Layer 2 analysis
+
+**Workspace Filter Bug Fix: ✅ COMPLETE**
+- **Issue:** Archived workspaces not showing on `/admin/org/ws` page
+- **Root Cause:** `status: undefined` in API call defaulted to "active" only
+- **Fix Applied:**
+  - Changed `status: undefined` → `status: "all"` in OrgAdminManagementPage
+  - Added status filter UI (All/Active/Archived with counts)
+  - Added search by name/tags functionality
+  - Fixed archived chip color inconsistency (gray → orange to match `/ws` page)
+- **Files Modified:**
+  - `templates/_modules-core/module-ws/frontend/pages/OrgAdminManagementPage.tsx`
+- **Synced to:** `/Users/aaron/code/bodhix/testing/test-auth/ai-mod-stack`
+- **User confirmed:** All filters working, archived workspaces now visible
+
+**Module-chat Layer 2 Analysis: ✅ COMPLETE**
+
+Ran full validation on module-chat:
+- **Layer 2 errors:** 48 (all `AUTH_AUTH_RESOURCE_ADMIN_ROLE_OVERRIDE`)
+- **Layer 2 warnings:** 44 (duplicates from source + .build)
+- **Unique data routes needing fixes:** ~24 routes
+- **Code quality errors:** 162 (152 key_consistency, 10 import)
+
+**Key Finding:** `chat_common/permissions.py` exists and is well-implemented with comprehensive permission helpers. The issue is that Lambda handlers aren't calling these helpers yet - they're missing the ADR-019c pattern (org membership → resource permission).
+
+**Routes affected:**
+- Workspace chats: `/ws/{wsId}/chats` (GET, POST, PATCH, DELETE)
+- User chats: `/users/me/chats`, `/chats/{sessionId}`
+- KB grounding: `/chats/{sessionId}/kbs`
+- Sharing: `/chats/{sessionId}/shares`
+- Messages: `/chats/{sessionId}/messages` (chat-message Lambda)
+- Streaming: `/chats/{sessionId}/stream` (chat-stream Lambda)
+
+**Time:** ~2 hours
+
+**Next Session:** Phase 9 implementation - Add ADR-019c pattern to all module-chat Lambda handlers
+
+---
+
 ### February 1, 2026 - S3 Session 2 ✅ COMPLETE
 **Focus:** Phase 6 - Core ADR-019c patterns + module-ws parameter order alignment + deployment
 
@@ -864,3 +904,60 @@ Deployed parameter order changes to test environment following deploy-lambda wor
 1. ⏳ Verify module-ws UI testing results
 2. Continue Phase 6 - Create permissions.py for module-kb, module-access, module-voice
 3. Consider starting Phase 7 (fix module-ws Layer 2 errors) if Phase 6 completes quickly
+
+---
+
+### February 1, 2026 - S3 Session 4 ✅ COMPLETE
+**Focus:** Phase 8 - module-eval ADR-019c implementation (20 → 0 errors)
+
+**Accomplishments:**
+
+1. **Database RPC Functions ✅**
+   - Added `can_view_eval(p_user_id, p_eval_id)` to schema file
+   - Added `can_edit_eval(p_user_id, p_eval_id)` to schema file
+   - Created migration: `20260201_adr019c_eval_permission_rpcs.sql`
+   - **Migration executed successfully** - No errors
+   - **Schema file executed successfully** - No errors
+   - Verified no RLS policies need updating
+
+2. **Permission Layer ✅**
+   - Verified `eval_common/permissions.py` with all required helpers
+   - Functions: `is_eval_owner`, `can_view_eval`, `can_edit_eval`
+
+3. **Lambda Updates ✅**
+   - **eval-results:** Added complete ADR-019c pattern to all data routes
+     - GET `/admin/org/eval/results/{evalId}` - org membership + `can_view_eval()`
+     - PATCH `/admin/org/eval/results/{evalId}` - org membership + `can_edit_eval()`
+     - DELETE `/admin/org/eval/results/{evalId}` - org membership + `can_edit_eval()`
+   - **eval-config:** Already compliant (admin routes only, no data routes)
+   - **eval-processor:** N/A (SQS-triggered, no HTTP routes)
+
+4. **Build & Deployment ✅**
+   - Built all 3 module-eval Lambdas successfully:
+     - `eval-config.zip` - 19M
+     - `eval-processor.zip` - 11M
+     - `eval-results.zip` - 14M
+   - Copied zips to infra repo: `build/module-eval/`
+   - Deployed via Terraform (zero-downtime blue-green deployment)
+   - Test environment: `/Users/aaron/code/bodhix/testing/test-auth/`
+
+5. **Validation ✅**
+   - **Layer 2: 0 errors, 0 warnings** ✅
+   - Investigated 4 "import" warnings - determined to be false positives
+   - Confirmed frontend code exists for all flagged routes:
+     - `POST /admin/org/eval/criteria-sets/import` - Frontend code exists ✅
+     - `GET /admin/org/eval/criteria-sets/{id}/items` - Frontend code exists ✅
+   - Validator limitation documented (dynamic URL construction not detected)
+
+**Files Modified in Templates:**
+- `templates/_modules-functional/module-eval/db/schema/014-eval-rpc-functions.sql`
+- `templates/_modules-functional/module-eval/db/migrations/20260201_adr019c_eval_permission_rpcs.sql` (new)
+- `templates/_modules-functional/module-eval/backend/lambdas/eval-results/lambda_function.py`
+
+**Time:** ~3 hours
+
+**Ready to Commit:**
+- Database changes (schema + migration)
+- Lambda implementation (eval-results with ADR-019c pattern)
+
+**Next:** Create logical commits and push to remote branch, then proceed to Phase 9 (module-chat)
