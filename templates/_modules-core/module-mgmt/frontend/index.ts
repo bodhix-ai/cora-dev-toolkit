@@ -39,6 +39,7 @@ export { CostTab } from "./components/admin/CostTab";
 // Export other components
 export { ModuleAdminDashboard } from "./components/ModuleAdminDashboard";
 export { ModuleGate, ModuleAwareNavigation, ModuleConditional } from "./components/ModuleAwareNavigation";
+export { WorkspaceModuleConfig } from "./components/WorkspaceModuleConfig";
 
 /**
  * Module metadata

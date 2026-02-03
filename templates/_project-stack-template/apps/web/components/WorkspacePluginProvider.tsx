@@ -119,9 +119,10 @@ export function WorkspacePluginProvider({
   // Compute module availability utilities
   const moduleAvailability = useMemo(() => {
     // Filter to modules that are enabled at the workspace level (after cascade)
+    // API returns: name, isEnabled, isInstalled, systemEnabled, orgEnabled, wsEnabled
     const enabledModules = modules
-      .filter((m: any) => m.resolvedEnabled)
-      .map((m: any) => m.moduleName);
+      .filter((m: any) => m.isEnabled)
+      .map((m: any) => m.name);
     
     return {
       /**
@@ -135,16 +136,16 @@ export function WorkspacePluginProvider({
        * Get module configuration (resolved from sys → org → ws cascade)
        */
       getModuleConfig: (moduleName: string): ModuleConfig | null => {
-        const module = modules.find((m: any) => m.moduleName === moduleName);
-        if (!module) return null;
-        
+        const foundModule = modules.find((m: any) => m.name === moduleName);
+        if (!foundModule) return null;
+
         return {
-          name: module.moduleName,
-          displayName: module.displayName,
-          isEnabled: module.resolvedEnabled,
-          isInstalled: module.systemInstalled,
-          config: module.resolvedConfig,
-          featureFlags: module.resolvedFeatureFlags,
+          name: foundModule.name,
+          displayName: foundModule.displayName,
+          isEnabled: foundModule.isEnabled,
+          isInstalled: foundModule.isInstalled,
+          config: foundModule.config || {},
+          featureFlags: foundModule.featureFlags || {},
         };
       },
       

@@ -47,7 +47,7 @@ export function WorkspaceModuleSettings({ workspaceId }: WorkspaceModuleSettings
     return modules.filter(m => {
       // Must be enabled at both system and org levels to be configurable
       const orgEnabled = m.orgEnabled !== null ? m.orgEnabled : m.systemEnabled;
-      return m.systemEnabled && orgEnabled && m.systemInstalled;
+      return m.systemEnabled && orgEnabled && m.isInstalled;
     });
   }, [modules]);
 
@@ -135,12 +135,13 @@ export function WorkspaceModuleSettings({ workspaceId }: WorkspaceModuleSettings
       <Grid container spacing={2}>
         {configurableModules.map((module) => {
           const isEnabled = module.resolvedEnabled;
-          const isUpdating = updating === module.moduleName;
+          const isUpdating = updating === module.name;
           const hasOrgOverride = module.orgEnabled !== null;
-          const hasWsOverride = module.wsConfigOverrides !== null || module.wsFeatureFlagOverrides !== null;
+          // Check if there are workspace-level overrides by seeing if config/featureFlags differ from system
+          const hasWsOverride = module.wsEnabled !== undefined;
 
           return (
-            <Grid item xs={12} key={module.moduleName}>
+            <Grid item xs={12} key={module.name}>
               <Card variant="outlined">
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start">
@@ -150,9 +151,9 @@ export function WorkspaceModuleSettings({ workspaceId }: WorkspaceModuleSettings
                           {module.displayName}
                         </Typography>
                         <Chip
-                          label={module.moduleType === 'core' ? 'Core' : 'Functional'}
+                          label={module.type === 'core' ? 'Core' : 'Functional'}
                           size="small"
-                          color={module.moduleType === 'core' ? 'primary' : 'default'}
+                          color={module.type === 'core' ? 'primary' : 'default'}
                         />
                         {hasOrgOverride && (
                           <Chip
@@ -173,7 +174,7 @@ export function WorkspaceModuleSettings({ workspaceId }: WorkspaceModuleSettings
                       </Box>
 
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        {module.moduleName}
+                        {module.name}
                       </Typography>
 
                       <Box display="flex" gap={1} flexWrap="wrap">
@@ -196,7 +197,7 @@ export function WorkspaceModuleSettings({ workspaceId }: WorkspaceModuleSettings
                       control={
                         <Switch
                           checked={isEnabled}
-                          onChange={() => handleToggle(module.moduleName, isEnabled)}
+                          onChange={() => handleToggle(module.name, isEnabled)}
                           disabled={isUpdating}
                           color="primary"
                         />

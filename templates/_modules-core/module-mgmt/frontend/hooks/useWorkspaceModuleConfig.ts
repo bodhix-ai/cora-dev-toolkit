@@ -24,29 +24,31 @@ import { useSession } from "next-auth/react";
 // =============================================================================
 
 export interface WorkspaceModuleConfig {
-  moduleName: string;
+  id: string | null;
+  name: string;
   displayName: string;
-  moduleType: "core" | "functional";
+  description?: string;
+  type: "core" | "functional";
   tier: 1 | 2 | 3;
-  // System-level config
-  systemEnabled: boolean;
-  systemInstalled: boolean;
-  systemConfig: Record<string, unknown>;
-  systemFeatureFlags: Record<string, boolean>;
-  // Org-level overrides
-  orgEnabled: boolean | null;
-  orgConfigOverrides: Record<string, unknown> | null;
-  orgFeatureFlagOverrides: Record<string, boolean> | null;
-  // Workspace-level overrides
-  wsConfigOverrides: Record<string, unknown> | null;
-  wsFeatureFlagOverrides: Record<string, boolean> | null;
-  // Resolved config (system + org + workspace cascade)
-  resolvedEnabled: boolean;
-  resolvedConfig: Record<string, unknown>;
-  resolvedFeatureFlags: Record<string, boolean>;
+  // Enablement fields
+  isEnabled: boolean;          // Resolved enablement (final cascade result)
+  isInstalled: boolean;        // System-level installation
+  systemEnabled: boolean;      // System-level enablement
+  orgEnabled: boolean | null;  // Org-level enablement
+  wsEnabled: boolean | null;   // Workspace-level enablement
+  resolvedEnabled: boolean;    // Alias for isEnabled (for WorkspacePluginProvider)
+  // Configuration
+  version: string | null;
+  config: Record<string, unknown>;
+  featureFlags: Record<string, unknown>;
+  dependencies: string[];
+  navConfig: Record<string, unknown>;
+  requiredPermissions: string[];
+  resolutionMetadata?: Record<string, unknown>;
 }
 
 export interface WorkspaceModuleConfigUpdate {
+  isEnabled?: boolean;
   configOverrides?: Record<string, unknown>;
   featureFlagOverrides?: Record<string, boolean>;
 }
@@ -214,6 +216,7 @@ export function useWorkspaceModuleConfig(
         {
           method: "PUT",
           body: JSON.stringify({
+            is_enabled: updates.isEnabled,
             config_overrides: updates.configOverrides,
             feature_flag_overrides: updates.featureFlagOverrides,
           }),
@@ -231,7 +234,7 @@ export function useWorkspaceModuleConfig(
       if (apiData?.data?.module) {
         setModules((prev: WorkspaceModuleConfig[]) =>
           prev.map((m: WorkspaceModuleConfig) =>
-            m.moduleName === name ? apiData.data.module : m
+            m.name === name ? apiData.data.module : m
           )
         );
       }

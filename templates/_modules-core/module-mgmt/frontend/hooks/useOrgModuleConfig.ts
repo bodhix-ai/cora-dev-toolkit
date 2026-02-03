@@ -1,18 +1,16 @@
 /**
  * useOrgModuleConfig Hook
  *
- * React hook for managing organization-level module configuration.
+ * React hook for managing org-level module configuration.
  * Provides methods to list and update module configs with org-level overrides.
  *
  * @example
  * ```tsx
- * const { modules, updateConfig } = useOrgModuleConfig();
+ * const { modules, updateConfig } = useOrgModuleConfig({ orgId: 'org-123' });
  *
  * // Update org-level module config
  * await updateConfig('module-kb', {
- *   isEnabled: true,
- *   configOverrides: { maxDocuments: 1000 },
- *   featureFlagOverrides: { advancedSearch: true }
+ *   isEnabled: true
  * });
  * ```
  */
@@ -25,23 +23,25 @@ import { useSession } from "next-auth/react";
 // =============================================================================
 
 export interface OrgModuleConfig {
-  moduleName: string;
+  id: string | null;
+  name: string;
   displayName: string;
-  moduleType: "core" | "functional";
+  description?: string;
+  type: "core" | "functional";
   tier: 1 | 2 | 3;
-  // System-level config
-  systemEnabled: boolean;
-  systemInstalled: boolean;
-  systemConfig: Record<string, unknown>;
-  systemFeatureFlags: Record<string, boolean>;
-  // Org-level overrides
-  orgEnabled: boolean | null; // null = inherit from system
-  orgConfigOverrides: Record<string, unknown> | null;
-  orgFeatureFlagOverrides: Record<string, boolean> | null;
-  // Resolved config (system + org cascade)
-  resolvedEnabled: boolean;
-  resolvedConfig: Record<string, unknown>;
-  resolvedFeatureFlags: Record<string, boolean>;
+  // Enablement fields
+  isEnabled: boolean;          // Resolved enablement (sys → org)
+  isInstalled: boolean;        // System-level installation
+  systemEnabled: boolean;      // System-level enablement
+  orgEnabled: boolean | null;  // Org-level enablement
+  // Configuration
+  version: string | null;
+  config: Record<string, unknown>;
+  featureFlags: Record<string, unknown>;
+  dependencies: string[];
+  navConfig: Record<string, unknown>;
+  requiredPermissions: string[];
+  resolutionMetadata?: Record<string, unknown>;
 }
 
 export interface OrgModuleConfigUpdate {
@@ -51,6 +51,7 @@ export interface OrgModuleConfigUpdate {
 }
 
 export interface UseOrgModuleConfigOptions {
+  orgId: string | null;
   autoFetch?: boolean;
   onError?: (error: string) => void;
 }
@@ -78,15 +79,13 @@ const API_BASE_URL =
       ""
     : process.env.NEXT_PUBLIC_CORA_API_URL || "";
 
-const API_BASE = `${API_BASE_URL}/admin/org/mgmt/modules`;
-
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {},
   token?: string
 ): Promise<{ data: T | null; error: string | null }> {
   try {
-    const url = API_BASE + endpoint;
+    const url = `${API_BASE_URL}${endpoint}`;
     const response = await fetch(url, {
       ...options,
       headers: {
@@ -120,9 +119,9 @@ async function apiRequest<T>(
 // =============================================================================
 
 export function useOrgModuleConfig(
-  options: UseOrgModuleConfigOptions = {}
+  options: UseOrgModuleConfigOptions
 ): UseOrgModuleConfigReturn {
-  const { autoFetch = true, onError } = options;
+  const { orgId, autoFetch = true, onError } = options;
 
   // Authentication
   const { data: session, status } = useSession();
@@ -150,12 +149,17 @@ export function useOrgModuleConfig(
       return;
     }
 
+    if (!orgId) {
+      setError("Organization ID is required");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     const { data, error: fetchError } = await apiRequest<{
       modules: OrgModuleConfig[];
-    }>("", {}, token);
+    }>(`/admin/org/mgmt/modules?orgId=${orgId}`, {}, token);
 
     if (fetchError) {
       handleError(fetchError);
@@ -167,16 +171,17 @@ export function useOrgModuleConfig(
     }
 
     setIsLoading(false);
-  }, [handleError, isAuthenticated, token]);
+  }, [orgId, handleError, isAuthenticated, token]);
 
   // Get single module with org-level resolution
   const getModule = useCallback(
     async (name: string): Promise<OrgModuleConfig | null> => {
       if (!isAuthenticated) return null;
+      if (!orgId) return null;
 
       const { data, error: fetchError } = await apiRequest<{
         module: OrgModuleConfig;
-      }>(`/${name}`, {}, token);
+      }>(`/admin/org/mgmt/modules/${name}?orgId=${orgId}`, {}, token);
 
       if (fetchError) {
         handleError(fetchError);
@@ -187,7 +192,7 @@ export function useOrgModuleConfig(
       const apiData = data as any;
       return apiData?.data?.module || null;
     },
-    [handleError, isAuthenticated, token]
+    [orgId, handleError, isAuthenticated, token]
   );
 
   // Update org-level module config
@@ -197,14 +202,16 @@ export function useOrgModuleConfig(
       updates: OrgModuleConfigUpdate
     ): Promise<boolean> => {
       if (!isAuthenticated) return false;
+      if (!orgId) return false;
 
       const { data, error: updateError } = await apiRequest<{
         module: OrgModuleConfig;
       }>(
-        `/${name}`,
+        `/admin/org/mgmt/modules/${name}?orgId=${orgId}`,
         {
           method: "PUT",
           body: JSON.stringify({
+            org_id: orgId,
             is_enabled: updates.isEnabled,
             config_overrides: updates.configOverrides,
             feature_flag_overrides: updates.featureFlagOverrides,
@@ -223,22 +230,22 @@ export function useOrgModuleConfig(
       if (apiData?.data?.module) {
         setModules((prev: OrgModuleConfig[]) =>
           prev.map((m: OrgModuleConfig) =>
-            m.moduleName === name ? apiData.data.module : m
+            m.name === name ? apiData.data.module : m
           )
         );
       }
 
       return true;
     },
-    [handleError, isAuthenticated, token]
+    [orgId, handleError, isAuthenticated, token]
   );
 
-  // Auto-fetch on mount
+  // Auto-fetch on mount or when orgId changes
   useEffect(() => {
-    if (autoFetch) {
+    if (autoFetch && orgId) {
       refreshModules();
     }
-  }, [autoFetch, refreshModules]);
+  }, [autoFetch, orgId, refreshModules]);
 
   return {
     modules,
