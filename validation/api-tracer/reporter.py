@@ -51,7 +51,8 @@ class Reporter:
     def format_report(
         self, 
         report: ValidationReport, 
-        output_format: str = 'text'
+        output_format: str = 'text',
+        verbose: bool = False
     ) -> str:
         """
         Format validation report.
@@ -59,6 +60,7 @@ class Reporter:
         Args:
             report: ValidationReport to format
             output_format: 'text', 'json', or 'markdown'
+            verbose: If True, include detailed error list. If False, show only module summaries.
             
         Returns:
             Formatted report string
@@ -68,9 +70,9 @@ class Reporter:
         elif output_format == 'markdown':
             return self._format_markdown(report)
         else:
-            return self._format_text(report)
+            return self._format_text(report, verbose)
     
-    def _format_text(self, report: ValidationReport) -> str:
+    def _format_text(self, report: ValidationReport, verbose: bool = False) -> str:
         """Format report as human-readable text with colors."""
         lines = []
         
@@ -81,41 +83,128 @@ class Reporter:
         lines.append("=" * 80)
         lines.append("")
         
-        # Errors
+        # Group errors and warnings by module
         errors = [m for m in report.mismatches if m.severity == 'error']
-        if errors:
-            lines.append("-" * 80)
-            lines.append(f"{Fore.RED}ERRORS{Style.RESET_ALL}")
-            lines.append("-" * 80)
-            for i, mismatch in enumerate(errors, 1):
-                lines.append("")
-                lines.append(f"{Fore.RED}[{i}] {mismatch.mismatch_type.upper()}: {mismatch.issue}{Style.RESET_ALL}")
-                if mismatch.endpoint:
-                    lines.append(f"    Endpoint: {mismatch.method} {mismatch.endpoint}")
-                if mismatch.frontend_file:
-                    lines.append(f"    Frontend: {mismatch.frontend_file}:{mismatch.frontend_line}")
-                if mismatch.gateway_file:
-                    lines.append(f"    Gateway: {mismatch.gateway_file}")
-                if mismatch.lambda_file:
-                    lines.append(f"    Lambda: {mismatch.lambda_file}:{mismatch.lambda_line}")
-                if mismatch.suggestion:
-                    lines.append(f"    {Fore.CYAN}Suggestion: {mismatch.suggestion}{Style.RESET_ALL}")
-            lines.append("")
-        
-        # Warnings
         warnings = [m for m in report.mismatches if m.severity == 'warning']
-        if warnings:
+        
+        # Extract module name from file path
+        def get_module(mismatch):
+            """Extract module name from file paths."""
+            # Try lambda file first
+            if mismatch.lambda_file:
+                # Pattern: packages/module-name/... or lambdas/module-name/...
+                parts = mismatch.lambda_file.split('/')
+                for i, part in enumerate(parts):
+                    if part.startswith('module-') or part == 'lambdas':
+                        if part == 'lambdas' and i + 1 < len(parts):
+                            return parts[i + 1]
+                        elif part.startswith('module-'):
+                            return part
+            
+            # Try frontend file
+            if mismatch.frontend_file:
+                parts = mismatch.frontend_file.split('/')
+                for part in parts:
+                    if part.startswith('module-'):
+                        return part
+            
+            # Try gateway file
+            if mismatch.gateway_file:
+                parts = mismatch.gateway_file.split('/')
+                for part in parts:
+                    if part.startswith('module-'):
+                        return part
+            
+            return "general"  # Fallback for non-module errors
+        
+        # Group by module
+        errors_by_module = {}
+        warnings_by_module = {}
+        
+        for error in errors:
+            module = get_module(error)
+            if module not in errors_by_module:
+                errors_by_module[module] = []
+            errors_by_module[module].append(error)
+        
+        for warning in warnings:
+            module = get_module(warning)
+            if module not in warnings_by_module:
+                warnings_by_module[module] = []
+            warnings_by_module[module].append(warning)
+        
+        # Display errors and warnings grouped by module
+        all_modules = sorted(set(list(errors_by_module.keys()) + list(warnings_by_module.keys())))
+        
+        for module in all_modules:
+            module_errors = errors_by_module.get(module, [])
+            module_warnings = warnings_by_module.get(module, [])
+            
+            if not module_errors and not module_warnings:
+                continue
+            
             lines.append("-" * 80)
-            lines.append(f"{Fore.YELLOW}WARNINGS{Style.RESET_ALL}")
+            lines.append(f"{Fore.CYAN}{module.upper()}{Style.RESET_ALL}")
             lines.append("-" * 80)
-            for i, mismatch in enumerate(warnings, 1):
-                lines.append("")
-                lines.append(f"{Fore.YELLOW}[{i}] {mismatch.mismatch_type.upper()}: {mismatch.issue}{Style.RESET_ALL}")
-                if mismatch.endpoint:
-                    lines.append(f"    Endpoint: {mismatch.method} {mismatch.endpoint}")
-                if mismatch.suggestion:
-                    lines.append(f"    {Fore.CYAN}Suggestion: {mismatch.suggestion}{Style.RESET_ALL}")
-            lines.append("")
+            
+            # Module errors
+            if module_errors:
+                lines.append(f"{Fore.RED}Errors ({len(module_errors)}):{Style.RESET_ALL}")
+                
+                if verbose:
+                    # Verbose mode: Show all details
+                    for i, mismatch in enumerate(module_errors, 1):
+                        lines.append("")
+                        lines.append(f"  {Fore.RED}[{i}] {mismatch.mismatch_type.upper()}: {mismatch.issue}{Style.RESET_ALL}")
+                        if mismatch.endpoint:
+                            lines.append(f"      Endpoint: {mismatch.method} {mismatch.endpoint}")
+                        if mismatch.frontend_file:
+                            lines.append(f"      Frontend: {mismatch.frontend_file}:{mismatch.frontend_line}")
+                        if mismatch.gateway_file:
+                            lines.append(f"      Gateway: {mismatch.gateway_file}")
+                        if mismatch.lambda_file:
+                            lines.append(f"      Lambda: {mismatch.lambda_file}:{mismatch.lambda_line}")
+                        if mismatch.suggestion:
+                            lines.append(f"      {Fore.CYAN}Suggestion: {mismatch.suggestion}{Style.RESET_ALL}")
+                    lines.append("")
+                else:
+                    # Summary mode: Show counts by error type
+                    error_types = {}
+                    for m in module_errors:
+                        mtype = m.mismatch_type.upper()
+                        error_types[mtype] = error_types.get(mtype, 0) + 1
+                    
+                    for mtype, count in sorted(error_types.items()):
+                        lines.append(f"  - {mtype}: {count}")
+                    
+                    lines.append("")
+                    lines.append(f"{Fore.CYAN}  (Use --verbose to see detailed error list){Style.RESET_ALL}")
+                    lines.append("")
+            
+            # Module warnings
+            if module_warnings:
+                lines.append(f"{Fore.YELLOW}Warnings ({len(module_warnings)}):{Style.RESET_ALL}")
+                
+                if verbose:
+                    # Verbose mode: Show all details
+                    for i, mismatch in enumerate(module_warnings, 1):
+                        lines.append("")
+                        lines.append(f"  {Fore.YELLOW}[{i}] {mismatch.mismatch_type.upper()}: {mismatch.issue}{Style.RESET_ALL}")
+                        if mismatch.endpoint:
+                            lines.append(f"      Endpoint: {mismatch.method} {mismatch.endpoint}")
+                        if mismatch.suggestion:
+                            lines.append(f"      {Fore.CYAN}Suggestion: {mismatch.suggestion}{Style.RESET_ALL}")
+                    lines.append("")
+                else:
+                    # Summary mode: Show counts by warning type
+                    warning_types = {}
+                    for m in module_warnings:
+                        mtype = m.mismatch_type.upper()
+                        warning_types[mtype] = warning_types.get(mtype, 0) + 1
+                    
+                    for mtype, count in sorted(warning_types.items()):
+                        lines.append(f"  - {mtype}: {count}")
+                    lines.append("")
         
         # Summary (at end for easy visibility without scrolling)
         lines.append("-" * 80)
@@ -131,27 +220,56 @@ class Reporter:
         lines.append(f"Warnings: {Fore.YELLOW}{len([m for m in report.mismatches if m.severity == 'warning'])}{Style.RESET_ALL}")
         lines.append("")
         
-        # Auth validation summary (with layer breakdown)
+        # Auth validation summary (with 3-layer breakdown)
         if 'auth_validation' in report.summary:
             auth = report.summary['auth_validation']
             if auth.get('enabled'):
                 # Check if layer breakdown is available
-                if 'layer1' in auth and 'layer2' in auth:
+                if 'frontend' in auth or 'layer1' in auth or 'layer2' in auth:
                     lines.append(f"{Fore.CYAN}Auth Validation (ADR-019):{Style.RESET_ALL}")
                     
-                    # Layer 1: Admin Authorization
-                    l1 = auth['layer1']
-                    l1_errors = l1.get('errors', 0)
-                    l1_warnings = l1.get('warnings', 0)
-                    l1_color = Fore.GREEN if l1_errors == 0 else Fore.RED
-                    lines.append(f"  Layer 1 (Admin Auth): {l1_color}{l1_errors} errors{Style.RESET_ALL}, {Fore.YELLOW}{l1_warnings} warnings{Style.RESET_ALL}")
+                    # Frontend: Admin page auth patterns (TypeScript/TSX)
+                    if 'frontend' in auth:
+                        frontend = auth['frontend']
+                        
+                        # Breakdown by scope (Sys, Org, Ws)
+                        sys_count = frontend.get('sys_errors', 0) + frontend.get('sys_warnings', 0)
+                        org_count = frontend.get('org_errors', 0) + frontend.get('org_warnings', 0)
+                        ws_count = frontend.get('ws_errors', 0) + frontend.get('ws_warnings', 0)
+                        
+                        frontend_errors = frontend.get('errors', 0)
+                        frontend_warnings = frontend.get('warnings', 0)
+                        frontend_color = Fore.GREEN if frontend_errors == 0 else Fore.RED
+                        
+                        lines.append(f"  Frontend (Admin Pages): {frontend_color}{frontend_errors} errors{Style.RESET_ALL}, {Fore.YELLOW}{frontend_warnings} warnings{Style.RESET_ALL}")
+                        
+                        # Add scope breakdown if there are issues
+                        if sys_count > 0 or org_count > 0 or ws_count > 0:
+                            if sys_count > 0:
+                                sys_color = Fore.GREEN if frontend.get('sys_errors', 0) == 0 else Fore.RED
+                                lines.append(f"    - Sys Admin: {sys_color}{frontend.get('sys_errors', 0)} errors{Style.RESET_ALL}, {Fore.YELLOW}{frontend.get('sys_warnings', 0)} warnings{Style.RESET_ALL}")
+                            if org_count > 0:
+                                org_color = Fore.GREEN if frontend.get('org_errors', 0) == 0 else Fore.RED
+                                lines.append(f"    - Org Admin: {org_color}{frontend.get('org_errors', 0)} errors{Style.RESET_ALL}, {Fore.YELLOW}{frontend.get('org_warnings', 0)} warnings{Style.RESET_ALL}")
+                            if ws_count > 0:
+                                ws_color = Fore.GREEN if frontend.get('ws_errors', 0) == 0 else Fore.RED
+                                lines.append(f"    - Workspace: {ws_color}{frontend.get('ws_errors', 0)} errors{Style.RESET_ALL}, {Fore.YELLOW}{frontend.get('ws_warnings', 0)} warnings{Style.RESET_ALL}")
                     
-                    # Layer 2: Resource Permissions
-                    l2 = auth['layer2']
-                    l2_errors = l2.get('errors', 0)
-                    l2_warnings = l2.get('warnings', 0)
-                    l2_color = Fore.GREEN if l2_errors == 0 else Fore.RED
-                    lines.append(f"  Layer 2 (Resource Permissions): {l2_color}{l2_errors} errors{Style.RESET_ALL}, {Fore.YELLOW}{l2_warnings} warnings{Style.RESET_ALL}")
+                    # Backend Layer 1: Admin Authorization (Lambda)
+                    if 'layer1' in auth:
+                        l1 = auth['layer1']
+                        l1_errors = l1.get('errors', 0)
+                        l1_warnings = l1.get('warnings', 0)
+                        l1_color = Fore.GREEN if l1_errors == 0 else Fore.RED
+                        lines.append(f"  Backend Layer 1 (Admin Auth): {l1_color}{l1_errors} errors{Style.RESET_ALL}, {Fore.YELLOW}{l1_warnings} warnings{Style.RESET_ALL}")
+                    
+                    # Backend Layer 2: Resource Permissions (Lambda)
+                    if 'layer2' in auth:
+                        l2 = auth['layer2']
+                        l2_errors = l2.get('errors', 0)
+                        l2_warnings = l2.get('warnings', 0)
+                        l2_color = Fore.GREEN if l2_errors == 0 else Fore.RED
+                        lines.append(f"  Backend Layer 2 (Resource Permissions): {l2_color}{l2_errors} errors{Style.RESET_ALL}, {Fore.YELLOW}{l2_warnings} warnings{Style.RESET_ALL}")
                 else:
                     # Fallback to simple summary if layer breakdown unavailable
                     auth_errors = auth.get('total_errors', auth.get('errors', 0))

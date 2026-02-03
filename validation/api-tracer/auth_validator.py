@@ -30,6 +30,7 @@ class AuthIssue:
     issue: str = ""
     suggestion: Optional[str] = None
     standard_ref: Optional[str] = None  # Reference to standard doc
+    admin_scope: Optional[str] = None  # 'sys', 'org', 'ws' for admin routes
 
 
 class AuthIssueType:
@@ -108,6 +109,7 @@ class FrontendAuthValidator:
     def __init__(self):
         self.issues: List[AuthIssue] = []
         self.current_file: str = ""
+        self.current_route_type: str = ""  # Track current route type for scope attribution
     
     def validate_file(self, file_path: str, content: str) -> List[AuthIssue]:
         """
@@ -122,6 +124,7 @@ class FrontendAuthValidator:
         """
         self.current_file = file_path
         self.issues = []
+        self.current_route_type = ""
         
         # Check API client files for orgId in org admin routes
         if 'lib/api.ts' in file_path or 'lib/api.tsx' in file_path:
@@ -130,6 +133,7 @@ class FrontendAuthValidator:
         
         # Determine route type from file path
         route_type = self._detect_route_type(file_path)
+        self.current_route_type = route_type  # Store for admin_scope attribution
         
         if route_type == 'none':
             # Not an admin page, no auth requirements
@@ -195,7 +199,8 @@ class FrontendAuthValidator:
                 line=1,
                 issue="Admin page missing useUser() or useSession() hook",
                 suggestion="Add: const { user, isLoading } = useUser() or useSession()",
-                standard_ref="ADR-019a"
+                standard_ref="ADR-019a",
+                admin_scope=route_type  # 'sys', 'org', or 'ws'
             ))
     
     def _check_use_role(self, content: str, route_type: str):
@@ -212,7 +217,8 @@ class FrontendAuthValidator:
                 line=1,
                 issue="System admin page missing useRole() hook",
                 suggestion="Add: const { isSysAdmin } = useRole() - useRole returns { role, hasPermission, isSysAdmin, isOrgAdmin }",
-                standard_ref="ADR-019a"
+                standard_ref="ADR-019a",
+                admin_scope='sys'
             ))
         
         # For org admin pages, useRole is required for role check
@@ -225,7 +231,8 @@ class FrontendAuthValidator:
                 line=1,
                 issue="Organization admin page missing useRole() hook",
                 suggestion="Add: const { isOrgAdmin } = useRole() - useRole returns { role, hasPermission, isSysAdmin, isOrgAdmin }",
-                standard_ref="ADR-019a"
+                standard_ref="ADR-019a",
+                admin_scope='org'
             ))
         
         # Check for invalid useRole destructuring (if useRole is present)
@@ -249,7 +256,8 @@ class FrontendAuthValidator:
                 line=1,
                 issue="Organization admin page missing useOrganizationContext() hook",
                 suggestion="Add: const { orgId, organization } = useOrganizationContext()",
-                standard_ref="ADR-019a"
+                standard_ref="ADR-019a",
+                admin_scope='org'
             ))
     
     def _check_loading_state(self, content: str, route_type: str):
@@ -270,7 +278,8 @@ class FrontendAuthValidator:
                 line=1,
                 issue="Admin page may not check loading state before accessing role",
                 suggestion="Ensure loading state is checked: if (isLoading) return <LoadingSpinner />",
-                standard_ref="ADR-019a"
+                standard_ref="ADR-019a",
+                admin_scope=route_type  # 'sys', 'org', or 'ws'
             ))
     
     def _check_use_role_destructuring(self, content: str):
@@ -278,7 +287,7 @@ class FrontendAuthValidator:
         Check that useRole() destructuring uses valid properties.
         
         Valid properties: role, hasPermission, isSysAdmin, isOrgAdmin
-        Invalid properties: sysRole, orgRole, isLoading, loading, etc.
+        Invalid properties: hasRole (function doesn't exist), sysRole, orgRole, isLoading, loading, etc.
         """
         # Pattern to find useRole destructuring: const { ... } = useRole()
         pattern = r'const\s*\{\s*([^}]+)\s*\}\s*=\s*useRole\s*\(\s*\)'
@@ -295,6 +304,7 @@ class FrontendAuthValidator:
         
         # Common invalid properties (mistakes)
         invalid_props = {
+            'hasRole': 'Use isOrgAdmin or isSysAdmin properties - hasRole() function does not exist',
             'sysRole': 'isSysAdmin (boolean)',
             'orgRole': 'isOrgAdmin (boolean)', 
             'isLoading': 'useRole does not return isLoading - use useUser().loading instead',
@@ -325,8 +335,9 @@ class FrontendAuthValidator:
                     file=self.current_file,
                     line=line,
                     issue=f"Invalid useRole() destructuring: '{prop}' is not returned by useRole()",
-                    suggestion=f"useRole() returns {{ role, hasPermission, isSysAdmin, isOrgAdmin }}. Use {invalid_props[prop]}",
-                    standard_ref="ADR-019a"
+                    suggestion=f"useRole() returns {{ role, hasPermission, isSysAdmin, isOrgAdmin }}. {invalid_props[prop]}",
+                    standard_ref="ADR-019a",
+                    admin_scope=self.current_route_type
                 ))
             elif prop not in valid_props and not prop.startswith('_'):  # Allow _ for ignored vars
                 # Unknown property - warn
@@ -338,8 +349,25 @@ class FrontendAuthValidator:
                     line=line,
                     issue=f"Unknown useRole() property: '{prop}' - verify this is a valid return value",
                     suggestion=f"useRole() returns {{ role, hasPermission, isSysAdmin, isOrgAdmin }}",
-                    standard_ref="ADR-019a"
+                    standard_ref="ADR-019a",
+                    admin_scope=self.current_route_type
                 ))
+        
+        # NEW: Check for hasRole() function calls (function doesn't exist)
+        if re.search(r'hasRole\s*\(', content):
+            match = re.search(r'hasRole\s*\(', content)
+            call_line = content[:match.start()].count('\n') + 1
+            self.issues.append(AuthIssue(
+                severity='error',
+                issue_type=AuthIssueType.ADMIN_INVALID_HOOK_DESTRUCTURING,
+                layer='frontend',
+                file=self.current_file,
+                line=call_line,
+                issue="'hasRole()' function does not exist - useRole() returns boolean properties, not functions",
+                suggestion="Use 'isOrgAdmin' or 'isSysAdmin' properties from useRole() hook. See 01_std_front_ORG-ADMIN-PAGE-AUTH.md",
+                standard_ref="ADR-019a / 01_std_front_ORG-ADMIN-PAGE-AUTH.md",
+                admin_scope=self.current_route_type
+            ))
 
     def _check_orgs_path_parameter_antipattern(self, content: str):
         """
@@ -400,7 +428,8 @@ class FrontendAuthValidator:
                     line=line,
                     issue="Direct role access from JWT/token detected (roles are NOT in JWT)",
                     suggestion="Use useRole() hook which queries the database for roles",
-                    standard_ref="ADR-019"
+                    standard_ref="ADR-019",
+                    admin_scope=self.current_route_type
                 ))
                 break
     

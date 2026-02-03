@@ -242,6 +242,36 @@ class AdminAuthValidator:
                 "rule": "org-admin-auth/use-role-hook"
             })
         
+        # NEW: Check for incorrect useRole() usage patterns
+        if has_use_role:
+            # Check for incorrect hasRole destructuring (hasRole doesn't exist)
+            if re.search(r'const\s*{\s*hasRole\s*}\s*=\s*useRole\(\)', content):
+                line_num = self._find_line_number(content, r'const\s*{\s*hasRole\s*}')
+                self.errors.append({
+                    "file": rel_path,
+                    "line": line_num,
+                    "message": "ADR-016: Incorrect useRole() usage. Hook returns 'isOrgAdmin' property, not 'hasRole()' function. See 01_std_front_ORG-ADMIN-PAGE-AUTH.md",
+                    "rule": "org-admin-auth/use-role-correct-pattern"
+                })
+            
+            # Check for hasRole() function calls (function doesn't exist)
+            if re.search(r'hasRole\s*\(', content):
+                line_num = self._find_line_number(content, r'hasRole\s*\(')
+                self.errors.append({
+                    "file": rel_path,
+                    "line": line_num,
+                    "message": "ADR-016: 'hasRole()' function does not exist. Use 'isOrgAdmin' property from useRole() hook.",
+                    "rule": "org-admin-auth/no-hasRole-function"
+                })
+            
+            # Suggest correct pattern if useRole is present but not using isOrgAdmin
+            if 'isOrgAdmin' not in content and not re.search(r'hasRole\s*\(', content):
+                self.warnings.append({
+                    "file": rel_path,
+                    "message": "ADR-016: useRole() hook imported but 'isOrgAdmin' property not used. Verify correct pattern is followed.",
+                    "rule": "org-admin-auth/use-isOrgAdmin-property"
+                })
+        
         # Check for sys admin access (org admin pages should NOT allow sys admins)
         # Per revised ADR-016, org and sys admin pages have separate authorization
         has_sys_admin_check = 'isSysAdmin' in content
