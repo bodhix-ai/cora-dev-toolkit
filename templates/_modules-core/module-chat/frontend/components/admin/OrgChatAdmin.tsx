@@ -24,7 +24,7 @@ import { OrgSessionsTab } from "./OrgSessionsTab";
 import { OrgAnalyticsTab } from "./OrgAnalyticsTab";
 
 interface OrgChatAdminProps {
-  authAdapter?: AuthAdapter;
+  authAdapter: AuthAdapter;
   orgId: string;
   orgName?: string;
 }

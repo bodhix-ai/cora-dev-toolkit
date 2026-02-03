@@ -62,7 +62,7 @@ interface PollingState {
 }
 
 /** Filter state for evaluations */
-interface EvaluationFilters {
+export interface EvaluationFilters {
   /** Current workspace ID */
   workspaceId: string | null;
   /** Filter by status */

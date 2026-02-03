@@ -25,7 +25,7 @@ import { OrgAdminManagementPage } from "@{{PROJECT_NAME}}/module-ws";
  */
 
 export default function WorkspaceOrgManagementRoute() {
-  const { loading: userLoading, isAuthenticated } = useUser();
+  const { loading: userLoading, isAuthenticated, profile } = useUser();
   const { isOrgAdmin } = useRole();
   const { orgId, organization } = useOrganizationContext();
 
@@ -42,7 +42,7 @@ export default function WorkspaceOrgManagementRoute() {
   }
 
   // Check if user is authenticated
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !profile) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">
