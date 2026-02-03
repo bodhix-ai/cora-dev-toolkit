@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
+import { Box, Link as MuiLink, Tooltip } from "@mui/material";
 
 interface NavLinkProps {
   href: string;
@@ -21,51 +22,107 @@ export function NavLink({ href, icon, label, isExpanded }: NavLinkProps) {
   const pathname = usePathname();
   const isActive = pathname === href || pathname.startsWith(href + "/");
 
-  return (
-    <Link
-      href={href as any}
+  const linkContent = (
+    <MuiLink
+      component={Link}
+      href={href}
       aria-label={label}
-      className={`
-        flex items-center gap-3 px-4 py-3 rounded-lg transition-all relative group
-        ${
-          isActive
-            ? "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
-            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800"
-        }
-        ${!isExpanded ? "justify-center px-2" : ""}
-      `}
+      underline="none"
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: isExpanded ? 3 : 0,
+        px: isExpanded ? 4 : 2,
+        py: 3,
+        borderRadius: 2,
+        position: "relative",
+        transition: "all 0.2s",
+        justifyContent: isExpanded ? "flex-start" : "center",
+        bgcolor: isActive
+          ? (theme) =>
+              theme.palette.mode === "dark"
+                ? "rgba(30, 64, 175, 0.2)"
+                : "rgba(219, 234, 254, 1)"
+          : "transparent",
+        color: isActive
+          ? (theme) =>
+              theme.palette.mode === "dark" ? "primary.light" : "primary.main"
+          : (theme) =>
+              theme.palette.mode === "dark" ? "grey.300" : "grey.700",
+        "&:hover": {
+          bgcolor: isActive
+            ? (theme) =>
+                theme.palette.mode === "dark"
+                  ? "rgba(30, 64, 175, 0.2)"
+                  : "rgba(219, 234, 254, 1)"
+            : (theme) =>
+                theme.palette.mode === "dark"
+                  ? "rgba(63, 63, 70, 1)"
+                  : "rgba(243, 244, 246, 1)",
+        },
+      }}
     >
       {/* Active indicator bar */}
       {isActive && (
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600 dark:bg-blue-400 rounded-r" />
+        <Box
+          sx={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: "4px",
+            bgcolor: (theme) =>
+              theme.palette.mode === "dark" ? "primary.light" : "primary.main",
+            borderTopRightRadius: 4,
+            borderBottomRightRadius: 4,
+          }}
+        />
       )}
 
       {/* Icon */}
-      <div
-        className={`flex-shrink-0 ${
-          isActive ? "text-blue-600 dark:text-blue-400" : ""
-        }`}
+      <Box
+        sx={{
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: isActive
+            ? (theme) =>
+                theme.palette.mode === "dark"
+                  ? "primary.light"
+                  : "primary.main"
+            : "inherit",
+        }}
       >
         {icon}
-      </div>
+      </Box>
 
       {/* Label - hidden when collapsed */}
       {isExpanded && (
-        <span
-          className={`text-sm font-medium truncate ${
-            isActive ? "font-semibold" : ""
-          }`}
+        <Box
+          component="span"
+          sx={{
+            fontSize: "0.875rem",
+            fontWeight: isActive ? 600 : 500,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
         >
           {label}
-        </span>
+        </Box>
       )}
-
-      {/* Tooltip for collapsed state */}
-      {!isExpanded && (
-        <div className="absolute left-full ml-2 px-3 py-2 bg-gray-900 dark:bg-zinc-800 text-white text-sm rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity z-50 shadow-lg">
-          {label}
-        </div>
-      )}
-    </Link>
+    </MuiLink>
   );
+
+  // Wrap with tooltip when collapsed
+  if (!isExpanded) {
+    return (
+      <Tooltip title={label} placement="right" arrow>
+        {linkContent}
+      </Tooltip>
+    );
+  }
+
+  return linkContent;
 }

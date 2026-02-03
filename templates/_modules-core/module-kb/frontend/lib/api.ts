@@ -40,33 +40,33 @@ interface AuthenticatedClient {
 export interface KbModuleApiClient {
   // Workspace KB endpoints
   workspace: {
-    getKb: (workspaceId: string) => Promise<ApiResponse<KnowledgeBase | null>>;
-    listDocuments: (workspaceId: string) => Promise<ApiResponse<ListDocumentsResponse>>;
+    getKb: (wsId: string) => Promise<ApiResponse<KnowledgeBase | null>>;
+    listDocuments: (wsId: string) => Promise<ApiResponse<ListDocumentsResponse>>;
     uploadDocument: (
-      workspaceId: string,
+      wsId: string,
       data: UploadDocumentInput
     ) => Promise<ApiResponse<UploadDocumentResponse>>;
     getDocument: (
-      workspaceId: string,
+      wsId: string,
       documentId: string
     ) => Promise<ApiResponse<KbDocument>>;
     deleteDocument: (
-      workspaceId: string,
+      wsId: string,
       documentId: string
     ) => Promise<ApiResponse<void>>;
     completeUpload: (
-      workspaceId: string,
+      wsId: string,
       documentId: string
     ) => Promise<ApiResponse<{ message: string; documentId: string; status: string }>>;
     downloadDocument: (
-      workspaceId: string,
+      wsId: string,
       documentId: string
     ) => Promise<ApiResponse<DownloadDocumentResponse>>;
     listAvailableKbs: (
-      workspaceId: string
+      wsId: string
     ) => Promise<ApiResponse<AvailableKb[]>>;
     toggleKb: (
-      workspaceId: string,
+      wsId: string,
       kbId: string,
       data: ToggleKbInput
     ) => Promise<ApiResponse<void>>;
@@ -101,21 +101,25 @@ export interface KbModuleApiClient {
   };
 
   // Org Admin endpoints
+  // ADR-019: All org admin calls MUST include orgId for authorization
   orgAdmin: {
-    listKbs: () => Promise<ApiResponse<KnowledgeBase[]>>;
-    createKb: (data: CreateKbInput) => Promise<ApiResponse<KnowledgeBase>>;
-    getKb: (kbId: string) => Promise<ApiResponse<KnowledgeBase>>;
+    listKbs: (orgId: string) => Promise<ApiResponse<KnowledgeBase[]>>;
+    createKb: (orgId: string, data: CreateKbInput) => Promise<ApiResponse<KnowledgeBase>>;
+    getKb: (orgId: string, kbId: string) => Promise<ApiResponse<KnowledgeBase>>;
     updateKb: (
+      orgId: string,
       kbId: string,
       data: UpdateKbInput
     ) => Promise<ApiResponse<KnowledgeBase>>;
-    deleteKb: (kbId: string) => Promise<ApiResponse<void>>;
-    listDocuments: (kbId: string) => Promise<ApiResponse<ListDocumentsResponse>>;
+    deleteKb: (orgId: string, kbId: string) => Promise<ApiResponse<void>>;
+    listDocuments: (orgId: string, kbId: string) => Promise<ApiResponse<ListDocumentsResponse>>;
     uploadDocument: (
+      orgId: string,
       kbId: string,
       data: UploadDocumentInput
     ) => Promise<ApiResponse<UploadDocumentResponse>>;
     deleteDocument: (
+      orgId: string,
       kbId: string,
       documentId: string
     ) => Promise<ApiResponse<void>>;
@@ -200,50 +204,50 @@ export function createKbModuleClient(
   return {
     // Workspace KB endpoints
     workspace: {
-      getKb: (workspaceId) =>
+      getKb: (wsId) =>
         authenticatedClient.get<KnowledgeBase | null>(
-          `/workspaces/${workspaceId}/kb`
+          `/ws/${wsId}/kb`
         ),
 
-      listDocuments: (workspaceId) =>
+      listDocuments: (wsId) =>
         authenticatedClient.get<ListDocumentsResponse>(
-          `/workspaces/${workspaceId}/kb/documents`
+          `/ws/${wsId}/kb/documents`
         ),
 
-      uploadDocument: (workspaceId, data) =>
+      uploadDocument: (wsId, data) =>
         authenticatedClient.post<UploadDocumentResponse>(
-          `/workspaces/${workspaceId}/kb/documents`,
+          `/ws/${wsId}/kb/documents`,
           data
         ),
 
-      getDocument: (workspaceId, documentId) =>
+      getDocument: (wsId, documentId) =>
         authenticatedClient.get<KbDocument>(
-          `/workspaces/${workspaceId}/kb/documents/${documentId}`
+          `/ws/${wsId}/kb/documents/${documentId}`
         ),
 
-      deleteDocument: (workspaceId, documentId) =>
+      deleteDocument: (wsId, documentId) =>
         authenticatedClient.delete<void>(
-          `/workspaces/${workspaceId}/kb/documents/${documentId}`
+          `/ws/${wsId}/kb/documents/${documentId}`
         ),
 
-      completeUpload: (workspaceId, documentId) =>
+      completeUpload: (wsId, documentId) =>
         authenticatedClient.put<{ message: string; documentId: string; status: string }>(
-          `/workspaces/${workspaceId}/kb/documents/${documentId}/complete`
+          `/ws/${wsId}/kb/documents/${documentId}/complete`
         ),
 
-      downloadDocument: (workspaceId, documentId) =>
+      downloadDocument: (wsId, documentId) =>
         authenticatedClient.get<DownloadDocumentResponse>(
-          `/workspaces/${workspaceId}/kb/documents/${documentId}/download`
+          `/ws/${wsId}/kb/documents/${documentId}/download`
         ),
 
-      listAvailableKbs: (workspaceId) =>
+      listAvailableKbs: (wsId) =>
         authenticatedClient.get<AvailableKb[]>(
-          `/workspaces/${workspaceId}/available-kbs`
+          `/ws/${wsId}/available-kbs`
         ),
 
-      toggleKb: (workspaceId, kbId, data) =>
+      toggleKb: (wsId, kbId, data) =>
         authenticatedClient.post<void>(
-          `/workspaces/${workspaceId}/kbs/${kbId}/toggle`,
+          `/ws/${wsId}/kbs/${kbId}/toggle`,
           data
         ),
     },
@@ -285,70 +289,72 @@ export function createKbModuleClient(
     },
 
     // Org Admin endpoints
+    // ADR-019: All org admin calls include orgId for authorization
     orgAdmin: {
-      listKbs: () => authenticatedClient.get<KnowledgeBase[]>("/admin/org/kbs"),
+      listKbs: (orgId) => 
+        authenticatedClient.get<KnowledgeBase[]>(`/admin/org/kb/bases?orgId=${orgId}`),
 
-      createKb: (data) =>
-        authenticatedClient.post<KnowledgeBase>("/admin/org/kbs", data),
+      createKb: (orgId, data) =>
+        authenticatedClient.post<KnowledgeBase>(`/admin/org/kb/bases?orgId=${orgId}`, data),
 
-      getKb: (kbId) =>
-        authenticatedClient.get<KnowledgeBase>(`/admin/org/kbs/${kbId}`),
+      getKb: (orgId, kbId) =>
+        authenticatedClient.get<KnowledgeBase>(`/admin/org/kb/${kbId}?orgId=${orgId}`),
 
-      updateKb: (kbId, data) =>
-        authenticatedClient.patch<KnowledgeBase>(`/admin/org/kbs/${kbId}`, data),
+      updateKb: (orgId, kbId, data) =>
+        authenticatedClient.patch<KnowledgeBase>(`/admin/org/kb/${kbId}?orgId=${orgId}`, data),
 
-      deleteKb: (kbId) =>
-        authenticatedClient.delete<void>(`/admin/org/kbs/${kbId}`),
+      deleteKb: (orgId, kbId) =>
+        authenticatedClient.delete<void>(`/admin/org/kb/${kbId}?orgId=${orgId}`),
 
-      listDocuments: (kbId) =>
-        authenticatedClient.get<ListDocumentsResponse>(`/admin/org/kbs/${kbId}/documents`),
+      listDocuments: (orgId, kbId) =>
+        authenticatedClient.get<ListDocumentsResponse>(`/admin/org/kb/${kbId}/documents?orgId=${orgId}`),
 
-      uploadDocument: (kbId, data) =>
+      uploadDocument: (orgId, kbId, data) =>
         authenticatedClient.post<UploadDocumentResponse>(
-          `/admin/org/kbs/${kbId}/documents`,
+          `/admin/org/kb/${kbId}/documents?orgId=${orgId}`,
           data
         ),
 
-      deleteDocument: (kbId, documentId) =>
+      deleteDocument: (orgId, kbId, documentId) =>
         authenticatedClient.delete<void>(
-          `/admin/org/kbs/${kbId}/documents/${documentId}`
+          `/admin/org/kb/${kbId}/documents/${documentId}?orgId=${orgId}`
         ),
     },
 
     // System Admin endpoints
     sysAdmin: {
-      listKbs: () => authenticatedClient.get<KnowledgeBase[]>("/admin/sys/kbs"),
+      listKbs: () => authenticatedClient.get<KnowledgeBase[]>("/admin/sys/kb/bases"),
 
       createKb: (data) =>
-        authenticatedClient.post<KnowledgeBase>("/admin/sys/kbs", data),
+        authenticatedClient.post<KnowledgeBase>("/admin/sys/kb/bases", data),
 
       getKb: (kbId) =>
-        authenticatedClient.get<KnowledgeBase>(`/admin/sys/kbs/${kbId}`),
+        authenticatedClient.get<KnowledgeBase>(`/admin/sys/kb/${kbId}`),
 
       updateKb: (kbId, data) =>
-        authenticatedClient.patch<KnowledgeBase>(`/admin/sys/kbs/${kbId}`, data),
+        authenticatedClient.patch<KnowledgeBase>(`/admin/sys/kb/${kbId}`, data),
 
       deleteKb: (kbId) =>
-        authenticatedClient.delete<void>(`/admin/sys/kbs/${kbId}`),
+        authenticatedClient.delete<void>(`/admin/sys/kb/${kbId}`),
 
       associateOrg: (kbId, data) =>
-        authenticatedClient.post<void>(`/admin/sys/kbs/${kbId}/orgs`, data),
+        authenticatedClient.post<void>(`/admin/sys/kb/${kbId}/orgs`, data),
 
       removeOrg: (kbId, orgId) =>
-        authenticatedClient.delete<void>(`/admin/sys/kbs/${kbId}/orgs/${orgId}`),
+        authenticatedClient.delete<void>(`/admin/sys/kb/${kbId}/orgs/${orgId}`),
 
       listDocuments: (kbId) =>
-        authenticatedClient.get<ListDocumentsResponse>(`/admin/sys/kbs/${kbId}/documents`),
+        authenticatedClient.get<ListDocumentsResponse>(`/admin/sys/kb/${kbId}/documents`),
 
       uploadDocument: (kbId, data) =>
         authenticatedClient.post<UploadDocumentResponse>(
-          `/admin/sys/kbs/${kbId}/documents`,
+          `/admin/sys/kb/${kbId}/documents`,
           data
         ),
 
       deleteDocument: (kbId, documentId) =>
         authenticatedClient.delete<void>(
-          `/admin/sys/kbs/${kbId}/documents/${documentId}`
+          `/admin/sys/kb/${kbId}/documents/${documentId}`
         ),
     },
 

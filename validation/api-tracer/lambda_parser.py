@@ -145,7 +145,11 @@ class LambdaParser:
         
         for file_path in path.glob(pattern):
             # Skip files in build/artifact directories
-            if any(skip_dir in str(file_path) for skip_dir in skip_patterns):
+            # Use Path.parts to check each directory component explicitly
+            path_parts = file_path.parts
+            should_skip = any(skip_dir in path_parts for skip_dir in skip_patterns)
+            
+            if should_skip:
                 logger.debug(f"Skipping build artifact: {file_path}")
                 continue
             

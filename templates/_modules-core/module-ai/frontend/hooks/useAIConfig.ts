@@ -123,7 +123,7 @@ export function usePlatformAIConfig(authAdapter: CoraAuthAdapter) {
       }
 
       const client = createCoraAuthenticatedClient(token);
-      const response = await client.get<ApiResponse<PlatformAIConfig>>("/admin/ai/config");
+      const response = await client.get<ApiResponse<PlatformAIConfig>>("/admin/sys/ai/config");
 
       // Handle wrapped response { success: true, data: {...} }
       const data = (response as { success: boolean; data: PlatformAIConfig })?.success && 
@@ -178,7 +178,7 @@ export function usePlatformAIConfig(authAdapter: CoraAuthAdapter) {
 
         const client = createCoraAuthenticatedClient(token);
         const data = await client.put<PlatformAIConfig>(
-          "/admin/ai/config",
+          "/admin/sys/ai/config",
           payload
         );
         setConfig(data);
@@ -227,9 +227,9 @@ export function useOrgAIConfig(authAdapter: CoraAuthAdapter, orgId: string) {
         return;
       }
 
-      const client = createCoraAuthenticatedClient(token, orgId);
+      const client = createCoraAuthenticatedClient(token);
       const response = await client.get<ApiResponse<OrgAIConfig>>(
-        `/orgs/${orgId}/ai/config`
+        `/admin/org/ai/config?orgId=${orgId}`
       );
 
       // Handle wrapped response { success: true, data: {...} }
@@ -261,9 +261,9 @@ export function useOrgAIConfig(authAdapter: CoraAuthAdapter, orgId: string) {
           throw new Error("No authentication token");
         }
 
-        const client = createCoraAuthenticatedClient(token, orgId);
+        const client = createCoraAuthenticatedClient(token);
         const data = await client.put<OrgAIConfig>(
-          `/orgs/${orgId}/ai/config`,
+          `/admin/org/ai/config?orgId=${orgId}`,
           updates
         );
         setConfig(data);
@@ -312,7 +312,7 @@ export function useDeployments(
       }
 
       const client = createCoraAuthenticatedClient(token);
-      let url = "/admin/ai/models";
+      let url = "/admin/sys/ai/models";
       if (capability) {
         url += `?capability=${capability}`;
       }

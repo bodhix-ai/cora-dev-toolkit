@@ -23,31 +23,31 @@ output "api_routes" {
   value = [
     {
       method      = "GET"
-      path        = "/admin/sys/mgmt/lambda-config"
+      path        = "/admin/sys/mgmt/schedule"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/admin/sys/mgmt/lambda-config/{configKey}"
+      path        = "/admin/sys/mgmt/schedule/{configKey}"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "PUT"
-      path        = "/admin/sys/mgmt/lambda-config/{configKey}"
+      path        = "/admin/sys/mgmt/schedule/{configKey}"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "GET"
-      path        = "/admin/sys/mgmt/lambda-functions"
+      path        = "/admin/sys/mgmt/functions"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/admin/sys/mgmt/lambda-config/sync"
+      path        = "/admin/sys/mgmt/schedule/sync"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
@@ -88,7 +88,7 @@ output "api_routes" {
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
-    # Org admin module config routes
+    # Organization admin routes
     {
       method      = "GET"
       path        = "/admin/org/mgmt/modules"
@@ -107,7 +107,13 @@ output "api_routes" {
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     },
-    # Workspace admin module config routes
+    {
+      method      = "GET"
+      path        = "/admin/org/mgmt/usage"
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
+      public      = false
+    },
+    # Workspace admin routes
     {
       method      = "GET"
       path        = "/admin/ws/{wsId}/mgmt/modules"

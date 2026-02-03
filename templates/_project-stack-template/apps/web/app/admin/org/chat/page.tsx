@@ -1,44 +1,63 @@
-/**
- * Organization Chat Configuration Page (Placeholder)
- * 
- * Org admin page for managing organization chat settings.
- * TODO: Implement org-level chat configuration (requires chat_cfg_org table)
- */
-
 "use client";
 
+/**
+ * Organization Chat Admin Page
+ *
+ * Organization-level chat management page for org configuration,
+ * session management, and analytics.
+ *
+ * Access: Organization admins only (org_owner, org_admin)
+ *
+ * @example
+ * Route: /admin/org/chat
+ */
+
 import React from "react";
-import {
-  Box,
-  Breadcrumbs,
-  Card,
-  CardContent,
-  Link,
-  Typography,
-  Alert,
-  CircularProgress,
-} from "@mui/material";
-import { Construction, NavigateNext } from "@mui/icons-material";
-import NextLink from "next/link";
-import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole, useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
+import { OrgChatAdmin } from "@{{PROJECT_NAME}}/module-chat";
+import { CircularProgress, Box, Alert } from "@mui/material";
 
-export default function OrgChatConfigPage() {
-  const { profile, loading, isAuthenticated } = useUser();
-  const { isOrgAdmin, isSysAdmin } = useRole();
+/**
+ * Organization Chat Admin Page Component
+ *
+ * Renders the Organization Chat admin interface with tabs for:
+ * - Organization settings configuration
+ * - Session management (delete/restore)
+ * - Organization analytics
+ *
+ * Requires organization admin role (org_owner or org_admin).
+ * 
+ * ✅ STANDARD PATTERN: Follows KB admin page pattern
+ * - Extract authAdapter at page level
+ * - Pass authAdapter down to component
+ * - Component passes to tabs
+ * - Tabs pass to API functions
+ */
+export default function OrganizationChatAdminPage() {
+  const { profile, loading, isAuthenticated, authAdapter } = useUser();
+  const { isOrgAdmin, isOrgOwner } = useRole();
+  const { currentOrganization: organization } = useOrganizationContext();
 
-  // Loading state
+  // Show loading state while user profile is being fetched
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "400px",
+        }}
+      >
         <CircularProgress />
       </Box>
     );
   }
 
-  // Authentication check
+  // Check if user is authenticated
   if (!isAuthenticated || !profile) {
     return (
-      <Box p={4}>
+      <Box sx={{ p: 3 }}>
         <Alert severity="error">
           You must be logged in to access this page.
         </Alert>
@@ -46,61 +65,39 @@ export default function OrgChatConfigPage() {
     );
   }
 
-  // Authorization check - org admins OR sys admins can access (ADR-016)
-  if (!isOrgAdmin && !isSysAdmin) {
+  // Check if user has org admin role
+  if (!isOrgAdmin && !isOrgOwner) {  // ✅ FIX: Use boolean flags directly
     return (
-      <Box p={4}>
+      <Box sx={{ p: 3 }}>
         <Alert severity="error">
-          Access denied. Organization administrator role required.
+          Access denied. This page is only accessible to organization administrators.
         </Alert>
       </Box>
     );
   }
 
-  return (
-    <Box sx={{ p: 4 }}>
-      {/* Breadcrumbs: Org Admin > Chat */}
-      <Breadcrumbs
-        separator={<NavigateNext fontSize="small" />}
-        sx={{ mb: 2 }}
+  // Check if organization is loaded
+  if (!organization) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "400px",
+        }}
       >
-        <Link
-          component={NextLink}
-          href="/admin/org"
-          underline="hover"
-          color="inherit"
-        >
-          Org Admin
-        </Link>
-        <Typography color="text.primary">Chat</Typography>
-      </Breadcrumbs>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
-      <Typography variant="h4" gutterBottom>
-        Organization Chat Settings
-      </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-        Manage organization-level chat settings and preferences
-      </Typography>
-
-      <Card>
-        <CardContent sx={{ textAlign: "center", py: 8 }}>
-          <Construction sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
-          <Typography variant="h5" gutterBottom>
-            Coming Soon
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Organization chat configuration is under development.
-          </Typography>
-          <Alert severity="info" sx={{ mt: 3, maxWidth: 600, mx: "auto" }}>
-            This page will allow org admins to override system-wide chat defaults
-            such as default models, message retention, and sharing policies for their organization.
-            <br /><br />
-            <strong>Note:</strong> Chat-related features like citation styles are currently
-            managed in the Access Control admin section under organization settings
-            (ai_cfg_org_prompts table).
-          </Alert>
-        </CardContent>
-      </Card>
-    </Box>
+  // ✅ STANDARD PATTERN: Pass authAdapter and orgId to component (matches KB pattern)
+  return (
+    <OrgChatAdmin
+      authAdapter={authAdapter}
+      orgId={organization.orgId}
+      orgName={organization.orgName}
+    />
   );
 }

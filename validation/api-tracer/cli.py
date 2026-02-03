@@ -91,6 +91,47 @@ logger = logging.getLogger(__name__)
     is_flag=True,
     help='Parse Lambda handlers only (testing)'
 )
+@click.option(
+    '--no-auth',
+    is_flag=True,
+    help='Disable auth lifecycle validation (ADR-019)'
+)
+@click.option(
+    '--auth-only',
+    is_flag=True,
+    help='Run only auth lifecycle validation (ADR-019) - both layers'
+)
+@click.option(
+    '--layer1-only',
+    is_flag=True,
+    help='Run only Layer 1 (admin auth) validation (ADR-019a/b)'
+)
+@click.option(
+    '--layer2-only',
+    is_flag=True,
+    help='Run only Layer 2 (resource permission) validation (ADR-019c)'
+)
+@click.option(
+    '--all-auth',
+    is_flag=True,
+    help='Run both Layer 1 and Layer 2 auth validation (default when auth enabled)'
+)
+@click.option(
+    '--no-quality',
+    is_flag=True,
+    help='Disable code quality validation (import signatures, response format, etc.)'
+)
+@click.option(
+    '--quality-only',
+    is_flag=True,
+    help='Run only code quality validation'
+)
+@click.option(
+    '--module',
+    type=str,
+    default=None,
+    help='Filter validation to a specific module (e.g., module-kb, module-chat). Speeds up iterative fixing.'
+)
 def validate(
     path: str, 
     output: str, 
@@ -101,7 +142,15 @@ def validate(
     prefer_terraform: bool,
     frontend_only: bool,
     gateway_only: bool,
-    lambda_only: bool
+    lambda_only: bool,
+    no_auth: bool,
+    auth_only: bool,
+    layer1_only: bool,
+    layer2_only: bool,
+    all_auth: bool,
+    no_quality: bool,
+    quality_only: bool,
+    module: str
 ):
     """
     Validate API contracts across frontend, API Gateway, and Lambda layers.
@@ -182,6 +231,40 @@ def validate(
         
         # Full validation (Session 7 implementation)
         logger.info(f"Validating API contracts for: {path}")
+        
+        # Auth validation mode handling
+        validate_auth = not no_auth
+        validate_layer1 = True
+        validate_layer2 = False
+        
+        if auth_only or all_auth:
+            validate_auth = True
+            validate_layer1 = True
+            validate_layer2 = True  # Now enabled
+            logger.info("Running all auth validation (Layer 1: admin auth + Layer 2: resource permissions)")
+        
+        if layer1_only:
+            validate_auth = True
+            validate_layer1 = True
+            validate_layer2 = False
+            logger.info("Running Layer 1 validation only (admin auth - ADR-019a/b)")
+        
+        if layer2_only:
+            validate_auth = True
+            validate_layer1 = False
+            validate_layer2 = True
+            logger.info("Running Layer 2 validation only (resource permissions - ADR-019c)")
+        
+        # Quality validation mode handling
+        validate_quality = not no_quality
+        if quality_only:
+            validate_quality = True
+            logger.info("Running quality-only validation")
+        
+        # Module filter for efficient per-module validation
+        if module:
+            logger.info(f"Filtering validation to module: {module}")
+        
         validator = FullStackValidator(
             frontend_parser, 
             gateway_parser, 
@@ -189,9 +272,31 @@ def validate(
             aws_profile=aws_profile,
             api_id=api_id,
             aws_region=aws_region,
-            prefer_terraform=prefer_terraform
+            prefer_terraform=prefer_terraform,
+            validate_auth=validate_auth,
+            validate_layer1=validate_layer1,
+            validate_layer2=validate_layer2,
+            module_filter=module
         )
+        
+        # For auth-only mode, we still run full validation but can filter output
         report = validator.validate(path)
+        
+        # Log auth validation summary
+        if validate_auth and 'auth_validation' in report.summary:
+            auth_summary = report.summary['auth_validation']
+            # Support both old format (errors/warnings) and new format (total_errors/total_warnings)
+            errors = auth_summary.get('total_errors', auth_summary.get('errors', 0))
+            warnings = auth_summary.get('total_warnings', auth_summary.get('warnings', 0))
+            logger.info(f"Auth validation: {errors} errors, {warnings} warnings")
+        
+        # Log code quality validation summary
+        if validate_quality and 'code_quality_validation' in report.summary:
+            quality_summary = report.summary['code_quality_validation']
+            logger.info(f"Code quality validation: {quality_summary['errors']} errors, {quality_summary['warnings']} warnings")
+            if quality_summary.get('by_category'):
+                for category, count in quality_summary['by_category'].items():
+                    logger.info(f"  - {category}: {count} issues")
         
         # Format and output report
         formatted_report = reporter.format_report(report, output)

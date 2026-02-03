@@ -1,6 +1,7 @@
 "use client";
 
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { Box, Typography, CircularProgress } from "@mui/material";
+import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
 import { SysVoiceConfigPage } from "@{{PROJECT_NAME}}/module-voice";
 
 /**
@@ -8,48 +9,76 @@ import { SysVoiceConfigPage } from "@{{PROJECT_NAME}}/module-voice";
  * 
  * Allows sys admins to configure voice settings system-wide.
  * 
- * Auth: sys_admin or higher
+ * Auth: sys_admin or sys_owner
  * Breadcrumbs: Sys Admin > Voice
  */
 export default function SysVoiceRoute() {
   const { profile, loading, isAuthenticated } = useUser();
+  const { isSysAdmin } = useRole();
 
   // Pattern A: Auth checks
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+        }}
+      >
+        <Box sx={{ textAlign: "center" }}>
+          <CircularProgress sx={{ mb: 2 }} />
+          <Typography variant="body1" color="text.secondary">
+            Loading...
+          </Typography>
+        </Box>
+      </Box>
     );
   }
 
   if (!isAuthenticated || !profile) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-lg font-semibold mb-2">Authentication Required</p>
-          <p className="text-muted-foreground">Please sign in to access this page.</p>
-        </div>
-      </div>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+        }}
+      >
+        <Box sx={{ textAlign: "center" }}>
+          <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>
+            Authentication Required
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Please sign in to access this page.
+          </Typography>
+        </Box>
+      </Box>
     );
   }
 
-  // Check for sys admin role
-  const isSysAdmin = profile.role === "sys_admin" || profile.role === "super_admin";
-  
+  // Check for sys admin role (includes sys_owner)
   if (!isSysAdmin) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-lg font-semibold mb-2">Access Denied</p>
-          <p className="text-muted-foreground">
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+        }}
+      >
+        <Box sx={{ textAlign: "center" }}>
+          <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>
+            Access Denied
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
             System administrator access required to view this page.
-          </p>
-        </div>
-      </div>
+          </Typography>
+        </Box>
+      </Box>
     );
   }
 

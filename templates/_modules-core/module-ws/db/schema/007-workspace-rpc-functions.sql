@@ -9,9 +9,10 @@
 -- =============================================
 
 -- Function: is_ws_member
+-- ADR-019c: Parameter order aligned to standard (user_id, resource_id)
 CREATE OR REPLACE FUNCTION is_ws_member(
-    p_ws_id UUID,
-    p_user_id UUID
+    p_user_id UUID,
+    p_ws_id UUID
 ) RETURNS BOOLEAN AS $$
 BEGIN
     RETURN EXISTS (
@@ -24,12 +25,13 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION is_ws_member(UUID, UUID) IS 
-'Checks if user is an active member of the specified workspace';
+'Checks if user is an active member of the specified workspace. ADR-019c: (user_id, ws_id) parameter order';
 
 -- Function: is_ws_owner
+-- ADR-019c: Parameter order aligned to standard (user_id, resource_id)
 CREATE OR REPLACE FUNCTION is_ws_owner(
-    p_ws_id UUID,
-    p_user_id UUID
+    p_user_id UUID,
+    p_ws_id UUID
 ) RETURNS BOOLEAN AS $$
 BEGIN
     RETURN EXISTS (
@@ -43,12 +45,13 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION is_ws_owner(UUID, UUID) IS 
-'Checks if user is an owner of the specified workspace';
+'Checks if user is an owner of the specified workspace. ADR-019c: (user_id, ws_id) parameter order';
 
 -- Function: is_ws_admin_or_owner
+-- ADR-019c: Parameter order aligned to standard (user_id, resource_id)
 CREATE OR REPLACE FUNCTION is_ws_admin_or_owner(
-    p_ws_id UUID,
-    p_user_id UUID
+    p_user_id UUID,
+    p_ws_id UUID
 ) RETURNS BOOLEAN AS $$
 BEGIN
     RETURN EXISTS (
@@ -62,12 +65,13 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION is_ws_admin_or_owner(UUID, UUID) IS 
-'Checks if user is an admin or owner of the specified workspace';
+'Checks if user is an admin or owner of the specified workspace. ADR-019c: (user_id, ws_id) parameter order';
 
 -- Function: get_ws_role
+-- ADR-019c: Parameter order aligned to standard (user_id, resource_id)
 CREATE OR REPLACE FUNCTION get_ws_role(
-    p_ws_id UUID,
-    p_user_id UUID
+    p_user_id UUID,
+    p_ws_id UUID
 ) RETURNS VARCHAR(50) AS $$
 DECLARE
     v_role VARCHAR(50);
@@ -83,7 +87,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION get_ws_role(UUID, UUID) IS 
-'Returns the role of a user in a workspace (ws_owner, ws_admin, ws_user) or NULL if not a member';
+'Returns the role of a user in a workspace (ws_owner, ws_admin, ws_user) or NULL if not a member. ADR-019c: (user_id, ws_id) parameter order';
 
 -- Function: count_ws_owners
 CREATE OR REPLACE FUNCTION count_ws_owners(
@@ -146,15 +150,16 @@ COMMENT ON FUNCTION create_ws_with_owner(UUID, VARCHAR, TEXT, VARCHAR, VARCHAR, 
 'Creates a new workspace and adds the creator as the owner in a single transaction';
 
 -- Function: soft_delete_ws
+-- ADR-019c: Parameter order aligned to standard (user_id, resource_id)
 CREATE OR REPLACE FUNCTION soft_delete_ws(
-    p_ws_id UUID,
-    p_user_id UUID
+    p_user_id UUID,
+    p_ws_id UUID
 ) RETURNS JSON AS $$
 DECLARE
     v_workspace workspaces%ROWTYPE;
 BEGIN
-    -- Verify user is owner
-    IF NOT is_ws_owner(p_ws_id, p_user_id) THEN
+    -- Verify user is owner (ADR-019c: user_id first)
+    IF NOT is_ws_owner(p_user_id, p_ws_id) THEN
         RAISE EXCEPTION 'Only workspace owners can delete workspaces';
     END IF;
     
@@ -183,12 +188,13 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION soft_delete_ws(UUID, UUID) IS 
-'Soft deletes a workspace, cascading to members and removing favorites';
+'Soft deletes a workspace, cascading to members and removing favorites. ADR-019c: (user_id, ws_id) parameter order';
 
 -- Function: restore_ws
+-- ADR-019c: Parameter order aligned to standard (user_id, resource_id)
 CREATE OR REPLACE FUNCTION restore_ws(
-    p_ws_id UUID,
-    p_user_id UUID
+    p_user_id UUID,
+    p_ws_id UUID
 ) RETURNS JSON AS $$
 DECLARE
     v_workspace workspaces%ROWTYPE;
@@ -230,19 +236,20 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION restore_ws(UUID, UUID) IS 
-'Restores a soft-deleted workspace and all its members';
+'Restores a soft-deleted workspace and all its members. ADR-019c: (user_id, ws_id) parameter order';
 
 -- Function: toggle_ws_favorite
+-- ADR-019c: Parameter order aligned to standard (user_id, resource_id)
 CREATE OR REPLACE FUNCTION toggle_ws_favorite(
-    p_ws_id UUID,
-    p_user_id UUID
+    p_user_id UUID,
+    p_ws_id UUID
 ) RETURNS JSON AS $$
 DECLARE
     v_is_favorited BOOLEAN;
     v_favorited_at TIMESTAMPTZ;
 BEGIN
-    -- Verify user is workspace member
-    IF NOT is_ws_member(p_ws_id, p_user_id) THEN
+    -- Verify user is workspace member (ADR-019c: user_id first)
+    IF NOT is_ws_member(p_user_id, p_ws_id) THEN
         RAISE EXCEPTION 'User is not a member of this workspace';
     END IF;
     
@@ -258,7 +265,7 @@ BEGIN
         WHERE ws_id = p_ws_id AND user_id = p_user_id;
         
         RETURN json_build_object(
-            'ws_id', p_ws_id,
+            'workspace_id', p_ws_id,
             'is_favorited', false,
             'favorited_at', NULL
         );
@@ -269,7 +276,7 @@ BEGIN
         RETURNING created_at INTO v_favorited_at;
         
         RETURN json_build_object(
-            'ws_id', p_ws_id,
+            'workspace_id', p_ws_id,
             'is_favorited', true,
             'favorited_at', v_favorited_at
         );
@@ -278,7 +285,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION toggle_ws_favorite(UUID, UUID) IS 
-'Toggles favorite status for a workspace. Returns new state with is_favorited and favorited_at';
+'Toggles favorite status for a workspace. Returns new state with is_favorited and favorited_at. ADR-019c: (user_id, ws_id) parameter order';
 
 -- Function: get_ws_with_member_info
 CREATE OR REPLACE FUNCTION get_ws_with_member_info(

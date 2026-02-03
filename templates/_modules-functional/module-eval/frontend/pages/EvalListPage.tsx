@@ -184,13 +184,8 @@ function ProcessingPanel({ evaluations, onSelect }: ProcessingPanelProps) {
         {evaluations.map((evaluation) => (
           <Grid item xs={12} md={6} lg={4} key={evaluation.id}>
             <EvalProgressCard
-              evaluationId={evaluation.id}
-              title={evaluation.docTypeName || "Evaluation"}
-              status={evaluation.status}
-              progress={evaluation.progress}
-              createdAt={evaluation.createdAt}
+              evaluation={evaluation}
               onClick={() => onSelect(evaluation)}
-              showTimeEstimate
             />
           </Grid>
         ))}
@@ -426,8 +421,8 @@ export function EvalListPage({
   });
 
   const { docTypes } = useEvalDocTypes(token, orgId);
-  const { isAnyProcessing, processingIds } = useAnyProcessing(token);
-  const { exportPdf, exportXlsx, isExporting } = useBulkExport(token, workspaceId);
+  const { isAnyProcessing, stopAllPolling } = useAnyProcessing();
+  const { exportAllPdf, exportAllXlsx, isExporting } = useBulkExport(token, workspaceId);
 
   // Combined loading state
   const isLoading = evaluationsLoading || !token;
@@ -445,8 +440,8 @@ export function EvalListPage({
 
   // Get processing evaluations for panel
   const processingEvaluations = React.useMemo(
-    () => evaluations.filter((e) => processingIds.includes(e.id)),
-    [evaluations, processingIds]
+    () => evaluations.filter((e) => e.status === 'processing' || e.status === 'pending'),
+    [evaluations]
   );
 
   // Handlers
@@ -470,12 +465,12 @@ export function EvalListPage({
   }, []);
 
   const handleExportPdf = useCallback(async () => {
-    await exportPdf(selectedIds);
-  }, [exportPdf, selectedIds]);
+    await exportAllPdf(selectedIds);
+  }, [exportAllPdf, selectedIds]);
 
   const handleExportXlsx = useCallback(async () => {
-    await exportXlsx(selectedIds);
-  }, [exportXlsx, selectedIds]);
+    await exportAllXlsx(selectedIds);
+  }, [exportAllXlsx, selectedIds]);
 
   const handleDelete = useCallback(async () => {
     if (!token) return;
@@ -503,7 +498,7 @@ export function EvalListPage({
   if (error) {
     return (
       <Box sx={{ p: 3 }} className={className}>
-        <ErrorState error={error} onRetry={refresh} />
+        <ErrorState error={typeof error === 'string' ? new Error(error) : error} onRetry={refresh} />
       </Box>
     );
   }
@@ -533,7 +528,7 @@ export function EvalListPage({
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "info.main" }}>
             <CircularProgress size={16} />
             <Typography variant="body2">
-              {processingIds.length} processing
+              {processingEvaluations.length} processing
             </Typography>
           </Box>
         )}

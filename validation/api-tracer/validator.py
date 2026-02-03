@@ -2,7 +2,11 @@
 API Full Stack Validator
 
 Validates API contracts across all layers: Frontend → API Gateway → Lambda
-Detects route mismatches, parameter issues, and response format errors.
+Detects route mismatches, parameter issues, response format errors, and auth patterns.
+
+Auth Lifecycle Validation (ADR-019):
+- Frontend: useUser(), useRole(), useOrganizationContext(), loading states
+- Lambda: check_*_admin() helpers, external UID conversion, centralized router auth
 """
 
 import re
@@ -15,6 +19,8 @@ from frontend_parser import FrontendParser, APICall
 from gateway_parser import GatewayParser, GatewayRoute
 from lambda_parser import LambdaParser, LambdaRoute
 from reporter import APIMismatch, ValidationReport
+from auth_validator import AuthLifecycleValidator, AuthIssue
+from code_quality_validator import CodeQualityValidator, CodeQualityIssue
 
 logger = logging.getLogger(__name__)
 
@@ -30,19 +36,37 @@ class FullStackValidator:
         aws_profile: Optional[str] = None,
         api_id: Optional[str] = None,
         aws_region: str = 'us-east-1',
-        prefer_terraform: bool = False
+        prefer_terraform: bool = False,
+        validate_auth: bool = True,
+        validate_layer1: bool = True,
+        validate_layer2: bool = False,
+        module_filter: Optional[str] = None
     ):
         """Initialize validator with parsers and optional AWS configuration."""
         self.frontend_parser = frontend_parser
         self.gateway_parser = gateway_parser
         self.lambda_parser = lambda_parser
         self.mismatches: List[APIMismatch] = []
+        self.auth_issues: List[AuthIssue] = []
         
         # AWS configuration for direct API Gateway querying
         self.aws_profile = aws_profile
         self.api_id = api_id
         self.aws_region = aws_region
         self.prefer_terraform = prefer_terraform
+        
+        # Auth lifecycle validation (ADR-019)
+        self.validate_auth = validate_auth
+        self.validate_layer1 = validate_layer1  # Layer 1: Admin auth (ADR-019a/b)
+        self.validate_layer2 = validate_layer2  # Layer 2: Resource permissions (ADR-019c)
+        self.auth_validator = AuthLifecycleValidator() if validate_auth else None
+        
+        # Code quality validation (integrated checks)
+        self.code_quality_validator = CodeQualityValidator()
+        self.code_quality_issues: List[CodeQualityIssue] = []
+        
+        # Module filter for efficient per-module validation (e.g., 'module-kb')
+        self.module_filter = module_filter
     
     def validate(self, project_path: str) -> ValidationReport:
         """
@@ -67,6 +91,13 @@ class FullStackValidator:
         self._validate_path_parameter_naming()
         self._validate_lambda_path_param_extraction()
         
+        # Auth lifecycle validation (ADR-019)
+        if self.validate_auth:
+            self._validate_auth_lifecycle(project_path, self.validate_layer2)
+        
+        # Code quality validation (integrated checks)
+        self._validate_code_quality(project_path)
+        
         # Generate report
         report = self._generate_report()
         
@@ -77,9 +108,12 @@ class FullStackValidator:
         """Parse frontend, gateway, and Lambda layers."""
         project = Path(project_path)
         
-        # Parse frontend (packages directory)
+        # Parse frontend (packages directory or specific module)
         logger.info("Parsing frontend API calls...")
-        frontend_path = project / 'packages'
+        if self.module_filter:
+            frontend_path = project / 'packages' / self.module_filter
+        else:
+            frontend_path = project / 'packages'
         if frontend_path.exists():
             self.frontend_parser.parse_directory(str(frontend_path))
         
@@ -88,7 +122,8 @@ class FullStackValidator:
             call for call in self.frontend_parser.api_calls
             if '_module-template' not in call.file
         ]
-        logger.info(f"Found {len(self.frontend_parser.api_calls)} frontend API calls (excluding templates)")
+        module_info = f" (filtered to {self.module_filter})" if self.module_filter else ""
+        logger.info(f"Found {len(self.frontend_parser.api_calls)} frontend API calls{module_info} (excluding templates)")
         
         # Parse API Gateway routes - try AWS first, fallback to Terraform
         logger.info("Parsing API Gateway routes...")
@@ -127,7 +162,14 @@ class FullStackValidator:
             # Parse from CORA module infrastructure outputs
             # CORA modules are named module-* (e.g., module-ws, module-ai, module-mgmt)
             all_gateway_routes = []
-            for module_path in (project / 'packages').glob('module-*/infrastructure/outputs.tf'):
+            
+            # Use module filter if specified
+            if self.module_filter:
+                glob_pattern = f'{self.module_filter}/infrastructure/outputs.tf'
+            else:
+                glob_pattern = 'module-*/infrastructure/outputs.tf'
+            
+            for module_path in (project / 'packages').glob(glob_pattern):
                 # Skip _module-template
                 if '_module-template' in str(module_path):
                     logger.info(f"Skipping template module: {module_path}")
@@ -139,11 +181,15 @@ class FullStackValidator:
             
             # Update gateway_parser.routes with accumulated routes
             self.gateway_parser.routes = all_gateway_routes
-            logger.info(f"Found {len(self.gateway_parser.routes)} API Gateway routes from Terraform (excluding templates)")
+            module_info = f" (filtered to {self.module_filter})" if self.module_filter else ""
+            logger.info(f"Found {len(self.gateway_parser.routes)} API Gateway routes from Terraform{module_info} (excluding templates)")
         
-        # Parse Lambda handlers
+        # Parse Lambda handlers (specific module or all)
         logger.info("Parsing Lambda handlers...")
-        lambda_path = project / 'packages'
+        if self.module_filter:
+            lambda_path = project / 'packages' / self.module_filter
+        else:
+            lambda_path = project / 'packages'
         if lambda_path.exists():
             self.lambda_parser.parse_directory(str(lambda_path))
         
@@ -152,7 +198,8 @@ class FullStackValidator:
             route for route in self.lambda_parser.routes
             if '_module-template' not in route.file
         ]
-        logger.info(f"Found {len(self.lambda_parser.routes)} Lambda route handlers (excluding templates)")
+        module_info = f" (filtered to {self.module_filter})" if self.module_filter else ""
+        logger.info(f"Found {len(self.lambda_parser.routes)} Lambda route handlers{module_info} (excluding templates)")
         
         # Enhance Lambda path inference using Gateway route definitions
         self._enhance_lambda_path_inference(project)
@@ -648,11 +695,190 @@ class FullStackValidator:
             if self.lambda_parser.normalize_path(r.path) == normalized_path
         ]
     
+    def _validate_code_quality(self, project_path: str):
+        """
+        Run integrated code quality checks on all parsed files.
+        
+        This validates:
+        - Role naming standards (Lambda + Frontend)
+        - API response format (camelCase keys)
+        - Key consistency (dict creation vs access)
+        - org_common import signatures
+        - Admin route naming (ADR-018b)
+        """
+        logger.info("Running integrated code quality validation...")
+        
+        project = Path(project_path)
+        code_quality_issues = []
+        
+        # Validate Lambda files (filtered by module if specified)
+        if self.module_filter:
+            lambda_path = project / 'packages' / self.module_filter
+        else:
+            lambda_path = project / 'packages'
+        if lambda_path.exists():
+            for file_path in lambda_path.glob("**/lambda_function.py"):
+                # Skip templates
+                if '_module-template' in str(file_path):
+                    continue
+                
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    issues = self.code_quality_validator.validate_lambda_file(str(file_path), content)
+                    code_quality_issues.extend(issues)
+                except Exception as e:
+                    logger.warning(f"Failed to validate Lambda file {file_path}: {e}")
+        
+        # Validate frontend files (filtered by module if specified)
+        if self.module_filter:
+            frontend_path = project / 'packages' / self.module_filter
+        else:
+            frontend_path = project / 'packages'
+        if frontend_path.exists():
+            for ext in ['tsx', 'ts']:
+                for file_path in frontend_path.glob(f"**/*.{ext}"):
+                    # Skip templates and node_modules
+                    if '_module-template' in str(file_path) or 'node_modules' in str(file_path):
+                        continue
+                    
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                        issues = self.code_quality_validator.validate_frontend_file(str(file_path), content)
+                        code_quality_issues.extend(issues)
+                    except Exception as e:
+                        logger.warning(f"Failed to validate frontend file {file_path}: {e}")
+        
+        # Validate gateway routes
+        route_dicts = [
+            {'path': route.path, 'file': route.file, 'line': 1}
+            for route in self.gateway_parser.routes
+        ]
+        gateway_issues = self.code_quality_validator.validate_gateway_routes(route_dicts)
+        code_quality_issues.extend(gateway_issues)
+        
+        # Convert code quality issues to APIMismatch format for unified reporting
+        for issue in code_quality_issues:
+            mismatch = APIMismatch(
+                severity=issue.severity,
+                mismatch_type=f"quality_{issue.category}",
+                frontend_file=issue.file if '.tsx' in issue.file or '.ts' in issue.file else None,
+                frontend_line=issue.line if '.tsx' in issue.file or '.ts' in issue.file else None,
+                lambda_file=issue.file if '.py' in issue.file else None,
+                lambda_line=issue.line if '.py' in issue.file else None,
+                gateway_file=issue.file if '.tf' in issue.file else None,
+                issue=issue.issue,
+                suggestion=f"{issue.suggestion} (Ref: {issue.standard_ref})" if issue.standard_ref else issue.suggestion
+            )
+            self.mismatches.append(mismatch)
+        
+        self.code_quality_issues = code_quality_issues
+        logger.info(f"Code quality validation complete: {len(code_quality_issues)} issues found")
+    
+    def _validate_auth_lifecycle(self, project_path: str, validate_layer2: bool = False):
+        """
+        Validate auth patterns across frontend and Lambda layers per ADR-019.
+        
+        This validates:
+        - Layer 1 (Admin Auth): useUser(), useRole(), check_*_admin() helpers
+        - Layer 2 (Resource Permissions): org membership, resource ownership checks
+        
+        Args:
+            project_path: Path to project root
+            validate_layer2: If True, also validate Layer 2 (resource permissions)
+        """
+        logger.info("Validating auth lifecycle patterns (ADR-019)...")
+        
+        project = Path(project_path)
+        auth_issues = []
+        
+        # Validate frontend files (admin pages) - filtered by module if specified
+        if self.module_filter:
+            frontend_path = project / 'packages' / self.module_filter
+        else:
+            frontend_path = project / 'packages'
+        if frontend_path.exists():
+            for ext in ['tsx', 'ts']:
+                for file_path in frontend_path.glob(f"**/*.{ext}"):
+                    # Skip templates and node_modules
+                    if '_module-template' in str(file_path) or 'node_modules' in str(file_path):
+                        continue
+                    
+                    # Only validate admin pages
+                    if '/admin/' in str(file_path) or '/workspace/' in str(file_path):
+                        try:
+                            with open(file_path, 'r', encoding='utf-8') as f:
+                                content = f.read()
+                            issues = self.auth_validator.validate_frontend_file(str(file_path), content)
+                            auth_issues.extend(issues)
+                        except Exception as e:
+                            logger.warning(f"Failed to validate frontend file {file_path}: {e}")
+        
+        # Validate Lambda files (filtered by module if specified)
+        if self.module_filter:
+            lambda_path = project / 'packages' / self.module_filter
+        else:
+            lambda_path = project / 'packages'
+        if lambda_path.exists():
+            for file_path in lambda_path.glob("**/lambda_function.py"):
+                # Skip templates
+                if '_module-template' in str(file_path):
+                    continue
+                
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    issues = self.auth_validator.validate_lambda_file(
+                        str(file_path), 
+                        content,
+                        validate_layer2=validate_layer2
+                    )
+                    auth_issues.extend(issues)
+                except Exception as e:
+                    logger.warning(f"Failed to validate Lambda file {file_path}: {e}")
+        
+        # Convert auth issues to APIMismatch format for unified reporting
+        for issue in auth_issues:
+            mismatch = APIMismatch(
+                severity=issue.severity,
+                mismatch_type=f"auth_{issue.issue_type}",
+                frontend_file=issue.file if issue.layer == 'frontend' else None,
+                frontend_line=issue.line if issue.layer == 'frontend' else None,
+                lambda_file=issue.file if issue.layer == 'lambda' else None,
+                lambda_line=issue.line if issue.layer == 'lambda' else None,
+                endpoint=issue.route_path,
+                method=issue.route_method,
+                issue=issue.issue,
+                suggestion=f"{issue.suggestion} (Ref: {issue.standard_ref})" if issue.standard_ref else issue.suggestion
+            )
+            self.mismatches.append(mismatch)
+        
+        self.auth_issues = auth_issues
+        logger.info(f"Auth validation complete: {len(auth_issues)} issues found")
+    
     def _generate_report(self) -> ValidationReport:
         """Generate validation report."""
         # Count errors vs warnings
         errors = [m for m in self.mismatches if m.severity == 'error']
         warnings = [m for m in self.mismatches if m.severity == 'warning']
+        
+        # Count auth-specific issues (separated by layer)
+        auth_errors = [m for m in self.mismatches if m.mismatch_type.startswith('auth_') and m.severity == 'error']
+        auth_warnings = [m for m in self.mismatches if m.mismatch_type.startswith('auth_') and m.severity == 'warning']
+        
+        # Layer 1 (Admin Auth - ADR-019a/b)
+        # Note: auth issues are prefixed with "auth_" twice due to conversion from AuthIssue to APIMismatch
+        layer1_errors = [m for m in auth_errors if m.mismatch_type.startswith('auth_auth_admin_')]
+        layer1_warnings = [m for m in auth_warnings if m.mismatch_type.startswith('auth_auth_admin_')]
+        
+        # Layer 2 (Resource Permissions - ADR-019c)
+        layer2_errors = [m for m in auth_errors if m.mismatch_type.startswith('auth_auth_resource_')]
+        layer2_warnings = [m for m in auth_warnings if m.mismatch_type.startswith('auth_auth_resource_')]
+        
+        # Count code quality issues
+        quality_errors = [m for m in self.mismatches if m.mismatch_type.startswith('quality_') and m.severity == 'error']
+        quality_warnings = [m for m in self.mismatches if m.mismatch_type.startswith('quality_') and m.severity == 'warning']
         
         # Determine status
         status = 'failed' if errors else 'passed'
@@ -667,7 +893,34 @@ class FullStackValidator:
             'warnings': len(warnings),
             'frontend_unique_endpoints': len(self.frontend_parser.get_unique_endpoints()),
             'gateway_unique_routes': len(self.gateway_parser.get_unique_routes()),
-            'lambda_unique_routes': len(self.lambda_parser.get_unique_routes())
+            'lambda_unique_routes': len(self.lambda_parser.get_unique_routes()),
+            # Auth-specific summary (ADR-019) with layer breakdown
+            'auth_validation': {
+                'enabled': self.validate_auth,
+                'layer1': {
+                    'name': 'Admin Authorization (ADR-019a/b)',
+                    'errors': len(layer1_errors),
+                    'warnings': len(layer1_warnings),
+                    'total': len(layer1_errors) + len(layer1_warnings)
+                },
+                'layer2': {
+                    'name': 'Resource Permissions (ADR-019c)',
+                    'errors': len(layer2_errors),
+                    'warnings': len(layer2_warnings),
+                    'total': len(layer2_errors) + len(layer2_warnings)
+                },
+                'total_errors': len(auth_errors),
+                'total_warnings': len(auth_warnings),
+                'total_issues': len(auth_errors) + len(auth_warnings)
+            },
+            # Code quality summary (integrated validators)
+            'code_quality_validation': {
+                'enabled': True,
+                'errors': len(quality_errors),
+                'warnings': len(quality_warnings),
+                'total_issues': len(quality_errors) + len(quality_warnings),
+                'by_category': self.code_quality_validator.get_issue_summary(self.code_quality_issues).get('by_category', {}) if self.code_quality_issues else {}
+            }
         }
         
         return ValidationReport(

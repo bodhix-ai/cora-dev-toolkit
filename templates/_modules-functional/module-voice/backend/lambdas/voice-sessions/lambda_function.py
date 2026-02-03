@@ -5,18 +5,18 @@ Handles voice interview session management including creation, retrieval,
 updates, status transitions, Daily.co bot orchestration, and KB associations.
 
 Routes - Sessions:
-- GET /api/voice/sessions - List sessions for organization/workspace
-- GET /api/voice/sessions/{id} - Get session by ID
-- POST /api/voice/sessions - Create new session
-- PUT /api/voice/sessions/{id} - Update session
-- DELETE /api/voice/sessions/{id} - Delete session
-- POST /api/voice/sessions/{id}/start - Start bot for session
+- GET /voice/sessions - List sessions for organization/workspace
+- GET /voice/sessions/{sessionId} - Get session by ID
+- POST /voice/sessions - Create new session
+- PUT /voice/sessions/{sessionId} - Update session
+- DELETE /voice/sessions/{sessionId} - Delete session
+- POST /voice/sessions/{sessionId}/start - Start bot for session
 
 Routes - KB Associations:
-- GET /api/voice/sessions/{id}/kbs - List KB associations for session
-- POST /api/voice/sessions/{id}/kbs - Add KB to session
-- PUT /api/voice/sessions/{id}/kbs/{kbId} - Toggle KB enabled status
-- DELETE /api/voice/sessions/{id}/kbs/{kbId} - Remove KB from session
+- GET /voice/sessions/{sessionId}/kbs - List KB associations for session
+- POST /voice/sessions/{sessionId}/kbs - Add KB to session
+- PUT /voice/sessions/{sessionId}/kbs/{kbId} - Toggle KB enabled status
+- DELETE /voice/sessions/{sessionId}/kbs/{kbId} - Remove KB from session
 """
 
 import json
@@ -26,6 +26,7 @@ import boto3
 from typing import Any, Dict, Optional
 from datetime import datetime, timedelta
 import org_common as common
+import voice_common.permissions as voice_permissions
 
 
 # Environment variables
@@ -159,13 +160,9 @@ def handle_list_sessions(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         raise common.ValidationError('orgId query parameter is required')
     org_id = common.validate_uuid(org_id, 'orgId')
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': org_id, 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this organization')
+    # Step 1: Verify org membership
+    if not common.can_access_org_resource(user_id, org_id):
+        raise common.ForbiddenError('Not a member of this organization')
     
     # Validate workspace_id if provided
     workspace_id = query_params.get('workspaceId')
@@ -225,7 +222,7 @@ def handle_get_session(event: Dict[str, Any], user_id: str, session_id: str) -> 
     """
     session_id = common.validate_uuid(session_id, 'id')
     
-    # Get session
+    # Step 1: Fetch resource
     session = common.find_one(
         table='voice_sessions',
         filters={'id': session_id}
@@ -234,13 +231,13 @@ def handle_get_session(event: Dict[str, Any], user_id: str, session_id: str) -> 
     if not session:
         raise common.NotFoundError('Session not found')
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': session['org_id'], 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this session')
+    # Step 2: Verify org membership
+    if not common.can_access_org_resource(user_id, session['org_id']):
+        raise common.ForbiddenError('Not a member of this organization')
+    
+    # Step 3: Check resource permission
+    if not voice_permissions.can_view_voice_session(user_id, session_id):
+        raise common.ForbiddenError('You do not have permission to view this session')
     
     result = _format_session_response(session)
     
@@ -288,13 +285,9 @@ def handle_create_session(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
         raise common.ValidationError('interviewType is required')
     interview_type = common.validate_string_length(interview_type, 'interviewType', max_length=100)
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': org_id, 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this organization')
+    # Step 1: Verify org membership (for creation, only org membership needed)
+    if not common.can_access_org_resource(user_id, org_id):
+        raise common.ForbiddenError('Not a member of this organization')
     
     # Validate workspace_id if provided
     workspace_id = body.get('workspaceId')
@@ -398,7 +391,7 @@ def handle_update_session(event: Dict[str, Any], user_id: str, session_id: str) 
     """
     session_id = common.validate_uuid(session_id, 'id')
     
-    # Get existing session
+    # Step 1: Fetch resource
     session = common.find_one(
         table='voice_sessions',
         filters={'id': session_id}
@@ -407,13 +400,13 @@ def handle_update_session(event: Dict[str, Any], user_id: str, session_id: str) 
     if not session:
         raise common.NotFoundError('Session not found')
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': session['org_id'], 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this session')
+    # Step 2: Verify org membership
+    if not common.can_access_org_resource(user_id, session['org_id']):
+        raise common.ForbiddenError('Not a member of this organization')
+    
+    # Step 3: Check resource permission
+    if not voice_permissions.can_edit_voice_session(user_id, session_id):
+        raise common.ForbiddenError('You do not have permission to edit this session')
     
     body = json.loads(event.get('body', '{}'))
     update_data = {}
@@ -490,7 +483,7 @@ def handle_delete_session(event: Dict[str, Any], user_id: str, session_id: str) 
     """
     session_id = common.validate_uuid(session_id, 'id')
     
-    # Get session
+    # Step 1: Fetch resource
     session = common.find_one(
         table='voice_sessions',
         filters={'id': session_id}
@@ -499,13 +492,13 @@ def handle_delete_session(event: Dict[str, Any], user_id: str, session_id: str) 
     if not session:
         raise common.NotFoundError('Session not found')
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': session['org_id'], 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this session')
+    # Step 2: Verify org membership
+    if not common.can_access_org_resource(user_id, session['org_id']):
+        raise common.ForbiddenError('Not a member of this organization')
+    
+    # Step 3: Check resource permission
+    if not voice_permissions.can_delete_voice_session(user_id, session_id):
+        raise common.ForbiddenError('You do not have permission to delete this session')
     
     # Check if session can be deleted
     if session['status'] not in ['pending', 'cancelled', 'failed']:
@@ -538,7 +531,7 @@ def handle_start_session(event: Dict[str, Any], user_id: str, session_id: str) -
     """
     session_id = common.validate_uuid(session_id, 'id')
     
-    # Get session
+    # Step 1: Fetch resource
     session = common.find_one(
         table='voice_sessions',
         filters={'id': session_id}
@@ -547,13 +540,13 @@ def handle_start_session(event: Dict[str, Any], user_id: str, session_id: str) -
     if not session:
         raise common.NotFoundError('Session not found')
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': session['org_id'], 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this session')
+    # Step 2: Verify org membership
+    if not common.can_access_org_resource(user_id, session['org_id']):
+        raise common.ForbiddenError('Not a member of this organization')
+    
+    # Step 3: Check resource permission (starting is an edit operation)
+    if not voice_permissions.can_edit_voice_session(user_id, session_id):
+        raise common.ForbiddenError('You do not have permission to start this session')
     
     # Check session status
     if session['status'] not in ['pending', 'ready']:
@@ -782,7 +775,7 @@ def handle_list_session_kbs(event: Dict[str, Any], user_id: str, session_id: str
     """
     session_id = common.validate_uuid(session_id, 'id')
     
-    # Get session and verify access
+    # Step 1: Fetch resource
     session = common.find_one(
         table='voice_sessions',
         filters={'id': session_id}
@@ -791,13 +784,13 @@ def handle_list_session_kbs(event: Dict[str, Any], user_id: str, session_id: str
     if not session:
         raise common.NotFoundError('Session not found')
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': session['org_id'], 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this session')
+    # Step 2: Verify org membership
+    if not common.can_access_org_resource(user_id, session['org_id']):
+        raise common.ForbiddenError('Not a member of this organization')
+    
+    # Step 3: Check resource permission
+    if not voice_permissions.can_view_voice_session(user_id, session_id):
+        raise common.ForbiddenError('You do not have permission to view this session')
     
     result = _get_session_kbs(session_id)
     
@@ -818,7 +811,7 @@ def handle_add_session_kb(event: Dict[str, Any], user_id: str, session_id: str) 
     """
     session_id = common.validate_uuid(session_id, 'id')
     
-    # Get session and verify access
+    # Step 1: Fetch resource
     session = common.find_one(
         table='voice_sessions',
         filters={'id': session_id}
@@ -827,13 +820,13 @@ def handle_add_session_kb(event: Dict[str, Any], user_id: str, session_id: str) 
     if not session:
         raise common.NotFoundError('Session not found')
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': session['org_id'], 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this session')
+    # Step 2: Verify org membership
+    if not common.can_access_org_resource(user_id, session['org_id']):
+        raise common.ForbiddenError('Not a member of this organization')
+    
+    # Step 3: Check resource permission (adding KB is an edit operation)
+    if not voice_permissions.can_edit_voice_session(user_id, session_id):
+        raise common.ForbiddenError('You do not have permission to edit this session')
     
     body = json.loads(event.get('body', '{}'))
     
@@ -894,7 +887,7 @@ def handle_toggle_session_kb(event: Dict[str, Any], user_id: str, session_id: st
     session_id = common.validate_uuid(session_id, 'id')
     kb_id = common.validate_uuid(kb_id, 'kbId')
     
-    # Get session and verify access
+    # Step 1: Fetch resource
     session = common.find_one(
         table='voice_sessions',
         filters={'id': session_id}
@@ -903,13 +896,13 @@ def handle_toggle_session_kb(event: Dict[str, Any], user_id: str, session_id: st
     if not session:
         raise common.NotFoundError('Session not found')
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': session['org_id'], 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this session')
+    # Step 2: Verify org membership
+    if not common.can_access_org_resource(user_id, session['org_id']):
+        raise common.ForbiddenError('Not a member of this organization')
+    
+    # Step 3: Check resource permission (toggling KB is an edit operation)
+    if not voice_permissions.can_edit_voice_session(user_id, session_id):
+        raise common.ForbiddenError('You do not have permission to edit this session')
     
     # Get association
     association = common.find_one(
@@ -950,7 +943,7 @@ def handle_remove_session_kb(event: Dict[str, Any], user_id: str, session_id: st
     session_id = common.validate_uuid(session_id, 'id')
     kb_id = common.validate_uuid(kb_id, 'kbId')
     
-    # Get session and verify access
+    # Step 1: Fetch resource
     session = common.find_one(
         table='voice_sessions',
         filters={'id': session_id}
@@ -959,13 +952,13 @@ def handle_remove_session_kb(event: Dict[str, Any], user_id: str, session_id: st
     if not session:
         raise common.NotFoundError('Session not found')
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': session['org_id'], 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this session')
+    # Step 2: Verify org membership
+    if not common.can_access_org_resource(user_id, session['org_id']):
+        raise common.ForbiddenError('Not a member of this organization')
+    
+    # Step 3: Check resource permission (removing KB is an edit operation)
+    if not voice_permissions.can_edit_voice_session(user_id, session_id):
+        raise common.ForbiddenError('You do not have permission to edit this session')
     
     # Get association
     association = common.find_one(

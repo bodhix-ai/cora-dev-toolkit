@@ -276,6 +276,32 @@ elif [[ "$REL_PATH" =~ ^_modules-functional/(module-[^/]+)/backend/lambdas/(.+)$
     DEST_FILE="${PROJECT_PATH}/lambdas/${MODULE_NAME}/${LAMBDA_PATH}"
   fi
 
+# Core module backend layers - stack repo only
+elif [[ "$REL_PATH" =~ ^_modules-core/(module-[^/]+)/backend/layers/(.+)$ ]]; then
+  MODULE_NAME="${BASH_REMATCH[1]}"
+  LAYER_PATH="${BASH_REMATCH[2]}"
+  
+  if [[ "$IS_STACK_REPO" == "true" ]]; then
+    # Stack repo: packages/module-{name}/backend/layers/...
+    DEST_FILE="${PROJECT_PATH}/packages/${MODULE_NAME}/backend/layers/${LAYER_PATH}"
+  else
+    log_error "Layer files should be synced to stack repo, not infra repo"
+    exit 1
+  fi
+
+# Functional module backend layers - stack repo only
+elif [[ "$REL_PATH" =~ ^_modules-functional/(module-[^/]+)/backend/layers/(.+)$ ]]; then
+  MODULE_NAME="${BASH_REMATCH[1]}"
+  LAYER_PATH="${BASH_REMATCH[2]}"
+  
+  if [[ "$IS_STACK_REPO" == "true" ]]; then
+    # Stack repo: packages/module-{name}/backend/layers/...
+    DEST_FILE="${PROJECT_PATH}/packages/${MODULE_NAME}/backend/layers/${LAYER_PATH}"
+  else
+    log_error "Layer files should be synced to stack repo, not infra repo"
+    exit 1
+  fi
+
 # Stack template: _project-stack-template/... → ...
 elif [[ "$REL_PATH" == _project-stack-template/* ]]; then
   DEST_FILE="${PROJECT_PATH}/${REL_PATH#_project-stack-template/}"
@@ -367,6 +393,35 @@ fi
 
 log_info "✅ File synced successfully"
 echo ""
+
+# --- Update Version Tracking ---
+# Update last_synced in .cora-version.yaml and log the sync
+VERSION_FILE="${PROJECT_PATH}/.cora-version.yaml"
+if [[ -f "$VERSION_FILE" ]]; then
+  log_step "Updating version tracking..."
+  
+  # Update last_synced timestamp
+  CURRENT_DATE=$(date +%Y-%m-%d)
+  sed -i '' "s/last_synced:.*/last_synced: \"${CURRENT_DATE}\"/" "$VERSION_FILE" 2>/dev/null || \
+  sed -i "s/last_synced:.*/last_synced: \"${CURRENT_DATE}\"/" "$VERSION_FILE"
+  
+  # Get toolkit version for logging
+  TOOLKIT_VERSION="unknown"
+  if [[ -f "${TOOLKIT_ROOT}/VERSION" ]]; then
+    TOOLKIT_VERSION=$(cat "${TOOLKIT_ROOT}/VERSION" | tr -d '[:space:]')
+  fi
+  
+  # Log the sync with timestamp
+  SYNC_LOG="${PROJECT_PATH}/.cora-sync.log"
+  SYNC_TIMESTAMP=$(date +"%Y-%m-%d %H:%M")
+  RELATIVE_FILE="${SOURCE_FILE#${TOOLKIT_ROOT}/templates/}"
+  echo "${SYNC_TIMESTAMP}: Synced ${RELATIVE_FILE} from toolkit ${TOOLKIT_VERSION}" >> "$SYNC_LOG"
+  
+  log_info "Updated version tracking:"
+  log_info "  last_synced: ${CURRENT_DATE}"
+  log_info "  Logged to: .cora-sync.log"
+  echo ""
+fi
 
 # --- Next Steps ---
 if [[ "$TARGET_INFRA" == "true" ]] || [[ "$DEST_FILE" == *"/lambdas/"* ]]; then

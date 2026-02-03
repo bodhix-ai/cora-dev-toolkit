@@ -93,25 +93,46 @@ class FrontendParser:
         
         return all_calls
     
-    def _strip_query_params(self, endpoint: str) -> tuple:
+    def _strip_base_url_and_query_params(self, endpoint: str) -> tuple:
         """
-        Strip query parameters from endpoint and return them separately.
+        Strip base URL variables and query parameters from endpoint.
         
         Args:
-            endpoint: Endpoint string that may contain query parameters
+            endpoint: Endpoint string that may contain base URL and query parameters
             
         Returns:
-            Tuple of (base_path, query_param_names)
+            Tuple of (clean_path, query_param_names)
             
         Examples:
-            '/models?providerId={providerId}' -> ('/models', ['providerId'])
-            '/orgs/{orgId}/kb?limit=10' -> ('/orgs/{orgId}/kb', ['limit'])
+            '${API_BASE_URL}/models?providerId={providerId}' -> ('/models', ['providerId'])
+            '${apiUrl}/orgs/{orgId}/kb?limit=10' -> ('/orgs/{orgId}/kb', ['limit'])
+            '/profiles/me' -> ('/profiles/me', [])
         """
-        if '?' not in endpoint:
-            return endpoint, []
+        # Strip base URL template variables (common patterns in frontend code)
+        base_url_patterns = [
+            r'\$\{API_BASE_URL\}',
+            r'\$\{apiUrl\}',
+            r'\$\{baseURL\}',
+            r'\$\{API_URL\}',
+            r'\$\{CORA_API_BASE\}',
+            r'\$\{apiBase\}',
+            r'\$\{API_BASE\}',
+        ]
         
-        base_path = endpoint.split('?')[0]
-        query_string = endpoint.split('?')[1]
+        clean_endpoint = endpoint
+        for pattern in base_url_patterns:
+            clean_endpoint = re.sub(pattern, '', clean_endpoint)
+        
+        # Ensure path starts with /
+        if clean_endpoint and not clean_endpoint.startswith('/'):
+            clean_endpoint = '/' + clean_endpoint
+        
+        # Strip query parameters
+        if '?' not in clean_endpoint:
+            return clean_endpoint, []
+        
+        base_path = clean_endpoint.split('?')[0]
+        query_string = clean_endpoint.split('?')[1]
         
         # Extract query parameter names
         query_params = []
@@ -120,6 +141,13 @@ class FrontendParser:
             query_params.append(param_name)
         
         return base_path, query_params
+    
+    def _strip_query_params(self, endpoint: str) -> tuple:
+        """
+        DEPRECATED: Use _strip_base_url_and_query_params instead.
+        Kept for backward compatibility.
+        """
+        return self._strip_base_url_and_query_params(endpoint)
     
     def _parse_fetch_calls(self, content: str):
         """
@@ -141,6 +169,11 @@ class FrontendParser:
             
             # Strip query parameters from endpoint
             endpoint, query_params = self._strip_query_params(raw_endpoint)
+            
+            # Skip overly generic patterns (likely from wrapper functions)
+            if self._is_generic_pattern(endpoint):
+                logger.debug(f"Skipping generic pattern: {endpoint}")
+                continue
             
             # Extract path parameters from template literals
             path_params = self._extract_path_params(endpoint)
@@ -176,6 +209,11 @@ class FrontendParser:
             # Strip query parameters from endpoint
             endpoint, query_params = self._strip_query_params(raw_endpoint)
             
+            # Skip overly generic patterns (likely from wrapper functions)
+            if self._is_generic_pattern(endpoint):
+                logger.debug(f"Skipping generic pattern: {endpoint}")
+                continue
+            
             # Check if endpoint contains dynamic variables (e.g., ${entityType}s)
             # If so, try to resolve them to concrete routes
             concrete_endpoints = self._resolve_dynamic_routes(endpoint, content)
@@ -183,6 +221,9 @@ class FrontendParser:
             if concrete_endpoints:
                 # Generate an API call for each concrete route
                 for concrete_endpoint in concrete_endpoints:
+                    # Skip generic patterns in resolved endpoints too
+                    if self._is_generic_pattern(concrete_endpoint):
+                        continue
                     path_params = self._extract_path_params(concrete_endpoint)
                     self.api_calls.append(APICall(
                         file=self.current_file,
@@ -226,6 +267,11 @@ class FrontendParser:
             # Strip query parameters from endpoint
             endpoint, query_params = self._strip_query_params(raw_endpoint)
             
+            # Skip overly generic patterns (likely from wrapper functions)
+            if self._is_generic_pattern(endpoint):
+                logger.debug(f"Skipping generic pattern: {endpoint}")
+                continue
+            
             # Check if endpoint contains dynamic variables (e.g., ${entityType}s)
             # If so, try to resolve them to concrete routes
             concrete_endpoints = self._resolve_dynamic_routes(endpoint, content)
@@ -233,6 +279,9 @@ class FrontendParser:
             if concrete_endpoints:
                 # Generate an API call for each concrete route
                 for concrete_endpoint in concrete_endpoints:
+                    # Skip generic patterns in resolved endpoints too
+                    if self._is_generic_pattern(concrete_endpoint):
+                        continue
                     path_params = self._extract_path_params(concrete_endpoint)
                     self.api_calls.append(APICall(
                         file=self.current_file,
@@ -338,6 +387,45 @@ class FrontendParser:
             return concrete_routes
         
         return []
+    
+    def _is_generic_pattern(self, endpoint: str) -> bool:
+        """
+        Check if endpoint is an overly generic pattern from a wrapper function.
+        
+        Examples of generic patterns to skip:
+            /{url}
+            /${url}
+            /{endpoint}
+            /{path}
+            /{route}
+        
+        Args:
+            endpoint: The endpoint to check
+            
+        Returns:
+            True if the pattern is too generic to be a real API route
+        """
+        # Generic single-parameter patterns (both normalized and template literal forms)
+        generic_patterns = [
+            r'^/\{url\}$',              # /{url} - normalized
+            r'^/\$\{url\}$',            # /${url} - template literal
+            r'^/\{endpoint\}$',         # /{endpoint} - normalized
+            r'^/\$\{endpoint\}$',       # /${endpoint} - template literal
+            r'^/\{path\}$',             # /{path} - normalized
+            r'^/\$\{path\}$',           # /${path} - template literal
+            r'^/\{route\}$',            # /{route} - normalized
+            r'^/\$\{route\}$',          # /${route} - template literal
+            r'^\$\{url\}$',             # ${url} - no slash
+            r'^\$\{endpoint\}$',        # ${endpoint} - no slash
+            r'^\$\{path\}$',            # ${path} - no slash
+            r'^\$\{route\}$',           # ${route} - no slash
+        ]
+        
+        for pattern in generic_patterns:
+            if re.match(pattern, endpoint):
+                return True
+        
+        return False
     
     def _extract_path_params(self, endpoint: str) -> List[str]:
         """

@@ -12,13 +12,15 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole, useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
 import { WorkspaceDetailAdminPage } from "@{{PROJECT_NAME}}/module-ws";
 import { CircularProgress, Box, Alert } from "@mui/material";
 
 export default function WorkspaceDetailAdminRoute() {
   const params = useParams();
-  const { profile, loading, isAuthenticated } = useUser();
+  const { loading, isAuthenticated } = useUser();
+  const { isOrgAdmin } = useRole();
+  const { orgId } = useOrganizationContext();
 
   // Loading state
   if (loading) {
@@ -30,7 +32,7 @@ export default function WorkspaceDetailAdminRoute() {
   }
 
   // Authentication check
-  if (!isAuthenticated || !profile) {
+  if (!isAuthenticated) {
     return (
       <Box p={4}>
         <Alert severity="error">
@@ -41,12 +43,6 @@ export default function WorkspaceDetailAdminRoute() {
   }
   
   const workspaceId = params?.id as string;
-  const currentOrgId = profile.currentOrgId;
-
-  // Check if user has org admin role for current org (no sys admin access)
-  const isOrgAdmin = profile.organizations?.some(
-    (org) => org.orgId === currentOrgId && ["org_owner", "org_admin"].includes(org.role)
-  );
 
   // Authorization check
   if (!isOrgAdmin) {
@@ -60,7 +56,7 @@ export default function WorkspaceDetailAdminRoute() {
   }
 
   // Validate required parameters
-  if (!workspaceId || !currentOrgId) {
+  if (!workspaceId || !orgId) {
     return (
       <Box p={4}>
         <Alert severity="error">
@@ -73,8 +69,8 @@ export default function WorkspaceDetailAdminRoute() {
   return (
     <WorkspaceDetailAdminPage
       workspaceId={workspaceId}
-      orgId={currentOrgId}
-      isOrgAdmin={isOrgAdmin ?? false}
+      orgId={orgId}
+      isOrgAdmin={isOrgAdmin}
     />
   );
 }

@@ -2,12 +2,12 @@
 KB Document Lambda - Document Upload/Download Operations
 
 Routes - Workspace Scoped:
-- GET /workspaces/{workspaceId}/kb/documents - List documents
-- POST /workspaces/{workspaceId}/kb/documents - Get presigned upload URL
-- GET /workspaces/{workspaceId}/kb/documents/{docId} - Get document metadata
-- PUT /workspaces/{workspaceId}/kb/documents/{docId}/complete - Complete document upload
-- DELETE /workspaces/{workspaceId}/kb/documents/{docId} - Delete document
-- GET /workspaces/{workspaceId}/kb/documents/{docId}/download - Get presigned download URL
+- GET /ws/{wsId}/kb/documents - List documents
+- POST /ws/{wsId}/kb/documents - Get presigned upload URL
+- GET /ws/{wsId}/kb/documents/{docId} - Get document metadata
+- PUT /ws/{wsId}/kb/documents/{docId}/complete - Complete document upload
+- DELETE /ws/{wsId}/kb/documents/{docId} - Delete document
+- GET /ws/{wsId}/kb/documents/{docId}/download - Get presigned download URL
 
 Routes - Chat Scoped:
 - GET /chats/{chatId}/kb/documents - List documents
@@ -17,16 +17,16 @@ Routes - Chat Scoped:
 - DELETE /chats/{chatId}/kb/documents/{docId} - Delete document
 
 Routes - Org Admin:
-- POST /admin/org/kbs/{kbId}/documents - Upload to org KB
-- GET /admin/org/kbs/{kbId}/documents - List org KB documents
-- PUT /admin/org/kbs/{kbId}/documents/{docId}/complete - Complete org KB document upload
-- DELETE /admin/org/kbs/{kbId}/documents/{docId} - Delete from org KB
+- POST /admin/org/kb/{kbId}/documents - Upload to org KB
+- GET /admin/org/kb/{kbId}/documents - List org KB documents
+- PUT /admin/org/kb/{kbId}/documents/{docId}/complete - Complete org KB document upload
+- DELETE /admin/org/kb/{kbId}/documents/{docId} - Delete from org KB
 
 Routes - Platform Admin:
-- POST /admin/sys/kbs/{kbId}/documents - Upload to system KB
-- GET /admin/sys/kbs/{kbId}/documents - List system KB documents
-- PUT /admin/sys/kbs/{kbId}/documents/{docId}/complete - Complete system KB document upload
-- DELETE /admin/sys/kbs/{kbId}/documents/{docId} - Delete from system KB
+- POST /admin/sys/kb/{kbId}/documents - Upload to system KB
+- GET /admin/sys/kb/{kbId}/documents - List system KB documents
+- PUT /admin/sys/kb/{kbId}/documents/{docId}/complete - Complete system KB document upload
+- DELETE /admin/sys/kb/{kbId}/documents/{docId} - Delete from system KB
 """
 
 import json
@@ -38,6 +38,7 @@ from typing import Dict, Any, Optional, List
 
 import boto3
 import org_common as common
+from kb_common.permissions import can_view_kb_document, can_edit_kb_document
 
 # Environment variables
 S3_BUCKET = os.environ.get('S3_BUCKET') or os.environ.get('KB_S3_BUCKET')
@@ -82,13 +83,13 @@ def lambda_handler(event, context):
         user_id = common.get_supabase_user_id_from_okta_uid(okta_uid)
         
         # Route to appropriate handler
-        if '/workspaces/' in path and '/kb/documents' in path:
+        if '/ws/' in path and '/kb/documents' in path:
             return handle_workspace_documents(http_method, path, path_params, event, user_id)
         elif '/chats/' in path and '/kb/documents' in path:
             return handle_chat_documents(http_method, path, path_params, event, user_id)
-        elif '/admin/org/kbs/' in path and '/documents' in path:
+        elif '/admin/org/kb/' in path and '/documents' in path:
             return handle_org_admin_documents(http_method, path, path_params, event, user_id)
-        elif '/admin/sys/kbs/' in path and '/documents' in path:
+        elif '/admin/sys/kb/' in path and '/documents' in path:
             return handle_sys_admin_documents(http_method, path, path_params, event, user_id)
         elif '/kb/documents/' in path and '/complete' in path:
             # Generic complete endpoint (not scope-specific)
@@ -115,17 +116,36 @@ def lambda_handler(event, context):
 
 
 def handle_workspace_documents(method: str, path: str, path_params: Dict, event: Dict, user_id: str):
-    """Handle workspace-scoped document operations."""
-    workspace_id = path_params.get('workspaceId')
+    """
+    Handle workspace-scoped document operations.
+    
+    ADR-019c Compliant: Two-step authorization pattern
+    - Step 1: Verify workspace membership
+    - Step 2: Check document-level permissions (where applicable)
+    """
+    workspace_id = path_params.get('wsId')
     doc_id = path_params.get('docId')
     
     if not workspace_id:
-        return common.bad_request_response("Missing workspaceId")
+        return common.bad_request_response("Missing wsId")
     
-    # Verify workspace access
-    if not check_workspace_access(user_id, workspace_id):
-        return common.forbidden_response("Access denied to workspace")
+    # ========================================
+    # STEP 1: VERIFY WORKSPACE MEMBERSHIP (ADR-019c)
+    # ========================================
+    if not _is_ws_member(workspace_id, user_id):
+        return common.forbidden_response("Not a workspace member")
     
+    # ========================================
+    # STEP 2: CHECK DOCUMENT PERMISSIONS (ADR-019c)
+    # ========================================
+    if doc_id and method in ['GET', 'DELETE']:
+        # For document-specific operations, verify document permissions
+        if method == 'GET' and not can_view_kb_document(user_id, doc_id):
+            return common.forbidden_response("Cannot access this document")
+        elif method == 'DELETE' and not can_edit_kb_document(user_id, doc_id):
+            return common.forbidden_response("Cannot delete this document")
+    
+    # Route to handlers
     if method == 'PUT' and doc_id and '/complete' in path:
         return handle_complete_upload(user_id, doc_id)
     elif method == 'GET' and doc_id and '/download' in path:
@@ -143,16 +163,50 @@ def handle_workspace_documents(method: str, path: str, path_params: Dict, event:
 
 
 def handle_chat_documents(method: str, path: str, path_params: Dict, event: Dict, user_id: str):
-    """Handle chat-scoped document operations."""
+    """
+    Handle chat-scoped document operations.
+    
+    ADR-019c Compliant: Two-step authorization pattern
+    - Step 1: Verify workspace membership (if chat is workspace-bound)
+    - Step 2: Check chat-level permissions (ownership/sharing)
+    """
     chat_id = path_params.get('chatId')
     doc_id = path_params.get('docId')
     
     if not chat_id:
         return common.bad_request_response("Missing chatId")
     
-    # Verify chat access
+    # ========================================
+    # STEP 1: GET CHAT AND VERIFY WORKSPACE MEMBERSHIP (ADR-019c)
+    # ========================================
+    chat = common.find_one(
+        table='chat_sessions',
+        filters={'id': chat_id, 'is_deleted': False}
+    )
+    
+    if not chat:
+        return common.not_found_response("Chat not found")
+    
+    # If chat is workspace-bound, verify workspace membership first
+    if chat.get('workspace_id'):
+        if not _is_ws_member(chat['workspace_id'], user_id):
+            return common.forbidden_response("Not a workspace member")
+    
+    # ========================================
+    # STEP 2: CHECK CHAT-SPECIFIC PERMISSIONS (ADR-019c)
+    # ========================================
     if not check_chat_access(user_id, chat_id):
         return common.forbidden_response("Access denied to chat")
+    
+    # ========================================
+    # STEP 3: DOCUMENT-LEVEL PERMISSION CHECKS (ADR-019c)
+    # ========================================
+    if doc_id and method in ['GET', 'DELETE']:
+        # For document-specific operations, verify document permissions
+        if method == 'GET' and not can_view_kb_document(user_id, doc_id):
+            return common.forbidden_response("Cannot access this document")
+        elif method == 'DELETE' and not can_edit_kb_document(user_id, doc_id):
+            return common.forbidden_response("Cannot delete this document")
     
     if method == 'PUT' and doc_id and '/complete' in path:
         return handle_complete_upload(user_id, doc_id)
@@ -169,16 +223,36 @@ def handle_chat_documents(method: str, path: str, path_params: Dict, event: Dict
 
 
 def handle_org_admin_documents(method: str, path: str, path_params: Dict, event: Dict, user_id: str):
-    """Handle org admin document operations."""
+    """
+    Handle org admin document operations.
+    
+    ADR-019 Compliant: Centralized router auth pattern
+    - Extract org context from event
+    - Check org admin access ONCE at router level
+    """
     kb_id = path_params.get('kbId')
     doc_id = path_params.get('docId')
     
     if not kb_id:
         return common.bad_request_response("Missing kbId")
     
-    # Verify org admin access to KB
-    if not check_org_admin_kb_access(user_id, kb_id):
-        return common.forbidden_response("Access denied to org KB")
+    # ========================================
+    # CENTRALIZED ORG CONTEXT EXTRACTION (ADR-019)
+    # ========================================
+    org_id = common.get_org_context_from_event(event)
+    if not org_id:
+        return common.bad_request_response('Organization context required. Pass orgId in query params or request body.')
+    
+    # ========================================
+    # CENTRALIZED AUTH CHECK (ADR-019)
+    # ========================================
+    if not common.check_org_admin(user_id, org_id):
+        return common.forbidden_response('Organization admin access required')
+    
+    # Verify KB belongs to this org
+    kb = common.find_one(table='kb_bases', filters={'id': kb_id, 'is_deleted': False})
+    if not kb or kb.get('org_id') != org_id:
+        return common.forbidden_response("KB does not belong to this organization")
     
     if method == 'GET':
         return handle_list_documents_by_kb(user_id, kb_id)
@@ -808,17 +882,22 @@ def verify_upload_permission(user_id: str, kb_id: str) -> bool:
         return False
 
 
-def check_workspace_access(user_id: str, workspace_id: str) -> bool:
-    """Check if user is workspace member."""
-    try:
-        membership = common.find_one(
-            table='ws_members',
-            filters={'ws_id': workspace_id, 'user_id': user_id}
-        )
-        return membership is not None
-    except Exception as e:
-        print(f"Error checking workspace access: {str(e)}")
-        return False
+def _is_ws_member(workspace_id: str, user_id: str) -> bool:
+    """Check if user is a member of the workspace."""
+    result = common.rpc(
+        function_name='is_ws_member',
+        params={'p_user_id': user_id, 'p_ws_id': workspace_id}
+    )
+    return result is True
+
+
+def _is_ws_admin_or_owner(workspace_id: str, user_id: str) -> bool:
+    """Check if user is admin or owner of the workspace."""
+    result = common.rpc(
+        function_name='is_ws_admin_or_owner',
+        params={'p_user_id': user_id, 'p_ws_id': workspace_id}
+    )
+    return result is True
 
 
 def check_chat_access(user_id: str, chat_id: str) -> bool:

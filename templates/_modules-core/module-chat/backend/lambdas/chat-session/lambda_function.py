@@ -5,11 +5,11 @@ Handles chat session management including creation, retrieval, updates,
 KB grounding, sharing, and favorites.
 
 Routes - Workspace Scoped:
-- GET /workspaces/{workspaceId}/chats - List workspace chats
-- POST /workspaces/{workspaceId}/chats - Create workspace chat
-- GET /workspaces/{workspaceId}/chats/{sessionId} - Get chat details
-- PATCH /workspaces/{workspaceId}/chats/{sessionId} - Update chat (title, sharing)
-- DELETE /workspaces/{workspaceId}/chats/{sessionId} - Delete chat
+- GET /ws/{wsId}/chats - List workspace chats
+- POST /ws/{wsId}/chats - Create workspace chat
+- GET /ws/{wsId}/chats/{sessionId} - Get chat details
+- PATCH /ws/{wsId}/chats/{sessionId} - Update chat (title, sharing)
+- DELETE /ws/{wsId}/chats/{sessionId} - Delete chat
 
 Routes - User Level:
 - GET /users/me/chats - List user's personal chats
@@ -30,11 +30,33 @@ Routes - Sharing:
 
 Routes - Favorites:
 - POST /chats/{sessionId}/favorite - Toggle favorite
+
+Routes - Sys Admin (Platform Management):
+- GET /admin/sys/chat/config - Get platform chat settings
+- PUT /admin/sys/chat/config - Update platform chat settings
+- GET /admin/sys/chat/analytics - Get platform-wide chat analytics
+- GET /admin/sys/chat/analytics/usage - Get detailed usage statistics
+- GET /admin/sys/chat/analytics/tokens - Get token usage statistics
+- GET /admin/sys/chat/sessions - List all chat sessions (all orgs)
+- GET /admin/sys/chat/sessions/{id} - Get chat session details
+- DELETE /admin/sys/chat/sessions/{id} - Force delete chat session
+
+Routes - Org Admin (Organization Management):
+- GET /admin/org/chat/config - Get organization chat settings
+- PUT /admin/org/chat/config - Update organization chat settings
+- GET /admin/org/chat/sessions - List all organization chat sessions
+- GET /admin/org/chat/sessions/{id} - Get chat session details
+- DELETE /admin/org/chat/sessions/{id} - Delete organization chat session
+- POST /admin/org/chat/sessions/{id}/restore - Restore soft-deleted chat
+- GET /admin/org/chat/analytics - Get organization chat analytics
+- GET /admin/org/chat/analytics/users - Get user activity statistics
+- GET /admin/org/chat/analytics/workspaces - Get workspace activity statistics
 """
 
 import json
 from typing import Any, Dict, List, Optional
 import org_common as common
+from chat_common.permissions import can_view_chat, can_edit_chat, is_chat_owner
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -47,6 +69,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     print(json.dumps(event, default=str))
     
     try:
+        # Extract JWT from Authorization header for RPC calls
+        headers = event.get('headers', {})
+        auth_header = headers.get('Authorization') or headers.get('authorization', '')
+        jwt_token = auth_header.replace('Bearer ', '').strip()
+        
         # Extract user info from authorizer
         user_info = common.get_user_from_event(event)
         okta_uid = user_info['user_id']
@@ -63,22 +90,47 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         path = event.get('rawPath', '') or event.get('path', '')
         path_params = event.get('pathParameters', {}) or {}
         
+        # CENTRALIZED AUTH: Use ADR-019 standard helper functions
+        if '/admin/' in path:
+            # Route-level authorization check using ADR-019 helpers
+            if path.startswith('/admin/sys/'):
+                # System admin check (ADR-019: uses RPC is_sys_admin)
+                if not common.check_sys_admin(supabase_user_id):
+                    print(f"Access denied for user {supabase_user_id} - sys admin required")
+                    return common.forbidden_response('System admin role required')
+                print(f"System admin access granted for user {supabase_user_id}")
+            
+            elif path.startswith('/admin/org/'):
+                # Get org_id from request (path/query/body params)
+                org_id = common.get_org_context_from_event(event)
+                
+                if not org_id:
+                    print(f"Org admin missing org_id in request for {supabase_user_id}")
+                    return common.bad_request_response('Organization ID required in request')
+                
+                # Org admin check (ADR-019: uses RPC is_org_admin)
+                if not common.check_org_admin(supabase_user_id, org_id):
+                    print(f"Access denied for user {supabase_user_id} - org admin required for org {org_id}")
+                    return common.forbidden_response('Organization admin role required')
+                
+                print(f"Organization admin access granted for user {supabase_user_id}, org: {org_id}")
+        
         # Route based on path patterns
         if http_method == 'OPTIONS':
             return common.success_response({})
         
-        # Workspace-scoped routes: /workspaces/{workspaceId}/chats...
-        if '/workspaces/' in path and '/chats' in path:
-            workspace_id = path_params.get('workspaceId')
+        # Workspace-scoped routes: /ws/{wsId}/chats...
+        if '/ws/' in path and '/chats' in path:
+            ws_id = path_params.get('wsId')
             session_id = path_params.get('sessionId')
             
             if http_method == 'GET':
                 if session_id:
                     return handle_get_chat(supabase_user_id, session_id)
                 else:
-                    return handle_list_workspace_chats(event, supabase_user_id, workspace_id)
+                    return handle_list_workspace_chats(event, supabase_user_id, ws_id)
             elif http_method == 'POST':
-                return handle_create_workspace_chat(event, supabase_user_id, workspace_id)
+                return handle_create_workspace_chat(event, supabase_user_id, ws_id)
             elif http_method == 'PATCH':
                 return handle_update_chat(event, supabase_user_id, session_id)
             elif http_method == 'DELETE':
@@ -121,6 +173,59 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             if http_method == 'POST':
                 return handle_toggle_favorite(supabase_user_id, session_id)
         
+        # Sys Admin routes: /admin/sys/chat/*
+        elif '/admin/sys/chat' in path:
+            if '/config' in path:
+                if http_method == 'GET':
+                    return handle_sys_get_config(supabase_user_id)
+                elif http_method == 'PUT':
+                    return handle_sys_update_config(event, supabase_user_id)
+            elif '/analytics' in path:
+                if '/usage' in path:
+                    return handle_sys_get_usage_stats(event, supabase_user_id)
+                elif '/tokens' in path:
+                    return handle_sys_get_token_stats(event, supabase_user_id)
+                else:
+                    return handle_sys_get_analytics(event, supabase_user_id)
+            elif '/sessions' in path:
+                session_id = path_params.get('sessionId')
+                if session_id:
+                    if http_method == 'GET':
+                        return handle_sys_get_session(supabase_user_id, session_id)
+                    elif http_method == 'DELETE':
+                        return handle_sys_delete_session(supabase_user_id, session_id)
+                else:
+                    if http_method == 'GET':
+                        return handle_sys_list_sessions(event, supabase_user_id)
+        
+        # Org Admin routes: /admin/org/chat/*
+        elif '/admin/org/chat' in path:
+            # org_id was already extracted and validated at router level (line 104)
+            if '/config' in path:
+                if http_method == 'GET':
+                    return handle_org_get_config(supabase_user_id, org_id)
+                elif http_method == 'PUT':
+                    return handle_org_update_config(event, supabase_user_id, org_id)
+            elif '/analytics' in path:
+                if '/users' in path:
+                    return handle_org_get_user_stats(event, org_id)
+                elif '/workspaces' in path:
+                    return handle_org_get_workspace_stats(event, org_id)
+                else:
+                    return handle_org_get_analytics(event, org_id)
+            elif '/sessions' in path:
+                session_id = path_params.get('sessionId')
+                if session_id:
+                    if '/restore' in path:
+                        return handle_org_restore_session(org_id, session_id)
+                    elif http_method == 'GET':
+                        return handle_org_get_session(org_id, session_id)
+                    elif http_method == 'DELETE':
+                        return handle_org_delete_session(org_id, session_id)
+                else:
+                    if http_method == 'GET':
+                        return handle_org_list_sessions(event, org_id)
+        
         # Generic chat routes: /chats/{sessionId}
         elif '/chats/' in path:
             session_id = path_params.get('sessionId')
@@ -157,7 +262,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 def handle_list_workspace_chats(
     event: Dict[str, Any],
     user_id: str,
-    workspace_id: str
+    ws_id: str
 ) -> Dict[str, Any]:
     """
     List chat sessions for a workspace.
@@ -167,7 +272,7 @@ def handle_list_workspace_chats(
     - offset: Pagination offset (default: 0)
     - filter: 'all' | 'mine' | 'shared' (default: 'all')
     """
-    workspace_id = common.validate_uuid(workspace_id, 'workspaceId')
+    ws_id = common.validate_uuid(ws_id, 'wsId')
     
     query_params = event.get('queryStringParameters', {}) or {}
     
@@ -188,7 +293,7 @@ def handle_list_workspace_chats(
     ws_membership = common.find_one(
         table='ws_members',
         filters={
-            'ws_id': workspace_id,
+            'ws_id': ws_id,
             'user_id': user_id
         }
     )
@@ -199,7 +304,7 @@ def handle_list_workspace_chats(
     # Get workspace to find org_id
     workspace = common.find_one(
         table='workspaces',
-        filters={'id': workspace_id}
+        filters={'id': ws_id}
     )
     
     if not workspace:
@@ -213,7 +318,7 @@ def handle_list_workspace_chats(
         chats = common.find_many(
             table='chat_sessions',
             filters={
-                'ws_id': workspace_id,
+                'ws_id': ws_id,
                 'created_by': user_id,
                 'is_deleted': False
             },
@@ -230,7 +335,7 @@ def handle_list_workspace_chats(
 {
                 'p_user_id': user_id,
                 'p_org_id': org_id,
-                'p_workspace_id': workspace_id
+                'p_workspace_id': ws_id
             }
         )
         # Filter to only shared chats
@@ -245,7 +350,7 @@ def handle_list_workspace_chats(
 {
                 'p_user_id': user_id,
                 'p_org_id': org_id,
-                'p_workspace_id': workspace_id
+                'p_workspace_id': ws_id
             }
         )
         chats = chats[offset:offset + limit]
@@ -322,7 +427,7 @@ def handle_list_user_chats(
 def handle_create_workspace_chat(
     event: Dict[str, Any],
     user_id: str,
-    workspace_id: str
+    ws_id: str
 ) -> Dict[str, Any]:
     """
     Create a new chat session in a workspace.
@@ -334,13 +439,13 @@ def handle_create_workspace_chat(
         "isSharedWithWorkspace": false  // Optional, default: false
     }
     """
-    workspace_id = common.validate_uuid(workspace_id, 'workspaceId')
+    ws_id = common.validate_uuid(ws_id, 'wsId')
     
     # Verify user has access to workspace
     ws_membership = common.find_one(
         table='ws_members',
         filters={
-            'ws_id': workspace_id,
+            'ws_id': ws_id,
             'user_id': user_id
         }
     )
@@ -351,7 +456,7 @@ def handle_create_workspace_chat(
     # Get workspace to find org_id
     workspace = common.find_one(
         table='workspaces',
-        filters={'id': workspace_id}
+        filters={'id': ws_id}
     )
     
     if not workspace:
@@ -369,7 +474,7 @@ def handle_create_workspace_chat(
     # Create the chat session
     chat_data = {
         'title': title,
-        'ws_id': workspace_id,
+        'ws_id': ws_id,
         'org_id': workspace['org_id'],
         'created_by': user_id,
         'is_shared_with_workspace': is_shared_with_workspace,
@@ -468,20 +573,7 @@ def handle_get_chat(user_id: str, session_id: str) -> Dict[str, Any]:
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check permission using RPC
-    can_view = common.rpc(
-        
-'can_view_chat',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
-    )
-    
-    if not can_view:
-        raise common.ForbiddenError('You do not have access to this chat')
-    
+    # 1. Fetch resource
     chat = common.find_one(
         table='chat_sessions',
         filters={'id': session_id, 'is_deleted': False}
@@ -489,6 +581,14 @@ def handle_get_chat(user_id: str, session_id: str) -> Dict[str, Any]:
     
     if not chat:
         raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check resource permission
+    if not can_view_chat(user_id, session_id):
+        raise common.ForbiddenError('You do not have access to this chat')
     
     result = _format_chat_response(chat, user_id)
     
@@ -530,18 +630,21 @@ def handle_update_chat(
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check ownership
-    is_owner = common.rpc(
-        
-'is_chat_owner',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource (needed for org check)
+    chat = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
     
-    if not is_owner:
+    if not chat:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check ownership
+    if not is_chat_owner(user_id, session_id):
         raise common.ForbiddenError('Only the chat owner can update this chat')
     
     body = json.loads(event.get('body', '{}'))
@@ -580,18 +683,21 @@ def handle_delete_chat(user_id: str, session_id: str) -> Dict[str, Any]:
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check ownership
-    is_owner = common.rpc(
-        
-'is_chat_owner',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource
+    chat = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
     
-    if not is_owner:
+    if not chat:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check ownership
+    if not is_chat_owner(user_id, session_id):
         raise common.ForbiddenError('Only the chat owner can delete this chat')
     
     # Soft delete
@@ -621,18 +727,21 @@ def handle_list_grounded_kbs(user_id: str, session_id: str) -> Dict[str, Any]:
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check permission
-    can_view = common.rpc(
-        
-'can_view_chat',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource
+    chat = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
     
-    if not can_view:
+    if not chat:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check resource permission
+    if not can_view_chat(user_id, session_id):
         raise common.ForbiddenError('You do not have access to this chat')
     
     grounded_kbs = common.rpc(
@@ -664,18 +773,21 @@ def handle_add_kb_grounding(
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check ownership
-    is_owner = common.rpc(
-        
-'is_chat_owner',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource
+    chat = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
     
-    if not is_owner:
+    if not chat:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check ownership
+    if not is_chat_owner(user_id, session_id):
         raise common.ForbiddenError('Only the chat owner can add KB grounding')
     
     body = json.loads(event.get('body', '{}'))
@@ -736,18 +848,21 @@ def handle_remove_kb_grounding(
     session_id = common.validate_uuid(session_id, 'sessionId')
     kb_id = common.validate_uuid(kb_id, 'kbId')
     
-    # Check ownership
-    is_owner = common.rpc(
-        
-'is_chat_owner',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource
+    chat = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
     
-    if not is_owner:
+    if not chat:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check ownership
+    if not is_chat_owner(user_id, session_id):
         raise common.ForbiddenError('Only the chat owner can remove KB grounding')
     
     # Find and delete the grounding
@@ -786,18 +901,21 @@ def handle_list_shares(user_id: str, session_id: str) -> Dict[str, Any]:
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check permission
-    can_view = common.rpc(
-        
-'can_view_chat',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource
+    chat = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
     
-    if not can_view:
+    if not chat:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check resource permission
+    if not can_view_chat(user_id, session_id):
         raise common.ForbiddenError('You do not have access to this chat')
     
     shares = common.find_many(
@@ -847,20 +965,6 @@ def handle_create_share(
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check ownership
-    is_owner = common.rpc(
-        
-'is_chat_owner',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
-    )
-    
-    if not is_owner:
-        raise common.ForbiddenError('Only the chat owner can share this chat')
-    
     body = json.loads(event.get('body', '{}'))
     
     share_user_id = body.get('userId')
@@ -877,7 +981,7 @@ def handle_create_share(
     if share_user_id == user_id:
         raise common.ValidationError('Cannot share with yourself')
     
-    # Verify target user exists and is in the same org
+    # 1. Fetch resource
     chat = common.find_one(
         table='chat_sessions',
         filters={'id': session_id, 'is_deleted': False}
@@ -885,6 +989,14 @@ def handle_create_share(
     
     if not chat:
         raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check ownership
+    if not is_chat_owner(user_id, session_id):
+        raise common.ForbiddenError('Only the chat owner can share this chat')
     
     target_membership = common.find_one(
         table='org_members',
@@ -968,16 +1080,21 @@ def handle_delete_share(
     if not share:
         raise common.NotFoundError('Share not found')
     
-    # Check permissions: owner can delete any, user can delete their own
-    is_owner = common.rpc(
-        
-'is_chat_owner',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource
+    chat = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
+    
+    if not chat:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check permissions: owner can delete any, user can delete their own
+    is_owner = is_chat_owner(user_id, session_id)
     
     is_self_share = share['shared_with_user_id'] == user_id
     
@@ -1007,18 +1124,21 @@ def handle_toggle_favorite(user_id: str, session_id: str) -> Dict[str, Any]:
     """
     session_id = common.validate_uuid(session_id, 'sessionId')
     
-    # Check permission
-    can_view = common.rpc(
-        
-'can_view_chat',
-        
-{
-            'p_user_id': user_id,
-            'p_session_id': session_id
-        }
+    # 1. Fetch resource
+    chat = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'is_deleted': False}
     )
     
-    if not can_view:
+    if not chat:
+        raise common.NotFoundError('Chat session not found')
+    
+    # 2. Verify org membership (ADR-019c: MUST come before permission check)
+    if not common.can_access_org_resource(user_id, chat['org_id']):
+        raise common.ForbiddenError('Not a member of organization')
+    
+    # 3. Check resource permission
+    if not can_view_chat(user_id, session_id):
         raise common.ForbiddenError('You do not have access to this chat')
     
     # Check if already favorited
@@ -1054,6 +1174,397 @@ def handle_toggle_favorite(user_id: str, session_id: str) -> Dict[str, Any]:
             'isFavorited': True,
             'id': favorite['id']
         })
+
+
+# =============================================================================
+# SYS ADMIN HANDLERS
+# =============================================================================
+
+def handle_sys_get_config(user_id: str) -> Dict[str, Any]:
+    """Get platform chat configuration settings."""
+    # Auth check done at router level
+    config = common.find_one(
+        table='chat_cfg_sys_settings',
+        filters={'config_key': 'default'}
+    )
+    
+    if not config:
+        raise common.NotFoundError('Platform configuration not found')
+    
+    return common.success_response({
+        'defaultTitleFormat': config['default_title_format'],
+        'messageRetentionDays': config['message_retention_days'],
+        'sessionTimeoutMinutes': config['session_timeout_minutes'],
+        'maxMessageLength': config['max_message_length'],
+        'maxKbGroundings': config['max_kb_groundings'],
+        'defaultAiProvider': config.get('default_ai_provider'),
+        'defaultAiModel': config.get('default_ai_model'),
+        'streamingConfig': config.get('streaming_config', {}),
+        'citationDisplayConfig': config.get('citation_display_config', {})
+    })
+
+
+def handle_sys_update_config(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """Update platform chat configuration."""
+    # Auth check done at router level
+    body = json.loads(event.get('body', '{}'))
+    
+    update_data = {}
+    if 'messageRetentionDays' in body:
+        update_data['message_retention_days'] = body['messageRetentionDays']
+    if 'sessionTimeoutMinutes' in body:
+        update_data['session_timeout_minutes'] = body['sessionTimeoutMinutes']
+    if 'maxMessageLength' in body:
+        update_data['max_message_length'] = body['maxMessageLength']
+    if 'maxKbGroundings' in body:
+        update_data['max_kb_groundings'] = body['maxKbGroundings']
+    if 'defaultAiProvider' in body:
+        update_data['default_ai_provider'] = body['defaultAiProvider']
+    if 'defaultAiModel' in body:
+        update_data['default_ai_model'] = body['defaultAiModel']
+    
+    if not update_data:
+        raise common.ValidationError('No valid fields to update')
+    
+    common.update_one(
+        table='chat_cfg_sys_settings',
+        filters={'config_key': 'default'},
+        data=update_data
+    )
+    
+    return common.success_response({'message': 'Configuration updated successfully'})
+
+
+def handle_sys_get_analytics(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """Get platform-wide chat analytics."""
+    # Auth check done at router level
+    # Call RPC function for analytics
+    analytics = common.rpc('get_sys_chat_analytics')
+
+    # Transform snake_case to camelCase for frontend
+    return common.success_response({
+        'totalSessions': analytics.get('total_sessions', 0),
+        'totalMessages': analytics.get('total_messages', 0),
+        'activeSessions': {
+            'last24Hours': analytics.get('active_sessions', {}).get('last_24_hours', 0),
+            'last7Days': analytics.get('active_sessions', {}).get('last_7_days', 0),
+            'last30Days': analytics.get('active_sessions', {}).get('last_30_days', 0)
+        }
+    })
+
+
+def handle_sys_get_usage_stats(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """Get detailed usage statistics."""
+    # Auth check done at router level
+    # Call RPC function for most active orgs
+    active_orgs = common.rpc('get_sys_most_active_orgs', {'p_limit': 10})
+    
+    return common.success_response({'mostActiveOrgs': active_orgs})
+
+
+def handle_sys_get_token_stats(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """Get token usage statistics."""
+    # Auth check done at router level
+    # Token usage from metadata
+    # This is a placeholder - actual implementation would parse metadata JSONB
+    return common.success_response({
+        'totalTokensUsed': 0,
+        'averageTokensPerMessage': 0,
+        'message': 'Token tracking not yet implemented'
+    })
+
+
+def handle_sys_list_sessions(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    """List all chat sessions (all orgs)."""
+    # Auth check done at router level
+    query_params = event.get('queryStringParameters', {}) or {}
+    limit = common.validate_integer(query_params.get('limit', 50), 'limit', min_value=1, max_value=100)
+    offset = common.validate_integer(query_params.get('offset', 0), 'offset', min_value=0)
+    
+    sessions = common.find_many(
+        table='chat_sessions',
+        filters={'is_deleted': False},
+        order='updated_at.desc',
+        limit=limit,
+        offset=offset
+    )
+    
+    return common.success_response([{
+        'id': s['id'],
+        'title': s['title'],
+        'orgId': s['org_id'],
+        'workspaceId': s.get('ws_id'),
+        'createdBy': s['created_by'],
+        'createdAt': s['created_at'],
+        'updatedAt': s['updated_at']
+    } for s in sessions])
+
+
+def handle_sys_get_session(user_id: str, session_id: str) -> Dict[str, Any]:
+    """Get chat session details (sys admin view)."""
+    # Auth check done at router level
+    session_id = common.validate_uuid(session_id, 'sessionId')
+    
+    session = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id}
+    )
+    
+    if not session:
+        raise common.NotFoundError('Chat session not found')
+    
+    # Get message count
+    messages = common.find_many(
+        table='chat_messages',
+        filters={'session_id': session_id},
+        select='id'
+    )
+    
+    return common.success_response({
+        'id': session['id'],
+        'title': session['title'],
+        'orgId': session['org_id'],
+        'workspaceId': session.get('ws_id'),
+        'createdBy': session['created_by'],
+        'isDeleted': session['is_deleted'],
+        'deletedAt': session.get('deleted_at'),
+        'messageCount': len(messages),
+        'createdAt': session['created_at'],
+        'updatedAt': session['updated_at']
+    })
+
+
+def handle_sys_delete_session(user_id: str, session_id: str) -> Dict[str, Any]:
+    """Force delete chat session (sys admin)."""
+    # Auth check done at router level
+    session_id = common.validate_uuid(session_id, 'sessionId')
+    
+    # Hard delete
+    common.delete_one(
+        table='chat_sessions',
+        filters={'id': session_id}
+    )
+    
+    return common.success_response({
+        'message': 'Chat session permanently deleted',
+        'id': session_id
+    })
+
+
+# =============================================================================
+# ORG ADMIN HANDLERS
+# =============================================================================
+
+def handle_org_get_config(user_id: str, org_id: str) -> Dict[str, Any]:
+    """Get organization chat configuration."""
+    # Auth check done at router level, org_id passed from router
+    
+    # Get org-specific config
+    org_config = common.find_one(
+        table='chat_cfg_org_settings',
+        filters={'org_id': org_id}
+    )
+    
+    # Get platform defaults
+    platform_config = common.find_one(
+        table='chat_cfg_sys_settings',
+        filters={'config_key': 'default'}
+    )
+    
+    result = {
+        'messageRetentionDays': org_config.get('message_retention_days') if org_config else platform_config['message_retention_days'],
+        'maxMessageLength': org_config.get('max_message_length') if org_config else platform_config['max_message_length'],
+        'maxKbGroundings': org_config.get('max_kb_groundings') if org_config else platform_config['max_kb_groundings'],
+        'sharingPolicy': org_config.get('sharing_policy', {}) if org_config else {},
+        'usingPlatformDefaults': org_config is None
+    }
+    
+    return common.success_response(result)
+
+
+def handle_org_update_config(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[str, Any]:
+    """Update organization chat configuration."""
+    # Auth check done at router level, org_id passed from router
+    
+    body = json.loads(event.get('body', '{}'))
+    
+    update_data = {'org_id': org_id}
+    if 'messageRetentionDays' in body:
+        update_data['message_retention_days'] = body['messageRetentionDays']
+    if 'maxMessageLength' in body:
+        update_data['max_message_length'] = body['maxMessageLength']
+    if 'maxKbGroundings' in body:
+        update_data['max_kb_groundings'] = body['maxKbGroundings']
+    if 'sharingPolicy' in body:
+        update_data['sharing_policy'] = json.dumps(body['sharingPolicy'])
+    
+    # Upsert org config
+    existing = common.find_one(
+        table='chat_cfg_org_settings',
+        filters={'org_id': org_id}
+    )
+    
+    if existing:
+        common.update_one(
+            table='chat_cfg_org_settings',
+            filters={'org_id': org_id},
+            data=update_data
+        )
+    else:
+        common.insert_one(
+            table='chat_cfg_org_settings',
+            data=update_data
+        )
+    
+    return common.success_response({'message': 'Organization configuration updated'})
+
+
+def handle_org_list_sessions(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
+    """List all organization chat sessions."""
+    # Auth check done at router level, org_id passed from router
+    
+    query_params = event.get('queryStringParameters', {}) or {}
+    limit = common.validate_integer(query_params.get('limit', 50), 'limit', min_value=1, max_value=100)
+    offset = common.validate_integer(query_params.get('offset', 0), 'offset', min_value=0)
+    
+    sessions = common.find_many(
+        table='chat_sessions',
+        filters={'org_id': org_id, 'is_deleted': False},
+        order='updated_at.desc',
+        limit=limit,
+        offset=offset
+    )
+    
+    return common.success_response([{
+        'id': s['id'],
+        'title': s['title'],
+        'workspaceId': s.get('ws_id'),
+        'createdBy': s['created_by'],
+        'createdAt': s['created_at'],
+        'updatedAt': s['updated_at']
+    } for s in sessions])
+
+
+def handle_org_get_session(org_id: str, session_id: str) -> Dict[str, Any]:
+    """Get chat session details (org admin view)."""
+    # Auth check done at router level, org_id passed from router
+    
+    session_id = common.validate_uuid(session_id, 'sessionId')
+    
+    session = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'org_id': org_id}
+    )
+    
+    if not session:
+        raise common.NotFoundError('Chat session not found in this organization')
+    
+    # Get message count
+    messages = common.find_many(
+        table='chat_messages',
+        filters={'session_id': session_id},
+        select='id'
+    )
+    
+    return common.success_response({
+        'id': session['id'],
+        'title': session['title'],
+        'workspaceId': session.get('ws_id'),
+        'createdBy': session['created_by'],
+        'isDeleted': session['is_deleted'],
+        'deletedAt': session.get('deleted_at'),
+        'messageCount': len(messages),
+        'createdAt': session['created_at'],
+        'updatedAt': session['updated_at']
+    })
+
+
+def handle_org_delete_session(org_id: str, session_id: str) -> Dict[str, Any]:
+    """Delete organization chat session."""
+    # Auth check done at router level, org_id passed from router
+    
+    session_id = common.validate_uuid(session_id, 'sessionId')
+    
+    session = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'org_id': org_id}
+    )
+    
+    if not session:
+        raise common.NotFoundError('Chat session not found in this organization')
+    
+    # Soft delete
+    common.update_one(
+        table='chat_sessions',
+        filters={'id': session_id},
+        data={'is_deleted': True, 'deleted_at': 'now()'}
+    )
+    
+    return common.success_response({
+        'message': 'Chat session deleted',
+        'id': session_id
+    })
+
+
+def handle_org_restore_session(org_id: str, session_id: str) -> Dict[str, Any]:
+    """Restore soft-deleted chat session."""
+    # Auth check done at router level, org_id passed from router
+    
+    session_id = common.validate_uuid(session_id, 'sessionId')
+    
+    session = common.find_one(
+        table='chat_sessions',
+        filters={'id': session_id, 'org_id': org_id, 'is_deleted': True}
+    )
+    
+    if not session:
+        raise common.NotFoundError('Deleted chat session not found in this organization')
+    
+    # Restore
+    common.update_one(
+        table='chat_sessions',
+        filters={'id': session_id},
+        data={'is_deleted': False, 'deleted_at': None}
+    )
+    
+    return common.success_response({
+        'message': 'Chat session restored',
+        'id': session_id
+    })
+
+
+def handle_org_get_analytics(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
+    """Get organization chat analytics."""
+    # Auth check done at router level, org_id passed from router
+
+    # Call RPC function for org analytics
+    analytics = common.rpc('get_org_chat_analytics', {'p_org_id': org_id})
+
+    # Transform snake_case to camelCase for frontend
+    return common.success_response({
+        'totalSessions': analytics.get('total_sessions', 0),
+        'totalMessages': analytics.get('total_messages', 0)
+    })
+
+
+def handle_org_get_user_stats(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
+    """Get user activity statistics."""
+    # Auth check done at router level, org_id passed from router
+    
+    # Call RPC function for most active users
+    active_users = common.rpc('get_org_most_active_users', {'p_org_id': org_id, 'p_limit': 10})
+    
+    return common.success_response({'mostActiveUsers': active_users})
+
+
+def handle_org_get_workspace_stats(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
+    """Get workspace activity statistics."""
+    # Auth check done at router level, org_id passed from router
+    
+    # Call RPC function for most active workspaces
+    active_workspaces = common.rpc('get_org_most_active_workspaces', {'p_org_id': org_id, 'p_limit': 10})
+    
+    return common.success_response({'mostActiveWorkspaces': active_workspaces})
 
 
 # =============================================================================
@@ -1160,3 +1671,7 @@ def _add_kb_grounding_internal(
         table='chat_session_kbs',
         data=grounding_data
     )
+
+
+# Note: check_org_admin_access removed - authorization now handled at router level
+# Router queries org_members directly and passes org context via user_info

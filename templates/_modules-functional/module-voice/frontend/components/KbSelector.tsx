@@ -227,6 +227,7 @@ export function KbSelector({
                       "&:hover": { color: "error.main", bgcolor: "error.50" },
                     }}
                     title="Remove KB"
+                    aria-label={`Remove ${kb.kbName || 'KB'}`}
                   >
                     {isLoading ? (
                       <CircularProgress size={16} />

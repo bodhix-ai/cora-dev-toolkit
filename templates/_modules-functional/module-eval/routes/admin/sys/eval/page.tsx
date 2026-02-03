@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useUser } from '@{{PROJECT_NAME}}/module-access';
+import { useUser, useRole } from '@{{PROJECT_NAME}}/module-access';
 import { 
   SysEvalConfigPage,
   SysEvalPromptsPage
@@ -23,6 +23,7 @@ type TabValue = 'config' | 'prompts';
  */
 export default function SysEvalAdminPage() {
   const { profile, loading, isAuthenticated } = useUser();
+  const { isSysAdmin } = useRole();
   const [activeTab, setActiveTab] = useState<TabValue>('config');
 
   // Loading state
@@ -45,8 +46,7 @@ export default function SysEvalAdminPage() {
     );
   }
 
-  // Authorization check (sys admin only)
-  const isSysAdmin = ['sys_owner', 'sys_admin'].includes(profile.sysRole || '');
+  // Authorization check (sys admin only) - ADR-019a pattern
   if (!isSysAdmin) {
     return (
       <Box p={4}>

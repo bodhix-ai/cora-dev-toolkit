@@ -7,7 +7,7 @@ DROP TABLE IF EXISTS public.voice_credentials CASCADE;
 
 CREATE TABLE public.voice_credentials (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    org_id UUID NOT NULL REFERENCES public.orgs(id) ON DELETE CASCADE,
+    org_id UUID REFERENCES public.orgs(id) ON DELETE CASCADE,  -- NULL = platform credential, set = org credential
     service_name VARCHAR(50) NOT NULL,
     credentials_secret_arn TEXT NOT NULL,
     config_metadata JSONB NOT NULL DEFAULT '{}',
@@ -18,12 +18,21 @@ CREATE TABLE public.voice_credentials (
     created_by UUID NOT NULL REFERENCES auth.users(id),
     updated_by UUID REFERENCES auth.users(id),
     
-    -- One credential per service per org
-    CONSTRAINT voice_credentials_service_org_unique UNIQUE (org_id, service_name),
     CONSTRAINT voice_credentials_service_check CHECK (
         service_name IN ('daily', 'deepgram', 'cartesia')
     )
 );
+
+-- Partial unique indexes for dual-level credential system
+-- Platform credentials (org_id IS NULL): one per service
+CREATE UNIQUE INDEX voice_credentials_service_platform_unique 
+ON public.voice_credentials (service_name) 
+WHERE org_id IS NULL;
+
+-- Org credentials (org_id IS NOT NULL): one per service per org
+CREATE UNIQUE INDEX voice_credentials_service_org_unique 
+ON public.voice_credentials (service_name, org_id) 
+WHERE org_id IS NOT NULL;
 
 -- Indexes
 CREATE INDEX idx_voice_credentials_org_id ON public.voice_credentials(org_id);

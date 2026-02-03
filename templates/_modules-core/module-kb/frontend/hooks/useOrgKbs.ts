@@ -57,7 +57,8 @@ export function useOrgKbs({
       setError(null);
 
       const kbClient = apiClient.kb;
-      const response = await kbClient.orgAdmin.listKbs();
+      // ADR-019: Pass orgId for authorization
+      const response = await kbClient.orgAdmin.listKbs(orgId);
       setKbs(response.data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch knowledge bases';
@@ -89,7 +90,8 @@ export function useOrgKbs({
         };
 
         const kbClient = apiClient.kb;
-        const response = await kbClient.orgAdmin.createKb(fullInput);
+        // ADR-019: Pass orgId for authorization
+        const response = await kbClient.orgAdmin.createKb(orgId, fullInput);
 
         // Refresh list to include new KB
         await fetchKbs();
@@ -115,7 +117,8 @@ export function useOrgKbs({
         setError(null);
 
         const kbClient = apiClient.kb;
-        const response = await kbClient.orgAdmin.updateKb(kbId, input);
+        // ADR-019: Pass orgId for authorization
+        const response = await kbClient.orgAdmin.updateKb(orgId, kbId, input);
 
         // Update local state
         setKbs((prev) =>
@@ -143,7 +146,8 @@ export function useOrgKbs({
         setError(null);
 
         const kbClient = apiClient.kb;
-        await kbClient.orgAdmin.deleteKb(kbId);
+        // ADR-019: Pass orgId for authorization
+        await kbClient.orgAdmin.deleteKb(orgId, kbId);
 
         // Remove from local state
         setKbs((prev) => prev.filter((kb) => kb.id !== kbId));
@@ -167,7 +171,8 @@ export function useOrgKbs({
         setError(null);
 
         const kbClient = apiClient.kb;
-        const response = await kbClient.orgAdmin.getKb(kbId);
+        // ADR-019: Pass orgId for authorization
+        const response = await kbClient.orgAdmin.getKb(orgId, kbId);
 
         return response.data;
       } catch (err) {

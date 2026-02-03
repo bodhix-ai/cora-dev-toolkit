@@ -37,6 +37,12 @@ import {
   StatusOptionManager,
   OrgDelegationManager,
 } from "../components";
+import type { 
+  UpdateSysConfigInput, 
+  UpdateOrgConfigInput,
+  ToggleDelegationInput,
+  DelegationToggleResult,
+} from "../types";
 
 // =============================================================================
 // TYPES
@@ -80,7 +86,7 @@ function Section({ title, description, children }: SectionProps) {
   return (
     <Paper variant="outlined">
       <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
-        <Typography variant="h6" component="h2">
+        <Typography variant="h5" component="h2">
           {title}
         </Typography>
         {description && (
@@ -220,10 +226,30 @@ export function SysEvalConfigPage({
   }, [refreshConfig, refreshStatus, refreshOrgs]);
 
   const handleScoringUpdate = useCallback(
-    async (updates: { categoricalMode?: string; showNumericalScore?: boolean }) => {
-      await updateConfig(updates);
+    async (updates: UpdateSysConfigInput | UpdateOrgConfigInput) => {
+      await updateConfig(updates as UpdateSysConfigInput);
     },
     [updateConfig]
+  );
+
+  const handleToggleDelegation = useCallback(
+    async (orgId: string, input: ToggleDelegationInput): Promise<DelegationToggleResult> => {
+      // Call the original toggle function
+      await toggleDelegation(orgId, input.aiConfigDelegated);
+      
+      // Find the org to get its name
+      const org = orgs?.find(o => o.id === orgId);
+      
+      return {
+        orgId,
+        orgName: org?.name || "Unknown",
+        aiConfigDelegated: input.aiConfigDelegated,
+        message: input.aiConfigDelegated 
+          ? "AI configuration delegation enabled" 
+          : "AI configuration delegation disabled",
+      };
+    },
+    [toggleDelegation, orgs]
   );
 
   // Render loading state
@@ -239,7 +265,7 @@ export function SysEvalConfigPage({
   if (error) {
     return (
       <Box sx={{ p: 3 }} className={className}>
-        <ErrorState error={error} onRetry={handleRefresh} />
+        <ErrorState error={typeof error === 'string' ? new Error(error) : error} onRetry={handleRefresh} />
       </Box>
     );
   }
@@ -286,7 +312,7 @@ export function SysEvalConfigPage({
       >
         <OrgDelegationManager
           organizations={orgs || []}
-          onToggle={toggleDelegation}
+          onToggle={handleToggleDelegation}
           onRefresh={refreshOrgs}
         />
       </Section>

@@ -183,7 +183,7 @@ export function ComplianceScore({
           }}
         >
           <Typography
-            variant="h3"
+            variant="h2"
             sx={{
               fontWeight: "bold",
               color: `${color}.dark`,
@@ -235,7 +235,7 @@ function CollapsibleEvalSummary({
   return (
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-        <Typography variant="h6" color="text.primary" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
+        <Typography variant="h3" color="text.primary" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
           Evaluation Overview
         </Typography>
         <IconButton
@@ -386,7 +386,7 @@ function CollapsibleDetails({
   return (
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-        <Typography variant="h6" color="text.primary" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
+        <Typography variant="h3" color="text.primary" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
           Evaluation Inputs
         </Typography>
         <IconButton
@@ -423,7 +423,7 @@ function CollapsibleDetails({
               </Typography>
               {evaluation.documents && evaluation.documents.length > 0 ? (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {evaluation.documents.map((doc: any, index: number) => (
+                  {evaluation.documents?.map((doc: EvaluationDocument, index: number) => (
                     <React.Fragment key={doc.id}>
                       <Link
                         component="button"
@@ -440,7 +440,7 @@ function CollapsibleDetails({
                       >
                         {doc.fileName || doc.name || doc.documentId || `Document ${index + 1}`}
                       </Link>
-                      {index < evaluation.documents.length - 1 && (
+                      {index < (evaluation.documents?.length ?? 0) - 1 && (
                         <Typography variant="body2" component="span" sx={{ fontWeight: 'medium' }}>
                           ,
                         </Typography>

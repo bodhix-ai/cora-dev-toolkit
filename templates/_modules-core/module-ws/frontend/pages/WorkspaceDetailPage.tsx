@@ -502,7 +502,7 @@ export function WorkspaceDetailPage({
                 <Paper variant="outlined" sx={{ p: 2 }}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
                     <Description color="primary" />
-                    <Typography variant="h6">Documents</Typography>
+                    <Typography variant="h5">Documents</Typography>
                   </Box>
                   <Typography variant="h4" sx={{ mb: 1 }}>
                     {documents?.length || 0}
@@ -518,7 +518,7 @@ export function WorkspaceDetailPage({
                 <Paper variant="outlined" sx={{ p: 2 }}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
                     <Assessment color="primary" />
-                    <Typography variant="h6">Evaluations</Typography>
+                    <Typography variant="h5">Evaluations</Typography>
                   </Box>
                   <Typography variant="h4" sx={{ mb: 1 }}>
                     {calculatedEvalStats.total}
@@ -539,8 +539,8 @@ export function WorkspaceDetailPage({
                       Created
                     </Typography>
                   </Box>
-                  <Typography variant="h6">
-                    {workspace?.createdAt 
+                  <Typography variant="h5">
+                    {workspace?.createdAt
                       ? new Date(workspace.createdAt).toLocaleDateString('en-US', {
                           year: 'numeric',
                           month: 'long',
@@ -679,7 +679,7 @@ export function WorkspaceDetailPage({
             {/* Evaluations List */}
             {!evalLoading && !evalError && evaluations.length > 0 && (
               <Grid container spacing={2}>
-                {evaluations.map((evaluation) => (
+                {evaluations.map((evaluation: Evaluation) => (
                   <Grid item xs={12} md={6} key={evaluation.id}>
                     <Paper 
                       sx={{ 
@@ -757,7 +757,7 @@ export function WorkspaceDetailPage({
                         )}
                         {(evaluation.documents && evaluation.documents.length > 0) && (
                           <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-                            Documents: {evaluation.documents.map((d: any) => d.fileName || d.name || d.documentId).filter(Boolean).join(', ') || `${evaluation.documents.length} document(s)`}
+                            Documents: {evaluation.documents.map((d: { fileName?: string; name?: string; documentId?: string }) => d.fileName || d.name || d.documentId).filter(Boolean).join(', ') || `${evaluation.documents.length} document(s)`}
                           </Typography>
                         )}
                       </Box>

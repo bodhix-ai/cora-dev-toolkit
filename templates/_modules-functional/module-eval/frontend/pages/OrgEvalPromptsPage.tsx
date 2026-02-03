@@ -31,9 +31,10 @@ import {
   Lock as LockIcon,
 } from "@mui/icons-material";
 import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useProviders, useDeployments } from "@{{PROJECT_NAME}}/module-ai";
 import { useOrgEvalPrompts, useOrgEvalConfig } from "../hooks";
 import { PromptConfigEditor } from "../components";
-import type { PromptType } from "../types";
+import type { PromptType, PromptTestResult } from "../types";
 
 // =============================================================================
 // TYPES
@@ -186,7 +187,7 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
       >
         <ErrorIcon sx={{ width: 32, height: 32, color: "error.main" }} />
       </Box>
-      <Typography variant="h6" gutterBottom>
+      <Typography variant="h5" gutterBottom>
         Failed to load prompts
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center", mb: 3, maxWidth: "md" }}>
@@ -231,16 +232,21 @@ export function OrgEvalPromptsPage({
 
   // State
   const [activeTab, setActiveTab] = useState<PromptType>("doc_summary");
+  const [selectedProviderId, setSelectedProviderId] = useState<string>("");
+  const [aiModels, setAiModels] = useState<{ id: string; name: string }[]>([]);
 
   // Hooks
   const { config, isLoading: isConfigLoading } = useOrgEvalConfig(token, orgId);
+  
+  // Load AI providers and deployments from module-ai (same as SysEvalPromptsPage)
+  const { providers, getModels } = useProviders(authAdapter);
+  const { deployments } = useDeployments(authAdapter);
 
   const {
     prompts,
     isLoading: isPromptsLoading,
     error,
     update: updatePrompt,
-    test: testPrompt,
     refresh,
   } = useOrgEvalPrompts(token, orgId);
 
@@ -253,9 +259,38 @@ export function OrgEvalPromptsPage({
   // Combined loading state
   const isLoading = isConfigLoading || isPromptsLoading || !token;
 
+  // Load models when provider changes
+  useEffect(() => {
+    async function loadModels() {
+      if (selectedProviderId && getModels) {
+        const models = await getModels(selectedProviderId);
+        setAiModels(
+          models.map((m) => ({
+            id: m.id,
+            name: m.displayName || m.modelId,
+          }))
+        );
+      } else {
+        setAiModels([]);
+      }
+    }
+    loadModels();
+  }, [selectedProviderId, getModels]);
+
+  // Set initial provider when prompt loads
+  useEffect(() => {
+    if (currentPrompt?.aiProviderId) {
+      setSelectedProviderId(currentPrompt.aiProviderId);
+    }
+  }, [currentPrompt?.aiProviderId]);
+
   // Handlers
   const handleTabChange = useCallback((tab: PromptType) => {
     setActiveTab(tab);
+  }, []);
+
+  const handleProviderChange = useCallback((providerId: string) => {
+    setSelectedProviderId(providerId);
   }, []);
 
   const handleUpdatePrompt = useCallback(
@@ -273,11 +308,17 @@ export function OrgEvalPromptsPage({
   );
 
   const handleTestPrompt = useCallback(
-    async (testInput: string) => {
-      if (!token || !orgId) return "";
-      return await testPrompt(activeTab, testInput);
+    async (input: { systemPrompt?: string; userPromptTemplate?: string }): Promise<PromptTestResult> => {
+      // Test functionality not yet implemented for org-level prompts
+      console.log("Test prompt:", { activeTab, input });
+      return {
+        promptType: activeTab,
+        renderedSystemPrompt: input.systemPrompt || "",
+        renderedUserPrompt: input.userPromptTemplate || "",
+        message: "Test functionality coming soon",
+      };
     },
-    [token, orgId, testPrompt, activeTab]
+    [activeTab]
   );
 
   // Render loading state
@@ -303,7 +344,7 @@ export function OrgEvalPromptsPage({
   if (error) {
     return (
       <Box sx={{ p: 3 }} className={className}>
-        <ErrorState error={error} onRetry={refresh} />
+        <ErrorState error={typeof error === 'string' ? new Error(error) : error} onRetry={refresh} />
       </Box>
     );
   }
@@ -317,15 +358,29 @@ export function OrgEvalPromptsPage({
       <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
 
       {/* Prompt Editor */}
-      <Paper variant="outlined">
-        <PromptConfigEditor
-          promptType={activeTab}
-          config={currentPrompt}
-          onSave={handleUpdatePrompt}
-          onTest={handleTestPrompt}
-          isSystemLevel={false}
-        />
-      </Paper>
+      {currentPrompt ? (
+        <Paper variant="outlined">
+          <PromptConfigEditor
+            promptType={activeTab}
+            config={currentPrompt}
+            aiProviders={providers.map((p) => ({
+              id: p.id,
+              name: p.displayName || p.name,
+            }))}
+            aiModels={aiModels}
+            deployments={deployments}
+            onSave={handleUpdatePrompt}
+            onTest={handleTestPrompt}
+            onProviderChange={handleProviderChange}
+          />
+        </Paper>
+      ) : (
+        <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="body2" color="text.secondary">
+            No prompt configuration found for this type
+          </Typography>
+        </Paper>
+      )}
     </Box>
   );
 }

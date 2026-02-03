@@ -2,6 +2,19 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  Box,
+  Typography,
+  TextField,
+  Select,
+  MenuItem,
+  Button,
+  Alert,
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  FormHelperText,
+} from "@mui/material";
 import { createAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import { createOrgModuleClient } from "../../lib/api";
 import { useUser } from "../../contexts/UserContext";
@@ -101,200 +114,273 @@ export function CreateOrganization({
   };
 
   return (
-    <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-gray-100">
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        py: 12,
+        px: { xs: 4, sm: 6, lg: 8 },
+      }}
+    >
+      <Box sx={{ maxWidth: "448px", width: "100%" }}>
+        <Box sx={{ mb: 8 }}>
+          <Typography
+            variant="h3"
+            sx={{
+              mt: 6,
+              textAlign: "center",
+              fontSize: "1.875rem",
+              fontWeight: 800,
+              color: (theme) =>
+                theme.palette.mode === "dark" ? "grey.100" : "grey.900",
+            }}
+          >
             Create Your Organization
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+          </Typography>
+          <Typography
+            sx={{
+              mt: 2,
+              textAlign: "center",
+              fontSize: "0.875rem",
+              color: (theme) =>
+                theme.palette.mode === "dark" ? "grey.400" : "grey.600",
+            }}
+          >
             Get started by creating your organization workspace
-          </p>
-        </div>
+          </Typography>
+        </Box>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm space-y-4">
+        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 8 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {/* Organization Name */}
-            <div>
-              <label
+            <Box>
+              <Typography
+                component="label"
                 htmlFor="org-name"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                sx={{
+                  display: "block",
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "grey.300" : "grey.700",
+                  mb: 1,
+                }}
               >
-                Organization Name <span className="text-red-500">*</span>
-              </label>
-              <input
+                Organization Name <Box component="span" sx={{ color: "error.main" }}>*</Box>
+              </Typography>
+              <TextField
                 id="org-name"
                 name="name"
                 type="text"
                 required
+                fullWidth
                 value={formData.name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="e.g., Acme Corporation"
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm bg-white dark:bg-gray-800"
                 aria-label="Organization Name"
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "12px",
+                    bgcolor: (theme) =>
+                      theme.palette.mode === "dark" ? "#27272a" : "white",
+                  },
+                }}
               />
-            </div>
+            </Box>
 
             {/* Organization Slug */}
-            <div>
-              <label
+            <Box>
+              <Typography
+                component="label"
                 htmlFor="org-slug"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                sx={{
+                  display: "block",
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "grey.300" : "grey.700",
+                  mb: 1,
+                }}
               >
                 URL Slug
-              </label>
-              <input
+              </Typography>
+              <TextField
                 id="org-slug"
                 name="slug"
                 type="text"
+                fullWidth
                 value={formData.slug}
                 onChange={(e) =>
                   setFormData({ ...formData, slug: e.target.value })
                 }
                 placeholder="acme-corporation"
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm bg-white dark:bg-gray-800"
                 aria-label="URL Slug"
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "12px",
+                    bgcolor: (theme) =>
+                      theme.palette.mode === "dark" ? "#27272a" : "white",
+                  },
+                }}
               />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              <FormHelperText sx={{ mt: 1, fontSize: "0.75rem" }}>
                 Used in URLs and must be unique
-              </p>
-            </div>
+              </FormHelperText>
+            </Box>
 
             {/* Industry */}
-            <div>
-              <label
+            <FormControl fullWidth>
+              <Typography
+                component="label"
                 htmlFor="industry"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                sx={{
+                  display: "block",
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "grey.300" : "grey.700",
+                  mb: 1,
+                }}
               >
                 Industry
-              </label>
-              <select
+              </Typography>
+              <Select
                 id="industry"
                 name="industry"
                 value={formData.industry}
                 onChange={(e) =>
                   setFormData({ ...formData, industry: e.target.value })
                 }
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm bg-white dark:bg-gray-800"
                 aria-label="Industry"
+                displayEmpty
+                sx={{
+                  borderRadius: "12px",
+                  bgcolor: (theme) =>
+                    theme.palette.mode === "dark" ? "#27272a" : "white",
+                }}
               >
-                <option value="">Select industry</option>
-                <option value="technology">Technology</option>
-                <option value="healthcare">Healthcare</option>
-                <option value="finance">Finance</option>
-                <option value="education">Education</option>
-                <option value="manufacturing">Manufacturing</option>
-                <option value="retail">Retail</option>
-                <option value="consulting">Consulting</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
+                <MenuItem value="">Select industry</MenuItem>
+                <MenuItem value="technology">Technology</MenuItem>
+                <MenuItem value="healthcare">Healthcare</MenuItem>
+                <MenuItem value="finance">Finance</MenuItem>
+                <MenuItem value="education">Education</MenuItem>
+                <MenuItem value="manufacturing">Manufacturing</MenuItem>
+                <MenuItem value="retail">Retail</MenuItem>
+                <MenuItem value="consulting">Consulting</MenuItem>
+                <MenuItem value="other">Other</MenuItem>
+              </Select>
+            </FormControl>
 
             {/* Company Size */}
-            <div>
-              <label
+            <FormControl fullWidth>
+              <Typography
+                component="label"
                 htmlFor="company-size"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                sx={{
+                  display: "block",
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "grey.300" : "grey.700",
+                  mb: 1,
+                }}
               >
                 Company Size
-              </label>
-              <select
+              </Typography>
+              <Select
                 id="company-size"
                 name="companySize"
                 value={formData.companySize}
                 onChange={(e) =>
                   setFormData({ ...formData, companySize: e.target.value })
                 }
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm bg-white dark:bg-gray-800"
                 aria-label="Company Size"
+                displayEmpty
+                sx={{
+                  borderRadius: "12px",
+                  bgcolor: (theme) =>
+                    theme.palette.mode === "dark" ? "#27272a" : "white",
+                }}
               >
-                <option value="">Select company size</option>
-                <option value="1-10">1-10 employees</option>
-                <option value="11-50">11-50 employees</option>
-                <option value="51-200">51-200 employees</option>
-                <option value="201-500">201-500 employees</option>
-                <option value="501-1000">501-1000 employees</option>
-                <option value="1000+">1000+ employees</option>
-              </select>
-            </div>
-          </div>
+                <MenuItem value="">Select company size</MenuItem>
+                <MenuItem value="1-10">1-10 employees</MenuItem>
+                <MenuItem value="11-50">11-50 employees</MenuItem>
+                <MenuItem value="51-200">51-200 employees</MenuItem>
+                <MenuItem value="201-500">201-500 employees</MenuItem>
+                <MenuItem value="501-1000">501-1000 employees</MenuItem>
+                <MenuItem value="1000+">1000+ employees</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
 
           {/* Error Message */}
           {error && (
-            <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg
-                    className="h-5 w-5 text-red-400"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-red-800 dark:text-red-200">
-                    {error}
-                  </p>
-                </div>
-              </div>
-            </div>
+            <Alert severity="error" sx={{ mt: 4 }}>
+              {error}
+            </Alert>
           )}
 
           {/* Submit Button */}
-          <div>
-            <button
+          <Box sx={{ mt: 6 }}>
+            <Button
               type="submit"
+              fullWidth
+              variant="contained"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              sx={{
+                py: 2,
+                px: 4,
+                fontSize: "0.875rem",
+                fontWeight: 500,
+                borderRadius: "8px",
+                textTransform: "none",
+                bgcolor: "primary.main",
+                "&:hover": {
+                  bgcolor: "primary.dark",
+                },
+                "&:disabled": {
+                  opacity: 0.5,
+                  cursor: "not-allowed",
+                },
+              }}
             >
               {isLoading ? (
-                <>
-                  <svg
-                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <CircularProgress size={20} sx={{ color: "white" }} />
                   Creating organization...
-                </>
+                </Box>
               ) : (
                 "Create Organization"
               )}
-            </button>
-          </div>
+            </Button>
+          </Box>
 
           {/* Skip Option */}
           {onSkip && (
-            <div className="text-center">
-              <button
+            <Box sx={{ textAlign: "center", mt: 4 }}>
+              <Button
                 type="button"
                 onClick={onSkip}
-                className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 underline"
+                sx={{
+                  fontSize: "0.875rem",
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "grey.400" : "grey.600",
+                  textDecoration: "underline",
+                  textTransform: "none",
+                  "&:hover": {
+                    color: (theme) =>
+                      theme.palette.mode === "dark" ? "grey.200" : "grey.900",
+                    bgcolor: "transparent",
+                  },
+                }}
               >
                 Skip for now
-              </button>
-            </div>
+              </Button>
+            </Box>
           )}
-        </form>
-      </div>
-    </div>
+        </Box>
+      </Box>
+    </Box>
   );
 }

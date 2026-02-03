@@ -137,6 +137,8 @@ export function ColorPicker({ value, onChange, disabled }: ColorPickerProps) {
             onClick={() => onChange(color)}
             disabled={disabled}
             size="small"
+            aria-label={`Select color ${color}`}
+            aria-pressed={value === color}
             sx={{
               width: 24,
               height: 24,
@@ -149,8 +151,6 @@ export function ColorPicker({ value, onChange, disabled }: ColorPickerProps) {
                 transform: "scale(1.05)",
               },
             }}
-            aria-label={`Select color ${color}`}
-            aria-pressed={value === color}
           />
         ))}
       </Box>
@@ -314,6 +314,7 @@ export function StatusOptionForm({
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
               disabled={isSaving}
+              aria-label="Mark status option as active"
             />
           }
           label="Active"
@@ -419,10 +420,10 @@ export function StatusOptionCard({
             <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
               #{statusOption.orderIndex}
             </Typography>
-            <IconButton onClick={onEdit} size="small" title="Edit">
+            <IconButton onClick={onEdit} size="small" title="Edit" aria-label="Edit status option">
               <EditIcon fontSize="small" />
             </IconButton>
-            <IconButton onClick={onDelete} size="small" title="Delete" color="error">
+            <IconButton onClick={onDelete} size="small" title="Delete" color="error" aria-label="Delete status option">
               <DeleteIcon fontSize="small" />
             </IconButton>
           </Box>
@@ -535,6 +536,7 @@ export function StatusOptionManager({
                 disabled={isLoading}
                 size="small"
                 title="Refresh"
+                aria-label="Refresh status options"
               >
                 <RefreshIcon />
               </IconButton>

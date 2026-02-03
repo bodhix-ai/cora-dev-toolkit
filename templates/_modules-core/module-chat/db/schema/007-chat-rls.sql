@@ -261,3 +261,119 @@ GRANT SELECT, INSERT, DELETE ON public.chat_favorites TO authenticated;
 COMMENT ON POLICY "Users can view own favorites" ON public.chat_favorites IS 'Users can only see their own favorites';
 COMMENT ON POLICY "Users can add favorites" ON public.chat_favorites IS 'Users can favorite chats they have access to';
 COMMENT ON POLICY "Users can remove own favorites" ON public.chat_favorites IS 'Users can only unfavorite their own favorites';
+
+-- =============================================
+-- CHAT_CFG_SYS_SETTINGS TABLE RLS
+-- =============================================
+
+ALTER TABLE public.chat_cfg_sys_settings ENABLE ROW LEVEL SECURITY;
+
+-- Only sys_admin can view platform settings
+DROP POLICY IF EXISTS "Sys admin can view platform chat settings" ON public.chat_cfg_sys_settings;
+DROP POLICY IF EXISTS "Sys admin can view platform chat settings" ON public.chat_cfg_sys_settings;
+DROP POLICY IF EXISTS "Sys admin can view platform chat settings" ON public.chat_cfg_sys_settings;
+CREATE POLICY "Sys admin can view platform chat settings" ON public.chat_cfg_sys_settings
+FOR SELECT
+TO authenticated
+USING (
+    is_sys_admin()
+);
+
+-- Only sys_admin can update platform settings
+DROP POLICY IF EXISTS "Sys admin can update platform chat settings" ON public.chat_cfg_sys_settings;
+DROP POLICY IF EXISTS "Sys admin can update platform chat settings" ON public.chat_cfg_sys_settings;
+DROP POLICY IF EXISTS "Sys admin can update platform chat settings" ON public.chat_cfg_sys_settings;
+CREATE POLICY "Sys admin can update platform chat settings" ON public.chat_cfg_sys_settings
+FOR UPDATE
+TO authenticated
+USING (is_sys_admin())
+WITH CHECK (is_sys_admin());
+
+-- Service role has full access
+DROP POLICY IF EXISTS "Service role full access to chat_cfg_sys_settings" ON public.chat_cfg_sys_settings;
+DROP POLICY IF EXISTS "Service role full access to chat_cfg_sys_settings" ON public.chat_cfg_sys_settings;
+DROP POLICY IF EXISTS "Service role full access to chat_cfg_sys_settings" ON public.chat_cfg_sys_settings;
+CREATE POLICY "Service role full access to chat_cfg_sys_settings" ON public.chat_cfg_sys_settings
+FOR ALL
+USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
+
+GRANT SELECT, UPDATE ON public.chat_cfg_sys_settings TO authenticated;
+
+COMMENT ON POLICY "Sys admin can view platform chat settings" ON public.chat_cfg_sys_settings IS 'Only sys_admin can view platform-wide chat configuration';
+COMMENT ON POLICY "Sys admin can update platform chat settings" ON public.chat_cfg_sys_settings IS 'Only sys_admin can update platform-wide chat configuration';
+
+-- =============================================
+-- CHAT_CFG_ORG_SETTINGS TABLE RLS
+-- =============================================
+
+ALTER TABLE public.chat_cfg_org_settings ENABLE ROW LEVEL SECURITY;
+
+-- Org admin/owner can view their org's settings
+DROP POLICY IF EXISTS "Org admin can view org chat settings" ON public.chat_cfg_org_settings;
+DROP POLICY IF EXISTS "Org admin can view org chat settings" ON public.chat_cfg_org_settings;
+DROP POLICY IF EXISTS "Org admin can view org chat settings" ON public.chat_cfg_org_settings;
+CREATE POLICY "Org admin can view org chat settings" ON public.chat_cfg_org_settings
+FOR SELECT
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 FROM public.org_members om
+        WHERE om.org_id = chat_cfg_org_settings.org_id
+        AND om.user_id = auth.uid()
+        AND om.org_role IN ('org_admin', 'org_owner')
+    )
+);
+
+-- Org admin/owner can create settings for their org
+DROP POLICY IF EXISTS "Org admin can create org chat settings" ON public.chat_cfg_org_settings;
+DROP POLICY IF EXISTS "Org admin can create org chat settings" ON public.chat_cfg_org_settings;
+DROP POLICY IF EXISTS "Org admin can create org chat settings" ON public.chat_cfg_org_settings;
+CREATE POLICY "Org admin can create org chat settings" ON public.chat_cfg_org_settings
+FOR INSERT
+TO authenticated
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM public.org_members om
+        WHERE om.org_id = chat_cfg_org_settings.org_id
+        AND om.user_id = auth.uid()
+        AND om.org_role IN ('org_admin', 'org_owner')
+    )
+);
+
+-- Org admin/owner can update their org's settings
+DROP POLICY IF EXISTS "Org admin can update org chat settings" ON public.chat_cfg_org_settings;
+DROP POLICY IF EXISTS "Org admin can update org chat settings" ON public.chat_cfg_org_settings;
+DROP POLICY IF EXISTS "Org admin can update org chat settings" ON public.chat_cfg_org_settings;
+CREATE POLICY "Org admin can update org chat settings" ON public.chat_cfg_org_settings
+FOR UPDATE
+TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 FROM public.org_members om
+        WHERE om.org_id = chat_cfg_org_settings.org_id
+        AND om.user_id = auth.uid()
+        AND om.org_role IN ('org_admin', 'org_owner')
+    )
+)
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM public.org_members om
+        WHERE om.org_id = chat_cfg_org_settings.org_id
+        AND om.user_id = auth.uid()
+        AND om.org_role IN ('org_admin', 'org_owner')
+    )
+);
+
+-- Service role has full access
+DROP POLICY IF EXISTS "Service role full access to chat_cfg_org_settings" ON public.chat_cfg_org_settings;
+DROP POLICY IF EXISTS "Service role full access to chat_cfg_org_settings" ON public.chat_cfg_org_settings;
+DROP POLICY IF EXISTS "Service role full access to chat_cfg_org_settings" ON public.chat_cfg_org_settings;
+CREATE POLICY "Service role full access to chat_cfg_org_settings" ON public.chat_cfg_org_settings
+FOR ALL
+USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
+
+GRANT SELECT, INSERT, UPDATE ON public.chat_cfg_org_settings TO authenticated;
+
+COMMENT ON POLICY "Org admin can view org chat settings" ON public.chat_cfg_org_settings IS 'Org admins/owners can view their organization chat settings';
+COMMENT ON POLICY "Org admin can create org chat settings" ON public.chat_cfg_org_settings IS 'Org admins/owners can create organization chat settings';
+COMMENT ON POLICY "Org admin can update org chat settings" ON public.chat_cfg_org_settings IS 'Org admins/owners can update their organization chat settings';

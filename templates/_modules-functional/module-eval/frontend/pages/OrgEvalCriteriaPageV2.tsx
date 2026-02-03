@@ -44,6 +44,7 @@ import {
   importCriteriaSet,
   listDocTypes,
 } from "../lib/api";
+import { useEvalCriteriaItems } from "../hooks";
 import type {
   EvalCriteriaSet,
   EvalDocType,
@@ -80,7 +81,7 @@ function PageHeader({ showBackButton, onBack }: PageHeaderProps) {
   return (
     <Box sx={{ mb: 4, display: "flex", alignItems: "center", gap: 2 }}>
       {showBackButton && onBack && (
-        <IconButton onClick={onBack} sx={{ color: "text.secondary" }}>
+        <IconButton onClick={onBack} sx={{ color: "text.secondary" }} aria-label="Back to criteria sets">
           <ArrowBackIcon />
         </IconButton>
       )}
@@ -149,7 +150,7 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
       >
         <ErrorIcon sx={{ width: 32, height: 32, color: "error.main" }} />
       </Box>
-      <Typography variant="h6" gutterBottom>
+      <Typography variant="h5" gutterBottom>
         Failed to load criteria
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center", mb: 3, maxWidth: "md" }}>
@@ -245,6 +246,21 @@ export function OrgEvalCriteriaPageV2({
     }
   }, [token, orgId, loadData]);
 
+  // ✅ HOOK MUST BE CALLED BEFORE CONDITIONAL RETURNS
+  // Use criteria items hook when a set is selected
+  // Hook safely handles null values when no set is selected
+  const {
+    items: criteriaItems,
+    isLoading: itemsLoading,
+    add: addItem,
+    update: updateItem,
+    remove: removeItem,
+  } = useEvalCriteriaItems(
+    selectedSet ? token : null,
+    selectedSet ? orgId : null,
+    selectedSet ? selectedSet.id : null
+  );
+
   // Handlers
   const handleDocTypeFilterChange = useCallback((docTypeId: string | undefined) => {
     setFilterDocTypeId(docTypeId);
@@ -314,13 +330,16 @@ export function OrgEvalCriteriaPageV2({
         throw new Error("No auth token or org ID");
       }
 
-      await importCriteriaSet(token, orgId, input);
+      const result = await importCriteriaSet(token, orgId, input);
       setIsImportDialogOpen(false);
       await loadData(); // Reload to show imported set
+      return result;
     },
     [token, orgId, loadData]
   );
 
+  // ✅ NOW conditional returns (after all hooks)
+  
   // Render loading state
   if (isLoading) {
     return (
@@ -344,17 +363,14 @@ export function OrgEvalCriteriaPageV2({
     return (
       <Box sx={{ p: 3 }} className={className}>
         <PageHeader showBackButton onBack={handleBackToList} />
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="h6">
-            {selectedSet.name}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {selectedSet.description || "No description"}
-          </Typography>
-        </Box>
         <CriteriaItemEditor
-          criteriaSetId={selectedSet.id}
-          orgId={orgId}
+          criteriaSet={selectedSet}
+          items={criteriaItems}
+          isLoading={itemsLoading}
+          onAdd={addItem}
+          onUpdate={updateItem}
+          onDelete={removeItem}
+          onBack={handleBackToList}
         />
       </Box>
     );

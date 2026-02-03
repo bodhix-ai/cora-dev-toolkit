@@ -438,6 +438,306 @@ export const {module}AdminCard: AdminCardConfig = {
 
 ---
 
+### 5.4 Authorization Integration (Two Layers)
+
+CORA implements two distinct authorization layers with different purposes.
+
+#### Layer 1: Admin Authorization (Module Configuration)
+
+**Routes:** `/admin/sys/{module}/*`, `/admin/org/{module}/*`, `/admin/ws/{module}/*`  
+**Purpose:** Module configuration and management by admins  
+**Standards:** [ADR-019a](../docs/arch%20decisions/ADR-019a-AUTH-FRONTEND.md) (Frontend), [ADR-019b](../docs/arch%20decisions/ADR-019b-AUTH-BACKEND.md) (Backend)
+
+**Backend Pattern:**
+```python
+# backend/lambdas/{module}-admin/lambda_function.py
+
+from org_common.auth_helpers import (
+    check_sys_admin,
+    check_org_admin,
+    check_ws_admin,
+    get_org_context_from_event
+)
+
+def lambda_handler(event: dict, context: Any) -> dict:
+    """Admin Lambda with centralized authorization"""
+    user_id = common.get_supabase_user_id_from_external_uid(
+        common.get_user_from_event(event)['user_id']
+    )
+    
+    path = event.get('rawPath', '')
+    
+    # Centralized admin auth checks
+    if path.startswith('/admin/sys/'):
+        if not check_sys_admin(user_id):
+            return common.forbidden_response('System admin role required')
+    
+    elif path.startswith('/admin/org/'):
+        org_id = get_org_context_from_event(event)
+        if not check_org_admin(org_id, user_id):
+            return common.forbidden_response('Organization admin role required')
+    
+    elif path.startswith('/admin/ws/'):
+        ws_id = extract_path_param(event, 'ws_id')
+        if not check_ws_admin(ws_id, user_id):
+            return common.forbidden_response('Workspace admin role required')
+    
+    # Route to handlers (auth already verified)
+    return route_to_handler(user_id, event)
+
+
+def handle_get_sys_config(user_id: str) -> dict:
+    """Get system config (sys admin already verified)"""
+    config = common.find_one('{module}_sys_config', {})
+    return common.success_response(common.format_record(config))
+
+
+def handle_get_org_config(user_id: str, event: dict) -> dict:
+    """Get org config (org admin already verified)"""
+    org_id = get_org_context_from_event(event)
+    config = common.find_one('{module}_org_config', {'org_id': org_id})
+    return common.success_response(common.format_record(config))
+```
+
+**Frontend Pattern:**
+```typescript
+// frontend/routes/admin/org/{module}/page.tsx
+'use client';
+import { useRole, useOrganizationContext } from '@cora/auth';
+
+export default function OrgAdminPage() {
+  const { isOrgAdmin, loading: roleLoading } = useRole();
+  const { currentOrganization } = useOrganizationContext();
+  
+  // Wait for role check
+  if (roleLoading) {
+    return <CircularProgress />;
+  }
+  
+  // Verify org admin role
+  if (!isOrgAdmin) {
+    return <Alert severity="error">Organization admin role required</Alert>;
+  }
+  
+  // Render admin UI
+  return <ModuleConfigUI orgId={currentOrganization.id} />;
+}
+```
+
+#### Layer 2: Resource Permissions (User Data Access)
+
+**Routes:** `/{module}/*` (data routes)  
+**Purpose:** User data access and operations  
+**Standards:** [ADR-019c](../docs/arch%20decisions/ADR-019c-AUTH-RESOURCE-PERMISSIONS.md), [03_std_back_RESOURCE-PERMISSIONS](../docs/standards/03_std_back_RESOURCE-PERMISSIONS.md)
+
+**Database RPC Functions:**
+```sql
+-- backend/db/rpcs/001-{module}-permissions.sql
+
+-- Ownership check
+CREATE OR REPLACE FUNCTION is_{entity}_owner(p_user_id UUID, p_{entity}_id UUID)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM {entity}
+    WHERE id = p_{entity}_id AND created_by = p_user_id
+  );
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- Membership check (from org-common)
+-- is_org_member(p_org_id UUID, p_user_id UUID) - already exists
+```
+
+**Backend Permission Layer:**
+```python
+# backend/layers/{module}_common/python/{module}_common/permissions.py
+
+"""
+Module-specific resource permissions.
+
+CRITICAL: These functions live in the MODULE's backend layer,
+NOT in org-common (to avoid dependencies on optional modules).
+"""
+
+from org_common.db import call_rpc
+
+def can_access_{entity}(user_id: str, {entity}_id: str) -> bool:
+    """
+    Check if user can access {entity}.
+    
+    Access granted if:
+    - User owns the {entity}
+    - {Entity} is shared with user (future)
+    
+    NOTE: Admin roles do NOT grant automatic access.
+    """
+    # Check ownership
+    if call_rpc('is_{entity}_owner', {
+        'p_user_id': user_id,
+        'p_{entity}_id': {entity}_id
+    }):
+        return True
+    
+    # TODO: Check sharing when implemented
+    return False
+
+def can_edit_{entity}(user_id: str, {entity}_id: str) -> bool:
+    """Check if user can edit {entity} (requires ownership)"""
+    return call_rpc('is_{entity}_owner', {
+        'p_user_id': user_id,
+        'p_{entity}_id': {entity}_id
+    })
+```
+
+**Backend Lambda Handler:**
+```python
+# backend/lambdas/{module}-data/lambda_function.py
+
+from org_common.resource_permissions import can_access_org_resource
+from {module}_common.permissions import can_access_{entity}, can_edit_{entity}
+
+def handle_get_{entity}(user_id: str, event: dict) -> dict:
+    """Get {entity} with permission check"""
+    {entity}_id = extract_path_param(event, '{entity}_id')
+    
+    # Step 1: Fetch resource
+    {entity} = common.find_one('{entity}', {'id': {entity}_id})
+    if not {entity}:
+        return common.not_found_response('{Entity} not found')
+    
+    # Step 2: Verify org membership (prevent cross-org access)
+    if not can_access_org_resource(user_id, {entity}['org_id']):
+        return common.forbidden_response('Not a member of this organization')
+    
+    # Step 3: Check resource permission (ownership/sharing)
+    if not can_access_{entity}(user_id, {entity}_id):
+        return common.forbidden_response('Access denied')
+    
+    return common.success_response(common.format_record({entity}))
+
+
+def handle_update_{entity}(user_id: str, event: dict) -> dict:
+    """Update {entity} (requires edit permission)"""
+    {entity}_id = extract_path_param(event, '{entity}_id')
+    body = json.loads(event.get('body', '{}'))
+    
+    # Fetch and verify access
+    {entity} = common.find_one('{entity}', {'id': {entity}_id})
+    if not {entity}:
+        return common.not_found_response('{Entity} not found')
+    
+    if not can_access_org_resource(user_id, {entity}['org_id']):
+        return common.forbidden_response('Not a member of this organization')
+    
+    # Check edit permission
+    if not can_edit_{entity}(user_id, {entity}_id):
+        return common.forbidden_response('Edit permission required')
+    
+    # Update
+    updated = common.update_one(
+        '{entity}',
+        filters={'id': {entity}_id},
+        data={**body, 'updated_by': user_id}
+    )
+    
+    return common.success_response(common.format_record(updated))
+
+
+def handle_list_{entities}(user_id: str, event: dict) -> dict:
+    """List user's {entities} (org-scoped)"""
+    query_params = event.get('queryStringParameters', {}) or {}
+    
+    org_id = query_params.get('orgId')
+    if not org_id:
+        return common.bad_request_response('orgId query parameter required')
+    
+    org_id = common.validate_uuid(org_id, 'orgId')
+    
+    # Verify org membership
+    if not can_access_org_resource(user_id, org_id):
+        return common.forbidden_response('Not a member of this organization')
+    
+    # List user's resources
+    {entities} = common.find_many(
+        '{entity}',
+        filters={'org_id': org_id, 'created_by': user_id},
+        order='created_at.desc'
+    )
+    
+    return common.success_response(common.format_records({entities}))
+```
+
+**Frontend Pattern:**
+```typescript
+// frontend/hooks/use{Entities}.ts
+
+export function use{Entities}(orgId: string) {
+  const [{entities}, setEntities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    const fetch{Entities} = async () => {
+      try {
+        const token = await authAdapter.getToken();
+        const response = await fetch(
+          `/{module}/{entities}?orgId=${orgId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          set{Entities}(data.data);
+        } else if (response.status === 403) {
+          setError('Access denied');
+        }
+      } catch (err) {
+        setError('Failed to load {entities}');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetch{Entities}();
+  }, [orgId]);
+  
+  return { {entities}, loading, error };
+}
+```
+
+**CRITICAL: No Admin Override**
+
+Admin roles (sys_admin, org_admin, ws_admin) do NOT automatically grant access to user resources:
+
+```python
+# ❌ WRONG - do NOT add admin override to resource permissions
+def can_access_{entity}_wrong(user_id: str, {entity}_id: str, org_id: str) -> bool:
+    if is_{entity}_owner(user_id, {entity}_id):
+        return True
+    
+    # ❌ WRONG - violates least privilege
+    if is_org_admin(org_id, user_id):
+        return True  # DO NOT DO THIS
+    
+    return False
+
+# ✅ CORRECT - only ownership and sharing
+def can_access_{entity}_correct(user_id: str, {entity}_id: str) -> bool:
+    if is_{entity}_owner(user_id, {entity}_id):
+        return True
+    
+    if is_{entity}_shared_with(user_id, {entity}_id):  # Future
+        return True
+    
+    return False  # NO admin override
+```
+
+**Documentation:**
+- [CORA Authorization Principles](../docs/standards/10_std_cora_PRINCIPLES.md#12-authorization-hierarchy-two-layers)
+- [Admin Auth Patterns](../docs/standards/10_std_cora_PATTERNS-COOKBOOK.md#11-admin-authorization-patterns)
+- [Resource Permission Patterns](../docs/standards/10_std_cora_PATTERNS-COOKBOOK.md#12-resource-permission-patterns)
+
+---
+
 ## 6. Functional Module Dependencies
 
 ### Dependencies

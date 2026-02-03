@@ -68,11 +68,6 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 logger = logging.getLogger()
 logger.setLevel(LOG_LEVEL)
 
-# Role constants
-SYS_ADMIN_ROLES = ['sys_owner', 'sys_admin']
-ORG_ADMIN_ROLES = ['org_owner', 'org_admin']
-
-
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Main Lambda handler for eval configuration operations."""
     
@@ -102,10 +97,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         # =================================================================
         # SYSTEM ADMIN ROUTES: /admin/sys/eval/...
+        # ADR-019: Centralized auth at router level
         # =================================================================
         if '/admin/sys/eval/' in path:
-            # Verify sys admin access
-            if not is_sys_admin(supabase_user_id):
+            # Verify sys admin access (ADR-019 standard helper)
+            if not common.check_sys_admin(supabase_user_id):
                 return common.forbidden_response('System admin access required')
             
             # Sys config routes
@@ -147,19 +143,22 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         # =================================================================
         # ORG ADMIN ROUTES: /admin/org/eval/...
+        # ADR-019: Centralized auth at router level
         # =================================================================
         elif '/admin/org/eval/' in path:
-            # Get org_id from query params or user context
-            query_params = event.get('queryStringParameters', {}) or {}
-            org_id = query_params.get('orgId') or user_info.get('org_id')
-            
+            # ========================================
+            # CENTRALIZED ORG CONTEXT EXTRACTION (ADR-019)
+            # ========================================
+            org_id = common.get_org_context_from_event(event)
             if not org_id:
-                return common.bad_request_response('orgId is required')
+                return common.bad_request_response('Organization context required. Pass orgId in query params or request body.')
             
             org_id = common.validate_uuid(org_id, 'orgId')
             
-            # Verify org admin access
-            if not is_org_admin(supabase_user_id, org_id):
+            # ========================================
+            # CENTRALIZED AUTH CHECK (ADR-019)
+            # ========================================
+            if not common.check_org_admin(supabase_user_id, org_id):
                 return common.forbidden_response('Organization admin access required')
             
             # Org config routes
@@ -263,40 +262,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
 
 # =============================================================================
-# AUTHORIZATION HELPERS
+# HELPER FUNCTIONS
 # =============================================================================
-
-def is_sys_admin(user_id: str) -> bool:
-    """Check if user has sys admin role."""
-    try:
-        profile = common.find_one('user_profiles', {'user_id': user_id})
-        if profile:
-            return profile.get('sys_role') in SYS_ADMIN_ROLES
-        return False
-    except Exception as e:
-        logger.error(f"Error checking sys admin status: {e}")
-        return False
-
-
-def is_org_admin(user_id: str, org_id: str) -> bool:
-    """Check if user has org admin role for the specified organization."""
-    try:
-        # First check if sys admin (has access to all orgs)
-        if is_sys_admin(user_id):
-            return True
-        
-        # Check org membership
-        membership = common.find_one(
-            'org_members',
-            {'user_id': user_id, 'org_id': org_id}
-        )
-        if membership:
-            return membership.get('org_role') in ORG_ADMIN_ROLES
-        return False
-    except Exception as e:
-        logger.error(f"Error checking org admin status: {e}")
-        return False
-
 
 def get_or_create_org_config(org_id: str, user_id: str) -> Dict[str, Any]:
     """Get org config, creating if it doesn't exist."""

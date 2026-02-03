@@ -224,6 +224,7 @@ export function CriteriaSetForm({
                 checked={useWeightedScoring}
                 onChange={(e) => setUseWeightedScoring(e.target.checked)}
                 disabled={isSaving}
+                aria-label="Use weighted scoring"
               />
             }
             label="Use weighted scoring"
@@ -325,14 +326,14 @@ export function CriteriaSetCard({
 
           <Box sx={{ ml: 2, display: "flex", gap: 0.5, flexShrink: 0 }}>
             {onViewItems && (
-              <IconButton size="small" onClick={onViewItems} title="View Criteria Items">
+              <IconButton size="small" onClick={onViewItems} title="View Criteria Items" aria-label="View criteria items">
                 <ViewIcon fontSize="small" />
               </IconButton>
             )}
-            <IconButton size="small" onClick={onEdit} title="Edit">
+            <IconButton size="small" onClick={onEdit} title="Edit" aria-label="Edit criteria set">
               <EditIcon fontSize="small" />
             </IconButton>
-            <IconButton size="small" onClick={onDelete} title="Delete" color="error">
+            <IconButton size="small" onClick={onDelete} title="Delete" color="error" aria-label="Delete criteria set">
               <DeleteIcon fontSize="small" />
             </IconButton>
           </Box>
@@ -374,21 +375,21 @@ export function CriteriaSetManager({
     ? criteriaSets.filter((cs) => cs.docTypeId === selectedDocTypeId)
     : criteriaSets;
 
-  const handleCreate = async (input: CreateCriteriaSetInput) => {
+  const handleCreate = async (input: CreateCriteriaSetInput | UpdateCriteriaSetInput) => {
     try {
       setIsSaving(true);
-      await onCreate(input);
+      await onCreate(input as CreateCriteriaSetInput);
       setIsCreating(false);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleUpdate = async (input: UpdateCriteriaSetInput) => {
+  const handleUpdate = async (input: CreateCriteriaSetInput | UpdateCriteriaSetInput) => {
     if (!editingId) return;
     try {
       setIsSaving(true);
-      await onUpdate(editingId, input);
+      await onUpdate(editingId, input as UpdateCriteriaSetInput);
       setEditingId(null);
     } finally {
       setIsSaving(false);

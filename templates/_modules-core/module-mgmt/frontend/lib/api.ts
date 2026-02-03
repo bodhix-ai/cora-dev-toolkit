@@ -19,11 +19,11 @@ import type {
  * Lambda Management API Client
  *
  * Communicates with the Lambda Management Lambda via system admin endpoints:
- * - GET /admin/sys/mgmt/lambda-config - List all configurations
- * - GET /admin/sys/mgmt/lambda-config/{configKey} - Get specific config
- * - PUT /admin/sys/mgmt/lambda-config/{configKey} - Update config (triggers EventBridge sync)
- * - GET /admin/sys/mgmt/lambda-functions - List Lambda functions
- * - POST /admin/sys/mgmt/lambda-config/sync - Manual EventBridge sync
+ * - GET /admin/sys/mgmt/schedule - List all warming schedule configurations
+ * - GET /admin/sys/mgmt/schedule/{configKey} - Get specific schedule config
+ * - PUT /admin/sys/mgmt/schedule/{configKey} - Update schedule config (triggers EventBridge sync)
+ * - GET /admin/sys/mgmt/functions - List Lambda functions
+ * - POST /admin/sys/mgmt/schedule/sync - Manual EventBridge sync
  */
 export class LambdaMgmtApiClient {
   private client: ReturnType<typeof createCoraAuthenticatedClient>;
@@ -33,12 +33,12 @@ export class LambdaMgmtApiClient {
   }
 
   /**
-   * List all platform Lambda configurations
+   * List all Lambda warming schedule configurations
    */
   async listConfigs(): Promise<LambdaConfig[]> {
     try {
       const response = await this.client.get<LambdaConfig[]>(
-        "/admin/sys/mgmt/lambda-config"
+        "/admin/sys/mgmt/schedule"
       );
       return Array.isArray(response) ? response : [];
     } catch (error) {
@@ -48,14 +48,14 @@ export class LambdaMgmtApiClient {
   }
 
   /**
-   * Get a specific Lambda configuration by key
+   * Get a specific Lambda warming schedule configuration by key
    *
    * @param configKey - The configuration key (e.g., "lambda_warming")
    */
   async getConfig(configKey: string): Promise<LambdaConfig | null> {
     try {
       const response = await this.client.get<{ data: LambdaConfig }>(
-        `/admin/sys/mgmt/lambda-config/${configKey}`
+        `/admin/sys/mgmt/schedule/${configKey}`
       );
       // CORA API returns { success: true, data: {...} } - unwrap it
       return response?.data || null;
@@ -87,7 +87,7 @@ export class LambdaMgmtApiClient {
   }
 
   /**
-   * Update a Lambda configuration
+   * Update a Lambda warming schedule configuration
    *
    * @param configKey - The configuration key to update
    * @param value - The new configuration value (will be stored as JSONB)
@@ -102,7 +102,7 @@ export class LambdaMgmtApiClient {
   ): Promise<LambdaConfig | null> {
     try {
       const response = await this.client.put<{ data: LambdaConfig }>(
-        `/admin/sys/mgmt/lambda-config/${configKey}`,
+        `/admin/sys/mgmt/schedule/${configKey}`,
         { configValue: value }
       );
       // CORA API returns { success: true, data: {...} } - unwrap it
@@ -135,10 +135,32 @@ export class LambdaMgmtApiClient {
   async listLambdaFunctions(): Promise<LambdaFunctionInfo[]> {
     try {
       const response = await this.client.get<{
-        data: LambdaFunctionInfo[];
-      }>("/admin/sys/mgmt/lambda-functions");
-      // CORA API returns { success: true, data: [...] } - unwrap it
-      return response?.data || [];
+        data: Array<{
+          name: string;
+          arn: string;
+          memory_mb: number;
+          timeout_seconds: number;
+          runtime: string;
+          last_modified: string;
+          description?: string;
+          handler?: string;
+          version?: string;
+        }>;
+      }>("/admin/sys/mgmt/functions");
+      
+      // Transform snake_case to camelCase (backend returns snake_case)
+      const data = response?.data || [];
+      return data.map(fn => ({
+        name: fn.name,
+        arn: fn.arn,
+        memoryMb: fn.memory_mb,
+        timeoutSeconds: fn.timeout_seconds,
+        runtime: fn.runtime,
+        lastModified: fn.last_modified,
+        description: fn.description,
+        handler: fn.handler,
+        version: fn.version,
+      }));
     } catch (error) {
       console.error("Failed to list Lambda functions:", error);
       return [];
@@ -153,7 +175,7 @@ export class LambdaMgmtApiClient {
   async syncEventBridge(): Promise<EventBridgeSyncResult> {
     try {
       const response = await this.client.post<EventBridgeSyncResult>(
-        "/admin/sys/mgmt/lambda-config/sync",
+        "/admin/sys/mgmt/schedule/sync",
         {}
       );
       return (

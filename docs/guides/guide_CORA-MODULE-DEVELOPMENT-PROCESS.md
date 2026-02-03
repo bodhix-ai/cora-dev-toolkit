@@ -664,48 +664,316 @@ def handle_get(event, user_id):
 
 #### 3.2.1a: Authorization Patterns (CRITICAL)
 
-**⚠️ IMPORTANT:** All Lambda functions must implement proper authorization checks.
+**⚠️ IMPORTANT:** All Lambda functions must implement proper authorization following CORA's 2-layer architecture.
 
-**See:** [Lambda Authorization Standard](../../standards/standard_LAMBDA-AUTHORIZATION.md) for comprehensive patterns.
+**See:** 
+- [ADR-019: CORA Authorization Standardization](../../arch%20decisions/ADR-019-AUTH-STANDARDIZATION.md)
+- [03_std_back_AUTH.md](../../standards/03_std_back_AUTH.md) - Admin authorization
+- [03_std_back_RESOURCE-PERMISSIONS.md](../../standards/03_std_back_RESOURCE-PERMISSIONS.md) - Resource permissions
 
-**Common Authorization Bug to Avoid:**
+### CORA Authorization Architecture: Two Distinct Layers
 
-❌ **WRONG - Do NOT check role in JWT:**
-```python
-# This will FAIL - roles are not in JWT!
-user_role = user_info.get('role')  
-if user_role not in ['platform_admin']:
-    raise access.ForbiddenError()
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   CORA Authorization Layers                  │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Layer 1: Admin Authorization (ADR-019a/b)                  │
+│  ├─ Routes: /admin/sys/*, /admin/org/*, /admin/ws/*        │
+│  ├─ Purpose: Module configuration and management            │
+│  ├─ Functions: check_sys_admin, check_org_admin,           │
+│  │             check_ws_admin, get_org_context_from_event   │
+│  └─ Pattern: Centralized router-level authorization        │
+│                                                              │
+│  Layer 2: Resource Permissions (ADR-019c)                   │
+│  ├─ Routes: /{module}/*                                     │
+│  ├─ Purpose: User data access and operations                │
+│  ├─ Functions: can_access_*, is_*_owner, is_*_member       │
+│  └─ Pattern: 3-step permission check per request           │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-✅ **CORRECT - Query database for role:**
+### Layer 1: Admin Authorization (Module Configuration)
+
+**Use Case:** Admin routes that configure module settings, manage module-level resources, or perform admin operations.
+
+**Pattern: Centralized Router-Level Authorization**
+
 ```python
-# Step 1: Get Okta UID from JWT
-okta_uid = user_info['user_id']
+# backend/lambdas/{module}-admin/lambda_function.py
 
-# Step 2: Map to Supabase user_id
-supabase_user_id = access.get_supabase_user_id_from_external_uid(okta_uid)
+from org_common.auth_helpers import (
+    check_sys_admin,
+    check_org_admin,
+    check_ws_admin,
+    get_org_context_from_event
+)
 
-# Step 3: Query user profile for role
-profile = access.find_one('user_profiles', {'user_id': supabase_user_id})
+def lambda_handler(event: dict, context: Any) -> dict:
+    """Admin Lambda with centralized authorization"""
+    user_id = common.get_supabase_user_id_from_external_uid(
+        common.get_user_from_event(event)['user_id']
+    )
+    
+    path = event.get('rawPath', '')
+    
+    # Centralized admin auth checks (ONE check per request)
+    if path.startswith('/admin/sys/'):
+        # System admin routes
+        if not check_sys_admin(user_id):
+            return common.forbidden_response('System admin role required')
+    
+    elif path.startswith('/admin/org/'):
+        # Organization admin routes
+        org_id = get_org_context_from_event(event)
+        if not check_org_admin(org_id, user_id):
+            return common.forbidden_response('Organization admin role required')
+    
+    elif path.startswith('/admin/ws/'):
+        # Workspace admin routes
+        ws_id = extract_path_param(event, 'ws_id')
+        if not check_ws_admin(ws_id, user_id):
+            return common.forbidden_response('Workspace admin role required')
+    
+    # Route to handlers (auth already verified)
+    return route_to_handler(user_id, event)
 
-# Step 4: Check authorization
-if not profile or profile.get('global_role') not in ['platform_admin', 'platform_owner']:
-    raise access.ForbiddenError('Platform admin access required')
+
+def handle_get_sys_config(user_id: str) -> dict:
+    """Get system config (sys admin already verified)"""
+    config = common.find_one('{module}_sys_config', {})
+    return common.success_response(common.format_record(config))
+
+
+def handle_get_org_config(user_id: str, event: dict) -> dict:
+    """Get org config (org admin already verified)"""
+    org_id = get_org_context_from_event(event)
+    config = common.find_one('{module}_org_config', {'org_id': org_id})
+    return common.success_response(common.format_record(config))
 ```
 
-**Why this matters:** JWT tokens contain ONLY the external identity provider's user ID (Okta UID). Roles and permissions are stored in the **database** (user_profiles table), not in JWT tokens.
+**Key Points:**
+- Auth check happens ONCE at router level
+- Use standard helper functions from org_common
+- No inline role checks (`['sys_owner', 'sys_admin']`)
+- Use `get_org_context_from_event()` to extract org_id
+- Handlers don't need auth checks (already verified)
 
-**Authorization Checklist:**
+### Layer 2: Resource Permissions (User Data Access)
 
-- [ ] Platform admin endpoints: Query `user_profiles.global_role`
-- [ ] Organization admin endpoints: Check both `global_role` and `org_members.org_role`
-- [ ] User ID mapping: Always use `get_supabase_user_id_from_external_uid()`
-- [ ] Never check `user_info.get('role')` - it doesn't exist!
-- [ ] Add authorization comments in code
-- [ ] Test with different user roles
+**Use Case:** Data routes where users access their own resources (chats, documents, sessions).
 
-**See full patterns for:** Platform admin, org admin, org member, resource owner, and module-specific role authorization in the [Lambda Authorization Standard](../../standards/standard_LAMBDA-AUTHORIZATION.md).
+**Pattern: 3-Step Permission Check**
+
+```python
+# backend/lambdas/{module}-data/lambda_function.py
+
+from org_common.resource_permissions import can_access_org_resource
+# Module-specific permissions in module's own layer:
+from {module}_common.permissions import can_access_{entity}, can_edit_{entity}
+
+def handle_get_{entity}(user_id: str, event: dict) -> dict:
+    """Get {entity} with permission check"""
+    {entity}_id = extract_path_param(event, '{entity}_id')
+    
+    # Step 1: Fetch resource
+    {entity} = common.find_one('{entity}', {'id': {entity}_id})
+    if not {entity}:
+        return common.not_found_response('{Entity} not found')
+    
+    # Step 2: Verify org membership (prevent cross-org access)
+    if not can_access_org_resource(user_id, {entity}['org_id']):
+        return common.forbidden_response('Not a member of this organization')
+    
+    # Step 3: Check resource permission (ownership/sharing)
+    if not can_access_{entity}(user_id, {entity}_id):
+        return common.forbidden_response('Access denied')
+    
+    return common.success_response(common.format_record({entity}))
+
+
+def handle_update_{entity}(user_id: str, event: dict) -> dict:
+    """Update {entity} (requires edit permission)"""
+    {entity}_id = extract_path_param(event, '{entity}_id')
+    body = json.loads(event.get('body', '{}'))
+    
+    # Fetch and verify
+    {entity} = common.find_one('{entity}', {'id': {entity}_id})
+    if not {entity}:
+        return common.not_found_response('{Entity} not found')
+    
+    if not can_access_org_resource(user_id, {entity}['org_id']):
+        return common.forbidden_response('Not a member of this organization')
+    
+    # Check edit permission (may be stricter than view)
+    if not can_edit_{entity}(user_id, {entity}_id):
+        return common.forbidden_response('Edit permission required')
+    
+    # Update
+    updated = common.update_one(
+        '{entity}',
+        filters={'id': {entity}_id},
+        data={**body, 'updated_by': user_id}
+    )
+    
+    return common.success_response(common.format_record(updated))
+
+
+def handle_list_{entities}(user_id: str, event: dict) -> dict:
+    """List user's {entities} (org-scoped)"""
+    query_params = event.get('queryStringParameters', {}) or {}
+    
+    org_id = query_params.get('orgId')
+    if not org_id:
+        return common.bad_request_response('orgId query parameter required')
+    
+    org_id = common.validate_uuid(org_id, 'orgId')
+    
+    # Verify org membership
+    if not can_access_org_resource(user_id, org_id):
+        return common.forbidden_response('Not a member of this organization')
+    
+    # List user's resources
+    {entities} = common.find_many(
+        '{entity}',
+        filters={'org_id': org_id, 'created_by': user_id},
+        order='created_at.desc'
+    )
+    
+    return common.success_response(common.format_records({entities}))
+```
+
+**Key Points:**
+- THREE steps: Fetch resource → Verify org membership → Check resource permission
+- Use `can_access_org_resource()` from org-common
+- Use module-specific `can_access_*()` from module's own layer
+- NO admin role override (admins don't auto-access user data)
+
+### Module-Specific Permission Layer
+
+**CRITICAL:** Permission functions for module-specific resources live in the MODULE's backend layer, NOT in org-common.
+
+```
+module-{name}/
+└── backend/
+    └── layers/
+        └── {module}_common/
+            └── python/
+                └── {module}_common/
+                    ├── __init__.py
+                    └── permissions.py  # Module-specific permissions
+```
+
+**File:** `backend/layers/{module}_common/python/{module}_common/permissions.py`
+
+```python
+"""
+Module-specific resource permissions.
+
+CRITICAL: These functions live in the MODULE's backend layer,
+NOT in org-common (to avoid dependencies on optional modules).
+"""
+
+from org_common.db import call_rpc
+
+def can_access_{entity}(user_id: str, {entity}_id: str) -> bool:
+    """
+    Check if user can access {entity}.
+    
+    Access granted if:
+    - User owns the {entity}
+    - {Entity} is shared with user (future)
+    
+    NOTE: Admin roles do NOT grant automatic access.
+    """
+    # Check ownership
+    if call_rpc('is_{entity}_owner', {
+        'p_user_id': user_id,
+        'p_{entity}_id': {entity}_id
+    }):
+        return True
+    
+    # TODO: Check sharing when implemented
+    return False
+
+def can_edit_{entity}(user_id: str, {entity}_id: str) -> bool:
+    """Check if user can edit {entity} (requires ownership)"""
+    return call_rpc('is_{entity}_owner', {
+        'p_user_id': user_id,
+        'p_{entity}_id': {entity}_id
+    })
+```
+
+### Database RPC Functions
+
+```sql
+-- backend/db/rpcs/001-{module}-permissions.sql
+
+-- Ownership check
+CREATE OR REPLACE FUNCTION is_{entity}_owner(p_user_id UUID, p_{entity}_id UUID)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM {entity}
+    WHERE id = p_{entity}_id AND created_by = p_user_id
+  );
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- Membership check (from org-common - already exists)
+-- is_org_member(p_org_id UUID, p_user_id UUID)
+```
+
+### ❌ NEVER: Admin Role Override
+
+```python
+# ❌ WRONG - do NOT add admin override to resource permissions
+def can_access_{entity}_wrong(user_id: str, {entity}_id: str, org_id: str) -> bool:
+    if is_{entity}_owner(user_id, {entity}_id):
+        return True
+    
+    # ❌ WRONG - violates least privilege
+    if is_org_admin(org_id, user_id):
+        return True  # DO NOT DO THIS
+    
+    return False
+
+# ✅ CORRECT - only ownership and sharing
+def can_access_{entity}_correct(user_id: str, {entity}_id: str) -> bool:
+    if is_{entity}_owner(user_id, {entity}_id):
+        return True
+    
+    if is_{entity}_shared_with(user_id, {entity}_id):  # Future
+        return True
+    
+    return False  # NO admin override
+```
+
+**Why:** Principle of least privilege. Admins should not have carte blanche access to user data.
+
+### Authorization Implementation Checklist
+
+**For Admin Routes (`/admin/*`):**
+- [ ] Lambda uses centralized router-level auth
+- [ ] Uses `check_sys_admin()`, `check_org_admin()`, or `check_ws_admin()`
+- [ ] Uses `get_org_context_from_event()` for org admin routes
+- [ ] NO inline role checks (no `['sys_owner', 'sys_admin']`)
+- [ ] Handlers assume auth already verified
+
+**For Data Routes (`/{module}/*`):**
+- [ ] Lambda implements 3-step permission check
+- [ ] Step 1: Fetch resource
+- [ ] Step 2: Verify org membership with `can_access_org_resource()`
+- [ ] Step 3: Check resource permission with module-specific `can_access_*()`
+- [ ] Module-specific permissions in module's own layer (not org-common)
+- [ ] Database RPC functions created (`is_*_owner`)
+- [ ] NO admin role override in resource permissions
+
+**Common Mistakes to Avoid:**
+- ❌ Checking roles in JWT (roles are in database, not JWT)
+- ❌ Inline role lists (`['sys_owner', 'sys_admin']`)
+- ❌ Admin override in resource permissions
+- ❌ Missing org membership check before resource permission
+- ❌ Module-specific permissions in org-common (creates dependencies)
 
 #### 3.2.2: Common Layer (Shared Methods)
 
@@ -1563,6 +1831,452 @@ After adding module UI configuration:
 - [ ] Priority set (10-90 range)
 - [ ] Admin page created at path specified in config
 - [ ] User page created (if navigation enabled)
+
+#### 3.6.6: Admin Page Implementation (CRITICAL)
+
+**⚠️ IMPORTANT:** Admin pages (sys and org) must follow the established authentication pattern to work correctly. This section documents the CORA-standard pattern that all working modules use.
+
+**Common Error:** Extracting tokens at the page level and passing them as props to components. This breaks encapsulation and is inconsistent with CORA standards.
+
+##### The Correct Authentication Pattern
+
+**Authentication happens at THREE levels, each with specific responsibilities:**
+
+| Level | Responsibility | Extracts Token? | Uses authAdapter? |
+|-------|----------------|-----------------|-------------------|
+| **Page** | Check user has required role | ❌ NO | ❌ NO |
+| **Component/Tab** | Get authAdapter, pass to hooks/API | ❌ NO | ✅ YES (gets it, passes it) |
+| **Hook/API** | Extract token, make authenticated calls | ✅ YES | ✅ YES (uses it) |
+
+**Key Principle:** Token extraction happens at the **API/Hook layer**, NOT at the page or component level.
+
+##### Pattern 1: Admin Page Structure (Pattern A)
+
+**Location:** `apps/web/app/admin/sys/{module}/page.tsx` or `apps/web/app/admin/org/{module}/page.tsx`
+
+```typescript
+"use client";
+
+/**
+ * System {Module} Admin Page
+ *
+ * System-level {module} management page.
+ *
+ * Access: System admins only (sys_owner, sys_admin)
+ *
+ * @example
+ * Route: /admin/sys/{module}
+ */
+
+import React from "react";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { Sys{Module}Admin } from "@{{PROJECT_NAME}}/module-{module}";
+import { CircularProgress, Box, Alert } from "@mui/material";
+
+/**
+ * System {Module} Admin Page Component
+ *
+ * Renders the System {Module} admin interface with tabs for:
+ * - Settings configuration
+ * - Analytics and monitoring
+ * - Resource management
+ *
+ * Requires system admin role (sys_owner or sys_admin).
+ */
+export default function System{Module}AdminPage() {
+  const { profile, loading, isAuthenticated } = useUser();
+  
+  // ❌ WRONG: Do NOT extract authAdapter or token here
+  // const { authAdapter } = useUser();
+  // const [token, setToken] = useState(null);
+  // useEffect(() => { setToken(await authAdapter.getToken()); }, []);
+
+  // Show loading state while user profile is being fetched
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "400px",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Check if user is authenticated
+  if (!isAuthenticated || !profile) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          You must be logged in to access this page.
+        </Alert>
+      </Box>
+    );
+  }
+
+  // Check if user has system admin role
+  const isSysAdmin = ["sys_owner", "sys_admin"].includes(
+    profile.sysRole || ""
+  );
+
+  if (!isSysAdmin) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          Access denied. This page is only accessible to system administrators.
+        </Alert>
+      </Box>
+    );
+  }
+
+  // ✅ CORRECT: Pass NO props to component
+  // Component will handle its own authentication internally
+  return <Sys{Module}Admin />;
+}
+```
+
+**Key Points:**
+- Page checks user role (`profile.sysRole`)
+- Page does NOT extract `authAdapter` or tokens
+- Page passes NO authentication props to component
+- Component handles its own API authentication
+
+##### Pattern 2: Admin Component Structure
+
+**Location:** `module-{name}/frontend/components/admin/Sys{Module}Admin.tsx`
+
+```typescript
+/**
+ * System {Module} Admin Component
+ *
+ * Main admin interface with tabbed navigation for:
+ * - Settings management
+ * - Analytics dashboard
+ * - Resource administration
+ */
+
+import React, { useState } from "react";
+import {
+  Box,
+  Tabs,
+  Tab,
+  Typography,
+  Breadcrumbs,
+  Link,
+} from "@mui/material";
+import { NavigateNext as NavigateNextIcon } from "@mui/icons-material";
+import { SysSettingsTab } from "./SysSettingsTab";
+import { SysAnalyticsTab } from "./SysAnalyticsTab";
+import { SysResourcesTab } from "./SysResourcesTab";
+
+/**
+ * System {Module} Admin Component
+ * 
+ * ❌ WRONG: Do NOT accept token as prop
+ * export function Sys{Module}Admin({ token }: { token: string | null })
+ * 
+ * ✅ CORRECT: No authentication props
+ */
+export function Sys{Module}Admin(): React.ReactElement {
+  const [activeTab, setActiveTab] = useState(0);
+
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+  };
+
+  return (
+    <Box sx={{ width: "100%", p: 3 }}>
+      {/* Breadcrumbs */}
+      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} sx={{ mb: 3 }}>
+        <Link href="/admin">Admin</Link>
+        <Typography color="text.primary">{Module} Management</Typography>
+      </Breadcrumbs>
+
+      {/* Title */}
+      <Typography variant="h4" gutterBottom>
+        {Module} Management
+      </Typography>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onChange={handleTabChange} sx={{ mb: 3 }}>
+        <Tab label="Settings" />
+        <Tab label="Analytics" />
+        <Tab label="Resources" />
+      </Tabs>
+
+      {/* Tab Content - ✅ CORRECT: No token props passed */}
+      {activeTab === 0 && <SysSettingsTab />}
+      {activeTab === 1 && <SysAnalyticsTab />}
+      {activeTab === 2 && <SysResourcesTab />}
+    </Box>
+  );
+}
+```
+
+**Key Points:**
+- Component accepts NO authentication props
+- Tabs receive NO token props
+- Each tab handles its own authentication internally
+
+##### Pattern 3: Tab Component with API Calls
+
+**Location:** `module-{name}/frontend/components/admin/SysSettingsTab.tsx`
+
+```typescript
+/**
+ * System Settings Tab
+ *
+ * Manages platform-wide {module} configuration.
+ */
+
+import React from "react";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useSys{Module}Config } from "../../hooks/useSys{Module}Config";
+import { Box, CircularProgress, Alert } from "@mui/material";
+
+/**
+ * ❌ WRONG: Do NOT accept token as prop
+ * export function SysSettingsTab({ token }: { token: string | null })
+ * 
+ * ✅ CORRECT: Get authAdapter from useUser hook
+ */
+export function SysSettingsTab() {
+  const { authAdapter } = useUser();  // ✅ Get authAdapter HERE in the tab
+  
+  // ✅ Pass authAdapter to custom hook (NOT token)
+  const { config, loading, error, updateConfig } = useSys{Module}Config(authAdapter);
+
+  if (loading) return <CircularProgress />;
+  if (error) return <Alert severity="error">{error}</Alert>;
+
+  // Render settings form
+  return (
+    <Box>
+      {/* Configuration UI */}
+    </Box>
+  );
+}
+```
+
+**Key Points:**
+- Tab calls `useUser()` to get `authAdapter`
+- Tab passes `authAdapter` to custom hooks (NOT token)
+- Token extraction happens inside the hook/API layer
+
+##### Pattern 4: Custom Hook with API Calls
+
+**Location:** `module-{name}/frontend/hooks/useSys{Module}Config.ts`
+
+```typescript
+/**
+ * Hook for managing system {module} configuration
+ * 
+ * ❌ WRONG: Do NOT accept token
+ * export function useSys{Module}Config(token: string | null)
+ * 
+ * ✅ CORRECT: Accept authAdapter
+ */
+
+import { useState, useCallback, useEffect } from 'react';
+import type { AuthAdapter } from '@{{PROJECT_NAME}}/module-access';
+import { create{Module}Client } from '../lib/api';
+import type { {Module}Config } from '../types';
+
+export function useSys{Module}Config(authAdapter: AuthAdapter | null) {
+  const [config, setConfig] = useState<{Module}Config | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchConfig = useCallback(async () => {
+    if (!authAdapter) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // ✅ Pass authAdapter to API client factory
+      const api = create{Module}Client(authAdapter);
+      const data = await api.getSysConfig();
+      setConfig(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  }, [authAdapter]);
+
+  useEffect(() => {
+    fetchConfig();
+  }, [fetchConfig]);
+
+  return { config, loading, error, refetch: fetchConfig };
+}
+```
+
+##### Pattern 5: API Client Factory (Token Extraction)
+
+**Location:** `module-{name}/frontend/lib/api.ts`
+
+```typescript
+/**
+ * API client factory for {module}
+ * 
+ * ❌ WRONG: Do NOT accept token directly
+ * export async function getSysConfig(token: string)
+ * 
+ * ✅ CORRECT: Accept authAdapter, extract token internally
+ */
+
+import type { AuthAdapter } from '@{{PROJECT_NAME}}/module-access';
+import type { {Module}Config } from '../types';
+
+export interface {Module}ApiClient {
+  getSysConfig: () => Promise<{Module}Config>;
+  updateSysConfig: (config: Partial<{Module}Config>) => Promise<{Module}Config>;
+  // ... other methods
+}
+
+/**
+ * Creates an authenticated API client for {module}
+ * 
+ * @param authAdapter - Auth adapter from useUser() hook
+ * @returns API client with authenticated methods
+ */
+export function create{Module}Client(authAdapter: AuthAdapter): {Module}ApiClient {
+  return {
+    getSysConfig: async () => {
+      // ✅ Extract token HERE at API layer
+      const token = await authAdapter.getToken();
+      
+      const response = await fetch(`${API_BASE_URL}/admin/sys/{module}/config`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch config: ${response.statusText}`);
+      }
+
+      return response.json();
+    },
+
+    updateSysConfig: async (config: Partial<{Module}Config>) => {
+      // ✅ Extract token for each API call
+      const token = await authAdapter.getToken();
+      
+      const response = await fetch(`${API_BASE_URL}/admin/sys/{module}/config`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(config)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update config: ${response.statusText}`);
+      }
+
+      return response.json();
+    }
+  };
+}
+```
+
+**Key Points:**
+- API functions accept `authAdapter`, NOT `token`
+- Token extracted at API layer using `await authAdapter.getToken()`
+- Token extracted fresh for each API call (handles token refresh automatically)
+
+##### Anti-Pattern: Token Prop Drilling (DO NOT DO THIS)
+
+**❌ This is what we did WRONG in module-chat (DO NOT copy this pattern):**
+
+```typescript
+// ❌ Page extracts token and passes it down
+export default function SystemChatAdminPage() {
+  const { authAdapter } = useUser();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getToken = async () => {
+      const t = await authAdapter.getToken();
+      setToken(t);
+    };
+    getToken();
+  }, [authAdapter]);
+
+  return <SysChatAdmin token={token} />;  // ❌ Passing token as prop
+}
+
+// ❌ Component accepts and passes token
+export function SysChatAdmin({ token }: { token: string | null }) {
+  return <SysSettingsTab token={token} />;  // ❌ Prop drilling
+}
+
+// ❌ Tab accepts token
+export function SysSettingsTab({ token }: { token: string | null }) {
+  const config = await getSysConfig(token);  // ❌ Uses token directly
+}
+
+// ❌ API function accepts token
+export async function getSysConfig(token: string) {
+  return fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+}
+```
+
+**Why this pattern is WRONG:**
+1. **Breaks encapsulation** - Components shouldn't know about tokens
+2. **Prop drilling** - Token passed through multiple component levels
+3. **Inconsistent with CORA** - All other modules use authAdapter pattern
+4. **Token refresh issues** - Token may become stale during component lifecycle
+5. **Testing difficulty** - Harder to mock authentication in tests
+
+##### Admin Page Implementation Checklist
+
+When implementing admin pages (sys or org), verify:
+
+**Page Level:**
+- [ ] Uses Pattern A authentication (`useUser()` for auth check only)
+- [ ] Checks `profile.sysRole` for sys admin pages
+- [ ] Checks `profile.orgRole` or org membership for org admin pages
+- [ ] Does NOT extract `authAdapter` at page level
+- [ ] Does NOT extract or store token at page level
+- [ ] Passes NO authentication props to admin component
+
+**Component Level:**
+- [ ] Admin component accepts NO token props
+- [ ] Renders tabs with NO token props
+- [ ] Uses tabbed interface for different admin functions
+- [ ] Includes breadcrumb navigation
+
+**Tab Level:**
+- [ ] Each tab calls `useUser()` to get `authAdapter`
+- [ ] Passes `authAdapter` to custom hooks (NOT token)
+- [ ] Does NOT extract or store token
+- [ ] Handles loading and error states
+
+**Hook/API Level:**
+- [ ] Custom hooks accept `authAdapter` parameter
+- [ ] API client factory accepts `authAdapter` parameter
+- [ ] Token extracted using `await authAdapter.getToken()` at API call time
+- [ ] Token extracted fresh for each API call
+- [ ] Proper error handling for authentication failures
+
+**Reference Implementation:**
+- See `templates/_modules-core/module-mgmt/` for complete working example
+- See `templates/_project-stack-template/apps/web/app/admin/sys/mgmt/page.tsx` for page pattern
+- See `templates/_modules-core/module-mgmt/frontend/components/admin/ScheduleTab.tsx` for tab pattern
 
 ### Step 3.7: Documentation
 

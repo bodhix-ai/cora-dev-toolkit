@@ -289,6 +289,12 @@ while [[ $# -gt 0 ]]; do
       ;;
     --input)
       INPUT_CONFIG="$2"
+      # Convert to absolute path to ensure it works even if CWD changes
+      if [[ -f "$INPUT_CONFIG" ]]; then
+        if [[ "$INPUT_CONFIG" != /* ]]; then
+          INPUT_CONFIG="$(cd "$(dirname "$INPUT_CONFIG")" && pwd)/$(basename "$INPUT_CONFIG")"
+        fi
+      fi
       shift 2
       ;;
     --no-git)
@@ -550,7 +556,8 @@ resolve_module_dependencies() {
     # Get dependencies for this module
     local dependencies=""
     if command -v yq &> /dev/null; then
-      dependencies=$(yq ".modules.${current_module}.dependencies[]" "$REGISTRY_FILE" 2>/dev/null | tr '\n' ' ')
+      # Extract just the module names from dependency objects
+      dependencies=$(yq ".modules.${current_module}.dependencies[].module" "$REGISTRY_FILE" 2>/dev/null | tr '\n' ' ')
     else
       # Fallback: extract dependencies array (limited)
       dependencies=$(grep -A10 "^  ${current_module}:" "$REGISTRY_FILE" | grep "dependencies:" | sed 's/.*dependencies: *\[\(.*\)\].*/\1/' | tr ',' ' ')
@@ -862,6 +869,77 @@ create_github_repo() {
   log_info "Created: https://github.com/${GITHUB_ORG}/${repo_name}"
 }
 
+# --- Check for Existing GitHub OIDC Provider ---
+check_github_oidc_provider() {
+  local infra_dir="$1"
+  local config_file="$2"
+  
+  log_step "Checking for existing GitHub OIDC provider in AWS account..."
+  
+  # Get AWS profile from config file if available
+  local aws_profile=""
+  if [[ -f "$config_file" ]]; then
+    if command -v yq &> /dev/null; then
+      aws_profile=$(yq '.aws.profile // ""' "$config_file")
+    else
+      aws_profile=$(grep -A5 "^aws:" "$config_file" | grep "profile:" | sed 's/.*profile: *"\([^"]*\)".*/\1/' || echo "")
+    fi
+  fi
+  
+  # Skip check if no AWS profile configured
+  if [[ -z "$aws_profile" || "$aws_profile" == "null" ]]; then
+    log_info "No AWS profile configured, skipping OIDC provider check"
+    log_info "First project in account will create OIDC provider (default behavior)"
+    return
+  fi
+  
+  # Check if aws CLI is available
+  if ! command -v aws &> /dev/null; then
+    log_warn "AWS CLI not found, skipping OIDC provider check"
+    log_info "Install AWS CLI for automatic OIDC detection: brew install awscli"
+    log_info "First project will create OIDC provider (default behavior)"
+    return
+  fi
+  
+  # Check if jq is available (for JSON parsing)
+  if ! command -v jq &> /dev/null; then
+    log_warn "jq not found, skipping OIDC provider check"
+    log_info "Install jq for automatic OIDC detection: brew install jq"
+    log_info "First project will create OIDC provider (default behavior)"
+    return
+  fi
+  
+  # Query AWS for existing GitHub OIDC provider
+  log_info "Querying AWS account (profile: ${aws_profile})..."
+  local provider_arn=$(aws iam list-open-id-connect-providers --profile "$aws_profile" 2>/dev/null | \
+    jq -r '.OpenIDConnectProviderList[]?.Arn | select(contains("token.actions.githubusercontent.com"))' 2>/dev/null | head -1)
+  
+  if [[ -n "$provider_arn" ]]; then
+    log_info "✅ Found existing GitHub OIDC provider:"
+    log_info "   ${provider_arn}"
+    log_info ""
+    log_info "Configuring project to reuse existing provider..."
+    
+    # Update main.tf to set create_oidc_provider = false
+    local main_tf="${infra_dir}/envs/dev/main.tf"
+    if [[ -f "$main_tf" ]]; then
+      sed -i.bak 's/create_oidc_provider = true/create_oidc_provider = false  # Reuse existing provider/' "$main_tf" 2>/dev/null || \
+      sed -i.bak 's/create_oidc_provider = true/create_oidc_provider = false  # Reuse existing provider/' "$main_tf"
+      rm -f "${main_tf}.bak"
+      log_info "✅ Updated terraform: create_oidc_provider set to false"
+      log_info "   Module will discover and reuse existing OIDC provider automatically"
+    else
+      log_warn "main.tf not found at ${main_tf}"
+      log_info "You may need to manually set create_oidc_provider = false"
+    fi
+  else
+    log_info "No existing GitHub OIDC provider found in AWS account"
+    log_info "Terraform will create a new OIDC provider during deployment (default behavior)"
+  fi
+  
+  echo ""
+}
+
 # --- Create Infra Repository ---
 log_step "Creating ${INFRA_NAME}..."
 
@@ -881,6 +959,14 @@ else
   chmod +x "$INFRA_DIR"/bootstrap/*.sh 2>/dev/null || true
   
   log_info "Created ${INFRA_DIR}"
+  
+  # Check for existing GitHub OIDC provider and configure accordingly
+  # Use INPUT_CONFIG if provided, otherwise fall back to stack config
+  if [[ -n "$INPUT_CONFIG" ]]; then
+    check_github_oidc_provider "$INFRA_DIR" "$INPUT_CONFIG"
+  else
+    check_github_oidc_provider "$INFRA_DIR" "${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml"
+  fi
 fi
 
 # --- Create Stack Repository ---
@@ -2216,6 +2302,74 @@ if ! $DRY_RUN && $WITH_CORE_MODULES; then
   consolidate_database_schemas "${STACK_DIR}"
 fi
 
+# --- Stamp Project Version ---
+stamp_project_version() {
+  local stack_dir="$1"
+  local version_file="${stack_dir}/.cora-version.yaml"
+  
+  log_step "Stamping project with toolkit and module versions..."
+  
+  # Check if .cora-version.yaml template exists
+  if [[ ! -f "$version_file" ]]; then
+    log_warn ".cora-version.yaml template not found at ${version_file}"
+    log_info "Skipping version stamping"
+    return
+  fi
+  
+  # Read toolkit version from VERSION file
+  local toolkit_version="unknown"
+  if [[ -f "${TOOLKIT_ROOT}/VERSION" ]]; then
+    toolkit_version=$(cat "${TOOLKIT_ROOT}/VERSION" | tr -d '[:space:]')
+    log_info "Toolkit version: ${toolkit_version}"
+  else
+    log_warn "VERSION file not found at ${TOOLKIT_ROOT}/VERSION"
+  fi
+  
+  # Get current date
+  local created_date=$(date +%Y-%m-%d)
+  
+  # Replace toolkit version and dates
+  sed -i '' "s/{{TOOLKIT_VERSION}}/${toolkit_version}/g" "$version_file" 2>/dev/null || \
+  sed -i "s/{{TOOLKIT_VERSION}}/${toolkit_version}/g" "$version_file"
+  
+  sed -i '' "s/{{CREATED_DATE}}/${created_date}/g" "$version_file" 2>/dev/null || \
+  sed -i "s/{{CREATED_DATE}}/${created_date}/g" "$version_file"
+  
+  # Read module versions from module-registry.yaml
+  if [[ -f "$REGISTRY_FILE" ]]; then
+    # Get version for each module
+    local modules=("module-access" "module-ai" "module-ws" "module-mgmt" "module-kb" "module-chat" "module-eval" "module-voice")
+    
+    for module in "${modules[@]}"; do
+      local module_version="unknown"
+      
+      # Get module version using yq or fallback to grep
+      if command -v yq &> /dev/null; then
+        module_version=$(yq ".modules.${module}.version // \"unknown\"" "$REGISTRY_FILE" | tr -d '[:space:]')
+      else
+        # Fallback: grep-based extraction
+        module_version=$(grep -A20 "^  ${module}:" "$REGISTRY_FILE" | grep "version:" | head -1 | sed 's/.*version: *"\([^"]*\)".*/\1/' | tr -d '[:space:]')
+        [[ -z "$module_version" ]] && module_version="unknown"
+      fi
+      
+      # Replace module version placeholder
+      local placeholder="{{MODULE_${module#module-}_VERSION}}"
+      local placeholder_upper=$(echo "$placeholder" | tr '[:lower:]' '[:upper:]' | sed 's/-/_/g')
+      
+      sed -i '' "s/${placeholder_upper}/${module_version}/g" "$version_file" 2>/dev/null || \
+      sed -i "s/${placeholder_upper}/${module_version}/g" "$version_file"
+      
+      log_info "  ${module}: ${module_version}"
+    done
+  else
+    log_warn "Module registry not found: ${REGISTRY_FILE}"
+  fi
+  
+  log_info "✅ Project version stamped: ${version_file}"
+  log_info "   Toolkit: ${toolkit_version}"
+  log_info "   Created: ${created_date}"
+}
+
 # --- Install Validation Dependencies ---
 install_validation_deps() {
   local stack_dir="$1"
@@ -2315,6 +2469,48 @@ RUNSCRIPT
   log_info "   To run validators: ./scripts/validation/run-validators.sh"
 }
 
+# --- Build Packages ---
+build_packages() {
+  local stack_dir="$1"
+  
+  log_step "Building all packages..."
+  
+  # Check if pnpm is available
+  if ! command -v pnpm &> /dev/null; then
+    log_warn "pnpm not found. Skipping package build."
+    log_info "Install pnpm to enable automatic builds: npm install -g pnpm"
+    return
+  fi
+  
+  log_info "Installing dependencies with pnpm..."
+  cd "$stack_dir"
+  
+  # Run pnpm install
+  if pnpm install 2>&1 | tee /tmp/pnpm-install.log | grep -v "Progress" | tail -10; then
+    log_info "✅ Dependencies installed"
+  else
+    log_warn "⚠️  Some dependencies may have failed to install"
+    log_info "Check /tmp/pnpm-install.log for details"
+  fi
+  
+  echo ""
+  log_info "Building all packages..."
+  
+  # Run pnpm build (this builds all packages in the workspace)
+  if pnpm build 2>&1 | tee /tmp/pnpm-build.log | grep -v "Progress" | tail -20; then
+    log_info "✅ All packages built successfully"
+  else
+    log_warn "⚠️  Some packages may have failed to build"
+    log_info "Check /tmp/pnpm-build.log for details"
+  fi
+  
+  cd - > /dev/null
+  
+  log_info "📦 Package build complete!"
+  log_info "   Type declarations are now available for TypeScript validation"
+  echo ""
+}
+
 # --- Run Post-Creation Validation ---
 run_post_creation_validation() {
   local stack_dir="$1"
@@ -2323,15 +2519,15 @@ run_post_creation_validation() {
   
   # Run UI library validation first (fast check)
   log_info "Checking UI library compliance..."
-  if [[ -f "${TOOLKIT_ROOT}/scripts/validate-ui-library.sh" ]]; then
-    if "${TOOLKIT_ROOT}/scripts/validate-ui-library.sh" "templates" > /dev/null 2>&1; then
+  if [[ -f "${TOOLKIT_ROOT}/validation/ui-library-validator/validate-ui-library.sh" ]]; then
+    if "${TOOLKIT_ROOT}/validation/ui-library-validator/validate-ui-library.sh" "templates" > /dev/null 2>&1; then
       log_info "✅ UI library validation passed"
     else
       log_warn "⚠️  UI library validation found violations"
-      log_info "Run: ./scripts/validate-ui-library.sh templates for details"
+      log_info "Run: ./validation/ui-library-validator/validate-ui-library.sh templates for details"
     fi
   else
-    log_warn "UI library validator not found: ${TOOLKIT_ROOT}/scripts/validate-ui-library.sh"
+    log_warn "UI library validator not found: ${TOOLKIT_ROOT}/validation/ui-library-validator/validate-ui-library.sh"
   fi
   echo ""
   
@@ -2385,6 +2581,11 @@ if ! $DRY_RUN; then
   fi
 fi
 
+# --- Stamp Project Version ---
+if ! $DRY_RUN; then
+  stamp_project_version "$STACK_DIR"
+fi
+
 # --- Install Validation Dependencies ---
 if ! $DRY_RUN && $WITH_CORE_MODULES; then
   install_validation_deps "$STACK_DIR"
@@ -2422,6 +2623,11 @@ if ! $DRY_RUN; then
     # Generate minimal .env file for infra even without config
     generate_infra_env "" "$INFRA_DIR"
   fi
+fi
+
+# --- Build Packages ---
+if ! $DRY_RUN && $WITH_CORE_MODULES; then
+  build_packages "$STACK_DIR"
 fi
 
 # --- Run Post-Creation Validation ---

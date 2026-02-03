@@ -187,6 +187,11 @@ export function OrgDelegationCard({
               onChange={(e) => onToggle(e.target.checked)}
               disabled={isToggling}
               color="primary"
+              aria-label={
+                org.aiConfigDelegated
+                  ? "Disable AI config delegation"
+                  : "Enable AI config delegation"
+              }
               title={
                 org.aiConfigDelegated
                   ? "Disable AI config delegation"
@@ -259,7 +264,7 @@ export function OrgDelegationManager({
     <Box className={className}>
       {/* Header */}
       <Box sx={{ mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
+        <Typography variant="h5" gutterBottom>
           AI Configuration Delegation
         </Typography>
         <Typography variant="body2" color="text.secondary">
@@ -301,6 +306,7 @@ export function OrgDelegationManager({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search organizations..."
+          label="Search organizations"
           sx={{ flexGrow: 1, minWidth: 200 }}
           InputProps={{
             startAdornment: (
@@ -326,6 +332,7 @@ export function OrgDelegationManager({
             disabled={isLoading}
             size="small"
             title="Refresh"
+            aria-label="Refresh organizations"
           >
             <RefreshIcon />
           </IconButton>

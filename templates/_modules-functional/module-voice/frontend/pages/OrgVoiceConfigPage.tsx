@@ -271,6 +271,7 @@ function ConfigList({ configs, onEdit, onDelete }: ConfigListProps) {
                 onClick={() => onEdit(config)}
                 size="small"
                 title="Edit configuration"
+                aria-label={`Edit ${config.name} configuration`}
               >
                 <EditIcon fontSize="small" />
               </IconButton>
@@ -279,6 +280,7 @@ function ConfigList({ configs, onEdit, onDelete }: ConfigListProps) {
                 size="small"
                 color="error"
                 title="Delete configuration"
+                aria-label={`Delete ${config.name} configuration`}
               >
                 <DeleteIcon fontSize="small" />
               </IconButton>

@@ -3,9 +3,11 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "main": "./workspace-plugin/index.ts",
+  "types": "./workspace-plugin/index.ts",
   "exports": {
     "./workspace-plugin": {
-      "types": "./workspace-plugin/index.d.ts",
+      "types": "./workspace-plugin/index.ts",
       "import": "./workspace-plugin/index.ts"
     }
   },

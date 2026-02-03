@@ -166,30 +166,55 @@ output "api_routes" {
       integration = aws_lambda_function.members.invoke_arn
       public      = false
     },
-    # idp-config endpoints (admin routes)
+    # idp-config endpoints (sys admin routes)
     {
       method      = "GET"
-      path        = "/admin/idp-config"
+      path        = "/admin/sys/access/idp"
       integration = aws_lambda_function.idp_config.invoke_arn
-      public      = false
-    },
-    # admin users endpoint
-    {
-      method      = "GET"
-      path        = "/admin/users"
-      integration = aws_lambda_function.identities_management.invoke_arn
       public      = false
     },
     {
       method      = "PUT"
-      path        = "/admin/idp-config/{providerType}"
+      path        = "/admin/sys/access/idp/{providerType}"
       integration = aws_lambda_function.idp_config.invoke_arn
       public      = false
     },
     {
       method      = "POST"
-      path        = "/admin/idp-config/{providerType}/activate"
+      path        = "/admin/sys/access/idp/{providerType}/activate"
       integration = aws_lambda_function.idp_config.invoke_arn
+      public      = false
+    },
+    # admin users endpoint (sys admin routes)
+    {
+      method      = "GET"
+      path        = "/admin/sys/access/users"
+      integration = aws_lambda_function.identities_management.invoke_arn
+      public      = false
+    },
+    # org admin routes (org_admin: read-only, org_owner: full management)
+    {
+      method      = "GET"
+      path        = "/admin/org/access/users"
+      integration = aws_lambda_function.identities_management.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/org/access/users/{userId}"
+      integration = aws_lambda_function.identities_management.invoke_arn
+      public      = false
+    },
+    {
+      method      = "PUT"
+      path        = "/admin/org/access/users/{userId}"
+      integration = aws_lambda_function.identities_management.invoke_arn
+      public      = false
+    },
+    {
+      method      = "DELETE"
+      path        = "/admin/org/access/users/{userId}"
+      integration = aws_lambda_function.identities_management.invoke_arn
       public      = false
     },
     # org-email-domains endpoints

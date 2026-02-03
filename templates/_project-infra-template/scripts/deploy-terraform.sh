@@ -126,6 +126,41 @@ echo ""
 export AWS_PROFILE
 export AWS_REGION
 
+# --- Check for Existing GitHub OIDC Provider ---
+log_info "Checking for existing GitHub OIDC provider..."
+
+if command -v aws >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+  EXISTING_OIDC=$(aws iam list-open-id-connect-providers \
+    --profile "${AWS_PROFILE}" \
+    --region "${AWS_REGION}" 2>/dev/null | \
+    jq -r '.OpenIDConnectProviderList[] | select(.Arn | contains("token.actions.githubusercontent.com")) | .Arn' || echo "")
+  
+  if [ -n "$EXISTING_OIDC" ]; then
+    log_info "Found existing GitHub OIDC provider: ${EXISTING_OIDC}"
+    log_info "Configuring Terraform to reuse existing provider..."
+    
+    # Update main.tf to NOT create a new OIDC provider
+    MAIN_TF="${ENV_DIR}/main.tf"
+    if [ -f "${MAIN_TF}" ]; then
+      # Check if create_oidc_provider line exists
+      if grep -q "create_oidc_provider" "${MAIN_TF}"; then
+        # Update existing line to false
+        sed -i.bak 's/create_oidc_provider *= *true/create_oidc_provider = false/' "${MAIN_TF}"
+        log_info "✓ Updated main.tf: create_oidc_provider = false"
+      else
+        log_warn "create_oidc_provider not found in main.tf - may use module defaults"
+      fi
+    fi
+  else
+    log_info "No existing GitHub OIDC provider found - will create new one"
+  fi
+else
+  log_warn "AWS CLI or jq not available - skipping OIDC provider check"
+  log_info "Terraform will attempt to create OIDC provider (may fail if already exists)"
+fi
+
+echo ""
+
 cd "${ENV_DIR}"
 
 # Initialize Terraform

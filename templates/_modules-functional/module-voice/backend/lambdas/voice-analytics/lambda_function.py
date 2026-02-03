@@ -6,14 +6,15 @@ strengths, weaknesses, and recommendations. Analytics are created by
 a background process after interview transcripts are processed.
 
 Routes - Analytics:
-- GET /api/voice/analytics - List analytics for organization
-- GET /api/voice/analytics/{id} - Get analytics by session ID
+- GET /voice/analytics - List analytics for organization
+- GET /voice/analytics/{id} - Get analytics by session ID
 """
 
 import json
 import os
 from typing import Any, Dict
 import org_common as common
+import voice_common.permissions as voice_permissions
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -93,13 +94,9 @@ def handle_list_analytics(event: Dict[str, Any], user_id: str) -> Dict[str, Any]
         raise common.ValidationError('orgId query parameter is required')
     org_id = common.validate_uuid(org_id, 'orgId')
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': org_id, 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this organization')
+    # Step 1: Verify org membership
+    if not common.can_access_org_resource(user_id, org_id):
+        raise common.ForbiddenError('Not a member of this organization')
     
     # Pagination
     limit = common.validate_integer(
@@ -174,7 +171,7 @@ def handle_get_analytics(event: Dict[str, Any], user_id: str, session_id: str) -
     """
     session_id = common.validate_uuid(session_id, 'id')
     
-    # Get session first to verify ownership
+    # Step 1: Fetch session (analytics are tied to sessions)
     session = common.find_one(
         table='voice_sessions',
         filters={'id': session_id}
@@ -183,13 +180,13 @@ def handle_get_analytics(event: Dict[str, Any], user_id: str, session_id: str) -
     if not session:
         raise common.NotFoundError('Session not found')
     
-    # Verify org membership
-    membership = common.find_one(
-        table='org_members',
-        filters={'org_id': session['org_id'], 'user_id': user_id}
-    )
-    if not membership:
-        raise common.ForbiddenError('You do not have access to this session')
+    # Step 2: Verify org membership
+    if not common.can_access_org_resource(user_id, session['org_id']):
+        raise common.ForbiddenError('Not a member of this organization')
+    
+    # Step 3: Check resource permission (analytics permission = session permission)
+    if not voice_permissions.can_view_voice_analytics(user_id, session_id):
+        raise common.ForbiddenError('You do not have permission to view analytics for this session')
     
     # Get analytics for this session
     analytics = common.find_one(

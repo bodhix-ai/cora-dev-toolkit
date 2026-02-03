@@ -36,6 +36,7 @@ import {
   ScoringConfigPanel,
   StatusOptionManager,
 } from "../components";
+import type { UpdateOrgConfigInput } from "../types";
 
 // =============================================================================
 // TYPES
@@ -100,7 +101,7 @@ function Section({ title, description, children }: SectionProps) {
   return (
     <Paper variant="outlined">
       <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
-        <Typography variant="h6" component="h2">
+        <Typography variant="h5" component="h2">
           {title}
         </Typography>
         {description && (
@@ -233,7 +234,7 @@ export function OrgEvalConfigPage({
   }, [refreshConfig, refreshStatus]);
 
   const handleScoringUpdate = useCallback(
-    async (updates: { categoricalMode?: string; showNumericalScore?: boolean }) => {
+    async (updates: UpdateOrgConfigInput) => {
       await updateConfig(updates);
     },
     [updateConfig]
@@ -252,7 +253,7 @@ export function OrgEvalConfigPage({
   if (error) {
     return (
       <Box sx={{ p: 3 }} className={className}>
-        <ErrorState error={error} onRetry={handleRefresh} />
+        <ErrorState error={typeof error === 'string' ? new Error(error) : error} onRetry={handleRefresh} />
       </Box>
     );
   }

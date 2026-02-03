@@ -24,26 +24,33 @@ def run_validation(scan_path: str, output_format: str = "json") -> int:
         Exit code (0 = pass, 1 = fail)
     """
     # Get path to bash validation script
-    # Handle both Toolkit and Project structures:
-    # - Toolkit: validation/ui-library-validator/cli.py → scripts/validate-ui-library.sh
-    # - Project: scripts/validation/ui-library-validator/cli.py → scripts/validate-ui-library.sh
+    # Try multiple locations in order:
+    # 1. Same directory as CLI (NEW location): validation/ui-library-validator/validate-ui-library.sh
+    # 2. Toolkit legacy: ../../scripts/validate-ui-library.sh
+    # 3. Project structure: ../../validate-ui-library.sh
     
-    current_file = Path(__file__)
+    current_file = Path(__file__).resolve()
     
-    # Detect structure by checking if we're in scripts/validation/ or just validation/
-    if current_file.parts[-4] == "scripts":
-        # Project structure: scripts/validation/ui-library-validator/cli.py
-        # Go up 3 levels to scripts/, then look for validate-ui-library.sh in same dir
-        scripts_dir = current_file.parent.parent.parent
-        bash_script = scripts_dir / "validate-ui-library.sh"
-    else:
-        # Toolkit structure: validation/ui-library-validator/cli.py
-        # Go up 3 levels to root, then into scripts/
-        base_dir = current_file.parent.parent.parent
-        bash_script = base_dir / "scripts" / "validate-ui-library.sh"
-        
-    if not bash_script.exists():
-        error_msg = f"Validation script not found at: {bash_script}"
+    # Try same directory first (NEW location after reorganization)
+    same_dir_script = current_file.parent / "validate-ui-library.sh"
+    
+    # Try toolkit structure (legacy)
+    toolkit_script = current_file.parent.parent.parent / "scripts" / "validate-ui-library.sh"
+    
+    # Try project structure (legacy)
+    project_script = current_file.parent.parent.parent / "validate-ui-library.sh"
+    
+    # Find the script
+    bash_script = None
+    if same_dir_script.exists():
+        bash_script = same_dir_script
+    elif toolkit_script.exists():
+        bash_script = toolkit_script
+    elif project_script.exists():
+        bash_script = project_script
+    
+    if not bash_script:
+        error_msg = f"Validation script not found. Tried: {same_dir_script}, {toolkit_script}, {project_script}"
         if output_format == "json":
             print(json.dumps({
                 "passed": False,

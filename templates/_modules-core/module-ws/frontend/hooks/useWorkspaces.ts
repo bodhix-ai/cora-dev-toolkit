@@ -118,10 +118,8 @@ export function useWorkspaces(options: UseWorkspacesOptions = {}): UseWorkspaces
         includeDeleted: includeDeleted,
       };
 
-      // Apply filters
-      if (filters.status !== "all") {
-        params.status = filters.status;
-      }
+      // Apply filters (always pass status, including 'all')
+      params.status = filters.status;
       if (filters.favoritesOnly) {
         params.favoritesOnly = true;
       }

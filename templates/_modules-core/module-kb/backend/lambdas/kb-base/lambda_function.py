@@ -2,11 +2,11 @@
 KB Base Lambda - Knowledge Base CRUD Operations
 
 Routes - Workspace Scoped:
-- GET /workspaces/{workspaceId}/kb - Get workspace KB
-- POST /workspaces/{workspaceId}/kb - Create workspace KB (auto)
-- PATCH /workspaces/{workspaceId}/kb/{kbId} - Update KB settings
-- GET /workspaces/{workspaceId}/available-kbs - List toggleable KBs
-- POST /workspaces/{workspaceId}/kbs/{kbId}/toggle - Toggle KB access
+- GET /ws/{wsId}/kb - Get workspace KB
+- POST /ws/{wsId}/kb - Create workspace KB (auto)
+- PATCH /ws/{wsId}/kb/{kbId} - Update KB settings
+- GET /ws/{wsId}/available-kbs - List toggleable KBs
+- POST /ws/{wsId}/kbs/{kbId}/toggle - Toggle KB access
 
 Routes - Chat Scoped:
 - GET /chats/{chatId}/kb - Get chat KB
@@ -15,29 +15,34 @@ Routes - Chat Scoped:
 - POST /chats/{chatId}/kbs/{kbId}/toggle - Toggle KB access
 
 Routes - Org Admin:
-- GET /admin/org/kbs - List org KBs
-- POST /admin/org/kbs - Create org KB
-- GET /admin/org/kbs/{kbId} - Get org KB
-- PATCH /admin/org/kbs/{kbId} - Update org KB
-- DELETE /admin/org/kbs/{kbId} - Delete org KB
+- GET /admin/org/kb/bases - List org KBs
+- POST /admin/org/kb/bases - Create org KB
+- GET /admin/org/kb/{kbId} - Get org KB
+- PATCH /admin/org/kb/{kbId} - Update org KB
+- DELETE /admin/org/kb/{kbId} - Delete org KB
 
 Routes - Platform Admin:
-- GET /admin/sys/kbs - List system KBs
-- POST /admin/sys/kbs - Create system KB
-- GET /admin/sys/kbs/{kbId} - Get system KB
-- PATCH /admin/sys/kbs/{kbId} - Update system KB
-- DELETE /admin/sys/kbs/{kbId} - Delete system KB
-- POST /admin/sys/kbs/{kbId}/orgs - Associate KB with org
-- DELETE /admin/sys/kbs/{kbId}/orgs/{orgId} - Remove org association
+- GET /admin/sys/kb/bases - List system KBs
+- POST /admin/sys/kb/bases - Create system KB
+- GET /admin/sys/kb/{kbId} - Get system KB
+- PATCH /admin/sys/kb/{kbId} - Update system KB
+- DELETE /admin/sys/kb/{kbId} - Delete system KB
+- POST /admin/sys/kb/{kbId}/orgs - Associate KB with org
+- DELETE /admin/sys/kb/{kbId}/orgs/{orgId} - Remove org association
 """
 import json
 from typing import Dict, Any, List, Optional
 import org_common as common
+from kb_common.permissions import can_view_kb, can_edit_kb, can_delete_kb
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Handle KB base operations with multi-scope support
+    
+    ADR-019 Compliant: Centralized router auth pattern
+    - Auth checks happen at router level, not in handlers
+    - Single auth check per request
     
     Args:
         event: API Gateway event
@@ -67,13 +72,13 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         path_params = event.get('pathParameters', {}) or {}
         
         # Route to appropriate handler based on path pattern
-        if '/workspaces/' in path:
+        if '/ws/' in path:
             return route_workspace_handlers(event, supabase_user_id, http_method, path, path_params)
         elif '/chats/' in path:
             return route_chat_handlers(event, supabase_user_id, http_method, path, path_params)
-        elif '/admin/org/kbs' in path:
+        elif '/admin/org/kb' in path:
             return route_org_admin_handlers(event, supabase_user_id, http_method, path, path_params)
-        elif '/admin/sys/kbs' in path:
+        elif '/admin/sys/kb' in path:
             return route_sys_admin_handlers(event, supabase_user_id, http_method, path, path_params)
         elif http_method == 'OPTIONS':
             # Handle CORS preflight
@@ -101,11 +106,34 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
 
 def route_workspace_handlers(event: Dict[str, Any], user_id: str, method: str, path: str, path_params: Dict[str, str]) -> Dict[str, Any]:
-    """Route workspace-scoped requests"""
-    workspace_id = path_params.get('workspaceId')
+    """
+    Route workspace-scoped requests
+    
+    ADR-019c: Two-step auth pattern
+    - Step 1: Workspace membership check
+    - Step 2: Resource permission check (where applicable)
+    """
+    workspace_id = path_params.get('wsId')
     if not workspace_id:
         return common.bad_request_response('Workspace ID is required')
     
+    workspace_id = common.validate_uuid(workspace_id, 'workspace_id')
+    
+    # ========================================
+    # ADR-019c: STEP 1 - Workspace Membership
+    # ========================================
+    if not _is_ws_member(workspace_id, user_id):
+        return common.forbidden_response('Not a workspace member')
+    
+    # For write operations, require ws_admin
+    is_write_operation = method in ['POST', 'PATCH', 'DELETE']
+    if is_write_operation and '/toggle' in path:
+        if not _is_ws_admin_or_owner(workspace_id, user_id):
+            return common.forbidden_response('Only workspace admins can toggle KB access')
+    
+    # ========================================
+    # ROUTE TO HANDLERS (no auth checks in handlers)
+    # ========================================
     if '/available-kbs' in path:
         if method == 'GET':
             return handle_list_available_kbs_for_workspace(user_id, workspace_id)
@@ -115,27 +143,48 @@ def route_workspace_handlers(event: Dict[str, Any], user_id: str, method: str, p
             return common.bad_request_response('KB ID is required')
         if method == 'POST':
             return handle_toggle_kb_for_workspace(event, user_id, workspace_id, kb_id)
-    elif path.endswith(f'/workspaces/{workspace_id}/kb'):
+    elif path.endswith(f'/ws/{workspace_id}/kb'):
         if method == 'GET':
             return handle_get_workspace_kb(user_id, workspace_id)
         elif method == 'POST':
+            # Require admin for KB creation
+            if not _is_ws_admin_or_owner(workspace_id, user_id):
+                return common.forbidden_response('Only workspace admins can create workspace KBs')
             return handle_create_workspace_kb(event, user_id, workspace_id)
     elif '/kb/' in path:
         kb_id = path_params.get('kbId')
         if not kb_id:
             return common.bad_request_response('KB ID is required')
         if method == 'PATCH':
-            return handle_update_kb(event, user_id, kb_id, 'workspace')
+            # Require admin for KB update
+            if not _is_ws_admin_or_owner(workspace_id, user_id):
+                return common.forbidden_response('Only workspace admins can update workspace KBs')
+            return handle_update_kb(event, user_id, kb_id)
     
     return common.method_not_allowed_response()
 
 
 def route_chat_handlers(event: Dict[str, Any], user_id: str, method: str, path: str, path_params: Dict[str, str]) -> Dict[str, Any]:
-    """Route chat-scoped requests"""
+    """
+    Route chat-scoped requests
+    
+    ADR-019: Centralized auth at router level
+    """
     chat_id = path_params.get('chatId')
     if not chat_id:
         return common.bad_request_response('Chat ID is required')
     
+    chat_id = common.validate_uuid(chat_id, 'chat_id')
+    
+    # ========================================
+    # CENTRALIZED AUTH CHECK (ADR-019)
+    # ========================================
+    if not check_chat_access(user_id, chat_id):
+        return common.forbidden_response('You do not have access to this chat')
+    
+    # ========================================
+    # ROUTE TO HANDLERS (no auth checks in handlers)
+    # ========================================
     if '/available-kbs' in path:
         if method == 'GET':
             return handle_list_available_kbs_for_chat(user_id, chat_id)
@@ -155,47 +204,89 @@ def route_chat_handlers(event: Dict[str, Any], user_id: str, method: str, path: 
 
 
 def route_org_admin_handlers(event: Dict[str, Any], user_id: str, method: str, path: str, path_params: Dict[str, str]) -> Dict[str, Any]:
-    """Route org admin requests"""
+    """
+    Route org admin requests
+    
+    ADR-019: Centralized auth at router level
+    - Extract org context from event
+    - Check org admin access ONCE
+    - Handlers do NOT contain auth checks
+    """
     kb_id = path_params.get('kbId')
     
+    # ========================================
+    # CENTRALIZED ORG CONTEXT EXTRACTION (ADR-019)
+    # ========================================
+    org_id = common.get_org_context_from_event(event)
+    if not org_id:
+        return common.bad_request_response('Organization context required. Pass orgId in query params or request body.')
+    
+    # ========================================
+    # CENTRALIZED AUTH CHECK (ADR-019)
+    # ========================================
+    if not common.check_org_admin(user_id, org_id):
+        return common.forbidden_response('Organization admin access required')
+    
+    # ========================================
+    # ROUTE TO HANDLERS (no auth checks in handlers)
+    # ========================================
     if kb_id:
+        kb_id = common.validate_uuid(kb_id, 'kb_id')
         if method == 'GET':
-            return handle_get_org_kb(user_id, kb_id)
+            return handle_get_org_kb(kb_id, org_id)
         elif method == 'PATCH':
-            return handle_update_kb(event, user_id, kb_id, 'org')
+            return handle_update_kb(event, user_id, kb_id)
         elif method == 'DELETE':
-            return handle_delete_kb(user_id, kb_id, 'org')
+            return handle_delete_kb(user_id, kb_id, 'org', org_id)
     else:
         if method == 'GET':
-            return handle_list_org_kbs(event, user_id)
+            return handle_list_org_kbs(org_id)
         elif method == 'POST':
-            return handle_create_org_kb(event, user_id)
+            return handle_create_org_kb(event, user_id, org_id)
     
     return common.method_not_allowed_response()
 
 
 def route_sys_admin_handlers(event: Dict[str, Any], user_id: str, method: str, path: str, path_params: Dict[str, str]) -> Dict[str, Any]:
-    """Route platform admin requests"""
+    """
+    Route platform admin requests
+    
+    ADR-019: Centralized auth at router level
+    - Check sys admin access ONCE at router level
+    - Handlers do NOT contain auth checks
+    """
     kb_id = path_params.get('kbId')
     
+    # ========================================
+    # CENTRALIZED AUTH CHECK (ADR-019)
+    # ========================================
+    if not common.check_sys_admin(user_id):
+        return common.forbidden_response('Platform admin access required')
+    
+    # ========================================
+    # ROUTE TO HANDLERS (no auth checks in handlers)
+    # ========================================
     if kb_id and '/orgs' in path:
+        kb_id = common.validate_uuid(kb_id, 'kb_id')
         org_id = path_params.get('orgId')
         if org_id:
+            org_id = common.validate_uuid(org_id, 'org_id')
             if method == 'DELETE':
                 return handle_remove_sys_kb_org(user_id, kb_id, org_id)
         else:
             if method == 'POST':
                 return handle_associate_sys_kb_org(event, user_id, kb_id)
     elif kb_id:
+        kb_id = common.validate_uuid(kb_id, 'kb_id')
         if method == 'GET':
-            return handle_get_sys_kb(user_id, kb_id)
+            return handle_get_sys_kb(kb_id)
         elif method == 'PATCH':
-            return handle_update_kb(event, user_id, kb_id, 'sys')
+            return handle_update_kb(event, user_id, kb_id)
         elif method == 'DELETE':
             return handle_delete_kb(user_id, kb_id, 'sys')
     else:
         if method == 'GET':
-            return handle_list_sys_kbs(event, user_id)
+            return handle_list_sys_kbs()
         elif method == 'POST':
             return handle_create_sys_kb(event, user_id)
     
@@ -204,6 +295,7 @@ def route_sys_admin_handlers(event: Dict[str, Any], user_id: str, method: str, p
 
 # ============================================================================
 # Workspace Scope Handlers
+# NOTE: Auth checks are done at router level per ADR-019
 # ============================================================================
 
 def handle_get_workspace_kb(user_id: str, workspace_id: str) -> Dict[str, Any]:
@@ -211,13 +303,9 @@ def handle_get_workspace_kb(user_id: str, workspace_id: str) -> Dict[str, Any]:
     Get workspace KB (auto-create if doesn't exist)
     
     Returns workspace-scoped KB or creates one on first access
+    
+    Auth: Checked at router level (workspace member access)
     """
-    workspace_id = common.validate_uuid(workspace_id, 'workspace_id')
-    
-    # Check workspace access
-    if not check_workspace_access(user_id, workspace_id):
-        raise common.ForbiddenError('You do not have access to this workspace')
-    
     # Get workspace to find org_id
     workspace = common.find_one(
         table='workspaces',
@@ -256,13 +344,9 @@ def handle_create_workspace_kb(event: Dict[str, Any], user_id: str, workspace_id
         "name": "Workspace Documents",
         "description": "Auto-created workspace KB"
     }
+    
+    Auth: Checked at router level (ws_admin access)
     """
-    workspace_id = common.validate_uuid(workspace_id, 'workspace_id')
-    
-    # Check workspace admin access
-    if not check_ws_admin_access(user_id, workspace_id):
-        raise common.ForbiddenError('Only workspace admins can create workspace KBs')
-    
     # Get workspace
     workspace = common.find_one(
         table='workspaces',
@@ -324,13 +408,9 @@ def handle_list_available_kbs_for_workspace(user_id: str, workspace_id: str) -> 
     List all KBs available for workspace (workspace + org + system KBs with inheritance chain)
     
     Returns KBs grouped by source (workspace, org, sys) with enablement status
+    
+    Auth: Checked at router level (workspace member access)
     """
-    workspace_id = common.validate_uuid(workspace_id, 'workspace_id')
-    
-    # Check workspace access
-    if not check_workspace_access(user_id, workspace_id):
-        raise common.ForbiddenError('You do not have access to this workspace')
-    
     # Use RPC function to get accessible KBs
     result = common.rpc(
         'get_accessible_kbs_for_workspace',
@@ -370,13 +450,10 @@ def handle_toggle_kb_for_workspace(event: Dict[str, Any], user_id: str, workspac
     {
         "isEnabled": true/false
     }
-    """
-    workspace_id = common.validate_uuid(workspace_id, 'workspace_id')
-    kb_id = common.validate_uuid(kb_id, 'kb_id')
     
-    # Check workspace admin access
-    if not check_ws_admin_access(user_id, workspace_id):
-        raise common.ForbiddenError('Only workspace admins can toggle KB access')
+    Auth: Checked at router level (ws_admin access)
+    """
+    kb_id = common.validate_uuid(kb_id, 'kb_id')
     
     # Parse request body
     body = json.loads(event.get('body', '{}'))
@@ -431,16 +508,15 @@ def handle_toggle_kb_for_workspace(event: Dict[str, Any], user_id: str, workspac
 
 # ============================================================================
 # Chat Scope Handlers
+# NOTE: Auth checks are done at router level per ADR-019
 # ============================================================================
 
 def handle_get_chat_kb(user_id: str, chat_id: str) -> Dict[str, Any]:
-    """Get chat KB (auto-create if doesn't exist)"""
-    chat_id = common.validate_uuid(chat_id, 'chat_id')
+    """
+    Get chat KB (auto-create if doesn't exist)
     
-    # Check chat access
-    if not check_chat_access(user_id, chat_id):
-        raise common.ForbiddenError('You do not have access to this chat')
-    
+    Auth: Checked at router level (chat access)
+    """
     # Get chat session to find org_id
     chat = common.find_one(
         table='chat_sessions',
@@ -470,13 +546,11 @@ def handle_get_chat_kb(user_id: str, chat_id: str) -> Dict[str, Any]:
 
 
 def handle_create_chat_kb(event: Dict[str, Any], user_id: str, chat_id: str) -> Dict[str, Any]:
-    """Create chat KB (called automatically on first document upload)"""
-    chat_id = common.validate_uuid(chat_id, 'chat_id')
+    """
+    Create chat KB (called automatically on first document upload)
     
-    # Check chat access
-    if not check_chat_access(user_id, chat_id):
-        raise common.ForbiddenError('You do not have access to this chat')
-    
+    Auth: Checked at router level (chat access)
+    """
     # Get chat session
     chat = common.find_one(
         table='chat_sessions',
@@ -532,13 +606,11 @@ def handle_create_chat_kb(event: Dict[str, Any], user_id: str, chat_id: str) -> 
 
 
 def handle_list_available_kbs_for_chat(user_id: str, chat_id: str) -> Dict[str, Any]:
-    """List all KBs available for chat"""
-    chat_id = common.validate_uuid(chat_id, 'chat_id')
+    """
+    List all KBs available for chat
     
-    # Check chat access
-    if not check_chat_access(user_id, chat_id):
-        raise common.ForbiddenError('You do not have access to this chat')
-    
+    Auth: Checked at router level (chat access)
+    """
     # Get chat's workspace context
     chat = common.find_one(
         table='chat_sessions',
@@ -589,13 +661,12 @@ def handle_list_available_kbs_for_chat(user_id: str, chat_id: str) -> Dict[str, 
 
 
 def handle_toggle_kb_for_chat(event: Dict[str, Any], user_id: str, chat_id: str, kb_id: str) -> Dict[str, Any]:
-    """Toggle KB access for chat"""
-    chat_id = common.validate_uuid(chat_id, 'chat_id')
-    kb_id = common.validate_uuid(kb_id, 'kb_id')
+    """
+    Toggle KB access for chat
     
-    # Check chat access
-    if not check_chat_access(user_id, chat_id):
-        raise common.ForbiddenError('You do not have access to this chat')
+    Auth: Checked at router level (chat access)
+    """
+    kb_id = common.validate_uuid(kb_id, 'kb_id')
     
     # Parse request body
     body = json.loads(event.get('body', '{}'))
@@ -638,33 +709,20 @@ def handle_toggle_kb_for_chat(event: Dict[str, Any], user_id: str, chat_id: str,
 
 # ============================================================================
 # Org Admin Handlers
+# NOTE: Auth checks are done at router level per ADR-019
 # ============================================================================
 
-def handle_list_org_kbs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+def handle_list_org_kbs(org_id: str) -> Dict[str, Any]:
     """
     List org KBs
     
-    Returns KBs where user is org admin
+    Auth: Checked at router level (org_admin access)
     """
-    # Get user's orgs where they are admin
-    memberships = common.find_many(
-        table='org_members',
-        filters={
-            'user_id': user_id,
-            'org_role': ['org_admin', 'org_owner']
-        }
-    )
-    
-    if not memberships:
-        return common.success_response([])
-    
-    org_ids = [m['org_id'] for m in memberships]
-    
     # Get org KBs
     kbs = common.find_many(
         table='kb_bases',
         filters={
-            'org_id': org_ids,
+            'org_id': org_id,
             'scope': 'org',
             'is_deleted': False
         },
@@ -681,28 +739,22 @@ def handle_list_org_kbs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     return common.success_response(result)
 
 
-def handle_create_org_kb(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+def handle_create_org_kb(event: Dict[str, Any], user_id: str, org_id: str) -> Dict[str, Any]:
     """
     Create org KB
     
     Request body:
     {
-        "orgId": "uuid",
         "name": "KB Name",
         "description": "Optional description",
         "config": {
             "whoCanUpload": "admin" | "all_members"
         }
     }
+    
+    Auth: Checked at router level (org_admin access)
     """
     body = json.loads(event.get('body', '{}'))
-    
-    org_id = common.validate_required(body.get('orgId'), 'orgId')
-    org_id = common.validate_uuid(org_id, 'orgId')
-    
-    # Check org admin access
-    if not check_org_admin_access(user_id, org_id):
-        raise common.ForbiddenError('Only org admins can create org KBs')
     
     name = common.validate_required(body.get('name'), 'name')
     description = body.get('description', '')
@@ -746,10 +798,12 @@ def handle_create_org_kb(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     return common.created_response(result)
 
 
-def handle_get_org_kb(user_id: str, kb_id: str) -> Dict[str, Any]:
-    """Get org KB details"""
-    kb_id = common.validate_uuid(kb_id, 'kb_id')
+def handle_get_org_kb(kb_id: str, org_id: str) -> Dict[str, Any]:
+    """
+    Get org KB details
     
+    Auth: Checked at router level (org_admin access)
+    """
     kb = common.find_one(
         table='kb_bases',
         filters={'id': kb_id, 'scope': 'org', 'is_deleted': False}
@@ -758,9 +812,9 @@ def handle_get_org_kb(user_id: str, kb_id: str) -> Dict[str, Any]:
     if not kb:
         raise common.NotFoundError('KB not found')
     
-    # Check org admin access
-    if not check_org_admin_access(user_id, kb['org_id']):
-        raise common.ForbiddenError('You do not have access to this KB')
+    # Verify KB belongs to the org
+    if kb.get('org_id') != org_id:
+        raise common.ForbiddenError('KB does not belong to this organization')
     
     result = format_kb_record(kb)
     result['stats'] = get_kb_stats(kb['id'])
@@ -770,14 +824,15 @@ def handle_get_org_kb(user_id: str, kb_id: str) -> Dict[str, Any]:
 
 # ============================================================================
 # Platform Admin Handlers
+# NOTE: Auth checks are done at router level per ADR-019
 # ============================================================================
 
-def handle_list_sys_kbs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
-    """List system KBs (platform admin only)"""
-    # Check platform admin access
-    if not check_sys_admin_access(user_id):
-        raise common.ForbiddenError('Only platform admins can list system KBs')
+def handle_list_sys_kbs() -> Dict[str, Any]:
+    """
+    List system KBs (platform admin only)
     
+    Auth: Checked at router level (sys_admin access)
+    """
     kbs = common.find_many(
         table='kb_bases',
         filters={'scope': 'sys', 'is_deleted': False},
@@ -802,11 +857,11 @@ def handle_list_sys_kbs(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
 
 
 def handle_create_sys_kb(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
-    """Create system KB (platform admin only)"""
-    # Check platform admin access
-    if not check_sys_admin_access(user_id):
-        raise common.ForbiddenError('Only platform admins can create system KBs')
+    """
+    Create system KB (platform admin only)
     
+    Auth: Checked at router level (sys_admin access)
+    """
     body = json.loads(event.get('body', '{}'))
     
     name = common.validate_required(body.get('name'), 'name')
@@ -840,14 +895,12 @@ def handle_create_sys_kb(event: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     return common.created_response(result)
 
 
-def handle_get_sys_kb(user_id: str, kb_id: str) -> Dict[str, Any]:
-    """Get system KB details (platform admin only)"""
-    kb_id = common.validate_uuid(kb_id, 'kb_id')
+def handle_get_sys_kb(kb_id: str) -> Dict[str, Any]:
+    """
+    Get system KB details (platform admin only)
     
-    # Check platform admin access
-    if not check_sys_admin_access(user_id):
-        raise common.ForbiddenError('Only platform admins can view system KBs')
-    
+    Auth: Checked at router level (sys_admin access)
+    """
     kb = common.find_one(
         table='kb_bases',
         filters={'id': kb_id, 'scope': 'sys', 'is_deleted': False}
@@ -885,13 +938,9 @@ def handle_associate_sys_kb_org(event: Dict[str, Any], user_id: str, kb_id: str)
     {
         "orgId": "uuid"
     }
+    
+    Auth: Checked at router level (sys_admin access)
     """
-    kb_id = common.validate_uuid(kb_id, 'kb_id')
-    
-    # Check platform admin access
-    if not check_sys_admin_access(user_id):
-        raise common.ForbiddenError('Only platform admins can associate system KBs')
-    
     body = json.loads(event.get('body', '{}'))
     org_id = common.validate_required(body.get('orgId'), 'orgId')
     org_id = common.validate_uuid(org_id, 'orgId')
@@ -929,14 +978,11 @@ def handle_associate_sys_kb_org(event: Dict[str, Any], user_id: str, kb_id: str)
 
 
 def handle_remove_sys_kb_org(user_id: str, kb_id: str, org_id: str) -> Dict[str, Any]:
-    """Remove system KB org association"""
-    kb_id = common.validate_uuid(kb_id, 'kb_id')
-    org_id = common.validate_uuid(org_id, 'org_id')
+    """
+    Remove system KB org association
     
-    # Check platform admin access
-    if not check_sys_admin_access(user_id):
-        raise common.ForbiddenError('Only platform admins can remove system KB associations')
-    
+    Auth: Checked at router level (sys_admin access)
+    """
     # Find association
     association = common.find_one(
         table='kb_access_sys',
@@ -962,9 +1008,10 @@ def handle_remove_sys_kb_org(user_id: str, kb_id: str, org_id: str) -> Dict[str,
 
 # ============================================================================
 # Common Update/Delete Handlers
+# NOTE: Auth checks are done at router level per ADR-019
 # ============================================================================
 
-def handle_update_kb(event: Dict[str, Any], user_id: str, kb_id: str, expected_scope: str) -> Dict[str, Any]:
+def handle_update_kb(event: Dict[str, Any], user_id: str, kb_id: str) -> Dict[str, Any]:
     """
     Update KB (name, description, config)
     
@@ -974,9 +1021,9 @@ def handle_update_kb(event: Dict[str, Any], user_id: str, kb_id: str, expected_s
         "description": "New description",
         "config": {...}
     }
-    """
-    kb_id = common.validate_uuid(kb_id, 'kb_id')
     
+    Auth: Checked at router level
+    """
     kb = common.find_one(
         table='kb_bases',
         filters={'id': kb_id, 'is_deleted': False}
@@ -984,20 +1031,6 @@ def handle_update_kb(event: Dict[str, Any], user_id: str, kb_id: str, expected_s
     
     if not kb:
         raise common.NotFoundError('KB not found')
-    
-    if kb['scope'] != expected_scope:
-        raise common.ForbiddenError('Invalid scope for this operation')
-    
-    # Check access based on scope
-    if expected_scope == 'sys':
-        if not check_sys_admin_access(user_id):
-            raise common.ForbiddenError('Only platform admins can update system KBs')
-    elif expected_scope == 'org':
-        if not check_org_admin_access(user_id, kb['org_id']):
-            raise common.ForbiddenError('Only org admins can update org KBs')
-    elif expected_scope == 'workspace':
-        if not check_ws_admin_access(user_id, kb['workspace_id']):
-            raise common.ForbiddenError('Only workspace admins can update workspace KBs')
     
     # Parse request body
     body = json.loads(event.get('body', '{}'))
@@ -1032,10 +1065,12 @@ def handle_update_kb(event: Dict[str, Any], user_id: str, kb_id: str, expected_s
     return common.success_response(result)
 
 
-def handle_delete_kb(user_id: str, kb_id: str, expected_scope: str) -> Dict[str, Any]:
-    """Soft delete KB"""
-    kb_id = common.validate_uuid(kb_id, 'kb_id')
+def handle_delete_kb(user_id: str, kb_id: str, expected_scope: str, org_id: str = None) -> Dict[str, Any]:
+    """
+    Soft delete KB
     
+    Auth: Checked at router level
+    """
     kb = common.find_one(
         table='kb_bases',
         filters={'id': kb_id, 'is_deleted': False}
@@ -1047,13 +1082,9 @@ def handle_delete_kb(user_id: str, kb_id: str, expected_scope: str) -> Dict[str,
     if kb['scope'] != expected_scope:
         raise common.ForbiddenError('Invalid scope for this operation')
     
-    # Check access
-    if expected_scope == 'sys':
-        if not check_sys_admin_access(user_id):
-            raise common.ForbiddenError('Only platform admins can delete system KBs')
-    elif expected_scope == 'org':
-        if not check_org_admin_access(user_id, kb['org_id']):
-            raise common.ForbiddenError('Only org admins can delete org KBs')
+    # For org KBs, verify it belongs to the right org
+    if expected_scope == 'org' and org_id and kb.get('org_id') != org_id:
+        raise common.ForbiddenError('KB does not belong to this organization')
     
     # Soft delete
     common.update_one(
@@ -1122,26 +1153,22 @@ def get_kb_stats(kb_id: str) -> Dict[str, Any]:
     }
 
 
-def check_workspace_access(user_id: str, workspace_id: str) -> bool:
-    """Check if user has access to workspace"""
-    membership = common.find_one(
-        table='ws_members',
-        filters={'ws_id': workspace_id, 'user_id': user_id}
+def _is_ws_member(workspace_id: str, user_id: str) -> bool:
+    """Check if user is a member of the workspace."""
+    result = common.rpc(
+        function_name='is_ws_member',
+        params={'p_user_id': user_id, 'p_ws_id': workspace_id}
     )
-    return membership is not None
+    return result is True
 
 
-def check_ws_admin_access(user_id: str, workspace_id: str) -> bool:
-    """Check if user is workspace admin"""
-    membership = common.find_one(
-        table='ws_members',
-        filters={
-            'ws_id': workspace_id,
-            'user_id': user_id,
-            'ws_role': ['ws_owner', 'ws_admin']
-        }
+def _is_ws_admin_or_owner(workspace_id: str, user_id: str) -> bool:
+    """Check if user is admin or owner of the workspace."""
+    result = common.rpc(
+        function_name='is_ws_admin_or_owner',
+        params={'p_user_id': user_id, 'p_ws_id': workspace_id}
     )
-    return membership is not None
+    return result is True
 
 
 def check_chat_access(user_id: str, chat_id: str) -> bool:
@@ -1180,25 +1207,3 @@ def check_chat_access(user_id: str, chat_id: str) -> bool:
     except Exception as e:
         print(f"Error checking chat access: {str(e)}")
         return False
-
-
-def check_org_admin_access(user_id: str, org_id: str) -> bool:
-    """Check if user is org admin"""
-    membership = common.find_one(
-        table='org_members',
-        filters={
-            'org_id': org_id,
-            'user_id': user_id,
-            'org_role': ['org_owner', 'org_admin']
-        }
-    )
-    return membership is not None
-
-
-def check_sys_admin_access(user_id: str) -> bool:
-    """Check if user is platform admin"""
-    profile = common.find_one(
-        table='user_profiles',
-        filters={'user_id': user_id}
-    )
-    return profile and profile.get('sys_role') in ['sys_owner', 'sys_admin']

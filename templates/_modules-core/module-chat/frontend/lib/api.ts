@@ -5,6 +5,7 @@
  * Uses the CORA API Gateway with Bearer token authentication.
  */
 
+import type { AuthAdapter } from "@{{PROJECT_NAME}}/module-access";
 import type {
   ChatSession,
   ChatMessage,
@@ -150,6 +151,36 @@ async function apiRequest<T>(
   const response = await fetch(url, {
     ...options,
     headers,
+    // NOTE: credentials: 'include' removed - not needed for Bearer token auth
+    // Only session-based (cookie) auth needs credentials: 'include'
+  });
+
+  return parseResponse<T>(response);
+}
+
+/**
+ * Make a session-authenticated API request (for admin routes)
+ * Uses session cookies instead of Bearer tokens
+ */
+async function sessionApiRequest<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const url = endpoint.startsWith("http") ? endpoint : `${getApiBase()}${endpoint}`;
+
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string>),
+  };
+
+  // Add Content-Type for requests with body
+  if (options.body && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+    credentials: "include", // Include cookies for session auth
   });
 
   return parseResponse<T>(response);
@@ -161,10 +192,10 @@ async function apiRequest<T>(
 
 /**
  * List chat sessions for a workspace
- * GET /workspaces/{workspaceId}/chats
+ * GET /ws/{wsId}/chats
  */
 export async function listWorkspaceChats(
-  workspaceId: string,
+  wsId: string,
   token: string,
   options?: ListSessionsOptions
 ): Promise<ListSessionsResponse> {
@@ -177,20 +208,20 @@ export async function listWorkspaceChats(
     sort_order: options?.sortOrder,
   };
 
-  const url = buildUrl(`/workspaces/${workspaceId}/chats`, params);
+  const url = buildUrl(`/ws/${wsId}/chats`, params);
   return apiRequest<ListSessionsResponse>(url, token);
 }
 
 /**
  * Create a new chat session in a workspace
- * POST /workspaces/{workspaceId}/chats
+ * POST /ws/{wsId}/chats
  */
 export async function createWorkspaceChat(
-  workspaceId: string,
+  wsId: string,
   token: string,
   input?: CreateSessionInput
 ): Promise<ChatSession> {
-  return apiRequest<ChatSession>(`/workspaces/${workspaceId}/chats`, token, {
+  return apiRequest<ChatSession>(`/ws/${wsId}/chats`, token, {
     method: "POST",
     body: JSON.stringify({
       title: input?.title,
@@ -768,4 +799,364 @@ export async function sendMessage(
       }
     );
   });
+}
+
+// =============================================================================
+// SYS ADMIN API
+// =============================================================================
+
+/**
+ * Get platform chat configuration (sys admin only)
+ * GET /admin/sys/chat/config
+ * 
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
+ */
+export async function getSysAdminConfig(token: string): Promise<{
+  defaultTitleFormat: string;
+  messageRetentionDays: number;
+  sessionTimeoutMinutes: number;
+  maxMessageLength: number;
+  maxKbGroundings: number;
+  defaultAiProvider?: string;
+  defaultAiModel?: string;
+  streamingConfig?: Record<string, unknown>;
+  citationDisplayConfig?: Record<string, unknown>;
+}> {
+  return apiRequest("/admin/sys/chat/config", token);
+}
+
+/**
+ * Update platform chat configuration (sys admin only)
+ * PUT /admin/sys/chat/config
+ * 
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
+ */
+export async function updateSysAdminConfig(
+  token: string,
+  config: {
+    messageRetentionDays?: number;
+    sessionTimeoutMinutes?: number;
+    maxMessageLength?: number;
+    maxKbGroundings?: number;
+    defaultAiProvider?: string;
+    defaultAiModel?: string;
+  }
+): Promise<{ message: string }> {
+  return apiRequest("/admin/sys/chat/config", token, {
+    method: "PUT",
+    body: JSON.stringify(config),
+  });
+}
+
+/**
+ * Get platform-wide chat analytics (sys admin only)
+ * GET /admin/sys/chat/analytics
+ * 
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
+ */
+export async function getSysAdminAnalytics(token: string): Promise<{
+  totalSessions: number;
+  totalMessages: number;
+  activeSessions: {
+    last24Hours: number;
+    last7Days: number;
+    last30Days: number;
+  };
+}> {
+  return apiRequest("/admin/sys/chat/analytics", token);
+}
+
+/**
+ * Get detailed usage statistics (sys admin only)
+ * GET /admin/sys/chat/analytics/usage
+ * 
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
+ */
+export async function getSysAdminUsageStats(token: string): Promise<{
+  mostActiveOrgs: Array<{
+    orgId: string;
+    orgName: string;
+    sessionCount: number;
+  }>;
+}> {
+  return apiRequest("/admin/sys/chat/analytics/usage", token);
+}
+
+/**
+ * Get token usage statistics (sys admin only)
+ * GET /admin/sys/chat/analytics/tokens
+ * 
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
+ */
+export async function getSysAdminTokenStats(token: string): Promise<{
+  totalTokensUsed: number;
+  averageTokensPerMessage: number;
+  message?: string;
+}> {
+  return apiRequest("/admin/sys/chat/analytics/tokens", token);
+}
+
+/**
+ * List all chat sessions (all orgs, sys admin only)
+ * GET /admin/sys/chat/sessions
+ * 
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
+ */
+export async function listSysAdminSessions(
+  token: string,
+  options?: { limit?: number; offset?: number }
+): Promise<
+  Array<{
+    id: string;
+    title: string;
+    orgId: string;
+    workspaceId?: string;
+    createdBy: string;
+    createdAt: string;
+    updatedAt: string;
+  }>
+> {
+  const params = options ? { limit: options.limit, offset: options.offset } : undefined;
+  const url = buildUrl("/admin/sys/chat/sessions", params);
+  return apiRequest(url, token);
+}
+
+/**
+ * Get chat session details (sys admin view)
+ * GET /admin/sys/chat/sessions/{id}
+ * 
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
+ */
+export async function getSysAdminSession(
+  token: string,
+  sessionId: string
+): Promise<{
+  id: string;
+  title: string;
+  orgId: string;
+  workspaceId?: string;
+  createdBy: string;
+  isDeleted: boolean;
+  deletedAt?: string;
+  messageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}> {
+  return apiRequest(`/admin/sys/chat/sessions/${sessionId}`, token);
+}
+
+/**
+ * Force delete chat session (sys admin only)
+ * DELETE /admin/sys/chat/sessions/{id}
+ * 
+ * ✅ KB PATTERN: Accepts token string (extracted once at page level)
+ */
+export async function deleteSysAdminSession(
+  token: string,
+  sessionId: string
+): Promise<{ message: string; id: string }> {
+  return apiRequest(`/admin/sys/chat/sessions/${sessionId}`, token, {
+    method: "DELETE",
+  });
+}
+
+// =============================================================================
+// ORG ADMIN API
+// =============================================================================
+
+/**
+ * Get organization chat configuration (org admin)
+ * GET /admin/org/chat/config?orgId={orgId}
+ * 
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
+ */
+export async function getOrgAdminConfig(token: string, orgId: string): Promise<{
+  messageRetentionDays: number;
+  maxMessageLength: number;
+  maxKbGroundings: number;
+  sharingPolicy: Record<string, unknown>;
+  usingPlatformDefaults: boolean;
+}> {
+  const url = buildUrl("/admin/org/chat/config", { orgId });
+  return apiRequest(url, token);
+}
+
+/**
+ * Update organization chat configuration (org admin)
+ * PUT /admin/org/chat/config?orgId={orgId}
+ * 
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
+ */
+export async function updateOrgAdminConfig(
+  token: string,
+  orgId: string,
+  config: {
+    messageRetentionDays?: number;
+    maxMessageLength?: number;
+    maxKbGroundings?: number;
+    sharingPolicy?: Record<string, unknown>;
+  }
+): Promise<{ message: string }> {
+  const url = buildUrl("/admin/org/chat/config", { orgId });
+  return apiRequest(url, token, {
+    method: "PUT",
+    body: JSON.stringify(config),
+  });
+}
+
+/**
+ * List all organization chat sessions (org admin)
+ * GET /admin/org/chat/sessions?orgId={orgId}
+ * 
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
+ */
+export async function listOrgAdminSessions(
+  token: string,
+  orgId: string,
+  options?: { limit?: number; offset?: number }
+): Promise<
+  Array<{
+    id: string;
+    title: string;
+    workspaceId?: string;
+    createdBy: string;
+    createdAt: string;
+    updatedAt: string;
+  }>
+> {
+  const params = { orgId, limit: options?.limit, offset: options?.offset };
+  const url = buildUrl("/admin/org/chat/sessions", params);
+  return apiRequest(url, token);
+}
+
+/**
+ * Get chat session details (org admin view)
+ * GET /admin/org/chat/sessions/{id}?orgId={orgId}
+ * 
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
+ */
+export async function getOrgAdminSession(
+  token: string,
+  orgId: string,
+  sessionId: string
+): Promise<{
+  id: string;
+  title: string;
+  workspaceId?: string;
+  createdBy: string;
+  isDeleted: boolean;
+  deletedAt?: string;
+  messageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}> {
+  const url = buildUrl(`/admin/org/chat/sessions/${sessionId}`, { orgId });
+  return apiRequest(url, token);
+}
+
+/**
+ * Delete organization chat session (org admin)
+ * DELETE /admin/org/chat/sessions/{id}?orgId={orgId}
+ * 
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
+ */
+export async function deleteOrgAdminSession(
+  token: string,
+  orgId: string,
+  sessionId: string
+): Promise<{ message: string; id: string }> {
+  const url = buildUrl(`/admin/org/chat/sessions/${sessionId}`, { orgId });
+  return apiRequest(url, token, {
+    method: "DELETE",
+  });
+}
+
+/**
+ * Restore soft-deleted chat session (org admin)
+ * POST /admin/org/chat/sessions/{id}/restore?orgId={orgId}
+ * 
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
+ */
+export async function restoreOrgAdminSession(
+  token: string,
+  orgId: string,
+  sessionId: string
+): Promise<{ message: string; id: string }> {
+  const url = buildUrl(`/admin/org/chat/sessions/${sessionId}/restore`, { orgId });
+  return apiRequest(url, token, {
+    method: "POST",
+  });
+}
+
+/**
+ * Get organization chat analytics (org admin)
+ * GET /admin/org/chat/analytics?orgId={orgId}
+ * 
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
+ */
+export async function getOrgAdminAnalytics(token: string, orgId: string): Promise<{
+  totalSessions: number;
+  totalMessages: number;
+}> {
+  const url = buildUrl("/admin/org/chat/analytics", { orgId });
+  return apiRequest(url, token);
+}
+
+/**
+ * Get user activity statistics (org admin)
+ * GET /admin/org/chat/analytics/users?orgId={orgId}
+ * 
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
+ */
+export async function getOrgAdminUserStats(token: string, orgId: string): Promise<{
+  mostActiveUsers: Array<{
+    userId: string;
+    userName: string;
+    sessionCount: number;
+  }>;
+}> {
+  const url = buildUrl("/admin/org/chat/analytics/users", { orgId });
+  return apiRequest(url, token);
+}
+
+/**
+ * Get workspace activity statistics (org admin)
+ * GET /admin/org/chat/analytics/workspaces?orgId={orgId}
+ * 
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
+ */
+export async function getOrgAdminWorkspaceStats(token: string, orgId: string): Promise<{
+  mostActiveWorkspaces: Array<{
+    workspaceId: string;
+    workspaceName: string;
+    sessionCount: number;
+  }>;
+}> {
+  const url = buildUrl("/admin/org/chat/analytics/workspaces", { orgId });
+  return apiRequest(url, token);
+}
+
+/**
+ * View message content (org admin read-only)
+ * GET /admin/org/chat/messages/{id}?orgId={orgId}
+ * 
+ * ✅ KB PATTERN: Accepts token string and orgId (extracted at page level)
+ */
+export async function getOrgAdminMessage(
+  token: string,
+  orgId: string,
+  messageId: string
+): Promise<{
+  id: string;
+  sessionId: string;
+  role: string;
+  content: string;
+  metadata: Record<string, unknown>;
+  sessionTitle?: string;
+  sessionCreatedBy?: string;
+  createdAt: string;
+  createdBy?: string;
+}> {
+  const url = buildUrl(`/admin/org/chat/messages/${messageId}`, { orgId });
+  return apiRequest(url, token);
 }

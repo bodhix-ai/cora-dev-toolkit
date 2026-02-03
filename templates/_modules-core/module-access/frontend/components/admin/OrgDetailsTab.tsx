@@ -369,7 +369,7 @@ export function OrgDetailsTab({ orgId, authAdapter, onUpdate }: OrgDetailsTabPro
                     <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 1 }}>
                       <OrgIcon
                         iconName={formData.appIcon}
-                        className="text-blue-600"
+                        sx={{ color: "primary.main" }}
                         fontSize="medium"
                       />
                       <Typography variant="body1" fontWeight="500">
@@ -529,7 +529,7 @@ export function OrgDetailsTab({ orgId, authAdapter, onUpdate }: OrgDetailsTabPro
                     <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 1 }}>
                       <OrgIcon
                         iconName={organization.appIcon}
-                        className="text-blue-600"
+                        sx={{ color: "primary.main" }}
                         fontSize="medium"
                       />
                       <Typography variant="body1" fontWeight="500">

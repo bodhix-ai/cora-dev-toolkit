@@ -32,13 +32,26 @@ import {
   Skeleton,
   Chip,
   Alert,
+  Breadcrumbs,
+  Link,
+  Snackbar,
 } from "@mui/material";
 import {
   Warning as WarningIcon,
   Delete as DeleteIcon,
   Close as CloseIcon,
   Info as InfoIcon,
+  NavigateNext as NavigateNextIcon,
+  CheckCircle as CheckCircleIcon,
 } from "@mui/icons-material";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import {
+  sysListCredentials,
+  sysCreateCredential,
+  sysUpdateCredential,
+  sysDeleteCredential,
+  sysValidateCredential,
+} from "../lib/api";
 import type { VoiceCredential } from "../types";
 
 // =============================================================================
@@ -90,6 +103,22 @@ const VOICE_SERVICES = [
 function PageHeader() {
   return (
     <Box sx={{ mb: 4 }}>
+      <Breadcrumbs
+        separator={<NavigateNextIcon fontSize="small" />}
+        aria-label="breadcrumb"
+        sx={{ mb: 2 }}
+      >
+        <Link
+          underline="hover"
+          color="inherit"
+          href="/admin/sys"
+          sx={{ display: "flex", alignItems: "center" }}
+          aria-label="Navigate to Sys Admin"
+        >
+          Sys Admin
+        </Link>
+        <Typography color="text.primary">Voice</Typography>
+      </Breadcrumbs>
       <Typography variant="h4" component="h1" fontWeight="bold">
         Voice Service Configuration
       </Typography>
@@ -415,27 +444,53 @@ export function SysVoiceConfigPage({
   className = "",
   loadingComponent,
 }: SysVoiceConfigPageProps) {
+  // Auth hook for token
+  const { authAdapter, isAuthenticated } = useUser();
+
   // State
   const [credentials, setCredentials] = useState<VoiceCredential[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [configureService, setConfigureService] = useState<(typeof VOICE_SERVICES)[number] | null>(null);
   const [validatingService, setValidatingService] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
-  // Load credentials on mount
+  // Helper to get token
+  const getToken = useCallback(async (): Promise<string | null> => {
+    try {
+      return await authAdapter.getToken();
+    } catch (err) {
+      console.error("Failed to get auth token:", err);
+      return null;
+    }
+  }, [authAdapter]);
+
+  // Load credentials on mount and when authenticated
   React.useEffect(() => {
-    loadCredentials();
-  }, []);
+    if (isAuthenticated) {
+      loadCredentials();
+    }
+  }, [isAuthenticated]);
 
   const loadCredentials = async () => {
+    const token = await getToken();
+    if (!token) {
+      setError(new Error("Authentication required"));
+      setIsLoading(false);
+      return;
+    }
+    
     setIsLoading(true);
     setError(null);
     try {
-      // TODO: Replace with actual API call
-      // const response = await voiceApi.getCredentials({ scope: 'platform' });
-      // setCredentials(response.data);
-      setCredentials([]);
+      const data = await sysListCredentials(token);
+      setCredentials(data);
     } catch (err) {
+      console.error("Failed to load credentials:", err);
       setError(err instanceof Error ? err : new Error("Failed to load credentials"));
     } finally {
       setIsLoading(false);
@@ -443,44 +498,83 @@ export function SysVoiceConfigPage({
   };
 
   const handleSaveCredential = useCallback(async (data: CredentialFormData) => {
-    // TODO: Replace with actual API call
-    // await voiceApi.createCredential({
-    //   serviceName: data.serviceName,
-    //   apiKey: data.apiKey,
-    //   scope: 'platform'
-    // });
-    console.log("Saving credential:", data);
+    const token = await getToken();
+    if (!token) throw new Error("No authentication token");
+    
+    // Check if credential already exists for this service
+    const existing = credentials.find((c) => c.serviceName === data.serviceName);
+    
+    if (existing) {
+      // Update existing credential
+      await sysUpdateCredential(existing.id, token, {
+        apiKey: data.apiKey,
+        configMetadata: data.configMetadata,
+      });
+      setSnackbar({ open: true, message: `${data.serviceName} credential updated`, severity: "success" });
+    } else {
+      // Create new credential
+      await sysCreateCredential(token, {
+        serviceName: data.serviceName,
+        apiKey: data.apiKey,
+        configMetadata: data.configMetadata,
+      });
+      setSnackbar({ open: true, message: `${data.serviceName} credential created`, severity: "success" });
+    }
+    
     await loadCredentials();
-  }, []);
+  }, [getToken, credentials]);
 
   const handleValidateCredential = useCallback(async (serviceName: string) => {
+    const token = await getToken();
+    if (!token) return;
+    
+    const credential = credentials.find((c) => c.serviceName === serviceName);
+    if (!credential) return;
+    
     setValidatingService(serviceName);
     try {
-      // TODO: Replace with actual API call
-      // await voiceApi.validateCredential(credentialId);
-      console.log("Validating credential for:", serviceName);
-      // Show success toast
+      const result = await sysValidateCredential(credential.id, token);
+      if (result.isValid) {
+        setSnackbar({ open: true, message: `${serviceName} credential is valid`, severity: "success" });
+      } else {
+        setSnackbar({ open: true, message: result.message || `${serviceName} validation failed`, severity: "error" });
+      }
     } catch (err) {
-      // Show error toast
       console.error("Validation failed:", err);
+      setSnackbar({ 
+        open: true, 
+        message: err instanceof Error ? err.message : "Validation failed", 
+        severity: "error" 
+      });
     } finally {
       setValidatingService(null);
     }
-  }, []);
+  }, [getToken, credentials]);
 
   const handleDeleteCredential = useCallback(async (serviceName: string) => {
+    const token = await getToken();
+    if (!token) return;
+    
+    const credential = credentials.find((c) => c.serviceName === serviceName);
+    if (!credential) return;
+    
     if (!window.confirm(`Are you sure you want to remove the ${serviceName} credential?`)) {
       return;
     }
+    
     try {
-      // TODO: Replace with actual API call
-      // await voiceApi.deleteCredential(credentialId);
-      console.log("Deleting credential for:", serviceName);
+      await sysDeleteCredential(credential.id, token);
+      setSnackbar({ open: true, message: `${serviceName} credential deleted`, severity: "success" });
       await loadCredentials();
     } catch (err) {
       console.error("Delete failed:", err);
+      setSnackbar({ 
+        open: true, 
+        message: err instanceof Error ? err.message : "Delete failed", 
+        severity: "error" 
+      });
     }
-  }, []);
+  }, [getToken, credentials]);
 
   const getCredentialForService = (serviceName: string): VoiceCredential | null => {
     return credentials.find((c) => c.serviceName === serviceName) || null;
@@ -557,6 +651,23 @@ export function SysVoiceConfigPage({
         onSave={handleSaveCredential}
         onClose={() => setConfigureService(null)}
       />
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          variant="filled"
+          icon={snackbar.severity === "success" ? <CheckCircleIcon /> : undefined}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

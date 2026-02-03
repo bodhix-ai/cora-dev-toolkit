@@ -81,16 +81,6 @@ class Reporter:
         lines.append("=" * 80)
         lines.append("")
         
-        # Summary
-        status_color = Fore.GREEN if report.status == 'passed' else Fore.RED
-        lines.append(f"Status: {status_color}{report.status.upper()}{Style.RESET_ALL}")
-        lines.append(f"Frontend API Calls: {report.summary.get('frontend_calls', 0)}")
-        lines.append(f"API Gateway Routes: {report.summary.get('gateway_routes', 0)}")
-        lines.append(f"Lambda Handlers: {report.summary.get('lambda_handlers', 0)}")
-        lines.append(f"Mismatches Found: {Fore.RED}{len([m for m in report.mismatches if m.severity == 'error'])}{Style.RESET_ALL}")
-        lines.append(f"Warnings: {Fore.YELLOW}{len([m for m in report.mismatches if m.severity == 'warning'])}{Style.RESET_ALL}")
-        lines.append("")
-        
         # Errors
         errors = [m for m in report.mismatches if m.severity == 'error']
         if errors:
@@ -126,6 +116,62 @@ class Reporter:
                 if mismatch.suggestion:
                     lines.append(f"    {Fore.CYAN}Suggestion: {mismatch.suggestion}{Style.RESET_ALL}")
             lines.append("")
+        
+        # Summary (at end for easy visibility without scrolling)
+        lines.append("-" * 80)
+        lines.append(f"{Fore.CYAN}SUMMARY{Style.RESET_ALL}")
+        lines.append("-" * 80)
+        lines.append("")
+        status_color = Fore.GREEN if report.status == 'passed' else Fore.RED
+        lines.append(f"Status: {status_color}{report.status.upper()}{Style.RESET_ALL}")
+        lines.append(f"Frontend API Calls: {report.summary.get('frontend_calls', 0)}")
+        lines.append(f"API Gateway Routes: {report.summary.get('gateway_routes', 0)}")
+        lines.append(f"Lambda Handlers: {report.summary.get('lambda_handlers', 0)}")
+        lines.append(f"Errors: {Fore.RED}{len([m for m in report.mismatches if m.severity == 'error'])}{Style.RESET_ALL}")
+        lines.append(f"Warnings: {Fore.YELLOW}{len([m for m in report.mismatches if m.severity == 'warning'])}{Style.RESET_ALL}")
+        lines.append("")
+        
+        # Auth validation summary (with layer breakdown)
+        if 'auth_validation' in report.summary:
+            auth = report.summary['auth_validation']
+            if auth.get('enabled'):
+                # Check if layer breakdown is available
+                if 'layer1' in auth and 'layer2' in auth:
+                    lines.append(f"{Fore.CYAN}Auth Validation (ADR-019):{Style.RESET_ALL}")
+                    
+                    # Layer 1: Admin Authorization
+                    l1 = auth['layer1']
+                    l1_errors = l1.get('errors', 0)
+                    l1_warnings = l1.get('warnings', 0)
+                    l1_color = Fore.GREEN if l1_errors == 0 else Fore.RED
+                    lines.append(f"  Layer 1 (Admin Auth): {l1_color}{l1_errors} errors{Style.RESET_ALL}, {Fore.YELLOW}{l1_warnings} warnings{Style.RESET_ALL}")
+                    
+                    # Layer 2: Resource Permissions
+                    l2 = auth['layer2']
+                    l2_errors = l2.get('errors', 0)
+                    l2_warnings = l2.get('warnings', 0)
+                    l2_color = Fore.GREEN if l2_errors == 0 else Fore.RED
+                    lines.append(f"  Layer 2 (Resource Permissions): {l2_color}{l2_errors} errors{Style.RESET_ALL}, {Fore.YELLOW}{l2_warnings} warnings{Style.RESET_ALL}")
+                else:
+                    # Fallback to simple summary if layer breakdown unavailable
+                    auth_errors = auth.get('total_errors', auth.get('errors', 0))
+                    auth_warnings = auth.get('total_warnings', auth.get('warnings', 0))
+                    auth_color = Fore.GREEN if auth_errors == 0 else Fore.RED
+                    lines.append(f"Auth Validation (ADR-019): {auth_color}{auth_errors} errors{Style.RESET_ALL}, {Fore.YELLOW}{auth_warnings} warnings{Style.RESET_ALL}")
+        
+        # Code quality validation summary
+        if 'code_quality_validation' in report.summary:
+            quality = report.summary['code_quality_validation']
+            if quality.get('enabled'):
+                quality_errors = quality.get('errors', 0)
+                quality_warnings = quality.get('warnings', 0)
+                quality_color = Fore.GREEN if quality_errors == 0 else Fore.RED
+                lines.append(f"Code Quality Validation: {quality_color}{quality_errors} errors{Style.RESET_ALL}, {Fore.YELLOW}{quality_warnings} warnings{Style.RESET_ALL}")
+                by_category = quality.get('by_category', {})
+                if by_category:
+                    for category, count in by_category.items():
+                        lines.append(f"  - {category}: {count}")
+        lines.append("")
         
         # Footer
         lines.append("=" * 80)
@@ -197,6 +243,23 @@ class Reporter:
         warning_count = len([m for m in report.mismatches if m.severity == 'warning'])
         lines.append(f"**Errors:** {error_count}")
         lines.append(f"**Warnings:** {warning_count}")
+        lines.append("")
+        
+        # Auth validation summary
+        if 'auth_validation' in report.summary:
+            auth = report.summary['auth_validation']
+            if auth.get('enabled'):
+                lines.append(f"**Auth Validation (ADR-019):** {auth.get('errors', 0)} errors, {auth.get('warnings', 0)} warnings")
+        
+        # Code quality validation summary
+        if 'code_quality_validation' in report.summary:
+            quality = report.summary['code_quality_validation']
+            if quality.get('enabled'):
+                lines.append(f"**Code Quality Validation:** {quality.get('errors', 0)} errors, {quality.get('warnings', 0)} warnings")
+                by_category = quality.get('by_category', {})
+                if by_category:
+                    category_str = ", ".join([f"{cat}: {cnt}" for cat, cnt in by_category.items()])
+                    lines.append(f"  - Categories: {category_str}")
         lines.append("")
         
         # Errors

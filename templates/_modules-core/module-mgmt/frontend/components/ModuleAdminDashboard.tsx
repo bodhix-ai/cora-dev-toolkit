@@ -10,7 +10,30 @@
  * ```
  */
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Paper,
+  Grid,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
+  InputAdornment,
+  IconButton,
+} from "@mui/material";
+import {
+  Search as SearchIcon,
+  Refresh as RefreshIcon,
+  Settings as SettingsIcon,
+  Close as CloseIcon,
+} from "@mui/icons-material";
 import {
   useModuleRegistry,
   type Module,
@@ -64,73 +87,153 @@ function ModuleCard({
   };
 
   return (
-    <div
-      className={`module-card ${module.isEnabled ? "enabled" : "disabled"} ${
-        module.type === "core" ? "core-module" : "functional-module"
-      }`}
-      data-module={module.name}
+    <Paper
+      elevation={2}
+      sx={{
+        borderLeft: (theme) =>
+          `4px solid ${
+            module.type === "core" ? theme.palette.primary.main : theme.palette.success.main
+          }`,
+        opacity: module.isEnabled ? 1 : 0.7,
+        transition: "all 0.15s ease",
+        "&:hover": {
+          boxShadow: 4,
+        },
+      }}
     >
-      <div className="module-card-header">
-        <div className="module-card-title">
-          <h3>{module.displayName}</h3>
-          <span className={`module-type-badge ${module.type}`}>
-            {module.type}
-          </span>
-        </div>
-        <div className="module-card-status">
-          <span
-            className={`status-indicator ${
-              module.isEnabled ? "active" : "inactive"
-            }`}
-          />
-          <span className="status-text">
-            {module.isEnabled ? "Enabled" : "Disabled"}
-          </span>
-        </div>
-      </div>
+      <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 0.5 }}>
+          <Box>
+            <Typography variant="h6" component="h3" sx={{ mb: 0.5 }}>
+              {module.displayName}
+            </Typography>
+            <Chip
+              label={module.type}
+              size="small"
+              sx={{
+                textTransform: "uppercase",
+                fontSize: "0.75rem",
+                bgcolor: (theme) =>
+                  module.type === "core"
+                    ? theme.palette.mode === "dark"
+                      ? "rgba(33, 150, 243, 0.2)"
+                      : "#dbeafe"
+                    : theme.palette.mode === "dark"
+                    ? "rgba(76, 175, 80, 0.2)"
+                    : "#dcfce7",
+                color: (theme) =>
+                  module.type === "core"
+                    ? theme.palette.mode === "dark"
+                      ? "#90caf9"
+                      : "#1e40af"
+                    : theme.palette.mode === "dark"
+                    ? "#a5d6a7"
+                    : "#166534",
+              }}
+            />
+          </Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                bgcolor: module.isEnabled ? "success.main" : "error.main",
+              }}
+            />
+            <Typography variant="body2" color="text.secondary">
+              {module.isEnabled ? "Enabled" : "Disabled"}
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
 
-      <div className="module-card-body">
-        <p className="module-description">
+      <Box sx={{ p: 2 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.5 }}>
           {module.description || "No description available."}
-        </p>
+        </Typography>
 
-        <div className="module-meta">
-          <div className="meta-item">
-            <span className="meta-label">Module Name:</span>
-            <code className="meta-value">{module.name}</code>
-          </div>
-          <div className="meta-item">
-            <span className="meta-label">Tier:</span>
-            <span className="meta-value">{tierLabels[module.tier]}</span>
-          </div>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          <Box sx={{ display: "flex", fontSize: "0.8125rem" }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ width: "100px", flexShrink: 0 }}
+            >
+              Module Name:
+            </Typography>
+            <Typography
+              variant="body2"
+              component="code"
+              sx={{
+                bgcolor: "action.hover",
+                px: 0.5,
+                borderRadius: 0.5,
+                fontFamily: "monospace",
+              }}
+            >
+              {module.name}
+            </Typography>
+          </Box>
+          <Box sx={{ display: "flex", fontSize: "0.8125rem" }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ width: "100px", flexShrink: 0 }}
+            >
+              Tier:
+            </Typography>
+            <Typography variant="body2">{tierLabels[module.tier]}</Typography>
+          </Box>
           {module.version && (
-            <div className="meta-item">
-              <span className="meta-label">Version:</span>
-              <span className="meta-value">{module.version}</span>
-            </div>
+            <Box sx={{ display: "flex", fontSize: "0.8125rem" }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ width: "100px", flexShrink: 0 }}
+              >
+                Version:
+              </Typography>
+              <Typography variant="body2">{module.version}</Typography>
+            </Box>
           )}
           {module.dependencies.length > 0 && (
-            <div className="meta-item">
-              <span className="meta-label">Dependencies:</span>
-              <span className="meta-value">
-                {module.dependencies.join(", ")}
-              </span>
-            </div>
+            <Box sx={{ display: "flex", fontSize: "0.8125rem" }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ width: "100px", flexShrink: 0 }}
+              >
+                Dependencies:
+              </Typography>
+              <Typography variant="body2">{module.dependencies.join(", ")}</Typography>
+            </Box>
           )}
-        </div>
-      </div>
+        </Box>
+      </Box>
 
-      <div className="module-card-footer">
-        <button
-          className="module-btn configure"
+      <Box
+        sx={{
+          p: 2,
+          display: "flex",
+          gap: 1.5,
+          borderTop: 1,
+          borderColor: "divider",
+        }}
+      >
+        <Button
+          variant="outlined"
+          startIcon={<SettingsIcon />}
           onClick={onConfigure}
           disabled={isProcessing}
+          sx={{ flex: 1 }}
         >
           Configure
-        </button>
+        </Button>
         {module.isEnabled ? (
-          <button
-            className="module-btn disable"
+          <Button
+            variant="contained"
+            color="error"
             onClick={onDisable}
             disabled={isProcessing || module.type === "core"}
             title={
@@ -138,20 +241,23 @@ function ModuleCard({
                 ? "Core modules cannot be disabled"
                 : "Disable module"
             }
+            sx={{ flex: 1 }}
           >
             {isProcessing ? "Processing..." : "Disable"}
-          </button>
+          </Button>
         ) : (
-          <button
-            className="module-btn enable"
+          <Button
+            variant="contained"
+            color="success"
             onClick={onEnable}
             disabled={isProcessing}
+            sx={{ flex: 1 }}
           >
             {isProcessing ? "Processing..." : "Enable"}
-          </button>
+          </Button>
         )}
-      </div>
-    </div>
+      </Box>
+    </Paper>
   );
 }
 
@@ -198,73 +304,122 @@ function ModuleConfigModal({
   };
 
   return (
-    <div className="module-config-modal-overlay" onClick={onClose}>
-      <div className="module-config-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Configure {module.displayName}</h2>
-          <button className="modal-close" onClick={onClose}>
-            ×
-          </button>
-        </div>
+    <Dialog open onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Typography variant="h6">Configure {module.displayName}</Typography>
+        <IconButton onClick={onClose} size="small" aria-label="Close dialog">
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
 
-        <div className="modal-body">
-          {error && <div className="modal-error">{error}</div>}
+      <DialogContent>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
 
-          <div className="config-section">
-            <label htmlFor="module-config">Module Configuration (JSON)</label>
-            <textarea
-              id="module-config"
-              aria-label="Module Configuration JSON"
-              value={config}
-              onChange={(e) => setConfig(e.target.value)}
-              rows={10}
-              placeholder="{}"
-            />
-          </div>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            Module Configuration (JSON)
+          </Typography>
+          <TextField
+            fullWidth
+            multiline
+            rows={10}
+            value={config}
+            onChange={(e) => setConfig(e.target.value)}
+            placeholder="{}"
+            inputProps={{
+              style: { fontFamily: "monospace", fontSize: "0.875rem" },
+              "aria-label": "Module Configuration JSON",
+            }}
+          />
+        </Box>
 
-          <div className="config-section">
-            <label htmlFor="feature-flags">Feature Flags (JSON)</label>
-            <textarea
-              id="feature-flags"
-              aria-label="Feature Flags JSON"
-              value={featureFlags}
-              onChange={(e) => setFeatureFlags(e.target.value)}
-              rows={6}
-              placeholder="{}"
-            />
-          </div>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            Feature Flags (JSON)
+          </Typography>
+          <TextField
+            fullWidth
+            multiline
+            rows={6}
+            value={featureFlags}
+            onChange={(e) => setFeatureFlags(e.target.value)}
+            placeholder="{}"
+            inputProps={{
+              style: { fontFamily: "monospace", fontSize: "0.875rem" },
+              "aria-label": "Feature Flags JSON",
+            }}
+          />
+        </Box>
 
-          <div className="module-info">
-            <h3>Module Information</h3>
-            <dl>
-              <dt>Name:</dt>
-              <dd>{module.name}</dd>
-              <dt>Type:</dt>
-              <dd>{module.type}</dd>
-              <dt>Tier:</dt>
-              <dd>{module.tier}</dd>
-              <dt>Dependencies:</dt>
-              <dd>{module.dependencies.join(", ") || "None"}</dd>
-              <dt>Required Permissions:</dt>
-              <dd>{module.requiredPermissions.join(", ") || "None"}</dd>
-            </dl>
-          </div>
-        </div>
+        <Paper sx={{ p: 2, bgcolor: "action.hover" }}>
+          <Typography variant="subtitle2" gutterBottom>
+            Module Information
+          </Typography>
+          <Grid container spacing={1} sx={{ fontSize: "0.8125rem" }}>
+            <Grid item xs={4}>
+              <Typography variant="body2" color="text.secondary">
+                Name:
+              </Typography>
+            </Grid>
+            <Grid item xs={8}>
+              <Typography variant="body2">{module.name}</Typography>
+            </Grid>
+            <Grid item xs={4}>
+              <Typography variant="body2" color="text.secondary">
+                Type:
+              </Typography>
+            </Grid>
+            <Grid item xs={8}>
+              <Typography variant="body2">{module.type}</Typography>
+            </Grid>
+            <Grid item xs={4}>
+              <Typography variant="body2" color="text.secondary">
+                Tier:
+              </Typography>
+            </Grid>
+            <Grid item xs={8}>
+              <Typography variant="body2">{module.tier}</Typography>
+            </Grid>
+            <Grid item xs={4}>
+              <Typography variant="body2" color="text.secondary">
+                Dependencies:
+              </Typography>
+            </Grid>
+            <Grid item xs={8}>
+              <Typography variant="body2">
+                {module.dependencies.join(", ") || "None"}
+              </Typography>
+            </Grid>
+            <Grid item xs={4}>
+              <Typography variant="body2" color="text.secondary">
+                Required Permissions:
+              </Typography>
+            </Grid>
+            <Grid item xs={8}>
+              <Typography variant="body2">
+                {module.requiredPermissions.join(", ") || "None"}
+              </Typography>
+            </Grid>
+          </Grid>
+        </Paper>
+      </DialogContent>
 
-        <div className="modal-footer">
-          <button className="modal-btn cancel" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            className="modal-btn save"
-            onClick={handleSave}
-            disabled={isSaving}
-          >
-            {isSaving ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
-      </div>
-    </div>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button
+          variant="contained"
+          onClick={handleSave}
+          disabled={isSaving}
+          startIcon={isSaving ? <CircularProgress size={16} /> : null}
+        >
+          {isSaving ? "Saving..." : "Save Changes"}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 
@@ -297,25 +452,6 @@ export function ModuleAdminDashboard({
   const [configModule, setConfigModule] = useState<Module | null>(null);
   const [filter, setFilter] = useState<"all" | "core" | "functional">("all");
   const [searchQuery, setSearchQuery] = useState("");
-
-  // Inject CSS styles on mount
-  useEffect(() => {
-    const styleId = "module-admin-dashboard-styles";
-    
-    // Check if styles already injected
-    if (!document.getElementById(styleId)) {
-      const styleElement = document.createElement("style");
-      styleElement.id = styleId;
-      styleElement.textContent = moduleAdminDashboardStyles;
-      document.head.appendChild(styleElement);
-    }
-
-    return () => {
-      // Optional: Remove styles on unmount
-      // const el = document.getElementById(styleId);
-      // if (el) el.remove();
-    };
-  }, []);
 
   // Handle enable/disable
   const handleToggleModule = useCallback(
@@ -377,77 +513,115 @@ export function ModuleAdminDashboard({
 
   if (isLoading) {
     return (
-      <div className={`module-admin-dashboard loading ${className}`}>
-        <div className="loading-spinner">Loading modules...</div>
-      </div>
+      <Box className={className} sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
   if (error) {
     return (
-      <div className={`module-admin-dashboard error ${className}`}>
-        <div className="error-message">
-          <h3>Failed to load modules</h3>
-          <p>{error}</p>
-          <button onClick={refreshModules}>Retry</button>
-        </div>
-      </div>
+      <Box className={className} sx={{ p: 4 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            Failed to load modules
+          </Typography>
+          <Typography variant="body2">{error}</Typography>
+        </Alert>
+        <Button variant="contained" onClick={refreshModules}>
+          Retry
+        </Button>
+      </Box>
     );
   }
 
   return (
-    <div className={`module-admin-dashboard ${className}`}>
-      <header className="dashboard-header">
-        <h1>Module Registry</h1>
-        <p>Manage CORA modules for your application</p>
-      </header>
+    <Box className={className} sx={{ p: 4, maxWidth: 1400, mx: "auto" }}>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" gutterBottom fontWeight={600}>
+          Module Registry
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Manage CORA modules for your application
+        </Typography>
+      </Box>
 
-      <div className="dashboard-toolbar">
-        <div className="search-box">
-          <input
-            type="text"
-            placeholder="Search modules..."
-            aria-label="Search modules"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+      <Box
+        sx={{
+          display: "flex",
+          gap: 2,
+          alignItems: "center",
+          mb: 4,
+          flexWrap: "wrap",
+        }}
+      >
+        <TextField
+          label="Search"
+          placeholder="Search modules..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          size="small"
+          sx={{ width: 250 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+        />
 
-        <div className="filter-buttons">
-          <button
-            className={filter === "all" ? "active" : ""}
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Button
+            variant={filter === "all" ? "contained" : "outlined"}
             onClick={() => setFilter("all")}
+            size="small"
           >
             All ({(modules || []).length})
-          </button>
-          <button
-            className={filter === "core" ? "active" : ""}
+          </Button>
+          <Button
+            variant={filter === "core" ? "contained" : "outlined"}
             onClick={() => setFilter("core")}
+            size="small"
           >
             Core ({(modules || []).filter((m) => m.type === "core").length})
-          </button>
-          <button
-            className={filter === "functional" ? "active" : ""}
+          </Button>
+          <Button
+            variant={filter === "functional" ? "contained" : "outlined"}
             onClick={() => setFilter("functional")}
+            size="small"
           >
             Functional ({(modules || []).filter((m) => m.type === "functional").length})
-          </button>
-        </div>
+          </Button>
+        </Box>
 
-        <button className="refresh-btn" onClick={refreshModules}>
+        <Button
+          variant="outlined"
+          startIcon={<RefreshIcon />}
+          onClick={refreshModules}
+          size="small"
+          sx={{ ml: "auto" }}
+        >
           Refresh
-        </button>
-      </div>
+        </Button>
+      </Box>
 
-      <div className="dashboard-content">
+      <Box>
         {[1, 2, 3].map((tier) => {
           const tierModules = modulesByTier[tier as 1 | 2 | 3];
           if (tierModules.length === 0) return null;
 
           return (
-            <section key={tier} className="tier-section">
-              <h2>Tier {tier} Modules</h2>
-              <div className="module-grid">
+            <Box key={tier} sx={{ mb: 4 }}>
+              <Typography
+                variant="h5"
+                gutterBottom
+                fontWeight={600}
+                sx={{ mb: 2, pb: 1, borderBottom: 2, borderColor: "divider" }}
+              >
+                Tier {tier} Modules
+              </Typography>
+              <Grid container spacing={3}>
                 {tierModules.map((module) => {
                   const isProcessing = processingModules.has(module.name);
                   const actions: ModuleCardActions = {
@@ -458,28 +632,29 @@ export function ModuleAdminDashboard({
 
                   if (renderCard) {
                     return (
-                      <React.Fragment key={module.name}>
+                      <Grid item xs={12} sm={6} lg={4} key={module.name}>
                         {renderCard(module, actions)}
-                      </React.Fragment>
+                      </Grid>
                     );
                   }
 
                   return (
-                    <ModuleCard
-                      key={module.name}
-                      module={module}
-                      onEnable={actions.enable}
-                      onDisable={actions.disable}
-                      onConfigure={actions.openConfig}
-                      isProcessing={isProcessing}
-                    />
+                    <Grid item xs={12} sm={6} lg={4} key={module.name}>
+                      <ModuleCard
+                        module={module}
+                        onEnable={actions.enable}
+                        onDisable={actions.disable}
+                        onConfigure={actions.openConfig}
+                        isProcessing={isProcessing}
+                      />
+                    </Grid>
                   );
                 })}
-              </div>
-            </section>
+              </Grid>
+            </Box>
           );
         })}
-      </div>
+      </Box>
 
       {configModule && (
         <ModuleConfigModal
@@ -488,411 +663,8 @@ export function ModuleAdminDashboard({
           onSave={(updates) => handleSaveConfig(configModule, updates)}
         />
       )}
-    </div>
+    </Box>
   );
 }
-
-// =============================================================================
-// CSS Styles
-// =============================================================================
-
-export const moduleAdminDashboardStyles = `
-.module-admin-dashboard {
-  padding: 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.dashboard-header {
-  margin-bottom: 2rem;
-}
-
-.dashboard-header h1 {
-  font-size: 1.75rem;
-  font-weight: 600;
-  margin: 0 0 0.5rem 0;
-}
-
-.dashboard-header p {
-  color: #666;
-  margin: 0;
-}
-
-.dashboard-toolbar {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
-}
-
-.search-box input {
-  padding: 0.5rem 1rem;
-  border: 1px solid #ddd;
-  border-radius: 0.375rem;
-  width: 250px;
-}
-
-.filter-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.filter-buttons button {
-  padding: 0.5rem 1rem;
-  border: 1px solid #ddd;
-  background: white;
-  border-radius: 0.375rem;
-  cursor: pointer;
-}
-
-.filter-buttons button.active {
-  background: #0066cc;
-  color: white;
-  border-color: #0066cc;
-}
-
-.refresh-btn {
-  padding: 0.5rem 1rem;
-  background: #f5f5f5;
-  border: 1px solid #ddd;
-  border-radius: 0.375rem;
-  cursor: pointer;
-  margin-left: auto;
-}
-
-.tier-section {
-  margin-bottom: 2rem;
-}
-
-.tier-section h2 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #eee;
-}
-
-.module-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 1.5rem;
-}
-
-.module-card {
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 0.5rem;
-  overflow: hidden;
-  transition: box-shadow 0.15s ease;
-}
-
-.module-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.module-card.disabled {
-  opacity: 0.7;
-}
-
-.module-card.core-module {
-  border-left: 4px solid #0066cc;
-}
-
-.module-card.functional-module {
-  border-left: 4px solid #22c55e;
-}
-
-.module-card-header {
-  padding: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  border-bottom: 1px solid #eee;
-}
-
-.module-card-title h3 {
-  margin: 0 0 0.25rem 0;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.module-type-badge {
-  display: inline-block;
-  padding: 0.125rem 0.5rem;
-  font-size: 0.75rem;
-  border-radius: 9999px;
-  text-transform: uppercase;
-}
-
-.module-type-badge.core {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.module-type-badge.functional {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.module-card-status {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.status-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.status-indicator.active {
-  background: #22c55e;
-}
-
-.status-indicator.inactive {
-  background: #dc2626;
-}
-
-.status-text {
-  font-size: 0.875rem;
-  color: #666;
-}
-
-.module-card-body {
-  padding: 1rem;
-}
-
-.module-description {
-  margin: 0 0 1rem 0;
-  font-size: 0.875rem;
-  color: #666;
-  line-height: 1.5;
-}
-
-.module-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.meta-item {
-  display: flex;
-  font-size: 0.8125rem;
-}
-
-.meta-label {
-  color: #666;
-  width: 100px;
-  flex-shrink: 0;
-}
-
-.meta-value {
-  color: #333;
-}
-
-.meta-value code {
-  background: #f5f5f5;
-  padding: 0.125rem 0.375rem;
-  border-radius: 0.25rem;
-  font-family: monospace;
-}
-
-.module-card-footer {
-  padding: 1rem;
-  display: flex;
-  gap: 0.75rem;
-  border-top: 1px solid #eee;
-}
-
-.module-btn {
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  cursor: pointer;
-  flex: 1;
-}
-
-.module-btn.configure {
-  background: #f5f5f5;
-  border: 1px solid #ddd;
-  color: #333;
-}
-
-.module-btn.enable {
-  background: #22c55e;
-  border: none;
-  color: white;
-}
-
-.module-btn.disable {
-  background: #dc2626;
-  border: none;
-  color: white;
-}
-
-.module-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Modal Styles */
-.module-config-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.module-config-modal {
-  background: white;
-  border-radius: 0.5rem;
-  width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.modal-header {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #eee;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 1.25rem;
-}
-
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: #666;
-}
-
-.modal-body {
-  padding: 1.5rem;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.modal-error {
-  background: #fee2e2;
-  color: #dc2626;
-  padding: 0.75rem;
-  border-radius: 0.375rem;
-  margin-bottom: 1rem;
-}
-
-.config-section {
-  margin-bottom: 1.5rem;
-}
-
-.config-section label {
-  display: block;
-  font-weight: 500;
-  margin-bottom: 0.5rem;
-}
-
-.config-section textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 0.375rem;
-  font-family: monospace;
-  font-size: 0.875rem;
-  resize: vertical;
-}
-
-.module-info {
-  background: #f9fafb;
-  padding: 1rem;
-  border-radius: 0.375rem;
-}
-
-.module-info h4 {
-  margin: 0 0 0.75rem 0;
-  font-size: 0.875rem;
-}
-
-.module-info dl {
-  margin: 0;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.25rem 1rem;
-  font-size: 0.8125rem;
-}
-
-.module-info dt {
-  color: #666;
-}
-
-.module-info dd {
-  margin: 0;
-}
-
-.modal-footer {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid #eee;
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-}
-
-.modal-btn {
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  cursor: pointer;
-}
-
-.modal-btn.cancel {
-  background: #f5f5f5;
-  border: 1px solid #ddd;
-}
-
-.modal-btn.save {
-  background: #0066cc;
-  border: none;
-  color: white;
-}
-
-.modal-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.loading-spinner,
-.error-message {
-  padding: 2rem;
-  text-align: center;
-}
-
-.error-message h3 {
-  color: #dc2626;
-}
-
-.error-message button {
-  margin-top: 1rem;
-  padding: 0.5rem 1rem;
-  background: #0066cc;
-  color: white;
-  border: none;
-  border-radius: 0.375rem;
-  cursor: pointer;
-}
-`;
 
 export default ModuleAdminDashboard;

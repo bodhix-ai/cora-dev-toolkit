@@ -1,40 +1,87 @@
-/**
- * System Chat Configuration Page (Placeholder)
- * 
- * Platform admin page for configuring system-wide chat settings.
- * TODO: Implement sys-level chat configuration (requires chat_cfg_sys table)
- */
-
 "use client";
 
-import React from "react";
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Alert,
-  CircularProgress,
-} from "@mui/material";
-import { Construction } from "@mui/icons-material";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+/**
+ * System Chat Admin Page
+ *
+ * System-level chat management page for platform configuration,
+ * analytics, and session management.
+ *
+ * Access: System admins only (sys_owner, sys_admin)
+ *
+ * @example
+ * Route: /admin/sys/chat
+ */
 
-export default function SystemChatConfigPage() {
-  const { profile, loading, isAuthenticated } = useUser();
+import React, { useEffect, useState } from "react";
+import { useUser, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/module-access";
+import { SysChatAdmin } from "@{{PROJECT_NAME}}/module-chat";
+import { CircularProgress, Box, Alert } from "@mui/material";
 
-  // Loading state
+/**
+ * System Chat Admin Page Component
+ *
+ * Renders the System Chat admin interface with tabs for:
+ * - Platform settings configuration
+ * - Platform-wide analytics
+ * - Session management across all organizations
+ *
+ * Requires system admin role (sys_owner or sys_admin).
+ * 
+ * ✅ KB PATTERN: Create authenticated API client at page level
+ * - Get token ONCE at mount
+ * - Create authenticated client
+ * - Pass client (not authAdapter) to component
+ */
+export default function SystemChatAdminPage() {
+  const { profile, loading, isAuthenticated, authAdapter } = useUser();
+  const [token, setToken] = useState<string | null>(null);
+  const [tokenError, setTokenError] = useState<string | null>(null);
+
+  // Get token ONCE when auth is ready
+  useEffect(() => {
+    if (!authAdapter || !isAuthenticated) {
+      setToken(null);
+      return;
+    }
+
+    const initToken = async () => {
+      try {
+        const authToken = await authAdapter.getToken();
+        if (authToken) {
+          setToken(authToken);
+          setTokenError(null);
+        } else {
+          setTokenError("Failed to retrieve authentication token");
+        }
+      } catch (err) {
+        console.error('Failed to retrieve authentication token:', err);
+        setTokenError("Failed to retrieve authentication token");
+      }
+    };
+
+    initToken();
+  }, [authAdapter, isAuthenticated]);
+
+  // Show loading state while user profile is being fetched
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "400px",
+        }}
+      >
         <CircularProgress />
       </Box>
     );
   }
 
-  // Authentication check
+  // Check if user is authenticated
   if (!isAuthenticated || !profile) {
     return (
-      <Box p={4}>
+      <Box sx={{ p: 3 }}>
         <Alert severity="error">
           You must be logged in to access this page.
         </Alert>
@@ -42,49 +89,48 @@ export default function SystemChatConfigPage() {
     );
   }
 
-  // Authorization check - system admins only
+  // Check if user has system admin role
   const isSysAdmin = ["sys_owner", "sys_admin"].includes(
     profile.sysRole || ""
   );
 
   if (!isSysAdmin) {
     return (
-      <Box p={4}>
+      <Box sx={{ p: 3 }}>
         <Alert severity="error">
-          Access denied. System administrator role required.
+          Access denied. This page is only accessible to system administrators.
         </Alert>
       </Box>
     );
   }
 
-  return (
-    <Box sx={{ p: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        System Chat Configuration
-      </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-        Configure system-wide chat settings and defaults
-      </Typography>
+  // Show error if token retrieval failed
+  if (tokenError) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          {tokenError}
+        </Alert>
+      </Box>
+    );
+  }
 
-      <Card>
-        <CardContent sx={{ textAlign: "center", py: 8 }}>
-          <Construction sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
-          <Typography variant="h5" gutterBottom>
-            Coming Soon
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            System chat configuration is under development.
-          </Typography>
-          <Alert severity="info" sx={{ mt: 3, maxWidth: 600, mx: "auto" }}>
-            This page will allow platform admins to configure system-wide chat defaults
-            such as default models, message retention policies, and streaming settings.
-            <br /><br />
-            <strong>Note:</strong> Chat-related features like citation styles are currently
-            managed in the Access Control admin section under organization settings
-            (ai_cfg_org_prompts table).
-          </Alert>
-        </CardContent>
-      </Card>
-    </Box>
-  );
+  // Show loading while token is being retrieved
+  if (!token) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "400px",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // ✅ KB PATTERN: Pass token (retrieved once at mount)
+  return <SysChatAdmin token={token} />;
 }
