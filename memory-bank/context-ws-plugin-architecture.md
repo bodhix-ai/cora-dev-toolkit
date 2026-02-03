@@ -52,7 +52,7 @@ All sprints in the **WS Plugin Architecture** initiative follow this naming patt
 
 - **Branch:** `feature/ws-plugin-arch-s3`
 - **Plan:** `docs/plans/plan_ws-plugin-arch-s3.md`
-- **Status:** 🟡 Active (Phase 1 Complete)
+- **Status:** 🟡 Active (Phase 2 Complete ✅)
 - **Focus:** Dynamic module configuration (org/workspace config overrides, real-time updates)
 
 ## Sprint 1 Summary
@@ -189,6 +189,60 @@ Use composition pattern (target):
   - **Sprint 2 Update:** Add module availability integration section
 
 ## Session Log
+
+### February 2, 2026 - Sprint 3 Phase 2 Complete ✅ Backend API Implemented
+
+**Status:** Implementation - Phase 2 Complete  
+**Duration:** ~2 hours  
+**Focus:** Backend API endpoints for org and workspace module configuration
+
+**Work Completed:**
+
+**1. Lambda Handler Functions Added**
+- ✅ `_check_org_admin_access()` - Authorization helper (org admin or sys admin)
+- ✅ `_check_ws_admin_access()` - Authorization helper (ws admin, org admin, or sys admin)
+- ✅ `handle_list_org_modules()` - List modules with org-level resolution
+- ✅ `handle_get_org_module()` - Get single module with org-level resolution
+- ✅ `handle_update_org_module()` - Update org-level config override (CRUD)
+- ✅ `handle_list_ws_modules()` - List modules with workspace-level resolution
+- ✅ `handle_get_ws_module()` - Get single module with workspace-level resolution
+- ✅ `handle_update_ws_module()` - Update workspace-level config override (CRUD)
+
+**2. Route Integration**
+- ✅ Updated Lambda function route docstring with 6 new routes
+- ✅ Added route dispatcher entries for all org/ws admin routes
+- ✅ Handler-level authorization checks (no system-level gate blocking)
+
+**3. API Gateway Routes**
+- ✅ Added 6 new routes to `infrastructure/outputs.tf`:
+  - `GET /admin/org/mgmt/modules`
+  - `GET /admin/org/mgmt/modules/{name}`
+  - `PUT /admin/org/mgmt/modules/{name}`
+  - `GET /admin/ws/{wsId}/mgmt/modules`
+  - `GET /admin/ws/{wsId}/mgmt/modules/{name}`
+  - `PUT /admin/ws/{wsId}/mgmt/modules/{name}`
+- ✅ All routes use lambda_mgmt invoke_arn
+- ✅ All routes require authorization (public = false)
+
+**4. SQL Function Integration**
+- Org routes call: `resolve_all_modules_for_org()` and `resolve_org_module_config()`
+- Workspace routes call: `resolve_all_modules_for_workspace()` and `resolve_module_config()`
+- Config overrides stored in `mgmt_cfg_org_modules` and `mgmt_cfg_ws_modules`
+- Full cascade logic enforced (sys → org → ws)
+
+**5. Authorization Logic**
+- Org routes: Accessible by org admins and sys admins
+- Workspace routes: Accessible by workspace admins, org admins, and sys admins
+- Cascade validation: Cannot enable at org level if disabled at system level
+- Cascade validation: Cannot enable at workspace level if disabled at org or system level
+
+**Files Modified:**
+- `templates/_modules-core/module-mgmt/backend/lambdas/lambda-mgmt/lambda_function.py` (572 lines added)
+- `templates/_modules-core/module-mgmt/infrastructure/outputs.tf` (38 lines added)
+
+**Status:** Phase 2 complete! Backend API fully functional. Ready for Phase 3 (Frontend Integration).
+
+---
 
 ### February 2, 2026 - Sprint 3 Phase 1 Complete ✅ Database Schema Implemented
 

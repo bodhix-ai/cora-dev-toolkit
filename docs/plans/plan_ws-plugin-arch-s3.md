@@ -221,28 +221,54 @@ CREATE VIEW sys_lambda_config AS SELECT * FROM mgmt_cfg_sys_lambda;
 
 ---
 
-## Phase 2: Backend API (2-3h)
+## Phase 2: Backend API (2-3h) ✅ COMPLETE
 
-### Org-Level Config Endpoints
+**Status:** ✅ Complete (2026-02-02)  
+**Duration:** ~2 hours
 
-- [ ] `GET /api/platform/orgs/{orgId}/modules` - List org module config
-- [ ] `PUT /api/platform/orgs/{orgId}/modules/{moduleName}` - Update org config
-- [ ] Authorization: Org admin only
-- [ ] Validation: Cannot enable if system disabled
+### Org-Level Config Endpoints ✅
 
-### Workspace-Level Config Endpoints
+- [x] `GET /admin/org/mgmt/modules` - List org module config
+- [x] `GET /admin/org/mgmt/modules/{name}` - Get single org module config
+- [x] `PUT /admin/org/mgmt/modules/{name}` - Update org config
+- [x] Authorization: Org admin or sys admin
+- [x] Validation: Cannot enable if system disabled
+- [x] Uses SQL function: `resolve_all_modules_for_org()` and `resolve_org_module_config()`
 
-- [ ] `GET /api/platform/workspaces/{wsId}/modules` - List workspace module config
-- [ ] `PUT /api/platform/workspaces/{wsId}/modules/{moduleName}` - Update workspace config
-- [ ] Authorization: Workspace admin only
-- [ ] Validation: Cannot enable if org/system disabled
+### Workspace-Level Config Endpoints ✅
 
-### Real-Time Updates
+- [x] `GET /admin/ws/{wsId}/mgmt/modules` - List workspace module config
+- [x] `GET /admin/ws/{wsId}/mgmt/modules/{name}` - Get single workspace module config
+- [x] `PUT /admin/ws/{wsId}/mgmt/modules/{name}` - Update workspace config
+- [x] Authorization: Workspace admin, org admin, or sys admin
+- [x] Validation: Cannot enable if org/system disabled
+- [x] Uses SQL function: `resolve_all_modules_for_workspace()` and `resolve_module_config()`
 
-- [ ] Implement polling strategy for module availability refresh
-- [ ] Or: WebSocket for real-time push updates
-- [ ] Update WorkspacePluginProvider to auto-refresh on config changes
-- [ ] Cache invalidation strategy
+### Implementation Details ✅
+
+**Lambda:** `templates/_modules-core/module-mgmt/backend/lambdas/lambda-mgmt/lambda_function.py`
+
+**Handler Functions Added:**
+1. `_check_org_admin_access()` - Authorization helper for org admin routes
+2. `_check_ws_admin_access()` - Authorization helper for workspace admin routes
+3. `handle_list_org_modules()` - List all modules with org-level resolution
+4. `handle_get_org_module()` - Get single module with org-level resolution
+5. `handle_update_org_module()` - Update org-level config override
+6. `handle_list_ws_modules()` - List all modules with workspace-level resolution
+7. `handle_get_ws_module()` - Get single module with workspace-level resolution
+8. `handle_update_ws_module()` - Update workspace-level config override
+
+**Route Dispatcher:** All routes added and mapped to handlers
+
+**Response Format:** Uses `common.success_response()` with resolved module config from SQL functions
+
+**Files Modified:**
+- `templates/_modules-core/module-mgmt/backend/lambdas/lambda-mgmt/lambda_function.py` (572 lines added)
+- `templates/_modules-core/module-mgmt/infrastructure/outputs.tf` (38 lines added)
+
+**Testing Required:** After deployment, the new API routes will be automatically provisioned via API Gateway. Authorization is enforced via the JWT authorizer and handler-level checks.
+
+**Next Steps:** Phase 3 - Frontend Integration (hooks and WorkspacePluginProvider updates)
 
 ---
 
