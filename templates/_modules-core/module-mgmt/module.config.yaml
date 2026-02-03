@@ -10,14 +10,24 @@ module_mgmt:
   nav_icon: "Settings"
   
   # Admin Card Configuration
-  admin_card:
-    enabled: true
-    path: "/admin/sys/mgmt"
-    title: "Platform Management"
-    description: "Monitor system health, manage configurations, and view analytics"
-    icon: "Settings"
-    priority: 30  # Lower number = higher priority in admin dashboard
-    context: "platform"
+  # Supports both platform-level and organization-level admin cards
+  admin_cards:
+    platform:
+      enabled: true
+      path: "/admin/sys/mgmt"
+      title: "Platform Management"
+      description: "Monitor system health, manage configurations, and view analytics"
+      icon: "Settings"
+      priority: 30  # Lower number = higher priority in admin dashboard
+      context: "platform"
+    organization:
+      enabled: true
+      path: "/admin/org/mgmt/modules"
+      title: "Module Configuration"
+      description: "Manage module enablement and configuration for your organization"
+      icon: "Extension"
+      priority: 30
+      context: "organization"
   
   # Health Monitoring
   health:

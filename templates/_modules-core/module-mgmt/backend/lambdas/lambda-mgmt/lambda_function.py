@@ -121,7 +121,13 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         # Organization admin routes require org_admin role + org verification (ADR-019)
         elif path.startswith('/admin/org/'):
             # Extract org context from request (ADR-019 standard)
+            # Try authorizer context first, then fall back to X-Org-Id header
             org_id = common.get_org_context_from_event(event)
+            if not org_id:
+                # Fallback: Check X-Org-Id header (sent by frontend hooks)
+                headers = event.get('headers', {})
+                org_id = headers.get('X-Org-Id') or headers.get('x-org-id')
+            
             if not org_id:
                 logger.warning(f"Org admin missing org_id for {supabase_user_id}")
                 return common.bad_request_response('Organization ID (orgId) is required')
@@ -917,8 +923,11 @@ def handle_list_org_modules(org_id: str, user_id: str) -> Dict[str, Any]:
         
         modules = result if isinstance(result, list) else []
         
+        # Transform to camelCase
+        transformed_modules = [_transform_org_module(m) for m in modules]
+        
         logger.info(f"Retrieved {len(modules)} modules for org {org_id}")
-        return common.success_response({'modules': modules, 'totalCount': len(modules)})
+        return common.success_response({'modules': transformed_modules, 'totalCount': len(modules)})
     
     except Exception as e:
         logger.exception(f'Error listing org modules: {str(e)}')
@@ -962,8 +971,11 @@ def handle_get_org_module(org_id: str, module_name: str, user_id: str) -> Dict[s
         if not module:
             raise common.NotFoundError(f"Module '{module_name}' not found")
         
+        # Transform to camelCase
+        transformed_module = _transform_org_module(module)
+        
         logger.info(f"Retrieved module {module_name} for org {org_id}")
-        return common.success_response({'module': module})
+        return common.success_response({'module': transformed_module})
     
     except Exception as e:
         logger.exception(f'Error getting org module {module_name}: {str(e)}')
@@ -1068,9 +1080,12 @@ def handle_update_org_module(
             'p_module_name': module_name
         })
         
+        # Transform to camelCase
+        transformed_module = _transform_org_module(module)
+        
         logger.info(f"Updated org module config: org={org_id}, module={module_name}")
         return common.success_response({
-            'module': module,
+            'module': transformed_module,
             'message': f"Org-level config for '{module_name}' updated successfully"
         })
     
@@ -1082,6 +1097,55 @@ def handle_update_org_module(
 # =============================================================================
 # Workspace Admin Module Configuration Handlers (Sprint 3)
 # =============================================================================
+
+def _transform_ws_module(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Transform workspace module config from SQL function to API response format."""
+    return {
+        'id': data.get('id'),
+        'name': data.get('module_name'),
+        'displayName': data.get('display_name'),
+        'description': data.get('description'),
+        'type': data.get('module_type'),
+        'tier': data.get('tier'),
+        'isEnabled': data.get('is_enabled'),
+        'isInstalled': data.get('is_installed'),
+        'systemEnabled': data.get('system_enabled'),
+        'orgEnabled': data.get('org_enabled'),
+        'wsEnabled': data.get('ws_enabled'),
+        'version': data.get('version'),
+        'minCompatibleVersion': data.get('min_compatible_version'),
+        'config': data.get('config', {}),
+        'featureFlags': data.get('feature_flags', {}),
+        'dependencies': data.get('dependencies', []),
+        'navConfig': data.get('nav_config', {}),
+        'requiredPermissions': data.get('required_permissions', []),
+        'resolutionMetadata': data.get('resolution_metadata', {}),
+    }
+
+
+def _transform_org_module(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Transform org module config from SQL function to API response format."""
+    return {
+        'id': data.get('id'),
+        'name': data.get('module_name'),
+        'displayName': data.get('display_name'),
+        'description': data.get('description'),
+        'type': data.get('module_type'),
+        'tier': data.get('tier'),
+        'isEnabled': data.get('is_enabled'),
+        'isInstalled': data.get('is_installed'),
+        'systemEnabled': data.get('system_enabled'),
+        'orgEnabled': data.get('org_enabled'),
+        'version': data.get('version'),
+        'minCompatibleVersion': data.get('min_compatible_version'),
+        'config': data.get('config', {}),
+        'featureFlags': data.get('feature_flags', {}),
+        'dependencies': data.get('dependencies', []),
+        'navConfig': data.get('nav_config', {}),
+        'requiredPermissions': data.get('required_permissions', []),
+        'resolutionMetadata': data.get('resolution_metadata', {}),
+    }
+
 
 def handle_list_ws_modules(ws_id: str, user_id: str) -> Dict[str, Any]:
     """
@@ -1108,8 +1172,11 @@ def handle_list_ws_modules(ws_id: str, user_id: str) -> Dict[str, Any]:
         
         modules = result if isinstance(result, list) else []
         
+        # Transform to camelCase
+        transformed_modules = [_transform_ws_module(m) for m in modules]
+        
         logger.info(f"Retrieved {len(modules)} modules for workspace {ws_id}")
-        return common.success_response({'modules': modules, 'totalCount': len(modules)})
+        return common.success_response({'modules': transformed_modules, 'totalCount': len(modules)})
     
     except Exception as e:
         logger.exception(f'Error listing workspace modules: {str(e)}')
@@ -1153,8 +1220,11 @@ def handle_get_ws_module(ws_id: str, module_name: str, user_id: str) -> Dict[str
         if not module:
             raise common.NotFoundError(f"Module '{module_name}' not found")
         
+        # Transform to camelCase
+        transformed_module = _transform_ws_module(module)
+        
         logger.info(f"Retrieved module {module_name} for workspace {ws_id}")
-        return common.success_response({'module': module})
+        return common.success_response({'module': transformed_module})
     
     except Exception as e:
         logger.exception(f'Error getting workspace module {module_name}: {str(e)}')
@@ -1259,9 +1329,12 @@ def handle_update_ws_module(
             'p_module_name': module_name
         })
         
+        # Transform to camelCase
+        transformed_module = _transform_ws_module(module)
+        
         logger.info(f"Updated workspace module config: ws={ws_id}, module={module_name}")
         return common.success_response({
-            'module': module,
+            'module': transformed_module,
             'message': f"Workspace-level config for '{module_name}' updated successfully"
         })
     

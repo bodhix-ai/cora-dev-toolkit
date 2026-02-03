@@ -96,6 +96,10 @@ BEGIN
         'dependencies', v_sys_config.dependencies,
         'nav_config', v_sys_config.nav_config,
         'required_permissions', v_sys_config.required_permissions,
+        -- Level-specific enablement states (for UI display)
+        'system_enabled', v_sys_config.is_enabled,
+        'org_enabled', COALESCE(v_org_config.is_enabled, v_sys_config.is_enabled),
+        'ws_enabled', v_ws_config.is_enabled,
         -- Merge config: sys → org → ws
         'config', 
             COALESCE(v_sys_config.config, '{}'::jsonb) ||
@@ -181,6 +185,9 @@ BEGIN
         'dependencies', v_sys_config.dependencies,
         'nav_config', v_sys_config.nav_config,
         'required_permissions', v_sys_config.required_permissions,
+        -- Level-specific enablement states (for UI display)
+        'system_enabled', v_sys_config.is_enabled,
+        'org_enabled', COALESCE(v_org_config.is_enabled, v_sys_config.is_enabled),
         -- Merge config: sys → org
         'config', 
             COALESCE(v_sys_config.config, '{}'::jsonb) ||
