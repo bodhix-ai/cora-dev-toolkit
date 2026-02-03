@@ -1,7 +1,7 @@
 # Context: WS Plugin Architecture
 
 **Created:** January 24, 2026  
-**Updated:** January 25, 2026 (Sprint 2 revised approach)  
+**Updated:** February 2, 2026 (Sprint 3 Phase 3 in progress)  
 **Primary Focus:** Module integration patterns for workspaces
 
 ## Initiative Overview
@@ -28,7 +28,7 @@ Define and implement the architecture for functional modules (kb, chat, voice, e
 ## Sprint History
 
 | Sprint | Branch | Plan | Status | Completed |
-|--------|--------|------|--------|-------|
+|--------|--------|------|--------|----------|
 | S1 | `feature/ws-plugin-arch-s1` | `docs/plans/plan_ws-plugin-arch-s1.md` | ✅ Complete | 2026-01-25 |
 | S2 | `feature/ws-plugin-arch-s2` | `docs/plans/plan_ws-plugin-arch-s2.md` | ✅ Complete | 2026-01-25 |
 | S3 | `feature/ws-plugin-arch-s3` | `docs/plans/plan_ws-plugin-arch-s3.md` | 🟡 Active | - |
@@ -52,7 +52,7 @@ All sprints in the **WS Plugin Architecture** initiative follow this naming patt
 
 - **Branch:** `feature/ws-plugin-arch-s3`
 - **Plan:** `docs/plans/plan_ws-plugin-arch-s3.md`
-- **Status:** 🟡 Active (Phase 2 Complete ✅)
+- **Status:** 🟡 Active (Phase 3 In Progress)
 - **Focus:** Dynamic module configuration (org/workspace config overrides, real-time updates)
 
 ## Sprint 1 Summary
@@ -180,6 +180,8 @@ Use composition pattern (target):
 
 **Sprint 2 Addition:** Add module availability to this context.
 
+**Sprint 3 Enhancement:** Use workspace-resolved config (sys → org → ws cascade).
+
 ## Key Decisions
 
 - ✅ **ADR-017: WS Plugin Architecture** - Documented January 25, 2026
@@ -187,8 +189,59 @@ Use composition pattern (target):
   - Decision: Use composition pattern where apps/web provides workspace context to plugins via React Context
   - Impact: Eliminates 78 Session.accessToken errors, establishes clear host/plugin boundary
   - **Sprint 2 Update:** Add module availability integration section
+  - **Sprint 3 Update:** Add org/workspace config cascade section
 
 ## Session Log
+
+### February 2, 2026 - Sprint 3 Phase 3 Partial Complete (Hooks + Provider Updated)
+
+**Status:** Implementation - Phase 3 Partial (50% complete)  
+**Duration:** ~1 hour  
+**Focus:** Frontend hooks and WorkspacePluginProvider integration
+
+**Work Completed:**
+
+**1. Created useOrgModuleConfig Hook**
+- ✅ Fetches from `GET /admin/org/mgmt/modules`
+- ✅ `updateConfig()` method for `PUT /admin/org/mgmt/modules/{name}`
+- ✅ Full CRUD operations with org-level resolution
+- ✅ Authorization checks (org admin or sys admin)
+
+**2. Created useWorkspaceModuleConfig Hook**
+- ✅ Fetches from `GET /admin/ws/{wsId}/mgmt/modules`
+- ✅ `updateConfig()` method for `PUT /admin/ws/{wsId}/mgmt/modules/{name}`
+- ✅ Full workspace-level resolution (sys → org → ws cascade)
+- ✅ Takes workspaceId as parameter
+- ✅ Authorization checks (ws admin, org admin, or sys admin)
+
+**3. Updated WorkspacePluginProvider**
+- ✅ Replaced `useModuleRegistry()` with `useWorkspaceModuleConfig(workspaceId)`
+- ✅ Now uses workspace-resolved config (full cascade applied)
+- ✅ Updated `moduleAvailability` helpers to use resolved data
+- ✅ `refresh` callback now uses `refreshModules` from hook
+
+**4. Exported New Hooks**
+- ✅ Added to `module-mgmt/frontend/hooks/index.ts`
+- ✅ Added to `module-mgmt/frontend/index.ts`
+
+**Files Created:**
+- `templates/_modules-core/module-mgmt/frontend/hooks/useOrgModuleConfig.ts`
+- `templates/_modules-core/module-mgmt/frontend/hooks/useWorkspaceModuleConfig.ts`
+
+**Files Modified:**
+- `templates/_modules-core/module-mgmt/frontend/hooks/index.ts`
+- `templates/_modules-core/module-mgmt/frontend/index.ts`
+- `templates/_project-stack-template/apps/web/components/WorkspacePluginProvider.tsx`
+
+**Next Steps:**
+- Create org admin UI (`/admin/org/mgmt/` page)
+- Create workspace settings module config UI
+- Update types.ts with resolved config documentation
+- Phase 4: Testing & Documentation
+
+**Status:** Phase 3 about 50% complete. Ready to continue with admin UI implementation.
+
+---
 
 ### February 2, 2026 - Sprint 3 Phase 2 Complete ✅ Backend API Implemented
 

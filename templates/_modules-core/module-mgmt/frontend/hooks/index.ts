@@ -30,3 +30,23 @@ export type {
   UseModuleRegistryOptions,
   UseModuleRegistryReturn,
 } from "./useModuleRegistry";
+
+// Org Module Config
+export { useOrgModuleConfig } from "./useOrgModuleConfig";
+
+export type {
+  OrgModuleConfig,
+  OrgModuleConfigUpdate,
+  UseOrgModuleConfigOptions,
+  UseOrgModuleConfigReturn,
+} from "./useOrgModuleConfig";
+
+// Workspace Module Config
+export { useWorkspaceModuleConfig } from "./useWorkspaceModuleConfig";
+
+export type {
+  WorkspaceModuleConfig,
+  WorkspaceModuleConfigUpdate,
+  UseWorkspaceModuleConfigOptions,
+  UseWorkspaceModuleConfigReturn,
+} from "./useWorkspaceModuleConfig";

@@ -922,12 +922,9 @@ def handle_list_org_modules(org_id: str, user_id: str) -> Dict[str, Any]:
     
     try:
         # Call SQL function to get all modules with org-level resolution
-        result = common.execute_sql(
-            "SELECT * FROM resolve_all_modules_for_org(%s)",
-            (org_id,)
-        )
+        result = common.rpc('resolve_all_modules_for_org', {'p_org_id': org_id})
         
-        modules = [module for module in result]
+        modules = result if isinstance(result, list) else []
         
         logger.info(f"Retrieved {len(modules)} modules for org {org_id}")
         return common.success_response({'modules': modules, 'totalCount': len(modules)})
@@ -974,15 +971,13 @@ def handle_get_org_module(org_id: str, module_name: str, user_id: str) -> Dict[s
     
     try:
         # Call SQL function to get module with org-level resolution
-        result = common.execute_sql(
-            "SELECT resolve_org_module_config(%s, %s) as module",
-            (org_id, module_name)
-        )
+        module = common.rpc('resolve_org_module_config', {
+            'p_org_id': org_id,
+            'p_module_name': module_name
+        })
         
-        if not result or not result[0]['module']:
+        if not module:
             raise common.NotFoundError(f"Module '{module_name}' not found")
-        
-        module = result[0]['module']
         
         logger.info(f"Retrieved module {module_name} for org {org_id}")
         return common.success_response({'module': module})
@@ -1093,12 +1088,10 @@ def handle_update_org_module(
             )
         
         # Return resolved module config
-        result = common.execute_sql(
-            "SELECT resolve_org_module_config(%s, %s) as module",
-            (org_id, module_name)
-        )
-        
-        module = result[0]['module']
+        module = common.rpc('resolve_org_module_config', {
+            'p_org_id': org_id,
+            'p_module_name': module_name
+        })
         
         logger.info(f"Updated org module config: org={org_id}, module={module_name}")
         return common.success_response({
@@ -1144,12 +1137,9 @@ def handle_list_ws_modules(ws_id: str, user_id: str) -> Dict[str, Any]:
     
     try:
         # Call SQL function to get all modules with workspace-level resolution
-        result = common.execute_sql(
-            "SELECT * FROM resolve_all_modules_for_workspace(%s)",
-            (ws_id,)
-        )
+        result = common.rpc('resolve_all_modules_for_workspace', {'p_ws_id': ws_id})
         
-        modules = [module for module in result]
+        modules = result if isinstance(result, list) else []
         
         logger.info(f"Retrieved {len(modules)} modules for workspace {ws_id}")
         return common.success_response({'modules': modules, 'totalCount': len(modules)})
@@ -1196,15 +1186,13 @@ def handle_get_ws_module(ws_id: str, module_name: str, user_id: str) -> Dict[str
     
     try:
         # Call SQL function to get module with workspace-level resolution
-        result = common.execute_sql(
-            "SELECT resolve_module_config(%s, %s) as module",
-            (ws_id, module_name)
-        )
+        module = common.rpc('resolve_module_config', {
+            'p_ws_id': ws_id,
+            'p_module_name': module_name
+        })
         
-        if not result or not result[0]['module']:
+        if not module:
             raise common.NotFoundError(f"Module '{module_name}' not found")
-        
-        module = result[0]['module']
         
         logger.info(f"Retrieved module {module_name} for workspace {ws_id}")
         return common.success_response({'module': module})
@@ -1315,12 +1303,10 @@ def handle_update_ws_module(
             )
         
         # Return resolved module config
-        result = common.execute_sql(
-            "SELECT resolve_module_config(%s, %s) as module",
-            (ws_id, module_name)
-        )
-        
-        module = result[0]['module']
+        module = common.rpc('resolve_module_config', {
+            'p_ws_id': ws_id,
+            'p_module_name': module_name
+        })
         
         logger.info(f"Updated workspace module config: ws={ws_id}, module={module_name}")
         return common.success_response({

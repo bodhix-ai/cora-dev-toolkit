@@ -12,7 +12,7 @@
 
 import { ReactNode, useMemo } from 'react';
 import { WorkspacePluginContextInstance, WorkspacePluginContext, ModuleConfig } from '@{{PROJECT_NAME}}/shared/workspace-plugin';
-import { useModuleRegistry } from '@{{PROJECT_NAME}}/module-mgmt';
+import { useWorkspaceModuleConfig } from '@{{PROJECT_NAME}}/module-mgmt';
 
 interface WorkspacePluginProviderProps {
   /**
@@ -108,41 +108,43 @@ export function WorkspacePluginProvider({
   error = null,
   children,
 }: WorkspacePluginProviderProps) {
-  // Fetch module registry from sys_module_registry
-  const { modules, isLoading: modulesLoading } = useModuleRegistry({ 
-    autoFetch: true,
-    includeDisabled: false, // Only fetch enabled modules
-  });
+  // Fetch workspace-resolved module config (sys → org → ws cascade)
+  const { modules, isLoading: modulesLoading, refreshModules } = useWorkspaceModuleConfig(
+    workspaceId,
+    { 
+      autoFetch: true,
+    }
+  );
 
   // Compute module availability utilities
   const moduleAvailability = useMemo(() => {
-    // Filter to modules that are both installed and enabled
+    // Filter to modules that are enabled at the workspace level (after cascade)
     const enabledModules = modules
-      .filter(m => m.isEnabled && m.isInstalled)
-      .map(m => m.name);
+      .filter((m: any) => m.resolvedEnabled)
+      .map((m: any) => m.moduleName);
     
     return {
       /**
-       * Check if a module is available (installed AND enabled)
+       * Check if a module is available (enabled after sys → org → ws cascade)
        */
       isModuleAvailable: (moduleName: string): boolean => {
         return enabledModules.includes(moduleName);
       },
       
       /**
-       * Get module configuration from sys_module_registry
+       * Get module configuration (resolved from sys → org → ws cascade)
        */
       getModuleConfig: (moduleName: string): ModuleConfig | null => {
-        const module = modules.find(m => m.name === moduleName);
+        const module = modules.find((m: any) => m.moduleName === moduleName);
         if (!module) return null;
         
         return {
-          name: module.name,
+          name: module.moduleName,
           displayName: module.displayName,
-          isEnabled: module.isEnabled,
-          isInstalled: module.isInstalled,
-          config: module.config,
-          featureFlags: module.featureFlags,
+          isEnabled: module.resolvedEnabled,
+          isInstalled: module.systemInstalled,
+          config: module.resolvedConfig,
+          featureFlags: module.resolvedFeatureFlags,
         };
       },
       
@@ -160,7 +162,7 @@ export function WorkspacePluginProvider({
     features,
     userRole,
     moduleAvailability,
-    refresh: onRefresh || (async () => {}),
+    refresh: onRefresh || refreshModules,
     loading: loading || modulesLoading,
     error,
   };

@@ -22,6 +22,8 @@ export {
   useEnabledModules,
   useModuleEnabled,
   useModuleNavigation,
+  useOrgModuleConfig,
+  useWorkspaceModuleConfig,
 } from "./hooks";
 
 // Export admin card
