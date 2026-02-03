@@ -152,6 +152,115 @@ function checkApiClient(filePath: string, content: string): ComplianceIssue[] {
 }
 ```
 
+### 2.3 Organization-Scoped Hook Pattern (REQUIRED)
+
+**CRITICAL**: All hooks that fetch organization-scoped data MUST accept `orgId` as a parameter and pass it explicitly in the API request.
+
+**Why This Matters:** The JWT token does NOT contain `orgId` or role information. Relying on the Lambda authorizer to extract `orgId` from the JWT is unreliable and often fails. Hooks must explicitly pass `orgId` in the request.
+
+**✅ CORRECT Pattern:**
+
+```tsx
+// Hook accepts orgId parameter
+export interface UseOrgModuleConfigOptions {
+  orgId: string | null;  // ✅ REQUIRED
+  autoFetch?: boolean;
+  onError?: (error: string) => void;
+}
+
+export function useOrgModuleConfig(options: UseOrgModuleConfigOptions) {
+  const { orgId, autoFetch = true } = options;
+  
+  const fetchModules = useCallback(async () => {
+    if (!orgId) {  // ✅ Check for orgId
+      setError("Organization context required");
+      return;
+    }
+    
+    const response = await fetch(`${API_BASE}/admin/org/mgmt/modules`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-Org-Id": orgId,  // ✅ Pass orgId explicitly in header
+      },
+    });
+    
+    // Handle response...
+  }, [orgId, token]);
+  
+  return { modules, loading, error, refresh };
+}
+```
+
+**Usage in page:**
+```tsx
+export default function OrgAdminPage() {
+  const { currentOrganization: organization } = useOrganizationContext();
+  
+  // ✅ Pass orgId explicitly from context
+  const { modules } = useOrgModuleConfig({
+    orgId: organization?.orgId || null,
+    autoFetch: !!organization?.orgId,
+  });
+  
+  return <YourComponent modules={modules} />;
+}
+```
+
+**❌ WRONG Pattern (DO NOT USE):**
+
+```tsx
+// ❌ No orgId parameter - relies on authorizer context
+export interface UseOrgModuleConfigOptions {
+  autoFetch?: boolean;
+}
+
+export function useOrgModuleConfig(options: UseOrgModuleConfigOptions = {}) {
+  const fetchModules = useCallback(async () => {
+    // ❌ Expects Lambda authorizer to extract orgId from JWT - UNRELIABLE
+    const response = await fetch(`${API_BASE}/admin/org/mgmt/modules`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        // ❌ NO X-Org-Id header - relies on authorizer
+      },
+    });
+  }, [token]);
+}
+```
+
+**Why the wrong pattern fails:**
+
+1. **Authorizer context extraction is unreliable** - The Lambda may not have access to JWT claims
+2. **JWT doesn't contain orgId** - Only contains external user ID (Okta UID)
+3. **Different auth strategies vary** - Some authorizers don't pass org context
+4. **Explicit parameter passing is predictable** - Always works, easy to test
+5. **Frontend knows the org context** - User selected it in the UI
+
+**Backend Integration:**
+
+The Lambda handler reads the `X-Org-Id` header as a fallback:
+
+```python
+elif path.startswith('/admin/org/'):
+    # Try authorizer context first
+    org_id = common.get_org_context_from_event(event)
+    
+    # Fallback to X-Org-Id header (sent by frontend hooks)
+    if not org_id:
+        headers = event.get('headers', {})
+        org_id = headers.get('X-Org-Id') or headers.get('x-org-id')
+    
+    if not org_id:
+        return common.bad_request_response('Organization ID required')
+```
+
+**Compliance Rule:** 
+
+Hooks matching pattern `useOrg*` MUST:
+1. Accept `orgId: string | null` parameter in options interface
+2. Check for `orgId` presence before making API calls
+3. Pass `orgId` via `X-Org-Id` header in all API requests
+4. Include `orgId` in dependency arrays for useCallback/useEffect
+
 ---
 
 ## 3. Module Hook Standards

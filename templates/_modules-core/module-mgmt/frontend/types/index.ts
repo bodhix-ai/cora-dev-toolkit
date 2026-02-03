@@ -83,7 +83,7 @@ export interface LambdaFunctionInfo {
   runtime: string;
   lastModified: string;
   description?: string;
-  handler: string;
+  handler?: string;
   version?: string;
 }
 

@@ -25,6 +25,22 @@ locals {
 }
 
 # =============================================================================
+# Lambda Layer - chat_common (Local zip-based)
+# =============================================================================
+
+resource "aws_lambda_layer_version" "chat_common" {
+  layer_name          = "${local.prefix}-chat-common"
+  description         = "Chat module permissions helpers"
+  filename            = "${local.build_dir}/chat_common-layer.zip"
+  source_code_hash    = filebase64sha256("${local.build_dir}/chat_common-layer.zip")
+  compatible_runtimes = [local.lambda_runtime]
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# =============================================================================
 # IAM Role for Lambda Functions
 # =============================================================================
 
@@ -106,7 +122,10 @@ resource "aws_lambda_function" "chat_session" {
   filename         = "${local.build_dir}/chat-session.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/chat-session.zip")
 
-  layers = [var.org_common_layer_arn]
+  layers = [
+    var.org_common_layer_arn,
+    aws_lambda_layer_version.chat_common.arn
+  ]
 
   environment {
     variables = {
@@ -154,7 +173,10 @@ resource "aws_lambda_function" "chat_message" {
   filename         = "${local.build_dir}/chat-message.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/chat-message.zip")
 
-  layers = [var.org_common_layer_arn]
+  layers = [
+    var.org_common_layer_arn,
+    aws_lambda_layer_version.chat_common.arn
+  ]
 
   environment {
     variables = {
@@ -204,7 +226,10 @@ resource "aws_lambda_function" "chat_stream" {
   filename         = "${local.build_dir}/chat-stream.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/chat-stream.zip")
 
-  layers = [var.org_common_layer_arn]
+  layers = [
+    var.org_common_layer_arn,
+    aws_lambda_layer_version.chat_common.arn
+  ]
 
   environment {
     variables = {

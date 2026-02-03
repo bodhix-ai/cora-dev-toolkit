@@ -608,5 +608,144 @@ The admin standardization project is implementing module enablement toggles via 
 
 ---
 
-**Status:** Approved (Sprint 1) + Implemented (Sprint 2 Module Availability)  
-**Next Steps:** Sprint 3 - Dynamic module registration and org-level config overrides
+---
+
+## Sprint 3 Addition: Dynamic Module Configuration
+
+**Date:** February 3, 2026  
+**Status:** Implemented
+
+### Context
+
+With module availability integrated in Sprint 2, Sprint 3 implements the **dynamic module configuration system** allowing org-level and workspace-level config overrides with cascading enablement logic.
+
+### What Was Implemented
+
+**1. Database Schema (Phase 1):**
+- `mgmt_cfg_org_modules` - Org-level module config overrides
+- `mgmt_cfg_ws_modules` - Workspace-level module config overrides
+- `resolve_module_config()` - SQL function for config cascade resolution
+- Trigger-based validation preventing enablement if parent level disabled
+
+**2. Backend API (Phase 2):**
+- `GET/PUT /admin/org/mgmt/modules/{name}` - Org admin module config
+- `GET/PUT /admin/ws/{wsId}/mgmt/modules/{name}` - Workspace admin module config
+- ADR-019 compliant centralized router-level auth
+
+**3. Frontend UI (Phase 3):**
+- `OrgModuleConfigPage` - Org admin module configuration
+- `WorkspaceModuleConfig` - Workspace settings module configuration
+- Dynamic workspace tab visibility based on module enablement
+
+### Config Cascade Implementation
+
+The future cascade described in Sprint 2 is now fully implemented:
+
+```
+System Level (mgmt_cfg_sys_modules):
+  ├─ is_installed: true/false (module deployed?)
+  ├─ is_enabled: true/false (SysAdmin toggle)
+  ├─ config: { ... }
+  └─ feature_flags: { ... }
+
+Org Level (mgmt_cfg_org_modules):
+  ├─ is_enabled: true/false/null (can disable, cannot enable if sys disabled)
+  ├─ config_overrides: { ... } (merged with system)
+  └─ feature_flag_overrides: { ... }
+
+Workspace Level (mgmt_cfg_ws_modules):
+  ├─ is_enabled: true/false/null (can disable, cannot enable if org/sys disabled)
+  ├─ config_overrides: { ... } (merged with org → sys)
+  └─ feature_flag_overrides: { ... }
+```
+
+**Cascade Rules:**
+1. System disabled → Module unavailable everywhere (cannot override)
+2. Org disabled → Module unavailable in that org's workspaces
+3. Workspace disabled → Module unavailable in that workspace only
+
+### Updated WorkspacePluginProvider
+
+The provider now uses workspace-resolved config (full cascade):
+
+```typescript
+export function WorkspacePluginProvider({ workspaceId, ... }) {
+  // Fetch workspace-resolved module config (sys → org → ws cascade)
+  const { modules, refreshModules } = useWorkspaceModuleConfig(
+    workspaceId,
+    { autoFetch: true }
+  );
+
+  const moduleAvailability = useMemo(() => ({
+    isModuleAvailable: (moduleName: string) => 
+      modules.find(m => m.name === moduleName)?.isEnabled ?? false,
+    getModuleConfig: (moduleName: string) => 
+      modules.find(m => m.name === moduleName) ?? null,
+    enabledModules: modules.filter(m => m.isEnabled).map(m => m.name),
+  }), [modules]);
+
+  return <WorkspacePluginContext.Provider value={contextValue}>...</>;
+}
+```
+
+### Dynamic Tab Visibility
+
+Workspace tabs now filter based on module enablement:
+
+```typescript
+// WorkspaceDetailPage.tsx
+const { moduleAvailability } = useWorkspacePlugin();
+
+const availableTabs = useMemo(() => {
+  const tabs = [{ label: "Overview", index: 0 }]; // Always visible
+  
+  if (moduleAvailability?.isModuleAvailable('module-kb')) {
+    tabs.push({ label: "Docs", index: tabs.length });
+  }
+  if (moduleAvailability?.isModuleAvailable('module-eval')) {
+    tabs.push({ label: "Evaluations", index: tabs.length });
+  }
+  // ... more modules
+  
+  tabs.push({ label: "Settings", index: tabs.length }); // Always visible
+  return tabs;
+}, [moduleAvailability]);
+```
+
+### Immediate Tab Updates
+
+When modules are toggled in workspace settings, tabs update immediately without browser refresh:
+
+```typescript
+// WorkspaceModuleConfig.tsx
+interface WorkspaceModuleConfigProps {
+  workspaceId: string;
+  onModuleToggled?: () => Promise<void>; // Callback to refresh parent
+}
+
+// After toggle:
+await updateConfig(module.name, { isEnabled: !module.isEnabled });
+await refreshModules();        // Update settings table
+await onModuleToggled?.();     // Refresh provider → tabs re-render
+```
+
+### Sprint 3 Success Criteria
+
+- ✅ Org admins can enable/disable modules for their organization
+- ✅ Workspace admins can enable/disable modules for their workspace
+- ✅ Config cascade works correctly (sys → org → ws)
+- ✅ Workspace tabs dynamically show/hide based on enablement
+- ✅ Tab visibility updates immediately after toggle
+- ✅ TypeScript compilation passes
+- ✅ ADR-019 auth patterns implemented
+
+### Deferred to Future Sprint
+
+- Left navigation dynamic filtering (currently reads from YAML)
+- Overview tab metric filtering
+- Auto-refresh / real-time config updates (polling/WebSocket)
+
+---
+
+**Status:** Approved (Sprint 1) + Implemented (Sprint 2 + Sprint 3)  
+**Next Steps:** Sprint 4 - Left nav dynamic filtering and real-time updates (optional)

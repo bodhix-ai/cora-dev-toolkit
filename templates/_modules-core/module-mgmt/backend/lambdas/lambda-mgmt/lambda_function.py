@@ -23,9 +23,15 @@ Routes - Module Registry (System Admin):
 - POST /admin/sys/mgmt/modules - Register a new module
 
 Routes - Module Registry (Organization Admin):
-- GET /admin/org/mgmt/modules - List modules (read-only)
-- GET /admin/org/mgmt/modules/{name} - View module details (read-only)
+- GET /admin/org/mgmt/modules - List modules with org-level config resolution
+- GET /admin/org/mgmt/modules/{name} - Get module with org-level config resolution
+- PUT /admin/org/mgmt/modules/{name} - Update org-level module config override
 - GET /admin/org/mgmt/usage - View organization's module usage stats
+
+Routes - Module Registry (Workspace Admin):
+- GET /admin/ws/{wsId}/mgmt/modules - List modules with workspace-level config resolution
+- GET /admin/ws/{wsId}/mgmt/modules/{name} - Get module with workspace-level config resolution
+- PUT /admin/ws/{wsId}/mgmt/modules/{name} - Update workspace-level module config override
 """
 
 import json
@@ -115,7 +121,13 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
         # Organization admin routes require org_admin role + org verification (ADR-019)
         elif path.startswith('/admin/org/'):
             # Extract org context from request (ADR-019 standard)
+            # Try authorizer context first, then fall back to X-Org-Id header
             org_id = common.get_org_context_from_event(event)
+            if not org_id:
+                # Fallback: Check X-Org-Id header (sent by frontend hooks)
+                headers = event.get('headers', {})
+                org_id = headers.get('X-Org-Id') or headers.get('x-org-id')
+            
             if not org_id:
                 logger.warning(f"Org admin missing org_id for {supabase_user_id}")
                 return common.bad_request_response('Organization ID (orgId) is required')
@@ -125,6 +137,20 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
                 logger.warning(f"Access denied for user {supabase_user_id} - org admin required for org {org_id}")
                 return common.forbidden_response('Organization admin role required')
             logger.info(f"Organization admin access granted for user {supabase_user_id}, org: {org_id}")
+        
+        # Workspace admin routes require ws_admin role + workspace verification (ADR-019)
+        elif path.startswith('/admin/ws/'):
+            # Extract workspace ID from path parameter
+            ws_id = path_parameters.get('wsId')
+            if not ws_id:
+                logger.warning(f"Workspace admin missing wsId for {supabase_user_id}")
+                return common.bad_request_response('Workspace ID (wsId) is required')
+            
+            # Verify user is workspace admin for this workspace
+            if not common.check_ws_admin(supabase_user_id, ws_id):
+                logger.warning(f"Access denied for user {supabase_user_id} - ws admin required for workspace {ws_id}")
+                return common.forbidden_response('Workspace admin role required')
+            logger.info(f"Workspace admin access granted for user {supabase_user_id}, workspace: {ws_id}")
         
         # Route dispatcher
         if path.endswith('/admin/sys/mgmt/schedule') and http_method == 'GET':
@@ -171,16 +197,37 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
             body = json.loads(event.get('body', '{}'))
             return handle_update_module(module_name, body, supabase_user_id)
         
-        # Organization Admin Routes (read-only)
+        # Organization Admin Routes - Module Config
         elif path.endswith('/admin/org/mgmt/modules') and http_method == 'GET':
-            return handle_list_modules(event)  # Reuse sys admin handler (read-only)
+            return handle_list_org_modules(org_id, supabase_user_id)
         
         elif '/admin/org/mgmt/modules/' in path and http_method == 'GET':
             module_name = path_parameters.get('name')
-            return handle_get_module(module_name)  # Reuse sys admin handler (read-only)
+            return handle_get_org_module(org_id, module_name, supabase_user_id)
+        
+        elif '/admin/org/mgmt/modules/' in path and http_method == 'PUT':
+            module_name = path_parameters.get('name')
+            body = json.loads(event.get('body', '{}'))
+            return handle_update_org_module(org_id, module_name, body, supabase_user_id)
         
         elif path.endswith('/admin/org/mgmt/usage') and http_method == 'GET':
             return handle_org_module_usage(org_id)
+        
+        # Workspace Admin Routes - Module Config
+        elif path.endswith('/mgmt/modules') and '/admin/ws/' in path and http_method == 'GET':
+            ws_id = path_parameters.get('wsId')
+            return handle_list_ws_modules(ws_id, supabase_user_id)
+        
+        elif re.match(r'.*/admin/ws/.+/mgmt/modules/.+', path) and http_method == 'GET':
+            ws_id = path_parameters.get('wsId')
+            module_name = path_parameters.get('name')
+            return handle_get_ws_module(ws_id, module_name, supabase_user_id)
+        
+        elif re.match(r'.*/admin/ws/.+/mgmt/modules/.+', path) and http_method == 'PUT':
+            ws_id = path_parameters.get('wsId')
+            module_name = path_parameters.get('name')
+            body = json.loads(event.get('body', '{}'))
+            return handle_update_ws_module(ws_id, module_name, body, supabase_user_id)
         
         else:
             return common.not_found_response(f'Route not found: {http_method} {path}')
@@ -844,4 +891,453 @@ def handle_register_module(body: Dict[str, Any], user_id: str) -> Dict[str, Any]
     
     except Exception as e:
         logger.exception(f'Error registering module: {str(e)}')
+        raise
+
+
+# =============================================================================
+# Org Admin Module Configuration Handlers (Sprint 3)
+# =============================================================================
+
+def handle_list_org_modules(org_id: str, user_id: str) -> Dict[str, Any]:
+    """
+    GET /admin/org/mgmt/modules
+    
+    List all modules with org-level configuration resolution.
+    Uses resolve_all_modules_for_org() SQL function.
+    
+    Auth: Verified at router level (ADR-019)
+    
+    Args:
+        org_id: Organization ID (from session)
+        user_id: Supabase user ID
+    
+    Returns:
+        List of modules with org-level config resolution
+    """
+    if not org_id:
+        raise common.ValidationError('Organization ID is required')
+    
+    try:
+        # Call SQL function to get all modules with org-level resolution
+        result = common.rpc('resolve_all_modules_for_org', {'p_org_id': org_id})
+        
+        modules = result if isinstance(result, list) else []
+        
+        # Transform to camelCase
+        transformed_modules = [_transform_org_module(m) for m in modules]
+        
+        logger.info(f"Retrieved {len(modules)} modules for org {org_id}")
+        return common.success_response({'modules': transformed_modules, 'totalCount': len(modules)})
+    
+    except Exception as e:
+        logger.exception(f'Error listing org modules: {str(e)}')
+        raise
+
+
+def handle_get_org_module(org_id: str, module_name: str, user_id: str) -> Dict[str, Any]:
+    """
+    GET /admin/org/mgmt/modules/{name}
+    
+    Get a specific module with org-level configuration resolution.
+    Uses resolve_org_module_config() SQL function.
+    
+    Auth: Verified at router level (ADR-019)
+    
+    Args:
+        org_id: Organization ID (from session)
+        module_name: Module name
+        user_id: Supabase user ID
+    
+    Returns:
+        Module with org-level config resolution
+    """
+    if not org_id:
+        raise common.ValidationError('Organization ID is required')
+    
+    if not module_name:
+        raise common.ValidationError('Module name is required')
+    
+    # Validate module name format
+    if not re.match(r'^module-[a-z]+$', module_name):
+        raise common.ValidationError("Invalid module name format. Must be 'module-{purpose}'")
+    
+    try:
+        # Call SQL function to get module with org-level resolution
+        module = common.rpc('resolve_org_module_config', {
+            'p_org_id': org_id,
+            'p_module_name': module_name
+        })
+        
+        if not module:
+            raise common.NotFoundError(f"Module '{module_name}' not found")
+        
+        # Transform to camelCase
+        transformed_module = _transform_org_module(module)
+        
+        logger.info(f"Retrieved module {module_name} for org {org_id}")
+        return common.success_response({'module': transformed_module})
+    
+    except Exception as e:
+        logger.exception(f'Error getting org module {module_name}: {str(e)}')
+        raise
+
+
+def handle_update_org_module(
+    org_id: str,
+    module_name: str,
+    body: Dict[str, Any],
+    user_id: str
+) -> Dict[str, Any]:
+    """
+    PUT /admin/org/mgmt/modules/{name}
+    
+    Update org-level module configuration override.
+    Creates or updates record in mgmt_cfg_org_modules table.
+    
+    Auth: Verified at router level (ADR-019)
+    
+    Args:
+        org_id: Organization ID (from session)
+        module_name: Module name
+        body: Request body with config overrides
+        user_id: Supabase user ID
+    
+    Returns:
+        Updated module with org-level config resolution
+    """
+    if not org_id:
+        raise common.ValidationError('Organization ID is required')
+    
+    if not module_name:
+        raise common.ValidationError('Module name is required')
+    
+    # Validate module name format
+    if not re.match(r'^module-[a-z]+$', module_name):
+        raise common.ValidationError("Invalid module name format. Must be 'module-{purpose}'")
+    
+    # Validate that module exists in system registry
+    sys_module = common.find_one(
+        table='mgmt_cfg_sys_modules',
+        filters={'module_name': module_name, 'deleted_at': None}
+    )
+    
+    if not sys_module:
+        raise common.NotFoundError(f"Module '{module_name}' not found in system registry")
+    
+    try:
+        # Check if org override already exists
+        existing_override = common.find_one(
+            table='mgmt_cfg_org_modules',
+            filters={'org_id': org_id, 'module_name': module_name}
+        )
+        
+        # Prepare update data
+        update_data = {
+            'updated_by': user_id
+        }
+        
+        # Handle is_enabled (nullable - NULL means inherit from system)
+        if 'isEnabled' in body:
+            update_data['is_enabled'] = body['isEnabled']
+        elif 'is_enabled' in body:
+            update_data['is_enabled'] = body['is_enabled']
+        
+        # Handle config_overrides
+        if 'configOverrides' in body:
+            update_data['config_overrides'] = body['configOverrides']
+        elif 'config_overrides' in body:
+            update_data['config_overrides'] = body['config_overrides']
+        
+        # Handle feature_flag_overrides
+        if 'featureFlagOverrides' in body:
+            update_data['feature_flag_overrides'] = body['featureFlagOverrides']
+        elif 'feature_flag_overrides' in body:
+            update_data['feature_flag_overrides'] = body['feature_flag_overrides']
+        
+        if existing_override:
+            # Update existing override
+            updated_override = common.update_one(
+                table='mgmt_cfg_org_modules',
+                filters={'org_id': org_id, 'module_name': module_name},
+                data=update_data
+            )
+        else:
+            # Create new override
+            insert_data = {
+                'org_id': org_id,
+                'module_name': module_name,
+                'created_by': user_id,
+                **update_data
+            }
+            updated_override = common.insert_one(
+                table='mgmt_cfg_org_modules',
+                data=insert_data
+            )
+        
+        # Return resolved module config
+        module = common.rpc('resolve_org_module_config', {
+            'p_org_id': org_id,
+            'p_module_name': module_name
+        })
+        
+        # Transform to camelCase
+        transformed_module = _transform_org_module(module)
+        
+        logger.info(f"Updated org module config: org={org_id}, module={module_name}")
+        return common.success_response({
+            'module': transformed_module,
+            'message': f"Org-level config for '{module_name}' updated successfully"
+        })
+    
+    except Exception as e:
+        logger.exception(f'Error updating org module {module_name}: {str(e)}')
+        raise
+
+
+# =============================================================================
+# Workspace Admin Module Configuration Handlers (Sprint 3)
+# =============================================================================
+
+def _transform_ws_module(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Transform workspace module config from SQL function to API response format."""
+    return {
+        'id': data.get('id'),
+        'name': data.get('module_name'),
+        'displayName': data.get('display_name'),
+        'description': data.get('description'),
+        'type': data.get('module_type'),
+        'tier': data.get('tier'),
+        'isEnabled': data.get('is_enabled'),
+        'isInstalled': data.get('is_installed'),
+        'systemEnabled': data.get('system_enabled'),
+        'orgEnabled': data.get('org_enabled'),
+        'wsEnabled': data.get('ws_enabled'),
+        'version': data.get('version'),
+        'minCompatibleVersion': data.get('min_compatible_version'),
+        'config': data.get('config', {}),
+        'featureFlags': data.get('feature_flags', {}),
+        'dependencies': data.get('dependencies', []),
+        'navConfig': data.get('nav_config', {}),
+        'requiredPermissions': data.get('required_permissions', []),
+        'resolutionMetadata': data.get('resolution_metadata', {}),
+    }
+
+
+def _transform_org_module(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Transform org module config from SQL function to API response format."""
+    return {
+        'id': data.get('id'),
+        'name': data.get('module_name'),
+        'displayName': data.get('display_name'),
+        'description': data.get('description'),
+        'type': data.get('module_type'),
+        'tier': data.get('tier'),
+        'isEnabled': data.get('is_enabled'),
+        'isInstalled': data.get('is_installed'),
+        'systemEnabled': data.get('system_enabled'),
+        'orgEnabled': data.get('org_enabled'),
+        'version': data.get('version'),
+        'minCompatibleVersion': data.get('min_compatible_version'),
+        'config': data.get('config', {}),
+        'featureFlags': data.get('feature_flags', {}),
+        'dependencies': data.get('dependencies', []),
+        'navConfig': data.get('nav_config', {}),
+        'requiredPermissions': data.get('required_permissions', []),
+        'resolutionMetadata': data.get('resolution_metadata', {}),
+    }
+
+
+def handle_list_ws_modules(ws_id: str, user_id: str) -> Dict[str, Any]:
+    """
+    GET /admin/ws/{wsId}/mgmt/modules
+    
+    List all modules with workspace-level configuration resolution.
+    Uses resolve_all_modules_for_workspace() SQL function.
+    
+    Auth: Verified at router level (ADR-019)
+    
+    Args:
+        ws_id: Workspace ID (from path parameter)
+        user_id: Supabase user ID
+    
+    Returns:
+        List of modules with workspace-level config resolution
+    """
+    if not ws_id:
+        raise common.ValidationError('Workspace ID is required')
+    
+    try:
+        # Call SQL function to get all modules with workspace-level resolution
+        result = common.rpc('resolve_all_modules_for_workspace', {'p_ws_id': ws_id})
+        
+        modules = result if isinstance(result, list) else []
+        
+        # Transform to camelCase
+        transformed_modules = [_transform_ws_module(m) for m in modules]
+        
+        logger.info(f"Retrieved {len(modules)} modules for workspace {ws_id}")
+        return common.success_response({'modules': transformed_modules, 'totalCount': len(modules)})
+    
+    except Exception as e:
+        logger.exception(f'Error listing workspace modules: {str(e)}')
+        raise
+
+
+def handle_get_ws_module(ws_id: str, module_name: str, user_id: str) -> Dict[str, Any]:
+    """
+    GET /admin/ws/{wsId}/mgmt/modules/{name}
+    
+    Get a specific module with workspace-level configuration resolution.
+    Uses resolve_module_config() SQL function.
+    
+    Auth: Verified at router level (ADR-019)
+    
+    Args:
+        ws_id: Workspace ID (from path parameter)
+        module_name: Module name
+        user_id: Supabase user ID
+    
+    Returns:
+        Module with workspace-level config resolution
+    """
+    if not ws_id:
+        raise common.ValidationError('Workspace ID is required')
+    
+    if not module_name:
+        raise common.ValidationError('Module name is required')
+    
+    # Validate module name format
+    if not re.match(r'^module-[a-z]+$', module_name):
+        raise common.ValidationError("Invalid module name format. Must be 'module-{purpose}'")
+    
+    try:
+        # Call SQL function to get module with workspace-level resolution
+        module = common.rpc('resolve_module_config', {
+            'p_ws_id': ws_id,
+            'p_module_name': module_name
+        })
+        
+        if not module:
+            raise common.NotFoundError(f"Module '{module_name}' not found")
+        
+        # Transform to camelCase
+        transformed_module = _transform_ws_module(module)
+        
+        logger.info(f"Retrieved module {module_name} for workspace {ws_id}")
+        return common.success_response({'module': transformed_module})
+    
+    except Exception as e:
+        logger.exception(f'Error getting workspace module {module_name}: {str(e)}')
+        raise
+
+
+def handle_update_ws_module(
+    ws_id: str,
+    module_name: str,
+    body: Dict[str, Any],
+    user_id: str
+) -> Dict[str, Any]:
+    """
+    PUT /admin/ws/{wsId}/mgmt/modules/{name}
+    
+    Update workspace-level module configuration override.
+    Creates or updates record in mgmt_cfg_ws_modules table.
+    
+    Auth: Verified at router level (ADR-019)
+    
+    Args:
+        ws_id: Workspace ID (from path parameter)
+        module_name: Module name
+        body: Request body with config overrides
+        user_id: Supabase user ID
+    
+    Returns:
+        Updated module with workspace-level config resolution
+    """
+    if not ws_id:
+        raise common.ValidationError('Workspace ID is required')
+    
+    if not module_name:
+        raise common.ValidationError('Module name is required')
+    
+    # Validate module name format
+    if not re.match(r'^module-[a-z]+$', module_name):
+        raise common.ValidationError("Invalid module name format. Must be 'module-{purpose}'")
+    
+    # Validate that module exists in system registry
+    sys_module = common.find_one(
+        table='mgmt_cfg_sys_modules',
+        filters={'module_name': module_name, 'deleted_at': None}
+    )
+    
+    if not sys_module:
+        raise common.NotFoundError(f"Module '{module_name}' not found in system registry")
+    
+    try:
+        # Check if workspace override already exists
+        existing_override = common.find_one(
+            table='mgmt_cfg_ws_modules',
+            filters={'ws_id': ws_id, 'module_name': module_name}
+        )
+        
+        # Prepare update data
+        update_data = {
+            'updated_by': user_id
+        }
+        
+        # Handle is_enabled (nullable - NULL means inherit from org/system)
+        if 'isEnabled' in body:
+            update_data['is_enabled'] = body['isEnabled']
+        elif 'is_enabled' in body:
+            update_data['is_enabled'] = body['is_enabled']
+        
+        # Handle config_overrides
+        if 'configOverrides' in body:
+            update_data['config_overrides'] = body['configOverrides']
+        elif 'config_overrides' in body:
+            update_data['config_overrides'] = body['config_overrides']
+        
+        # Handle feature_flag_overrides
+        if 'featureFlagOverrides' in body:
+            update_data['feature_flag_overrides'] = body['featureFlagOverrides']
+        elif 'feature_flag_overrides' in body:
+            update_data['feature_flag_overrides'] = body['feature_flag_overrides']
+        
+        if existing_override:
+            # Update existing override
+            updated_override = common.update_one(
+                table='mgmt_cfg_ws_modules',
+                filters={'ws_id': ws_id, 'module_name': module_name},
+                data=update_data
+            )
+        else:
+            # Create new override
+            insert_data = {
+                'ws_id': ws_id,
+                'module_name': module_name,
+                'created_by': user_id,
+                **update_data
+            }
+            updated_override = common.insert_one(
+                table='mgmt_cfg_ws_modules',
+                data=insert_data
+            )
+        
+        # Return resolved module config
+        module = common.rpc('resolve_module_config', {
+            'p_ws_id': ws_id,
+            'p_module_name': module_name
+        })
+        
+        # Transform to camelCase
+        transformed_module = _transform_ws_module(module)
+        
+        logger.info(f"Updated workspace module config: ws={ws_id}, module={module_name}")
+        return common.success_response({
+            'module': transformed_module,
+            'message': f"Workspace-level config for '{module_name}' updated successfully"
+        })
+    
+    except Exception as e:
+        logger.exception(f'Error updating workspace module {module_name}: {str(e)}')
         raise

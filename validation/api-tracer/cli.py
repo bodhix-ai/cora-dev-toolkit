@@ -299,7 +299,7 @@ def validate(
                     logger.info(f"  - {category}: {count} issues")
         
         # Format and output report
-        formatted_report = reporter.format_report(report, output)
+        formatted_report = reporter.format_report(report, output, verbose=verbose)
         print(formatted_report)
         
         # Exit with appropriate code

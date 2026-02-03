@@ -102,8 +102,33 @@ output "api_routes" {
       public      = false
     },
     {
+      method      = "PUT"
+      path        = "/admin/org/mgmt/modules/{name}"
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
+      public      = false
+    },
+    {
       method      = "GET"
       path        = "/admin/org/mgmt/usage"
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
+      public      = false
+    },
+    # Workspace admin routes
+    {
+      method      = "GET"
+      path        = "/admin/ws/{wsId}/mgmt/modules"
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/admin/ws/{wsId}/mgmt/modules/{name}"
+      integration = aws_lambda_function.lambda_mgmt.invoke_arn
+      public      = false
+    },
+    {
+      method      = "PUT"
+      path        = "/admin/ws/{wsId}/mgmt/modules/{name}"
       integration = aws_lambda_function.lambda_mgmt.invoke_arn
       public      = false
     }

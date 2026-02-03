@@ -15,7 +15,7 @@ import { createOrgModuleClient, OrgModuleApiClient } from "../lib/api";
 import { UserOrganization } from "../types";
 import { useUser } from "./UserContext";
 
-interface OrgContextType {
+export interface OrgContextType {
   currentOrg: UserOrganization | null;
   organizations: UserOrganization[];
   setCurrentOrg: (org: UserOrganization) => Promise<void>;

@@ -384,6 +384,70 @@ elif path.startswith('/admin/org/'):\n    # Extract org_id from request (NOT fro
         return common.forbidden_response('Organization admin role required')
 ```
 
+### X-Org-Id Header Pattern (REQUIRED Fallback)
+
+**CRITICAL**: Organization admin routes MUST read `org_id` from the `X-Org-Id` request header as a fallback when authorizer context extraction fails.
+
+**Why This is Required:**
+
+- **Authorizer context extraction may fail** - `get_org_context_from_event()` may not extract org_id from JWT
+- **Frontend hooks explicitly pass org_id** - Org-scoped hooks send `X-Org-Id` header with every request
+- **More reliable than authorizer-only** - Explicit header passing is predictable and testable
+- **Supports different auth strategies** - Works regardless of how the authorizer is configured
+
+**✅ CORRECT Pattern (Authorizer + Header Fallback):**
+
+```python
+elif path.startswith('/admin/org/'):
+    # Try authorizer context first
+    org_id = common.get_org_context_from_event(event)
+    
+    # Fallback to X-Org-Id header (sent by frontend hooks)
+    if not org_id:
+        headers = event.get('headers', {})
+        org_id = headers.get('X-Org-Id') or headers.get('x-org-id')
+    
+    if not org_id:
+        return common.bad_request_response('Organization ID (orgId) is required')
+    
+    # Verify org admin authorization
+    if not common.check_org_admin(supabase_user_id, org_id):
+        return common.forbidden_response('Organization admin role required')
+```
+
+**❌ WRONG Pattern (Authorizer Only):**
+
+```python
+elif path.startswith('/admin/org/'):
+    # ❌ No fallback - fails if authorizer context doesn't have orgId
+    org_id = common.get_org_context_from_event(event)
+    if not org_id:
+        return common.bad_request_response('Organization ID required')
+```
+
+**Why the wrong pattern fails:**
+- Authorizer may not have access to JWT claims containing org context
+- Different authorization strategies configure context differently
+- No fallback means requests will fail unnecessarily
+
+**Frontend Integration:**
+
+Frontend hooks using the org-scoped pattern send `X-Org-Id` header with every request:
+
+```typescript
+// Frontend hook sends X-Org-Id header
+const response = await fetch(`/admin/org/mgmt/modules`, {
+  headers: {
+    Authorization: `Bearer ${token}`,
+    "X-Org-Id": orgId,  // Lambda reads this as fallback
+  },
+});
+```
+
+**Compliance Rule:** All `/admin/org/*` routes MUST check both authorizer context AND `X-Org-Id` header.
+
+**See:** `docs/standards/01_std_front_AUTH.md` Section 2.3 for the frontend org-scoped hook pattern.
+
 ### Complete Org Admin Authorization Flow
 
 ```mermaid

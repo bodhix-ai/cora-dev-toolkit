@@ -60,6 +60,45 @@ fi
 echo -e "${GREEN}✓ Layer built: ${BUILD_DIR}/org-common-layer.zip${NC}"
 
 # ========================================
+# Build Lambda Layer (access_common)
+# ========================================
+echo -e "${GREEN}Building access_common Lambda layer...${NC}"
+
+ACCESS_LAYER_DIR="${LAYERS_DIR}/access_common"
+ACCESS_LAYER_BUILD_DIR="${BUILD_DIR}/access-layer-build"
+
+if [ ! -d "${ACCESS_LAYER_DIR}" ]; then
+    echo -e "${RED}ERROR: Layer directory not found: ${ACCESS_LAYER_DIR}${NC}"
+    exit 1
+fi
+
+mkdir -p "${ACCESS_LAYER_BUILD_DIR}/python"
+
+# Install layer dependencies if needed
+if [ -f "${ACCESS_LAYER_DIR}/requirements.txt" ]; then
+    echo "Installing access_common layer dependencies for Python 3.11..."
+    pip3 install -r "${ACCESS_LAYER_DIR}/requirements.txt" -t "${ACCESS_LAYER_BUILD_DIR}/python" \
+        --platform manylinux2014_x86_64 \
+        --python-version 3.11 \
+        --implementation cp \
+        --only-binary=:all: \
+        --upgrade --quiet
+fi
+
+# Copy layer code
+if [ -d "${ACCESS_LAYER_DIR}/python" ]; then
+    cp -r "${ACCESS_LAYER_DIR}"/python/* "${ACCESS_LAYER_BUILD_DIR}/python/"
+fi
+
+# Create layer ZIP
+(
+    cd "${ACCESS_LAYER_BUILD_DIR}"
+    zip -r "${BUILD_DIR}/access_common-layer.zip" python -q
+)
+
+echo -e "${GREEN}✓ Layer built: ${BUILD_DIR}/access_common-layer.zip${NC}"
+
+# ========================================
 # Build Lambda Functions
 # ========================================
 for lambda_dir in "${LAMBDAS_DIR}"/*/; do

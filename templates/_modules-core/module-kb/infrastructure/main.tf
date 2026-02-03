@@ -29,6 +29,22 @@ data "aws_lambda_layer_version" "org_common" {
 }
 
 # =============================================================================
+# Lambda Layer - kb_common (Local zip-based)
+# =============================================================================
+
+resource "aws_lambda_layer_version" "kb_common" {
+  layer_name          = "${local.prefix}-kb-common"
+  description         = "KB module permissions helpers"
+  filename            = "${local.build_dir}/kb_common-layer.zip"
+  source_code_hash    = filebase64sha256("${local.build_dir}/kb_common-layer.zip")
+  compatible_runtimes = [local.lambda_runtime]
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# =============================================================================
 # S3 Bucket for Document Storage
 # =============================================================================
 
@@ -64,6 +80,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "kb_documents" {
     id     = "delete-old-versions"
     status = "Enabled"
 
+    filter {}
+
     noncurrent_version_expiration {
       noncurrent_days = 30
     }
@@ -72,6 +90,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "kb_documents" {
   rule {
     id     = "delete-incomplete-uploads"
     status = "Enabled"
+
+    filter {}
 
     abort_incomplete_multipart_upload {
       days_after_initiation = 7
@@ -258,7 +278,10 @@ resource "aws_lambda_function" "kb_base" {
   filename         = "${local.build_dir}/kb-base.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/kb-base.zip")
 
-  layers = [data.aws_lambda_layer_version.org_common.arn]
+  layers = [
+    data.aws_lambda_layer_version.org_common.arn,
+    aws_lambda_layer_version.kb_common.arn
+  ]
 
   environment {
     variables = {
@@ -305,7 +328,10 @@ resource "aws_lambda_function" "kb_document" {
   filename         = "${local.build_dir}/kb-document.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/kb-document.zip")
 
-  layers = [data.aws_lambda_layer_version.org_common.arn]
+  layers = [
+    data.aws_lambda_layer_version.org_common.arn,
+    aws_lambda_layer_version.kb_common.arn
+  ]
 
   environment {
     variables = {

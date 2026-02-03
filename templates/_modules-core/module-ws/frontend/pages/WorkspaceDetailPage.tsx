@@ -61,8 +61,10 @@ import {
   useEvaluationStats,
   type Evaluation,
 } from "@{{PROJECT_NAME}}/module-eval";
+import { WorkspaceModuleConfig } from "@{{PROJECT_NAME}}/module-mgmt";
 import { createAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import { useRouter } from "next/navigation";
+import { useWorkspacePlugin } from "@{{PROJECT_NAME}}/shared/workspace-plugin";
 
 
 // ============================================================================
@@ -242,7 +244,6 @@ export function WorkspaceDetailPage({
       // Create draft evaluation (no dialog, no problematic hooks!)
       const newEval = await create({
         name: `${workspace?.name} Evaluation - ${new Date().toLocaleDateString()}`,
-        workspaceId: workspaceId,
       });
       
       console.log("Evaluation created:", newEval);
@@ -277,6 +278,56 @@ export function WorkspaceDetailPage({
       globalKbs,
     };
   }, [availableKbs]);
+
+  // Get module availability and refresh from workspace plugin context
+  const { moduleAvailability, loading: pluginLoading, refresh: refreshPluginContext } = useWorkspacePlugin();
+
+  // Define available tabs based on module enablement
+  // Overview and Settings are always visible (built-in functionality)
+  interface WorkspaceTab {
+    label: string;
+    index: number;
+    module?: string; // Module name if tab requires module
+  }
+
+  const availableTabs = useMemo((): WorkspaceTab[] => {
+    const tabs: WorkspaceTab[] = [
+      { label: "Overview", index: 0 }, // Always visible
+    ];
+
+    // Docs tab - only if module-kb is enabled
+    if (moduleAvailability?.isModuleAvailable('module-kb')) {
+      tabs.push({ label: "Docs", index: tabs.length, module: 'module-kb' });
+    }
+
+    // Evaluations tab - only if module-eval is enabled
+    if (moduleAvailability?.isModuleAvailable('module-eval')) {
+      tabs.push({ label: "Evaluations", index: tabs.length, module: 'module-eval' });
+    }
+
+    // Chat tab - only if module-chat is enabled
+    if (moduleAvailability?.isModuleAvailable('module-chat')) {
+      tabs.push({ label: "Chat", index: tabs.length, module: 'module-chat' });
+    }
+
+    // Voice tab - only if module-voice is enabled
+    if (moduleAvailability?.isModuleAvailable('module-voice')) {
+      tabs.push({ label: "Interviews", index: tabs.length, module: 'module-voice' });
+    }
+
+    tabs.push({ label: "Settings", index: tabs.length }); // Always visible
+
+    return tabs;
+  }, [moduleAvailability]);
+
+  // Map of tab labels to their actual indices for content rendering
+  const tabIndexMap = useMemo(() => {
+    const map: { [key: string]: number } = {};
+    availableTabs.forEach(tab => {
+      map[tab.label] = tab.index;
+    });
+    return map;
+  }, [availableTabs]);
 
   if (loading) {
     return (
@@ -485,15 +536,14 @@ export function WorkspaceDetailPage({
       {/* Tabs */}
       <Paper sx={{ mb: 3 }}>
         <Tabs value={activeTab} onChange={handleTabChange} aria-label="workspace tabs">
-          <Tab label="Overview" {...a11yProps(0)} />
-          <Tab label="Docs" {...a11yProps(1)} />
-          <Tab label="Evaluations" {...a11yProps(2)} />
-          <Tab label="Settings" {...a11yProps(3)} />
+          {availableTabs.map(tab => (
+            <Tab key={tab.label} label={tab.label} {...a11yProps(tab.index)} />
+          ))}
         </Tabs>
         <Divider /> {/* CORA UI Standard: Tab separator bar */}
 
-        {/* Tab 0: Overview */}
-        <TabPanel value={activeTab} index={0}>
+        {/* Tab: Overview (always visible) */}
+        <TabPanel value={activeTab} index={tabIndexMap["Overview"]}>
           <Box sx={{ p: 3 }}> {/* CORA UI Standard: Tab content padding (24px) */}
             {/* Workspace Info Grid */}
             <Grid container spacing={3}>
@@ -586,12 +636,12 @@ export function WorkspaceDetailPage({
           </Box>
         </TabPanel>
 
-        {/* Tab 1: Docs */}
-        <TabPanel value={activeTab} index={1}>
+        {/* Tab: Docs (conditional - only if module-kb enabled) */}
+        {moduleAvailability?.isModuleAvailable('module-kb') && (
+          <TabPanel value={activeTab} index={tabIndexMap["Docs"]}>
           <Box sx={{ p: 3 }}> {/* CORA UI Standard: Tab content padding (24px) */}
             {/* Knowledge Base Section - Integrated with module-kb */}
             <WorkspaceDataKBTab
-            workspaceId={workspaceId}
             kb={kb}
             availableKbs={groupedAvailableKbs}
             documents={documents}
@@ -610,10 +660,12 @@ export function WorkspaceDetailPage({
             currentUserId={userId}
             />
           </Box>
-        </TabPanel>
+          </TabPanel>
+        )}
 
-        {/* Tab 2: Evaluations */}
-        <TabPanel value={activeTab} index={2}>
+        {/* Tab: Evaluations (conditional - only if module-eval enabled) */}
+        {moduleAvailability?.isModuleAvailable('module-eval') && (
+          <TabPanel value={activeTab} index={tabIndexMap["Evaluations"]}>
           <Box sx={{ p: 3 }}> {/* CORA UI Standard: Tab content padding (24px) */}
             {/* Stats Chips and Create Button - Same horizontal band */}
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3, flexWrap: "wrap", gap: 2 }}>
@@ -834,10 +886,55 @@ export function WorkspaceDetailPage({
               </Paper>
             )}
           </Box>
-        </TabPanel>
+          </TabPanel>
+        )}
 
-        {/* Tab 3: Settings */}
-        <TabPanel value={activeTab} index={3}>
+        {/* Tab: Chat (conditional - only if module-chat enabled) */}
+        {moduleAvailability?.isModuleAvailable('module-chat') && (
+          <TabPanel value={activeTab} index={tabIndexMap["Chat"]}>
+          <Box sx={{ p: 3 }}> {/* CORA UI Standard: Tab content padding (24px) */}
+            <Typography variant="h6" gutterBottom>
+              Chat
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Workspace chat and messaging functionality.
+            </Typography>
+            <Paper variant="outlined" sx={{ p: 4, textAlign: "center" }}>
+              <Typography variant="body1" color="text.secondary">
+                Chat functionality coming soon.
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                This tab will provide conversational AI interface for this workspace.
+              </Typography>
+            </Paper>
+          </Box>
+          </TabPanel>
+        )}
+
+        {/* Tab: Interviews (conditional - only if module-voice enabled) */}
+        {moduleAvailability?.isModuleAvailable('module-voice') && (
+          <TabPanel value={activeTab} index={tabIndexMap["Interviews"]}>
+          <Box sx={{ p: 3 }}> {/* CORA UI Standard: Tab content padding (24px) */}
+            <Typography variant="h6" gutterBottom>
+              Voice Interviews
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              AI-powered voice interviews for this workspace.
+            </Typography>
+            <Paper variant="outlined" sx={{ p: 4, textAlign: "center" }}>
+              <Typography variant="body1" color="text.secondary">
+                Voice interview functionality coming soon.
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                This tab will provide real-time transcription and evaluation of voice interviews.
+              </Typography>
+            </Paper>
+          </Box>
+          </TabPanel>
+        )}
+
+        {/* Tab: Settings (always visible) */}
+        <TabPanel value={activeTab} index={tabIndexMap["Settings"]}>
           <Box sx={{ p: 3 }}> {/* CORA UI Standard: Tab content padding (24px) */}
             <Typography variant="h6" gutterBottom>
               Settings
@@ -861,6 +958,19 @@ export function WorkspaceDetailPage({
                   // TODO: Implement add member dialog
                   console.log("Add member clicked");
                 }}
+              />
+            </Box>
+
+            <Divider sx={{ my: 4 }} />
+
+            {/* Module Configuration Section */}
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+                Module Configuration
+              </Typography>
+              <WorkspaceModuleConfig 
+                workspaceId={workspaceId} 
+                onModuleToggled={refreshPluginContext}
               />
             </Box>
 

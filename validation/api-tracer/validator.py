@@ -110,12 +110,18 @@ class FullStackValidator:
         
         # Parse frontend (packages directory or specific module)
         logger.info("Parsing frontend API calls...")
+        frontend_paths = []
         if self.module_filter:
-            frontend_path = project / 'packages' / self.module_filter
+            frontend_paths.append(project / 'packages' / self.module_filter)
+            # Note: Module-specific frontend code might also be in apps/web but hard to filter
         else:
-            frontend_path = project / 'packages'
-        if frontend_path.exists():
-            self.frontend_parser.parse_directory(str(frontend_path))
+            frontend_paths.append(project / 'packages')
+            frontend_paths.append(project / 'apps' / 'web')
+            
+        for path in frontend_paths:
+            if path.exists():
+                logger.info(f"Parsing frontend files in: {path}")
+                self.frontend_parser.parse_directory(str(path))
         
         # Filter out _module-template files from frontend calls
         self.frontend_parser.api_calls = [
@@ -731,24 +737,28 @@ class FullStackValidator:
                     logger.warning(f"Failed to validate Lambda file {file_path}: {e}")
         
         # Validate frontend files (filtered by module if specified)
+        frontend_paths = []
         if self.module_filter:
-            frontend_path = project / 'packages' / self.module_filter
+            frontend_paths.append(project / 'packages' / self.module_filter)
         else:
-            frontend_path = project / 'packages'
-        if frontend_path.exists():
-            for ext in ['tsx', 'ts']:
-                for file_path in frontend_path.glob(f"**/*.{ext}"):
-                    # Skip templates and node_modules
-                    if '_module-template' in str(file_path) or 'node_modules' in str(file_path):
-                        continue
-                    
-                    try:
-                        with open(file_path, 'r', encoding='utf-8') as f:
-                            content = f.read()
-                        issues = self.code_quality_validator.validate_frontend_file(str(file_path), content)
-                        code_quality_issues.extend(issues)
-                    except Exception as e:
-                        logger.warning(f"Failed to validate frontend file {file_path}: {e}")
+            frontend_paths.append(project / 'packages')
+            frontend_paths.append(project / 'apps' / 'web')
+            
+        for frontend_path in frontend_paths:
+            if frontend_path.exists():
+                for ext in ['tsx', 'ts']:
+                    for file_path in frontend_path.glob(f"**/*.{ext}"):
+                        # Skip templates and node_modules
+                        if '_module-template' in str(file_path) or 'node_modules' in str(file_path):
+                            continue
+                        
+                        try:
+                            with open(file_path, 'r', encoding='utf-8') as f:
+                                content = f.read()
+                            issues = self.code_quality_validator.validate_frontend_file(str(file_path), content)
+                            code_quality_issues.extend(issues)
+                        except Exception as e:
+                            logger.warning(f"Failed to validate frontend file {file_path}: {e}")
         
         # Validate gateway routes
         route_dicts = [
@@ -794,26 +804,30 @@ class FullStackValidator:
         auth_issues = []
         
         # Validate frontend files (admin pages) - filtered by module if specified
+        frontend_paths = []
         if self.module_filter:
-            frontend_path = project / 'packages' / self.module_filter
+            frontend_paths.append(project / 'packages' / self.module_filter)
         else:
-            frontend_path = project / 'packages'
-        if frontend_path.exists():
-            for ext in ['tsx', 'ts']:
-                for file_path in frontend_path.glob(f"**/*.{ext}"):
-                    # Skip templates and node_modules
-                    if '_module-template' in str(file_path) or 'node_modules' in str(file_path):
-                        continue
-                    
-                    # Only validate admin pages
-                    if '/admin/' in str(file_path) or '/workspace/' in str(file_path):
-                        try:
-                            with open(file_path, 'r', encoding='utf-8') as f:
-                                content = f.read()
-                            issues = self.auth_validator.validate_frontend_file(str(file_path), content)
-                            auth_issues.extend(issues)
-                        except Exception as e:
-                            logger.warning(f"Failed to validate frontend file {file_path}: {e}")
+            frontend_paths.append(project / 'packages')
+            frontend_paths.append(project / 'apps' / 'web')
+            
+        for frontend_path in frontend_paths:
+            if frontend_path.exists():
+                for ext in ['tsx', 'ts']:
+                    for file_path in frontend_path.glob(f"**/*.{ext}"):
+                        # Skip templates and node_modules
+                        if '_module-template' in str(file_path) or 'node_modules' in str(file_path):
+                            continue
+                        
+                        # Only validate admin pages
+                        if '/admin/' in str(file_path) or '/workspace/' in str(file_path):
+                            try:
+                                with open(file_path, 'r', encoding='utf-8') as f:
+                                    content = f.read()
+                                issues = self.auth_validator.validate_frontend_file(str(file_path), content)
+                                auth_issues.extend(issues)
+                            except Exception as e:
+                                logger.warning(f"Failed to validate frontend file {file_path}: {e}")
         
         # Validate Lambda files (filtered by module if specified)
         if self.module_filter:
@@ -869,12 +883,46 @@ class FullStackValidator:
         
         # Layer 1 (Admin Auth - ADR-019a/b)
         # Note: auth issues are prefixed with "auth_" twice due to conversion from AuthIssue to APIMismatch
-        layer1_errors = [m for m in auth_errors if m.mismatch_type.startswith('auth_auth_admin_')]
-        layer1_warnings = [m for m in auth_warnings if m.mismatch_type.startswith('auth_auth_admin_')]
+        # We separate Frontend vs Backend based on file type
         
-        # Layer 2 (Resource Permissions - ADR-019c)
-        layer2_errors = [m for m in auth_errors if m.mismatch_type.startswith('auth_auth_resource_')]
-        layer2_warnings = [m for m in auth_warnings if m.mismatch_type.startswith('auth_auth_resource_')]
+        # Frontend Admin Auth
+        frontend_auth_errors = [m for m in auth_errors if m.frontend_file]
+        frontend_auth_warnings = [m for m in auth_warnings if m.frontend_file]
+        
+        # Breakdown frontend errors by scope (using issue message or other attributes)
+        # Note: We don't have direct access to AuthIssue.admin_scope here since they were converted to APIMismatch
+        # But APIMismatch.issue might contain cues, or we can look at the file path
+        
+        # Helper to categorize frontend issues by scope
+        def categorize_frontend_scope(mismatches):
+            sys = 0
+            org = 0
+            ws = 0
+            for m in mismatches:
+                # Check path cues
+                path = m.frontend_file.lower() if m.frontend_file else ""
+                
+                if '/admin/sys/' in path or '/admin/platform/' in path:
+                    sys += 1
+                elif '/admin/org/' in path:
+                    org += 1
+                elif '/admin/ws/' in path or '/workspace/' in path:
+                    ws += 1
+                else:
+                    # Fallback or general admin pages
+                    pass
+            return sys, org, ws
+
+        fe_sys_err, fe_org_err, fe_ws_err = categorize_frontend_scope(frontend_auth_errors)
+        fe_sys_warn, fe_org_warn, fe_ws_warn = categorize_frontend_scope(frontend_auth_warnings)
+        
+        # Backend Admin Auth (Layer 1)
+        layer1_errors = [m for m in auth_errors if m.lambda_file and m.mismatch_type.startswith('auth_auth_admin_')]
+        layer1_warnings = [m for m in auth_warnings if m.lambda_file and m.mismatch_type.startswith('auth_auth_admin_')]
+        
+        # Backend Resource Permissions (Layer 2)
+        layer2_errors = [m for m in auth_errors if m.lambda_file and m.mismatch_type.startswith('auth_auth_resource_')]
+        layer2_warnings = [m for m in auth_warnings if m.lambda_file and m.mismatch_type.startswith('auth_auth_resource_')]
         
         # Count code quality issues
         quality_errors = [m for m in self.mismatches if m.mismatch_type.startswith('quality_') and m.severity == 'error']
@@ -897,14 +945,26 @@ class FullStackValidator:
             # Auth-specific summary (ADR-019) with layer breakdown
             'auth_validation': {
                 'enabled': self.validate_auth,
+                'frontend': {
+                    'name': 'Frontend Admin Auth (ADR-019a)',
+                    'errors': len(frontend_auth_errors),
+                    'warnings': len(frontend_auth_warnings),
+                    'total': len(frontend_auth_errors) + len(frontend_auth_warnings),
+                    'sys_errors': fe_sys_err,
+                    'sys_warnings': fe_sys_warn,
+                    'org_errors': fe_org_err,
+                    'org_warnings': fe_org_warn,
+                    'ws_errors': fe_ws_err,
+                    'ws_warnings': fe_ws_warn
+                },
                 'layer1': {
-                    'name': 'Admin Authorization (ADR-019a/b)',
+                    'name': 'Backend Admin Auth (ADR-019b)',
                     'errors': len(layer1_errors),
                     'warnings': len(layer1_warnings),
                     'total': len(layer1_errors) + len(layer1_warnings)
                 },
                 'layer2': {
-                    'name': 'Resource Permissions (ADR-019c)',
+                    'name': 'Backend Resource Permissions (ADR-019c)',
                     'errors': len(layer2_errors),
                     'warnings': len(layer2_warnings),
                     'total': len(layer2_errors) + len(layer2_warnings)

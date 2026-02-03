@@ -20,6 +20,46 @@ rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 
 # ========================================
+# Build Lambda Layer (eval_common)
+# ========================================
+echo -e "${GREEN}Building eval_common Lambda layer...${NC}"
+
+LAYERS_DIR="${SCRIPT_DIR}/layers"
+EVAL_LAYER_DIR="${LAYERS_DIR}/eval_common"
+EVAL_LAYER_BUILD_DIR="${BUILD_DIR}/eval-layer-build"
+
+if [ ! -d "${EVAL_LAYER_DIR}" ]; then
+    echo -e "${RED}ERROR: Layer directory not found: ${EVAL_LAYER_DIR}${NC}"
+    exit 1
+fi
+
+mkdir -p "${EVAL_LAYER_BUILD_DIR}/python"
+
+# Install layer dependencies if needed
+if [ -f "${EVAL_LAYER_DIR}/requirements.txt" ]; then
+    echo "Installing eval_common layer dependencies for Python 3.11..."
+    pip3 install -r "${EVAL_LAYER_DIR}/requirements.txt" -t "${EVAL_LAYER_BUILD_DIR}/python" \
+        --platform manylinux2014_x86_64 \
+        --python-version 3.11 \
+        --implementation cp \
+        --only-binary=:all: \
+        --upgrade --quiet
+fi
+
+# Copy layer code
+if [ -d "${EVAL_LAYER_DIR}/python" ]; then
+    cp -r "${EVAL_LAYER_DIR}"/python/* "${EVAL_LAYER_BUILD_DIR}/python/"
+fi
+
+# Create layer ZIP
+(
+    cd "${EVAL_LAYER_BUILD_DIR}"
+    zip -r "${BUILD_DIR}/eval_common-layer.zip" python -q
+)
+
+echo -e "${GREEN}✓ Layer built: ${BUILD_DIR}/eval_common-layer.zip${NC}"
+
+# ========================================
 # Build Lambda Functions
 # ========================================
 for lambda_dir in "${LAMBDAS_DIR}"/*/; do

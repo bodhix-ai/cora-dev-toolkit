@@ -24,6 +24,7 @@ export interface ApiClientWithKb {
 export interface UseKbDocumentsOptions {
   scope: 'workspace' | 'chat' | 'kb';
   scopeId: string | null; // workspaceId, chatId, or kbId
+  orgId?: string; // Required when scope is 'kb' for orgAdmin methods
   apiClient?: ApiClientWithKb;
   autoFetch?: boolean;
 }
@@ -44,6 +45,7 @@ const MAX_FETCH_RETRIES = 3;
 export function useKbDocuments({
   scope,
   scopeId,
+  orgId,
   apiClient,
   autoFetch = true,
 }: UseKbDocumentsOptions): UseKbDocumentsReturn {
@@ -79,7 +81,10 @@ export function useKbDocuments({
         response = await kbClient.chat.listDocuments(scopeId);
       } else {
         // Direct KB ID access (for admin views)
-        response = await kbClient.orgAdmin.listDocuments(scopeId);
+        if (!orgId) {
+          throw new Error('orgId is required for kb scope');
+        }
+        response = await kbClient.orgAdmin.listDocuments(orgId, scopeId);
       }
 
       // Extract documents array from response data
@@ -126,7 +131,10 @@ export function useKbDocuments({
           response = await kbClient.chat.uploadDocument(scopeId, input);
         } else {
           // Admin upload to specific KB
-          response = await kbClient.orgAdmin.uploadDocument(scopeId, input);
+          if (!orgId) {
+            throw new Error('orgId is required for kb scope');
+          }
+          response = await kbClient.orgAdmin.uploadDocument(orgId, scopeId, input);
         }
         
         const uploadResponse = response.data;
@@ -271,7 +279,10 @@ export function useKbDocuments({
         } else if (scope === 'chat') {
           await kbClient.chat.deleteDocument(scopeId, documentId);
         } else {
-          await kbClient.orgAdmin.deleteDocument(scopeId, documentId);
+          if (!orgId) {
+            throw new Error('orgId is required for kb scope');
+          }
+          await kbClient.orgAdmin.deleteDocument(orgId, scopeId, documentId);
         }
 
         // Refresh document list

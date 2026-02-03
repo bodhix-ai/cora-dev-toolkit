@@ -34,10 +34,10 @@ if [ -d "${LAYERS_DIR}/voice_common/python/voice_common" ]; then
   # Create layer ZIP
   (
     cd "${LAYER_BUILD_DIR}"
-    zip -r "${BUILD_DIR}/voice_common_layer.zip" python/ -q
+    zip -r "${BUILD_DIR}/voice_common-layer.zip" python/ -q
   )
   
-  echo -e "${GREEN}✓ Layer built: ${BUILD_DIR}/voice_common_layer.zip${NC}"
+  echo -e "${GREEN}✓ Layer built: ${BUILD_DIR}/voice_common-layer.zip${NC}"
 else
   echo -e "${YELLOW}⚠ voice_common layer not found, skipping${NC}"
 fi

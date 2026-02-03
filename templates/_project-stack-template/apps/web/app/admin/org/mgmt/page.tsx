@@ -1,37 +1,116 @@
 "use client";
 
 /**
- * Organization Management Admin Page
+ * Organization Module Configuration Page
  *
- * Organization-level management page for viewing module status and usage.
+ * Allows organization administrators to:
+ * - View modules available to their organization
+ * - Enable/disable modules for their organization
+ * - Override system-level module configuration
  *
- * Access: Organization admins only (org_admin)
+ * Access: Organization admins only (org_owner, org_admin, or sys_admin)
+ *
+ * ADR-019 Compliance: Layer 1 Admin Authorization
+ * - Uses useRole() hook for authorization
+ * - Uses useOrganizationContext() for org context
+ * - Implements loading state checks (REQUIRED)
  *
  * @example
  * Route: /admin/org/mgmt
  */
 
-import React from "react";
-import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
-import { CircularProgress, Box, Alert, Typography, Paper } from "@mui/material";
-import { useModuleRegistry } from "@{{PROJECT_NAME}}/module-mgmt";
+import React, { useState } from "react";
+import { useRole } from "@{{PROJECT_NAME}}/module-access";
+import { useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
+import { useOrgModuleConfig, type OrgModuleConfig } from "@{{PROJECT_NAME}}/module-mgmt";
+import {
+  Box,
+  Alert,
+  CircularProgress,
+  Typography,
+  Card,
+  CardContent,
+  Switch,
+  Chip,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+} from "@mui/material";
+import {
+  Info as InfoIcon,
+  CheckCircle as EnabledIcon,
+  Cancel as DisabledIcon,
+  Lock as LockedIcon,
+} from "@mui/icons-material";
 
 /**
- * Organization Management Admin Page Component
+ * Organization Module Configuration Component
  *
- * Renders the Organization Management admin interface with:
- * - Module status (read-only view)
- * - Module usage statistics for the organization
- *
- * Requires organization admin role (org_admin).
+ * Main UI for managing module configuration at organization level.
+ * Follows ADR-019 Layer 1 admin authorization pattern.
  */
-export default function OrganizationManagementPage() {
-  const { profile, loading, isAuthenticated } = useUser();
-  const { hasRole } = useRole();
-  const { modules, loading: modulesLoading } = useModuleRegistry();
+export default function OrgModuleConfigPage() {
+  // ADR-019 Layer 1: Admin Authorization Pattern
+  const { isOrgAdmin } = useRole();
+  const { currentOrganization, isLoading: orgLoading } = useOrganizationContext();
 
-  // Show loading state while user profile is being fetched
-  if (loading) {
+  // Module data hook
+  const {
+    modules,
+    isLoading: modulesLoading,
+    error: modulesError,
+    updateConfig,
+    refreshModules,
+  } = useOrgModuleConfig({
+    orgId: currentOrganization?.orgId || null,
+    autoFetch: !!currentOrganization?.orgId,
+  });
+
+  // Local state
+  const [selectedModule, setSelectedModule] = useState<OrgModuleConfig | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+
+  // Combined loading state (REQUIRED by ADR-019)
+  const isLoading = orgLoading || modulesLoading;
+
+  const handleToggleEnabled = async (module: OrgModuleConfig) => {
+    try {
+      setUpdateError(null);
+
+      // Call the hook's updateConfig method
+      await updateConfig(module.name, {
+        isEnabled: !module.isEnabled,
+      });
+
+      // Refresh modules list
+      await refreshModules();
+    } catch (err) {
+      console.error("Error toggling module:", err);
+      setUpdateError(
+        err instanceof Error ? err.message : "Failed to toggle module"
+      );
+    }
+  };
+
+  const handleViewDetails = (module: OrgModuleConfig) => {
+    setSelectedModule(module);
+    setDetailsOpen(true);
+  };
+
+  // ADR-019 Compliance: Loading state check (REQUIRED)
+  if (isLoading) {
     return (
       <Box
         sx={{
@@ -46,23 +125,24 @@ export default function OrganizationManagementPage() {
     );
   }
 
-  // Check if user is authenticated
-  if (!isAuthenticated || !profile) {
+  // ADR-019 Compliance: Authorization check (REQUIRED)
+  if (!isOrgAdmin) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">
-          You must be logged in to access this page.
+          Access denied. This page is only accessible to organization
+          administrators.
         </Alert>
       </Box>
     );
   }
 
-  // Check if user has org admin role
-  if (!hasRole("org_admin")) {
+  // Check org context
+  if (!currentOrganization) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">
-          Access denied. This page is only accessible to organization administrators.
+          Organization context not available. Please select an organization.
         </Alert>
       </Box>
     );
@@ -70,45 +150,279 @@ export default function OrganizationManagementPage() {
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Page Header */}
       <Typography variant="h4" gutterBottom>
-        Organization Management
+        Module Configuration
       </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        View module status and usage for your organization
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        Organization: <strong>{currentOrganization.name}</strong>
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Manage module enablement for your organization. Changes affect all
+        workspaces in this organization.
       </Typography>
 
-      {modulesLoading ? (
-        <CircularProgress />
-      ) : (
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h5" gutterBottom>
-            Enabled Modules
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            The following modules are currently enabled for your organization:
-          </Typography>
-          <Box component="ul" sx={{ mt: 2 }}>
-            {modules
-              ?.filter((m) => m.isEnabled)
-              .map((module) => (
-                <Box component="li" key={module.name} sx={{ mb: 1 }}>
-                  <Typography variant="body1">
-                    <strong>{module.displayName}</strong> ({module.name})
-                  </Typography>
-                  {module.description && (
+      {/* Error Alerts */}
+      {modulesError && (
+        <Alert
+          severity="error"
+          sx={{ mb: 3 }}
+          onClose={() => setUpdateError(null)}
+        >
+          {modulesError}
+        </Alert>
+      )}
+      {updateError && (
+        <Alert
+          severity="error"
+          sx={{ mb: 3 }}
+          onClose={() => setUpdateError(null)}
+        >
+          {updateError}
+        </Alert>
+      )}
+
+      {/* Summary Cards */}
+      <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+        <Card sx={{ flex: 1 }}>
+          <CardContent>
+            <Typography variant="h6">Total Modules</Typography>
+            <Typography variant="h3">{modules.length}</Typography>
+          </CardContent>
+        </Card>
+        <Card sx={{ flex: 1 }}>
+          <CardContent>
+            <Typography variant="h6">Enabled</Typography>
+            <Typography variant="h3" color="success.main">
+              {modules.filter((m) => m.isEnabled).length}
+            </Typography>
+          </CardContent>
+        </Card>
+        <Card sx={{ flex: 1 }}>
+          <CardContent>
+            <Typography variant="h6">System Disabled</Typography>
+            <Typography variant="h3" color="text.secondary">
+              {modules.filter((m) => !m.systemEnabled).length}
+            </Typography>
+          </CardContent>
+        </Card>
+      </Box>
+
+      {/* Modules Table */}
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Module</TableCell>
+              <TableCell>Type</TableCell>
+              <TableCell>System Status</TableCell>
+              <TableCell>Org Status</TableCell>
+              <TableCell>Dependencies</TableCell>
+              <TableCell align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {modules.map((module) => (
+              <TableRow key={module.id || module.name}>
+                <TableCell>
+                  <Box>
+                    <Typography variant="body1" fontWeight="bold">
+                      {module.displayName}
+                    </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {module.description}
+                      {module.name}
+                    </Typography>
+                    {module.description && (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: "block", mt: 0.5 }}
+                      >
+                        {module.description}
+                      </Typography>
+                    )}
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Chip
+                    label={module.type}
+                    size="small"
+                    color={module.type === "core" ? "primary" : "default"}
+                  />
+                  {module.tier && (
+                    <Chip
+                      label={`Tier ${module.tier}`}
+                      size="small"
+                      sx={{ ml: 1 }}
+                    />
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    {module.systemEnabled ? (
+                      <>
+                        <EnabledIcon color="success" fontSize="small" />
+                        <Typography variant="body2" color="success.main">
+                          Enabled
+                        </Typography>
+                      </>
+                    ) : (
+                      <>
+                        <LockedIcon color="disabled" fontSize="small" />
+                        <Typography variant="body2" color="text.secondary">
+                          Disabled
+                        </Typography>
+                      </>
+                    )}
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    {module.isEnabled ? (
+                      <EnabledIcon color="success" fontSize="small" />
+                    ) : (
+                      <DisabledIcon color="error" fontSize="small" />
+                    )}
+                    <Switch
+                      checked={module.isEnabled}
+                      onChange={() => handleToggleEnabled(module)}
+                      size="small"
+                      disabled={!module.systemEnabled} // Can't enable if system disabled
+                    />
+                    {!module.systemEnabled && (
+                      <Tooltip title="Module is disabled at system level">
+                        <LockedIcon color="disabled" fontSize="small" />
+                      </Tooltip>
+                    )}
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  {module.dependencies && module.dependencies.length > 0 ? (
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                      {module.dependencies.map((dep) => (
+                        <Chip key={dep} label={dep} size="small" />
+                      ))}
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      None
                     </Typography>
                   )}
-                </Box>
-              ))}
-          </Box>
-          
-          <Alert severity="info" sx={{ mt: 3 }}>
-            For full management capabilities, please contact your system administrator.
-          </Alert>
-        </Paper>
-      )}
+                </TableCell>
+                <TableCell align="right">
+                  <Tooltip title="View Details">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleViewDetails(module)}
+                    >
+                      <InfoIcon />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      {/* Module Details Dialog */}
+      <Dialog
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>{selectedModule?.displayName} Details</DialogTitle>
+        <DialogContent>
+          {selectedModule && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Module Name
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                {selectedModule.name}
+              </Typography>
+
+              <Typography variant="subtitle2" gutterBottom>
+                Description
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                {selectedModule.description || "No description"}
+              </Typography>
+
+              <Typography variant="subtitle2" gutterBottom>
+                Version
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                {selectedModule.version || "Not specified"}
+              </Typography>
+
+              <Typography variant="subtitle2" gutterBottom>
+                Enablement Status
+              </Typography>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2">
+                  System Level:{" "}
+                  {selectedModule.systemEnabled ? (
+                    <Chip label="Enabled" size="small" color="success" />
+                  ) : (
+                    <Chip label="Disabled" size="small" color="error" />
+                  )}
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  Organization Level:{" "}
+                  {selectedModule.isEnabled ? (
+                    <Chip label="Enabled" size="small" color="success" />
+                  ) : (
+                    <Chip label="Disabled" size="small" color="error" />
+                  )}
+                </Typography>
+              </Box>
+
+              {selectedModule.config &&
+                Object.keys(selectedModule.config).length > 0 && (
+                  <>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Configuration
+                    </Typography>
+                    <pre
+                      style={{
+                        background: "#f5f5f5",
+                        padding: "12px",
+                        borderRadius: "4px",
+                        overflow: "auto",
+                      }}
+                    >
+                      {JSON.stringify(selectedModule.config, null, 2)}
+                    </pre>
+                  </>
+                )}
+
+              {selectedModule.featureFlags &&
+                Object.keys(selectedModule.featureFlags).length > 0 && (
+                  <>
+                    <Typography variant="subtitle2" gutterBottom sx={{ mt: 2 }}>
+                      Feature Flags
+                    </Typography>
+                    <pre
+                      style={{
+                        background: "#f5f5f5",
+                        padding: "12px",
+                        borderRadius: "4px",
+                        overflow: "auto",
+                      }}
+                    >
+                      {JSON.stringify(selectedModule.featureFlags, null, 2)}
+                    </pre>
+                  </>
+                )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDetailsOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
