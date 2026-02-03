@@ -1,7 +1,7 @@
 # Context: WS Plugin Architecture
 
 **Created:** January 24, 2026  
-**Updated:** February 3, 2026 (Sprint 3 Phase 3b Complete)  
+**Updated:** February 3, 2026 (Sprint 3 Complete - Ready for S4)  
 **Primary Focus:** Module integration patterns for workspaces
 
 ## Initiative Overview
@@ -31,7 +31,8 @@ Define and implement the architecture for functional modules (kb, chat, voice, e
 |--------|--------|------|--------|----------|
 | S1 | `feature/ws-plugin-arch-s1` | `docs/plans/plan_ws-plugin-arch-s1.md` | ✅ Complete | 2026-01-25 |
 | S2 | `feature/ws-plugin-arch-s2` | `docs/plans/plan_ws-plugin-arch-s2.md` | ✅ Complete | 2026-01-25 |
-| S3 | `feature/ws-plugin-arch-s3` | `docs/plans/plan_ws-plugin-arch-s3.md` | 🟡 Active | - |
+| S3 | `feature/ws-plugin-arch-s3` | `docs/plans/completed/plan_ws-plugin-arch-s3.md` | ✅ Complete | 2026-02-03 |
+| S4 | `feature/ws-plugin-arch-s4` | `docs/plans/plan_ws-plugin-arch-s4.md` | 📋 Planned | - |
 
 ## Naming Pattern (Initiative-Wide Consistency)
 
@@ -50,24 +51,18 @@ All sprints in the **WS Plugin Architecture** initiative follow this naming patt
 
 ## Current Sprint
 
-- **Branch:** `feature/ws-plugin-arch-s3`
-- **Plan:** `docs/plans/plan_ws-plugin-arch-s3.md`
-- **Status:** 🟡 Active (Phase 3 Complete, Phase 3b Added - Feb 3, 2026)
-- **Focus:** Dynamic module configuration (org/workspace config overrides, real-time updates)
+- **Branch:** `feature/ws-plugin-arch-s4` (not yet created)
+- **Plan:** `docs/plans/plan_ws-plugin-arch-s4.md`
+- **Status:** � Planned
+- **Focus:** S3 deferred scope + Tab Ordering + DB Naming Compliance
 
-**Critical Discovery (Feb 3, 2026):** Phase 3 created UI components but did NOT integrate them:
-- Org admin page not accessible (no card at `/admin/org`)
-- Workspace component not integrated into settings tab
-- Left nav reads from YAML file, not database
-- Workspace tabs hardcoded, don't check module enablement
-- Voice/chat workspace tabs don't exist
-
-**Phase 3b Completed (Feb 3, 2026):** Integration and dynamic filtering tasks:
-- ✅ Org admin module config page created
-- ✅ Admin card added to `/admin/org`
-- ✅ Workspace settings module config integrated
-- ✅ WS toggle saves `is_enabled` correctly (Issue 3 fix)
-- ✅ Tabs update immediately after toggle (Issue 4 fix)
+**S4 Scope (from S3 Deferred):**
+- Left navigation dynamic filtering (sys → org cascade)
+- Overview tab metrics filtering by module enablement
+- Config override forms (JSONB editing, feature flags)
+- Auto-refresh / real-time config updates
+- Database table renaming (ADR-011 compliance)
+- Tab ordering feature (sys → org → ws inheritance)
 
 ## Sprint 1 Summary
 
