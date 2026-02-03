@@ -16,6 +16,24 @@ locals {
 }
 
 # =============================================================================
+# LAMBDA LAYER - voice_common (Local zip-based)
+# =============================================================================
+
+resource "aws_lambda_layer_version" "voice_common" {
+  count = var.module_voice_enabled ? 1 : 0
+  
+  layer_name          = "${local.lambda_prefix}-voice-common"
+  description         = "Voice module permissions helpers"
+  filename            = "${path.module}/../backend/.build/voice_common-layer.zip"
+  source_code_hash    = filebase64sha256("${path.module}/../backend/.build/voice_common-layer.zip")
+  compatible_runtimes = ["python3.11"]
+  
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# =============================================================================
 # IAM ROLE FOR LAMBDA FUNCTIONS
 # =============================================================================
 
@@ -145,7 +163,8 @@ resource "aws_lambda_function" "voice_sessions" {
   
   layers = compact([
     var.org_common_layer_arn,
-    var.ai_common_layer_arn
+    var.ai_common_layer_arn,
+    var.module_voice_enabled ? aws_lambda_layer_version.voice_common[0].arn : ""
   ])
   
   environment {
@@ -185,7 +204,10 @@ resource "aws_lambda_function" "voice_configs" {
   
   role = aws_iam_role.voice_lambda_role[0].arn
   
-  layers = [var.org_common_layer_arn]
+  layers = compact([
+    var.org_common_layer_arn,
+    var.module_voice_enabled ? aws_lambda_layer_version.voice_common[0].arn : ""
+  ])
   
   environment {
     variables = {
@@ -216,7 +238,10 @@ resource "aws_lambda_function" "voice_analytics" {
   
   role = aws_iam_role.voice_lambda_role[0].arn
   
-  layers = [var.org_common_layer_arn]
+  layers = compact([
+    var.org_common_layer_arn,
+    var.module_voice_enabled ? aws_lambda_layer_version.voice_common[0].arn : ""
+  ])
   
   environment {
     variables = {
@@ -282,7 +307,8 @@ resource "aws_lambda_function" "voice_transcripts" {
   
   layers = compact([
     var.org_common_layer_arn,
-    var.ai_common_layer_arn
+    var.ai_common_layer_arn,
+    var.module_voice_enabled ? aws_lambda_layer_version.voice_common[0].arn : ""
   ])
   
   environment {

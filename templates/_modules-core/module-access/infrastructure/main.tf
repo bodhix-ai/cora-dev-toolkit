@@ -37,6 +37,22 @@ resource "aws_lambda_layer_version" "org_common" {
 }
 
 # =============================================================================
+# Lambda Layer - access_common (Local zip-based)
+# =============================================================================
+
+resource "aws_lambda_layer_version" "access_common" {
+  layer_name          = "${local.prefix}-access-common"
+  description         = "Access control permissions helpers for module-access"
+  filename            = "${local.build_dir}/access_common-layer.zip"
+  source_code_hash    = filebase64sha256("${local.build_dir}/access_common-layer.zip")
+  compatible_runtimes = [local.lambda_runtime]
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# =============================================================================
 # IAM Role for Lambda Functions
 # =============================================================================
 
@@ -99,7 +115,10 @@ resource "aws_lambda_function" "identities_management" {
   filename         = "${local.build_dir}/identities-management.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/identities-management.zip")
 
-  layers = [aws_lambda_layer_version.org_common.arn]
+  layers = [
+    aws_lambda_layer_version.org_common.arn,
+    aws_lambda_layer_version.access_common.arn
+  ]
 
   environment {
     variables = {
@@ -193,7 +212,10 @@ resource "aws_lambda_function" "profiles" {
   filename         = "${local.build_dir}/profiles.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/profiles.zip")
 
-  layers = [aws_lambda_layer_version.org_common.arn]
+  layers = [
+    aws_lambda_layer_version.org_common.arn,
+    aws_lambda_layer_version.access_common.arn
+  ]
 
   environment {
     variables = {
@@ -240,7 +262,10 @@ resource "aws_lambda_function" "orgs" {
   filename         = "${local.build_dir}/orgs.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/orgs.zip")
 
-  layers = [aws_lambda_layer_version.org_common.arn]
+  layers = [
+    aws_lambda_layer_version.org_common.arn,
+    aws_lambda_layer_version.access_common.arn
+  ]
 
   environment {
     variables = {
@@ -287,7 +312,10 @@ resource "aws_lambda_function" "members" {
   filename         = "${local.build_dir}/members.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/members.zip")
 
-  layers = [aws_lambda_layer_version.org_common.arn]
+  layers = [
+    aws_lambda_layer_version.org_common.arn,
+    aws_lambda_layer_version.access_common.arn
+  ]
 
   environment {
     variables = {
@@ -334,7 +362,10 @@ resource "aws_lambda_function" "org_email_domains" {
   filename         = "${local.build_dir}/org-email-domains.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/org-email-domains.zip")
 
-  layers = [aws_lambda_layer_version.org_common.arn]
+  layers = [
+    aws_lambda_layer_version.org_common.arn,
+    aws_lambda_layer_version.access_common.arn
+  ]
 
   environment {
     variables = {
@@ -381,7 +412,10 @@ resource "aws_lambda_function" "invites" {
   filename         = "${local.build_dir}/invites.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/invites.zip")
 
-  layers = [aws_lambda_layer_version.org_common.arn]
+  layers = [
+    aws_lambda_layer_version.org_common.arn,
+    aws_lambda_layer_version.access_common.arn
+  ]
 
   environment {
     variables = {

@@ -33,6 +33,22 @@ locals {
 }
 
 # =============================================================================
+# Lambda Layer - eval_common (Local zip-based)
+# =============================================================================
+
+resource "aws_lambda_layer_version" "eval_common" {
+  layer_name          = "${local.prefix}-eval-common"
+  description         = "Eval module permissions helpers"
+  filename            = "${local.build_dir}/eval_common-layer.zip"
+  source_code_hash    = filebase64sha256("${local.build_dir}/eval_common-layer.zip")
+  compatible_runtimes = [local.lambda_runtime]
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# =============================================================================
 # SQS Queue for Async Processing
 # =============================================================================
 
@@ -331,7 +347,10 @@ resource "aws_lambda_function" "eval_results" {
   filename         = "${local.build_dir}/eval-results.zip"
   source_code_hash = filebase64sha256("${local.build_dir}/eval-results.zip")
 
-  layers = [var.org_common_layer_arn]
+  layers = [
+    var.org_common_layer_arn,
+    aws_lambda_layer_version.eval_common.arn
+  ]
 
   environment {
     variables = {
