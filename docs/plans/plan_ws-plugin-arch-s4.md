@@ -2,8 +2,9 @@
 
 **Status**: 📋 PLANNED  
 **Priority**: **P2**  
-**Estimated Duration**: 8-10 hours  
+**Estimated Duration**: 12-16 hours (increased to include S3 deferred scope)  
 **Created**: 2026-02-02  
+**Updated**: 2026-02-03 (Added deferred scope from S3)  
 **Branch**: `feature/ws-plugin-arch-s4`  
 **Context**: `memory-bank/context-ws-plugin-architecture.md`  
 **Dependencies**: Sprint 3 (Complete) ✅  
@@ -23,26 +24,39 @@ All sprints in the **WS Plugin Architecture** initiative follow this naming patt
 
 ## Executive Summary
 
-Sprint 4 implements two related features for workspace management:
+Sprint 4 implements three areas of workspace management:
 
-1. **Database Naming Compliance:** Rename workspace tables to follow ADR-011 naming standards
-2. **Tab Ordering Feature:** Implement customizable tab ordering with sys → org → ws inheritance
+1. **S3 Deferred Scope:** Complete deferred items from Sprint 3 (module config enhancements)
+2. **Database Naming Compliance:** Rename workspace tables to follow ADR-011 naming standards
+3. **Tab Ordering Feature:** Implement customizable tab ordering with sys → org → ws inheritance
 
 ### Current State
 
 - ✅ Sprint 3: Module enablement cascade complete (sys → org → ws)
+- ✅ Sprint 3: Workspace tab visibility filters by module enablement
+- ❌ S3 Deferred: Left nav doesn't filter by module enablement (reads YAML)
+- ❌ S3 Deferred: Overview metrics always render (don't filter by module)
+- ❌ S3 Deferred: Config override forms (JSONB editing, feature flags)
+- ❌ S3 Deferred: Auto-refresh for real-time config updates
 - ❌ Workspace config tables don't follow `_cfg_` naming standard
 - ❌ Activity log table doesn't follow `_log_` naming standard
 - ❌ No tab ordering feature (all workspaces have same tab order)
 
 ### Goal
 
-1. **Rename tables to comply with ADR-011:**
+1. **Complete S3 Deferred Scope:**
+   - Left navigation dynamic filtering (sys → org cascade)
+   - Overview tab metrics filtering by module enablement
+   - Config override forms (JSONB editor or structured)
+   - Feature flag toggles at org/ws level
+   - Auto-refresh / real-time config updates
+
+2. **Rename tables to comply with ADR-011:**
    - `ws_configs` → `ws_cfg_sys` (system-level workspace defaults)
    - `ws_org_settings` → `ws_cfg_org` (org-level workspace overrides)
    - `ws_activity_log` → `ws_log_activity` (workspace activity log)
 
-2. **Add tab ordering feature:**
+3. **Add tab ordering feature:**
    - System admins set default tab order
    - Org admins can override for their org
    - Workspace admins can customize their workspace (after creation)
@@ -53,6 +67,13 @@ Sprint 4 implements two related features for workspace management:
 ## Scope
 
 ### In Scope
+
+**Phase 0 - S3 Deferred Scope (4-6h):**
+- Left navigation dynamic filtering
+- Overview tab metrics filtering
+- Config override forms (org & workspace)
+- Feature flag toggles
+- Auto-refresh mechanism
 
 **Phase 1 - Database Migration:**
 - Rename `ws_configs` → `ws_cfg_sys`
@@ -88,6 +109,87 @@ Sprint 4 implements two related features for workspace management:
 - Real-time cascade for tab order (only affects new workspaces)
 - Tab visibility based on module enablement (handled by Sprint 3)
 - Mobile-specific tab ordering UI (uses same order, different display)
+
+---
+
+## Phase 0: S3 Deferred Scope (4-6h)
+
+**Status:** 📋 PLANNED
+
+These items were deferred from Sprint 3 to keep MVP scope manageable.
+
+### 0.1: Left Navigation Dynamic Filtering (2-3h)
+
+**CRITICAL:** Left nav currently reads from static YAML file, not database.
+
+**Current Implementation:**
+- File: `apps/web/lib/moduleRegistry.ts`
+- Function: `buildNavigationConfig()`
+- Data source: `cora-modules.config.yaml` (static file)
+- Check: `show_in_main_nav` flag only
+
+**Required Changes:**
+- [ ] Accept orgId parameter in `buildNavigationConfig(orgId)`
+- [ ] Query `mgmt_cfg_sys_modules.is_enabled` for system-level
+- [ ] Query `mgmt_cfg_org_modules` for org-level overrides
+- [ ] Apply cascade: sys → org (NOT workspace - nav is org-wide)
+- [ ] Filter nav items based on resolved enablement
+- [ ] Cache results per org for performance
+
+**Note:** Workspace-level enablement does NOT affect left nav. Left nav is org-wide - all org users see the same navigation. Only sys and org levels matter.
+
+### 0.2: Overview Tab Dynamic Metrics (1h)
+
+**CRITICAL:** Overview tab metrics are hardcoded.
+
+**Current Implementation:**
+- Location: `WorkspaceDetailPage.tsx` - TabPanel 0
+- Hardcoded: Documents (KB) and Evaluations (Eval)
+- Hooks run unconditionally, even for disabled modules
+
+**Required Changes:**
+- [ ] Check `isModuleAvailable('module-kb')` before rendering Documents card
+- [ ] Check `isModuleAvailable('module-eval')` before rendering Evaluations card
+- [ ] Conditionally execute hooks (don't fetch data for disabled modules)
+- [ ] Add metrics for voice/chat when those modules are enabled
+
+### 0.3: Config Override Forms (1-2h)
+
+**Deferred from S3:** MVP only uses toggle switches. Full config editing deferred.
+
+**Org Admin Config Overrides:**
+- [ ] JSONB editor or structured form for config_overrides
+- [ ] Feature flag toggles UI (key-value for boolean flags)
+- [ ] Preview of effective config (merged sys → org)
+- [ ] Save/revert functionality (currently auto-saves on toggle)
+
+**Workspace Admin Config Overrides:**
+- [ ] JSONB editor or structured form for config_overrides
+- [ ] Feature flag toggles UI
+- [ ] Preview of effective config (merged sys → org → ws)
+- [ ] "Reset to org default" button
+
+### 0.4: Auto-Refresh / Real-Time Updates (1h)
+
+**Deferred from S3:** Currently requires page reload to see config changes.
+
+**Options:**
+- **Option A: Polling (Simple)** - Poll every 30-60 seconds
+- **Option B: WebSocket (Complex)** - Real-time push on config change
+- **Option C: Event-based** - Refresh on specific user actions (tab focus, navigation)
+
+**Required Changes:**
+- [ ] Add refresh mechanism to `WorkspacePluginProvider`
+- [ ] Consider cache invalidation strategy
+- [ ] Balance freshness vs performance
+
+### 0.5: Voice & Chat Workspace Tabs (Future)
+
+**Deferred from S3:** Tab components for new modules.
+
+- [ ] Create voice tab component for workspace
+- [ ] Create chat tab component for workspace
+- [ ] Integrate with tab visibility filtering (already implemented)
 
 ---
 
@@ -563,6 +665,14 @@ const orderedEnabledModules = tabOrder
 ---
 
 ## Success Criteria
+
+**S3 Deferred Scope:**
+- [ ] Left nav filters based on sys → org enablement (not YAML)
+- [ ] Overview metrics only show for enabled modules
+- [ ] No data fetching for disabled modules
+- [ ] Config override forms available for org/ws admins
+- [ ] Feature flag toggles functional
+- [ ] Auto-refresh mechanism implemented
 
 **Database Migration:**
 - [ ] All workspace-related tables follow ADR-011 naming standard
