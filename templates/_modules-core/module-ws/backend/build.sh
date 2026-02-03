@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Build script for module-ws Lambda functions (Zip-Based)
-# This module does not have layers - it uses org-common from module-access
 set -euo pipefail
 
 # Colors for output
@@ -19,6 +18,46 @@ BUILD_DIR="${SCRIPT_DIR}/.build"
 echo -e "${YELLOW}Cleaning previous builds...${NC}"
 rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
+
+# ========================================
+# Build Lambda Layer (ws_common)
+# ========================================
+echo -e "${GREEN}Building ws_common Lambda layer...${NC}"
+
+LAYERS_DIR="${SCRIPT_DIR}/layers"
+WS_LAYER_DIR="${LAYERS_DIR}/ws_common"
+WS_LAYER_BUILD_DIR="${BUILD_DIR}/ws-layer-build"
+
+if [ ! -d "${WS_LAYER_DIR}" ]; then
+    echo -e "${RED}ERROR: Layer directory not found: ${WS_LAYER_DIR}${NC}"
+    exit 1
+fi
+
+mkdir -p "${WS_LAYER_BUILD_DIR}/python"
+
+# Install layer dependencies if needed
+if [ -f "${WS_LAYER_DIR}/requirements.txt" ]; then
+    echo "Installing ws_common layer dependencies for Python 3.11..."
+    pip3 install -r "${WS_LAYER_DIR}/requirements.txt" -t "${WS_LAYER_BUILD_DIR}/python" \
+        --platform manylinux2014_x86_64 \
+        --python-version 3.11 \
+        --implementation cp \
+        --only-binary=:all: \
+        --upgrade --quiet
+fi
+
+# Copy layer code
+if [ -d "${WS_LAYER_DIR}/python" ]; then
+    cp -r "${WS_LAYER_DIR}"/python/* "${WS_LAYER_BUILD_DIR}/python/"
+fi
+
+# Create layer ZIP
+(
+    cd "${WS_LAYER_BUILD_DIR}"
+    zip -r "${BUILD_DIR}/ws_common-layer.zip" python -q
+)
+
+echo -e "${GREEN}✓ Layer built: ${BUILD_DIR}/ws_common-layer.zip${NC}"
 
 # ========================================
 # Build Lambda Functions

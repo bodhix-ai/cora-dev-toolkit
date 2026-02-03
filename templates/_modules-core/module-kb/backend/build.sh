@@ -20,6 +20,46 @@ rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 
 # ========================================
+# Build Lambda Layer (kb_common)
+# ========================================
+echo -e "${GREEN}Building kb_common Lambda layer...${NC}"
+
+LAYERS_DIR="${SCRIPT_DIR}/layers"
+KB_LAYER_DIR="${LAYERS_DIR}/kb_common"
+KB_LAYER_BUILD_DIR="${BUILD_DIR}/kb-layer-build"
+
+if [ ! -d "${KB_LAYER_DIR}" ]; then
+    echo -e "${RED}ERROR: Layer directory not found: ${KB_LAYER_DIR}${NC}"
+    exit 1
+fi
+
+mkdir -p "${KB_LAYER_BUILD_DIR}/python"
+
+# Install layer dependencies if needed
+if [ -f "${KB_LAYER_DIR}/requirements.txt" ]; then
+    echo "Installing kb_common layer dependencies for Python 3.11..."
+    pip3 install -r "${KB_LAYER_DIR}/requirements.txt" -t "${KB_LAYER_BUILD_DIR}/python" \
+        --platform manylinux2014_x86_64 \
+        --python-version 3.11 \
+        --implementation cp \
+        --only-binary=:all: \
+        --upgrade --quiet
+fi
+
+# Copy layer code
+if [ -d "${KB_LAYER_DIR}/python" ]; then
+    cp -r "${KB_LAYER_DIR}"/python/* "${KB_LAYER_BUILD_DIR}/python/"
+fi
+
+# Create layer ZIP
+(
+    cd "${KB_LAYER_BUILD_DIR}"
+    zip -r "${BUILD_DIR}/kb_common-layer.zip" python -q
+)
+
+echo -e "${GREEN}✓ Layer built: ${BUILD_DIR}/kb_common-layer.zip${NC}"
+
+# ========================================
 # Build Lambda Functions
 # ========================================
 for lambda_dir in "${LAMBDAS_DIR}"/*/; do

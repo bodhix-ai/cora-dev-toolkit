@@ -20,6 +20,46 @@ rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 
 # ========================================
+# Build Lambda Layer (chat_common)
+# ========================================
+echo -e "${GREEN}Building chat_common Lambda layer...${NC}"
+
+LAYERS_DIR="${SCRIPT_DIR}/layers"
+CHAT_LAYER_DIR="${LAYERS_DIR}/chat_common"
+CHAT_LAYER_BUILD_DIR="${BUILD_DIR}/chat-layer-build"
+
+if [ ! -d "${CHAT_LAYER_DIR}" ]; then
+    echo -e "${RED}ERROR: Layer directory not found: ${CHAT_LAYER_DIR}${NC}"
+    exit 1
+fi
+
+mkdir -p "${CHAT_LAYER_BUILD_DIR}/python"
+
+# Install layer dependencies if needed
+if [ -f "${CHAT_LAYER_DIR}/requirements.txt" ]; then
+    echo "Installing chat_common layer dependencies for Python 3.11..."
+    pip3 install -r "${CHAT_LAYER_DIR}/requirements.txt" -t "${CHAT_LAYER_BUILD_DIR}/python" \
+        --platform manylinux2014_x86_64 \
+        --python-version 3.11 \
+        --implementation cp \
+        --only-binary=:all: \
+        --upgrade --quiet
+fi
+
+# Copy layer code
+if [ -d "${CHAT_LAYER_DIR}/python" ]; then
+    cp -r "${CHAT_LAYER_DIR}"/python/* "${CHAT_LAYER_BUILD_DIR}/python/"
+fi
+
+# Create layer ZIP
+(
+    cd "${CHAT_LAYER_BUILD_DIR}"
+    zip -r "${BUILD_DIR}/chat_common-layer.zip" python -q
+)
+
+echo -e "${GREEN}✓ Layer built: ${BUILD_DIR}/chat_common-layer.zip${NC}"
+
+# ========================================
 # Build Lambda Functions
 # ========================================
 for lambda_dir in "${LAMBDAS_DIR}"/*/; do
