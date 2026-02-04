@@ -141,7 +141,11 @@ class LambdaParser:
         path = Path(directory)
         
         # Directories to skip (build artifacts, node_modules, etc.)
-        skip_patterns = ['.build', 'node_modules', '__pycache__', '.venv', 'dist', 'build']
+        # .build, dist, build: Lambda build artifacts (bundled/concatenated code)
+        # .next: Next.js build artifacts (transpiled frontend code)
+        # node_modules: Frontend dependencies
+        # __pycache__, .venv: Python artifacts
+        skip_patterns = ['.build', '.next', 'node_modules', '__pycache__', '.venv', 'dist', 'build']
         
         for file_path in path.glob(pattern):
             # Skip files in build/artifact directories

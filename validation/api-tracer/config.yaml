@@ -1,0 +1,70 @@
+# API Tracer Configuration
+# 
+# This file configures exclusion patterns for the API-Tracer validator.
+# Patterns are used to exclude routes and paths from validation.
+
+# Route exclusion patterns (routes that don't need frontend calls)
+route_exclusions:
+  - pattern: "^/internal/"
+    reason: "Internal APIs (service-to-service communication)"
+    enabled: true
+    
+  - pattern: "^/webhooks/"
+    reason: "Webhook endpoints (called by external services)"
+    enabled: true
+    
+  - pattern: "^/health$"
+    reason: "Health check endpoints"
+    enabled: true
+    
+  - pattern: "^/metrics$"
+    reason: "Metrics/monitoring endpoints"
+    enabled: true
+
+# Path exclusion patterns (directories to skip during file scanning)
+path_exclusions:
+  - pattern: ".build"
+    reason: "Lambda build artifacts (bundled/concatenated code)"
+    type: "backend"
+    enabled: true
+    
+  - pattern: ".next"
+    reason: "Next.js build artifacts (transpiled frontend code)"
+    type: "frontend"
+    enabled: true
+    
+  - pattern: "node_modules"
+    reason: "NPM package dependencies"
+    type: "frontend"
+    enabled: true
+    
+  - pattern: "dist"
+    reason: "Distribution builds"
+    type: "both"
+    enabled: true
+    
+  - pattern: "build"
+    reason: "Generic build output directories"
+    type: "both"
+    enabled: true
+    
+  - pattern: "__pycache__"
+    reason: "Python bytecode cache"
+    type: "backend"
+    enabled: true
+    
+  - pattern: ".venv"
+    reason: "Python virtual environment"
+    type: "backend"
+    enabled: true
+    
+  - pattern: "_module-template"
+    reason: "CORA module templates (not project code)"
+    type: "both"
+    enabled: true
+
+# Notes:
+# - Patterns use regex syntax for routes (e.g., ^/internal/ matches /internal/*)
+# - Path patterns are simple string matching (e.g., ".build" matches any path containing .build)
+# - Set enabled: false to temporarily disable a pattern without removing it
+# - Add new patterns as needed for your project

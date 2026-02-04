@@ -17,10 +17,32 @@ init(autoreset=True)
 logger = logging.getLogger(__name__)
 
 
+# Severity levels (in order of priority)
+SEVERITY_CRITICAL = 'critical'  # Security issues, missing auth checks
+SEVERITY_HIGH = 'high'          # Route mismatches that cause 404s
+SEVERITY_MEDIUM = 'medium'      # Code quality issues, naming conventions
+SEVERITY_LOW = 'low'            # Best practice warnings, orphaned routes
+
+# Legacy severity levels (maintained for backward compatibility)
+SEVERITY_ERROR = 'error'
+SEVERITY_WARNING = 'warning'
+
+# Severity level mapping for display
+SEVERITY_LEVELS = {
+    SEVERITY_CRITICAL: {'color': Fore.MAGENTA, 'label': '🔴 CRITICAL', 'priority': 1},
+    SEVERITY_HIGH: {'color': Fore.RED, 'label': '🟠 HIGH', 'priority': 2},
+    SEVERITY_MEDIUM: {'color': Fore.YELLOW, 'label': '🟡 MEDIUM', 'priority': 3},
+    SEVERITY_LOW: {'color': Fore.CYAN, 'label': '🔵 LOW', 'priority': 4},
+    # Legacy mappings
+    SEVERITY_ERROR: {'color': Fore.RED, 'label': '❌ ERROR', 'priority': 2},
+    SEVERITY_WARNING: {'color': Fore.YELLOW, 'label': '⚠️ WARNING', 'priority': 3},
+}
+
+
 @dataclass
 class APIMismatch:
     """Represents an API contract mismatch."""
-    severity: str  # 'error' or 'warning'
+    severity: str  # 'critical', 'high', 'medium', 'low', or legacy 'error'/'warning'
     mismatch_type: str  # 'route_not_found', 'method_mismatch', 'parameter_mismatch', etc.
     frontend_file: Optional[str] = None
     frontend_line: Optional[int] = None
@@ -168,14 +190,81 @@ class Reporter:
                             lines.append(f"      {Fore.CYAN}Suggestion: {mismatch.suggestion}{Style.RESET_ALL}")
                     lines.append("")
                 else:
-                    # Summary mode: Show counts by error type
-                    error_types = {}
-                    for m in module_errors:
-                        mtype = m.mismatch_type.upper()
-                        error_types[mtype] = error_types.get(mtype, 0) + 1
+                    # Summary mode: Show counts grouped by test category
+                    route_errors = []
+                    auth_errors = []
+                    quality_errors = []
+                    other_errors = []
                     
-                    for mtype, count in sorted(error_types.items()):
-                        lines.append(f"  - {mtype}: {count}")
+                    for m in module_errors:
+                        if m.mismatch_type.startswith('auth_'):
+                            auth_errors.append(m)
+                        elif m.mismatch_type.startswith('quality_'):
+                            quality_errors.append(m)
+                        elif m.mismatch_type in ['route_not_found', 'method_mismatch', 'parameter_mismatch', 
+                                                  'missing_lambda_handler', 'orphaned_route', 'path_parameter_naming',
+                                                  'lambda_path_param_extraction']:
+                            route_errors.append(m)
+                        else:
+                            other_errors.append(m)
+                    
+                    # Route Matching errors
+                    if route_errors:
+                        lines.append(f"  {Fore.CYAN}Route Matching: {len(route_errors)} errors{Style.RESET_ALL}")
+                        route_types = {}
+                        for m in route_errors:
+                            route_types[m.mismatch_type] = route_types.get(m.mismatch_type, 0) + 1
+                        for mtype, count in sorted(route_types.items()):
+                            lines.append(f"    - {mtype}: {count}")
+                    
+                    # Auth Validation errors (with layer breakdown)
+                    if auth_errors:
+                        lines.append(f"  {Fore.CYAN}Auth Validation: {len(auth_errors)} errors{Style.RESET_ALL}")
+                        
+                        # Group by layer (frontend, layer1, layer2)
+                        frontend_auth = [m for m in auth_errors if m.frontend_file]
+                        layer1_auth = [m for m in auth_errors if m.lambda_file and 'admin' in m.mismatch_type.lower()]
+                        layer2_auth = [m for m in auth_errors if m.lambda_file and 'resource' in m.mismatch_type.lower()]
+                        
+                        if frontend_auth:
+                            lines.append(f"    - Frontend Admin Auth: {len(frontend_auth)} errors")
+                            # Group by scope (sys, org, ws)
+                            sys_fe = [m for m in frontend_auth if '/admin/sys/' in (m.frontend_file or '')]
+                            org_fe = [m for m in frontend_auth if '/admin/org/' in (m.frontend_file or '')]
+                            ws_fe = [m for m in frontend_auth if '/admin/ws/' in (m.frontend_file or '') or '/workspace/' in (m.frontend_file or '')]
+                            
+                            if sys_fe:
+                                lines.append(f"      - Sys Admin: {len(sys_fe)} errors")
+                            if org_fe:
+                                lines.append(f"      - Org Admin: {len(org_fe)} errors")
+                            if ws_fe:
+                                lines.append(f"      - Workspace: {len(ws_fe)} errors")
+                        
+                        if layer1_auth:
+                            lines.append(f"    - Backend Layer 1 (Admin Auth): {len(layer1_auth)} errors")
+                        
+                        if layer2_auth:
+                            lines.append(f"    - Backend Layer 2 (Resource Permissions): {len(layer2_auth)} errors")
+                    
+                    # Code Quality errors
+                    if quality_errors:
+                        lines.append(f"  {Fore.CYAN}Code Quality: {len(quality_errors)} errors{Style.RESET_ALL}")
+                        quality_types = {}
+                        for m in quality_errors:
+                            # Strip 'quality_' prefix for cleaner display
+                            clean_type = m.mismatch_type.replace('quality_', '')
+                            quality_types[clean_type] = quality_types.get(clean_type, 0) + 1
+                        for mtype, count in sorted(quality_types.items()):
+                            lines.append(f"    - {mtype}: {count}")
+                    
+                    # Other errors (fallback)
+                    if other_errors:
+                        lines.append(f"  {Fore.CYAN}Other: {len(other_errors)} errors{Style.RESET_ALL}")
+                        other_types = {}
+                        for m in other_errors:
+                            other_types[m.mismatch_type] = other_types.get(m.mismatch_type, 0) + 1
+                        for mtype, count in sorted(other_types.items()):
+                            lines.append(f"    - {mtype}: {count}")
                     
                     lines.append("")
                     lines.append(f"{Fore.CYAN}  (Use --verbose to see detailed error list){Style.RESET_ALL}")
@@ -196,14 +285,62 @@ class Reporter:
                             lines.append(f"      {Fore.CYAN}Suggestion: {mismatch.suggestion}{Style.RESET_ALL}")
                     lines.append("")
                 else:
-                    # Summary mode: Show counts by warning type
-                    warning_types = {}
-                    for m in module_warnings:
-                        mtype = m.mismatch_type.upper()
-                        warning_types[mtype] = warning_types.get(mtype, 0) + 1
+                    # Summary mode: Show counts grouped by test category
+                    route_warnings = []
+                    auth_warnings = []
+                    quality_warnings = []
+                    other_warnings = []
                     
-                    for mtype, count in sorted(warning_types.items()):
-                        lines.append(f"  - {mtype}: {count}")
+                    for m in module_warnings:
+                        if m.mismatch_type.startswith('auth_'):
+                            auth_warnings.append(m)
+                        elif m.mismatch_type.startswith('quality_'):
+                            quality_warnings.append(m)
+                        elif m.mismatch_type in ['route_not_found', 'method_mismatch', 'parameter_mismatch', 
+                                                  'missing_lambda_handler', 'orphaned_route', 'path_parameter_naming',
+                                                  'lambda_path_param_extraction']:
+                            route_warnings.append(m)
+                        else:
+                            other_warnings.append(m)
+                    
+                    # Route Matching warnings
+                    if route_warnings:
+                        lines.append(f"  {Fore.CYAN}Route Matching: {len(route_warnings)} warnings{Style.RESET_ALL}")
+                        route_types = {}
+                        for m in route_warnings:
+                            route_types[m.mismatch_type] = route_types.get(m.mismatch_type, 0) + 1
+                        for mtype, count in sorted(route_types.items()):
+                            lines.append(f"    - {mtype}: {count}")
+                    
+                    # Auth Validation warnings
+                    if auth_warnings:
+                        lines.append(f"  {Fore.CYAN}Auth Validation: {len(auth_warnings)} warnings{Style.RESET_ALL}")
+                        auth_types = {}
+                        for m in auth_warnings:
+                            clean_type = m.mismatch_type.replace('auth_', '')
+                            auth_types[clean_type] = auth_types.get(clean_type, 0) + 1
+                        for mtype, count in sorted(auth_types.items()):
+                            lines.append(f"    - {mtype}: {count}")
+                    
+                    # Code Quality warnings
+                    if quality_warnings:
+                        lines.append(f"  {Fore.CYAN}Code Quality: {len(quality_warnings)} warnings{Style.RESET_ALL}")
+                        quality_types = {}
+                        for m in quality_warnings:
+                            clean_type = m.mismatch_type.replace('quality_', '')
+                            quality_types[clean_type] = quality_types.get(clean_type, 0) + 1
+                        for mtype, count in sorted(quality_types.items()):
+                            lines.append(f"    - {mtype}: {count}")
+                    
+                    # Other warnings
+                    if other_warnings:
+                        lines.append(f"  {Fore.CYAN}Other: {len(other_warnings)} warnings{Style.RESET_ALL}")
+                        other_types = {}
+                        for m in other_warnings:
+                            other_types[m.mismatch_type] = other_types.get(m.mismatch_type, 0) + 1
+                        for mtype, count in sorted(other_types.items()):
+                            lines.append(f"    - {mtype}: {count}")
+                    
                     lines.append("")
         
         # Summary (at end for easy visibility without scrolling)
@@ -290,6 +427,26 @@ class Reporter:
                     for category, count in by_category.items():
                         lines.append(f"  - {category}: {count}")
         lines.append("")
+        
+        # Top Issues Section (most common error patterns)
+        if errors:
+            lines.append(f"{Fore.CYAN}Top Issues:{Style.RESET_ALL}")
+            
+            # Count error types
+            error_type_counts = {}
+            for error in errors:
+                mismatch_type = error.mismatch_type
+                # Clean up type name for display
+                display_type = mismatch_type.replace('quality_', '').replace('auth_', '').replace('_', ' ')
+                error_type_counts[display_type] = error_type_counts.get(display_type, 0) + 1
+            
+            # Sort by count (descending) and take top 10
+            sorted_issues = sorted(error_type_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+            
+            for i, (issue_type, count) in enumerate(sorted_issues, 1):
+                lines.append(f"  {i}. {issue_type}: {Fore.RED}{count}{Style.RESET_ALL} occurrences")
+            
+            lines.append("")
         
         # Footer
         lines.append("=" * 80)
