@@ -1,28 +1,103 @@
 /**
- * Organization KB Configuration Page (Placeholder)
+ * Organization KB Admin Route
  * 
- * Org admin page for managing organization KB overrides.
- * TODO: Implement org-level KB configuration (requires kb_cfg_org table)
+ * Admin page for managing organization-level knowledge bases.
+ * Requires org_admin or org_owner role.
  */
 
-"use client";
+'use client';
 
-import React from "react";
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Alert,
-  CircularProgress,
-} from "@mui/material";
-import { Construction } from "@mui/icons-material";
-import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
+import React, { useEffect, useState } from 'react';
+import { useUser, useOrganizationContext, useRole } from '@{{PROJECT_NAME}}/module-access';
+import { 
+  OrgAdminKBPage, 
+  useOrgKbs, 
+  useKbDocuments,
+  createAuthenticatedClient,
+  createKbModuleClient,
+} from '@{{PROJECT_NAME}}/module-kb';
+import type { KnowledgeBase } from '@{{PROJECT_NAME}}/module-kb';
+import { CircularProgress, Box, Alert } from '@mui/material';
 
-export default function OrgKBConfigPage() {
-  const { profile, loading, isAuthenticated } = useUser();
+/**
+ * Org KB Admin Page Route
+ * Renders the OrgAdminKBPage with data from hooks.
+ */
+export default function OrgKBAdminRoute() {
+  // ✅ ALL HOOKS AT TOP (before any conditional returns)
+  const { profile, loading, isAuthenticated, authAdapter } = useUser();
+  const { currentOrganization: organization } = useOrganizationContext();
   const { isOrgAdmin } = useRole();
+  
+  // Selected KB state for document management
+  const [selectedKb, setSelectedKb] = useState<KnowledgeBase | null>(null);
+  
+  // Create API client wrapper for KB module
+  const [apiClientWrapper, setApiClientWrapper] = useState<{ kb: ReturnType<typeof createKbModuleClient> } | null>(null);
+  
+  // Initialize API client when auth is ready
+  useEffect(() => {
+    if (!authAdapter || !isAuthenticated) {
+      setApiClientWrapper(null);
+      return;
+    }
+    
+    // Create API client wrapper
+    const initClient = async () => {
+      try {
+        const token = await authAdapter.getToken();
+        if (token) {
+          const authenticatedClient = createAuthenticatedClient(token);
+          const kbClient = createKbModuleClient(authenticatedClient);
+          setApiClientWrapper({ kb: kbClient });
+        }
+      } catch (err) {
+        console.error('Failed to initialize KB API client:', err);
+        setApiClientWrapper(null);
+      }
+    };
+    
+    initClient();
+  }, [authAdapter, isAuthenticated]);
+  
+  // KB management hook with API client
+  const {
+    kbs,
+    loading: kbsLoading,
+    error: kbsError,
+    createKb,
+    updateKb,
+    deleteKb,
+    refresh: refreshKbs,
+  } = useOrgKbs({
+    orgId: organization?.orgId || null,
+    apiClient: apiClientWrapper as any,
+    autoFetch: isAuthenticated && !!apiClientWrapper,
+  });
+  
+  // Document management hook (for selected KB)
+  const {
+    documents,
+    loading: documentsLoading,
+    uploadDocument,
+    deleteDocument,
+    downloadDocument,
+    refresh: refreshDocuments,
+  } = useKbDocuments({
+    scope: 'kb',
+    kbId: selectedKb?.id || undefined,
+    autoFetch: !!selectedKb?.id,
+  });
+  
+  // Refresh documents when KB selection changes
+  useEffect(() => {
+    if (selectedKb?.id) {
+      refreshDocuments();
+    }
+  }, [selectedKb?.id, refreshDocuments]);
 
+  // ✅ NOW conditional returns (after all hooks)
+  
   // Loading state
   if (loading) {
     return (
@@ -43,42 +118,44 @@ export default function OrgKBConfigPage() {
     );
   }
 
-  // Authorization check - org admins only (revised ADR-016)
+  // Check authorization - org admins only (revised ADR-016)
   // Sys admins needing access should add themselves to the org
   if (!isOrgAdmin) {
     return (
       <Box p={4}>
         <Alert severity="error">
-          Access denied. Organization administrator role required.
+          You do not have permission to access this page.
         </Alert>
+      </Box>
+    );
+  }
+  
+  if (!organization) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
+        <CircularProgress />
       </Box>
     );
   }
 
   return (
-    <Box sx={{ p: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Organization Knowledge Base Settings
-      </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-        Manage organization-level KB settings and overrides
-      </Typography>
-
-      <Card>
-        <CardContent sx={{ textAlign: "center", py: 8 }}>
-          <Construction sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
-          <Typography variant="h5" gutterBottom>
-            Coming Soon
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Organization KB configuration is under development.
-          </Typography>
-          <Alert severity="info" sx={{ mt: 3, maxWidth: 600, mx: "auto" }}>
-            This page will allow org admins to override system-wide KB defaults
-            such as chunk size, embedding models, and search parameters for their organization.
-          </Alert>
-        </CardContent>
-      </Card>
-    </Box>
+    <OrgAdminKBPage
+      orgId={organization.orgId}
+      orgName={organization.orgName}
+      kbs={kbs}
+      kbsLoading={kbsLoading}
+      kbsError={kbsError}
+      onCreateKb={createKb}
+      onUpdateKb={updateKb}
+      onDeleteKb={deleteKb}
+      onRefreshKbs={refreshKbs}
+      selectedKb={selectedKb}
+      documents={documents}
+      documentsLoading={documentsLoading}
+      onUploadDocument={uploadDocument}
+      onDeleteDocument={deleteDocument}
+      onDownloadDocument={downloadDocument}
+      onSelectKb={setSelectedKb}
+    />
   );
 }

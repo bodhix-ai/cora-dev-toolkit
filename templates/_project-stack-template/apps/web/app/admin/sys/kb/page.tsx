@@ -1,122 +1,162 @@
 /**
- * System KB Configuration Page
+ * System KB Admin Route
  * 
- * Platform admin page for configuring system-wide KB settings.
- * Uses ai_cfg_sys_rag table for RAG configuration.
+ * Admin page for managing system (global) knowledge bases.
+ * Requires platform admin role (sys_owner or sys_admin).
  */
 
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  TextField,
-  Button,
-  Alert,
-  CircularProgress,
-  Divider,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Slider,
-  Breadcrumbs,
-  Link,
-} from "@mui/material";
-import { NavigateNext as NavigateNextIcon } from "@mui/icons-material";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import React, { useEffect, useState, useMemo } from 'react';
+import { useUser, useRole } from '@{{PROJECT_NAME}}/module-access';
+import { 
+  PlatformAdminKBPage, 
+  useSysKbs, 
+  useKbDocuments,
+  createAuthenticatedClient,
+  createKbModuleClient,
+} from '@{{PROJECT_NAME}}/module-kb';
+import type { KnowledgeBase } from '@{{PROJECT_NAME}}/module-kb';
+import { CircularProgress, Box, Alert } from '@mui/material';
 
-interface KBSystemConfig {
-  system_prompt: string;
-  default_embedding_model_id: string;
-  default_chat_model_id: string;
-  default_chunk_size: number;
-  default_chunk_overlap: number;
-  default_top_k: number;
-  default_similarity_threshold: number;
-  vector_index_type: "ivfflat" | "hnsw";
+/**
+ * Organization info for association management
+ */
+interface OrgInfo {
+  id: string;
+  name: string;
+  isAssociated: boolean;
 }
 
-export default function SystemKBConfigPage() {
-  const { profile, loading: userLoading, isAuthenticated } = useUser();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [config, setConfig] = useState<KBSystemConfig | null>(null);
-
-  // Load config when user is authenticated
+/**
+ * System KB Admin Page Route
+ * Renders the PlatformAdminKBPage with data from hooks.
+ */
+export default function SysKBAdminRoute() {
+  // ✅ ADR-019a: All auth hooks at top
+  const { profile, loading, isAuthenticated, authAdapter } = useUser();
+  const { isSysAdmin } = useRole();
+  
+  // Selected KB state for document management
+  const [selectedKb, setSelectedKb] = useState<KnowledgeBase | null>(null);
+  
+  // Org associations state
+  const [allOrgs, setAllOrgs] = useState<OrgInfo[]>([]);
+  const [orgsLoading, setOrgsLoading] = useState(false);
+  
+  // Create API client wrapper for KB module
+  const [apiClientWrapper, setApiClientWrapper] = useState<{ kb: ReturnType<typeof createKbModuleClient> } | null>(null);
+  
+  // Initialize API client when auth is ready
   useEffect(() => {
-    if (isAuthenticated && profile) {
-      loadConfig();
+    if (!authAdapter || !isAuthenticated) {
+      setApiClientWrapper(null);
+      return;
     }
-  }, [isAuthenticated, profile]);
+    
+    // Create API client wrapper
+    const initClient = async () => {
+      try {
+        const token = await authAdapter.getToken();
+        if (token) {
+          const authenticatedClient = createAuthenticatedClient(token);
+          const kbClient = createKbModuleClient(authenticatedClient);
+          setApiClientWrapper({ kb: kbClient });
+        }
+      } catch (err) {
+        console.error('Failed to initialize KB API client:', err);
+        setApiClientWrapper(null);
+      }
+    };
+    
+    initClient();
+  }, [authAdapter, isAuthenticated]);
+  
+  // KB management hook
+  const {
+    kbs,
+    loading: kbsLoading,
+    error: kbsError,
+    createKb,
+    updateKb,
+    deleteKb,
+    associateOrg,
+    removeOrg,
+    refresh: refreshKbs,
+  } = useSysKbs({
+    apiClient: apiClientWrapper as any,
+    autoFetch: isAuthenticated && !!apiClientWrapper,
+  });
+  
+  // Document management hook (for selected KB)
+  const {
+    documents,
+    loading: documentsLoading,
+    uploadDocument,
+    deleteDocument,
+    downloadDocument,
+    refresh: refreshDocuments,
+  } = useKbDocuments({
+    scope: 'kb',
+    kbId: selectedKb?.id || undefined,
+    autoFetch: !!selectedKb?.id && isAuthenticated,
+  });
+  
+  // Calculate org counts
+  const orgCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    // This would be populated from the API in production
+    // For now, return empty counts
+    return counts;
+  }, [kbs]);
+  
+  // Refresh documents when KB selection changes
+  useEffect(() => {
+    if (selectedKb?.id) {
+      refreshDocuments();
+    }
+  }, [selectedKb?.id, refreshDocuments]);
 
-  const loadConfig = async () => {
+  /**
+   * Load org associations for a KB
+   */
+  const handleLoadOrgAssociations = async (kbId: string) => {
+    setOrgsLoading(true);
     try {
-      setLoading(true);
-      setError(null);
-      
-      // TODO: Replace with actual API call to fetch ai_cfg_sys_rag
-      // const response = await fetch('/api/admin/sys/kb/config');
-      // const data = await response.json();
-      
-      // Mock data for now
-      const mockConfig: KBSystemConfig = {
-        system_prompt: "You are a helpful AI assistant that provides accurate, well-sourced answers based on the knowledge base. Always cite your sources and acknowledge when you don't have enough information to answer a question.",
-        default_embedding_model_id: "amazon.titan-embed-text-v1",
-        default_chat_model_id: "anthropic.claude-3-sonnet-20240229-v1:0",
-        default_chunk_size: 1000,
-        default_chunk_overlap: 200,
-        default_top_k: 5,
-        default_similarity_threshold: 0.7,
-        vector_index_type: "hnsw",
-      };
-      
-      setConfig(mockConfig);
-    } catch (err) {
-      setError("Failed to load system KB configuration");
-      console.error(err);
+      // In production, this would call the API to get:
+      // 1. All organizations
+      // 2. Which organizations have access to this KB
+      // For now, set empty array
+      setAllOrgs([]);
     } finally {
-      setLoading(false);
+      setOrgsLoading(false);
     }
   };
 
-  const handleSave = async () => {
-    if (!config) return;
-    
-    try {
-      setSaving(true);
-      setError(null);
-      setSuccess(false);
-      
-      // TODO: Replace with actual API call to update ai_cfg_sys_rag
-      // const response = await fetch('/api/admin/sys/kb/config', {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(config),
-      // });
-      
-      // Mock success for now
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (err) {
-      setError("Failed to save system KB configuration");
-      console.error(err);
-    } finally {
-      setSaving(false);
-    }
+  /**
+   * Handle org association
+   */
+  const handleAssociateOrg = async (kbId: string, orgId: string) => {
+    await associateOrg(kbId, orgId);
+    // Refresh the org list to show updated status
+    await handleLoadOrgAssociations(kbId);
+    refreshKbs();
+  };
+
+  /**
+   * Handle org removal
+   */
+  const handleRemoveOrg = async (kbId: string, orgId: string) => {
+    await removeOrg(kbId, orgId);
+    // Refresh the org list to show updated status
+    await handleLoadOrgAssociations(kbId);
+    refreshKbs();
   };
 
   // Show loading state while user profile is being fetched
-  if (userLoading || loading) {
+  if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
         <CircularProgress />
       </Box>
     );
@@ -125,7 +165,7 @@ export default function SystemKBConfigPage() {
   // Check if user is authenticated
   if (!isAuthenticated || !profile) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Box p={4}>
         <Alert severity="error">
           You must be logged in to access this page.
         </Alert>
@@ -133,14 +173,10 @@ export default function SystemKBConfigPage() {
     );
   }
 
-  // Check if user has system admin role
-  const isSysAdmin = ["sys_owner", "sys_admin"].includes(
-    profile.sysRole || ""
-  );
-
+  // ✅ ADR-019a: Check role using useRole() hook (not inline role list)
   if (!isSysAdmin) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Box p={4}>
         <Alert severity="error">
           Access denied. This page is only accessible to system administrators.
         </Alert>
@@ -148,198 +184,28 @@ export default function SystemKBConfigPage() {
     );
   }
 
-  if (!config) {
-    return (
-      <Box sx={{ p: 4 }}>
-        <Alert severity="error">Failed to load configuration</Alert>
-      </Box>
-    );
-  }
-
   return (
-    <Box sx={{ p: 4 }}>
-      {/* Breadcrumb Navigation */}
-      <Breadcrumbs
-        separator={<NavigateNextIcon fontSize="small" />}
-        aria-label="breadcrumb"
-        sx={{ mb: 2 }}
-      >
-        <Link
-          underline="hover"
-          color="inherit"
-          href="/admin/sys"
-          sx={{ display: "flex", alignItems: "center" }}
-          aria-label="Navigate to Sys Admin"
-        >
-          Sys Admin
-        </Link>
-        <Typography color="text.primary">KB</Typography>
-      </Breadcrumbs>
-
-      <Typography variant="h4" gutterBottom>
-        System KB Configuration
-      </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-        Configure system-wide knowledge base settings and RAG defaults
-      </Typography>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-
-      {success && (
-        <Alert severity="success" sx={{ mb: 3 }}>
-          Configuration saved successfully
-        </Alert>
-      )}
-
-      <Card>
-        <CardContent>
-          {/* System Prompt */}
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h5" gutterBottom>
-              System Prompt
-            </Typography>
-            <TextField
-              fullWidth
-              multiline
-              rows={4}
-              value={config.system_prompt}
-              onChange={(e) => setConfig({ ...config, system_prompt: e.target.value })}
-              placeholder="Enter system prompt for RAG responses"
-              aria-label="System Prompt"
-            />
-          </Box>
-
-          <Divider sx={{ my: 3 }} />
-
-          {/* Model Configuration */}
-          <Typography variant="h5" gutterBottom>
-            Model Configuration
-          </Typography>
-          
-          <Box sx={{ mb: 2 }}>
-            <TextField
-              fullWidth
-              label="Default Embedding Model ID"
-              value={config.default_embedding_model_id}
-              onChange={(e) => setConfig({ ...config, default_embedding_model_id: e.target.value })}
-              helperText="Model used for generating document embeddings"
-            />
-          </Box>
-
-          <Box sx={{ mb: 2 }}>
-            <TextField
-              fullWidth
-              label="Default Chat Model ID"
-              value={config.default_chat_model_id}
-              onChange={(e) => setConfig({ ...config, default_chat_model_id: e.target.value })}
-              helperText="Model used for generating chat responses"
-            />
-          </Box>
-
-          <Divider sx={{ my: 3 }} />
-
-          {/* Chunking Configuration */}
-          <Typography variant="h5" gutterBottom>
-            Document Chunking
-          </Typography>
-
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" gutterBottom>
-              Default Chunk Size: {config.default_chunk_size}
-            </Typography>
-            <Slider
-              value={config.default_chunk_size}
-              onChange={(_, value) => setConfig({ ...config, default_chunk_size: value as number })}
-              min={500}
-              max={2000}
-              step={100}
-              marks
-              valueLabelDisplay="auto"
-            />
-          </Box>
-
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" gutterBottom>
-              Default Chunk Overlap: {config.default_chunk_overlap}
-            </Typography>
-            <Slider
-              value={config.default_chunk_overlap}
-              onChange={(_, value) => setConfig({ ...config, default_chunk_overlap: value as number })}
-              min={0}
-              max={500}
-              step={50}
-              marks
-              valueLabelDisplay="auto"
-            />
-          </Box>
-
-          <Divider sx={{ my: 3 }} />
-
-          {/* Search Configuration */}
-          <Typography variant="h5" gutterBottom>
-            Search Configuration
-          </Typography>
-
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" gutterBottom>
-              Default Top K Results: {config.default_top_k}
-            </Typography>
-            <Slider
-              value={config.default_top_k}
-              onChange={(_, value) => setConfig({ ...config, default_top_k: value as number })}
-              min={1}
-              max={20}
-              step={1}
-              marks
-              valueLabelDisplay="auto"
-            />
-          </Box>
-
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" gutterBottom>
-              Default Similarity Threshold: {config.default_similarity_threshold.toFixed(2)}
-            </Typography>
-            <Slider
-              value={config.default_similarity_threshold}
-              onChange={(_, value) => setConfig({ ...config, default_similarity_threshold: value as number })}
-              min={0.0}
-              max={1.0}
-              step={0.05}
-              marks
-              valueLabelDisplay="auto"
-            />
-          </Box>
-
-          <Box sx={{ mb: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel>Vector Index Type</InputLabel>
-              <Select
-                value={config.vector_index_type}
-                label="Vector Index Type"
-                onChange={(e) => setConfig({ ...config, vector_index_type: e.target.value as "ivfflat" | "hnsw" })}
-              >
-                <MenuItem value="ivfflat">IVFFlat (Faster index, approximate)</MenuItem>
-                <MenuItem value="hnsw">HNSW (More accurate, slower)</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-
-          {/* Save Button */}
-          <Box sx={{ mt: 4, display: "flex", justifyContent: "flex-end" }}>
-            <Button
-              variant="contained"
-              onClick={handleSave}
-              disabled={saving}
-            >
-              {saving ? "Saving..." : "Save Configuration"}
-            </Button>
-          </Box>
-        </CardContent>
-      </Card>
-    </Box>
+    <PlatformAdminKBPage
+      kbs={kbs}
+      kbsLoading={kbsLoading}
+      kbsError={kbsError}
+      onCreateKb={createKb}
+      onUpdateKb={updateKb}
+      onDeleteKb={deleteKb}
+      onRefreshKbs={refreshKbs}
+      orgCounts={orgCounts}
+      selectedKb={selectedKb}
+      documents={documents}
+      documentsLoading={documentsLoading}
+      onUploadDocument={uploadDocument}
+      onDeleteDocument={deleteDocument}
+      onDownloadDocument={downloadDocument}
+      onSelectKb={setSelectedKb}
+      allOrgs={allOrgs}
+      orgsLoading={orgsLoading}
+      onAssociateOrg={handleAssociateOrg}
+      onRemoveOrg={handleRemoveOrg}
+      onLoadOrgAssociations={handleLoadOrgAssociations}
+    />
   );
 }

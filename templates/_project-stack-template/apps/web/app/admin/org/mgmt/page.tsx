@@ -20,7 +20,7 @@
  */
 
 import React, { useState } from "react";
-import { useRole } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
 import { useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
 import { useOrgModuleConfig, type OrgModuleConfig } from "@{{PROJECT_NAME}}/module-mgmt";
 import {
@@ -62,6 +62,7 @@ import {
  */
 export default function OrgModuleConfigPage() {
   // ADR-019 Layer 1: Admin Authorization Pattern
+  const { user, loading: userLoading, isAuthenticated, profile } = useUser();
   const { isOrgAdmin } = useRole();
   const { currentOrganization, isLoading: orgLoading } = useOrganizationContext();
 
@@ -83,7 +84,7 @@ export default function OrgModuleConfigPage() {
   const [updateError, setUpdateError] = useState<string | null>(null);
 
   // Combined loading state (REQUIRED by ADR-019)
-  const isLoading = orgLoading || modulesLoading;
+  const isLoading = userLoading || orgLoading || modulesLoading;
 
   const handleToggleEnabled = async (module: OrgModuleConfig) => {
     try {
@@ -129,6 +130,17 @@ export default function OrgModuleConfigPage() {
     );
   }
 
+  // ADR-019a Compliance: Authentication check (REQUIRED)
+  if (!isAuthenticated || !profile) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          You must be logged in to access this page.
+        </Alert>
+      </Box>
+    );
+  }
+
   // ADR-019 Compliance: Authorization check (REQUIRED)
   if (!isOrgAdmin) {
     return (
@@ -159,7 +171,7 @@ export default function OrgModuleConfigPage() {
         Module Configuration
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-        Organization: <strong>{currentOrganization.name}</strong>
+        Organization: <strong>{currentOrganization.orgName}</strong>
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Manage module enablement for your organization. Changes affect all
@@ -190,22 +202,22 @@ export default function OrgModuleConfigPage() {
       <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
         <Card sx={{ flex: 1 }}>
           <CardContent>
-            <Typography variant="h6">Total Modules</Typography>
-            <Typography variant="h3">{modules.length}</Typography>
+            <Typography variant="h5">Total Modules</Typography>
+            <Typography variant="body1" sx={{ fontSize: '2.5rem', fontWeight: 500 }}>{modules.length}</Typography>
           </CardContent>
         </Card>
         <Card sx={{ flex: 1 }}>
           <CardContent>
-            <Typography variant="h6">Enabled</Typography>
-            <Typography variant="h3" color="success.main">
+            <Typography variant="h5">Enabled</Typography>
+            <Typography variant="body1" color="success.main" sx={{ fontSize: '2.5rem', fontWeight: 500 }}>
               {modules.filter((m) => m.isEnabled).length}
             </Typography>
           </CardContent>
         </Card>
         <Card sx={{ flex: 1 }}>
           <CardContent>
-            <Typography variant="h6">System Disabled</Typography>
-            <Typography variant="h3" color="text.secondary">
+            <Typography variant="h5">System Disabled</Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ fontSize: '2.5rem', fontWeight: 500 }}>
               {modules.filter((m) => !m.systemEnabled).length}
             </Typography>
           </CardContent>
@@ -292,6 +304,7 @@ export default function OrgModuleConfigPage() {
                       onChange={() => handleToggleEnabled(module)}
                       size="small"
                       disabled={!module.systemEnabled} // Can't enable if system disabled
+                      aria-label={`Toggle ${module.displayName} module`}
                     />
                     {!module.systemEnabled && (
                       <Tooltip title="Module is disabled at system level">
@@ -318,6 +331,7 @@ export default function OrgModuleConfigPage() {
                     <IconButton
                       size="small"
                       onClick={() => handleViewDetails(module)}
+                      aria-label="View module details"
                     >
                       <InfoIcon />
                     </IconButton>
