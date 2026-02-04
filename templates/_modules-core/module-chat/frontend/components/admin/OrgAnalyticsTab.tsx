@@ -133,10 +133,10 @@ export function OrgAnalyticsTab({ orgId, authAdapter }: OrgAnalyticsTabProps): R
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h5" gutterBottom>
                 Total Sessions
               </Typography>
-              <Typography variant="h3" color="primary">
+              <Typography sx={{ fontSize: '2.125rem', fontWeight: 400 }} color="primary">
                 {(analytics?.totalSessions ?? 0).toLocaleString()}
               </Typography>
             </CardContent>
@@ -146,10 +146,10 @@ export function OrgAnalyticsTab({ orgId, authAdapter }: OrgAnalyticsTabProps): R
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h5" gutterBottom>
                 Total Messages
               </Typography>
-              <Typography variant="h3" color="primary">
+              <Typography sx={{ fontSize: '2.125rem', fontWeight: 400 }} color="primary">
                 {(analytics?.totalMessages ?? 0).toLocaleString()}
               </Typography>
             </CardContent>
@@ -160,7 +160,7 @@ export function OrgAnalyticsTab({ orgId, authAdapter }: OrgAnalyticsTabProps): R
         <Grid item xs={12}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h5" gutterBottom>
                 Most Active Users
               </Typography>
               <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>
@@ -197,7 +197,7 @@ export function OrgAnalyticsTab({ orgId, authAdapter }: OrgAnalyticsTabProps): R
         <Grid item xs={12}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h5" gutterBottom>
                 Most Active Workspaces
               </Typography>
               <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>
