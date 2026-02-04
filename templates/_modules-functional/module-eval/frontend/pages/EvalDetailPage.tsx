@@ -62,37 +62,9 @@ import {
   EvalExportButton,
   ComplianceScoreChip,
 } from "../components";
-import type { EvalCriteriaResult, Citation, CriteriaResultWithItem, EditResultInput } from "../types";
+import type { EvalCriteriaResult, Citation, CriteriaResultWithItem, EditResultInput, Evaluation } from "../types";
 import { useWorkspacePlugin } from "@{{PROJECT_NAME}}/shared/workspace-plugin";
-
-// =============================================================================
-// AUTHENTICATED FETCH HELPER
-// =============================================================================
-
-/**
- * Authenticated fetch helper - wraps fetch() with Authorization header
- * @param url - API endpoint URL
- * @param token - Bearer token
- * @param options - Fetch options
- */
-async function authenticatedFetch(
-  url: string,
-  token: string | null,
-  options?: RequestInit
-): Promise<Response> {
-  if (!token) {
-    throw new Error('Authentication token required');
-  }
-  
-  return fetch(url, {
-    ...options,
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  });
-}
+import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 
 // =============================================================================
 // TYPES
@@ -179,15 +151,7 @@ function TabNavigation({
 interface HeaderProps {
   title: string;
   status: string;
-  evaluation: {
-    complianceScore?: number;
-    scoreConfig?: {
-      categoricalMode: "boolean" | "detailed";
-      showDecimalScore: boolean;
-      statusOptions: Array<{ id: string; name: string; [key: string]: unknown }>;
-    };
-    [key: string]: unknown;
-  };
+  evaluation: Evaluation | Pick<Evaluation, 'complianceScore' | 'scoreConfig'>;
   workspaceId?: string;
   workspaceName?: string;
   token: string | null;
@@ -233,15 +197,11 @@ function Header({
       
       setLoadingWorkspace(true);
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_CORA_API_URL;
         // Use wsId variable name to match API Gateway route parameter naming
         const wsId = workspaceId;
-        const response = await authenticatedFetch(`${apiUrl}/ws/${wsId}`, token);
-        
-        if (response.ok) {
-          const data = await response.json();
-          setWorkspaceName(data.data?.name || data.name || null);
-        }
+        const client = createCoraAuthenticatedClient(token);
+        const data = await client.get<{ success: boolean; data?: { name?: string }; name?: string }>(`/ws/${wsId}`);
+        setWorkspaceName(data?.data?.name || data?.name || null);
       } catch (err) {
         console.error('Failed to fetch workspace name:', err);
       } finally {
@@ -431,24 +391,16 @@ function DraftConfiguration({
       if (!token) return;
       
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_CORA_API_URL;
+        console.log('[DraftConfig] Fetching user profile');
         
-        console.log('[DraftConfig] Fetching user profile from:', apiUrl);
-        
-        const meRes = await authenticatedFetch(`${apiUrl}/profiles/me`, token);
-        
-        if (!meRes.ok) {
-          console.error('[DraftConfig] Failed to fetch user org:', meRes.status);
-          return;
-        }
-        
-        const meData = await meRes.json();
+        const client = createCoraAuthenticatedClient(token);
+        const meData = await client.get<{ success: boolean; data?: { currentOrgId?: string }; currentOrgId?: string }>('/profiles/me');
         console.log('[DraftConfig] User org response:', meData);
         
-        const currentOrgId = meData.data?.currentOrgId || meData.currentOrgId;
+        const currentOrgId = meData?.data?.currentOrgId || meData?.currentOrgId;
         console.log('[DraftConfig] Current org ID:', currentOrgId);
         
-        setOrgId(currentOrgId);
+        setOrgId(currentOrgId || null);
       } catch (err) {
         console.error('[DraftConfig] Error fetching user org:', err);
       }
@@ -463,33 +415,22 @@ function DraftConfiguration({
       if (!token || !orgId) return;
       
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_CORA_API_URL;
-        
         console.log('[DraftConfig] Fetching config data for org:', orgId);
         
+        const client = createCoraAuthenticatedClient(token);
+        
         // Pass orgId as query parameter (camelCase per Lambda expectation)
-        const [docTypesRes, criteriaSetsRes] = await Promise.all([
-          authenticatedFetch(`${apiUrl}/admin/org/eval/doc-types?orgId=${orgId}`, token),
-          authenticatedFetch(`${apiUrl}/admin/org/eval/criteria-sets?orgId=${orgId}`, token)
+        const [docTypesData, criteriaSetsData] = await Promise.all([
+          client.get<DocType[] | { success: boolean; data: DocType[] }>(`/admin/org/eval/doc-types?orgId=${orgId}`),
+          client.get<CriteriaSet[] | { success: boolean; data: CriteriaSet[] }>(`/admin/org/eval/criteria-sets?orgId=${orgId}`)
         ]);
-        
-        if (!docTypesRes.ok || !criteriaSetsRes.ok) {
-          console.error('[DraftConfig] API error:', {
-            docTypesStatus: docTypesRes.status,
-            criteriaSetsStatus: criteriaSetsRes.status
-          });
-          throw new Error('Failed to fetch configuration data');
-        }
-        
-        const docTypesData = await docTypesRes.json();
-        const criteriaSetsData = await criteriaSetsRes.json();
         
         console.log('[DraftConfig] Doc types response:', docTypesData);
         console.log('[DraftConfig] Criteria sets response:', criteriaSetsData);
         
         // Lambda returns array directly in data field
-        const docTypesArray = Array.isArray(docTypesData) ? docTypesData : (docTypesData.data || []);
-        const criteriaSetsArray = Array.isArray(criteriaSetsData) ? criteriaSetsData : (criteriaSetsData.data || []);
+        const docTypesArray = Array.isArray(docTypesData) ? docTypesData : ((docTypesData as { data?: DocType[] }).data || []);
+        const criteriaSetsArray = Array.isArray(criteriaSetsData) ? criteriaSetsData : ((criteriaSetsData as { data?: CriteriaSet[] }).data || []);
         
         console.log('[DraftConfig] Parsed doc types:', docTypesArray.length);
         console.log('[DraftConfig] Parsed criteria sets:', criteriaSetsArray.length);
@@ -513,26 +454,29 @@ function DraftConfiguration({
       if (!token || !workspaceId) return;
       
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_CORA_API_URL;
         // Use wsId variable name to match API Gateway route parameter naming
         const wsId = workspaceId;
         
         console.log('[DraftConfig] Fetching documents for workspace:', wsId);
         
-        const docsRes = await authenticatedFetch(`${apiUrl}/ws/${wsId}/kb/documents`, token);
-        
-        if (!docsRes.ok) {
-          console.error('[DraftConfig] Documents API error:', docsRes.status);
-          throw new Error('Failed to fetch workspace documents');
-        }
-        
-        const docsData = await docsRes.json();
+        const client = createCoraAuthenticatedClient(token);
+        const docsData = await client.get<Document[] | { success: boolean; data?: { documents?: Document[] } | Document[]; documents?: Document[] }>(`/ws/${wsId}/kb/documents`);
         console.log('[DraftConfig] Documents response:', docsData);
         
         // Handle nested response structure: { success, data: { documents: [...] } }
-        const docsArray = Array.isArray(docsData) 
-          ? docsData 
-          : (docsData.data?.documents || docsData.documents || docsData.data || []);
+        let docsArray: Document[] = [];
+        if (Array.isArray(docsData)) {
+          docsArray = docsData;
+        } else if (typeof docsData === 'object' && docsData !== null) {
+          const dataObj = docsData as any;
+          if (dataObj.data?.documents && Array.isArray(dataObj.data.documents)) {
+            docsArray = dataObj.data.documents;
+          } else if (dataObj.documents && Array.isArray(dataObj.documents)) {
+            docsArray = dataObj.documents;
+          } else if (Array.isArray(dataObj.data)) {
+            docsArray = dataObj.data;
+          }
+        }
         
         // Ensure we have an array
         const finalDocsArray = Array.isArray(docsArray) ? docsArray : [];
@@ -726,7 +670,7 @@ function DraftConfiguration({
 // =============================================================================
 
 interface ProcessingStateProps {
-  evaluation: any;
+  evaluation: Partial<Evaluation>;
 }
 
 function ProcessingState({ evaluation }: ProcessingStateProps) {
@@ -741,7 +685,7 @@ function ProcessingState({ evaluation }: ProcessingStateProps) {
       }}
     >
       <EvalProgressCard
-        evaluation={evaluation}
+        evaluation={evaluation as any}
         sx={{ maxWidth: "md", width: "100%" }}
       />
       <Typography
@@ -1213,7 +1157,7 @@ export function EvalDetailPage({
       <Header
         title={evaluation.name || "Configure Evaluation"}
         status={evaluation.status}
-        evaluation={evaluation as any}
+        evaluation={evaluation}
         workspaceId={workspaceId}
         token={token}
         onBack={onBack}
@@ -1238,7 +1182,7 @@ export function EvalDetailPage({
         <Header
           title={evaluation.name || "Evaluation"}
           status={evaluation.status}
-          evaluation={evaluation as any}
+          evaluation={evaluation}
           workspaceId={workspaceId}
           token={token}
           onBack={onBack}
@@ -1246,7 +1190,7 @@ export function EvalDetailPage({
           onExport={handleExport}
         />
         <ProcessingState
-          evaluation={evaluation as any}
+          evaluation={evaluation}
         />
       </Box>
     );
@@ -1261,7 +1205,7 @@ export function EvalDetailPage({
       <Header
         title={evaluation.name || "Evaluation"}
         status={evaluation.status}
-        evaluation={evaluation as any}
+        evaluation={evaluation}
         workspaceId={workspaceId}
         token={token}
         onBack={onBack}
