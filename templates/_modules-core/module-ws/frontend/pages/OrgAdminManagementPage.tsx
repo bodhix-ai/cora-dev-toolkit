@@ -497,6 +497,7 @@ export function OrgAdminManagementPage({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 sx={{ mb: 2 }}
+                aria-label="Search workspaces by name or tags"
                 InputProps={{
                   startAdornment: (
                     <Box sx={{ mr: 1, display: "flex", alignItems: "center" }}>
