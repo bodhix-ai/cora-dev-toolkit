@@ -1,6 +1,6 @@
 "use client";
 
-import { AccessControlAdmin, useUser, createOktaAuthAdapter } from "@{{PROJECT_NAME}}/module-access";
+import { AccessControlAdmin, useUser, useRole, createOktaAuthAdapter } from "@{{PROJECT_NAME}}/module-access";
 import { CircularProgress, Box, Alert } from "@mui/material";
 
 /**
@@ -15,6 +15,7 @@ import { CircularProgress, Box, Alert } from "@mui/material";
  */
 export default function AccessControlPage() {
   const { profile, loading, isAuthenticated } = useUser();
+  const { isSysAdmin } = useRole();
 
   // Show loading state while user profile is being fetched
   if (loading) {
@@ -44,10 +45,6 @@ export default function AccessControlPage() {
   }
 
   // Check if user has system admin role
-  const isSysAdmin = ["sys_owner", "sys_admin"].includes(
-    profile.sysRole || ""
-  );
-
   if (!isSysAdmin) {
     return (
       <Box sx={{ p: 3 }}>

@@ -3,12 +3,15 @@
 -- =============================================
 -- Purpose: Store organization-specific workspace policies and settings
 -- Source: Created for CORA toolkit Jan 2026
+-- Updated: Feb 2026 - Renamed to ws_cfg_org per ADR-011 naming standards
 
 -- =============================================
--- TABLE: ws_org_settings
+-- TABLE: ws_cfg_org - Organization-level workspace config
 -- =============================================
+-- Naming: ADR-011 Rule 8.1 - Config tables use _cfg_ pattern
+-- Previous name: ws_org_settings (deprecated)
 
-CREATE TABLE IF NOT EXISTS ws_org_settings (
+CREATE TABLE IF NOT EXISTS ws_cfg_org (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
     
@@ -24,30 +27,30 @@ CREATE TABLE IF NOT EXISTS ws_org_settings (
     updated_by UUID REFERENCES auth.users(id),
     
     -- Constraints
-    CONSTRAINT ws_org_settings_org_id_unique UNIQUE(org_id),
-    CONSTRAINT ws_org_settings_max_workspaces_check CHECK (max_workspaces_per_user >= 1 AND max_workspaces_per_user <= 100)
+    CONSTRAINT ws_cfg_org_org_id_key UNIQUE(org_id),
+    CONSTRAINT ws_cfg_org_max_workspaces_check CHECK (max_workspaces_per_user >= 1 AND max_workspaces_per_user <= 100)
 );
 
 -- =============================================
 -- INDEXES
 -- =============================================
 
-CREATE INDEX IF NOT EXISTS idx_ws_org_settings_org_id ON ws_org_settings(org_id);
+CREATE INDEX IF NOT EXISTS idx_ws_cfg_org_org_id ON ws_cfg_org(org_id);
 
 -- =============================================
 -- COMMENTS
 -- =============================================
 
-COMMENT ON TABLE ws_org_settings IS 
-'Organization-specific workspace policies and settings. One record per organization.';
+COMMENT ON TABLE ws_cfg_org IS 
+'Organization-specific workspace policies and settings. One record per organization. ADR-011 compliant naming.';
 
-COMMENT ON COLUMN ws_org_settings.allow_user_creation IS 
+COMMENT ON COLUMN ws_cfg_org.allow_user_creation IS 
 'Whether regular users can create workspaces (true) or only admins can (false)';
 
-COMMENT ON COLUMN ws_org_settings.require_approval IS 
+COMMENT ON COLUMN ws_cfg_org.require_approval IS 
 'Whether workspace creation requires admin approval';
 
-COMMENT ON COLUMN ws_org_settings.max_workspaces_per_user IS 
+COMMENT ON COLUMN ws_cfg_org.max_workspaces_per_user IS 
 'Maximum number of workspaces a user can own in this organization (1-100)';
 
 -- =============================================
@@ -55,7 +58,7 @@ COMMENT ON COLUMN ws_org_settings.max_workspaces_per_user IS
 -- =============================================
 
 -- Trigger: Update updated_at on modification
-CREATE OR REPLACE FUNCTION update_ws_org_settings_updated_at()
+CREATE OR REPLACE FUNCTION update_ws_cfg_org_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = NOW();
@@ -63,11 +66,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trigger_update_ws_org_settings_updated_at ON ws_org_settings;
-CREATE TRIGGER trigger_update_ws_org_settings_updated_at
-    BEFORE UPDATE ON ws_org_settings
+DROP TRIGGER IF EXISTS trigger_update_ws_cfg_org_updated_at ON ws_cfg_org;
+CREATE TRIGGER trigger_update_ws_cfg_org_updated_at
+    BEFORE UPDATE ON ws_cfg_org
     FOR EACH ROW
-    EXECUTE FUNCTION update_ws_org_settings_updated_at();
+    EXECUTE FUNCTION update_ws_cfg_org_updated_at();
 
-COMMENT ON TRIGGER trigger_update_ws_org_settings_updated_at ON ws_org_settings IS 
+COMMENT ON TRIGGER trigger_update_ws_cfg_org_updated_at ON ws_cfg_org IS 
 'Automatically updates the updated_at timestamp when a record is modified';

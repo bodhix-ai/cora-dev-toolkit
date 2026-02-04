@@ -16,7 +16,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
 import {
   Box,
   Alert,
@@ -71,15 +71,12 @@ interface Module {
  */
 export default function SystemModuleConfigPage() {
   const { profile, loading: authLoading, isAuthenticated } = useUser();
+  const { isSysAdmin } = useRole();
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
-
-  // Check if user is system admin
-  const isSysAdmin =
-    profile && ["sys_owner", "sys_admin"].includes(profile.sysRole || "");
 
   // Fetch modules on mount
   useEffect(() => {
@@ -219,22 +216,24 @@ export default function SystemModuleConfigPage() {
           <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
             <Card sx={{ flex: 1 }}>
               <CardContent>
-                <Typography variant="h6">Total Modules</Typography>
-                <Typography variant="h3">{modules.length}</Typography>
+                <Typography variant="h5">Total Modules</Typography>
+                <Typography sx={{ fontSize: "2.125rem", fontWeight: 300 }}>
+                  {modules.length}
+                </Typography>
               </CardContent>
             </Card>
             <Card sx={{ flex: 1 }}>
               <CardContent>
-                <Typography variant="h6">Enabled</Typography>
-                <Typography variant="h3" color="success.main">
+                <Typography variant="h5">Enabled</Typography>
+                <Typography sx={{ fontSize: "2.125rem", fontWeight: 300, color: "success.main" }}>
                   {modules.filter((m) => m.isEnabled).length}
                 </Typography>
               </CardContent>
             </Card>
             <Card sx={{ flex: 1 }}>
               <CardContent>
-                <Typography variant="h6">Core Modules</Typography>
-                <Typography variant="h3">
+                <Typography variant="h5">Core Modules</Typography>
+                <Typography sx={{ fontSize: "2.125rem", fontWeight: 300 }}>
                   {modules.filter((m) => m.type === "core").length}
                 </Typography>
               </CardContent>
@@ -300,6 +299,9 @@ export default function SystemModuleConfigPage() {
                           checked={module.isEnabled}
                           onChange={() => handleToggleEnabled(module)}
                           size="small"
+                          inputProps={{
+                            'aria-label': `Enable or disable ${module.displayName} at system level`,
+                          }}
                         />
                       </Box>
                     </TableCell>

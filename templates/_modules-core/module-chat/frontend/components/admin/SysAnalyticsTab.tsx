@@ -131,7 +131,7 @@ export function SysAnalyticsTab({ token }: SysAnalyticsTabProps): React.ReactEle
               <Typography variant="h5" gutterBottom>
                 Total Sessions
               </Typography>
-              <Typography variant="h3" color="primary">
+              <Typography sx={{ fontSize: '2.125rem', fontWeight: 400 }} color="primary">
                 {(analytics?.totalSessions ?? 0).toLocaleString()}
               </Typography>
             </CardContent>
@@ -144,7 +144,7 @@ export function SysAnalyticsTab({ token }: SysAnalyticsTabProps): React.ReactEle
               <Typography variant="h5" gutterBottom>
                 Total Messages
               </Typography>
-              <Typography variant="h3" color="primary">
+              <Typography sx={{ fontSize: '2.125rem', fontWeight: 400 }} color="primary">
                 {(analytics?.totalMessages ?? 0).toLocaleString()}
               </Typography>
             </CardContent>
@@ -201,7 +201,7 @@ export function SysAnalyticsTab({ token }: SysAnalyticsTabProps): React.ReactEle
               <Typography variant="h5" gutterBottom>
                 Total Tokens Used
               </Typography>
-              <Typography variant="h3" color="primary">
+              <Typography sx={{ fontSize: '2.125rem', fontWeight: 400 }} color="primary">
                 {(tokens?.totalTokensUsed ?? 0).toLocaleString()}
               </Typography>
             </CardContent>
@@ -214,7 +214,7 @@ export function SysAnalyticsTab({ token }: SysAnalyticsTabProps): React.ReactEle
               <Typography variant="h5" gutterBottom>
                 Avg Tokens/Message
               </Typography>
-              <Typography variant="h3" color="primary">
+              <Typography sx={{ fontSize: '2.125rem', fontWeight: 400 }} color="primary">
                 {(tokens?.averageTokensPerMessage ?? 0).toLocaleString()}
               </Typography>
             </CardContent>

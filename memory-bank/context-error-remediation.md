@@ -22,10 +22,16 @@ This initiative aims to achieve the **P1: Clean Project Baseline (Error-Free)** 
 | S3 | `fix/validation-errors-s3` | `plan_accessibility-frontend-s3.md` | ✅ Complete | 2026-01-27 |
 | S4 | `fix/validation-errors-s4` | `plan_validation-errors-s4.md` | ✅ Complete | 2026-01-27 |
 | Fix | `fix/create-project-config` | `plan_create-project-config.md` | ✅ Complete | 2026-01-27 |
+| S5 | `fix/validation-errors-s5` | `plan_validation-errors-s5.md` | 🟡 Active | - |
 
 ## Current Sprint
 
-**Fix Complete: Project Config & Validation** - Next sprint: S5 (Audit Column Compliance)
+**Sprint S5: Validation Errors - Low-Hanging Fruit**
+- **Branch:** `fix/validation-errors-s5`
+- **Plan:** `docs/plans/plan_validation-errors-s5.md`
+- **Focus:** Eliminate 62 low-hanging fruit errors (role naming, frontend compliance, admin auth, accessibility)
+- **Baseline:** Post WS Plugin S4 (869 errors → Target: 807 errors)
+- **Estimated:** 6-8 hours
 
 **Fix Summary:**
 - **Branch:** `fix/create-project-config`

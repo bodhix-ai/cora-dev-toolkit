@@ -13,7 +13,7 @@
  */
 
 import React from "react";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
 import { PlatformMgmtAdmin } from "@{{PROJECT_NAME}}/module-mgmt";
 import { CircularProgress, Box, Alert } from "@mui/material";
 
@@ -30,6 +30,7 @@ import { CircularProgress, Box, Alert } from "@mui/material";
  */
 export default function SystemManagementPage() {
   const { profile, loading, isAuthenticated } = useUser();
+  const { isSysAdmin } = useRole();
 
   // Show loading state while user profile is being fetched
   if (loading) {
@@ -59,10 +60,6 @@ export default function SystemManagementPage() {
   }
 
   // Check if user has system admin role
-  const isSysAdmin = ["sys_owner", "sys_admin"].includes(
-    profile.sysRole || ""
-  );
-
   if (!isSysAdmin) {
     return (
       <Box sx={{ p: 3 }}>

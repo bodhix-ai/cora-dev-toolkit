@@ -185,21 +185,22 @@ COMMENT ON POLICY "Workspace owners can update members" ON public.ws_members IS 
 COMMENT ON POLICY "Owners or self can remove members" ON public.ws_members IS 'Owners can remove anyone, users can remove themselves';
 
 -- =============================================
--- WS_CONFIGS TABLE RLS
+-- WS_CFG_SYS TABLE RLS (ADR-011 compliant naming)
 -- =============================================
+-- Note: Renamed from ws_configs to ws_cfg_sys per ADR-011
 
-ALTER TABLE public.ws_configs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ws_cfg_sys ENABLE ROW LEVEL SECURITY;
 
 -- Everyone can read config
-DROP POLICY IF EXISTS "Everyone can view ws_configs" ON public.ws_configs;
-CREATE POLICY "Everyone can view ws_configs" ON public.ws_configs
+DROP POLICY IF EXISTS "Everyone can view ws_cfg_sys" ON public.ws_cfg_sys;
+CREATE POLICY "Everyone can view ws_cfg_sys" ON public.ws_cfg_sys
 FOR SELECT
 TO authenticated
 USING (true);
 
 -- Only sys admins/owners can update
-DROP POLICY IF EXISTS "Sys admins can update ws_configs" ON public.ws_configs;
-CREATE POLICY "Sys admins can update ws_configs" ON public.ws_configs
+DROP POLICY IF EXISTS "Sys admins can update ws_cfg_sys" ON public.ws_cfg_sys;
+CREATE POLICY "Sys admins can update ws_cfg_sys" ON public.ws_cfg_sys
 FOR UPDATE
 TO authenticated
 USING (
@@ -218,16 +219,16 @@ WITH CHECK (
 );
 
 -- Service role has full access
-DROP POLICY IF EXISTS "Service role full access to ws_configs" ON public.ws_configs;
-CREATE POLICY "Service role full access to ws_configs" ON public.ws_configs
+DROP POLICY IF EXISTS "Service role full access to ws_cfg_sys" ON public.ws_cfg_sys;
+CREATE POLICY "Service role full access to ws_cfg_sys" ON public.ws_cfg_sys
 FOR ALL
 USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
 
 -- Grant usage to authenticated users (RLS policies will restrict actual access)
-GRANT SELECT, UPDATE ON public.ws_configs TO authenticated;
+GRANT SELECT, UPDATE ON public.ws_cfg_sys TO authenticated;
 
-COMMENT ON POLICY "Everyone can view ws_configs" ON public.ws_configs IS 'All authenticated users can read workspace configuration';
-COMMENT ON POLICY "Sys admins can update ws_configs" ON public.ws_configs IS 'Only sys_owner and sys_admin can modify configuration';
+COMMENT ON POLICY "Everyone can view ws_cfg_sys" ON public.ws_cfg_sys IS 'All authenticated users can read workspace configuration';
+COMMENT ON POLICY "Sys admins can update ws_cfg_sys" ON public.ws_cfg_sys IS 'Only sys_owner and sys_admin can modify configuration';
 
 -- =============================================
 -- WS_FAVORITES TABLE RLS
@@ -278,27 +279,28 @@ COMMENT ON POLICY "Members can add favorites" ON public.ws_favorites IS 'Only wo
 COMMENT ON POLICY "Users can remove own favorites" ON public.ws_favorites IS 'Users can only unfavorite their own favorites';
 
 -- =============================================
--- WS_ORG_SETTINGS TABLE RLS
+-- WS_CFG_ORG TABLE RLS (ADR-011 compliant naming)
 -- =============================================
+-- Note: Renamed from ws_org_settings to ws_cfg_org per ADR-011
 
-ALTER TABLE public.ws_org_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ws_cfg_org ENABLE ROW LEVEL SECURITY;
 
 -- Org members can view their org's settings
-DROP POLICY IF EXISTS "Org members can view org settings" ON public.ws_org_settings;
-CREATE POLICY "Org members can view org settings" ON public.ws_org_settings
+DROP POLICY IF EXISTS "Org members can view org config" ON public.ws_cfg_org;
+CREATE POLICY "Org members can view org config" ON public.ws_cfg_org
 FOR SELECT
 TO authenticated
 USING (
     EXISTS (
         SELECT 1 FROM public.org_members
-        WHERE org_members.org_id = ws_org_settings.org_id
+        WHERE org_members.org_id = ws_cfg_org.org_id
         AND org_members.user_id = auth.uid()
     )
 );
 
 -- Org admins and sys admins can create settings
-DROP POLICY IF EXISTS "Org and sys admins can create settings" ON public.ws_org_settings;
-CREATE POLICY "Org and sys admins can create settings" ON public.ws_org_settings
+DROP POLICY IF EXISTS "Org and sys admins can create config" ON public.ws_cfg_org;
+CREATE POLICY "Org and sys admins can create config" ON public.ws_cfg_org
 FOR INSERT
 TO authenticated
 WITH CHECK (
@@ -312,15 +314,15 @@ WITH CHECK (
     -- User is org admin/owner
     EXISTS (
         SELECT 1 FROM public.org_members
-        WHERE org_members.org_id = ws_org_settings.org_id
+        WHERE org_members.org_id = ws_cfg_org.org_id
         AND org_members.user_id = auth.uid()
         AND org_members.org_role IN ('org_owner', 'org_admin')
     )
 );
 
 -- Org admins and sys admins can update settings
-DROP POLICY IF EXISTS "Org and sys admins can update settings" ON public.ws_org_settings;
-CREATE POLICY "Org and sys admins can update settings" ON public.ws_org_settings
+DROP POLICY IF EXISTS "Org and sys admins can update config" ON public.ws_cfg_org;
+CREATE POLICY "Org and sys admins can update config" ON public.ws_cfg_org
 FOR UPDATE
 TO authenticated
 USING (
@@ -334,7 +336,7 @@ USING (
     -- User is org admin/owner
     EXISTS (
         SELECT 1 FROM public.org_members
-        WHERE org_members.org_id = ws_org_settings.org_id
+        WHERE org_members.org_id = ws_cfg_org.org_id
         AND org_members.user_id = auth.uid()
         AND org_members.org_role IN ('org_owner', 'org_admin')
     )
@@ -350,48 +352,49 @@ WITH CHECK (
     -- User is org admin/owner
     EXISTS (
         SELECT 1 FROM public.org_members
-        WHERE org_members.org_id = ws_org_settings.org_id
+        WHERE org_members.org_id = ws_cfg_org.org_id
         AND org_members.user_id = auth.uid()
         AND org_members.org_role IN ('org_owner', 'org_admin')
     )
 );
 
 -- Service role has full access
-DROP POLICY IF EXISTS "Service role full access to ws_org_settings" ON public.ws_org_settings;
-CREATE POLICY "Service role full access to ws_org_settings" ON public.ws_org_settings
+DROP POLICY IF EXISTS "Service role full access to ws_cfg_org" ON public.ws_cfg_org;
+CREATE POLICY "Service role full access to ws_cfg_org" ON public.ws_cfg_org
 FOR ALL
 USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
 
 -- Grant usage to authenticated users (RLS policies will restrict actual access)
-GRANT SELECT, INSERT, UPDATE ON public.ws_org_settings TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.ws_cfg_org TO authenticated;
 
-COMMENT ON POLICY "Org members can view org settings" ON public.ws_org_settings IS 'All org members can view their organization workspace settings';
-COMMENT ON POLICY "Org and sys admins can create settings" ON public.ws_org_settings IS 'Only org admins/owners and sys admins can create org settings';
-COMMENT ON POLICY "Org and sys admins can update settings" ON public.ws_org_settings IS 'Only org admins/owners and sys admins can update org settings';
+COMMENT ON POLICY "Org members can view org config" ON public.ws_cfg_org IS 'All org members can view their organization workspace settings';
+COMMENT ON POLICY "Org and sys admins can create config" ON public.ws_cfg_org IS 'Only org admins/owners and sys admins can create org settings';
+COMMENT ON POLICY "Org and sys admins can update config" ON public.ws_cfg_org IS 'Only org admins/owners and sys admins can update org settings';
 
 -- =============================================
--- WS_ACTIVITY_LOG TABLE RLS
+-- WS_LOG_ACTIVITY TABLE RLS (ADR-011 compliant naming)
 -- =============================================
+-- Note: Renamed from ws_activity_log to ws_log_activity per ADR-011
 
-ALTER TABLE public.ws_activity_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ws_log_activity ENABLE ROW LEVEL SECURITY;
 
 -- Workspace members can view their workspace's activity log
-DROP POLICY IF EXISTS "Workspace members can view activity" ON public.ws_activity_log;
-CREATE POLICY "Workspace members can view activity" ON public.ws_activity_log
+DROP POLICY IF EXISTS "Workspace members can view activity" ON public.ws_log_activity;
+CREATE POLICY "Workspace members can view activity" ON public.ws_log_activity
 FOR SELECT
 TO authenticated
 USING (
     EXISTS (
         SELECT 1 FROM public.ws_members
-        WHERE ws_members.ws_id = ws_activity_log.ws_id
+        WHERE ws_members.ws_id = ws_log_activity.ws_id
         AND ws_members.user_id = auth.uid()
         AND ws_members.deleted_at IS NULL
     )
 );
 
 -- Only service role can insert activity logs (automated logging)
-DROP POLICY IF EXISTS "Service role can insert activity logs" ON public.ws_activity_log;
-CREATE POLICY "Service role can insert activity logs" ON public.ws_activity_log
+DROP POLICY IF EXISTS "Service role can insert activity logs" ON public.ws_log_activity;
+CREATE POLICY "Service role can insert activity logs" ON public.ws_log_activity
 FOR INSERT
 WITH CHECK (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
 
@@ -399,14 +402,14 @@ WITH CHECK (current_setting('request.jwt.claims', true)::json->>'role' = 'servic
 -- (Only service role via ALL policy below)
 
 -- Service role has full access
-DROP POLICY IF EXISTS "Service role full access to ws_activity_log" ON public.ws_activity_log;
-CREATE POLICY "Service role full access to ws_activity_log" ON public.ws_activity_log
+DROP POLICY IF EXISTS "Service role full access to ws_log_activity" ON public.ws_log_activity;
+CREATE POLICY "Service role full access to ws_log_activity" ON public.ws_log_activity
 FOR ALL
 USING (current_setting('request.jwt.claims', true)::json->>'role' = 'service_role');
 
 -- Grant usage to authenticated users (RLS policies will restrict actual access)
-GRANT SELECT ON public.ws_activity_log TO authenticated;
+GRANT SELECT ON public.ws_log_activity TO authenticated;
 -- Note: Only service role can INSERT (via service_role policy)
 
-COMMENT ON POLICY "Workspace members can view activity" ON public.ws_activity_log IS 'Workspace members can view their workspace activity log';
-COMMENT ON POLICY "Service role can insert activity logs" ON public.ws_activity_log IS 'Only service role (Lambda functions) can create activity log entries';
+COMMENT ON POLICY "Workspace members can view activity" ON public.ws_log_activity IS 'Workspace members can view their workspace activity log';
+COMMENT ON POLICY "Service role can insert activity logs" ON public.ws_log_activity IS 'Only service role (Lambda functions) can create activity log entries';

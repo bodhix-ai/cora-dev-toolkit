@@ -387,7 +387,7 @@ export class WorkspaceApiClient {
 
   /**
    * Get organization workspace settings
-   * Fetches from ws_org_settings table
+   * Fetches from ws_cfg_org table
    */
   async getOrgSettings(orgId: string): Promise<{
     allowUserCreation: boolean;
@@ -411,7 +411,7 @@ export class WorkspaceApiClient {
 
   /**
    * Update organization workspace settings
-   * Saves to ws_org_settings table
+   * Saves to ws_cfg_org table
    */
   async updateOrgSettings(
     orgId: string,

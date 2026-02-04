@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole, useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
 import { useModuleEnabled } from "@{{PROJECT_NAME}}/module-mgmt";
 import { Box, Grid, Card, CardContent, Typography, CardActionArea, CircularProgress, Alert } from "@mui/material";
 import Link from "next/link";
@@ -24,6 +24,7 @@ const FUNCTIONAL_MODULES = ['chat', 'eval', 'voice'];
 export default function OrgAdminClientPage({ adminCards }: OrgAdminClientPageProps) {
   const { profile, loading, isAuthenticated } = useUser();
   const { isOrgAdmin } = useRole();
+  const { orgId, organization } = useOrganizationContext();
   
   // Check runtime enabled state for functional modules
   const isChatEnabled = useModuleEnabled('module-chat');

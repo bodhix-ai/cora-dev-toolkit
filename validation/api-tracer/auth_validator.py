@@ -139,6 +139,13 @@ class FrontendAuthValidator:
             # Not an admin page, no auth requirements
             return []
         
+        # Check if this is a server component that delegates to client component
+        # This is a valid Next.js pattern: server component loads data, client component handles auth
+        if self._is_server_component(content) and self._delegates_to_client_component(content):
+            # Server component delegates to client component for auth - skip validation
+            # The client component will be validated separately
+            return []
+        
         # Check for required hooks
         self._check_use_user(content, route_type)
         self._check_use_role(content, route_type)
@@ -147,6 +154,62 @@ class FrontendAuthValidator:
         self._check_direct_role_access(content)
         
         return self.issues
+    
+    def _is_server_component(self, content: str) -> bool:
+        """
+        Check if file is a Next.js server component.
+        
+        Server components don't have "use client" directive.
+        
+        Returns:
+            True if server component, False if client component
+        """
+        # Check for "use client" directive at start of file (after comments/imports)
+        lines = content.split('\n')
+        
+        for line in lines[:20]:  # Check first 20 lines
+            line_stripped = line.strip()
+            
+            # Skip empty lines and comments
+            if not line_stripped or line_stripped.startswith('//') or line_stripped.startswith('/*'):
+                continue
+            
+            # Check for "use client" directive
+            if '"use client"' in line_stripped or "'use client'" in line_stripped:
+                return False  # It's a client component
+            
+            # If we hit actual code (not directive), it's a server component
+            if line_stripped and not line_stripped.startswith('//'):
+                break
+        
+        # No "use client" found, it's a server component
+        return True
+    
+    def _delegates_to_client_component(self, content: str) -> bool:
+        """
+        Check if server component delegates to a client component for auth.
+        
+        Pattern: Server component renders a ClientComponent that handles auth.
+        E.g., return <OrgAdminClientPage ... /> or <SystemAdminClientPage ... />
+        
+        Returns:
+            True if delegates to client component
+        """
+        # Look for pattern: return <SomeClientPage ...>
+        # Common patterns: 
+        # - page.tsx (server) delegates to ClientPage.tsx (client)
+        # - return <OrgAdminClientPage adminCards={adminCards} />
+        client_component_patterns = [
+            r'return\s*<\w*ClientPage',  # return <OrgAdminClientPage ... />
+            r'return\s*<System\w+ClientPage',  # return <SystemAdminClientPage ... />
+            r'return\s*<Org\w+ClientPage',  # return <OrgAdminClientPage ... />
+        ]
+        
+        for pattern in client_component_patterns:
+            if re.search(pattern, content):
+                return True
+        
+        return False
     
     def _detect_route_type(self, file_path: str) -> str:
         """

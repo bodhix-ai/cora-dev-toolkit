@@ -22,7 +22,7 @@ module_mgmt:
       context: "platform"
     organization:
       enabled: true
-      path: "/admin/org/mgmt/modules"
+      path: "/admin/org/mgmt/"
       title: "Module Configuration"
       description: "Manage module enablement and configuration for your organization"
       icon: "Extension"

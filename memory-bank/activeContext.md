@@ -21,18 +21,17 @@ This repository uses **initiative-scoped context files** to avoid merge conflict
 
 ---
 
-## Current Priority Order (January 30, 2026)
+## Current Priority Order (February 4, 2026)
 
-1. **Auth Standardization (Critical)** - Centralized library + migrate chat module (broken)
-2. **Clean Project Baseline** - Achieve 0-error baseline
-3. **WS Plugin Architecture S3** - Dynamic module configuration (deferred, S1-S2 complete)
-4. **Module-Eval Citations** - Complete citations implementation (unblocked, awaiting capacity)
-5. **Test Project Resource Isolation** - Parallel test environments
+1. **Error Remediation S5 (Active)** - Low-hanging fruit (869→807 target)
+2. **WS Plugin Architecture S5** - Tab ordering, module metrics (S1-S4 complete)
+3. **Module-Eval Citations** - Complete citations implementation (unblocked, awaiting capacity)
+4. **Test Project Resource Isolation** - Parallel test environments
 
 **Recent Completions:**
-- ✅ Admin Standardization S4 (Admin routes + Module Toggle, auth issues discovered)
+- ✅ Auth Standardization S1-S3 (February 2026 - 312 permission errors fixed, 100% ADR-019 compliance)
+- ✅ WS Plugin Architecture S4 (February 2026 - Left nav filtering, DB naming compliance)
 - ✅ Error Remediation S1-S4 (430→121 errors, 72% reduction)
-- ✅ WS Plugin Architecture S1-S2 (ADR-017, module availability)
 
 ---
 

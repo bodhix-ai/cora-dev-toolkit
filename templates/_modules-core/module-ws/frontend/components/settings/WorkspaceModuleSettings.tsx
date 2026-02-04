@@ -200,6 +200,9 @@ export function WorkspaceModuleSettings({ workspaceId }: WorkspaceModuleSettings
                           onChange={() => handleToggle(module.name, isEnabled)}
                           disabled={isUpdating}
                           color="primary"
+                          inputProps={{
+                            'aria-label': `Enable or disable ${module.displayName} for this workspace`,
+                          }}
                         />
                       }
                       label={isEnabled ? 'Enabled' : 'Disabled'}

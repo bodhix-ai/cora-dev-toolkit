@@ -221,6 +221,9 @@ export function WorkspaceModuleConfig({ workspaceId, onModuleToggled }: Workspac
                       onChange={() => handleToggleEnabled(module)}
                       size="small"
                       disabled={isToggleDisabled(module)}
+                      inputProps={{
+                        'aria-label': `Enable or disable ${module.displayName} for this workspace`,
+                      }}
                     />
                     {isToggleDisabled(module) && (
                       <Tooltip title={getDisabledReason(module)}>

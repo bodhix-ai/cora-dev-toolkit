@@ -3,12 +3,15 @@
 -- =============================================
 -- Purpose: Track workspace actions for audit trail and activity history
 -- Source: Created for CORA toolkit Jan 2026
+-- Updated: Feb 2026 - Renamed to ws_log_activity per ADR-011 naming standards
 
 -- =============================================
--- TABLE: ws_activity_log
+-- TABLE: ws_log_activity - Workspace activity log
 -- =============================================
+-- Naming: ADR-011 Rule 8.2 - Log tables use _log_ pattern
+-- Previous name: ws_activity_log (deprecated)
 
-CREATE TABLE IF NOT EXISTS ws_activity_log (
+CREATE TABLE IF NOT EXISTS ws_log_activity (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ws_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES auth.users(id),
@@ -25,22 +28,22 @@ CREATE TABLE IF NOT EXISTS ws_activity_log (
 -- INDEXES
 -- =============================================
 
-CREATE INDEX IF NOT EXISTS idx_ws_activity_log_ws_id ON ws_activity_log(ws_id);
-CREATE INDEX IF NOT EXISTS idx_ws_activity_log_user_id ON ws_activity_log(user_id);
-CREATE INDEX IF NOT EXISTS idx_ws_activity_log_created_at ON ws_activity_log(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_ws_activity_log_ws_id_created_at ON ws_activity_log(ws_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ws_log_activity_ws_id ON ws_log_activity(ws_id);
+CREATE INDEX IF NOT EXISTS idx_ws_log_activity_user_id ON ws_log_activity(user_id);
+CREATE INDEX IF NOT EXISTS idx_ws_log_activity_created_at ON ws_log_activity(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ws_log_activity_ws_id_created_at ON ws_log_activity(ws_id, created_at DESC);
 
 -- =============================================
 -- COMMENTS
 -- =============================================
 
-COMMENT ON TABLE ws_activity_log IS 
-'Audit trail of workspace actions. Tracks all significant workspace events for compliance and activity history.';
+COMMENT ON TABLE ws_log_activity IS 
+'Audit trail of workspace actions. Tracks all significant workspace events for compliance and activity history. ADR-011 compliant naming.';
 
-COMMENT ON COLUMN ws_activity_log.action IS 
+COMMENT ON COLUMN ws_log_activity.action IS 
 'Human-readable description of the action (e.g., "Workspace created", "Member added", "Ownership transferred")';
 
-COMMENT ON COLUMN ws_activity_log.metadata IS 
+COMMENT ON COLUMN ws_log_activity.metadata IS 
 'Additional contextual information about the action (e.g., changed fields, member IDs, role changes)';
 
 -- =============================================
@@ -78,7 +81,7 @@ COMMENT ON COLUMN ws_activity_log.metadata IS
 -- DECLARE
 --     v_deleted_count INTEGER;
 -- BEGIN
---     DELETE FROM ws_activity_log
+--     DELETE FROM ws_log_activity
 --     WHERE created_at < NOW() - INTERVAL '1 day' * p_retention_days;
 --     
 --     GET DIAGNOSTICS v_deleted_count = ROW_COUNT;

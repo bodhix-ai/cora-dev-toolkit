@@ -96,6 +96,10 @@ export default function OrgModuleConfigPage() {
 
       // Refresh modules list
       await refreshModules();
+
+      // Reload page to update left navigation (ModuleGate components)
+      // This ensures the Sidebar's org-level module checks refresh
+      window.location.reload();
     } catch (err) {
       console.error("Error toggling module:", err);
       setUpdateError(

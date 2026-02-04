@@ -2,7 +2,7 @@
 
 import React from "react";
 import { AIEnablementAdmin } from "@{{PROJECT_NAME}}/module-ai";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
 import { CircularProgress, Box, Alert } from "@mui/material";
 
 /**
@@ -20,6 +20,7 @@ import { CircularProgress, Box, Alert } from "@mui/material";
  */
 export default function AIAdminPage() {
   const { profile, loading, isAuthenticated, authAdapter } = useUser();
+  const { isSysAdmin } = useRole();
 
   // Loading state
   if (loading) {
@@ -42,10 +43,6 @@ export default function AIAdminPage() {
   }
 
   // Authorization check - system admins only
-  const isSysAdmin = ["sys_owner", "sys_admin"].includes(
-    profile.sysRole || ""
-  );
-
   if (!isSysAdmin) {
     return (
       <Box p={4}>

@@ -245,6 +245,9 @@ export default function OrgModuleConfigPage() {
                             onChange={() => handleToggleEnabled(module)}
                             size="small"
                             disabled={isToggleDisabled(module)}
+                            inputProps={{
+                              'aria-label': `Enable or disable ${module.displayName} for this organization`,
+                            }}
                           />
                           {isToggleDisabled(module) && (
                             <Tooltip title={getDisabledReason(module)}>

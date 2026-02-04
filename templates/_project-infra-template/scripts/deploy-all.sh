@@ -167,6 +167,23 @@ else
   echo ""
 fi
 
+# Step 1.4: Ensure Terraform providers are initialized
+log_step "Step 1.4/4: Checking Terraform initialization..."
+INFRA_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+ENV_DIR="${INFRA_ROOT}/envs/${ENVIRONMENT}"
+
+if [ ! -d "${ENV_DIR}/.terraform" ]; then
+  log_info "Terraform not initialized for ${ENVIRONMENT} - running terraform init..."
+  cd "${ENV_DIR}"
+  terraform init
+  cd "${SCRIPT_DIR}"
+  log_info "✅ Terraform initialized successfully"
+  echo ""
+else
+  log_info "✅ Terraform already initialized"
+  echo ""
+fi
+
 # Step 1.5: Pre-deployment validation (validates build artifacts before expensive Terraform)
 log_step "Step 1.5/4: Running pre-deployment validation..."
 if [ -f "${SCRIPT_DIR}/pre-deploy-check.sh" ]; then

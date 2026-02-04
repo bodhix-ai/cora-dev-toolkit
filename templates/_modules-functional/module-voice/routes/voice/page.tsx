@@ -27,8 +27,8 @@ import {
   Search as SearchIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
-import { useOrgContext } from '@/contexts/OrgContext';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useOrganizationContext } from '@{{PROJECT_NAME}}/module-access';
+import { useWorkspacePlugin } from '@{{PROJECT_NAME}}/shared/workspace-plugin';
 import { useVoiceSessions, SessionCard } from '@{{PROJECT_NAME}}/module-voice';
 import type { VoiceSessionStatus } from '@{{PROJECT_NAME}}/module-voice';
 
@@ -44,8 +44,8 @@ const STATUS_OPTIONS: { value: VoiceSessionStatus | ''; label: string }[] = [
 
 export default function VoiceSessionsPage() {
   const router = useRouter();
-  const { currentOrg } = useOrgContext();
-  const { currentWorkspace } = useWorkspaceContext();
+  const { currentOrganization: currentOrg } = useOrganizationContext();
+  const { workspaceId } = useWorkspacePlugin();
   
   // Local filter state
   const [searchTerm, setSearchTerm] = useState('');
@@ -62,9 +62,9 @@ export default function VoiceSessionsPage() {
     remove,
     setStatusFilter,
   } = useVoiceSessions({
-    orgId: currentOrg?.id ?? '',
-    workspaceId: currentWorkspace?.id,
-    autoLoad: !!currentOrg?.id,
+    orgId: currentOrg?.orgId ?? '',
+    // Load sessions automatically if org context available
+    autoLoad: !!currentOrg?.orgId,
   });
   
   const handleCreateSession = () => {
