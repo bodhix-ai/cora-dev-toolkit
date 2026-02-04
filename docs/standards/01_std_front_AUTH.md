@@ -170,6 +170,8 @@ export interface UseOrgModuleConfigOptions {
 
 export function useOrgModuleConfig(options: UseOrgModuleConfigOptions) {
   const { orgId, autoFetch = true } = options;
+  const { data: session } = useSession();
+  const token = session?.accessToken ?? '';
   
   const fetchModules = useCallback(async () => {
     if (!orgId) {  // ✅ Check for orgId
@@ -177,14 +179,17 @@ export function useOrgModuleConfig(options: UseOrgModuleConfigOptions) {
       return;
     }
     
-    const response = await fetch(`${API_BASE}/admin/org/mgmt/modules`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "X-Org-Id": orgId,  // ✅ Pass orgId explicitly in header
-      },
-    });
+    if (!token) return;
     
-    // Handle response...
+    // ✅ Use authenticated client (auto-includes Authorization header)
+    const client = createCoraAuthenticatedClient(token);
+    
+    // ✅ Pass orgId as query parameter
+    const data = await client.get<{ success: boolean; data: { modules: Module[] } }>(
+      `/admin/org/mgmt/modules?orgId=${orgId}`
+    );
+    
+    return data?.data?.modules || [];
   }, [orgId, token]);
   
   return { modules, loading, error, refresh };
@@ -1186,9 +1191,20 @@ export function MyComponent() {
 
 **Solution**:
 ```tsx
-// ✅ Compliant - use API client
-import { createAuthenticatedClient } from '@sts-career/api-client';
+// ✅ Compliant - use authenticated API client with token
+import { createCoraAuthenticatedClient } from '@sts-career/api-client';
 import { useSession } from 'next-auth/react';
+
+export function MyComponent() {
+  const { data: session } = useSession();
+  const token = session?.accessToken ?? '';
+  
+  const fetchData = async () => {
+    if (!token) return;
+    const client = createCoraAuthenticatedClient(token);
+    return client.get('/data');
+  };
+}
 
 export function MyComponent() {
   const { data: session } = useSession();

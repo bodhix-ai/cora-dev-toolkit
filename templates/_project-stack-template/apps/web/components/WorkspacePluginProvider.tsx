@@ -14,6 +14,21 @@ import { ReactNode, useMemo } from 'react';
 import { WorkspacePluginContextInstance, WorkspacePluginContext, ModuleConfig } from '@{{PROJECT_NAME}}/shared/workspace-plugin';
 import { useWorkspaceModuleConfig } from '@{{PROJECT_NAME}}/module-mgmt';
 
+/**
+ * Workspace module data as returned by the module-mgmt API
+ */
+interface WorkspaceModuleData {
+  name: string;
+  displayName: string;
+  isEnabled: boolean;
+  isInstalled: boolean;
+  systemEnabled?: boolean;
+  orgEnabled?: boolean;
+  wsEnabled?: boolean;
+  config?: Record<string, any>;
+  featureFlags?: Record<string, any>;
+}
+
 interface WorkspacePluginProviderProps {
   /**
    * Current workspace ID
@@ -121,8 +136,8 @@ export function WorkspacePluginProvider({
     // Filter to modules that are enabled at the workspace level (after cascade)
     // API returns: name, isEnabled, isInstalled, systemEnabled, orgEnabled, wsEnabled
     const enabledModules = modules
-      .filter((m: any) => m.isEnabled)
-      .map((m: any) => m.name);
+      .filter((m: WorkspaceModuleData) => m.isEnabled)
+      .map((m: WorkspaceModuleData) => m.name);
     
     return {
       /**
@@ -136,7 +151,7 @@ export function WorkspacePluginProvider({
        * Get module configuration (resolved from sys → org → ws cascade)
        */
       getModuleConfig: (moduleName: string): ModuleConfig | null => {
-        const foundModule = modules.find((m: any) => m.name === moduleName);
+        const foundModule = modules.find((m: WorkspaceModuleData) => m.name === moduleName);
         if (!foundModule) return null;
 
         return {

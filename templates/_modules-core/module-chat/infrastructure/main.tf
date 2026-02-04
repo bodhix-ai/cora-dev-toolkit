@@ -110,7 +110,7 @@ resource "aws_iam_role_policy" "bedrock" {
 
 resource "aws_lambda_function" "chat_session" {
   function_name = "${local.prefix}-chat-session"
-  description   = "MODULE-CHAT: Session CRUD, KB grounding, sharing, favorites"
+  description   = "FUNC-CHAT: Session CRUD, KB grounding, sharing, favorites"
   handler       = "lambda_function.lambda_handler"
   runtime       = local.lambda_runtime
   role          = aws_iam_role.lambda.arn
@@ -161,7 +161,7 @@ resource "aws_cloudwatch_log_group" "chat_session" {
 
 resource "aws_lambda_function" "chat_message" {
   function_name = "${local.prefix}-chat-message"
-  description   = "MODULE-CHAT: Message CRUD and RAG context retrieval"
+  description   = "FUNC-CHAT: Message CRUD and RAG context retrieval"
   handler       = "lambda_function.lambda_handler"
   runtime       = local.lambda_runtime
   role          = aws_iam_role.lambda.arn
@@ -214,7 +214,7 @@ resource "aws_cloudwatch_log_group" "chat_message" {
 
 resource "aws_lambda_function" "chat_stream" {
   function_name = "${local.prefix}-chat-stream"
-  description   = "MODULE-CHAT: AI response streaming with RAG grounding (SSE)"
+  description   = "FUNC-CHAT: AI response streaming with RAG grounding (SSE)"
   handler       = "lambda_function.lambda_handler"
   runtime       = local.lambda_runtime
   role          = aws_iam_role.lambda.arn

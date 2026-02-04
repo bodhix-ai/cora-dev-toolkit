@@ -11,6 +11,7 @@ Auth Lifecycle Validation (ADR-019):
 
 import re
 import logging
+import yaml
 from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -28,6 +29,62 @@ logger = logging.getLogger(__name__)
 class FullStackValidator:
     """Validates API contracts across frontend, gateway, and Lambda layers."""
     
+    # Default route exclusion patterns (routes that don't need frontend calls)
+    DEFAULT_EXCLUSION_PATTERNS = [
+        r'^/internal/',      # Internal APIs (service-to-service communication)
+        r'^/webhooks/',      # Webhook endpoints (called by external services)
+        r'^/health$',        # Health check endpoints
+        r'^/metrics$',       # Metrics/monitoring endpoints
+    ]
+    
+    @staticmethod
+    def _load_config(config_path: Optional[Path] = None) -> Dict[str, Any]:
+        """
+        Load configuration from YAML file.
+        
+        Args:
+            config_path: Path to config file (defaults to config.yaml in same directory)
+            
+        Returns:
+            Configuration dictionary
+        """
+        if config_path is None:
+            config_path = Path(__file__).parent / 'config.yaml'
+        
+        try:
+            if config_path.exists():
+                with open(config_path, 'r') as f:
+                    config = yaml.safe_load(f)
+                    logger.info(f"Loaded configuration from {config_path}")
+                    return config or {}
+            else:
+                logger.warning(f"Config file not found: {config_path}, using defaults")
+                return {}
+        except Exception as e:
+            logger.warning(f"Failed to load config: {e}, using defaults")
+            return {}
+    
+    @staticmethod
+    def _get_route_exclusions_from_config(config: Dict[str, Any]) -> List[str]:
+        """
+        Extract enabled route exclusion patterns from config.
+        
+        Args:
+            config: Configuration dictionary
+            
+        Returns:
+            List of regex pattern strings
+        """
+        patterns = []
+        route_exclusions = config.get('route_exclusions', [])
+        
+        for exclusion in route_exclusions:
+            if exclusion.get('enabled', True):  # Default to enabled if not specified
+                patterns.append(exclusion['pattern'])
+                logger.debug(f"Route exclusion enabled: {exclusion['pattern']} - {exclusion.get('reason', 'N/A')}")
+        
+        return patterns
+    
     def __init__(
         self,
         frontend_parser: FrontendParser,
@@ -40,7 +97,8 @@ class FullStackValidator:
         validate_auth: bool = True,
         validate_layer1: bool = True,
         validate_layer2: bool = False,
-        module_filter: Optional[str] = None
+        module_filter: Optional[str] = None,
+        route_exclusion_patterns: Optional[List[str]] = None
     ):
         """Initialize validator with parsers and optional AWS configuration."""
         self.frontend_parser = frontend_parser
@@ -67,6 +125,21 @@ class FullStackValidator:
         
         # Module filter for efficient per-module validation (e.g., 'module-kb')
         self.module_filter = module_filter
+        
+        # Load configuration file
+        self.config = self._load_config()
+        
+        # Route exclusion patterns (routes that don't need frontend calls)
+        # Priority: CLI args > config file > defaults
+        if route_exclusion_patterns:
+            self.route_exclusion_patterns = route_exclusion_patterns
+            logger.info(f"Using {len(route_exclusion_patterns)} CLI-provided route exclusion patterns")
+        else:
+            config_patterns = self._get_route_exclusions_from_config(self.config)
+            self.route_exclusion_patterns = config_patterns if config_patterns else self.DEFAULT_EXCLUSION_PATTERNS
+            logger.info(f"Using {len(self.route_exclusion_patterns)} route exclusion patterns from {'config file' if config_patterns else 'defaults'}")
+        
+        self.compiled_patterns = [re.compile(pattern) for pattern in self.route_exclusion_patterns]
     
     def validate(self, project_path: str) -> ValidationReport:
         """
@@ -466,6 +539,8 @@ class FullStackValidator:
         - Dead code
         - Missing frontend implementation
         - Internal-only endpoints
+        
+        Excludes routes matching exclusion patterns (webhooks, internal APIs, etc.)
         """
         logger.info("Checking for orphaned routes...")
         
@@ -481,18 +556,27 @@ class FullStackValidator:
             route_key = f"{route.method} {normalized}"
             
             if route_key not in frontend_endpoints:
-                # This Lambda route has no frontend calls
-                # Mark as warning (might be intentional, e.g., webhooks)
-                self.mismatches.append(APIMismatch(
-                    severity='warning',
-                    mismatch_type='orphaned_route',
-                    lambda_file=route.file,
-                    lambda_line=route.line,
-                    endpoint=normalized,
-                    method=route.method,
-                    issue=f"Lambda handler for {route.method} {normalized} exists but no frontend calls found",
-                    suggestion="This might be intentional (webhooks, internal APIs) or dead code to remove"
-                ))
+                # Check if route matches any exclusion pattern
+                excluded = False
+                for pattern in self.compiled_patterns:
+                    if pattern.match(normalized):
+                        excluded = True
+                        logger.debug(f"Excluding route {normalized} (matches pattern {pattern.pattern})")
+                        break
+                
+                if not excluded:
+                    # This Lambda route has no frontend calls and is not excluded
+                    # Mark as warning (might be intentional, e.g., webhooks)
+                    self.mismatches.append(APIMismatch(
+                        severity='warning',
+                        mismatch_type='orphaned_route',
+                        lambda_file=route.file,
+                        lambda_line=route.line,
+                        endpoint=normalized,
+                        method=route.method,
+                        issue=f"Lambda handler for {route.method} {normalized} exists but no frontend calls found",
+                        suggestion="This might be intentional (webhooks, internal APIs) or dead code to remove"
+                    ))
     
     def _validate_path_parameter_naming(self):
         """
@@ -724,10 +808,14 @@ class FullStackValidator:
             lambda_path = project / 'packages'
         if lambda_path.exists():
             for file_path in lambda_path.glob("**/lambda_function.py"):
-                # Skip templates
-                if '_module-template' in str(file_path):
+                # Skip templates and build artifacts
+                # .build, dist, build: Lambda build artifacts (bundled/concatenated code)
+                # .next: Next.js build artifacts (transpiled frontend code)
+                # node_modules: Frontend dependencies
+                path_str = str(file_path)
+                if any(skip in path_str for skip in ['_module-template', '.build', '.next', 'node_modules', 'dist', 'build', '__pycache__', '.venv']):
                     continue
-                
+
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:
                         content = f.read()

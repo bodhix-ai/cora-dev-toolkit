@@ -514,8 +514,36 @@ These tables are **grandfathered exceptions** to ADR-011 module prefix rule. The
 
 ---
 
+---
+
+## Session Log
+
+### February 4, 2026 - Confirmed Delegation from S5
+
+**Context:**
+- During Sprint S5 (Validation Errors), considered addressing 5 template errors as "quick win"
+- Template cleanup: 4 index naming issues + 1 table naming issue (30 min estimated)
+
+**Decision:**
+- Confirmed this work remains DELEGATED to this plan (not part of S5 scope)
+- S5 focuses on low-hanging fruit in validators (role naming, frontend, auth, accessibility)
+- Template cleanup is standalone work tracked here
+
+**Errors to Fix (Template Cleanup - 30 minutes):**
+1. `templates/_modules-core/module-ai/db/schema/008-model-vendor.sql:18` - Index naming
+2. `templates/_modules-functional/module-voice/db/schema/004-voice-credentials.sql:28` - Index missing `idx_` prefix
+3. `templates/_modules-functional/module-voice/db/schema/004-voice-credentials.sql:33` - Index missing `idx_` prefix
+4. `templates/_modules-functional/module-eval/db/schema/003-eval-sys-status-options.sql:31` - Index naming
+5. `templates/_module-template/db/schema/001-entity-table.sql:16` - Table name should be plural
+
+**Next Action:**
+- Address template cleanup as separate task (not blocking S5 completion)
+- Estimated: 30 minutes for simple find/replace fixes
+
+---
+
 **Status:** 37% Complete (11 of 29 tables migrated)  
 **Remaining:** 10 operational tables (~7-10 hours estimated)  
 **Deferred:** 8 foundation tables (2-4 weeks if attempted)  
 **Recommendation:** Complete operational phases before new module work, defer foundation tables to Major Version 2.0  
-**Last Updated:** February 4, 2026 (Phase 8 Added - Foundation Tables Identified and Deferred)
+**Last Updated:** February 4, 2026 (Session Log Added - Template Cleanup Confirmed as Delegated)

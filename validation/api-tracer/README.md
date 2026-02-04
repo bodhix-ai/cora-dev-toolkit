@@ -55,6 +55,76 @@ Validate entire project:
 python cli.py --path /path/to/pm-app-stack
 ```
 
+### Configuration File (New in v1.2.0)
+
+API-Tracer now supports a YAML configuration file for customizing exclusion patterns without modifying code.
+
+**Location:** `validation/api-tracer/config.yaml`
+
+**Example configuration:**
+
+```yaml
+# Route exclusion patterns (routes that don't need frontend calls)
+route_exclusions:
+  - pattern: "^/internal/"
+    reason: "Internal APIs (service-to-service communication)"
+    enabled: true
+  
+  - pattern: "^/webhooks/"
+    reason: "Webhook endpoints (called by external services)"
+    enabled: true
+
+# Path exclusion patterns (directories to skip during file scanning)
+path_exclusions:
+  - pattern: ".build"
+    reason: "Lambda build artifacts (bundled/concatenated code)"
+    type: "backend"
+    enabled: true
+  
+  - pattern: ".next"
+    reason: "Next.js build artifacts (transpiled frontend code)"
+    type: "frontend"
+    enabled: true
+```
+
+**Features:**
+- Routes matching exclusion patterns won't trigger "orphaned route" warnings
+- Path exclusions prevent scanning of build artifacts (reduces false positives)
+- Enable/disable patterns without removing them (set `enabled: false`)
+- CLI override: `--exclude-routes` flag takes precedence over config file
+
+**Loading behavior:**
+1. CLI arguments (`--exclude-routes`) - highest priority
+2. Config file patterns - if no CLI args provided
+3. Default patterns - if config file missing or invalid
+
+### Severity Levels (New in v1.2.0)
+
+API-Tracer now uses granular severity levels for better error prioritization:
+
+| Severity | Color | Use Case |
+|----------|-------|----------|
+| **critical** 🔴 | Magenta | Security issues (missing auth checks) |
+| **high** 🟠 | Red | Route mismatches that cause 404s |
+| **medium** 🟡 | Yellow | Code quality issues, naming conventions |
+| **low** 🔵 | Cyan | Best practice warnings, orphaned routes |
+
+**Legacy levels** (maintained for backward compatibility):
+- `error` - Maps to high severity
+- `warning` - Maps to medium severity
+
+**Top Issues Summary** - Reports now include a "Top Issues" section showing the most common error patterns:
+
+```
+Top Issues:
+  1. route not found: 450 occurrences
+  2. key consistency: 374 occurrences
+  3. orphaned route: 180 occurrences
+  4. missing lambda handler: 15 occurrences
+```
+
+This helps prioritize fixes by focusing on the most impactful issues first.
+
 ### Output Formats
 
 #### Text Output (Human-Readable)

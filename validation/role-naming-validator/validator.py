@@ -303,6 +303,8 @@ class RoleNamingValidator:
         '**/plan_sys-role-standardization.md',  # The plan itself references old names for documentation
         '**/README-role-standardization-migrations.md',  # Migration docs
         '**/role-naming-validator/**',  # This validator references old names
+        '**/validation/**',            # All validation scripts (validators store anti-patterns)
+        '**/scripts/validation/**',    # Validation scripts in test projects
     ]
     
     # File extensions to check

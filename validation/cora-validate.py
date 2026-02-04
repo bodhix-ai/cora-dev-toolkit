@@ -211,13 +211,14 @@ class CoraValidator:
             "supports": ["project", "module"],
             "cli_style": "argparse",
         },
-        "role_naming": {
-            "name": "Role Naming Validator",
-            "description": "Validates role naming standards (sys_role, sys_admin, etc.)",
-            "module": "role-naming-validator",
-            "supports": ["project", "module"],
-            "cli_style": "argparse",
-        },
+        # NOTE: role_naming is now integrated into API-Tracer's code_quality_validator
+        # "role_naming": {
+        #     "name": "Role Naming Validator",
+        #     "description": "Validates role naming standards (sys_role, sys_admin, etc.)",
+        #     "module": "role-naming-validator",
+        #     "supports": ["project", "module"],
+        #     "cli_style": "argparse",
+        # },
         "rpc_function": {
             "name": "RPC Function Validator",
             "description": "Validates Lambda RPC calls match database function definitions",
@@ -253,13 +254,14 @@ class CoraValidator:
             "supports": ["project"],
             "cli_style": "argparse",
         },
-        "admin_auth": {
-            "name": "Admin Auth Validator",
-            "description": "Validates admin pages follow ADR-015 Pattern A authentication",
-            "module": "admin-auth-validator",
-            "supports": ["project", "module"],
-            "cli_style": "argparse",
-        },
+        # NOTE: admin_auth (frontend admin pages) is now integrated into API-Tracer's auth_validator
+        # "admin_auth": {
+        #     "name": "Admin Auth Validator",
+        #     "description": "Validates admin pages follow ADR-015 Pattern A authentication",
+        #     "module": "admin-auth-validator",
+        #     "supports": ["project", "module"],
+        #     "cli_style": "argparse",
+        # },
         "audit_columns": {
             "name": "Audit Column Validator",
             "description": "Validates module entity tables have required audit columns (ADR-015: created_at, created_by, updated_at, updated_by, is_deleted, deleted_at, deleted_by)",
@@ -663,6 +665,126 @@ class ReportFormatter:
         else:
             return self.format_text(report)
 
+    def _format_api_tracer_summary(self, result: ValidationResult) -> list:
+        """Format API-Tracer results with module grouping (matches direct CLI output)."""
+        lines = []
+        
+        # Group errors and warnings by module
+        def get_module(item):
+            """Extract module name from error/warning dict."""
+            if isinstance(item, dict):
+                # Try lambda file first
+                if item.get('lambda_file'):
+                    parts = item['lambda_file'].split('/')
+                    for i, part in enumerate(parts):
+                        if part.startswith('module-'):
+                            return part
+                
+                # Try frontend file
+                if item.get('frontend_file'):
+                    parts = item['frontend_file'].split('/')
+                    for part in parts:
+                        if part.startswith('module-'):
+                            return part
+                
+                # Try gateway file
+                if item.get('gateway_file'):
+                    parts = item['gateway_file'].split('/')
+                    for part in parts:
+                        if part.startswith('module-'):
+                            return part
+            
+            return "general"  # Fallback
+        
+        # Group by module
+        errors_by_module = {}
+        warnings_by_module = {}
+        
+        for error in result.errors:
+            if isinstance(error, dict):
+                module = get_module(error)
+                if module not in errors_by_module:
+                    errors_by_module[module] = []
+                errors_by_module[module].append(error)
+        
+        for warning in result.warnings:
+            if isinstance(warning, dict):
+                module = get_module(warning)
+                if module not in warnings_by_module:
+                    warnings_by_module[module] = []
+                warnings_by_module[module].append(warning)
+        
+        # Display module summaries
+        all_modules = sorted(set(list(errors_by_module.keys()) + list(warnings_by_module.keys())))
+        
+        for module in all_modules:
+            module_errors = errors_by_module.get(module, [])
+            module_warnings = warnings_by_module.get(module, [])
+            
+            if not module_errors and not module_warnings:
+                continue
+            
+            lines.append(f"  {self._bold(module.upper())}:")
+            
+            if module_errors:
+                # Categorize by mismatch_type
+                route_errors = []
+                auth_errors = []
+                quality_errors = []
+                other_errors = []
+                
+                for err in module_errors:
+                    mtype = err.get('mismatch_type', '')
+                    if mtype.startswith('auth_'):
+                        auth_errors.append(err)
+                    elif mtype.startswith('quality_'):
+                        quality_errors.append(err)
+                    elif mtype in ['route_not_found', 'method_mismatch', 'parameter_mismatch', 
+                                   'missing_lambda_handler', 'orphaned_route', 'path_parameter_naming',
+                                   'lambda_path_param_extraction']:
+                        route_errors.append(err)
+                    else:
+                        other_errors.append(err)
+                
+                lines.append(f"    {self._red('Errors')} ({len(module_errors)}):")
+                
+                if route_errors:
+                    lines.append(f"      {self._blue('Route Matching')}: {len(route_errors)} errors")
+                    route_types = {}
+                    for e in route_errors:
+                        mtype = e.get('mismatch_type', 'unknown')
+                        route_types[mtype] = route_types.get(mtype, 0) + 1
+                    for mtype, count in sorted(route_types.items()):
+                        lines.append(f"        - {mtype}: {count}")
+                
+                if auth_errors:
+                    lines.append(f"      {self._blue('Auth Validation')}: {len(auth_errors)} errors")
+                
+                if quality_errors:
+                    lines.append(f"      {self._blue('Code Quality')}: {len(quality_errors)} errors")
+                    quality_types = {}
+                    for e in quality_errors:
+                        mtype = e.get('mismatch_type', '').replace('quality_', '')
+                        quality_types[mtype] = quality_types.get(mtype, 0) + 1
+                    for mtype, count in sorted(quality_types.items()):
+                        lines.append(f"        - {mtype}: {count}")
+                
+                if other_errors:
+                    lines.append(f"      {self._blue('Other')}: {len(other_errors)} errors")
+            
+            if module_warnings:
+                lines.append(f"    {self._yellow('Warnings')} ({len(module_warnings)}):")
+                warning_types = {}
+                for w in module_warnings:
+                    mtype = w.get('mismatch_type', 'unknown')
+                    warning_types[mtype] = warning_types.get(mtype, 0) + 1
+                for mtype, count in sorted(warning_types.items()):
+                    lines.append(f"      - {mtype}: {count}")
+            
+            lines.append("")
+        
+        return lines
+    
     def format_json(self, report: ValidationReport) -> str:
         """Format as JSON."""
         return json.dumps(report.to_dict(), indent=2)
@@ -696,19 +818,25 @@ class ReportFormatter:
             lines.append(f"\n{self._bold(name)}: {status}")
             lines.append(f"  Duration: {result.duration_ms}ms")
             
-            if result.errors:
-                lines.append(f"  Errors ({len(result.errors)}):")
-                for error in result.errors[:5]:  # Show first 5
-                    lines.append(f"    - {error}")
-                if len(result.errors) > 5:
-                    lines.append(f"    ... and {len(result.errors) - 5} more")
-            
-            if result.warnings:
-                lines.append(f"  Warnings ({len(result.warnings)}):")
-                for warning in result.warnings[:5]:  # Show first 5
-                    lines.append(f"    - {warning}")
-                if len(result.warnings) > 5:
-                    lines.append(f"    ... and {len(result.warnings) - 5} more")
+            # Special handling for API-Tracer - use module-grouped format
+            if validator_key == "api" and (result.errors or result.warnings):
+                lines.append("")
+                lines.extend(self._format_api_tracer_summary(result))
+            else:
+                # Standard format for other validators
+                if result.errors:
+                    lines.append(f"  Errors ({len(result.errors)}):")
+                    for error in result.errors[:5]:  # Show first 5
+                        lines.append(f"    - {error}")
+                    if len(result.errors) > 5:
+                        lines.append(f"    ... and {len(result.errors) - 5} more")
+                
+                if result.warnings:
+                    lines.append(f"  Warnings ({len(result.warnings)}):")
+                    for warning in result.warnings[:5]:  # Show first 5
+                        lines.append(f"    - {warning}")
+                    if len(result.warnings) > 5:
+                        lines.append(f"    ... and {len(result.warnings) - 5} more")
         
         # Summary at the END for easy visibility
         lines.append("")
