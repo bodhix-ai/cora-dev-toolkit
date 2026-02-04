@@ -18,6 +18,7 @@ This repository uses **initiative-scoped context files** to avoid merge conflict
 | Auth Standardization | `context-auth-standardization.md` | Centralized auth library | **P0** 🔴 Critical |
 | Module-Voice Development | `context-module-voice.md` | Voice interview features | - |
 | Module-KB Development | `context-module-kb.md` | Knowledge base features | - |
+| Federal Use Cases Portfolio | `context-federal-use-cases.md` | Federal government documentation | - |
 
 ---
 
@@ -57,4 +58,4 @@ This repository uses **initiative-scoped context files** to avoid merge conflict
 
 ---
 
-**Updated:** January 30, 2026
+**Updated:** January 30, 2026 (Added Federal Use Cases initiative)
