@@ -13,7 +13,7 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { useUser, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole, createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/module-access";
 import { SysChatAdmin } from "@{{PROJECT_NAME}}/module-chat";
 import { CircularProgress, Box, Alert } from "@mui/material";
 
@@ -34,6 +34,7 @@ import { CircularProgress, Box, Alert } from "@mui/material";
  */
 export default function SystemChatAdminPage() {
   const { profile, loading, isAuthenticated, authAdapter } = useUser();
+  const { isSysAdmin } = useRole();
   const [token, setToken] = useState<string | null>(null);
   const [tokenError, setTokenError] = useState<string | null>(null);
 
@@ -90,10 +91,6 @@ export default function SystemChatAdminPage() {
   }
 
   // Check if user has system admin role
-  const isSysAdmin = ["sys_owner", "sys_admin"].includes(
-    profile.sysRole || ""
-  );
-
   if (!isSysAdmin) {
     return (
       <Box sx={{ p: 3 }}>

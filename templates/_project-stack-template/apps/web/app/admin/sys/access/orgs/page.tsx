@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Box, CircularProgress, Container, Typography } from "@mui/material";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
 
 /**
  * Organizations List Parent Route (Client Component)
@@ -14,6 +14,7 @@ import { useUser } from "@{{PROJECT_NAME}}/module-access";
 export default function OrgsListPage() {
   const router = useRouter();
   const { profile, loading, isAuthenticated } = useUser();
+  const { isSysAdmin } = useRole();
 
   useEffect(() => {
     if (loading) return;

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
 import { useModuleEnabled } from "@{{PROJECT_NAME}}/module-mgmt";
 import { Box, Grid, Card, CardContent, Typography, CardActionArea, CircularProgress, Alert } from "@mui/material";
 import Link from "next/link";
@@ -23,6 +23,7 @@ const FUNCTIONAL_MODULES = ['chat', 'eval', 'voice'];
  */
 export default function SystemAdminClientPage({ adminCards }: SystemAdminClientPageProps) {
   const { profile, loading, isAuthenticated } = useUser();
+  const { isSysAdmin } = useRole();
   
   // Check runtime enabled state for functional modules
   const isChatEnabled = useModuleEnabled('module-chat');
@@ -72,7 +73,6 @@ export default function SystemAdminClientPage({ adminCards }: SystemAdminClientP
   }
 
   // Authorization check (sys admin only)
-  const isSysAdmin = ['sys_owner', 'sys_admin'].includes(profile.sysRole || '');
   if (!isSysAdmin) {
     return (
       <Box p={4}>
