@@ -61,13 +61,16 @@ export function Sidebar({ navigation }: SidebarProps) {
   
   // Helper function to map routes to module names for ModuleGate
   const getModuleFromRoute = (href: string): string | null => {
+    // Strip /admin prefix if present to normalize route matching
+    const normalizedHref = href.startsWith('/admin/') ? href.substring(6) : href;
+    
     // Map routes to functional module names (toggleable modules only)
     const routeToModule: Record<string, string> = {
       "/chat": "module-chat",
       "/eval": "module-eval",
       "/voice": "module-voice",
     };
-    return routeToModule[href] || null;
+    return routeToModule[normalizedHref] || null;
   };
   
   // Get current org ID for org-level module filtering (S4)
