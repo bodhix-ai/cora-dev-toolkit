@@ -1,7 +1,7 @@
 # Context: WS Plugin Architecture
 
 **Created:** January 24, 2026  
-**Updated:** February 3, 2026 (Sprint 3 Complete - Ready for S4)  
+**Updated:** February 3, 2026 (Sprint 4 IN PROGRESS)  
 **Primary Focus:** Module integration patterns for workspaces
 
 ## Initiative Overview
@@ -32,7 +32,8 @@ Define and implement the architecture for functional modules (kb, chat, voice, e
 | S1 | `feature/ws-plugin-arch-s1` | `docs/plans/plan_ws-plugin-arch-s1.md` | ✅ Complete | 2026-01-25 |
 | S2 | `feature/ws-plugin-arch-s2` | `docs/plans/plan_ws-plugin-arch-s2.md` | ✅ Complete | 2026-01-25 |
 | S3 | `feature/ws-plugin-arch-s3` | `docs/plans/completed/plan_ws-plugin-arch-s3.md` | ✅ Complete | 2026-02-03 |
-| S4 | `feature/ws-plugin-arch-s4` | `docs/plans/plan_ws-plugin-arch-s4.md` | 📋 Planned | - |
+| S4 | `feature/ws-plugin-arch-s4` | `docs/plans/plan_ws-plugin-arch-s4.md` | � In Progress | - |
+| S5 | `feature/ws-plugin-arch-s5` | `docs/plans/plan_ws-plugin-arch-s5.md` | �📋 Planned | - |
 
 ## Naming Pattern (Initiative-Wide Consistency)
 
@@ -51,18 +52,22 @@ All sprints in the **WS Plugin Architecture** initiative follow this naming patt
 
 ## Current Sprint
 
-- **Branch:** `feature/ws-plugin-arch-s4` (not yet created)
+- **Branch:** `feature/ws-plugin-arch-s4` ✅ Created
 - **Plan:** `docs/plans/plan_ws-plugin-arch-s4.md`
-- **Status:** � Planned
-- **Focus:** S3 deferred scope + Tab Ordering + DB Naming Compliance
+- **Status:** 🚧 In Progress
+- **Focus:** Left Nav Filtering + DB Naming Compliance (4-5h)
+- **Test Project:** `~/code/bodhix/testing/ws-optim/` (using `setup.config.ws-optim.yaml`)
 
-**S4 Scope (from S3 Deferred):**
-- Left navigation dynamic filtering (sys → org cascade)
-- Overview tab metrics filtering by module enablement
+**S4 Scope (Refined):**
+- Left navigation dynamic filtering (sys → org cascade) - CRITICAL
+- Database table renaming (ADR-011 compliance)
+
+**Deferred to S5:**
+- Tab ordering feature (sys → org → ws inheritance)
+- Overview tab metrics (needs ADR-020 standard first)
 - Config override forms (JSONB editing, feature flags)
 - Auto-refresh / real-time config updates
-- Database table renaming (ADR-011 compliance)
-- Tab ordering feature (sys → org → ws inheritance)
+- Voice/Chat workspace tabs
 
 ## Sprint 1 Summary
 
@@ -201,6 +206,50 @@ Use composition pattern (target):
   - **Sprint 3 Update:** Add org/workspace config cascade section
 
 ## Session Log
+
+### February 3, 2026 - Sprint 4 Planning & Branch Setup ✅
+
+**Status:** Sprint 4 Started  
+**Duration:** ~30 minutes  
+**Focus:** Plan refinement and branch setup
+
+**Planning Decisions:**
+
+1. **S4/S5 Split:** Moved deferred scope to S5 to keep S4 focused
+   - S4: Left nav filtering + DB naming (4-5h)
+   - S5: Tab ordering, metrics standard, config forms (10-14h)
+
+2. **Test Project:** Will use `setup.config.ws-optim.yaml` for testing
+   - Path: `~/code/bodhix/testing/ws-optim/`
+   - All modules enabled (eval, voice)
+
+3. **Left Nav Scope Confirmed:** 
+   - Nav is org-wide (only sys → org cascade affects nav)
+   - Workspace-level enablement does NOT affect left nav
+   - Different workspaces may have different modules, but nav shows org availability
+
+4. **Auto-Refresh Decision:**
+   - No polling/WebSocket needed
+   - User who makes change sees immediate feedback
+   - Other users get fresh data on next page load (acceptable for rare config changes)
+
+**Files Created:**
+- `docs/plans/plan_ws-plugin-arch-s5.md` (deferred scope)
+
+**Files Modified:**
+- `docs/plans/plan_ws-plugin-arch-s4.md` (refined to focused scope)
+- `memory-bank/context-ws-plugin-architecture.md` (this file)
+
+**Git:**
+- Branch created: `feature/ws-plugin-arch-s4`
+- Commit: "Split S4 plan: move deferred scope to S5"
+
+**Next Steps:**
+1. Create test project using `setup.config.ws-optim.yaml`
+2. Implement left nav dynamic filtering
+3. Implement DB naming migration
+
+---
 
 ### February 3, 2026 - Sprint 3 Testing Issues FIXED ✅ (4 Issues Resolved)
 
