@@ -74,7 +74,7 @@ export function Sidebar({ navigation }: SidebarProps) {
   };
   
   // Get current org ID for org-level module filtering (S4)
-  const currentOrgId = currentOrganization?.id || null;
+  const currentOrgId = currentOrganization?.orgId || null;
   
   // Helper function to get dynamic label for navigation items
   const getNavLabel = (item: { href: string; label: string }) => {
