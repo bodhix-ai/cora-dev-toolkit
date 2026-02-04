@@ -70,6 +70,9 @@ export function Sidebar({ navigation }: SidebarProps) {
     return routeToModule[href] || null;
   };
   
+  // Get current org ID for org-level module filtering (S4)
+  const currentOrgId = currentOrganization?.id || null;
+  
   // Helper function to get dynamic label for navigation items
   const getNavLabel = (item: { href: string; label: string }) => {
     // Override workspace label with config value if available
@@ -151,9 +154,10 @@ export function Sidebar({ navigation }: SidebarProps) {
             );
 
             // Wrap functional module nav items in ModuleGate for visibility control
+            // Pass orgId for org-level filtering (S4: sys → org cascade)
             if (moduleName) {
               return (
-                <ModuleGate key={item.href} moduleName={moduleName} fallback={null}>
+                <ModuleGate key={item.href} moduleName={moduleName} orgId={currentOrgId} fallback={null}>
                   {navItem}
                 </ModuleGate>
               );

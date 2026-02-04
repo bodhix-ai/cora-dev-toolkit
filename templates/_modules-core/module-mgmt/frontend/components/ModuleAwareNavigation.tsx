@@ -23,6 +23,7 @@ import {
   type Module,
   type ModuleNavConfig,
 } from "../hooks/useModuleRegistry";
+import { useOrgModuleConfig } from "../hooks/useOrgModuleConfig";
 
 // =============================================================================
 // Types
@@ -148,6 +149,22 @@ export function ModuleAwareNavigation({
 
 /**
  * Wrapper component that only renders children if the specified module is enabled
+ * 
+ * When `orgId` is provided, checks org-level enablement (sys → org cascade).
+ * When `orgId` is not provided, checks system-level enablement only.
+ * 
+ * @example
+ * ```tsx
+ * // System-level check (original behavior)
+ * <ModuleGate moduleName="module-eval" fallback={null}>
+ *   <EvalPlugin />
+ * </ModuleGate>
+ * 
+ * // Org-level check (new for S4 left nav filtering)
+ * <ModuleGate moduleName="module-eval" orgId={currentOrg?.id} fallback={null}>
+ *   <EvalNavItem />
+ * </ModuleGate>
+ * ```
  */
 export interface ModuleGateProps {
   /** Module name to check */
@@ -156,20 +173,47 @@ export interface ModuleGateProps {
   children: React.ReactNode;
   /** Fallback to render if module is disabled */
   fallback?: React.ReactNode;
+  /** 
+   * Organization ID for org-level enablement check.
+   * When provided, checks org-resolved enablement (sys → org cascade).
+   * When not provided, checks system-level enablement only.
+   */
+  orgId?: string | null;
 }
 
 export function ModuleGate({
   moduleName,
   children,
   fallback = null,
+  orgId,
 }: ModuleGateProps): React.ReactElement | null {
-  const { modules, isLoading } = useModuleRegistry({ autoFetch: true });
+  // System-level check (original behavior)
+  const { modules: sysModules, isLoading: sysLoading } = useModuleRegistry({ 
+    autoFetch: !orgId  // Only fetch if no orgId provided
+  });
+  
+  // Org-level check (new for S4)
+  const { modules: orgModules, isLoading: orgLoading } = useOrgModuleConfig({ 
+    orgId: orgId || null,
+    autoFetch: !!orgId  // Only fetch if orgId provided
+  });
 
   const isEnabled = useMemo(() => {
-    if (!modules || !Array.isArray(modules)) return false;
-    const module = modules.find((m) => m.name === moduleName);
+    // Use org-level check if orgId provided
+    if (orgId) {
+      if (!orgModules || !Array.isArray(orgModules)) return false;
+      const module = orgModules.find((m) => m.name === moduleName);
+      return module?.isEnabled ?? false;
+    }
+    
+    // Fall back to system-level check
+    if (!sysModules || !Array.isArray(sysModules)) return false;
+    const module = sysModules.find((m) => m.name === moduleName);
     return module?.isEnabled ?? false;
-  }, [modules, moduleName]);
+  }, [orgId, orgModules, sysModules, moduleName]);
+
+  const isLoading = orgId ? orgLoading : sysLoading;
+  const modules = orgId ? orgModules : sysModules;
 
   if (isLoading || !modules) {
     return null;
