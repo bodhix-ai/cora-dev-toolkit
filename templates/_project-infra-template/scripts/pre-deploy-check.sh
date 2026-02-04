@@ -267,20 +267,54 @@ if [[ -d "${INFRA_ROOT}/envs/dev" ]]; then
     cd "${INFRA_ROOT}/envs/dev"
     
     # Check if terraform is initialized
-    if [[ -d ".terraform" ]]; then
-        if terraform validate > /tmp/tf-validate.txt 2>&1; then
-            log_info "✅ Terraform configuration valid"
+    if [[ ! -d ".terraform" ]]; then
+        log_info "Terraform not initialized - running terraform init..."
+        if terraform init > /tmp/tf-init.txt 2>&1; then
+            log_info "✅ Terraform initialized successfully"
+        else
+            log_error "❌ Terraform init failed:"
+            cat /tmp/tf-init.txt
+            ERRORS_FOUND=$((ERRORS_FOUND + 1))
+            rm -f /tmp/tf-init.txt
+            cd "$INFRA_ROOT"
+            echo ""
+            # Skip validation if init failed
+            continue
+        fi
+        rm -f /tmp/tf-init.txt
+    fi
+    
+    # Now validate
+    if terraform validate > /tmp/tf-validate.txt 2>&1; then
+        log_info "✅ Terraform configuration valid"
+    else
+        # Check if error is due to missing providers
+        if grep -q "Missing required provider" /tmp/tf-validate.txt; then
+            log_info "Missing providers detected - running terraform init..."
+            if terraform init > /tmp/tf-init.txt 2>&1; then
+                log_info "✅ Terraform initialized successfully"
+                # Try validation again
+                if terraform validate > /tmp/tf-validate2.txt 2>&1; then
+                    log_info "✅ Terraform configuration valid"
+                else
+                    log_error "❌ Terraform validation errors:"
+                    cat /tmp/tf-validate2.txt
+                    ERRORS_FOUND=$((ERRORS_FOUND + 1))
+                fi
+                rm -f /tmp/tf-validate2.txt
+            else
+                log_error "❌ Terraform init failed:"
+                cat /tmp/tf-init.txt
+                ERRORS_FOUND=$((ERRORS_FOUND + 1))
+            fi
+            rm -f /tmp/tf-init.txt
         else
             log_error "❌ Terraform validation errors:"
             cat /tmp/tf-validate.txt
             ERRORS_FOUND=$((ERRORS_FOUND + 1))
         fi
-        rm -f /tmp/tf-validate.txt
-    else
-        log_warn "Terraform not initialized, skipping validation"
-        log_info "Run 'terraform init' for full validation"
-        WARNINGS_FOUND=$((WARNINGS_FOUND + 1))
     fi
+    rm -f /tmp/tf-validate.txt
     
     cd "$INFRA_ROOT"
 else
