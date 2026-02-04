@@ -1,10 +1,10 @@
-# WS Plugin Architecture (Sprint 4) - Tab Ordering & DB Naming Compliance
+# WS Plugin Architecture (Sprint 4) - Left Nav Filtering & DB Naming Compliance
 
-**Status**: 📋 PLANNED  
-**Priority**: **P2**  
-**Estimated Duration**: 12-16 hours (increased to include S3 deferred scope)  
+**Status**: 🚧 IN PROGRESS  
+**Priority**: **P1**  
+**Estimated Duration**: 4-5 hours  
 **Created**: 2026-02-02  
-**Updated**: 2026-02-03 (Added deferred scope from S3)  
+**Updated**: 2026-02-03 (Scope refined - deferred items moved to S5)  
 **Branch**: `feature/ws-plugin-arch-s4`  
 **Context**: `memory-bank/context-ws-plugin-architecture.md`  
 **Dependencies**: Sprint 3 (Complete) ✅  
@@ -24,43 +24,42 @@ All sprints in the **WS Plugin Architecture** initiative follow this naming patt
 
 ## Executive Summary
 
-Sprint 4 implements three areas of workspace management:
+Sprint 4 focuses on two critical items:
 
-1. **S3 Deferred Scope:** Complete deferred items from Sprint 3 (module config enhancements)
+1. **Left Navigation Dynamic Filtering:** Fix broken nav that reads from static YAML instead of database
 2. **Database Naming Compliance:** Rename workspace tables to follow ADR-011 naming standards
-3. **Tab Ordering Feature:** Implement customizable tab ordering with sys → org → ws inheritance
+
+### What Was Deferred to S5
+
+The following items were moved to Sprint 5 (`plan_ws-plugin-arch-s5.md`):
+
+| Feature | Reason for Deferral |
+|---------|---------------------|
+| Tab Ordering | New feature, not blocking S3 completion |
+| Overview Tab Dynamic Metrics | Needs ADR-020 standard first - architectural decision required |
+| Config Override Forms | Toggle on/off from S3 is sufficient for MVP |
+| Auto-refresh | Current user sees immediate feedback; no polling needed |
+| Voice/Chat Workspace Tabs | Modules need to be more mature first |
 
 ### Current State
 
 - ✅ Sprint 3: Module enablement cascade complete (sys → org → ws)
 - ✅ Sprint 3: Workspace tab visibility filters by module enablement
-- ❌ S3 Deferred: Left nav doesn't filter by module enablement (reads YAML)
-- ❌ S3 Deferred: Overview metrics always render (don't filter by module)
-- ❌ S3 Deferred: Config override forms (JSONB editing, feature flags)
-- ❌ S3 Deferred: Auto-refresh for real-time config updates
+- ❌ **CRITICAL:** Left nav doesn't filter by module enablement (reads static YAML)
 - ❌ Workspace config tables don't follow `_cfg_` naming standard
 - ❌ Activity log table doesn't follow `_log_` naming standard
-- ❌ No tab ordering feature (all workspaces have same tab order)
 
 ### Goal
 
-1. **Complete S3 Deferred Scope:**
-   - Left navigation dynamic filtering (sys → org cascade)
-   - Overview tab metrics filtering by module enablement
-   - Config override forms (JSONB editor or structured)
-   - Feature flag toggles at org/ws level
-   - Auto-refresh / real-time config updates
+1. **Fix Left Navigation:**
+   - Query database for module enablement (sys → org cascade)
+   - Filter nav items dynamically based on resolved enablement
+   - Workspace-level does NOT affect nav (nav is org-wide)
 
 2. **Rename tables to comply with ADR-011:**
    - `ws_configs` → `ws_cfg_sys` (system-level workspace defaults)
    - `ws_org_settings` → `ws_cfg_org` (org-level workspace overrides)
    - `ws_activity_log` → `ws_log_activity` (workspace activity log)
-
-3. **Add tab ordering feature:**
-   - System admins set default tab order
-   - Org admins can override for their org
-   - Workspace admins can customize their workspace (after creation)
-   - One-time copy at creation (not real-time cascade)
 
 ---
 
@@ -68,57 +67,66 @@ Sprint 4 implements three areas of workspace management:
 
 ### In Scope
 
-**Phase 0 - S3 Deferred Scope (4-6h):**
-- Left navigation dynamic filtering
-- Overview tab metrics filtering
-- Config override forms (org & workspace)
-- Feature flag toggles
-- Auto-refresh mechanism
+**Phase 1 - Test Project Setup (30min):**
+- Create test project using `setup.config.ws-optim.yaml`
+- Verify deployment and login work
 
-**Phase 1 - Database Migration:**
-- Rename `ws_configs` → `ws_cfg_sys`
-- Rename `ws_org_settings` → `ws_cfg_org`
-- Rename `ws_activity_log` → `ws_log_activity`
-- Add `default_tab_order` to `ws_cfg_sys`
-- Add `tab_order` to `ws_cfg_org`
-- Add `tab_order` to `workspaces`
-- Update all constraints, indexes, triggers
-- Update RLS policies
+**Phase 2 - Left Navigation Dynamic Filtering (2-3h):**
+- Update `buildNavigationConfig()` to query database
+- Apply sys → org cascade for enablement
+- Add refresh callback for org admin toggle changes
+- Cache results per org for performance
 
-**Phase 2 - Backend Updates:**
-- Update Lambda functions to use new table names
-- Add tab order resolution logic
-- Update API endpoints for workspace config
-- Add backward compatibility (if needed)
+**Phase 3 - Database Naming Migration (1-2h):**
+- Rename three tables to comply with ADR-011
+- Update Lambda functions with new table names
+- Update frontend queries with new table names
 
-**Phase 3 - Frontend Updates:**
-- Update frontend queries to use new table names
-- Create system admin tab order UI
-- Create org admin tab order UI
-- Create workspace admin tab order UI
-- Add drag-and-drop reordering
-
-**Phase 4 - Testing & Documentation:**
-- Test table renames
-- Test tab ordering (sys → org → ws)
+**Phase 4 - Testing & Documentation (30min):**
+- Test all scenarios
 - Update documentation
 - Update memory-bank context
 
-### Out of Scope
+### Out of Scope (Moved to S5)
 
-- Real-time cascade for tab order (only affects new workspaces)
-- Tab visibility based on module enablement (handled by Sprint 3)
-- Mobile-specific tab ordering UI (uses same order, different display)
+- Tab ordering feature
+- Overview tab dynamic metrics
+- Config override forms
+- Auto-refresh mechanism
+- Voice & Chat workspace tabs
 
 ---
 
-## Phase 0: S3 Deferred Scope (4-6h)
+## Phase 1: Test Project Setup (30min)
 
 **Status:** 📋 PLANNED
 
-These items were deferred from Sprint 3 to keep MVP scope manageable.
+### 1.1: Create Test Project
 
-### 0.1: Left Navigation Dynamic Filtering (2-3h)
+Use the test-module workflow with `setup.config.ws-optim.yaml`:
+
+```bash
+# Config file already exists:
+# templates/_project-stack-template/setup.config.ws-optim.yaml
+
+# Create project
+./scripts/create-cora-project.sh --input templates/_project-stack-template/setup.config.ws-optim.yaml
+```
+
+### 1.2: Verify Deployment
+
+- [ ] Project created at `~/code/bodhix/testing/ws-optim/`
+- [ ] Infrastructure deployed successfully
+- [ ] Login working
+- [ ] Module enablement toggle working (S3 feature)
+
+---
+
+## Phase 2: Left Navigation Dynamic Filtering (2-3h)
+
+**Status:** 📋 PLANNED
+
+### Problem Statement
 
 **CRITICAL:** Left nav currently reads from static YAML file, not database.
 
@@ -128,74 +136,140 @@ These items were deferred from Sprint 3 to keep MVP scope manageable.
 - Data source: `cora-modules.config.yaml` (static file)
 - Check: `show_in_main_nav` flag only
 
-**Required Changes:**
-- [ ] Accept orgId parameter in `buildNavigationConfig(orgId)`
-- [ ] Query `mgmt_cfg_sys_modules.is_enabled` for system-level
-- [ ] Query `mgmt_cfg_org_modules` for org-level overrides
-- [ ] Apply cascade: sys → org (NOT workspace - nav is org-wide)
-- [ ] Filter nav items based on resolved enablement
-- [ ] Cache results per org for performance
+**Impact:** When org admin disables a module, the nav item still appears because nav reads from YAML, not database.
 
-**Note:** Workspace-level enablement does NOT affect left nav. Left nav is org-wide - all org users see the same navigation. Only sys and org levels matter.
+### Design Decision: Nav is Org-Wide
 
-### 0.2: Overview Tab Dynamic Metrics (1h)
+**Confirmed:** Workspace-level enablement does NOT affect left nav.
 
-**CRITICAL:** Overview tab metrics are hardcoded.
+**Rationale:**
+- Left nav is org-wide - all users in an org see the same navigation
+- Different workspaces may have different modules enabled, but nav shows org-level availability
+- Only sys (system) and org levels matter for nav filtering
 
-**Current Implementation:**
-- Location: `WorkspaceDetailPage.tsx` - TabPanel 0
-- Hardcoded: Documents (KB) and Evaluations (Eval)
-- Hooks run unconditionally, even for disabled modules
+### Implementation Plan
 
-**Required Changes:**
-- [ ] Check `isModuleAvailable('module-kb')` before rendering Documents card
-- [ ] Check `isModuleAvailable('module-eval')` before rendering Evaluations card
-- [ ] Conditionally execute hooks (don't fetch data for disabled modules)
-- [ ] Add metrics for voice/chat when those modules are enabled
+**2.1: Update buildNavigationConfig to Accept orgId**
 
-### 0.3: Config Override Forms (1-2h)
+```typescript
+// apps/web/lib/moduleRegistry.ts
 
-**Deferred from S3:** MVP only uses toggle switches. Full config editing deferred.
+// BEFORE:
+export async function buildNavigationConfig(): Promise<NavConfig> {
+  // Reads from static YAML only
+}
 
-**Org Admin Config Overrides:**
-- [ ] JSONB editor or structured form for config_overrides
-- [ ] Feature flag toggles UI (key-value for boolean flags)
-- [ ] Preview of effective config (merged sys → org)
-- [ ] Save/revert functionality (currently auto-saves on toggle)
+// AFTER:
+export async function buildNavigationConfig(orgId: string): Promise<NavConfig> {
+  // 1. Read base config from YAML (module metadata)
+  const baseConfig = await loadModuleConfigYaml();
+  
+  // 2. Query database for org-level enablement
+  const enabledModules = await getOrgEnabledModules(orgId);
+  
+  // 3. Filter nav items by enablement
+  const filteredNav = baseConfig.navItems.filter(item => 
+    enabledModules.includes(item.moduleName)
+  );
+  
+  return { navItems: filteredNav };
+}
+```
 
-**Workspace Admin Config Overrides:**
-- [ ] JSONB editor or structured form for config_overrides
-- [ ] Feature flag toggles UI
-- [ ] Preview of effective config (merged sys → org → ws)
-- [ ] "Reset to org default" button
+**2.2: Create getOrgEnabledModules Function**
 
-### 0.4: Auto-Refresh / Real-Time Updates (1h)
+```typescript
+// apps/web/lib/moduleRegistry.ts
 
-**Deferred from S3:** Currently requires page reload to see config changes.
+async function getOrgEnabledModules(orgId: string): Promise<string[]> {
+  // Query sys_module_registry for system-level enablement
+  // Query mgmt_cfg_org_modules for org-level overrides
+  // Apply cascade: sys → org
+  // Return list of enabled module names
+  
+  const response = await fetch(`/api/platform/modules?org_id=${orgId}`);
+  const modules = await response.json();
+  
+  return modules
+    .filter(m => m.isEnabled && m.isInstalled)
+    .map(m => m.name);
+}
+```
 
-**Options:**
-- **Option A: Polling (Simple)** - Poll every 30-60 seconds
-- **Option B: WebSocket (Complex)** - Real-time push on config change
-- **Option C: Event-based** - Refresh on specific user actions (tab focus, navigation)
+**2.3: Update Sidebar Component**
 
-**Required Changes:**
-- [ ] Add refresh mechanism to `WorkspacePluginProvider`
-- [ ] Consider cache invalidation strategy
-- [ ] Balance freshness vs performance
+```typescript
+// apps/web/components/sidebar/Sidebar.tsx
 
-### 0.5: Voice & Chat Workspace Tabs (Future)
+export function Sidebar() {
+  const { currentOrg } = useOrganizationContext();
+  const [navConfig, setNavConfig] = useState<NavConfig | null>(null);
+  
+  useEffect(() => {
+    if (currentOrg?.id) {
+      buildNavigationConfig(currentOrg.id).then(setNavConfig);
+    }
+  }, [currentOrg?.id]);
+  
+  // Render nav items from navConfig
+}
+```
 
-**Deferred from S3:** Tab components for new modules.
+**2.4: Add Refresh Callback**
 
-- [ ] Create voice tab component for workspace
-- [ ] Create chat tab component for workspace
-- [ ] Integrate with tab visibility filtering (already implemented)
+When org admin toggles a module, refresh the nav:
+
+```typescript
+// After org admin toggles module
+await updateModuleEnablement(moduleName, enabled);
+await refreshNavigation(); // Re-fetch nav config
+```
+
+**2.5: Cache Results Per Org**
+
+```typescript
+// Simple cache with TTL
+const navConfigCache = new Map<string, { config: NavConfig; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function buildNavigationConfig(orgId: string): Promise<NavConfig> {
+  const cached = navConfigCache.get(orgId);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.config;
+  }
+  
+  const config = await buildNavigationConfigFromDb(orgId);
+  navConfigCache.set(orgId, { config, timestamp: Date.now() });
+  return config;
+}
+
+// Clear cache when org admin makes changes
+export function invalidateNavCache(orgId: string) {
+  navConfigCache.delete(orgId);
+}
+```
+
+### Files to Modify
+
+- `templates/_project-stack-template/apps/web/lib/moduleRegistry.ts`
+- `templates/_project-stack-template/apps/web/components/sidebar/Sidebar.tsx` (or equivalent)
+- `templates/_modules-core/module-mgmt/frontend/pages/OrgModuleConfigPage.tsx` (add refresh)
+
+### Validation Steps
+
+- [ ] Disable module-kb at org level
+- [ ] Verify "Docs" nav item disappears for all users in that org
+- [ ] Re-enable module-kb
+- [ ] Verify "Docs" nav item reappears immediately for admin
+- [ ] Verify other users see change on next page load
 
 ---
 
-## Phase 1: Database Migration (2-3h)
+## Phase 3: Database Naming Migration (1-2h)
 
-### 1.1: Rename ws_configs → ws_cfg_sys ✅
+**Status:** 📋 PLANNED
+
+### 3.1: Rename ws_configs → ws_cfg_sys
 
 **Migration SQL:**
 ```sql
@@ -240,17 +314,11 @@ CREATE TRIGGER ws_cfg_sys_updated_at
   BEFORE UPDATE ON ws_cfg_sys 
   FOR EACH ROW EXECUTE FUNCTION update_ws_cfg_sys_updated_at();
 
--- Step 5: Add tab_order column
-ALTER TABLE ws_cfg_sys 
-ADD COLUMN default_tab_order JSONB DEFAULT '["module-kb", "module-chat", "module-voice", "module-eval"]'::jsonb;
-
-COMMENT ON COLUMN ws_cfg_sys.default_tab_order IS 'Default tab order for all new workspaces (applies if org has no override)';
-
--- Step 6: Add table comment
-COMMENT ON TABLE ws_cfg_sys IS 'System-wide workspace configuration defaults. Renamed from ws_configs on 2026-02-02 to comply with ADR-011.';
+-- Step 5: Add table comment
+COMMENT ON TABLE ws_cfg_sys IS 'System-wide workspace configuration defaults. Renamed from ws_configs on 2026-02-03 to comply with ADR-011.';
 ```
 
-### 1.2: Rename ws_org_settings → ws_cfg_org ✅
+### 3.2: Rename ws_org_settings → ws_cfg_org
 
 **Migration SQL:**
 ```sql
@@ -295,29 +363,23 @@ CREATE TRIGGER trigger_update_ws_cfg_org_updated_at
   BEFORE UPDATE ON ws_cfg_org 
   FOR EACH ROW EXECUTE FUNCTION update_ws_cfg_org_updated_at();
 
--- Step 6: Add tab_order column
-ALTER TABLE ws_cfg_org 
-ADD COLUMN tab_order JSONB;
-
-COMMENT ON COLUMN ws_cfg_org.tab_order IS 'Org-level tab order override. NULL = inherit from system default (ws_cfg_sys.default_tab_order)';
-
--- Step 7: Add table comment
-COMMENT ON TABLE ws_cfg_org IS 'Organization-level workspace configuration overrides. Renamed from ws_org_settings on 2026-02-02 to comply with ADR-011.';
+-- Step 6: Add table comment
+COMMENT ON TABLE ws_cfg_org IS 'Organization-level workspace configuration overrides. Renamed from ws_org_settings on 2026-02-03 to comply with ADR-011.';
 ```
 
-### 1.3: Rename ws_activity_log → ws_log_activity ✅
+### 3.3: Rename ws_activity_log → ws_log_activity
 
 **Migration SQL:**
 ```sql
 -- Step 1: Rename table
 ALTER TABLE ws_activity_log RENAME TO ws_log_activity;
 
--- Step 2: Update constraints (update based on actual schema)
+-- Step 2: Update constraints
 ALTER TABLE ws_log_activity 
   DROP CONSTRAINT IF EXISTS ws_activity_log_pkey,
   ADD CONSTRAINT ws_log_activity_pkey PRIMARY KEY (id);
 
--- Update foreign keys (example - adjust based on actual schema)
+-- Update foreign keys
 ALTER TABLE ws_log_activity 
   DROP CONSTRAINT IF EXISTS ws_activity_log_ws_id_fkey,
   ADD CONSTRAINT fk_ws_log_activity_ws_id FOREIGN KEY (ws_id) REFERENCES workspaces(id) ON DELETE CASCADE;
@@ -326,7 +388,7 @@ ALTER TABLE ws_log_activity
   DROP CONSTRAINT IF EXISTS ws_activity_log_user_id_fkey,
   ADD CONSTRAINT fk_ws_log_activity_user_id FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
--- Step 3: Update indexes (adjust based on actual schema)
+-- Step 3: Update indexes
 DROP INDEX IF EXISTS idx_ws_activity_log_ws_id;
 CREATE INDEX idx_ws_log_activity_ws_id ON ws_log_activity(ws_id);
 
@@ -337,36 +399,33 @@ DROP INDEX IF EXISTS idx_ws_activity_log_created_at;
 CREATE INDEX idx_ws_log_activity_created_at ON ws_log_activity(created_at);
 
 -- Step 4: Add table comment
-COMMENT ON TABLE ws_log_activity IS 'Workspace activity log. Renamed from ws_activity_log on 2026-02-02 to comply with ADR-011 (Rule 8.2: Log Tables).';
+COMMENT ON TABLE ws_log_activity IS 'Workspace activity log. Renamed from ws_activity_log on 2026-02-03 to comply with ADR-011 (Rule 8.2: Log Tables).';
 ```
 
-### 1.4: Add tab_order to workspaces Table ✅
+### 3.4: Update Lambda Functions
 
-**Migration SQL:**
-```sql
--- Add tab_order column to workspaces
-ALTER TABLE workspaces 
-ADD COLUMN tab_order JSONB;
-
-COMMENT ON COLUMN workspaces.tab_order IS 'Workspace-specific tab order. Set from org/sys default at creation, customizable by ws admins. NULL = use current org/sys default.';
-
--- Backfill existing workspaces with default order
-UPDATE workspaces w
-SET tab_order = (
-  SELECT COALESCE(
-    oc.tab_order,                    -- Org override if exists
-    sc.default_tab_order             -- System default
-  )
-  FROM ws_cfg_sys sc
-  LEFT JOIN ws_cfg_org oc ON oc.org_id = w.org_id
-  LIMIT 1
-)
-WHERE tab_order IS NULL;
+**Search for references:**
+```bash
+grep -r "ws_configs" templates/_modules-core/module-ws/backend/
+grep -r "ws_org_settings" templates/_modules-core/module-ws/backend/
+grep -r "ws_activity_log" templates/_modules-core/module-ws/backend/
 ```
 
-### 1.5: Update Trigger Functions ✅
+**Update all queries to use new table names.**
 
-**Create/Update Trigger Functions:**
+### 3.5: Update Frontend Queries
+
+**Search for references:**
+```bash
+grep -r "ws_configs" templates/_project-stack-template/apps/web/
+grep -r "ws_org_settings" templates/_project-stack-template/apps/web/
+grep -r "ws_activity_log" templates/_project-stack-template/apps/web/
+```
+
+**Update all queries to use new table names.**
+
+### 3.6: Create Trigger Functions (if not exist)
+
 ```sql
 -- ws_cfg_sys updated_at trigger function
 CREATE OR REPLACE FUNCTION update_ws_cfg_sys_updated_at()
@@ -389,230 +448,18 @@ $$ LANGUAGE plpgsql;
 
 ---
 
-## Phase 2: Backend Updates (2-3h)
+## Phase 4: Testing & Documentation (30min)
 
-### 2.1: Update Lambda Functions
-
-**Files to Update:**
-
-**module-ws Lambda Functions:**
-- `templates/_modules-core/module-ws/backend/lambdas/lambda-ws/lambda_function.py`
-  - Update all SQL queries: `ws_configs` → `ws_cfg_sys`
-  - Update all SQL queries: `ws_org_settings` → `ws_cfg_org`
-  - Update all SQL queries: `ws_activity_log` → `ws_log_activity`
-  - Add tab order resolution logic for workspace creation
-
-**Search Pattern:**
-```bash
-# Find all references to old table names
-grep -r "ws_configs" templates/_modules-core/module-ws/backend/
-grep -r "ws_org_settings" templates/_modules-core/module-ws/backend/
-grep -r "ws_activity_log" templates/_modules-core/module-ws/backend/
-```
-
-### 2.2: Add Tab Order Resolution Functions
-
-**In lambda-ws Lambda:**
-```python
-def get_default_tab_order_for_new_workspace(conn, org_id: str) -> list:
-    """
-    Get the default tab order for a new workspace.
-    
-    Resolution order:
-    1. Check org-level override (ws_cfg_org.tab_order)
-    2. Fall back to system default (ws_cfg_sys.default_tab_order)
-    
-    Args:
-        conn: Database connection
-        org_id: Organization ID
-        
-    Returns:
-        list: Tab order array
-    """
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
-    
-    # Check org-level override
-    cursor.execute("""
-        SELECT tab_order 
-        FROM ws_cfg_org 
-        WHERE org_id = %s
-    """, (org_id,))
-    
-    org_config = cursor.fetchone()
-    if org_config and org_config['tab_order']:
-        return org_config['tab_order']
-    
-    # Fall back to system default
-    cursor.execute("""
-        SELECT default_tab_order 
-        FROM ws_cfg_sys 
-        LIMIT 1
-    """)
-    
-    sys_config = cursor.fetchone()
-    return sys_config['default_tab_order'] if sys_config else [
-        "module-kb",
-        "module-chat", 
-        "module-voice",
-        "module-eval"
-    ]
-
-
-def handle_create_workspace(event, context, conn, user_claims):
-    """Create workspace with default tab order from org or sys."""
-    # ... existing validation ...
-    
-    # Get default tab order for this org
-    default_tab_order = get_default_tab_order_for_new_workspace(conn, org_id)
-    
-    # Create workspace with tab order
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
-    cursor.execute("""
-        INSERT INTO workspaces (
-            name, org_id, tab_order, color, icon, 
-            created_by, updated_by
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-        RETURNING *
-    """, (
-        name, org_id, json.dumps(default_tab_order), 
-        color, icon, user_id, user_id
-    ))
-    
-    # ... rest of creation logic ...
-```
-
-### 2.3: Update API Endpoints
-
-**Add/Update endpoints in lambda-ws:**
-
-```python
-def handle_update_workspace_tab_order(event, context, conn, user_claims):
-    """
-    Update workspace tab order (ws admins only).
-    
-    PUT /api/data/ws/{wsId}/tab-order
-    Body: { "tab_order": ["module-chat", "module-kb", ...] }
-    """
-    ws_id = event['pathParameters']['wsId']
-    user_id = user_claims['sub']
-    body = json.loads(event['body'])
-    tab_order = body.get('tab_order')
-    
-    # Validate tab_order
-    if not isinstance(tab_order, list):
-        return error_response("tab_order must be an array", 400)
-    
-    # Check workspace admin access
-    if not is_workspace_admin(conn, ws_id, user_id):
-        return error_response("Access denied. Workspace admin required.", 403)
-    
-    # Update tab order
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
-    cursor.execute("""
-        UPDATE workspaces 
-        SET tab_order = %s, updated_at = NOW(), updated_by = %s
-        WHERE id = %s
-        RETURNING tab_order
-    """, (json.dumps(tab_order), user_id, ws_id))
-    
-    result = cursor.fetchone()
-    conn.commit()
-    
-    return success_response({
-        "tab_order": result['tab_order']
-    })
-```
-
----
-
-## Phase 3: Frontend Updates (3-4h)
-
-### 3.1: Update Frontend Queries
-
-**Files to Update:**
-- `templates/_project-stack-template/apps/web/app/admin/sys/ws/` (system admin workspace config)
-- `templates/_project-stack-template/apps/web/app/admin/org/ws/` (org admin workspace config)
-- `templates/_modules-core/module-ws/frontend/hooks/useWorkspace*.ts`
-
-**Search Pattern:**
-```bash
-# Find all frontend references to old table names
-grep -r "ws_configs" templates/_project-stack-template/apps/web/
-grep -r "ws_org_settings" templates/_project-stack-template/apps/web/
-grep -r "ws_activity_log" templates/_project-stack-template/apps/web/
-```
-
-### 3.2: Create System Admin Tab Order UI
-
-**File:** `templates/_project-stack-template/apps/web/app/admin/sys/ws/config/page.tsx`
-
-**Component:** System admin page to configure default tab order
-
-**Features:**
-- Drag-and-drop to reorder modules
-- Shows all available modules
-- Preview: "This order applies to all new orgs/workspaces"
-- Save button updates `ws_cfg_sys.default_tab_order`
-
-### 3.3: Create Org Admin Tab Order UI
-
-**File:** `templates/_project-stack-template/apps/web/app/admin/org/ws/config/page.tsx`
-
-**Component:** Org admin page to override tab order
-
-**Features:**
-- Option 1: "Use system default" (tab_order = NULL)
-- Option 2: "Customize for this organization"
-- Drag-and-drop to reorder modules
-- Shows current system default for reference
-- Warning: "Existing workspaces are not affected"
-- Save button updates `ws_cfg_org.tab_order`
-
-### 3.4: Create Workspace Admin Tab Order UI
-
-**File:** `templates/_modules-core/module-ws/frontend/components/settings/WorkspaceTabOrderSettings.tsx`
-
-**Component:** Workspace settings tab order customization
-
-**Features:**
-- Shows current workspace tab order
-- Drag-and-drop to reorder
-- Info: "This only affects this workspace"
-- Button: "Reset to organization default"
-- Save button updates `workspaces.tab_order`
-
-**Integration:**
-Add to existing `WorkspaceModuleSettings` component or create separate tab.
-
-### 3.5: Update WorkspacePluginProvider
-
-**File:** `templates/_project-stack-template/apps/web/components/WorkspacePluginProvider.tsx`
-
-**Enhancement:** Use workspace tab order to determine module tab display order
-
-```tsx
-// Fetch workspace data including tab_order
-const { workspace, isLoading } = useWorkspace(workspaceId);
-
-// Use tab order from workspace, or default
-const tabOrder = workspace?.tab_order || [
-  'module-kb',
-  'module-chat',
-  'module-voice',
-  'module-eval'
-];
-
-// Filter to only enabled modules and apply order
-const orderedEnabledModules = tabOrder
-  .filter(moduleName => moduleAvailability.isModuleAvailable(moduleName))
-  .map(moduleName => moduleAvailability.getModuleConfig(moduleName));
-```
-
----
-
-## Phase 4: Testing & Documentation (1-2h)
+**Status:** 📋 PLANNED
 
 ### 4.1: Testing Checklist
+
+**Left Navigation Testing:**
+- [ ] System admin disables module-kb → nav item hidden globally
+- [ ] Org admin disables module-eval → nav item hidden for that org only
+- [ ] Org admin re-enables module → nav item appears immediately (for admin)
+- [ ] Regular user sees updated nav on page refresh
+- [ ] Different orgs have independent nav filtering
 
 **Database Migration Testing:**
 - [ ] Verify `ws_cfg_sys` table exists and has correct schema
@@ -624,27 +471,10 @@ const orderedEnabledModules = tabOrder
 - [ ] Verify RLS policies work
 - [ ] Verify triggers work
 
-**Tab Order Testing:**
-- [ ] Test system default order applied to new workspaces
-- [ ] Test org override applied to new workspaces
-- [ ] Test workspace customization persists
-- [ ] Test "Reset to org default" button
-- [ ] Test drag-and-drop reordering
-- [ ] Test tab visibility respects module enablement (Sprint 3)
-- [ ] Test existing workspaces backfilled correctly
-
 **Lambda Testing:**
-- [ ] Test workspace creation with tab order
-- [ ] Test workspace config updates
-- [ ] Test activity logging
-- [ ] Test API endpoints for tab order
-
-**Frontend Testing:**
-- [ ] Test system admin tab order UI
-- [ ] Test org admin tab order UI
-- [ ] Test workspace admin tab order UI
-- [ ] Test tabs render in correct order
-- [ ] Test module tabs only show if enabled (Sprint 3)
+- [ ] Workspace CRUD operations work
+- [ ] Activity logging works
+- [ ] Config retrieval works
 
 ### 4.2: Documentation Updates
 
@@ -652,41 +482,27 @@ const orderedEnabledModules = tabOrder
 - `docs/arch decisions/ADR-011-TABLE-NAMING-STANDARDS.md`
   - Add ws_cfg_sys, ws_cfg_org, ws_log_activity to compliant list
   - Remove old names from non-compliant list
-- `docs/standards/standard_DATABASE-NAMING.md`
-  - Update examples if needed
 - `memory-bank/context-ws-plugin-architecture.md`
   - Add Sprint 4 summary
   - Update current state
-- `docs/guides/guide_WORKSPACE-TAB-ORDERING.md` (new)
-  - How to configure tab order (sys/org/ws)
-  - How tab order inheritance works
-  - How tab order interacts with module enablement
+- `docs/arch decisions/ADR-017-WS-PLUGIN-ARCHITECTURE.md`
+  - Add Sprint 4 section
 
 ---
 
 ## Success Criteria
 
-**S3 Deferred Scope:**
-- [ ] Left nav filters based on sys → org enablement (not YAML)
-- [ ] Overview metrics only show for enabled modules
-- [ ] No data fetching for disabled modules
-- [ ] Config override forms available for org/ws admins
-- [ ] Feature flag toggles functional
-- [ ] Auto-refresh mechanism implemented
+**Left Navigation:**
+- [ ] Nav filters based on sys → org enablement (not YAML)
+- [ ] Org admin sees immediate feedback after toggle
+- [ ] Different orgs can have different nav items
+- [ ] Workspace-level enablement does NOT affect nav
 
 **Database Migration:**
 - [ ] All workspace-related tables follow ADR-011 naming standard
 - [ ] All constraints, indexes, triggers updated
 - [ ] RLS policies function correctly
 - [ ] No references to old table names in codebase
-
-**Tab Ordering Feature:**
-- [ ] System admins can set default tab order
-- [ ] Org admins can override tab order for their org
-- [ ] Workspace admins can customize tab order for their workspace
-- [ ] Tab order correctly applied at workspace creation
-- [ ] Tabs render in configured order
-- [ ] Tab visibility respects module enablement cascade (Sprint 3)
 
 **Code Quality:**
 - [ ] TypeScript compilation passes
@@ -714,74 +530,13 @@ If migration introduces issues:
    - Revert frontend changes
    - Deploy previous version
 
-3. **Data Integrity:**
-   - tab_order columns can be dropped if needed
-   - Workspace creation will fall back to default order
-
----
-
-## Implementation Order
-
-**Recommended sequence:**
-
-1. **Week 1: Database Migration**
-   - Phase 1.1: Rename ws_configs → ws_cfg_sys (1h)
-   - Phase 1.2: Rename ws_org_settings → ws_cfg_org (1h)
-   - Phase 1.3: Rename ws_activity_log → ws_log_activity (30min)
-   - Phase 1.4: Add tab_order columns (30min)
-
-2. **Week 2: Backend & Frontend**
-   - Phase 2: Update Lambda functions (2-3h)
-   - Phase 3: Update frontend (3-4h)
-
-3. **Week 3: Testing & Documentation**
-   - Phase 4: Testing & docs (1-2h)
-
-**Total Estimate:** 8-10 hours
-
 ---
 
 ## Dependencies
 
-- **Sprint 3 Complete:** Module enablement cascade must be working
-- **ADR-011:** Database naming standards documented
+- **Sprint 3 Complete:** Module enablement cascade must be working ✅
+- **ADR-011:** Database naming standards documented ✅
 - **Database Access:** Supabase migration access required
-
----
-
-## Integration with Existing Features
-
-**Module Enablement (Sprint 3):**
-- Tab order determines order of tabs
-- Module enablement determines visibility of tabs
-- Combined: Tabs render in configured order, but only if module enabled
-
-**Example:**
-```
-Workspace tab_order: ["module-voice", "module-chat", "module-kb", "module-eval"]
-Enabled modules: ["module-kb", "module-chat", "module-eval"]
-
-Result: Overview → KB → Chat → Eval → Settings
-(Voice not shown because disabled, but order preserved for others)
-```
-
----
-
-## Open Questions
-
-1. **Migration Timing:** During maintenance window or rolling update?
-2. **Backward Compatibility:** Should we keep old table names as views temporarily?
-3. **Default Tab Order:** Should we survey users for preferred default order?
-4. **Mobile Display:** Same order but different UI (tabs vs menu)?
-
----
-
-## Notes
-
-- **Copy-at-Creation:** Tab order is set once at workspace creation, not real-time cascade
-- **No Breaking Changes:** Tab order is optional, defaults to system default
-- **Extensible:** Can add more config options to ws_cfg_sys/ws_cfg_org later
-- **Grep-Friendly:** New names follow standard and are easy to find
 
 ---
 
@@ -789,4 +544,5 @@ Result: Overview → KB → Chat → Eval → Settings
 
 - [ADR-011: Table Naming Standards](../../arch%20decisions/ADR-011-TABLE-NAMING-STANDARDS.md)
 - [Database Naming Standard](../../standards/standard_DATABASE-NAMING.md)
-- Sprint 3 Plan: [plan_ws-plugin-arch-s3.md](plan_ws-plugin-arch-s3.md)
+- [Sprint 3 Plan](completed/plan_ws-plugin-arch-s3.md)
+- [Sprint 5 Plan (Deferred Scope)](plan_ws-plugin-arch-s5.md)
