@@ -4,7 +4,7 @@
 
 locals {
   module_name = "module-ws"
-  name_prefix = "${var.environment}-${var.project_name}-ws"
+  name_prefix = "${var.project_name}-${var.environment}-ws"
 
   default_tags = merge(var.common_tags, {
     Module      = local.module_name
