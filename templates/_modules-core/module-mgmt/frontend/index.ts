@@ -36,6 +36,9 @@ export { PerformanceTab } from "./components/admin/PerformanceTab";
 export { StorageTab } from "./components/admin/StorageTab";
 export { CostTab } from "./components/admin/CostTab";
 
+// Export admin pages
+export { default as OrgModuleConfigPage } from "./pages/OrgModuleConfigPage";
+
 // Export other components
 export { ModuleAdminDashboard } from "./components/ModuleAdminDashboard";
 export { ModuleGate, ModuleAwareNavigation, ModuleConditional } from "./components/ModuleAwareNavigation";
