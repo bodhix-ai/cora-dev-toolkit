@@ -361,10 +361,10 @@ def _is_org_admin(org_id: str, user_id: str) -> bool:
 
 
 def _log_activity(ws_id: str, user_id: str, action: str, metadata: Optional[Dict[str, Any]] = None):
-    """Log workspace activity (if ws_activity_log table exists)."""
+    """Log workspace activity (if ws_log_activity table exists)."""
     try:
         common.insert_one(
-            table='ws_activity_log',
+            table='ws_log_activity',
             data={
                 'ws_id': ws_id,
                 'user_id': user_id,
@@ -564,7 +564,7 @@ def handle_get_org_settings(
     try:
         # Get or create default settings
         settings = common.find_one(
-            table='ws_org_settings',
+            table='ws_cfg_org',
             filters={'org_id': org_id}
         )
         
@@ -626,14 +626,14 @@ def handle_update_org_settings(
     try:
         # Check if settings exist
         existing = common.find_one(
-            table='ws_org_settings',
+            table='ws_cfg_org',
             filters={'org_id': org_id}
         )
         
         if existing:
             # Update existing settings
             updated_settings = common.update_one(
-                table='ws_org_settings',
+                table='ws_cfg_org',
                 filters={'org_id': org_id},
                 data=update_data
             )
@@ -649,7 +649,7 @@ def handle_update_org_settings(
             }
             settings_data.update(update_data)
             updated_settings = common.insert_one(
-                table='ws_org_settings',
+                table='ws_cfg_org',
                 data=settings_data
             )
         
@@ -1086,7 +1086,7 @@ def handle_get_workspace_activity(
     try:
         # Get activity log
         activities = common.find_many(
-            table='ws_activity_log',
+            table='ws_log_activity',
             filters={'ws_id': workspace_id}
         )
         
@@ -1120,7 +1120,7 @@ def handle_get_workspace_activity(
     except Exception as e:
         # If table doesn't exist yet, return empty array
         if 'does not exist' in str(e).lower() or 'relation' in str(e).lower():
-            logger.warning(f'ws_activity_log table not found, returning empty activities')
+            logger.warning(f'ws_log_activity table not found, returning empty activities')
             return common.success_response({'activities': [], 'totalCount': 0})
         logger.exception(f'Error getting workspace activity {workspace_id}: {str(e)}')
         raise
@@ -1672,7 +1672,7 @@ def handle_get_config() -> Dict[str, Any]:
     try:
         # Get singleton config record
         config = common.find_one(
-            table='ws_configs',
+            table='ws_cfg_sys',
             filters={'id': '00000000-0000-0000-0000-000000000001'}
         )
         
@@ -1791,7 +1791,7 @@ def handle_update_config(
     try:
         # Update singleton config record
         updated_config = common.update_one(
-            table='ws_configs',
+            table='ws_cfg_sys',
             filters={'id': '00000000-0000-0000-0000-000000000001'},
             data=update_data
         )

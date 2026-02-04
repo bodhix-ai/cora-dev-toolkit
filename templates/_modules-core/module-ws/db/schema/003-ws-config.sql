@@ -3,12 +3,15 @@
 -- =============================================
 -- Purpose: Platform-level configuration for workspace module behavior and UI customization
 -- Source: Created for CORA toolkit Dec 2025
+-- Updated: Feb 2026 - Renamed to ws_cfg_sys per ADR-011 naming standards
 
 -- =============================================
--- WS_CONFIGS TABLE (Singleton)
+-- WS_CFG_SYS TABLE (Singleton) - System-level workspace config
 -- =============================================
+-- Naming: ADR-011 Rule 8.1 - Config tables use _cfg_ pattern
+-- Previous name: ws_configs (deprecated)
 
-CREATE TABLE IF NOT EXISTS public.ws_configs (
+CREATE TABLE IF NOT EXISTS public.ws_cfg_sys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nav_label_singular VARCHAR(50) NOT NULL DEFAULT 'Workspace',
     nav_label_plural VARCHAR(50) NOT NULL DEFAULT 'Workspaces',
@@ -25,40 +28,40 @@ CREATE TABLE IF NOT EXISTS public.ws_configs (
     updated_by UUID REFERENCES auth.users(id),
     
     -- Constraints
-    CONSTRAINT ws_configs_color_check CHECK (default_color ~ '^#[0-9A-Fa-f]{6}$'),
-    CONSTRAINT ws_configs_retention_days_check CHECK (default_retention_days IS NULL OR (default_retention_days >= 1 AND default_retention_days <= 365)),
-    CONSTRAINT ws_configs_max_tags_check CHECK (max_tags_per_workspace IS NULL OR (max_tags_per_workspace >= 1 AND max_tags_per_workspace <= 50)),
-    CONSTRAINT ws_configs_max_tag_length_check CHECK (max_tag_length IS NULL OR (max_tag_length >= 3 AND max_tag_length <= 50))
+    CONSTRAINT ws_cfg_sys_color_check CHECK (default_color ~ '^#[0-9A-Fa-f]{6}$'),
+    CONSTRAINT ws_cfg_sys_retention_days_check CHECK (default_retention_days IS NULL OR (default_retention_days >= 1 AND default_retention_days <= 365)),
+    CONSTRAINT ws_cfg_sys_max_tags_check CHECK (max_tags_per_workspace IS NULL OR (max_tags_per_workspace >= 1 AND max_tags_per_workspace <= 50)),
+    CONSTRAINT ws_cfg_sys_max_tag_length_check CHECK (max_tag_length IS NULL OR (max_tag_length >= 3 AND max_tag_length <= 50))
 );
 
 -- =============================================
 -- COMMENTS
 -- =============================================
 
-COMMENT ON TABLE public.ws_configs IS 'Platform-level configuration for workspace module (singleton)';
-COMMENT ON COLUMN public.ws_configs.nav_label_singular IS 'Navigation label (singular): Workspace, Audit, Campaign, Proposal, etc.';
-COMMENT ON COLUMN public.ws_configs.nav_label_plural IS 'Navigation label (plural): Workspaces, Audits, Campaigns, Proposals, etc.';
-COMMENT ON COLUMN public.ws_configs.nav_icon IS 'Material UI icon name for navigation sidebar';
-COMMENT ON COLUMN public.ws_configs.enable_favorites IS 'Enable/disable favorites functionality';
-COMMENT ON COLUMN public.ws_configs.enable_tags IS 'Enable/disable tags functionality';
-COMMENT ON COLUMN public.ws_configs.enable_color_coding IS 'Enable/disable color customization';
-COMMENT ON COLUMN public.ws_configs.default_color IS 'Default hex color for new workspaces';
-COMMENT ON COLUMN public.ws_configs.default_retention_days IS 'Default retention period in days for deleted workspaces (1-365)';
-COMMENT ON COLUMN public.ws_configs.max_tags_per_workspace IS 'Maximum number of tags allowed per workspace (1-50)';
-COMMENT ON COLUMN public.ws_configs.max_tag_length IS 'Maximum character length for workspace tags (3-50)';
-COMMENT ON COLUMN public.ws_configs.updated_by IS 'Platform admin who last updated configuration';
+COMMENT ON TABLE public.ws_cfg_sys IS 'Platform-level configuration for workspace module (singleton). ADR-011 compliant naming.';
+COMMENT ON COLUMN public.ws_cfg_sys.nav_label_singular IS 'Navigation label (singular): Workspace, Audit, Campaign, Proposal, etc.';
+COMMENT ON COLUMN public.ws_cfg_sys.nav_label_plural IS 'Navigation label (plural): Workspaces, Audits, Campaigns, Proposals, etc.';
+COMMENT ON COLUMN public.ws_cfg_sys.nav_icon IS 'Material UI icon name for navigation sidebar';
+COMMENT ON COLUMN public.ws_cfg_sys.enable_favorites IS 'Enable/disable favorites functionality';
+COMMENT ON COLUMN public.ws_cfg_sys.enable_tags IS 'Enable/disable tags functionality';
+COMMENT ON COLUMN public.ws_cfg_sys.enable_color_coding IS 'Enable/disable color customization';
+COMMENT ON COLUMN public.ws_cfg_sys.default_color IS 'Default hex color for new workspaces';
+COMMENT ON COLUMN public.ws_cfg_sys.default_retention_days IS 'Default retention period in days for deleted workspaces (1-365)';
+COMMENT ON COLUMN public.ws_cfg_sys.max_tags_per_workspace IS 'Maximum number of tags allowed per workspace (1-50)';
+COMMENT ON COLUMN public.ws_cfg_sys.max_tag_length IS 'Maximum character length for workspace tags (3-50)';
+COMMENT ON COLUMN public.ws_cfg_sys.updated_by IS 'Platform admin who last updated configuration';
 
 -- =============================================
 -- NOTE: Row Level Security (RLS) Policies
 -- =============================================
--- RLS policies for this table are defined in 006-apply-rls.sql
+-- RLS policies for this table are defined in 009-apply-rls.sql
 -- This ensures all tables exist before applying security constraints
 
 -- =============================================
 -- TRIGGER: Auto-update updated_at
 -- =============================================
 
-CREATE OR REPLACE FUNCTION update_ws_configs_updated_at()
+CREATE OR REPLACE FUNCTION update_ws_cfg_sys_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = NOW();
@@ -66,18 +69,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS ws_configs_updated_at ON public.ws_configs;
-CREATE TRIGGER ws_configs_updated_at 
-    BEFORE UPDATE ON public.ws_configs
+DROP TRIGGER IF EXISTS ws_cfg_sys_updated_at ON public.ws_cfg_sys;
+CREATE TRIGGER ws_cfg_sys_updated_at 
+    BEFORE UPDATE ON public.ws_cfg_sys
     FOR EACH ROW
-    EXECUTE FUNCTION update_ws_configs_updated_at();
+    EXECUTE FUNCTION update_ws_cfg_sys_updated_at();
 
 -- =============================================
 -- SEED DATA: Default Configuration
 -- =============================================
 -- Idempotent: Creates singleton record if not exists
 
-INSERT INTO public.ws_configs (
+INSERT INTO public.ws_cfg_sys (
     id,
     nav_label_singular,
     nav_label_plural,
