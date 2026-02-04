@@ -2,7 +2,7 @@
 
 **Status:** Approved  
 **Date:** January 25, 2026  
-**Updated:** January 25, 2026 (Sprint 2 - Module Availability Integration)  
+**Updated:** February 3, 2026 (Sprint 4 - Left Nav Filtering & DB Naming)  
 **Deciders:** Engineering Team  
 **Context:** Establish plugin architecture for functional modules to integrate with workspace (WS) module
 
@@ -739,13 +739,17 @@ await onModuleToggled?.();     // Refresh provider → tabs re-render
 - ✅ TypeScript compilation passes
 - ✅ ADR-019 auth patterns implemented
 
-### Deferred to Future Sprint
+### Deferred to S5+
 
-- Left navigation dynamic filtering (currently reads from YAML)
-- Overview tab metric filtering
-- Auto-refresh / real-time config updates (polling/WebSocket)
+- Overview tab metric filtering (needs ADR-020 Module Metrics Standard)
+- Config override forms (JSONB editing, feature flags)
+- Tab ordering feature (sys → org → ws inheritance)
+- Voice/Chat workspace tabs
+
+**Note on Auto-refresh:** No polling/WebSocket needed. The user who makes a config change sees immediate feedback. Other users get fresh data on next page load (acceptable for rare config changes).
 
 ---
 
-**Status:** Approved (Sprint 1) + Implemented (Sprint 2 + Sprint 3)  
-**Next Steps:** Sprint 4 - Left nav dynamic filtering and real-time updates (optional)
+**Status:** Approved (Sprint 1) + Implemented (Sprint 2 + Sprint 3) + In Progress (Sprint 4)  
+**Sprint 4 Scope:** Left navigation dynamic filtering + Database naming compliance (ADR-011)  
+**Sprint 5 Scope:** Tab ordering, module metrics standard (ADR-020), config override forms
