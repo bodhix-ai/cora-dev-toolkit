@@ -1,7 +1,7 @@
 # Context: WS Plugin Architecture
 
 **Created:** January 24, 2026  
-**Updated:** February 3, 2026 (Sprint 4 IN PROGRESS)  
+**Updated:** February 4, 2026 (Sprint 4 COMPLETE)  
 **Primary Focus:** Module integration patterns for workspaces
 
 ## Initiative Overview
@@ -32,7 +32,7 @@ Define and implement the architecture for functional modules (kb, chat, voice, e
 | S1 | `feature/ws-plugin-arch-s1` | `docs/plans/plan_ws-plugin-arch-s1.md` | ✅ Complete | 2026-01-25 |
 | S2 | `feature/ws-plugin-arch-s2` | `docs/plans/plan_ws-plugin-arch-s2.md` | ✅ Complete | 2026-01-25 |
 | S3 | `feature/ws-plugin-arch-s3` | `docs/plans/completed/plan_ws-plugin-arch-s3.md` | ✅ Complete | 2026-02-03 |
-| S4 | `feature/ws-plugin-arch-s4` | `docs/plans/plan_ws-plugin-arch-s4.md` | � In Progress | - |
+| S4 | `feature/ws-plugin-arch-s4` | `docs/plans/plan_ws-plugin-arch-s4.md` | ✅ Complete | 2026-02-04 |
 | S5 | `feature/ws-plugin-arch-s5` | `docs/plans/plan_ws-plugin-arch-s5.md` | �📋 Planned | - |
 
 ## Naming Pattern (Initiative-Wide Consistency)
@@ -206,6 +206,54 @@ Use composition pattern (target):
   - **Sprint 3 Update:** Add org/workspace config cascade section
 
 ## Session Log
+
+### February 4, 2026 - Session 4: Sprint 4 LEFT NAV FILTERING COMPLETE ✅
+
+**Status:** Sprint 4 Complete and Verified  
+**Duration:** ~6 hours (multiple debugging sessions)  
+**Focus:** Left navigation dynamic filtering + database naming (ADR-011)
+
+**The Three Bugs Fixed:**
+
+1. **API Header Format** - `useOrgModuleConfig` sent orgId as query parameter, Lambda expected `X-Org-Id` header
+2. **Route Mapping** - Sidebar's `getModuleFromRoute()` didn't handle `/admin/` prefix in nav config routes
+3. **Organization Property** - Sidebar accessed `currentOrganization?.id` instead of `currentOrganization?.orgId` (**THE KEY BUG** - caused orgId to be null)
+
+**Debugging Journey:**
+- Initial symptom: Voice nav item visible even when module-voice disabled at org level
+- Bug #1 found and fixed: API header format
+- Bug #2 found and fixed: Route mapping
+- Still not working! Added console logs to diagnose
+- Bug #3 found: `orgId` was **null** because wrong property name (`.id` vs `.orgId`)
+- Final fix: Changed to `.orgId` → ModuleGate received correct org ID → nav filtering works!
+
+**User Confirmation:**
+> "the voice menu item disappears and reappears as the org admin module is toggled on / off"
+
+**Template Files Modified (11 files):**
+- `templates/_modules-core/module-mgmt/frontend/hooks/useOrgModuleConfig.ts` (X-Org-Id header)
+- `templates/_project-stack-template/apps/web/components/Sidebar.tsx` (route mapping + orgId property)
+- `templates/_project-stack-template/apps/web/app/admin/org/mgmt/page.tsx` (auto-reload)
+- 5 database schema files (ADR-011 table renaming)
+- 1 migration script (idempotent table renaming)
+- 2 code files (table name references)
+
+**Commits (4 total):**
+- `23dd76d` - Export OrgModuleConfigPage (build error fix)
+- `fec68d2` - Send orgId as X-Org-Id header (API fix)
+- `cd0f6c6` - Handle /admin prefix in route mapping (route fix)
+- `affb72c` - Use .orgId property, not .id (THE KEY FIX)
+
+**Database Migration (ADR-011):**
+- ✅ `ws_configs` → `ws_cfg_sys` (system-level workspace defaults)
+- ✅ `ws_org_settings` → `ws_cfg_org` (org-level workspace overrides)
+- ✅ `ws_activity_log` → `ws_log_activity` (workspace activity log)
+- ✅ All constraints, indexes, triggers, RLS policies updated
+- ✅ Migration script created (idempotent, safe to run multiple times)
+
+**Status:** Sprint 4 complete! Left nav now correctly filters based on org-level module enablement (sys → org cascade). All fixes permanent in templates.
+
+---
 
 ### February 4, 2026 - Session 3: Frontend Auth Fixes COMPLETE ✅
 
