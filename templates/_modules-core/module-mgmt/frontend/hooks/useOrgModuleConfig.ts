@@ -159,7 +159,11 @@ export function useOrgModuleConfig(
 
     const { data, error: fetchError } = await apiRequest<{
       modules: OrgModuleConfig[];
-    }>(`/admin/org/mgmt/modules?orgId=${orgId}`, {}, token);
+    }>(`/admin/org/mgmt/modules`, {
+      headers: {
+        'X-Org-Id': orgId
+      }
+    }, token);
 
     if (fetchError) {
       handleError(fetchError);
@@ -181,7 +185,11 @@ export function useOrgModuleConfig(
 
       const { data, error: fetchError } = await apiRequest<{
         module: OrgModuleConfig;
-      }>(`/admin/org/mgmt/modules/${name}?orgId=${orgId}`, {}, token);
+      }>(`/admin/org/mgmt/modules/${name}`, {
+        headers: {
+          'X-Org-Id': orgId
+        }
+      }, token);
 
       if (fetchError) {
         handleError(fetchError);
@@ -207,9 +215,12 @@ export function useOrgModuleConfig(
       const { data, error: updateError } = await apiRequest<{
         module: OrgModuleConfig;
       }>(
-        `/admin/org/mgmt/modules/${name}?orgId=${orgId}`,
+        `/admin/org/mgmt/modules/${name}`,
         {
           method: "PUT",
+          headers: {
+            'X-Org-Id': orgId
+          },
           body: JSON.stringify({
             org_id: orgId,
             is_enabled: updates.isEnabled,
