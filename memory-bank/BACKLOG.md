@@ -1,7 +1,7 @@
 # CORA Development Backlog
 
 **Purpose:** Prioritized list of initiatives for team coordination.  
-**Updated:** January 27, 2026
+**Updated:** February 4, 2026
 
 ---
 
@@ -35,6 +35,7 @@ This table is the **small, prioritized, team-coordination surface**. It should s
 | **P3** | E (Auth/Identity) | **OIDC Provider Multi-Env** | *(new context needed)* | None | Removes recurring deploy friction (`EntityAlreadyExists`), enables multi-env rollout | **Medium** (infra templates + deploy scripts) | - | ⏳ Ready |
 | **P3** | F (UI Standards) | **UI Library Compliance (core leftovers)** | *(new context needed)* | Admin Standardization S3 (recommended sequencing) | Completes MUI compliance in core modules (module-access/module-mgmt) | **High** (shared layout/components) | - | ⏳ Ready |
 | **P4** | D (Tooling) | **CORA Workflow Optimization (Phases 3–5)** | *(new context needed)* | P1 Test Project Resource Isolation (recommended) | Compounding productivity win across all future work | **Medium** (scripts touched by many) | - | ⏳ Ready |
+| **P2-P3** | H (AI Platform) | **Evaluation Optimization** | `context-eval-optimization.md` | None | Business Analyst Workbench for prompt optimization; reduces false positives/negatives in eval processing | **Low** (mostly new files, minimal overlap) | - | 🟡 Active |
 | - | B (Modules) | Module-Voice Phase 2 | `context-module-voice.md` | None | Continue module delivery when capacity available | Medium | - | ⏳ Ready |
 | - | B (Modules) | Module-KB Enhancements | `context-module-kb.md` | None | Continue module delivery when capacity available | Medium | - | ⏳ Ready |
 
@@ -66,6 +67,7 @@ P1: Test Project Resource Isolation (no dependencies)
     └── P4: CORA Workflow Optimization (recommended after resource isolation)
 
 Independent:
+- Evaluation Optimization (P2-P3) - Standalone companion app
 - Module-Voice Phase 2
 - Module-KB Enhancements
 - OIDC Provider Multi-Env
@@ -83,6 +85,7 @@ Use lanes to reduce merge conflicts across teams:
 - **Lane D (Tooling):** scripts, workflows, test environment automation
 - **Lane E (Auth/Identity):** NextAuth/Cognito/OIDC/authorizer
 - **Lane F (UI/Admin UX & Standards):** shared admin pages, layout, UI standards
+- **Lane H (AI Platform):** prompt engineering infrastructure, AI optimization tooling
 
 **Rule of thumb:** Don’t run two initiatives in the same lane concurrently unless they touch disjoint files.
 
