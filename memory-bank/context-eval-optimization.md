@@ -20,38 +20,47 @@ Currently, module-eval uses the same prompt for all document types, leading to s
 ## Sprint History
 
 | Sprint | Branch | Plan | Status | Completed |
-|--------|--------|------|--------|-----------|
-| S1 | `feature/eval-optimization-s1` | `plan_eval-optimization-s1.md` | 🟡 Active | - |
+|--------|--------|------|-----------|-----------|
+| S1 | `feature/eval-optimization-s1` | `plan_eval-optimization-s1.md` | � Phase 1 & 2 Complete | Phase 1 (Arch Research), Phase 2 (Prototype) |
 
 ## Current Sprint
 
 - **Branch:** `feature/eval-optimization-s1`
 - **Plan:** `docs/plans/plan_eval-optimization-s1.md`
 - **Focus:** Architecture analysis & prototype to validate deployment model
+- **Progress:** Phase 1 & 2 complete, Phase 3 & 4 pending
 
 ## Key Design Decisions (To Be Determined in S1)
 
-### 1. Deployment Architecture (UNDECIDED - S1 Goal)
+### 1. Deployment Architecture (PROTOTYPED - Option A)
 
-Sprint 1 will evaluate and decide between:
+**Status:** ✅ Phase 2 Complete - Option A prototype validated
 
-**Option A: Same Stack Repo** (`{project}-stack/packages/eval-optimizer/`)
+Sprint 1 evaluated three deployment options:
+
+**Option A: Same Stack Repo** (`{project}-stack/apps/eval-optimizer/`)
 - **Pros:** Shares authentication, types, dependencies with main app
 - **Cons:** Couples optimizer lifecycle to main app deployment
+- **Prototype:** ✅ Complete - Proves shared auth, code reuse, API integration
 
 **Option B: Separate Repo** (`eval-optimizer-stack/`)
 - **Pros:** Independent deployment, clear separation
 - **Cons:** Duplicate auth setup, type definitions, infrastructure
+- **Prototype:** Not built (Option A selected for prototyping)
 
 **Option C: Toolkit Utility** (`cora-dev-toolkit/tools/eval-optimizer/`)
 - **Pros:** Lives with other dev tooling
 - **Cons:** Not a production application, limited scalability
+- **Prototype:** Not built (Option A selected for prototyping)
 
-**Decision Criteria:**
-- Code reuse vs. deployment independence
-- Infrastructure complexity
-- Team workflow impact
-- Prototype findings in S1
+**Prototype Findings (Option A):**
+- ✅ Shared Okta/Cognito authentication works
+- ✅ API client factory reuse (ADR-004 compliance)
+- ✅ Zero code duplication for auth, types, utilities
+- ✅ Independent build/deploy pipeline (port 3001)
+- ✅ Zero additional infrastructure cost
+
+**Decision Pending:** ADR-020 to be created in Phase 4
 
 ### 2. Application Architecture (DECIDED)
 
@@ -198,13 +207,14 @@ Options to evaluate:
 ## Success Criteria
 
 ### Sprint 1 (Architecture Analysis)
-- [ ] ADR-019 created documenting deployment architecture decision
-- [ ] Minimal prototype proves:
-  - [ ] Auth works (same Cognito/NextAuth as main app)
-  - [ ] Can call module-access, ws, kb, eval APIs
-  - [ ] Can create org, workspace, upload doc, run eval
-- [ ] Recommendation documented with pros/cons of each option
-- [ ] Plan for Sprint 2 implementation based on S1 findings
+- [ ] ADR-020 created documenting deployment architecture decision (Phase 4 - Pending)
+- [x] ✅ Minimal prototype proves:
+  - [x] Auth works (same Cognito/NextAuth as main app)
+  - [x] Can call module-access, ws, kb, eval APIs
+  - [x] Can create org, workspace, upload doc, run eval
+- [x] ✅ Recommendation documented with pros/cons of each option
+- [ ] Plan for Sprint 2 implementation based on S1 findings (Phase 4 - Pending)
+- [ ] **NEXT:** Concept of Operations document for optimization methodology
 
 ### Overall Initiative (Multi-Sprint)
 - [ ] Business analysts can upload sample docs with truth keys
@@ -220,7 +230,79 @@ Options to evaluate:
 
 ## Session Log
 
-### February 4, 2026 - Initiative Creation
+### February 4, 2026 Evening - ConOps Development Complete
+**Session Duration:** 1.5 hours  
+**Branch:** `feature/eval-optimization-s1`
+
+**Completed:**
+- ✅ **Concept of Operations Document Created**
+  - Created `docs/specifications/spec_eval-optimization-conops.md`
+  - Comprehensive 13-section document (15,000+ words)
+  - Captured all requirements from user discussions
+  
+**ConOps Document Includes:**
+1. **Executive Summary** - Value proposition and target users
+2. **Core Concepts** - Document domains, truth keys, optimization runs, document groups
+3. **Sample-Driven Optimization Theory** - Statistical foundation, iteration model, multi-model support
+4. **Analyst Workflow** - 6-phase workflow from project setup to production deployment
+5. **Truth Key Specification** - Spreadsheet format, validation rules, import process
+6. **Prompt Version Management** - Database-driven versioning, A/B comparison, rollback
+7. **Quality Metrics** - Accuracy, precision/recall, F1, error analysis, confidence calibration
+8. **Scalability Design** - Scale tiers (1-1000+ samples), processing architecture, cost estimation
+9. **Access Control Model** - Owner/Admin/User roles aligned with CORA standards
+10. **Production Deployment** - Workflow, deployment options, validation, monitoring
+11. **Database Schema** - Complete schema for all optimization tables
+12. **Success Criteria** - System-level, business outcomes, technical performance
+13. **Implementation Roadmap** - Sprint 2-5 breakdown
+
+**Key Requirements Captured:**
+- ✅ Spreadsheet-based truth key upload (user requirement)
+- ✅ Document group support (policy + proof artifacts)
+- ✅ Multi-model optimization (GPT-4, Claude, Nova, etc.)
+- ✅ Configuration parameter optimization (temperature, max_tokens, etc.)
+- ✅ Version management for prompts (deployment workflow)
+- ✅ Owner/Admin/User access control (CORA standard)
+- ✅ Sample size guidance (1 to 1000s of truth keys)
+- ✅ Statistical confidence metrics
+
+**Next Steps:**
+- Phase 3: Option Evaluation (scoring matrix for A/B/C deployment options)
+- Phase 4: ADR-020 documenting architecture decision
+- Sprint 2 Planning: Begin core workflow implementation based on ConOps
+
+### February 4, 2026 PM - Phase 1 & 2 Complete
+**Session Duration:** 3 hours  
+**Branch:** `feature/eval-optimization-s1`
+
+**Completed:**
+- ✅ **Phase 1: Architecture Research**
+  - Reviewed ADR-004 (NextAuth API Client Pattern), ADR-007 (CORA Auth Shell), ADR-019 (Auth Standardization)
+  - Analyzed module-eval prompt configuration flow (database → resolution → AI provider)
+  - Documented code reuse opportunities (auth, API client, types)
+  - Identified infrastructure requirements per deployment option
+  
+- ✅ **Phase 2: Prototype Development**
+  - Created Option A prototype in `templates/_project-stack-template/apps/eval-optimizer/`
+  - Built 10 files (887 lines): package.json, auth.ts, middleware.ts, app pages, API client
+  - Proved shared authentication (same Okta/Cognito config)
+  - Proved code reuse (imports from workspace packages)
+  - Proved API integration (factory pattern, ADR-004 compliance)
+  - Documented prototype in comprehensive README.md
+
+**Findings:**
+- Option A (Same Stack Repo) is viable and demonstrates strong advantages:
+  - ✅ Zero code duplication
+  - ✅ Shared authentication (single Cognito user pool)
+  - ✅ Direct imports from workspace packages
+  - ✅ Zero additional infrastructure
+  - ✅ Independent build/deploy pipeline
+
+**Next Steps:**
+- Phase 3: Option Evaluation (scoring matrix for A/B/C)
+- Phase 4: ADR-020 documenting architecture decision
+- **CRITICAL:** Develop Concept of Operations for optimization methodology
+
+### February 4, 2026 AM - Initiative Creation
 - Defined initiative scope: standalone companion app for prompt optimization
 - Identified need for architecture analysis in Sprint 1 before committing to deployment model
 - Clarified API scope: module-access, ws, kb, eval
@@ -250,5 +332,18 @@ Options to evaluate:
 
 ---
 
-**Document Status:** 🟡 Active  
-**Last Updated:** February 4, 2026
+## Next Session Focus
+
+**Phase 3 & 4: Architecture Decision & ADR-020**
+
+Complete Sprint 1 deliverables:
+- **Phase 3:** Create deployment option evaluation matrix (Option A vs B vs C)
+- **Phase 4:** Write ADR-020 documenting architecture decision and rationale
+- **Sprint 2 Planning:** Create detailed implementation plan based on ConOps
+
+With ConOps complete, we have a clear blueprint for implementation. Sprint 2 can begin core workflow development.
+
+---
+
+**Document Status:** 🟢 Phase 1 & 2 Complete  
+**Last Updated:** February 4, 2026 9:30 PM
