@@ -13,9 +13,101 @@ from pathlib import Path
 # Import from the main validator module
 # Support both relative imports (when run as module) and absolute imports (when run as script)
 try:
-    from .validate_routes import validate_project, format_text_output, format_json_output
+    from .validate_routes import validate_project, format_text_output, format_json_output, Severity
 except ImportError:
-    from validate_routes import validate_project, format_text_output, format_json_output
+    from validate_routes import validate_project, format_text_output, format_json_output, Severity
+
+# Import shared output format utilities (with fallback for backward compatibility)
+try:
+    from validation.shared.output_format import (
+        create_error,
+        create_warning,
+        extract_module_from_path,
+        SEVERITY_HIGH,
+        SEVERITY_MEDIUM,
+        SEVERITY_LOW,
+    )
+    SHARED_FORMAT_AVAILABLE = True
+except ImportError:
+    SHARED_FORMAT_AVAILABLE = False
+    
+    # Fallback functions for backward compatibility
+    def create_error(file, line, message, category="Admin Routes", suggestion=None, module=None):
+        return {
+            "file": file,
+            "line": line,
+            "message": message,
+            "severity": "high",
+            "category": category,
+            "suggestion": suggestion,
+            "module": module,
+        }
+    
+    def create_warning(file, line, message, category="Admin Routes", suggestion=None, module=None):
+        return {
+            "file": file,
+            "line": line,
+            "message": message,
+            "severity": "medium",
+            "category": category,
+            "suggestion": suggestion,
+            "module": module,
+        }
+    
+    def extract_module_from_path(file_path):
+        """Extract module name from file path."""
+        if not file_path or file_path == '<module discovery>':
+            return None
+        
+        # Try to extract module name from path
+        import re
+        match = re.search(r'module-([a-z]+)', str(file_path))
+        if match:
+            return f"module-{match.group(1)}"
+        return None
+
+
+def _standardize_violation(violation, project_path):
+    """
+    Convert a Violation object to standard format.
+    
+    Args:
+        violation: Violation object from validate_routes
+        project_path: Base path for making relative paths
+        
+    Returns:
+        Dict in standard format with module, category, file, line, message, severity
+    """
+    # Map severity to standard levels
+    if violation.severity == Severity.ERROR:
+        severity = SEVERITY_HIGH if SHARED_FORMAT_AVAILABLE else "high"
+    elif violation.severity == Severity.WARNING:
+        severity = SEVERITY_MEDIUM if SHARED_FORMAT_AVAILABLE else "medium"
+    else:  # INFO
+        severity = SEVERITY_LOW if SHARED_FORMAT_AVAILABLE else "low"
+    
+    # Extract module from file path
+    module = extract_module_from_path(violation.file)
+    
+    # Create standardized error/warning
+    if violation.severity == Severity.ERROR:
+        return create_error(
+            file=violation.file,
+            line=violation.line,
+            message=f"{violation.route}: {violation.message}",
+            category="Admin Routes",
+            suggestion=violation.suggestion,
+            module=module,
+        )
+    else:
+        return create_warning(
+            file=violation.file,
+            line=violation.line,
+            message=f"{violation.route}: {violation.message}",
+            category="Admin Routes",
+            suggestion=violation.suggestion,
+            module=module,
+        )
 
 
 def main():
@@ -40,29 +132,21 @@ def main():
     result = validate_project(project_path, verbose=args.verbose)
     
     if args.format == 'json':
-        # Format for cora-validate.py compatibility
+        # Standardize violations to new format
+        standardized_errors = []
+        standardized_warnings = []
+        
+        for v in result.violations:
+            standardized = _standardize_violation(v, project_path)
+            if v.severity == Severity.ERROR:
+                standardized_errors.append(standardized)
+            else:
+                standardized_warnings.append(standardized)
+        
+        # Format for cora-validate.py compatibility (standard format)
         output = {
-            "errors": [
-                {
-                    "route": v.route,
-                    "message": v.message,
-                    "file": v.file,
-                    "line": v.line,
-                    "suggestion": v.suggestion
-                }
-                for v in result.violations
-                if v.severity.value == 'error'
-            ],
-            "warnings": [
-                {
-                    "route": v.route,
-                    "message": v.message,
-                    "file": v.file,
-                    "line": v.line,
-                }
-                for v in result.violations
-                if v.severity.value == 'warning'
-            ],
+            "errors": standardized_errors,
+            "warnings": standardized_warnings,
             "passed": result.non_compliant_routes == 0,
             "summary": {
                 "total_routes": result.total_routes,

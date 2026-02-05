@@ -19,6 +19,56 @@ import re
 from pathlib import Path
 from typing import List, Dict, Tuple
 
+# Import shared output format utilities (with fallback for backward compatibility)
+try:
+    from validation.shared.output_format import (
+        create_error,
+        create_warning,
+        extract_module_from_path,
+        SEVERITY_HIGH,
+        SEVERITY_MEDIUM,
+    )
+    SHARED_FORMAT_AVAILABLE = True
+except ImportError:
+    SHARED_FORMAT_AVAILABLE = False
+    
+    # Fallback functions for backward compatibility
+    def create_error(file, line, message, category="Workspace Plugin", suggestion=None, module=None):
+        return {
+            "file": file,
+            "line": line,
+            "message": message,
+            "severity": "high",
+            "category": category,
+            "suggestion": suggestion,
+            "module": module,
+        }
+    
+    def create_warning(file, line, message, category="Workspace Plugin", suggestion=None, module=None):
+        return {
+            "file": file,
+            "line": line,
+            "message": message,
+            "severity": "medium",
+            "category": category,
+            "suggestion": suggestion,
+            "module": module,
+        }
+    
+    def extract_module_from_path(file_path):
+        """Extract module name from file path."""
+        if not file_path:
+            return None
+        
+        # Try to extract module name from path
+        match = re.search(r'module-([a-z]+)', str(file_path))
+        if match:
+            return f"module-{match.group(1)}"
+        return None
+    
+    SEVERITY_HIGH = "high"
+    SEVERITY_MEDIUM = "medium"
+
 # Plugin modules that should NOT import from module-ws
 PLUGIN_MODULES = ["module-kb", "module-chat", "module-voice", "module-eval"]
 
@@ -30,6 +80,31 @@ INVALID_IMPORT_PATTERNS = [
     r'from\s+["\']@[\w-]+/module-ws["\']',
     r'import\s+.*\s+from\s+["\']@[\w-]+/module-ws["\']',
 ]
+
+
+def _standardize_error(file: str, line: int, message: str, project_root: Path):
+    """Convert error tuple to standard format."""
+    module = extract_module_from_path(file)
+    return create_error(
+        file=file,
+        line=line,
+        message=message,
+        category="Workspace Plugin",
+        module=module,
+    )
+
+
+def _standardize_warning(file: str, line: int, message: str, project_root: Path):
+    """Convert warning tuple to standard format."""
+    module = extract_module_from_path(file)
+    return create_warning(
+        file=file,
+        line=line,
+        message=message,
+        category="Workspace Plugin",
+        module=module,
+    )
+
 
 class ValidationResult:
     def __init__(self):
@@ -274,10 +349,10 @@ Examples:
     
     if not path.exists():
         if args.format == "json":
+            error = create_error("", 0, f"Path not found: {args.path}", "Workspace Plugin")
             print(json.dumps({
-                "errors": [{"file": "", "line": 0, "message": f"Path not found: {args.path}"}],
+                "errors": [error],
                 "warnings": [],
-                "info": [],
                 "passed": False
             }))
         else:
@@ -292,10 +367,10 @@ Examples:
     
     if not ts_files:
         if args.format == "json":
+            warning = create_warning("", 0, "No TypeScript files found in plugin modules", "Workspace Plugin")
             print(json.dumps({
                 "errors": [],
-                "warnings": [{"file": "", "line": 0, "message": "No TypeScript files found in plugin modules"}],
-                "info": [],
+                "warnings": [warning],
                 "passed": True
             }))
         else:
@@ -340,16 +415,20 @@ Examples:
     
     # Format output
     if args.format == "json":
+        # Standardize to new format
+        standardized_errors = [
+            _standardize_error(f, line, msg, path)
+            for f, line, msg in result.errors
+        ]
+        
+        standardized_warnings = [
+            _standardize_warning(f, line, msg, path)
+            for f, line, msg in result.warnings
+        ]
+        
         output = {
-            "errors": [
-                {"file": str(f), "line": line, "message": msg}
-                for f, line, msg in result.errors
-            ],
-            "warnings": [
-                {"file": str(f), "line": line, "message": msg}
-                for f, line, msg in result.warnings
-            ],
-            "info": result.info,
+            "errors": standardized_errors,
+            "warnings": standardized_warnings,
             "passed": not result.has_errors(),
             "details": {
                 "files_checked": len(ts_files),

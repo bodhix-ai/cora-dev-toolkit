@@ -12,6 +12,57 @@ import importlib.util
 from pathlib import Path
 from typing import List
 
+# Import shared output format utilities (with fallback for backward compatibility)
+try:
+    from validation.shared.output_format import (
+        create_error,
+        create_warning,
+        extract_module_from_path,
+        SEVERITY_HIGH,
+        SEVERITY_MEDIUM,
+    )
+    SHARED_FORMAT_AVAILABLE = True
+except ImportError:
+    SHARED_FORMAT_AVAILABLE = False
+    
+    # Fallback functions for backward compatibility
+    def create_error(file, line, message, category="Database Naming", suggestion=None, module=None):
+        return {
+            "file": file,
+            "line": line,
+            "message": message,
+            "severity": "high",
+            "category": category,
+            "suggestion": suggestion,
+            "module": module,
+        }
+    
+    def create_warning(file, line, message, category="Database Naming", suggestion=None, module=None):
+        return {
+            "file": file,
+            "line": line,
+            "message": message,
+            "severity": "medium",
+            "category": category,
+            "suggestion": suggestion,
+            "module": module,
+        }
+    
+    def extract_module_from_path(file_path):
+        """Extract module name from file path."""
+        if not file_path:
+            return None
+        
+        # Try to extract module name from path
+        import re
+        match = re.search(r'module-([a-z]+)', str(file_path))
+        if match:
+            return f"module-{match.group(1)}"
+        return None
+    
+    SEVERITY_HIGH = "high"
+    SEVERITY_MEDIUM = "medium"
+
 # Import validation logic from the scripts directory
 # The file is named validate-db-naming.py (with hyphens), so we need to use importlib
 scripts_dir = Path(__file__).parent.parent.parent / "scripts"
@@ -43,9 +94,28 @@ else:
             return 0
 
 
-def format_error(file: str, line: int, message: str) -> str:
-    """Format error for JSON output."""
-    return f"{file}:{line} - {message}"
+def _standardize_error(file: str, line: int, message: str, project_root: Path):
+    """Convert error tuple to standard format."""
+    module = extract_module_from_path(file)
+    return create_error(
+        file=file,
+        line=line,
+        message=message,
+        category="Database Naming",
+        module=module,
+    )
+
+
+def _standardize_warning(file: str, line: int, message: str, project_root: Path):
+    """Convert warning tuple to standard format."""
+    module = extract_module_from_path(file)
+    return create_warning(
+        file=file,
+        line=line,
+        message=message,
+        category="Database Naming",
+        module=module,
+    )
 
 
 def main():
@@ -64,10 +134,10 @@ def main():
     
     if not path.exists():
         if args.format == "json":
+            error = create_error("", 0, f"Path not found: {args.path}", "Database Naming")
             print(json.dumps({
-                "errors": [f"Path not found: {args.path}"],
+                "errors": [error],
                 "warnings": [],
-                "info": [],
                 "passed": False
             }))
         else:
@@ -110,10 +180,20 @@ def main():
     
     # Format output
     if args.format == "json":
+        # Standardize to new format
+        standardized_errors = [
+            _standardize_error(f, line, msg, path)
+            for f, line, msg in result.errors
+        ]
+        
+        standardized_warnings = [
+            _standardize_warning(f, line, msg, path)
+            for f, line, msg in result.warnings
+        ]
+        
         output = {
-            "errors": [format_error(f, line, msg) for f, line, msg in result.errors],
-            "warnings": [format_error(f, line, msg) for f, line, msg in result.warnings],
-            "info": result.info,
+            "errors": standardized_errors,
+            "warnings": standardized_warnings,
             "passed": not result.has_errors(),
             "details": {
                 "sql_files_checked": len(sql_files),
