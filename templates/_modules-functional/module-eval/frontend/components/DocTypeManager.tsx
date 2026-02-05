@@ -314,10 +314,10 @@ export function DocTypeManager({
       <Box sx={{ mb: 3, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Box>
           <Typography variant="h6" sx={{ mb: 0.5 }}>
-            Document Types
+            Policy Areas
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Categorize documents for evaluation
+            Categorize policies for evaluation
           </Typography>
         </Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -339,7 +339,7 @@ export function DocTypeManager({
             variant="contained"
             size="small"
           >
-            New Doc Type
+            New Policy Area
           </Button>
         </Box>
       </Box>
@@ -356,7 +356,7 @@ export function DocTypeManager({
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <Typography variant="subtitle1" fontWeight={500} sx={{ mb: 2 }}>
-              New Document Type
+              New Policy Area
             </Typography>
             <DocTypeForm
               isSaving={isSaving}
@@ -372,7 +372,7 @@ export function DocTypeManager({
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <Typography variant="subtitle1" fontWeight={500} sx={{ mb: 2 }}>
-              Edit Document Type
+              Edit Policy Area
             </Typography>
             <DocTypeForm
               docType={editingDocType}
@@ -389,7 +389,7 @@ export function DocTypeManager({
         <Box sx={{ py: 8, display: "flex", justifyContent: "center", alignItems: "center", gap: 2 }}>
           <CircularProgress size={24} />
           <Typography color="text.secondary">
-            Loading document types...
+            Loading policy areas...
           </Typography>
         </Box>
       )}
@@ -398,7 +398,7 @@ export function DocTypeManager({
       {!isLoading && docTypes.length === 0 && (
         <Box sx={{ py: 8, textAlign: "center" }}>
           <Typography color="text.secondary">
-            No document types yet. Create one to get started.
+            No policy areas yet. Create one to get started.
           </Typography>
         </Box>
       )}
@@ -424,10 +424,10 @@ export function DocTypeManager({
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Delete Document Type?</DialogTitle>
+        <DialogTitle>Delete Policy Area?</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary">
-            This will also affect any evaluations using this document type.
+            This will also affect any evaluations using this policy area.
             This action cannot be undone.
           </Typography>
         </DialogContent>
