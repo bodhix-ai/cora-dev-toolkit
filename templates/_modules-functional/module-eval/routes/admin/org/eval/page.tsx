@@ -76,23 +76,6 @@ export default function OrgEvalAdminPage() {
 
   return (
     <Box sx={{ width: '100%', p: 4 }}>
-      {/* Breadcrumbs: Org Admin > Eval */}
-      <Breadcrumbs
-        separator={<NavigateNext fontSize="small" />}
-        sx={{ mb: 2 }}
-      >
-        <Link
-          component={NextLink}
-          href="/admin/org"
-          underline="hover"
-          color="inherit"
-          aria-label="Return to organization admin"
-        >
-          Org Admin
-        </Link>
-        <Typography color="text.primary">Eval</Typography>
-      </Breadcrumbs>
-
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs 
           value={activeTab} 
