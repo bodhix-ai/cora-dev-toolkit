@@ -986,3 +986,203 @@ Total Warnings: 0
 **Branch Status:** ✅ Up to date with origin/feature/validation-errors-s5
 
 ---
+
+---
+
+## Session 5 Summary (2026-02-04) ✅ COMPLETE
+
+### Issues Resolved
+
+**1. Auth Parameter Mismatch - FIXED**
+- **Error:** `Could not find the function public.is_org_member(org_id, user_id)`
+- **Root cause:** RPC calls used `org_id`/`user_id` but database function expected `p_org_id`/`p_user_id`
+- **Fix:** Updated `org-common/auth.py` to use prefixed parameter names
+- **Files updated:**
+  - `templates/_modules-core/module-access/backend/layers/org-common/python/org_common/auth.py`
+- **Impact:** Fixed 3 pages simultaneously:
+  - `/admin/org/mgmt` (org management)
+  - `/admin/org/voice` (voice config)
+  - `/ws/{ws-id}/eval/{eval-id}` (evaluation details)
+
+**2. Database Table Name Mismatch - FIXED**
+- **Error:** `relation "eval_doc_summary" does not exist`
+- **Root cause:** SQL function `is_eval_owner` referenced singular table name instead of plural (ADR-011 violation)
+- **Fix:** Updated SQL function to use `eval_doc_summaries` (plural)
+- **Files updated:**
+  - `templates/_modules-functional/module-eval/db/schema/014-eval-rpc-functions.sql`
+  - `templates/_modules-functional/module-eval/db/migrations/20260204_fix_is_eval_owner_table_name.sql` (created)
+- **Deployment:** Migration script run successfully on test database
+- **Impact:** Fixed evaluation detail page 500 errors
+
+### Historical Analysis
+
+**Voice Module Error (3-4 hours before fix):**
+- Found CloudWatch logs showing same `is_org_member` parameter mismatch
+- Timestamp: 2026-02-04 23:23:57
+- Error in `ai-mod-dev-voice-configs` Lambda
+- Confirmed: Auth fix resolved voice module issue without code changes to voice module
+- Demonstrates power of shared org-common layer
+
+### Root Cause Analysis
+
+**Why multiple pages failed:**
+- All affected pages call `common.can_access_org_resource()`
+- That function calls `is_org_member()` from org-common layer
+- One bug in shared layer = multiple page failures
+- One fix in shared layer = multiple pages fixed
+
+**Why validators didn't catch these:**
+1. **SQL function body validation missing**
+   - Validators check table names in CREATE TABLE statements
+   - Don't parse SQL code inside function definitions
+   - Missed `eval_doc_summary` reference inside `is_eval_owner` function
+
+2. **RPC parameter naming not validated**
+   - No standard documented for parameter naming
+   - No validator to check Python RPC calls match SQL function signatures
+   - Parameter name mismatches only discovered at runtime
+
+### Deliverables
+
+**Templates Updated:**
+- ✅ Auth helper functions (org-common layer)
+- ✅ Database schema (eval module)
+- ✅ Migration script (eval module)
+
+**Deployments:**
+- ✅ ws-optim test project updated
+- ✅ Lambda layers rebuilt and deployed
+- ✅ Database migration run successfully
+
+**Documentation Created:**
+- ✅ Next session tasks added to `memory-bank/context-error-remediation.md`
+- ✅ Comprehensive validator enhancement plan: `docs/plans/plan_validator-enhancements.md`
+
+### Next Session Tasks
+
+**High Priority:**
+1. **Document RPC naming convention** (1-2 hours)
+   - Create `docs/standards/standard_RPC-PARAMETER-NAMING.md`
+   - Update ADR-019 with RPC requirements
+   - Add to .clinerules
+
+2. **Create SQL function body validator** (4-6 hours)
+   - Parse SQL function definitions
+   - Validate table references against schema
+   - Check RPC parameter matching
+   - Integrate into cora-validate.py
+
+**See:** `docs/plans/plan_validator-enhancements.md` for detailed implementation plan
+
+### Success Metrics
+
+**Before fixes:**
+- ❌ 3 admin pages returning 401/500 errors
+- ❌ Users unable to access org/workspace features
+- ❌ Eval pages non-functional
+
+**After fixes:**
+- ✅ All pages working correctly
+- ✅ Auth working across all modules
+- ✅ Evaluation pages loading successfully
+- ✅ Templates updated for future projects
+
+### Lessons Learned
+
+1. **Shared library impact:** One bug in org-common affects all modules; one fix helps all modules
+2. **Validator gaps:** SQL function body validation and RPC parameter validation needed
+3. **Historical analysis value:** CloudWatch logs helped confirm which fix resolved which issue
+4. **Template-first workflow:** All fixes applied to templates ensure future projects benefit
+
+**Session Status:** ✅ COMPLETE - All reported errors fixed and verified
+
+---
+
+## Session 5 Follow-up: Validator Enhancement Planning (2026-02-04) ✅ COMPLETE
+
+### Work Completed
+
+**Documentation Created for Future Improvements:**
+
+1. **Context Document Updated**
+   - **File:** `memory-bank/context-error-remediation.md`
+   - **Added:** Next session tasks section with detailed requirements
+   - **Content:**
+     - SQL function body validator specifications
+     - RPC naming convention documentation needs
+     - Implementation priority and time estimates
+
+2. **Comprehensive Enhancement Plan Created**
+   - **File:** `docs/plans/plan_validator-enhancements.md`
+   - **Content:**
+     - **Task 1:** Document RPC naming convention (1-2 hours)
+       - Create `docs/standards/standard_RPC-PARAMETER-NAMING.md`
+       - Update ADR-019 with RPC requirements
+       - Add to .clinerules
+     - **Task 2:** SQL function body validator (4-6 hours)
+       - Parse SQL function definitions
+       - Validate table references against schema
+       - Check RPC parameter matching
+       - Flag ADR-011 violations
+       - Integrate into cora-validate.py
+     - **Task 3:** Retroactive validation (1 hour)
+       - Validate all templates
+       - Fix any issues found
+       - Add to CI/CD pipeline
+
+### Why These Enhancements Are Needed
+
+**Gap 1: SQL Function Body Validation**
+- Current validators check table names in CREATE TABLE statements
+- **Miss:** Table references inside SQL function bodies
+- **Example bug:** `is_eval_owner` function referenced `eval_doc_summary` (singular) instead of `eval_doc_summaries` (plural)
+- **Impact:** Caused 500 errors on evaluation pages
+
+**Gap 2: RPC Parameter Naming**
+- No documentation or validation for Supabase RPC parameter naming
+- **Miss:** Python code passing `org_id`/`user_id` when database expects `p_org_id`/`p_user_id`
+- **Example bug:** `is_org_member` parameter mismatch
+- **Impact:** Caused 401 errors across 3+ admin pages
+
+### Implementation Roadmap
+
+**Phase 1: Documentation (Week 1)**
+- Create RPC naming standard document
+- Update related ADRs
+- Add to .clinerules for AI agents
+
+**Phase 2: SQL Validator Development (Week 1-2)**
+- Build SQL function body parser
+- Build table reference validator
+- Build RPC parameter validator
+- Integration and testing
+
+**Phase 3: Deployment (Week 2)**
+- Retroactive validation of templates
+- Fix any issues found
+- CI/CD integration
+
+**Total Estimated Effort:** 6-8 hours for documentation + validator
+
+### Expected Impact
+
+**Before enhancements:**
+- ❌ SQL function errors only discovered at runtime
+- ❌ RPC parameter mismatches cause auth failures
+- ❌ No prevention of similar issues
+
+**After enhancements:**
+- ✅ SQL validation catches table name errors before deployment
+- ✅ RPC parameter validation prevents auth errors
+- ✅ Clear documentation prevents future mistakes
+- ✅ All templates validated and compliant
+
+### Related Documentation
+
+- `memory-bank/context-error-remediation.md` - Next session tasks
+- `docs/plans/plan_validator-enhancements.md` - Detailed implementation plan
+- `docs/arch decisions/ADR-011-TABLE-NAMING-STANDARDS.md` - Table naming rules
+- `docs/arch decisions/ADR-019-AUTH-STANDARDIZATION.md` - Auth standards
+
+**Status:** Planning complete, ready for implementation in next sprint
+

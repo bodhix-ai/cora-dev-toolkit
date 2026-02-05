@@ -1544,3 +1544,377 @@ Successfully converted from Tailwind CSS to Material-UI:
 **Created:** January 26, 2026  
 **Last Updated:** January 27, 2026  
 **Status:** ✅ COMPLETE - All validation errors addressed or deferred to S5
+## Next Session Tasks (Added 2026-02-04)
+
+### High Priority Validator Enhancements
+
+**1. SQL Function Body Validator**
+- **Goal:** Detect table name mismatches in SQL function bodies
+- **Why:** Current validators don't parse SQL code inside functions
+- **What to validate:**
+  - Table references in SELECT/INSERT/UPDATE/DELETE statements
+  - Column references against schema definitions
+  - Function calls to ensure they exist
+  - Parameter names match function signatures
+- **Implementation notes:**
+  - Parse SQL function definitions (CREATE FUNCTION statements)
+  - Extract table names from queries
+  - Cross-reference with schema table definitions
+  - Flag any references to non-existent tables
+  - Flag singular table names (should be plural per ADR-011)
+- **Example bugs this would catch:**
+  - `eval_doc_summary` (singular) instead of `eval_doc_summaries` (plural)
+  - References to tables that don't exist
+  - Column name typos
+
+**2. RPC Naming Convention Documentation**
+- **Goal:** Document standard for RPC parameter naming
+- **Why:** Prevent auth errors from parameter name mismatches
+- **What to document:**
+  - Supabase RPC parameter naming requirements
+  - Standard prefixes for parameters (p_ prefix)
+  - How to ensure Python code matches database function signatures
+  - Examples of correct and incorrect parameter naming
+- **Where to document:**
+  - Create: `docs/standards/standard_RPC-PARAMETER-NAMING.md`
+  - Reference in: ADR-019 (Auth Standardization)
+  - Add validation rules to validator documentation
+- **Example patterns to document:**
+  ```sql
+  -- Database function (CORRECT):
+  CREATE FUNCTION is_org_member(p_org_id UUID, p_user_id UUID)
+  
+  -- Python code (CORRECT):
+  rpc('is_org_member', {'p_org_id': org_id, 'p_user_id': user_id})
+  
+  -- Python code (WRONG):
+  rpc('is_org_member', {'org_id': org_id, 'user_id': user_id})  # ❌
+  ```
+
+### Implementation Priority
+1. Document RPC naming convention (1-2 hours)
+2. Create SQL function body validator (4-6 hours)
+
+---
+
+## Validation Infrastructure Improvements (February 5, 2026)
+
+### DB Function Validator Implementation ✅ COMPLETE
+
+**Location:** `validation/api-tracer/db_function_validator.py`
+
+**Features:**
+- RPC parameter naming validation (p_ prefix requirement)
+- Function naming pattern validation (is_*, can_*, get_*, etc.)
+- Table reference validation (ADR-011 compliance)
+- Schema organization validation
+- Python helper location validation
+
+**Integration:**
+- Added to api-tracer validator pipeline
+- CLI flags: `--no-db-functions`, `--db-only`
+- JSON output includes db_function_validation summary
+
+**Documentation:**
+- ADR-020: RPC Parameter Naming standards
+- Implementation standard: 04_std_data_RPC-FUNCTIONS.md
+- Cross-references updated in ADR-019 and standards index
+
+### Integrated Validation Reporting ✅ COMPLETE
+
+**Location:** `validation/cora-validate.py` (ReportFormatter class)
+
+**Features:**
+- Module-level aggregation across ALL validators (not just api-tracer)
+- `_extract_module()` - Intelligent module name extraction from file paths
+- `_extract_category()` - Error category extraction from various formats
+- `_aggregate_by_module()` - Groups all errors/warnings by module
+- `_get_top_issues()` - Top 10 issues across all validators
+- Updated `format_text()` - New integrated reporting format
+
+**New Reporting Format:**
+```
+MODULE SUMMARY:
+  module-kb: 8 errors, 3 warnings (by category)
+  module-chat: 3 errors, 0 warnings (by category)
+  
+TOP ISSUES (Across All Validators):
+  1. Route Matching: 10 occurrences
+  2. Accessibility: 8 occurrences
+  ...
+
+VALIDATION SUMMARY:
+  Overall Status, Certification, Validators Passed/Failed
+```
+
+**Benefits:**
+- Unified view across all validators (not per-validator silos)
+- Module-centric reporting (aligns with CORA architecture)
+- Top Issues section helps prioritize remediation
+- Smart module detection from file paths
+
+### Next Steps: Validator Standardization (Phase 2)
+
+**Priority 1: Standardize Validator Output Format** (4-6 hours)
+- Add `module` and `category` fields to all validators
+- Create standard error/warning format:
+  ```python
+  {
+      "module": "module-kb",
+      "category": "Accessibility",
+      "file": "path/to/file.tsx",
+      "line": 42,
+      "message": "Missing aria-label",
+      "severity": "error",
+      "suggestion": "Add aria-label prop"
+  }
+  ```
+- Update 11 validators to use standard format
+- Create validator output standard document
+
+**Priority 2: Enhance Error Messages** (2-3 hours)
+- Include file paths in all error dicts
+- Use consistent path format (relative to project root)
+- Add line numbers where applicable
+- Include context (surrounding code) for code issues
+
+**Priority 3: Extend Severity Levels** (2-3 hours)
+- Define severity levels: critical, high, medium, low
+- Update validators to classify issues by severity
+- Update reporting to show severity in MODULE SUMMARY
+
+**Total Estimated:** 8-12 hours for Phase 2 validator standardization
+
+**See:** `docs/plans/plan_validator-enhancements.md` for complete Phase 2 plan
+
+---
+
+---
+
+### February 5, 2026 - Session 7: Validator Output Standardization Foundation ✅
+
+**Session Summary:**
+- **Duration:** ~1 hour
+- **Focus:** Validator output standardization (Phase 2 of validator enhancements)
+- **Result:** Foundation complete, 1 of 11 validators migrated
+- **Files Created:** 2 files (standard doc, shared utilities)
+- **Files Modified:** 2 files (standards index, a11y-validator)
+
+---
+
+### February 5, 2026 - Session 8: Validator Standardization - 6 of 11 Complete ✅
+
+**Session Summary:**
+- **Duration:** ~1 hour
+- **Focus:** Continue validator output standardization
+- **Result:** 6 of 11 validators migrated (55% complete)
+- **Files Modified:** 6 validator files
+
+---
+
+#### Validators Migrated in Session 8
+
+**1. frontend-compliance-validator** ✅
+- **Location:** `docs/standards/05_std_quality_VALIDATOR-OUTPUT.md`
+- **Standard ID:** 05_std_quality_VALIDATOR-OUTPUT
+- **Content:**
+  - Standard error/warning format with required and optional fields
+  - Module extraction rules (7 patterns for different file locations)
+  - Category taxonomy (10 standard categories)
+  - Severity levels (critical, high, medium, low with definitions)
+  - Implementation patterns (3 common usage patterns)
+  - Migration guide for existing validators
+  - Testing requirements and examples
+  - Comprehensive documentation with 4 real-world examples
+
+**2. Shared Utility Module Created** ✅
+- **Location:** `validation/shared/output_format.py`
+- **Utility Functions:**
+  - `create_error()` - Create standardized error with automatic module extraction
+  - `create_warning()` - Create standardized warning (medium severity)
+  - `extract_module_from_path()` - Extract module name from file path (7 patterns)
+  - `make_relative_path()` - Normalize paths relative to project root
+  - `validate_error_format()` - Validate error dictionary format
+  - `categorize_by_module()` - Group errors by module
+  - `categorize_by_category()` - Group errors by category
+  - `categorize_by_severity()` - Group errors by severity level
+  - `get_module_summary()` - Generate module-level summary
+- **Features:**
+  - Severity constants (SEVERITY_CRITICAL, HIGH, MEDIUM, LOW)
+  - Full type hints and docstrings
+  - Example usage in docstrings
+  - Comprehensive error handling
+
+**3. Standards Index Updated** ✅
+- **File:** `docs/standards/00_index_STANDARDS.md`
+- **Changes:**
+  - Added `05_std_quality_VALIDATOR-OUTPUT.md` to Quality Standards section
+  - Listed as applying to all validators
+  - Cross-referenced to ADR-012
+
+**4. Accessibility Validator Migrated** ✅
+- **File:** `validation/a11y-validator/validator.py`
+- **Pattern Established:**
+  - Import shared utilities with fallback for backward compatibility
+  - Add `_standardize_issue()` method to convert validator-specific format
+  - Map old severity levels to new levels (error→high, warning→medium, info→low)
+  - Update severity filtering to use new levels
+  - Include WCAG references in messages
+  - Automatic module extraction from file paths
+
+---
+
+#### Benefits Achieved
+
+1. **Standardized Format:** Consistent error/warning structure across validators
+2. **Module-Level Aggregation:** Errors can be grouped by CORA module
+3. **Better Prioritization:** Severity levels enable better issue triage
+4. **Improved Reporting:** Standard format enables enhanced visualization
+5. **Maintainability:** Shared utilities reduce code duplication
+6. **Backward Compatible:** Fallback functions ensure validators work without shared module
+
+---
+
+#### Pattern Established for Remaining Validators
+
+Each validator migration follows this pattern:
+
+1. Import shared utilities with try/except fallback
+2. Add `_standardize_issue()` method
+3. Map validator-specific severity to standard severity
+4. Add appropriate category field
+5. Update severity filtering logic
+6. Test validator output format
+
+---
+
+#### Next Session Priorities
+
+**Priority 1: Continue Validator Migration (3-5 hours)**
+- Update remaining 10 validators to standard format
+- Validators: frontend-compliance, typescript, structure, portability, db-naming, ui-library, nextjs-routing, audit-column, workspace-plugin, admin-route
+
+**Priority 2: Orchestrator Integration (1 hour)**
+- Update cora-validate.py to leverage standard fields
+- Enhance module aggregation using explicit module field
+- Test integrated reporting with all validators
+
+**Priority 3: Integration Testing**
+- Run full validation suite on test project
+- Verify module-level aggregation works correctly
+- Ensure backward compatibility with old format
+
+---
+
+**Files Created/Modified:**
+- Created: `docs/standards/05_std_quality_VALIDATOR-OUTPUT.md`
+- Created: `validation/shared/output_format.py`
+- Modified: `docs/standards/00_index_STANDARDS.md`
+- Modified: `validation/a11y-validator/validator.py`
+
+**Status:** Phase 0, Phase 1, Session 6, Session 7, & Session 8 Complete
+**Next Action:** Continue validator standardization (4 validators remaining)
+**Estimated Time Remaining:** 1.5-2 hours for validator migration + 1 hour orchestrator integration + testing
+- Location: `validation/frontend-compliance-validator/`
+- Category: "Frontend Compliance"
+- Severity: all errors as high
+- Standard format fully integrated
+
+**2. structure-validator** ✅
+- Location: `validation/structure-validator/validator.py`
+- Category: "Structure"
+- Severity mapping: error→high, warning→medium, info→low
+- ValidationResult.add_issue() method standardized
+
+**3. portability-validator** ✅
+- Location: `validation/portability-validator/validator.py`
+- Category: "Portability"
+- Includes portability-specific fields (pattern, matched_value)
+- Full integration complete
+
+**4. typescript-validator** ✅
+- Location: `validation/typescript-validator/typescript_validator.py`
+- Category: "TypeScript"
+- Severity: high for all errors
+- Parse errors method standardized
+
+**5. ui-library-validator** ✅
+- Location: `validation/ui-library-validator/cli.py`
+- Category: "UI Library"
+- Parses bash script output to standard format
+- Full integration complete
+
+**6. nextjs-routing-validator** ✅
+- Location: `validation/nextjs-routing-validator/cli.py`
+- Category: "Routing"
+- Converts route_validator errors to standard format
+- Severity mapping: error→high, warning→medium, info→low
+
+---
+
+#### Remaining Validators (4)
+
+**7. audit-column-validator** - NOT STARTED
+- Location: `validation/audit-column-validator/cli.py`
+- Challenge: Large file (~700 lines), complex table analysis
+- Estimated: 30-40 min
+
+**8. workspace-plugin-validator** - NOT STARTED
+- Estimated: 20 min
+
+**9. admin-route-validator** - NOT STARTED
+- Estimated: 15 min
+
+**10. db-naming-validator** - NOT STARTED (SPECIAL CASE)
+- Uses script from `scripts/validate-db-naming.py`
+- Requires investigation and integration
+- Estimated: 30-40 min
+
+---
+
+#### Session 8 Impact
+
+**Files Modified:** 6 validator files
+- `validation/frontend-compliance-validator/`
+- `validation/structure-validator/validator.py`
+- `validation/portability-validator/validator.py`
+- `validation/typescript-validator/typescript_validator.py`
+- `validation/ui-library-validator/cli.py`
+- `validation/nextjs-routing-validator/cli.py`
+
+**Pattern Established:**
+1. Import shared utilities with try/except fallback
+2. Use `create_error()` and `create_warning()` for standardized output
+3. Map severity levels (error→high, warning→medium, info→low)
+4. Add category field (validator-specific)
+5. Automatic module extraction from file paths
+6. Backward compatibility maintained
+
+---
+
+#### Next Session Priorities
+
+**Priority 1: Complete Remaining 4 Validators (1.5-2 hours)**
+1. audit-column-validator (30-40 min) - Complex, large file
+2. workspace-plugin-validator (20 min)
+3. admin-route-validator (15 min)
+4. db-naming-validator (30-40 min) - Special case investigation
+
+**Priority 2: Orchestrator Integration (1 hour)**
+- Update cora-validate.py to leverage standard fields
+- Enhance module aggregation using explicit module field
+- Test integrated reporting with all validators
+
+**Priority 3: Integration Testing**
+- Run full validation suite on test project
+- Verify module-level aggregation works correctly
+- Ensure backward compatibility with old format
+
+**Estimated Total Time Remaining:** 2.5-3 hours
+
+---
+
+**Status:** Phase 0, Phase 1, Sessions 6-8 Complete (6 of 11 validators migrated)
+**Next Action:** Complete remaining 4 validators + orchestrator integration
+**Estimated Time Remaining:** 2.5-3 hours
+
