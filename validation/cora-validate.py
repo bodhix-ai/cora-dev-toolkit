@@ -828,10 +828,15 @@ class ReportFormatter:
                 for item in items:
                     # Extract severity from nested item structure
                     # Structure is {'validator': key, 'item': error_dict or str}
-                    error_item = item['item']
-                    if isinstance(error_item, dict):
-                        severity = error_item.get('severity', 'high').lower()
+                    # But item itself might be a string if validator returned simple errors
+                    if isinstance(item, dict) and 'item' in item:
+                        error_item = item['item']
+                        if isinstance(error_item, dict):
+                            severity = error_item.get('severity', 'high').lower()
+                        else:
+                            severity = 'high'
                     else:
+                        # item is a string or doesn't have expected structure
                         severity = 'high'
                         
                     if severity in mod_stats:
@@ -843,10 +848,15 @@ class ReportFormatter:
             for category, items in data['warnings'].items():
                 mod_stats["warnings"] += len(items)
                 for item in items:
-                    warning_item = item['item']
-                    if isinstance(warning_item, dict):
-                        severity = warning_item.get('severity', 'medium').lower()
+                    # Handle both dict and string items
+                    if isinstance(item, dict) and 'item' in item:
+                        warning_item = item['item']
+                        if isinstance(warning_item, dict):
+                            severity = warning_item.get('severity', 'medium').lower()
+                        else:
+                            severity = 'medium'
                     else:
+                        # item is a string or doesn't have expected structure
                         severity = 'medium'
                         
                     if severity in mod_stats:
