@@ -653,6 +653,290 @@ class ReportFormatter:
 
     def _bold(self, text: str) -> str:
         return self._color(text, "1")
+    
+    def _extract_module(self, item) -> str:
+        """Extract module name from error/warning item."""
+        if isinstance(item, dict):
+            # Try direct module field
+            if item.get('module'):
+                return item['module']
+            
+            # Try lambda file path
+            if item.get('lambda_file'):
+                parts = item['lambda_file'].split('/')
+                for part in parts:
+                    if part.startswith('module-'):
+                        return part
+            
+            # Try frontend file path
+            if item.get('frontend_file'):
+                parts = item['frontend_file'].split('/')
+                for part in parts:
+                    if part.startswith('module-'):
+                        return part
+            
+            # Try gateway file path
+            if item.get('gateway_file'):
+                parts = item['gateway_file'].split('/')
+                for part in parts:
+                    if part.startswith('module-'):
+                        return part
+            
+            # Try generic file field
+            if item.get('file'):
+                parts = item['file'].split('/')
+                for part in parts:
+                    if part.startswith('module-'):
+                        return part
+        
+        # Try to extract from string representation
+        if isinstance(item, str):
+            parts = item.split('/')
+            for part in parts:
+                if part.startswith('module-'):
+                    # Extract just the module name (e.g., "module-kb")
+                    module_part = part.split('/')[0].split(':')[0]
+                    if module_part.startswith('module-'):
+                        return module_part
+        
+        return "general"  # Fallback for non-module-specific issues
+    
+    def _extract_category(self, item, validator_key: str) -> str:
+        """Extract error category from item."""
+        if isinstance(item, dict):
+            # Use mismatch_type if available (api-tracer)
+            if item.get('mismatch_type'):
+                mtype = item['mismatch_type']
+                # Simplify category names
+                if mtype.startswith('auth_'):
+                    return 'Auth'
+                elif mtype.startswith('quality_'):
+                    return 'Code Quality'
+                elif mtype in ['route_not_found', 'method_mismatch', 'parameter_mismatch']:
+                    return 'Route Matching'
+                else:
+                    return mtype.replace('_', ' ').title()
+            
+            # Use category field if available
+            if item.get('category'):
+                return item['category']
+        
+        # Use validator name as fallback
+        validator_names = {
+            'a11y': 'Accessibility',
+            'api': 'API Tracer',
+            'structure': 'Structure',
+            'portability': 'Portability',
+            'frontend': 'Frontend Compliance',
+            'typescript': 'TypeScript',
+            'import': 'Import',
+            'schema': 'Schema',
+            'cora': 'CORA Compliance',
+            'db_naming': 'Database Naming',
+            'ui_library': 'UI Library',
+            'nextjs_routing': 'Next.js Routing',
+            'audit_columns': 'Audit Columns',
+            'workspace_plugin': 'Workspace Plugin',
+            'admin_routes': 'Admin Routes',
+            'rpc_function': 'RPC Function',
+            'external_uid': 'External UID',
+            'api_response': 'API Response',
+        }
+        return validator_names.get(validator_key, validator_key.replace('_', ' ').title())
+    
+    def _aggregate_by_module(self, report: ValidationReport) -> dict:
+        """Aggregate all validator results by module."""
+        modules = {}
+        
+        for validator_key, result in report.results.items():
+            if result.skipped:
+                continue
+            
+            # Process errors
+            for error in result.errors:
+                module = self._extract_module(error)
+                category = self._extract_category(error, validator_key)
+                
+                if module not in modules:
+                    modules[module] = {'errors': {}, 'warnings': {}}
+                
+                if category not in modules[module]['errors']:
+                    modules[module]['errors'][category] = []
+                
+                modules[module]['errors'][category].append({
+                    'validator': validator_key,
+                    'item': error
+                })
+            
+            # Process warnings
+            for warning in result.warnings:
+                module = self._extract_module(warning)
+                category = self._extract_category(warning, validator_key)
+                
+                if module not in modules:
+                    modules[module] = {'errors': {}, 'warnings': {}}
+                
+                if category not in modules[module]['warnings']:
+                    modules[module]['warnings'][category] = []
+                
+                modules[module]['warnings'][category].append({
+                    'validator': validator_key,
+                    'item': warning
+                })
+        
+        return modules
+    
+    def _get_top_issues(self, modules: dict) -> list:
+        """Get top issues across all modules."""
+        issue_counts = {}
+        
+        for module, data in modules.items():
+            # Count errors by category
+            for category, errors in data['errors'].items():
+                if category not in issue_counts:
+                    issue_counts[category] = {'count': 0, 'type': 'error'}
+                issue_counts[category]['count'] += len(errors)
+            
+            # Count warnings by category
+            for category, warnings in data['warnings'].items():
+                if category not in issue_counts:
+                    issue_counts[category] = {'count': 0, 'type': 'warning'}
+                issue_counts[category]['count'] += len(warnings)
+        
+        # Sort by count descending
+        sorted_issues = sorted(
+            issue_counts.items(),
+            key=lambda x: x[1]['count'],
+            reverse=True
+        )
+        
+        return sorted_issues[:10]  # Top 10
+
+    def _generate_module_stats(self, modules_data: dict) -> dict:
+        """Generate statistics for module summary table."""
+        stats = {}
+        
+        for module, data in modules_data.items():
+            mod_stats = {
+                "errors": 0, "warnings": 0,
+                "critical": 0, "high": 0, "medium": 0, "low": 0
+            }
+            
+            # Count errors
+            for category, items in data['errors'].items():
+                mod_stats["errors"] += len(items)
+                for item in items:
+                    # Extract severity from nested item structure
+                    # Structure is {'validator': key, 'item': error_dict or str}
+                    error_item = item['item']
+                    if isinstance(error_item, dict):
+                        severity = error_item.get('severity', 'high').lower()
+                    else:
+                        severity = 'high'
+                        
+                    if severity in mod_stats:
+                        mod_stats[severity] += 1
+                    else:
+                        mod_stats['high'] += 1 # Default to high for errors
+            
+            # Count warnings
+            for category, items in data['warnings'].items():
+                mod_stats["warnings"] += len(items)
+                for item in items:
+                    warning_item = item['item']
+                    if isinstance(warning_item, dict):
+                        severity = warning_item.get('severity', 'medium').lower()
+                    else:
+                        severity = 'medium'
+                        
+                    if severity in mod_stats:
+                        mod_stats[severity] += 1
+                    else:
+                        mod_stats['medium'] += 1 # Default to medium for warnings
+            
+            stats[module] = mod_stats
+            
+        return stats
+
+    def _format_module_table(self, module_stats: dict) -> list:
+        """Format module statistics as an ASCII table."""
+        lines = []
+        
+        if not module_stats:
+            return lines
+
+        # Headers
+        headers = ["Module", "Errors", "Warnings", "Critical", "High", "Medium", "Low"]
+        
+        # Prepare rows
+        rows = []
+        # Sort modules: general last, others alpha
+        sorted_modules = sorted([m for m in module_stats.keys() if m != "general"]) + (["general"] if "general" in module_stats else [])
+        
+        totals = {k: 0 for k in ["errors", "warnings", "critical", "high", "medium", "low"]}
+        
+        for module in sorted_modules:
+            s = module_stats[module]
+            row = [
+                module,
+                str(s["errors"]),
+                str(s["warnings"]),
+                str(s["critical"]),
+                str(s["high"]),
+                str(s["medium"]),
+                str(s["low"])
+            ]
+            rows.append(row)
+            for k in totals:
+                totals[k] += s[k]
+        
+        # Add totals row
+        total_row = ["TOTAL"] + [str(totals[k]) for k in ["errors", "warnings", "critical", "high", "medium", "low"]]
+        
+        # Calculate column widths
+        col_widths = [len(h) for h in headers]
+        for row in rows + [total_row]:
+            for i, cell in enumerate(row):
+                col_widths[i] = max(col_widths[i], len(cell))
+        
+        # Add padding
+        col_widths = [w + 2 for w in col_widths]
+        
+        # Helper to format row
+        def format_row(items, align="right"):
+            line = "│"
+            for i, item in enumerate(items):
+                # First column (Module) left aligned, others right aligned
+                w = col_widths[i]
+                if i == 0:
+                    line += f" {item:<{w-1}}│"
+                else:
+                    line += f" {item:>{w-1}}│"
+            return line
+
+        # Separator line
+        def separator(left="├", mid="┼", right="┤", fill="─"):
+            line = left
+            for i, w in enumerate(col_widths):
+                line += fill * w
+                if i < len(col_widths) - 1:
+                    line += mid
+            line += right
+            return line
+
+        # Build table
+        lines.append(separator("┌", "┬", "┐"))
+        lines.append(format_row(headers))
+        lines.append(separator())
+        
+        for row in rows:
+            lines.append(format_row(row))
+            
+        lines.append(separator("╞", "╪", "╡", "═"))
+        lines.append(format_row(total_row))
+        lines.append(separator("└", "┴", "┘"))
+        
+        return lines
 
     def format(self, report: ValidationReport, output_format: OutputFormat, detailed: bool = False) -> str:
         """Format report in specified format."""
@@ -790,61 +1074,90 @@ class ReportFormatter:
         return json.dumps(report.to_dict(), indent=2)
 
     def format_text(self, report: ValidationReport) -> str:
-        """Format as colored text."""
+        """Format as colored text with integrated module-level reporting."""
         lines = []
         
         # Header
         lines.append("=" * 80)
-        lines.append(self._bold("Validation Test Suite Report"))
+        lines.append(self._bold("CORA Validation Report"))
         lines.append("=" * 80)
         lines.append("")
         
-        # Individual validator results FIRST
-        lines.append("-" * 80)
-        lines.append("Results - Individual Validator Tests")
-        lines.append("-" * 80)
+        # Aggregate by module
+        modules = self._aggregate_by_module(report)
         
-        for validator_key, result in report.results.items():
-            validator_info = CoraValidator.VALIDATORS.get(validator_key, {})
-            name = validator_info.get("name", validator_key)
+        # MODULE SUMMARY - Primary focus
+        if modules:
+            lines.append(self._bold("MODULE SUMMARY:"))
             
-            if result.skipped:
-                status = self._blue(f"⊘ SKIPPED ({result.skip_reason})")
-            elif result.passed:
-                status = self._green("✓ PASSED")
-            else:
-                status = self._red("✗ FAILED")
+            # Generate and add stats table
+            module_stats = self._generate_module_stats(modules)
+            table_lines = self._format_module_table(module_stats)
+            lines.extend(table_lines)
+            lines.append("")
             
-            lines.append(f"\n{self._bold(name)}: {status}")
-            lines.append(f"  Duration: {result.duration_ms}ms")
+            lines.append(self._bold("DETAILED BREAKDOWN:"))
+            lines.append("-" * 80)
             
-            # Special handling for API-Tracer - use module-grouped format
-            if validator_key == "api" and (result.errors or result.warnings):
-                lines.append("")
-                lines.extend(self._format_api_tracer_summary(result))
-            else:
-                # Standard format for other validators
-                if result.errors:
-                    lines.append(f"  Errors ({len(result.errors)}):")
-                    for error in result.errors[:5]:  # Show first 5
-                        lines.append(f"    - {error}")
-                    if len(result.errors) > 5:
-                        lines.append(f"    ... and {len(result.errors) - 5} more")
+            # Sort modules: "general" last, others alphabetically
+            sorted_modules = sorted(
+                [m for m in modules.keys() if m != "general"]
+            ) + (["general"] if "general" in modules else [])
+            
+            for module in sorted_modules:
+                data = modules[module]
+                error_count = sum(len(errs) for errs in data['errors'].values())
+                warning_count = sum(len(warns) for warns in data['warnings'].values())
                 
-                if result.warnings:
-                    lines.append(f"  Warnings ({len(result.warnings)}):")
-                    for warning in result.warnings[:5]:  # Show first 5
-                        lines.append(f"    - {warning}")
-                    if len(result.warnings) > 5:
-                        lines.append(f"    ... and {len(result.warnings) - 5} more")
+                if error_count == 0 and warning_count == 0:
+                    continue
+                
+                # Module header
+                module_display = module.upper() if module != "general" else "GENERAL (Non-Module Issues)"
+                lines.append(f"\n{self._bold(module_display)}:")
+                
+                # Show errors by category
+                if data['errors']:
+                    for category in sorted(data['errors'].keys()):
+                        errors = data['errors'][category]
+                        count = len(errors)
+                        lines.append(f"  {self._red('✗')} {category}: {self._red(str(count))} error{'s' if count != 1 else ''}")
+                
+                # Show warnings by category
+                if data['warnings']:
+                    for category in sorted(data['warnings'].keys()):
+                        warnings = data['warnings'][category]
+                        count = len(warnings)
+                        lines.append(f"  {self._yellow('⚠')} {category}: {self._yellow(str(count))} warning{'s' if count != 1 else ''}")
+                
+                # Module total
+                total_issues = error_count + warning_count
+                lines.append(f"  {self._bold('Total')}: {self._red(str(error_count))} error{'s' if error_count != 1 else ''}, {self._yellow(str(warning_count))} warning{'s' if warning_count != 1 else ''}")
+            
+            lines.append("")
         
-        # Summary at the END for easy visibility
-        lines.append("")
-        lines.append("=" * 80)
-        lines.append(self._bold("Results - Validation Test Suite Summary"))
-        lines.append("=" * 80)
-        lines.append("")
+        # TOP ISSUES - Aggregate across all modules
+        if modules:
+            top_issues = self._get_top_issues(modules)
+            
+            if top_issues:
+                lines.append(self._bold("TOP ISSUES (Across All Validators):"))
+                lines.append("-" * 80)
+                
+                for i, (category, info) in enumerate(top_issues, 1):
+                    count = info['count']
+                    issue_type = info['type']
+                    
+                    if issue_type == 'error':
+                        lines.append(f"{i:2}. {category}: {self._red(str(count))} occurrences")
+                    else:
+                        lines.append(f"{i:2}. {category}: {self._yellow(str(count))} occurrences")
+                
+                lines.append("")
         
+        # VALIDATION SUMMARY
+        lines.append(self._bold("VALIDATION SUMMARY:"))
+        lines.append("-" * 80)
         lines.append(f"Target: {report.target_path}")
         lines.append(f"Type: {report.validation_type}")
         lines.append(f"Timestamp: {report.timestamp}")
@@ -866,6 +1179,18 @@ class ReportFormatter:
         
         lines.append(f"Total Errors: {self._red(str(report.total_errors)) if report.total_errors else '0'}")
         lines.append(f"Total Warnings: {self._yellow(str(report.total_warnings)) if report.total_warnings else '0'}")
+        
+        # Validators run
+        lines.append(f"Validators Run: {len([r for r in report.results.values() if not r.skipped])}/{len(report.results)}")
+        
+        # Show which validators passed/failed
+        passed_validators = [k for k, r in report.results.items() if r.passed and not r.skipped]
+        failed_validators = [k for k, r in report.results.items() if not r.passed and not r.skipped]
+        
+        if passed_validators:
+            lines.append(f"Passed: {', '.join(passed_validators)}")
+        if failed_validators:
+            lines.append(f"Failed: {', '.join(failed_validators)}")
         
         lines.append("")
         lines.append("=" * 80)
