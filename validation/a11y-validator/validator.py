@@ -1,10 +1,17 @@
 """
 Section 508 Accessibility Validator
 Main orchestrator that coordinates parsing, validation, and reporting
+
+Standard: 05_std_quality_VALIDATOR-OUTPUT
 """
 
 from typing import List, Dict, Any, Optional
 from pathlib import Path
+import sys
+import os
+
+# Add parent directory to path for shared imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # Try relative imports first (when used as a package), fall back to absolute
 try:
@@ -23,6 +30,28 @@ except ImportError:
     from validators.structure_validator import StructureValidator
     from reporter import Reporter, create_summary
     from rules.baseline_rules import MANUAL_TESTING_REQUIRED
+
+# Import shared output format utilities
+try:
+    from shared.output_format import (
+        create_error, 
+        create_warning,
+        extract_module_from_path,
+        SEVERITY_HIGH,
+        SEVERITY_MEDIUM,
+        SEVERITY_LOW
+    )
+except ImportError:
+    # Fallback if shared module not available
+    def create_error(file, message, category, severity="high", line=None, suggestion=None, project_root=None):
+        return {"file": file, "message": message, "category": category, "severity": severity}
+    def create_warning(file, message, category, line=None, suggestion=None, project_root=None):
+        return {"file": file, "message": message, "category": category, "severity": "medium"}
+    def extract_module_from_path(file_path):
+        return "unknown"
+    SEVERITY_HIGH = "high"
+    SEVERITY_MEDIUM = "medium"
+    SEVERITY_LOW = "low"
 
 
 class A11yValidator:
@@ -88,15 +117,15 @@ class A11yValidator:
                 else:
                     issues = validator.validate(elements)
                 
-                # Add file path to each issue
+                # Convert issues to standard format
                 for issue in issues:
-                    issue['file'] = file_path
-                    all_issues.append(issue)
+                    standardized = self._standardize_issue(issue, file_path)
+                    all_issues.append(standardized)
         
-        # Separate by severity
-        errors = [issue for issue in all_issues if issue['severity'] == 'error']
-        warnings = [issue for issue in all_issues if issue['severity'] == 'warning']
-        info = [issue for issue in all_issues if issue['severity'] == 'info']
+        # Separate by severity (using new severity levels)
+        errors = [issue for issue in all_issues if issue.get('severity') in ['high', 'critical']]
+        warnings = [issue for issue in all_issues if issue.get('severity') == 'medium']
+        info = [issue for issue in all_issues if issue.get('severity') == 'low']
         
         # Create summary
         summary = create_summary(all_issues, len(parsed_files), total_components)
@@ -158,15 +187,15 @@ class A11yValidator:
             else:
                 issues = validator.validate(elements)
             
-            # Add file path to each issue
+            # Convert issues to standard format
             for issue in issues:
-                issue['file'] = file_path
-                all_issues.append(issue)
+                standardized = self._standardize_issue(issue, file_path)
+                all_issues.append(standardized)
         
-        # Separate by severity
-        errors = [issue for issue in all_issues if issue['severity'] == 'error']
-        warnings = [issue for issue in all_issues if issue['severity'] == 'warning']
-        info = [issue for issue in all_issues if issue['severity'] == 'info']
+        # Separate by severity (using new severity levels)
+        errors = [issue for issue in all_issues if issue.get('severity') in ['high', 'critical']]
+        warnings = [issue for issue in all_issues if issue.get('severity') == 'medium']
+        info = [issue for issue in all_issues if issue.get('severity') == 'low']
         
         # Create summary
         summary = create_summary(all_issues, 1, total_components)
@@ -186,6 +215,50 @@ class A11yValidator:
         }
         
         return results
+    
+    def _standardize_issue(self, issue: Dict[str, Any], file_path: str) -> Dict[str, Any]:
+        """
+        Convert validator issue to standard format.
+        
+        Args:
+            issue: Original issue from validator
+            file_path: File path where issue occurs
+            
+        Returns:
+            Standardized issue dictionary
+        """
+        # Map old severity to new severity
+        severity_map = {
+            'error': SEVERITY_HIGH,
+            'warning': SEVERITY_MEDIUM,
+            'info': SEVERITY_LOW
+        }
+        
+        old_severity = issue.get('severity', 'error')
+        new_severity = severity_map.get(old_severity, SEVERITY_HIGH)
+        
+        # Extract line number if available
+        line = issue.get('line')
+        
+        # Build message
+        message = issue.get('message', 'Accessibility issue')
+        
+        # Add WCAG reference if available
+        if 'wcag_sc' in issue:
+            message = f"{message} ({issue['wcag_sc']})"
+        
+        # Build suggestion
+        suggestion = issue.get('suggestion') or issue.get('fix')
+        
+        # Create standardized error
+        return create_error(
+            file=file_path,
+            message=message,
+            category="Accessibility",
+            severity=new_severity,
+            line=line,
+            suggestion=suggestion
+        )
     
     def _create_manual_review_items(self) -> List[Dict[str, Any]]:
         """Create manual review items from baseline rules."""

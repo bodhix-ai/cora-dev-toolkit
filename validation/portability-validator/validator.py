@@ -8,13 +8,41 @@ Detects hardcoded values that would prevent project portability:
 - Hardcoded AWS account IDs
 - Hardcoded URLs/domains
 - Hardcoded environment-specific values
+
+Standard: 05_std_quality_VALIDATOR-OUTPUT
 """
 
 import re
 import os
+import sys
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional
+
+# Import shared output format utilities
+try:
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from shared.output_format import (
+        create_error, 
+        create_warning,
+        extract_module_from_path,
+        SEVERITY_HIGH,
+        SEVERITY_MEDIUM,
+        SEVERITY_LOW,
+        SEVERITY_CRITICAL
+    )
+except ImportError:
+    # Fallback if shared module not available
+    def create_error(file, message, category, severity="high", line=None, suggestion=None, project_root=None):
+        return {"file": file, "message": message, "category": category, "severity": severity, "line": line, "suggestion": suggestion}
+    def create_warning(file, message, category, line=None, suggestion=None, project_root=None):
+        return {"file": file, "message": message, "category": category, "severity": "medium", "line": line, "suggestion": suggestion}
+    def extract_module_from_path(file_path):
+        return "unknown"
+    SEVERITY_HIGH = "high"
+    SEVERITY_MEDIUM = "medium"
+    SEVERITY_LOW = "low"
+    SEVERITY_CRITICAL = "critical"
 
 
 @dataclass
@@ -41,23 +69,67 @@ class ValidationResult:
     files_scanned: int = 0
     
     def add_issue(self, issue: PortabilityIssue):
-        """Add an issue to the appropriate list."""
-        issue_dict = {
-            "message": issue.message,
-            "file": issue.file_path,
-            "line": issue.line_number,
-            "line_content": issue.line_content[:100] + "..." if len(issue.line_content) > 100 else issue.line_content,
-            "pattern": issue.pattern_name,
-            "matched_value": issue.matched_value,
-            "suggestion": issue.suggestion,
+        """Add an issue to the appropriate list using standard format."""
+        # Map old severity to new severity
+        severity_map = {
+            "error": SEVERITY_HIGH,
+            "warning": SEVERITY_MEDIUM,
+            "info": SEVERITY_LOW
         }
+        
+        new_severity = severity_map.get(issue.severity, SEVERITY_HIGH)
+        
+        # Truncate long line content
+        line_content = issue.line_content[:100] + "..." if len(issue.line_content) > 100 else issue.line_content
+        
+        # Build message with matched value
+        message = f"{issue.message}: {issue.matched_value}"
+        
+        # Create standardized issue
         if issue.severity == "error":
-            self.errors.append(issue_dict)
+            standardized = create_error(
+                file=issue.file_path,
+                message=message,
+                category="Portability",
+                severity=new_severity,
+                line=issue.line_number,
+                suggestion=issue.suggestion,
+                project_root=self.target_path
+            )
+            # Add portability-specific fields
+            standardized["pattern"] = issue.pattern_name
+            standardized["matched_value"] = issue.matched_value
+            standardized["line_content"] = line_content
+            self.errors.append(standardized)
             self.passed = False
         elif issue.severity == "warning":
-            self.warnings.append(issue_dict)
-        else:
-            self.info.append(issue_dict)
+            standardized = create_warning(
+                file=issue.file_path,
+                message=message,
+                category="Portability",
+                line=issue.line_number,
+                suggestion=issue.suggestion,
+                project_root=self.target_path
+            )
+            # Add portability-specific fields
+            standardized["pattern"] = issue.pattern_name
+            standardized["matched_value"] = issue.matched_value
+            standardized["line_content"] = line_content
+            self.warnings.append(standardized)
+        else:  # info
+            standardized = {
+                "file": issue.file_path,
+                "message": message,
+                "category": "Portability",
+                "severity": new_severity,
+                "line": issue.line_number,
+                "suggestion": issue.suggestion,
+                "module": extract_module_from_path(issue.file_path),
+                "pattern": issue.pattern_name,
+                "matched_value": issue.matched_value,
+                "line_content": line_content
+            }
+            self.info.append(standardized)
 
     def to_dict(self) -> dict:
         """Convert to dictionary."""
