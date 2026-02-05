@@ -22,6 +22,7 @@ from lambda_parser import LambdaParser, LambdaRoute
 from reporter import APIMismatch, ValidationReport
 from auth_validator import AuthLifecycleValidator, AuthIssue
 from code_quality_validator import CodeQualityValidator, CodeQualityIssue
+from db_function_validator import DBFunctionValidator, DBFunctionIssue
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +124,11 @@ class FullStackValidator:
         self.code_quality_validator = CodeQualityValidator()
         self.code_quality_issues: List[CodeQualityIssue] = []
         
+        # DB function validation (ADR-020)
+        self.validate_db_functions = True  # Default: enabled
+        self.db_function_validator = DBFunctionValidator()
+        self.db_function_issues: List[DBFunctionIssue] = []
+        
         # Module filter for efficient per-module validation (e.g., 'module-kb')
         self.module_filter = module_filter
         
@@ -170,6 +176,10 @@ class FullStackValidator:
         
         # Code quality validation (integrated checks)
         self._validate_code_quality(project_path)
+        
+        # DB function validation (ADR-020)
+        if self.validate_db_functions:
+            self._validate_db_functions(project_path)
         
         # Generate report
         report = self._generate_report()
@@ -874,6 +884,58 @@ class FullStackValidator:
         self.code_quality_issues = code_quality_issues
         logger.info(f"Code quality validation complete: {len(code_quality_issues)} issues found")
     
+    def _validate_db_functions(self, project_path: str):
+        """
+        Validate database RPC functions per ADR-020.
+        
+        This validates:
+        - Parameter naming (p_ prefix)
+        - Function naming patterns (is_*, can_*, get_*, etc.)
+        - Table references exist in schema
+        - Table naming (ADR-011 plural requirement)
+        - Schema organization (functions in correct files)
+        - Python helper location (auth.py, not __init__.py)
+        """
+        logger.info("Validating database functions (ADR-020)...")
+        
+        project = Path(project_path)
+        db_function_issues = []
+        
+        # Find all modules with database schemas
+        if self.module_filter:
+            module_paths = [project / 'packages' / self.module_filter]
+        else:
+            module_paths = list((project / 'packages').glob('module-*'))
+        
+        for module_path in module_paths:
+            # Skip template modules
+            if '_module-template' in str(module_path):
+                continue
+            
+            if module_path.is_dir():
+                try:
+                    issues = self.db_function_validator.validate_module(module_path)
+                    db_function_issues.extend(issues)
+                except Exception as e:
+                    logger.warning(f"Failed to validate DB functions in {module_path}: {e}")
+        
+        # Convert DB function issues to APIMismatch format for unified reporting
+        for issue in db_function_issues:
+            mismatch = APIMismatch(
+                severity=issue.severity,
+                mismatch_type=f"db_{issue.category}",
+                lambda_file=issue.file if '.sql' in issue.file else None,
+                lambda_line=issue.line if '.sql' in issue.file else None,
+                frontend_file=issue.file if '.py' in issue.file else None,
+                frontend_line=issue.line if '.py' in issue.file else None,
+                issue=f"[{issue.function_name}] {issue.issue}",
+                suggestion=f"{issue.suggestion} (Ref: {issue.standard_ref})"
+            )
+            self.mismatches.append(mismatch)
+        
+        self.db_function_issues = db_function_issues
+        logger.info(f"DB function validation complete: {len(db_function_issues)} issues found")
+    
     def _validate_auth_lifecycle(self, project_path: str, validate_layer2: bool = False):
         """
         Validate auth patterns across frontend and Lambda layers per ADR-019.
@@ -1068,6 +1130,14 @@ class FullStackValidator:
                 'warnings': len(quality_warnings),
                 'total_issues': len(quality_errors) + len(quality_warnings),
                 'by_category': self.code_quality_validator.get_issue_summary(self.code_quality_issues).get('by_category', {}) if self.code_quality_issues else {}
+            },
+            # DB function validation summary (ADR-020)
+            'db_function_validation': {
+                'enabled': self.validate_db_functions,
+                'errors': len([i for i in self.db_function_issues if i.severity == 'error']),
+                'warnings': len([i for i in self.db_function_issues if i.severity == 'warning']),
+                'total_issues': len(self.db_function_issues),
+                'by_category': self.db_function_validator.get_issue_summary(self.db_function_issues).get('by_category', {}) if self.db_function_issues else {}
             }
         }
         

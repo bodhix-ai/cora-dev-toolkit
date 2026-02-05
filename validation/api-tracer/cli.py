@@ -127,6 +127,16 @@ logger = logging.getLogger(__name__)
     help='Run only code quality validation'
 )
 @click.option(
+    '--no-db-functions',
+    is_flag=True,
+    help='Disable database function validation (ADR-020)'
+)
+@click.option(
+    '--db-only',
+    is_flag=True,
+    help='Run only database function validation (ADR-020)'
+)
+@click.option(
     '--module',
     type=str,
     default=None,
@@ -156,6 +166,8 @@ def validate(
     all_auth: bool,
     no_quality: bool,
     quality_only: bool,
+    no_db_functions: bool,
+    db_only: bool,
     module: str,
     exclude_routes: tuple
 ):
@@ -268,6 +280,12 @@ def validate(
             validate_quality = True
             logger.info("Running quality-only validation")
         
+        # DB function validation mode handling
+        validate_db = not no_db_functions
+        if db_only:
+            validate_db = True
+            logger.info("Running DB function validation only (ADR-020)")
+        
         # Module filter for efficient per-module validation
         if module:
             logger.info(f"Filtering validation to module: {module}")
@@ -292,6 +310,9 @@ def validate(
             route_exclusion_patterns=route_exclusions
         )
         
+        # Set DB function validation flag
+        validator.validate_db_functions = validate_db
+        
         # For auth-only mode, we still run full validation but can filter output
         report = validator.validate(path)
         
@@ -309,6 +330,14 @@ def validate(
             logger.info(f"Code quality validation: {quality_summary['errors']} errors, {quality_summary['warnings']} warnings")
             if quality_summary.get('by_category'):
                 for category, count in quality_summary['by_category'].items():
+                    logger.info(f"  - {category}: {count} issues")
+        
+        # Log DB function validation summary
+        if validate_db and 'db_function_validation' in report.summary:
+            db_summary = report.summary['db_function_validation']
+            logger.info(f"DB function validation: {db_summary['errors']} errors, {db_summary['warnings']} warnings")
+            if db_summary.get('by_category'):
+                for category, count in db_summary['by_category'].items():
                     logger.info(f"  - {category}: {count} issues")
         
         # Format and output report

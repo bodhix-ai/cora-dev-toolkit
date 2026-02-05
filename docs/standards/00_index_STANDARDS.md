@@ -79,13 +79,14 @@ Where:
 | File | ADR | Validator | Description |
 |------|-----|-----------|-------------|
 | `04_std_data_TABLE-NAMING.md` | ADR-011 | db-naming | Table naming conventions |
-| `04_std_data_RPC-FUNCTIONS.md` | ADR-019 | rpc-function | RPC function standards |
+| `04_std_data_RPC-FUNCTIONS.md` | ADR-020 | api-tracer (db-function) | RPC function standards (parameter naming, function naming, schema org, Python helpers) |
 
 ### 05 - Quality Standards
 
 | File | ADR | Validator | Description |
 |------|-----|-----------|-------------|
 | `05_std_quality_ROLE-NAMING.md` | - | role-naming | sys_role/sysRole consistency |
+| `05_std_quality_VALIDATOR-OUTPUT.md` | ADR-012 | all | Standardized validator output format |
 
 ### 10 - CORA Architecture
 
@@ -137,9 +138,10 @@ This table maps api-tracer validation checks to their authoritative standards:
 |-----|-----------|-------------|
 | ADR-011 | 04_std_data_TABLE-NAMING | Table naming conventions |
 | ADR-018b | 02_std_api_ROUTES | API Gateway route standards |
-| ADR-019 | 01_std_front_AUTH, 03_std_back_AUTH, 04_std_data_RPC-FUNCTIONS | Full auth lifecycle |
+| ADR-019 | 01_std_front_AUTH, 03_std_back_AUTH | Full auth lifecycle |
 | ADR-019a | 01_std_front_AUTH | Frontend auth patterns |
 | ADR-019b | 03_std_back_AUTH | Backend auth patterns |
+| ADR-020 | 04_std_data_RPC-FUNCTIONS | RPC function standards (comprehensive) |
 
 ---
 
