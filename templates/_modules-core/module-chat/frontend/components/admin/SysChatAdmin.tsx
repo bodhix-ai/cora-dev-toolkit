@@ -1,11 +1,21 @@
 /**
- * System Chat Admin Component
- *
- * Main admin page for Chat module system-level management.
+ * @component SysChatAdmin
+ * @description System Chat Admin Component - Main admin page for Chat module system-level management
+ * 
  * Provides tabbed interface for:
  * - Platform chat settings configuration
  * - Platform-wide analytics and statistics
  * - Session management across all organizations
+ * 
+ * @routes
+ * - GET /admin/sys/chat/config - Get platform chat configuration
+ * - PUT /admin/sys/chat/config - Update platform chat configuration
+ * - GET /admin/sys/chat/analytics - Get platform-wide analytics
+ * - GET /admin/sys/chat/analytics/usage - Get usage statistics by organization
+ * - GET /admin/sys/chat/analytics/tokens - Get token usage statistics
+ * - GET /admin/sys/chat/sessions - List all chat sessions (all orgs)
+ * - GET /admin/sys/chat/sessions/{id} - Get session details (sys admin view)
+ * - DELETE /admin/sys/chat/sessions/{id} - Force delete chat session
  */
 
 import React, { useState } from "react";

@@ -20,6 +20,10 @@ route_exclusions:
   - pattern: "^/metrics$"
     reason: "Metrics/monitoring endpoints"
     enabled: true
+    
+  - pattern: "^/auth/callback"
+    reason: "OAuth callback endpoints (redirects)"
+    enabled: true
 
 # Path exclusion patterns (directories to skip during file scanning)
 path_exclusions:
@@ -60,6 +64,21 @@ path_exclusions:
     
   - pattern: "_module-template"
     reason: "CORA module templates (not project code)"
+    type: "both"
+    enabled: true
+    
+  - pattern: "coverage"
+    reason: "Test coverage reports"
+    type: "both"
+    enabled: true
+    
+  - pattern: ".test."
+    reason: "Test files"
+    type: "both"
+    enabled: true
+    
+  - pattern: "_test_"
+    reason: "Test directories"
     type: "both"
     enabled: true
 

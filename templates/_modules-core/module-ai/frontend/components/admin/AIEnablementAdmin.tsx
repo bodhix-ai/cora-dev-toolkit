@@ -1,5 +1,25 @@
 "use client";
 
+/**
+ * @component AIEnablementAdmin
+ * @description AI Enablement Admin Component - Main admin page for AI provider and model management
+ * 
+ * Provides tabbed interface for:
+ * - AI Providers: Configure and manage AI provider credentials
+ * - Models: Discover, validate, and manage AI models
+ * - Platform Config: Set default models and platform-wide AI settings
+ * 
+ * @routes
+ * - GET /admin/sys/ai/providers - List AI providers
+ * - POST /admin/sys/ai/providers - Create/update AI provider
+ * - DELETE /admin/sys/ai/providers/{providerId} - Delete AI provider
+ * - GET /admin/sys/ai/models - List available AI models
+ * - POST /admin/sys/ai/models/discover - Discover models from provider
+ * - POST /admin/sys/ai/models/validate - Validate model deployment
+ * - GET /admin/sys/ai/config - Get platform AI configuration
+ * - PUT /admin/sys/ai/config - Update platform AI configuration
+ */
+
 import React, { useState } from "react";
 import { 
   Box, 

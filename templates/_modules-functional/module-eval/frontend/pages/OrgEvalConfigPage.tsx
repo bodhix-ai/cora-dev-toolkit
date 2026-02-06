@@ -58,24 +58,6 @@ export interface OrgEvalConfigPageProps {
 function PageHeader() {
   return (
     <Box sx={{ mb: 4 }}>
-      {/* Breadcrumbs */}
-      <Breadcrumbs
-        separator={<NavigateNextIcon fontSize="small" />}
-        aria-label="breadcrumb"
-        sx={{ mb: 2 }}
-      >
-        <Link
-          underline="hover"
-          color="inherit"
-          href="/admin/org"
-          sx={{ display: "flex", alignItems: "center" }}
-          aria-label="Navigate to Org Admin"
-        >
-          Org Admin
-        </Link>
-        <Typography color="text.primary">Eval</Typography>
-      </Breadcrumbs>
-
       <Typography variant="h4" component="h1" gutterBottom>
         Evaluation Settings
       </Typography>

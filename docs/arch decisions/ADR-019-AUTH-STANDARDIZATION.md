@@ -347,6 +347,9 @@ python validation/api-tracer/tracer.py --auth-check
 - [ADR-019c: Resource Permissions](./ADR-019c-AUTH-RESOURCE-PERMISSIONS.md) - Layer 2 resource permissions
 - [ADR-019 Appendix A: Options Comparison](./ADR-019-AUTH-STANDARDIZATION-APPENDIX-A-COMPARISON.md)
 
+### Related Standards
+- [ADR-020: RPC Function Standards](./ADR-020-RPC-PARAMETER-NAMING.md) - Parameter naming, function naming, schema organization, Python helper deployment
+
 ### Implementation Standards (Active Compliance Rules)
 - [Backend Auth Standard](../standards/03_std_back_AUTH.md) - Lambda authorization patterns (Layer 1)
 - [Backend Resource Permissions](../standards/03_std_back_RESOURCE-PERMISSIONS.md) - Resource permission patterns (Layer 2)

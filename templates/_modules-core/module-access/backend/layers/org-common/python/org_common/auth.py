@@ -30,20 +30,20 @@ def is_chat_participant(chat_session_id: str, user_jwt: str = None) -> bool:
 def is_org_member(org_id: str, user_id: str = None, user_jwt: str = None) -> bool:
     """Check if user is a member of the organization."""
     if user_id:
-        return rpc('is_org_member', {'org_id': org_id, 'user_id': user_id}, user_jwt) is True
+        return rpc('is_org_member', {'p_org_id': org_id, 'p_user_id': user_id}, user_jwt) is True
     return rpc('is_org_member', {'org_id_param': org_id}, user_jwt) is True
 
 
 def is_org_admin(org_id: str, user_id: str = None, user_jwt: str = None) -> bool:
     """Check if user is an org admin."""
     if user_id:
-        return rpc('is_org_admin', {'org_id': org_id, 'user_id': user_id}, user_jwt) is True
+        return rpc('is_org_admin', {'p_org_id': org_id, 'p_user_id': user_id}, user_jwt) is True
     return rpc('is_org_admin', {'org_id': org_id}, user_jwt) is True
 
 
 def is_org_owner(org_id: str, user_id: str, user_jwt: str = None) -> bool:
     """Check if user is the org owner."""
-    return rpc('is_org_owner', {'org_id': org_id, 'user_id': user_id}, user_jwt) is True
+    return rpc('is_org_owner', {'p_org_id': org_id, 'p_user_id': user_id}, user_jwt) is True
 
 
 def is_org_colleague(target_user_id: str, user_jwt: str = None) -> bool:

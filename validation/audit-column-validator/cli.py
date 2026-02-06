@@ -30,6 +30,56 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from shared.static_schema_parser import StaticSchemaParser, find_schema_sql_files
 from shared.schema_types import ColumnInfo, TableInfo
 
+# Import shared output format utilities (with fallback for backward compatibility)
+try:
+    from validation.shared.output_format import (
+        create_error,
+        create_warning,
+        extract_module_from_path,
+        SEVERITY_HIGH,
+        SEVERITY_MEDIUM,
+    )
+    SHARED_FORMAT_AVAILABLE = True
+except ImportError:
+    SHARED_FORMAT_AVAILABLE = False
+    
+    # Fallback functions for backward compatibility
+    def create_error(file, line, message, category="Audit Columns", suggestion=None, module=None):
+        return {
+            "file": file,
+            "line": line,
+            "message": message,
+            "severity": "high",
+            "category": category,
+            "suggestion": suggestion,
+            "module": module,
+        }
+    
+    def create_warning(file, line, message, category="Audit Columns", suggestion=None, module=None):
+        return {
+            "file": file,
+            "line": line,
+            "message": message,
+            "severity": "medium",
+            "category": category,
+            "suggestion": suggestion,
+            "module": module,
+        }
+    
+    def extract_module_from_path(file_path):
+        """Extract module name from file path."""
+        if not file_path:
+            return None
+        
+        # Try to extract module name from path
+        match = re.search(r'module-([a-z]+)', str(file_path))
+        if match:
+            return f"module-{match.group(1)}"
+        return None
+    
+    SEVERITY_HIGH = "high"
+    SEVERITY_MEDIUM = "medium"
+
 # ANSI color codes
 GREEN = '\033[92m'
 RED = '\033[91m'
@@ -100,6 +150,54 @@ ENTITY_TABLE_PATTERNS = [
     r'orgs$',
     r'.*_members$',      # org_members, ws_members, etc.
 ]
+
+
+def _standardize_non_compliant_table(result: Dict, project_root: Path):
+    """
+    Convert a non-compliant table result to standard format error.
+    
+    Args:
+        result: Non-compliant table result dict
+        project_root: Base path for making relative paths
+        
+    Returns:
+        Dict in standard format
+    """
+    module = extract_module_from_path(result['file'])
+    
+    # Build comprehensive message
+    issues = []
+    if result.get('missing_columns'):
+        issues.append(f"Missing columns: {', '.join(result['missing_columns'])}")
+    if result.get('incorrect_columns'):
+        for col_info in result['incorrect_columns']:
+            issues.append(f"{col_info['column']}: {'; '.join(col_info['issues'])}")
+    if result.get('missing_indexes'):
+        issues.append(f"Missing indexes: {', '.join(result['missing_indexes'])}")
+    if result.get('missing_triggers'):
+        issues.append(f"Missing triggers: {', '.join(result['missing_triggers'])}")
+    
+    message = f"{result['table']}: {'; '.join(issues)}"
+    
+    return create_error(
+        file=result['file'],
+        line=0,
+        message=message,
+        category="Audit Columns",
+        suggestion="Review ADR-015 for audit column requirements",
+        module=module,
+    )
+
+
+def _standardize_warning(warning_msg: str):
+    """Convert warning string to standard format."""
+    return create_warning(
+        file="",
+        line=0,
+        message=warning_msg,
+        category="Audit Columns",
+        module=None,
+    )
 
 
 class AuditColumnValidator:
@@ -503,21 +601,21 @@ def main():
     
     # Output results
     if args.format == "json":
-        # JSON output for orchestrator
+        # Standardize to new format
+        standardized_errors = [
+            _standardize_non_compliant_table(r, templates_dir)
+            for r in validator.non_compliant_tables
+        ]
+        
+        standardized_warnings = [
+            _standardize_warning(w)
+            for w in validator.warnings
+        ]
+        
         result = {
             "passed": validator.get_exit_code() == 0,
-            "errors": [
-                {
-                    "table": r["table"],
-                    "file": r["file"],
-                    "missing_columns": r.get("missing_columns", []),
-                    "incorrect_columns": r.get("incorrect_columns", []),
-                    "missing_indexes": r.get("missing_indexes", []),
-                    "missing_triggers": r.get("missing_triggers", [])
-                }
-                for r in validator.non_compliant_tables
-            ],
-            "warnings": validator.warnings,
+            "errors": standardized_errors,
+            "warnings": standardized_warnings,
             "summary": {
                 "total_tables": len(validator.compliant_tables) + len(validator.non_compliant_tables),
                 "compliant": len(validator.compliant_tables),

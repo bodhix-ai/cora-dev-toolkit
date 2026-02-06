@@ -31,6 +31,7 @@ export { platformMgmtAdminCard } from "./adminCard";
 
 // Export admin components
 export { PlatformMgmtAdmin } from "./components/admin/PlatformMgmtAdmin";
+export { SysMgmtModulesAdmin } from "./components/admin/SysMgmtModulesAdmin";
 export { ScheduleTab } from "./components/admin/ScheduleTab";
 export { PerformanceTab } from "./components/admin/PerformanceTab";
 export { StorageTab } from "./components/admin/StorageTab";

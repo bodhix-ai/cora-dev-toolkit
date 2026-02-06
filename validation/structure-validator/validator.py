@@ -6,12 +6,40 @@ Validates project and module structure against CORA standards defined in:
 - cora-project-boilerplate.md
 - cora-core-modules.md
 - cora-module-definition-of-done.md
+
+Standard: 05_std_quality_VALIDATOR-OUTPUT
 """
 
 import json
+import sys
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional
+
+# Import shared output format utilities
+try:
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from shared.output_format import (
+        create_error, 
+        create_warning,
+        extract_module_from_path,
+        SEVERITY_HIGH,
+        SEVERITY_MEDIUM,
+        SEVERITY_LOW,
+        SEVERITY_CRITICAL
+    )
+except ImportError:
+    # Fallback if shared module not available
+    def create_error(file, message, category, severity="high", line=None, suggestion=None, project_root=None):
+        return {"file": file, "message": message, "category": category, "severity": severity, "line": line, "suggestion": suggestion}
+    def create_warning(file, message, category, line=None, suggestion=None, project_root=None):
+        return {"file": file, "message": message, "category": category, "severity": "medium", "line": line, "suggestion": suggestion}
+    def extract_module_from_path(file_path):
+        return "unknown"
+    SEVERITY_HIGH = "high"
+    SEVERITY_MEDIUM = "medium"
+    SEVERITY_LOW = "low"
+    SEVERITY_CRITICAL = "critical"
 
 
 @dataclass
@@ -35,20 +63,47 @@ class ValidationResult:
     info: list = field(default_factory=list)
 
     def add_issue(self, issue: ValidationIssue):
-        """Add an issue to the appropriate list."""
-        issue_dict = {
-            "message": issue.message,
-            "path": issue.path,
-            "rule": issue.rule,
-            "suggestion": issue.suggestion,
+        """Add an issue to the appropriate list using standard format."""
+        # Map old severity to new severity
+        severity_map = {
+            "error": SEVERITY_HIGH,
+            "warning": SEVERITY_MEDIUM,
+            "info": SEVERITY_LOW
         }
+        
+        new_severity = severity_map.get(issue.severity, SEVERITY_HIGH)
+        
+        # Create standardized issue
         if issue.severity == "error":
-            self.errors.append(issue_dict)
+            standardized = create_error(
+                file=issue.path,
+                message=issue.message,
+                category="Structure",
+                severity=new_severity,
+                suggestion=issue.suggestion,
+                project_root=self.target_path
+            )
+            self.errors.append(standardized)
             self.passed = False
         elif issue.severity == "warning":
-            self.warnings.append(issue_dict)
-        else:
-            self.info.append(issue_dict)
+            standardized = create_warning(
+                file=issue.path,
+                message=issue.message,
+                category="Structure",
+                suggestion=issue.suggestion,
+                project_root=self.target_path
+            )
+            self.warnings.append(standardized)
+        else:  # info
+            standardized = {
+                "file": issue.path,
+                "message": issue.message,
+                "category": "Structure",
+                "severity": new_severity,
+                "suggestion": issue.suggestion,
+                "module": extract_module_from_path(issue.path)
+            }
+            self.info.append(standardized)
 
     def to_dict(self) -> dict:
         """Convert to dictionary."""

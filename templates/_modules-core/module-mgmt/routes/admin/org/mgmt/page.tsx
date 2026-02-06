@@ -1,7 +1,7 @@
 "use client";
 
 import { useUser, useOrganizationContext, useRole } from "@{{PROJECT_NAME}}/module-access";
-import OrgModuleConfigPage from "@{{PROJECT_NAME}}/module-mgmt/frontend/pages/OrgModuleConfigPage";
+import { OrgModuleConfigPage } from "@{{PROJECT_NAME}}/module-mgmt";
 import {
   Box,
   CircularProgress,

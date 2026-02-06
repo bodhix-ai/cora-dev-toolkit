@@ -1,12 +1,22 @@
 /**
- * Platform Management Admin Component
- *
- * Main admin page for Platform Management module.
+ * @component PlatformMgmtAdmin
+ * @description Platform Management Admin Component - Main admin page for Platform Management module
+ * 
  * Provides tabbed interface for:
  * - Lambda warming schedule management
- * - Platform performance monitoring (future)
- * - Storage management (future)
- * - Cost tracking (future)
+ * - Platform performance monitoring
+ * - Storage management
+ * - Cost tracking
+ * 
+ * @routes
+ * - GET /admin/sys/mgmt/schedule - List all warming schedule configurations
+ * - GET /admin/sys/mgmt/schedule/{configKey} - Get specific schedule config
+ * - PUT /admin/sys/mgmt/schedule/{configKey} - Update schedule config (triggers EventBridge sync)
+ * - GET /admin/sys/mgmt/functions - List Lambda functions
+ * - POST /admin/sys/mgmt/schedule/sync - Manual EventBridge synchronization
+ * - GET /admin/sys/mgmt/modules - List all modules (via ModuleConfigTab)
+ * - POST /admin/sys/mgmt/modules/{name}/enable - Enable module (via ModuleConfigTab)
+ * - POST /admin/sys/mgmt/modules/{name}/disable - Disable module (via ModuleConfigTab)
  */
 
 import React, { useState } from "react";

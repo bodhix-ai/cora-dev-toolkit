@@ -42,13 +42,24 @@ interface AccessControlAdminProps {
 }
 
 /**
- * Access Control Admin Component
+ * @component AccessControlAdmin
+ * @description Access Control Admin Component - Main admin page for platform-wide access control management
  * 
- * Main tabbed interface for platform-wide access control management.
- * Provides tabs for:
+ * Provides tabbed interface for:
  * - Organizations: List and manage organizations
  * - Users: Platform-wide user management
  * - IDP Config: Identity provider configuration
+ * 
+ * @routes
+ * - GET /admin/sys/access/orgs - List all organizations
+ * - POST /admin/sys/access/orgs - Create organization
+ * - PUT /admin/sys/access/orgs/{orgId} - Update organization
+ * - DELETE /admin/sys/access/orgs/{orgId} - Delete organization
+ * - GET /admin/sys/access/users - List all platform users
+ * - PUT /admin/sys/access/users/{userId} - Update user (e.g., disable/enable)
+ * - DELETE /admin/sys/access/users/{userId} - Delete user
+ * - GET /admin/sys/access/idp - Get identity provider configuration
+ * - PUT /admin/sys/access/idp - Update identity provider configuration
  */
 export function AccessControlAdmin({ authAdapter }: AccessControlAdminProps) {
   const [activeTab, setActiveTab] = useState(0);

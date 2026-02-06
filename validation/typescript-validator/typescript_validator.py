@@ -5,13 +5,41 @@ Runs TypeScript compiler in type-check mode across all packages.
 Identifies type errors with file, line, and column information.
 
 Part of CORA validation suite to prevent type errors before deployment.
+
+Standard: 05_std_quality_VALIDATOR-OUTPUT
 """
 
 import subprocess
 import re
 import os
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional
+
+# Import shared output format utilities
+try:
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from shared.output_format import (
+        create_error, 
+        create_warning,
+        extract_module_from_path,
+        SEVERITY_HIGH,
+        SEVERITY_MEDIUM,
+        SEVERITY_LOW,
+        SEVERITY_CRITICAL
+    )
+except ImportError:
+    # Fallback if shared module not available
+    def create_error(file, message, category, severity="high", line=None, suggestion=None, project_root=None):
+        return {"file": file, "message": message, "category": category, "severity": severity, "line": line, "suggestion": suggestion}
+    def create_warning(file, message, category, line=None, suggestion=None, project_root=None):
+        return {"file": file, "message": message, "category": category, "severity": "medium", "line": line, "suggestion": suggestion}
+    def extract_module_from_path(file_path):
+        return "unknown"
+    SEVERITY_HIGH = "high"
+    SEVERITY_MEDIUM = "medium"
+    SEVERITY_LOW = "low"
+    SEVERITY_CRITICAL = "critical"
 
 
 class TypeScriptValidator:
@@ -49,16 +77,19 @@ class TypeScriptValidator:
                 - warnings: List[str]
         """
         if not self._check_prerequisites():
+            prereq_error = create_error(
+                file="N/A",
+                message="Prerequisites not met: missing package.json or node_modules",
+                category="TypeScript",
+                severity=SEVERITY_HIGH,
+                project_root=str(self.stack_path)
+            )
+            prereq_error["code"] = "PREREQ"
+            
             return {
                 'passed': False,
                 'error_count': 1,
-                'errors': [{
-                    'file': 'N/A',
-                    'line': 0,
-                    'column': 0,
-                    'code': 'PREREQ',
-                    'message': 'Prerequisites not met: missing package.json or node_modules'
-                }],
+                'errors': [prereq_error],
                 'warnings': self.warnings
             }
         
@@ -66,16 +97,19 @@ class TypeScriptValidator:
         result = self._run_typecheck()
         
         if result is None:
+            cmd_error = create_error(
+                file="N/A",
+                message="Failed to execute typecheck command",
+                category="TypeScript",
+                severity=SEVERITY_HIGH,
+                project_root=str(self.stack_path)
+            )
+            cmd_error["code"] = "CMD_FAILED"
+            
             return {
                 'passed': False,
                 'error_count': 1,
-                'errors': [{
-                    'file': 'N/A',
-                    'line': 0,
-                    'column': 0,
-                    'code': 'CMD_FAILED',
-                    'message': 'Failed to execute typecheck command'
-                }],
+                'errors': [cmd_error],
                 'warnings': self.warnings
             }
         
@@ -227,13 +261,21 @@ class TypeScriptValidator:
             error_code = match.group(4)
             message = match.group(5).strip()
             
-            self.errors.append({
-                'file': file_path,
-                'line': line,
-                'column': column,
-                'code': error_code,
-                'message': message
-            })
+            # Create standardized error
+            standardized_error = create_error(
+                file=file_path,
+                message=f"{error_code}: {message}",
+                category="TypeScript",
+                severity=SEVERITY_HIGH,
+                line=line,
+                project_root=str(self.stack_path)
+            )
+            
+            # Add TypeScript-specific fields
+            standardized_error["column"] = column
+            standardized_error["code"] = error_code
+            
+            self.errors.append(standardized_error)
     
     def _filter_template_errors(self, errors: List[Dict]) -> List[Dict]:
         """
@@ -294,7 +336,10 @@ class TypeScriptValidator:
         for file_path, file_errors in sorted(errors_by_file.items()):
             summary += f"📄 {file_path} ({len(file_errors)} error(s)):\n"
             for error in file_errors:
-                summary += f"  Line {error['line']}:{error['column']} - {error['code']}: {error['message']}\n"
+                line = error.get('line', 0)
+                column = error.get('column', 0)
+                message = error.get('message', 'Unknown error')
+                summary += f"  Line {line}:{column} - {message}\n"
             summary += "\n"
         
         return summary.strip()
