@@ -1,12 +1,75 @@
 # Concept of Operations: Evaluation Optimization System
 
 **Document Type:** Technical Specification  
-**Status:** Draft v1.0  
+**Status:** Draft v1.1 - PARTIALLY UPDATED (see Phase 4 Redesign Notice)  
 **Created:** February 4, 2026  
-**Last Updated:** February 4, 2026  
+**Last Updated:** February 5, 2026  
 **Related Docs:** 
 - [Eval Optimization Context](../../memory-bank/context-eval-optimization.md)
-- [Sprint 1 Plan](../plans/plan_eval-optimization-s1.md)
+- [Sprint 2 Plan](../plans/plan_eval-optimization-s2.md)
+- [Phase 4 Redesign Spec](./spec_eval-optimizer-phase4-redesign.md) ⚠️ **CRITICAL - READ FIRST**
+
+---
+
+## 🚨 PHASE 4 REDESIGN NOTICE (February 5, 2026)
+
+**Sections 3.5 (Phase 4: Optimization Cycles) and 5 (Prompt Version Management) in this document are STALE.**
+
+The original ConOps described **manual prompt configuration** by BAs. This was discovered to be fundamentally wrong. The correct approach is:
+
+**Old Approach (WRONG - described in Sections 3.5 and 5):**
+- ❌ BA manually writes prompts
+- ❌ BA manually configures temperature/max_tokens
+- ❌ BA manually iterates on prompt configurations
+
+**New Approach (CORRECT - see spec_eval-optimizer-phase4-redesign.md):**
+- ✅ BA uploads domain context documents
+- ✅ BA defines desired response structure
+- ✅ **SYSTEM automatically generates and tests prompts via RAG + LLM meta-prompting**
+- ✅ SYSTEM finds best configuration automatically
+- ✅ SYSTEM provides recommendations for improvement
+
+**For Phase 4 implementation details, refer to:** `docs/specifications/spec_eval-optimizer-phase4-redesign.md`
+
+---
+
+## 🚨 CRITICAL: RAG Architecture Constraint
+
+**Module-kb is the ONLY RAG provider. DO NOT build new RAG infrastructure.**
+
+| Component | Provider | NOT This ❌ |
+|-----------|----------|-------------|
+| Document Storage | **module-kb** (existing) | ❌ New storage service |
+| Embeddings | **module-ai** (existing) | ❌ Direct OpenAI/Titan calls |
+| Vector Search | **module-kb** (existing) | ❌ Pinecone, Weaviate, pgvector |
+| Context Docs | **Workspace KB** (existing) | ❌ Separate eval_opt_context_docs storage |
+
+**Implementation:**
+1. Context documents are KB documents in the workspace
+2. Use existing module-kb APIs for upload, storage, and RAG
+3. Embeddings handled by module-ai (already integrated with module-kb)
+4. **Zero new vector infrastructure required**
+
+---
+
+## 🔄 WORKSPACE-CENTRIC ARCHITECTURE (February 5, 2026)
+
+**The original ConOps described a project-based container model. This has been simplified.**
+
+**Change:** Use workspace as optimization container (not separate project entity)
+
+**Rationale:**
+- Workspace already provides the container concept
+- Workspace members already provide access control
+- No need for duplicate project/member tables
+- Context docs live in workspace KB (using existing module-kb)
+
+**Impact:**
+- ❌ Removed `eval_optimization_projects`, `eval_opt_proj_members` tables
+- ✅ All tables now reference `ws_id` (workspace_id)
+- ✅ RLS policies use `workspace_members` for access control
+
+**For current database schema, refer to:** `templates/_modules-functional/module-eval-optimizer/db/schema/`
 
 ---
 
