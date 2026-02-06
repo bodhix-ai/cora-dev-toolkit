@@ -39,9 +39,9 @@ def can_access_opt_ws(user_id: str, ws_id: str) -> bool:
     Admin roles do NOT provide automatic access.
     """
     try:
-        from org_common.db import call_rpc
+        from org_common.db import rpc
         
-        return call_rpc('is_ws_member', {
+        return rpc('is_ws_member', {
             'p_ws_id': ws_id,
             'p_user_id': user_id
         })
@@ -117,7 +117,7 @@ def can_manage_opt_run(user_id: str, run_id: str) -> bool:
     Admin roles do NOT provide automatic access.
     """
     try:
-        from org_common.db import find_one, call_rpc
+        from org_common.db import find_one, rpc
         
         # Check ownership first (most common case)
         if is_opt_run_owner(user_id, run_id):
@@ -133,7 +133,7 @@ def can_manage_opt_run(user_id: str, run_id: str) -> bool:
             return False
         
         # Check if user is workspace owner (can manage any run in workspace)
-        if call_rpc('is_ws_owner', {'p_ws_id': ws_id, 'p_user_id': user_id}):
+        if rpc('is_ws_owner', {'p_ws_id': ws_id, 'p_user_id': user_id}):
             return True
         
         return False
@@ -215,7 +215,7 @@ def can_edit_opt_truth_key(user_id: str, truth_key_id: str) -> bool:
     Regular workspace members can view but not edit others' truth keys.
     """
     try:
-        from org_common.db import find_one, call_rpc
+        from org_common.db import find_one, rpc
         
         # Fetch truth key
         truth_key = find_one('eval_opt_truth_keys', {'id': truth_key_id})
@@ -240,7 +240,7 @@ def can_edit_opt_truth_key(user_id: str, truth_key_id: str) -> bool:
             return False
         
         # Check if user is workspace owner
-        if call_rpc('is_ws_owner', {'p_ws_id': ws_id, 'p_user_id': user_id}):
+        if rpc('is_ws_owner', {'p_ws_id': ws_id, 'p_user_id': user_id}):
             return True
         
         return False

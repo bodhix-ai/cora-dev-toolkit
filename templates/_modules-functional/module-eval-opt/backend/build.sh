@@ -1,17 +1,8 @@
-#!/bin/bash
-# Build script for module-eval-optimizer backend Lambdas
-#
-# Usage: ./build.sh [lambda-name]
-#   If lambda-name is provided, only that Lambda will be built
-#   Otherwise, all Lambdas will be built
-#
-# Output: .build/{lambda-name}.zip for each Lambda
+#!/usr/bin/env bash
+# Build script for module-eval-optimizer Lambda functions (Zip-Based)
+# Updated to match module-eval standard pattern with layer support
 
-set -e
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BUILD_DIR="${SCRIPT_DIR}/.build"
-LAMBDAS_DIR="${SCRIPT_DIR}/lambdas"
+set -euo pipefail
 
 # Colors for output
 RED='\033[0;31m'
@@ -19,98 +10,102 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+echo -e "${GREEN}Building module-eval-opt backend (zip-based)...${NC}"
 
-# Function to build a single Lambda
-build_lambda() {
-    local lambda_name=$1
-    local lambda_dir="${LAMBDAS_DIR}/${lambda_name}"
-    local output_zip="${BUILD_DIR}/${lambda_name}.zip"
-    local temp_dir="${BUILD_DIR}/${lambda_name}_temp"
-    
-    if [ ! -d "${lambda_dir}" ]; then
-        log_error "Lambda directory not found: ${lambda_dir}"
-        return 1
-    fi
-    
-    log_info "Building Lambda: ${lambda_name}"
-    
-    # Create temp directory
-    rm -rf "${temp_dir}"
-    mkdir -p "${temp_dir}"
-    
-    # Copy Lambda code
-    cp -r "${lambda_dir}"/*.py "${temp_dir}/" 2>/dev/null || true
-    
-    # Install requirements if present
-    if [ -f "${lambda_dir}/requirements.txt" ]; then
-        log_info "  Installing requirements..."
-        pip install -r "${lambda_dir}/requirements.txt" -t "${temp_dir}" --quiet --upgrade
-    fi
-    
-    # Remove unnecessary files
-    find "${temp_dir}" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-    find "${temp_dir}" -type f -name "*.pyc" -delete 2>/dev/null || true
-    find "${temp_dir}" -type d -name "*.dist-info" -exec rm -rf {} + 2>/dev/null || true
-    find "${temp_dir}" -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
-    
-    # Create zip
-    rm -f "${output_zip}"
-    cd "${temp_dir}"
-    zip -r "${output_zip}" . -x "*.pyc" -x "__pycache__/*" > /dev/null
-    cd "${SCRIPT_DIR}"
-    
-    # Cleanup
-    rm -rf "${temp_dir}"
-    
-    # Report size
-    local size=$(du -h "${output_zip}" | cut -f1)
-    log_info "  Created: ${output_zip} (${size})"
-}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LAMBDAS_DIR="${SCRIPT_DIR}/lambdas"
+BUILD_DIR="${SCRIPT_DIR}/.build"
 
-# Main script
-main() {
-    local target_lambda=$1
-    
-    # Create build directory
-    mkdir -p "${BUILD_DIR}"
-    
-    if [ -n "${target_lambda}" ]; then
-        # Build specific Lambda
-        build_lambda "${target_lambda}"
-    else
-        # Build all Lambdas
-        log_info "Building all Lambdas in ${LAMBDAS_DIR}"
-        
-        for lambda_dir in "${LAMBDAS_DIR}"/*/; do
-            if [ -d "${lambda_dir}" ]; then
-                lambda_name=$(basename "${lambda_dir}")
-                build_lambda "${lambda_name}"
-            fi
-        done
-    fi
-    
-    log_info "Build complete!"
-    log_info "Output directory: ${BUILD_DIR}"
-    ls -lh "${BUILD_DIR}"/*.zip 2>/dev/null || log_warn "No zip files found"
-}
+# Clean previous builds
+echo -e "${YELLOW}Cleaning previous builds...${NC}"
+rm -rf "${BUILD_DIR}"
+mkdir -p "${BUILD_DIR}"
 
-# Help
-if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
-    echo "Build script for module-eval-optimizer Lambdas"
-    echo ""
-    echo "Usage: ./build.sh [lambda-name]"
-    echo ""
-    echo "Options:"
-    echo "  lambda-name    Build only the specified Lambda (e.g., opt-orchestrator)"
-    echo "  --help, -h     Show this help message"
-    echo ""
-    echo "Examples:"
-    echo "  ./build.sh                    # Build all Lambdas"
-    echo "  ./build.sh opt-orchestrator   # Build only opt-orchestrator"
-    exit 0
+# ========================================
+# Build Lambda Layer (eval_opt_common)
+# ========================================
+echo -e "${GREEN}Building eval_opt_common Lambda layer...${NC}"
+
+LAYERS_DIR="${SCRIPT_DIR}/layers"
+EVAL_LAYER_DIR="${LAYERS_DIR}/eval_opt_common"
+EVAL_LAYER_BUILD_DIR="${BUILD_DIR}/eval-opt-layer-build"
+
+if [ ! -d "${EVAL_LAYER_DIR}" ]; then
+    echo -e "${RED}ERROR: Layer directory not found: ${EVAL_LAYER_DIR}${NC}"
+    exit 1
 fi
 
-main "$@"
+mkdir -p "${EVAL_LAYER_BUILD_DIR}/python"
+
+# Install layer dependencies if needed
+if [ -f "${EVAL_LAYER_DIR}/requirements.txt" ]; then
+    echo "Installing eval_opt_common layer dependencies for Python 3.11..."
+    pip3 install -r "${EVAL_LAYER_DIR}/requirements.txt" -t "${EVAL_LAYER_BUILD_DIR}/python" \
+        --platform manylinux2014_x86_64 \
+        --python-version 3.11 \
+        --implementation cp \
+        --only-binary=:all: \
+        --upgrade --quiet
+fi
+
+# Copy layer code
+if [ -d "${EVAL_LAYER_DIR}/python" ]; then
+    cp -r "${EVAL_LAYER_DIR}"/python/* "${EVAL_LAYER_BUILD_DIR}/python/"
+fi
+
+# Create layer ZIP
+(
+    cd "${EVAL_LAYER_BUILD_DIR}"
+    zip -r "${BUILD_DIR}/eval_opt_common-layer.zip" python -q
+)
+
+echo -e "${GREEN}✓ Layer built: ${BUILD_DIR}/eval_opt_common-layer.zip${NC}"
+
+# ========================================
+# Build Lambda Functions
+# ========================================
+for lambda_dir in "${LAMBDAS_DIR}"/*/; do
+  lambda_name=$(basename "${lambda_dir}")
+  echo -e "${GREEN}--- Building ${lambda_name} Lambda ---${NC}"
+
+  LAMBDA_BUILD_DIR="${BUILD_DIR}/${lambda_name}"
+  mkdir -p "${LAMBDA_BUILD_DIR}"
+
+  # Copy all python files (lambda source)
+  cp "${lambda_dir}"/*.py "${LAMBDA_BUILD_DIR}/"
+
+  # Install dependencies if requirements.txt exists and is not empty
+  if [ -f "${lambda_dir}requirements.txt" ] && grep -v '^#' "${lambda_dir}requirements.txt" | grep -q '[a-zA-Z]'; then
+    echo "Installing dependencies..."
+    
+    # Install platform-specific packages with binary constraints
+    pip3 install -r "${lambda_dir}requirements.txt" -t "${LAMBDA_BUILD_DIR}" \
+        --platform manylinux2014_x86_64 \
+        --python-version 3.11 \
+        --implementation cp \
+        --only-binary=:all: \
+        --ignore-installed \
+        --upgrade --quiet 2>/dev/null || true
+  fi
+
+  # Create Lambda ZIP
+  (
+    cd "${LAMBDA_BUILD_DIR}"
+    zip -r "${BUILD_DIR}/${lambda_name}.zip" . -q
+  )
+
+  echo -e "${GREEN}✓ Lambda built: ${BUILD_DIR}/${lambda_name}.zip${NC}"
+done
+
+# ========================================
+# Summary
+# ========================================
+echo ""
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}Build Complete!${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo ""
+echo "Build artifacts created in: ${BUILD_DIR}"
+du -h "${BUILD_DIR}"/*.zip 2>/dev/null || true
+echo ""
+echo -e "${GREEN}Build completed successfully!${NC}"

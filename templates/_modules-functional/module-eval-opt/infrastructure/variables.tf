@@ -1,88 +1,72 @@
 # Module: module-eval-optimizer
 # Variables for Eval Optimization Infrastructure
-
-# =============================================================================
-# REQUIRED VARIABLES
-# =============================================================================
+# ALIGNED with standard CORA functional module pattern (like module-eval)
 
 variable "project_name" {
-  description = "Name of the CORA project (e.g., ai-sec, pm-app)"
+  description = "Project name (used in resource naming prefix)"
   type        = string
 }
 
 variable "environment" {
-  description = "Deployment environment (dev, staging, prod)"
+  description = "Environment name (dev, tst, stg, prd)"
   type        = string
+
+  validation {
+    condition     = contains(["dev", "tst", "stg", "prd"], var.environment)
+    error_message = "Environment must be one of: dev, tst, stg, prd"
+  }
 }
 
-variable "opt_orchestrator_zip" {
-  description = "Path to the opt-orchestrator Lambda zip file"
+variable "module_name" {
+  description = "Name of the module (used in resource naming)"
   type        = string
+  default     = "eval-opt"
 }
 
-variable "eval_opt_common_layer_zip" {
-  description = "Path to the eval_opt_common Lambda layer zip file (ADR-019c permissions)"
+variable "aws_region" {
+  description = "AWS region for Lambda functions"
   type        = string
+  default     = "us-east-1"
+}
+
+# =============================================================================
+# Secrets and Configuration
+# =============================================================================
+
+variable "supabase_secret_arn" {
+  description = "ARN of Supabase credentials in AWS Secrets Manager"
+  type        = string
+  sensitive   = true
 }
 
 variable "org_common_layer_arn" {
-  description = "ARN of the org-common Lambda layer"
+  description = "ARN of the org-common Lambda layer (from module-access)"
   type        = string
 }
 
-variable "supabase_url" {
-  description = "Supabase project URL"
+variable "sns_topic_arn" {
+  description = "SNS topic ARN for CloudWatch alarms (optional)"
   type        = string
+  default     = ""
 }
-
-variable "supabase_key_secret_name" {
-  description = "Name of the Secrets Manager secret containing Supabase service key"
-  type        = string
-}
-
-variable "api_gateway_id" {
-  description = "ID of the API Gateway HTTP API"
-  type        = string
-}
-
-variable "api_gateway_execution_arn" {
-  description = "Execution ARN of the API Gateway HTTP API"
-  type        = string
-}
-
-variable "authorizer_id" {
-  description = "ID of the API Gateway authorizer"
-  type        = string
-}
-
-variable "subnet_ids" {
-  description = "List of subnet IDs for Lambda VPC configuration"
-  type        = list(string)
-}
-
-variable "security_group_ids" {
-  description = "List of security group IDs for Lambda VPC configuration"
-  type        = list(string)
-}
-
-# =============================================================================
-# OPTIONAL VARIABLES
-# =============================================================================
 
 variable "log_level" {
   description = "Log level for Lambda functions (DEBUG, INFO, WARNING, ERROR)"
   type        = string
   default     = "INFO"
+
+  validation {
+    condition     = contains(["DEBUG", "INFO", "WARNING", "ERROR"], var.log_level)
+    error_message = "Log level must be one of: DEBUG, INFO, WARNING, ERROR"
+  }
 }
 
-variable "log_retention_days" {
-  description = "CloudWatch log retention in days"
-  type        = number
-  default     = 30
-}
+# =============================================================================
+# Tags
+# =============================================================================
 
-variable "tags" {
-  description = "Tags to apply to all resources"
+variable "common_tags" {
+  description = "Common tags to apply to all resources"
   type        = map(string)
   default     = {}
 }
