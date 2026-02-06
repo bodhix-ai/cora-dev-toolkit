@@ -136,6 +136,30 @@ check_and_install_dependencies() {
 # Install dependencies if needed
 check_and_install_dependencies
 
+# Ensure eval-opt has access to the same .env.local as the main web app
+# Both apps share the same authentication configuration (Okta/Cognito)
+ensure_env_symlink() {
+  local eval_opt_env="${REPO_ROOT}/apps/eval-opt/.env.local"
+  local web_env="${REPO_ROOT}/apps/web/.env.local"
+  
+  if [[ -L "$eval_opt_env" ]]; then
+    echo "[start-opt] .env.local symlink already exists"
+  elif [[ -f "$eval_opt_env" ]]; then
+    echo "[start-opt] .env.local file already exists (not a symlink)"
+  elif [[ -f "$web_env" ]]; then
+    echo "[start-opt] creating .env.local symlink to ../web/.env.local"
+    ln -s ../web/.env.local "$eval_opt_env"
+    echo "[start-opt] ✅ .env.local symlink created (shared auth config)"
+  else
+    echo "[start-opt] ⚠️  No .env.local found in apps/web/"
+    echo "[start-opt] Please create apps/web/.env.local with your auth configuration"
+    echo "[start-opt] See apps/web/.env.example for required variables"
+  fi
+}
+
+# Ensure environment symlink exists
+ensure_env_symlink
+
 # Check if shared packages need building (dist/ folders missing)
 check_and_build_packages() {
   local needs_build=false
@@ -179,5 +203,10 @@ elif [[ "${SKIP_TYPE_CHECK}" == "true" ]]; then
 fi
 
 echo "[start-opt] starting eval-optimizer app on port ${PORT}..."
+# Override NEXTAUTH_URL to use the correct port for eval-opt
+# The shared .env.local has port 3000 (main app), but eval-opt needs its own port
+export NEXTAUTH_URL="http://localhost:${PORT}"
+echo "[start-opt] NEXTAUTH_URL set to ${NEXTAUTH_URL}"
+
 # Use pnpm filter to run only the eval-opt app
 PORT="${PORT}" exec pnpm --filter "**/eval-opt" dev
