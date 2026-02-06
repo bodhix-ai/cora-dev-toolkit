@@ -100,7 +100,7 @@ export default function OrgEvalAdminPage() {
           aria-label="Evaluation admin tabs"
         >
           <Tab label="Configuration" value="config" />
-          <Tab label="Document Types" value="doc-types" />
+          <Tab label="Policy Areas" value="doc-types" />
           <Tab label="Criteria" value="criteria" />
           <Tab label="AI Prompts" value="prompts" />
         </Tabs>

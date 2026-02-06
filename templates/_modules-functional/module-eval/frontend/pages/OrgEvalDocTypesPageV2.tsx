@@ -64,10 +64,10 @@ function PageHeader() {
   return (
     <Box sx={{ mb: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom>
-        Document Types
+        Policy Areas
       </Typography>
       <Typography variant="body2" color="text.secondary">
-        Manage document types for your organization. Each document type can have
+        Manage policy areas for your organization. Each policy area can have
         associated criteria sets for evaluation.
       </Typography>
     </Box>
@@ -129,7 +129,7 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
         <ErrorIcon sx={{ width: 32, height: 32, color: "error.main" }} />
       </Box>
       <Typography variant="h5" gutterBottom>
-        Failed to load document types
+        Failed to load policy areas
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center", mb: 3, maxWidth: "md" }}>
         {error.message}
@@ -287,17 +287,17 @@ export function OrgEvalDocTypesPageV2({
       {/* Help Text */}
       <Paper variant="outlined" sx={{ mt: 3, p: 2 }}>
         <Typography variant="subtitle2" gutterBottom>
-          About Document Types
+          About Policy Areas
         </Typography>
         <Box component="ul" sx={{ m: 0, pl: 2.5, "& li": { mb: 0.5 } }}>
           <Typography component="li" variant="body2" color="text.secondary">
-            Document types categorize the documents your organization evaluates.
+            Policy areas categorize the documents your organization evaluates.
           </Typography>
           <Typography component="li" variant="body2" color="text.secondary">
-            Each document type can have multiple criteria sets for different evaluation scenarios.
+            Each policy area can have multiple criteria sets for different evaluation scenarios.
           </Typography>
           <Typography component="li" variant="body2" color="text.secondary">
-            Deactivating a document type hides it from users but preserves existing evaluations.
+            Deactivating a policy area hides it from users but preserves existing evaluations.
           </Typography>
         </Box>
       </Paper>

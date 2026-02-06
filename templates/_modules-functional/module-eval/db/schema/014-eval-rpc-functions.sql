@@ -34,7 +34,7 @@ SECURITY DEFINER
 AS $$
 BEGIN
     RETURN EXISTS (
-        SELECT 1 FROM eval_doc_summary
+        SELECT 1 FROM eval_doc_summaries
         WHERE id = p_eval_id
         AND created_by = p_user_id
     );

@@ -19,6 +19,7 @@ export { TestModelDialog } from "./components/models/TestModelDialog";
 
 // Admin Components
 export { AIEnablementAdmin } from "./components/admin/AIEnablementAdmin";
+export { OrgAiAdmin } from "./components/admin/OrgAiAdmin";
 export { ProvidersTab } from "./components/admin/ProvidersTab";
 export { ModelsTab } from "./components/admin/ModelsTab";
 export { PlatformConfigTab } from "./components/admin/PlatformConfigTab";

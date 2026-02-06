@@ -3,13 +3,98 @@
 UI Library Validator CLI
 
 Wraps the bash validation script for integration with cora-validate.py orchestrator.
+
+Standard: 05_std_quality_VALIDATOR-OUTPUT
 """
 
 import argparse
 import json
 import subprocess
 import sys
+import re
 from pathlib import Path
+
+# Import shared output format utilities
+try:
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from shared.output_format import (
+        create_error, 
+        create_warning,
+        extract_module_from_path,
+        SEVERITY_HIGH,
+        SEVERITY_MEDIUM,
+        SEVERITY_LOW,
+        SEVERITY_CRITICAL
+    )
+except ImportError:
+    # Fallback if shared module not available
+    def create_error(file, message, category, severity="high", line=None, suggestion=None, project_root=None):
+        return {"file": file, "message": message, "category": category, "severity": severity, "line": line, "suggestion": suggestion}
+    def create_warning(file, message, category, line=None, suggestion=None, project_root=None):
+        return {"file": file, "message": message, "category": category, "severity": "medium", "line": line, "suggestion": suggestion}
+    def extract_module_from_path(file_path):
+        return "unknown"
+    SEVERITY_HIGH = "high"
+    SEVERITY_MEDIUM = "medium"
+    SEVERITY_LOW = "low"
+    SEVERITY_CRITICAL = "critical"
+
+
+def parse_bash_output(output: str, scan_path: str) -> list:
+    """
+    Parse bash script output to extract violations.
+    
+    Args:
+        output: Raw output from bash script
+        scan_path: Path that was scanned
+        
+    Returns:
+        List of standardized error dictionaries
+    """
+    errors = []
+    
+    # Pattern to match violation lines:
+    # ❌ VIOLATION: templates/_modules-core/module-access/frontend/components/SomeComponent.tsx
+    violation_pattern = r'❌ VIOLATION:\s+(.+?)(?:\n|$)'
+    
+    for match in re.finditer(violation_pattern, output):
+        file_path = match.group(1).strip()
+        
+        # Create standardized error
+        standardized_error = create_error(
+            file=file_path,
+            message="UI library violation: Uses Tailwind CSS instead of Material-UI",
+            category="UI Library",
+            severity=SEVERITY_HIGH,
+            suggestion="Replace Tailwind classes with Material-UI components and sx prop styling",
+            project_root=scan_path
+        )
+        
+        errors.append(standardized_error)
+    
+    # Also look for file paths with violation context (alternative format)
+    file_pattern = r'(templates/[^\s]+\.tsx?)'
+    for match in re.finditer(file_pattern, output):
+        file_path = match.group(1)
+        # Check if not already added
+        if not any(e['file'] == file_path for e in errors):
+            # Only add if there's violation context around it
+            context_start = max(0, match.start() - 100)
+            context_end = min(len(output), match.end() + 100)
+            context = output[context_start:context_end]
+            
+            if 'VIOLATION' in context or 'className' in context:
+                standardized_error = create_error(
+                    file=file_path,
+                    message="UI library violation: Uses Tailwind CSS instead of Material-UI",
+                    category="UI Library",
+                    severity=SEVERITY_HIGH,
+                    suggestion="Replace Tailwind classes with Material-UI components and sx prop styling",
+                    project_root=scan_path
+                )
+                errors.append(standardized_error)
+    
+    return errors
 
 
 def run_validation(scan_path: str, output_format: str = "json") -> int:
@@ -51,10 +136,19 @@ def run_validation(scan_path: str, output_format: str = "json") -> int:
     
     if not bash_script:
         error_msg = f"Validation script not found. Tried: {same_dir_script}, {toolkit_script}, {project_script}"
+        
+        script_error = create_error(
+            file="N/A",
+            message=error_msg,
+            category="UI Library",
+            severity=SEVERITY_HIGH,
+            project_root=scan_path
+        )
+        
         if output_format == "json":
             print(json.dumps({
                 "passed": False,
-                "errors": [error_msg],
+                "errors": [script_error],
                 "warnings": [],
                 "info": []
             }))
@@ -71,37 +165,50 @@ def run_validation(scan_path: str, output_format: str = "json") -> int:
             check=False
         )
         
-        # Parse output for JSON format
+        # Parse violations from output
+        errors = []
+        if result.returncode != 0:
+            errors = parse_bash_output(result.stdout, scan_path)
+        
+        # Format output
         if output_format == "json":
-            violations = []
-            if result.returncode != 0:
-                # Extract violation lines from output
-                for line in result.stdout.split('\n'):
-                    if '❌ VIOLATION' in line or 'templates/' in line:
-                        violations.append(line.strip())
-            
             output = {
                 "passed": result.returncode == 0,
-                "errors": violations if result.returncode != 0 else [],
+                "errors": errors,
                 "warnings": [],
                 "info": [],
-                "details": {
-                    "raw_output": result.stdout
+                "summary": {
+                    "errors": len(errors),
+                    "warnings": 0,
+                    "total_issues": len(errors)
                 }
             }
             print(json.dumps(output, indent=2))
         else:
-            # Text format - just print bash script output
+            # Text format - print bash script output with summary
             print(result.stdout)
+            if errors:
+                print(f"\n❌ Found {len(errors)} UI library violation(s)")
+            else:
+                print("\n✅ No UI library violations found")
         
         return result.returncode
         
     except Exception as e:
         error_msg = f"Error running validation: {str(e)}"
+        
+        exception_error = create_error(
+            file="N/A",
+            message=error_msg,
+            category="UI Library",
+            severity=SEVERITY_HIGH,
+            project_root=scan_path
+        )
+        
         if output_format == "json":
             print(json.dumps({
                 "passed": False,
-                "errors": [error_msg],
+                "errors": [exception_error],
                 "warnings": [],
                 "info": []
             }))
