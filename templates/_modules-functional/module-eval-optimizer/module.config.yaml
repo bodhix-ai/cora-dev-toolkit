@@ -1,0 +1,220 @@
+# =============================================================================
+# Module-Eval-Optimizer Configuration
+# =============================================================================
+# This file defines the default configuration for the Evaluation Optimizer module.
+# These values are merged into the project's setup.config.yaml when module-eval-optimizer is enabled.
+
+module_eval_optimizer:
+  # Module Display Settings
+  display_name: "Evaluation Optimizer"
+  
+  # Navigation Configuration
+  # Note: This module has a separate UI app (apps/eval-optimizer) for unique UX
+  navigation:
+    label_singular: "Optimizer"
+    label_plural: "Optimizers"
+    icon: "TuneIcon"
+    show_in_main_nav: false  # Separate app, not in main nav
+    nav_priority: 999  # Not shown in main app
+  
+  # Admin Card Configuration
+  # System-level only (BA Workbench)
+  admin_cards:
+    platform:
+      enabled: true
+      path: "/admin/sys/eval-optimizer"
+      title: "Evaluation Optimizer"
+      description: "Business Analyst Workbench for optimizing evaluation prompts"
+      icon: "TuneIcon"
+      priority: 65
+      context: "platform"
+    organization:
+      enabled: false  # Not org-level, only system-level
+  
+  # Optimizer Features
+  features:
+    # Enable truth key creation via web UI
+    enable_truth_key_creation: true
+    
+    # Enable optimization runs
+    enable_optimization_runs: true
+    
+    # Enable A/B comparison
+    enable_ab_comparison: true
+    
+    # Enable project management
+    enable_project_management: true
+    
+    # Enable sample document upload
+    enable_sample_upload: true
+    
+    # Enable manual evaluation UI
+    enable_manual_evaluation: true
+  
+  # Project Settings
+  projects:
+    # Allow users to create projects
+    allow_project_creation: true
+    
+    # Require approval for project creation
+    require_project_approval: false
+    
+    # Maximum projects per user
+    max_projects_per_user: 10
+    
+    # Project member roles
+    member_roles:
+      - owner
+      - admin
+      - user
+  
+  # Sample Document Settings
+  samples:
+    # Maximum samples per project
+    max_samples_per_project: 100
+    
+    # Supported document types
+    supported_doc_types: ["pdf", "docx", "txt", "md"]
+    
+    # Maximum document size (MB)
+    max_doc_size_mb: 10
+  
+  # Truth Key Settings
+  truth_keys:
+    # Require confidence score
+    require_confidence: true
+    
+    # Require explanation
+    require_explanation: true
+    
+    # Minimum explanation length (characters)
+    min_explanation_length: 20
+    
+    # Allow citations
+    allow_citations: true
+    
+    # Maximum citations per criterion
+    max_citations_per_criterion: 5
+  
+  # Optimization Run Settings
+  runs:
+    # Default run timeout (minutes)
+    default_timeout_minutes: 30
+    
+    # Maximum concurrent runs per project
+    max_concurrent_runs: 3
+    
+    # Enable synchronous runs (Sprint 2)
+    enable_sync_runs: true
+    
+    # Enable async runs (Sprint 3+)
+    enable_async_runs: false
+    
+    # Minimum samples required for run
+    min_samples_required: 1
+    
+    # Enable prompt versioning (Sprint 3+)
+    enable_prompt_versioning: false
+  
+  # Results & Metrics Settings
+  results:
+    # Enable per-criteria breakdown
+    enable_criteria_breakdown: true
+    
+    # Enable error analysis
+    enable_error_analysis: true
+    
+    # Enable A/B comparison
+    enable_ab_comparison: true
+    
+    # Metrics to display
+    metrics: ["accuracy", "precision", "recall", "f1_score", "true_positive", "true_negative", "false_positive", "false_negative"]
+  
+  # Integration Settings
+  integrations:
+    # Enable module-eval integration (required)
+    enable_eval_integration: true
+    
+    # Enable module-kb integration (for documents)
+    enable_kb_integration: true
+    
+    # Enable module-ws integration (for workspaces)
+    enable_workspace_integration: true
+    
+    # Enable module-access integration (for test orgs)
+    enable_access_integration: true
+  
+  # Permissions
+  permissions:
+    # Database permissions
+    database: ["rds:ExecuteStatement"]
+    
+    # Storage permissions (for documents)
+    storage: ["s3:GetObject", "s3:PutObject"]
+    
+    # External permissions (for AI providers)
+    external: ["bedrock:InvokeModel"]
+    
+    # Role-based access control
+    roles:
+      optimizer_admin:
+        description: "Full control over optimization projects and configurations"
+        can_create_projects: true
+        can_manage_projects: true
+        can_manage_members: true
+        can_upload_samples: true
+        can_create_truth_keys: true
+        can_run_optimizations: true
+        can_view_all_results: true
+        can_delete_projects: true
+        can_export_results: true
+      optimizer_analyst:
+        description: "Can create and manage optimization projects"
+        can_create_projects: true
+        can_manage_projects: true
+        can_manage_members: false
+        can_upload_samples: true
+        can_create_truth_keys: true
+        can_run_optimizations: true
+        can_view_all_results: true
+        can_delete_projects: false
+        can_export_results: true
+      optimizer_viewer:
+        description: "View-only access to optimization projects and results"
+        can_create_projects: false
+        can_manage_projects: false
+        can_manage_members: false
+        can_upload_samples: false
+        can_create_truth_keys: false
+        can_run_optimizations: false
+        can_view_all_results: true
+        can_delete_projects: false
+        can_export_results: false
+  
+  # Performance Settings
+  performance:
+    # Enable result caching
+    enable_caching: true
+    
+    # Cache TTL in seconds
+    cache_ttl_seconds: 3600
+    
+    # Enable background processing (Sprint 3+)
+    enable_background_processing: false
+  
+  # Audit Settings
+  audit:
+    # Track all project changes
+    track_project_changes: true
+    
+    # Track all truth key changes
+    track_truth_key_changes: true
+    
+    # Track all run executions
+    track_run_executions: true
+    
+    # Audit log retention days
+    audit_retention_days: 730
+    
+    # Enable detailed logging
+    enable_detailed_logging: true
