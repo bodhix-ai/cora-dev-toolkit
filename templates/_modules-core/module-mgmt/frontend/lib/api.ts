@@ -137,26 +137,34 @@ export class LambdaMgmtApiClient {
       const response = await this.client.get<{
         data: Array<{
           name: string;
-          arn: string;
-          memory_mb: number;
-          timeout_seconds: number;
+          memoryMb: number;
+          timeoutSeconds: number;
           runtime: string;
-          last_modified: string;
+          lastModified: string;
           description?: string;
           handler?: string;
           version?: string;
         }>;
       }>("/admin/sys/mgmt/functions");
       
-      // Transform snake_case to camelCase (backend returns snake_case)
+      // Backend already returns camelCase via common.format_records()
       const data = response?.data || [];
-      return data.map(fn => ({
+      return data.map((fn: {
+        name: string;
+        memoryMb: number;
+        timeoutSeconds: number;
+        runtime: string;
+        lastModified: string;
+        description?: string;
+        handler?: string;
+        version?: string;
+      }): LambdaFunctionInfo => ({
         name: fn.name,
-        arn: fn.arn,
-        memoryMb: fn.memory_mb,
-        timeoutSeconds: fn.timeout_seconds,
+        arn: fn.name, // Use name as arn since backend doesn't return arn
+        memoryMb: fn.memoryMb,
+        timeoutSeconds: fn.timeoutSeconds,
         runtime: fn.runtime,
-        lastModified: fn.last_modified,
+        lastModified: fn.lastModified,
         description: fn.description,
         handler: fn.handler,
         version: fn.version,

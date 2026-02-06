@@ -81,32 +81,44 @@ export function PlatformMgmtAdmin(): React.ReactElement {
           onChange={handleTabChange}
           aria-label="platform management tabs"
         >
-          <Tab label="Schedule" id="tab-schedule" aria-controls="tabpanel-schedule" />
-          <Tab label="Performance" id="tab-performance" aria-controls="tabpanel-performance" />
-          <Tab label="Storage" id="tab-storage" aria-controls="tabpanel-storage" />
-          <Tab label="Cost" id="tab-cost" aria-controls="tabpanel-cost" />
           <Tab label="Modules" id="tab-modules" aria-controls="tabpanel-modules" />
+          <Tab label="Cost" id="tab-cost" aria-controls="tabpanel-cost" />
+          <Tab label="AI" id="tab-ai" aria-controls="tabpanel-ai" />
+          <Tab label="Data" id="tab-data" aria-controls="tabpanel-data" />
+          <Tab label="Compute" id="tab-compute" aria-controls="tabpanel-compute" />
+          <Tab label="Schedule" id="tab-schedule" aria-controls="tabpanel-schedule" />
         </Tabs>
       </Box>
 
-      <Box role="tabpanel" hidden={activeTab !== 0} id="tabpanel-schedule" aria-labelledby="tab-schedule">
-        {activeTab === 0 && <ScheduleTab />}
+      <Box role="tabpanel" hidden={activeTab !== 0} id="tabpanel-modules" aria-labelledby="tab-modules">
+        {activeTab === 0 && <ModuleConfigTab />}
       </Box>
 
-      <Box role="tabpanel" hidden={activeTab !== 1} id="tabpanel-performance" aria-labelledby="tab-performance">
-        {activeTab === 1 && <PerformanceTab />}
+      <Box role="tabpanel" hidden={activeTab !== 1} id="tabpanel-cost" aria-labelledby="tab-cost">
+        {activeTab === 1 && <CostTab />}
       </Box>
 
-      <Box role="tabpanel" hidden={activeTab !== 2} id="tabpanel-storage" aria-labelledby="tab-storage">
-        {activeTab === 2 && <StorageTab />}
+      <Box role="tabpanel" hidden={activeTab !== 2} id="tabpanel-ai" aria-labelledby="tab-ai">
+        {activeTab === 2 && (
+          <Box sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>AI Configuration</Typography>
+            <Typography variant="body2" color="text.secondary">
+              AI provider and model configuration coming soon.
+            </Typography>
+          </Box>
+        )}
       </Box>
 
-      <Box role="tabpanel" hidden={activeTab !== 3} id="tabpanel-cost" aria-labelledby="tab-cost">
-        {activeTab === 3 && <CostTab />}
+      <Box role="tabpanel" hidden={activeTab !== 3} id="tabpanel-data" aria-labelledby="tab-data">
+        {activeTab === 3 && <StorageTab />}
       </Box>
 
-      <Box role="tabpanel" hidden={activeTab !== 4} id="tabpanel-modules" aria-labelledby="tab-modules">
-        {activeTab === 4 && <ModuleConfigTab />}
+      <Box role="tabpanel" hidden={activeTab !== 4} id="tabpanel-compute" aria-labelledby="tab-compute">
+        {activeTab === 4 && <PerformanceTab />}
+      </Box>
+
+      <Box role="tabpanel" hidden={activeTab !== 5} id="tabpanel-schedule" aria-labelledby="tab-schedule">
+        {activeTab === 5 && <ScheduleTab />}
       </Box>
     </Box>
   );

@@ -151,6 +151,7 @@ resource "aws_lambda_function" "voice_sessions" {
   count = var.module_voice_enabled ? 1 : 0
   
   function_name = "${local.lambda_prefix}-sessions"
+  description   = "FUNC-VOICE: Session CRUD, ECS bot orchestration, standby pool"
   handler       = "lambda_function.lambda_handler"
   runtime       = "python3.11"
   timeout       = var.module_voice_lambda_timeout
@@ -194,6 +195,7 @@ resource "aws_lambda_function" "voice_configs" {
   count = var.module_voice_enabled ? 1 : 0
   
   function_name = "${local.lambda_prefix}-configs"
+  description   = "FUNC-VOICE: Voice configuration management (providers, models, settings)"
   handler       = "lambda_function.lambda_handler"
   runtime       = "python3.11"
   timeout       = var.module_voice_lambda_timeout
@@ -228,6 +230,7 @@ resource "aws_lambda_function" "voice_analytics" {
   count = var.module_voice_enabled ? 1 : 0
   
   function_name = "${local.lambda_prefix}-analytics"
+  description   = "FUNC-VOICE: Voice session analytics and usage reporting"
   handler       = "lambda_function.lambda_handler"
   runtime       = "python3.11"
   timeout       = var.module_voice_lambda_timeout
@@ -262,6 +265,7 @@ resource "aws_lambda_function" "voice_credentials" {
   count = var.module_voice_enabled ? 1 : 0
   
   function_name = "${local.lambda_prefix}-credentials"
+  description   = "FUNC-VOICE: Voice API credentials management (Deepgram, Cartesia)"
   handler       = "lambda_function.lambda_handler"
   runtime       = "python3.11"
   timeout       = var.module_voice_lambda_timeout
@@ -295,6 +299,7 @@ resource "aws_lambda_function" "voice_transcripts" {
   count = var.module_voice_enabled ? 1 : 0
   
   function_name = "${local.lambda_prefix}-transcripts"
+  description   = "FUNC-VOICE: Transcript CRUD, S3 storage, Deepgram integration"
   handler       = "lambda_function.lambda_handler"
   runtime       = "python3.11"
   timeout       = var.module_voice_lambda_timeout
@@ -332,6 +337,7 @@ resource "aws_lambda_function" "voice_websocket" {
   count = var.module_voice_enabled ? 1 : 0
   
   function_name = "${local.lambda_prefix}-websocket"
+  description   = "FUNC-VOICE: WebSocket handler for voice session connections"
   handler       = "lambda_function.lambda_handler"
   runtime       = "python3.11"
   timeout       = 300

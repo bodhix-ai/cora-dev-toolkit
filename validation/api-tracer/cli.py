@@ -132,6 +132,12 @@ logger = logging.getLogger(__name__)
     default=None,
     help='Filter validation to a specific module (e.g., module-kb, module-chat). Speeds up iterative fixing.'
 )
+@click.option(
+    '--exclude-routes',
+    multiple=True,
+    default=None,
+    help='Route patterns to exclude from orphaned route warnings (e.g., ^/internal/, ^/webhooks/). Can be specified multiple times.'
+)
 def validate(
     path: str, 
     output: str, 
@@ -150,7 +156,8 @@ def validate(
     all_auth: bool,
     no_quality: bool,
     quality_only: bool,
-    module: str
+    module: str,
+    exclude_routes: tuple
 ):
     """
     Validate API contracts across frontend, API Gateway, and Lambda layers.
@@ -265,6 +272,11 @@ def validate(
         if module:
             logger.info(f"Filtering validation to module: {module}")
         
+        # Route exclusion patterns
+        route_exclusions = list(exclude_routes) if exclude_routes else None
+        if route_exclusions:
+            logger.info(f"Excluding route patterns from orphaned route checks: {route_exclusions}")
+        
         validator = FullStackValidator(
             frontend_parser, 
             gateway_parser, 
@@ -276,7 +288,8 @@ def validate(
             validate_auth=validate_auth,
             validate_layer1=validate_layer1,
             validate_layer2=validate_layer2,
-            module_filter=module
+            module_filter=module,
+            route_exclusion_patterns=route_exclusions
         )
         
         # For auth-only mode, we still run full validation but can filter output

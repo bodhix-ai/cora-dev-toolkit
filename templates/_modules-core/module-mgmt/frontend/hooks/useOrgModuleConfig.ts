@@ -17,6 +17,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 
 // =============================================================================
 // Types
@@ -69,52 +70,6 @@ export interface UseOrgModuleConfigReturn {
 }
 
 // =============================================================================
-// API Client
-// =============================================================================
-
-const API_BASE_URL =
-  typeof window !== "undefined"
-    ? (window as any).NEXT_PUBLIC_CORA_API_URL ||
-      process.env.NEXT_PUBLIC_CORA_API_URL ||
-      ""
-    : process.env.NEXT_PUBLIC_CORA_API_URL || "";
-
-async function apiRequest<T>(
-  endpoint: string,
-  options: RequestInit = {},
-  token?: string
-): Promise<{ data: T | null; error: string | null }> {
-  try {
-    const url = `${API_BASE_URL}${endpoint}`;
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options.headers,
-      },
-    });
-
-    const json = await response.json();
-
-    if (!response.ok) {
-      return {
-        data: null,
-        error:
-          json.message || `HTTP ${response.status}: ${response.statusText}`,
-      };
-    }
-
-    return { data: json, error: null };
-  } catch (err) {
-    return {
-      data: null,
-      error: err instanceof Error ? err.message : "Unknown error occurred",
-    };
-  }
-}
-
-// =============================================================================
 // Hook Implementation
 // =============================================================================
 
@@ -157,25 +112,20 @@ export function useOrgModuleConfig(
     setIsLoading(true);
     setError(null);
 
-    const { data, error: fetchError } = await apiRequest<{
-      modules: OrgModuleConfig[];
-    }>(`/admin/org/mgmt/modules`, {
-      headers: {
-        'X-Org-Id': orgId
-      }
-    }, token);
+    try {
+      const client = createCoraAuthenticatedClient(token);
+      const data = await client.get<{ success: boolean; data: { modules: OrgModuleConfig[] } }>(`/admin/org/mgmt/modules?orgId=${orgId}`);
 
-    if (fetchError) {
-      handleError(fetchError);
-      setModules([]);
-    } else if (data) {
       // API returns: { success: true, data: { modules: [...] } }
-      const apiData = data as any;
-      setModules(apiData?.data?.modules || []);
+      setModules(data?.data?.modules || []);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to fetch modules";
+      handleError(errorMessage);
+      setModules([]);
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
-  }, [orgId, handleError, isAuthenticated, token]);
+  }, [orgId, handleError, isAuthenticated]);
 
   // Get single module with org-level resolution
   const getModule = useCallback(
@@ -183,24 +133,19 @@ export function useOrgModuleConfig(
       if (!isAuthenticated) return null;
       if (!orgId) return null;
 
-      const { data, error: fetchError } = await apiRequest<{
-        module: OrgModuleConfig;
-      }>(`/admin/org/mgmt/modules/${name}`, {
-        headers: {
-          'X-Org-Id': orgId
-        }
-      }, token);
+      try {
+        const client = createCoraAuthenticatedClient(token);
+        const data = await client.get<{ success: boolean; data: { module: OrgModuleConfig } }>(`/admin/org/mgmt/modules/${name}?orgId=${orgId}`);
 
-      if (fetchError) {
-        handleError(fetchError);
+        // API returns: { success: true, data: { module: {...} } }
+        return data?.data?.module || null;
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to fetch module";
+        handleError(errorMessage);
         return null;
       }
-
-      // API returns: { success: true, data: { module: {...} } }
-      const apiData = data as any;
-      return apiData?.data?.module || null;
     },
-    [orgId, handleError, isAuthenticated, token]
+    [orgId, handleError, isAuthenticated]
   );
 
   // Update org-level module config
@@ -212,43 +157,32 @@ export function useOrgModuleConfig(
       if (!isAuthenticated) return false;
       if (!orgId) return false;
 
-      const { data, error: updateError } = await apiRequest<{
-        module: OrgModuleConfig;
-      }>(
-        `/admin/org/mgmt/modules/${name}`,
-        {
-          method: "PUT",
-          headers: {
-            'X-Org-Id': orgId
-          },
-          body: JSON.stringify({
-            org_id: orgId,
-            is_enabled: updates.isEnabled,
-            config_overrides: updates.configOverrides,
-            feature_flag_overrides: updates.featureFlagOverrides,
-          }),
-        },
-        token
-      );
+      try {
+        const client = createCoraAuthenticatedClient(token);
+        const data = await client.put<{ success: boolean; data: { module: OrgModuleConfig } }>(`/admin/org/mgmt/modules/${name}?orgId=${orgId}`, {
+          org_id: orgId,
+          is_enabled: updates.isEnabled,
+          config_overrides: updates.configOverrides,
+          feature_flag_overrides: updates.featureFlagOverrides,
+        });
 
-      if (updateError) {
-        handleError(updateError);
+        // Update local state
+        if (data?.data?.module) {
+          setModules((prev: OrgModuleConfig[]) =>
+            prev.map((m: OrgModuleConfig) =>
+              m.name === name ? data.data.module : m
+            )
+          );
+        }
+
+        return true;
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to update module config";
+        handleError(errorMessage);
         return false;
       }
-
-      // Update local state
-      const apiData = data as any;
-      if (apiData?.data?.module) {
-        setModules((prev: OrgModuleConfig[]) =>
-          prev.map((m: OrgModuleConfig) =>
-            m.name === name ? apiData.data.module : m
-          )
-        );
-      }
-
-      return true;
     },
-    [orgId, handleError, isAuthenticated, token]
+    [orgId, handleError, isAuthenticated]
   );
 
   // Auto-fetch on mount or when orgId changes

@@ -17,6 +17,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
+import { createAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import {
   Box,
   Alert,
@@ -90,18 +91,8 @@ export default function SystemModuleConfigPage() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch("/admin/sys/mgmt/modules", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch modules: ${response.statusText}`);
-      }
-
-      const data = await response.json();
+      const client = createAuthenticatedClient();
+      const data = await client.get("/admin/sys/mgmt/modules");
       setModules(data.modules || []);
     } catch (err) {
       console.error("Error fetching modules:", err);
@@ -117,17 +108,8 @@ export default function SystemModuleConfigPage() {
         ? `/admin/sys/mgmt/modules/${module.name}/disable`
         : `/admin/sys/mgmt/modules/${module.name}/enable`;
 
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to toggle module");
-      }
+      const client = createAuthenticatedClient();
+      await client.post(endpoint, {});
 
       // Refresh modules list
       await fetchModules();
@@ -323,6 +305,7 @@ export default function SystemModuleConfigPage() {
                         <IconButton
                           size="small"
                           onClick={() => handleViewDetails(module)}
+                          aria-label={`View details for ${module.displayName}`}
                         >
                           <InfoIcon />
                         </IconButton>

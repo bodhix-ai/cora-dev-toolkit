@@ -227,7 +227,7 @@ resource "aws_iam_role_policy" "bedrock" {
 
 resource "aws_lambda_function" "eval_config" {
   function_name = "${local.prefix}-eval-config"
-  description   = "MODULE-EVAL: Configuration, doc types, criteria sets, status options"
+  description   = "FUNC-EVAL: Configuration, doc types, criteria sets, status options"
   handler       = "lambda_function.lambda_handler"
   runtime       = local.lambda_runtime
   role          = aws_iam_role.lambda.arn
@@ -275,7 +275,7 @@ resource "aws_cloudwatch_log_group" "eval_config" {
 
 resource "aws_lambda_function" "eval_processor" {
   function_name = "${local.prefix}-eval-processor"
-  description   = "MODULE-EVAL: Async evaluation processing (SQS triggered)"
+  description   = "FUNC-EVAL: Async evaluation processing (SQS triggered)"
   handler       = "lambda_function.lambda_handler"
   runtime       = local.lambda_runtime
   role          = aws_iam_role.lambda.arn
@@ -335,7 +335,7 @@ resource "aws_lambda_event_source_mapping" "eval_processor_sqs" {
 
 resource "aws_lambda_function" "eval_results" {
   function_name = "${local.prefix}-eval-results"
-  description   = "MODULE-EVAL: Evaluation CRUD, result editing, PDF/XLSX export"
+  description   = "FUNC-EVAL: Evaluation CRUD, result editing, PDF/XLSX export"
   handler       = "lambda_function.lambda_handler"
   runtime       = local.lambda_runtime
   role          = aws_iam_role.lambda.arn
