@@ -771,7 +771,7 @@ result = {dependency}.shared_method(org_id, params)
 **Frontend integration:**
 
 ```typescript
-import { useDepHook } from '@{project}/{dependency}-frontend';
+import { useDepHook } from '@{{PROJECT_NAME}}/{dependency}-frontend';
 
 const { data } = useDepHook(client, orgId);
 ```
@@ -857,7 +857,7 @@ COMMENT ON COLUMN public.{entity}.org_id IS 'Organization ID for multi-tenancy';
 **File:** `frontend/lib/api.ts`
 
 ```typescript
-import type { AuthenticatedClient } from '@{project}/api-client';
+import type { AuthenticatedClient } from '@{{PROJECT_NAME}}/api-client';
 
 export interface {Entity}ApiClient {
   get{Entities}: (orgId: string) => Promise<{Entity}[]>;
@@ -884,7 +884,7 @@ export function create{Entity}Client(client: AuthenticatedClient): {Entity}ApiCl
 
 ```typescript
 import { useState, useCallback, useEffect } from 'react';
-import type { AuthenticatedClient } from '@{project}/api-client';
+import type { AuthenticatedClient } from '@{{PROJECT_NAME}}/api-client';
 import { create{Entity}Client } from '../lib/api';
 
 export function use{Entities}(client: AuthenticatedClient | null, orgId: string) {

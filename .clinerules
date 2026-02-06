@@ -219,10 +219,54 @@ Every CORA project uses two repositories:
 
 ### When Creating Templates
 
-1. Use `{project}` placeholder for project-specific names
-2. Use `{module}` placeholder for module-specific names
-3. Never hardcode project prefixes like `pm-app-`
-4. All infrastructure must be configurable via variables
+1. Never hardcode project prefixes like `pm-app-`
+2. All infrastructure must be configurable via variables
+3. Use the correct placeholder syntax (see below)
+
+### Template Placeholder Standards
+
+CORA uses standardized placeholder syntax for project creation. The `create-cora-project.sh` script replaces these placeholders automatically.
+
+**Standard Placeholders (Double Curly Braces):**
+
+| Placeholder | Description | Example Usage |
+|-------------|-------------|---------------|
+| `{{PROJECT_NAME}}` | Machine-readable project name (e.g., `ai-sec`, `pm-app`) | `import { api } from "@{{PROJECT_NAME}}/api-client"` |
+| `{{PROJECT_DISPLAY_NAME}}` | Human-readable display name | `<title>{{PROJECT_DISPLAY_NAME}} - CORA App</title>` |
+| `{{MODULE_NAME}}` | Module name (e.g., `module-access`) | Module templates only |
+| `{{AWS_REGION}}` | AWS region (e.g., `us-east-1`) | Terraform and config files |
+| `{{GITHUB_ORG}}` | GitHub organization name | CI/CD and config files |
+| `{{CONFIG_FILE}}` | Setup config file basename | Deploy scripts |
+
+**Special Case - package.json Only:**
+
+| Placeholder | Description | Example Usage |
+|-------------|-------------|---------------|
+| `${project}` | Dollar-sign syntax for package names | `"name": "@${project}/api-client"` |
+
+This syntax is **ONLY** used in `package.json` files for workspace package names.
+
+**Anti-Patterns (DO NOT USE):**
+
+| Wrong Syntax | Why It Fails |
+|--------------|--------------|
+| `{project}` | Single curly braces - NOT recognized by create-cora-project.sh |
+| `@{project}` | Single curly braces with @ prefix - NOT recognized |
+| `{module}` | Single curly braces - NOT recognized |
+
+**Examples:**
+
+✅ **CORRECT:**
+```typescript
+// In TypeScript files
+import { createAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
+```
+
+❌ **WRONG:**
+```typescript
+// This will NOT be replaced and causes build errors
+import { createAuthenticatedClient } from "@{project}/api-client";
+```
 
 ### When Creating Documentation
 

@@ -19,6 +19,10 @@ Routes - Result Editing:
 Routes - Export:
 - GET /ws/{wsId}/eval/{id}/export/pdf - Export PDF
 - GET /ws/{wsId}/eval/{id}/export/xlsx - Export XLSX
+
+Routes - Configuration (Resource API for workspace members):
+- GET /ws/{wsId}/eval/config/doc-types - List doc types for workspace's org
+- GET /ws/{wsId}/eval/config/criteria-sets - List criteria sets (filter by docTypeId)
 """
 
 import json
@@ -96,6 +100,18 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         org_id = workspace.get('org_id')
         
         # =================================================================
+        # CONFIGURATION ROUTES (Resource API - workspace member access)
+        # =================================================================
+        
+        # Doc types for workspace's org
+        if '/eval/config/doc-types' in path and http_method == 'GET':
+            return handle_get_config_doc_types(event, org_id)
+        
+        # Criteria sets for workspace's org
+        if '/eval/config/criteria-sets' in path and http_method == 'GET':
+            return handle_get_config_criteria_sets(event, org_id)
+        
+        # =================================================================
         # EVALUATION CRUD ROUTES
         # =================================================================
         
@@ -148,6 +164,104 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     except Exception as e:
         logger.exception(f'Error: {str(e)}')
         return common.internal_error_response('Internal server error')
+
+
+# =============================================================================
+# CONFIGURATION HANDLERS (Resource API)
+# =============================================================================
+
+def handle_get_config_doc_types(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
+    """
+    Get doc types available for this workspace's organization.
+    
+    This is a resource-level API (not admin API) that allows any workspace member
+    to see available doc types for evaluation creation.
+    
+    Query params:
+    - includeInactive: bool (default false)
+    """
+    query_params = event.get('queryStringParameters', {}) or {}
+    include_inactive = query_params.get('includeInactive', 'false').lower() == 'true'
+    
+    # Build filters
+    filters = {'org_id': org_id}
+    if not include_inactive:
+        filters['is_active'] = True
+    
+    # Get doc types for org
+    doc_types = common.find_many('eval_doc_types', filters, order='name.asc')
+    
+    # Get criteria set counts for each doc type
+    result = []
+    for dt in doc_types:
+        criteria_sets = common.find_many(
+            'eval_criteria_sets',
+            {'doc_type_id': dt['id'], 'is_active': True},
+            select='id'
+        )
+        formatted = common.format_record(dt)
+        formatted['criteriaSetsCount'] = len(criteria_sets)
+        result.append(formatted)
+    
+    return common.success_response(result)
+
+
+def handle_get_config_criteria_sets(event: Dict[str, Any], org_id: str) -> Dict[str, Any]:
+    """
+    Get criteria sets available for this workspace's organization.
+    
+    This is a resource-level API (not admin API) that allows any workspace member
+    to see available criteria sets for evaluation creation.
+    
+    Query params:
+    - docTypeId: uuid (optional, filter by doc type)
+    - includeInactive: bool (default false)
+    """
+    query_params = event.get('queryStringParameters', {}) or {}
+    doc_type_id = query_params.get('docTypeId')
+    include_inactive = query_params.get('includeInactive', 'false').lower() == 'true'
+    
+    # If docTypeId provided, verify it belongs to org and get criteria sets
+    if doc_type_id:
+        doc_type_id = common.validate_uuid(doc_type_id, 'docTypeId')
+        
+        # Verify doc type belongs to org
+        doc_type = common.find_one('eval_doc_types', {'id': doc_type_id, 'org_id': org_id})
+        if not doc_type:
+            raise common.NotFoundError('Document type not found')
+        
+        filters = {'doc_type_id': doc_type_id}
+        if not include_inactive:
+            filters['is_active'] = True
+        
+        criteria_sets = common.find_many('eval_criteria_sets', filters, order='name.asc')
+    else:
+        # Get all doc types for org, then all criteria sets
+        doc_types = common.find_many('eval_doc_types', {'org_id': org_id}, select='id')
+        doc_type_ids = [dt['id'] for dt in doc_types]
+        
+        criteria_sets = []
+        for dt_id in doc_type_ids:
+            filters = {'doc_type_id': dt_id}
+            if not include_inactive:
+                filters['is_active'] = True
+            
+            sets = common.find_many('eval_criteria_sets', filters, order='name.asc')
+            criteria_sets.extend(sets)
+    
+    # Format results with item counts
+    result = []
+    for cs in criteria_sets:
+        items = common.find_many(
+            'eval_criteria_items',
+            {'criteria_set_id': cs['id'], 'is_active': True},
+            select='id'
+        )
+        formatted = common.format_record(cs)
+        formatted['criteriaCount'] = len(items)
+        result.append(formatted)
+    
+    return common.success_response(result)
 
 
 # =============================================================================
