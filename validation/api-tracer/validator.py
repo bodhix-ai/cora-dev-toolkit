@@ -23,6 +23,7 @@ from reporter import APIMismatch, ValidationReport
 from auth_validator import AuthLifecycleValidator, AuthIssue
 from code_quality_validator import CodeQualityValidator, CodeQualityIssue
 from db_function_validator import DBFunctionValidator, DBFunctionIssue
+from component_parser import ComponentParser, ComponentRoute
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +129,10 @@ class FullStackValidator:
         self.validate_db_functions = True  # Default: enabled
         self.db_function_validator = DBFunctionValidator()
         self.db_function_issues: List[DBFunctionIssue] = []
+        
+        # Component route metadata parser (admin components with @routes docstrings)
+        self.component_parser = ComponentParser()
+        self.component_routes_index: Dict[str, List[ComponentRoute]] = {}
         
         # Module filter for efficient per-module validation (e.g., 'module-kb')
         self.module_filter = module_filter
@@ -292,6 +297,19 @@ class FullStackValidator:
         
         # Enhance Lambda path inference using Gateway route definitions
         self._enhance_lambda_path_inference(project)
+        
+        # Parse admin component route metadata (@routes docstrings)
+        logger.info("Parsing admin component route metadata...")
+        component_routes = []
+        for path in frontend_paths:
+            if path.exists():
+                logger.info(f"Parsing admin components in: {path}")
+                routes = self.component_parser.parse_directory(str(path))
+                component_routes.extend(routes)
+        
+        # Build index for fast lookup
+        self.component_routes_index = self.component_parser.get_component_routes_index()
+        logger.info(f"Found {len(component_routes)} routes documented in {len(self.component_parser.components_with_metadata)} admin components")
     
     def _enhance_lambda_path_inference(self, project: Path):
         """
@@ -551,6 +569,7 @@ class FullStackValidator:
         - Internal-only endpoints
         
         Excludes routes matching exclusion patterns (webhooks, internal APIs, etc.)
+        Also excludes routes documented in admin component @routes metadata.
         """
         logger.info("Checking for orphaned routes...")
         
@@ -573,6 +592,13 @@ class FullStackValidator:
                         excluded = True
                         logger.debug(f"Excluding route {normalized} (matches pattern {pattern.pattern})")
                         break
+                
+                # Check if route is documented in admin component @routes metadata
+                if not excluded and route_key in self.component_routes_index:
+                    excluded = True
+                    component_routes = self.component_routes_index[route_key]
+                    component_names = [cr.component_name for cr in component_routes]
+                    logger.debug(f"Route {route_key} documented in component(s): {', '.join(component_names)}")
                 
                 if not excluded:
                     # This Lambda route has no frontend calls and is not excluded
