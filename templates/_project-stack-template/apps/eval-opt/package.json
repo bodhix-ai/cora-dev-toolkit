@@ -1,8 +1,8 @@
 {
-  "name": "@{project}/eval-optimizer",
+  "name": "@{project}/eval-opt",
   "version": "0.1.0",
   "private": true,
-  "description": "Evaluation prompt optimization workbench for CORA",
+  "description": "Evaluation prompt optimizer workbench for CORA",
   "scripts": {
     "dev": "next dev --port 3001",
     "build": "next build",

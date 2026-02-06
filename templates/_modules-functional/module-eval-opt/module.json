@@ -1,5 +1,5 @@
 {
-  "name": "module-eval-optimizer",
+  "name": "module-eval-opt",
   "version": "1.0.0",
   "description": "Business Analyst Workbench for optimizing evaluation prompts using sample-driven training",
   "author": "CORA Development Team",
@@ -63,7 +63,7 @@
       "components": [],
       "hooks": [],
       "contexts": [],
-      "note": "Frontend is in separate app at apps/eval-optimizer/"
+      "note": "Frontend is in separate app at apps/eval-opt/"
     }
   },
 
