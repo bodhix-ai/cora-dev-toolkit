@@ -34,24 +34,56 @@ Currently, module-eval uses the same prompt for all document types, leading to s
 - Statistical confidence metrics on optimization quality
 - Guidance on sample size requirements for production readiness
 
+## Critical Issues (Sprint 3) 🚨
+
+### Infrastructure Interface Mismatch (RESOLVED)
+
+**Status:** ✅ RESOLVED
+**Date:** February 6, 2026
+
+**Problem:**
+The `module-eval-opt` infrastructure templates violated the CORA module interface contract by requiring non-standard variables and creating API Gateway resources internally.
+
+**Resolution:**
+1.  **Created Validator:** Implemented `terraform-module-validator` to detect these issues automatically.
+2.  **Fixed Templates:** Refactored `main.tf` and `outputs.tf` to match standard patterns (Inversion of Control).
+3.  **Fixed Build:** Updated `backend/build.sh` to correctly build layers and output to `.build/`.
+4.  **Verified:** Validator now passes on fixed templates.
+
+### Deployment Lambda Count Decrease (RESOLVED)
+
+**Status:** ✅ RESOLVED
+**Date:** February 6, 2026
+
+**Problem:**
+Deployment showed a decrease in Lambda functions (28 → 23) despite adding a new module.
+
+**Root Cause:**
+The test configuration file `setup.config.test-eval-opt.yaml` excluded `module-voice` (which has 6 lambdas), while previous deployments likely included it.
+Calculation: 28 (old) - 6 (voice) + 1 (eval-opt) = 23 (new).
+
+**Resolution:**
+Updated the configuration file to explicitly include `module-voice` to restore the full environment state.
+
 ## Sprint History
 
 | Sprint | Branch | Plan | Status | Completed |
 |--------|--------|------|-----------|--------------
 | S1 | `feature/eval-optimization-s1` | `plan_eval-optimization-s1.md` | ✅ COMPLETE | All phases (Arch, Prototype, ConOps, ADR-021) |
-| S2 | `feature/eval-optimization-s2` | `plan_eval-optimization-s2.md` | 🚧 IN PROGRESS | Phase 0 ✅, Phase 1 ✅ |
+| S2 | `feature/eval-optimization-s2` | `plan_eval-optimization-s2.md` | ✅ COMPLETE | Phase 0 ✅, Phase 1 ✅ |
+| S3 | `feature/eval-optimization-s3` | `plan_eval-optimization-s3.md` | � IN PROGRESS | Infrastructure ✅, Auth ✅, Integration testing 40% |
 
 ## Current Sprint
 
 - **Sprint 1:** ✅ COMPLETE (Feb 5, 2026 AM)
-- **Sprint 2:** ✅ COMPLETE (Feb 5, 2026)
-- **Branch:** `feature/eval-optimization-s2`
-- **Plan:** `docs/plans/plan_eval-optimization-s2.md`
-- **Status:** All code merged to main - Ready for Sprint 3
-- **Current Phase:** Sprint 2 COMPLETE
-- **Duration:** 2.5 weeks
-- **Progress:** 100% complete (Phase 4D/5 deferred to Sprint 3)
-- **Next Session:** Sprint 3 - Integration testing + results display
+- **Sprint 2:** ✅ COMPLETE (Feb 5, 2026 PM)
+- **Sprint 3:** � IN PROGRESS (Feb 5-6, 2026)
+- **Branch:** `feature/eval-optimization-s3`
+- **Plan:** `docs/plans/plan_eval-optimization-s3.md`
+- **Status:** Auth flow working, first login successful!
+- **Current Phase:** Phase 4D Integration Testing (40%)
+- **Test Project:** `~/code/bodhix/testing/eval-opt/ai-mod-stack/`
+- **Next Session:** Deploy database schemas, test workspace creation flow
 
 ## Key Design Decisions
 
@@ -810,33 +842,6 @@ These files were built on the wrong assumption (manual prompt configuration) and
 
 ---
 
-## Next Steps (Phase 4 Redesign)
-
-**Phase 4A: Context Document Management**
-- [ ] Create eval_opt_context_docs table
-- [ ] Build context document upload UI
-- [ ] Implement RAG extraction pipeline
-- [ ] Display extracted concepts
-
-**Phase 4B: Response Structure Builder**
-- [ ] Create eval_opt_response_structures table  
-- [ ] Build visual JSON builder UI
-- [ ] Preview pane for response format
-
-**Phase 4C: Automated Optimization**
-- [ ] Implement LLM meta-prompter
-- [ ] Build variation generator
-- [ ] Update orchestrator for RAG + meta-prompting
-- [ ] Simplify optimization config UI (remove manual prompt fields)
-- [ ] Build recommendation engine
-
-**Phase 4D: Testing**
-- [ ] End-to-end testing with real domain docs
-- [ ] Validate RAG extraction quality
-- [ ] Validate prompt generation quality
-
----
-
 ### February 5, 2026 Afternoon (4:11-4:28 PM) - Workspace-Centric Schema Refactoring
 
 **Session Duration:** 17 minutes  
@@ -1035,8 +1040,96 @@ Always review database naming standards (ADR-011) BEFORE creating any schemas. T
 
 ---
 
-**Document Status:** ✅ Sprint 1 Complete, 🚧 Sprint 2 In Progress (Phase 4B-C Complete)  
-**Last Updated:** February 5, 2026 7:53 PM
+### February 6, 2026 Afternoon (12:00-1:05 PM) - Auth Flow Complete ✅
+
+**Session Duration:** 1 hour 5 minutes  
+**Branch:** `feature/eval-optimization-s3`  
+**Objective:** Fix authentication issues blocking eval-opt testing
+
+**Major Milestone:** 🎉 **First successful login to eval-opt app!**
+
+**Issues Fixed:**
+
+1. **next-auth Version Mismatch** (FIXED)
+   - **Problem:** eval-opt had `next-auth: ^4.24.0` but auth.ts used v5 patterns
+   - **Fix:** Updated template to `next-auth: ^5.0.0-beta.30` (matching web app)
+   - **Files:** `apps/eval-opt/package.json`
+
+2. **Missing API Auth Routes** (FIXED)
+   - **Problem:** No `app/api/auth/[...nextauth]/route.ts` file
+   - **Fix:** Created route handler exporting `{ GET, POST }` from handlers
+   - **Files:** `apps/eval-opt/app/api/auth/[...nextauth]/route.ts` (NEW)
+
+3. **Missing Sign-in Page** (FIXED)
+   - **Problem:** Custom sign-in page not found (`/auth/signin` 404)
+   - **Fix:** Created simplified sign-in page using `useSession` from NextAuth
+   - **Files:** `apps/eval-opt/app/auth/signin/page.tsx` (NEW)
+
+4. **Okta Redirect URI** (USER ACTION)
+   - **Problem:** Okta rejected `http://localhost:3001` redirect
+   - **Fix:** User added redirect URI in Okta admin console
+   - **Result:** ✅ User successfully logged in!
+
+**Template Files Created/Modified:**
+- `apps/eval-opt/package.json` - Updated next-auth to v5, next to 14.2.33
+- `apps/eval-opt/app/api/auth/[...nextauth]/route.ts` - NEW (API route handler)
+- `apps/eval-opt/app/auth/signin/page.tsx` - NEW (sign-in page component)
+- `scripts/start-opt.sh` - NEXTAUTH_URL override + .env.local symlink
+
+**Sprint 3 Progress:**
+- ✅ Infrastructure remediation (100%)
+- ✅ Auth flow fixes (100%)
+- 🟡 Phase 4D Integration testing (40%)
+
+**Next Steps:**
+1. Deploy database schemas (7 eval_opt tables)
+2. Test workspace creation flow
+3. Test optimization run workflow
+
+---
+
+**Document Status:** ✅ Sprint 1 Complete, ✅ Sprint 2 Complete, � Sprint 3 In Progress (Auth Working)  
+**Last Updated:** February 6, 2026 1:05 PM
+
+---
+
+### February 6, 2026 Morning (7:12-7:35 AM) - Sprint 3 Test Environment Setup
+
+**Session Duration:** 23 minutes  
+**Branch:** `feature/eval-optimization-s3`  
+**Objective:** Set up integration testing environment and fix blockers
+
+**Completed:**
+
+1. **Code Sync**
+   - ✅ Pulled latest code from main into feature/eval-optimization-s3
+   - ✅ Merged 55 files with 17,257 insertions
+
+2. **Test Project Creation**
+   - ✅ Created `setup.config.test-eval-opt.yaml` configuration
+   - ✅ Created test project with module-eval-opt enabled
+   - ✅ Project path: `~/code/bodhix/testing/test-eval-opt/`
+   - ✅ Modules: module-ws, module-kb, module-eval, **module-eval-opt**
+
+3. **Template Fix**
+   - ✅ **FIXED:** Created missing `frontend/package.json` for module-eval-opt
+   - ✅ Path: `templates/_modules-functional/module-eval-opt/frontend/package.json`
+   - ✅ Dependencies: api-client, module-eval, module-kb
+   - ✅ Synced fix to test project
+
+4. **Validation**
+   - ✅ Structure validation now passes
+   - ✅ module-eval-opt registered in module-registry.yaml
+
+**Observations:**
+- `pnpm install` runs automatically during `create-cora-project.sh` (build_packages function)
+- Validation categorizes errors as "unknown" when file is missing (no path context for module extraction)
+
+**Next Session Priorities:**
+1. **Deploy infrastructure** - Run `./scripts/deploy-all.sh dev` in test-eval-opt-infra
+2. **Deploy database schemas** - Run migrations for eval_opt tables
+3. **Test workspace creation flow** - Verify module-eval-opt UI loads
+4. **Test sample document upload** - Via module-kb integration
 
 ---
 

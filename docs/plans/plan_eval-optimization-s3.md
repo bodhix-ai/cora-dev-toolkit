@@ -1,14 +1,31 @@
 # Plan: Evaluation Optimization - Sprint 3 (Integration Testing & Results Display)
 
-**Status:** 🚧 IN PROGRESS  
+**Status:** 🟡 IN PROGRESS (Auth Flow Working)  
 **Branch:** `feature/eval-optimization-s3`  
 **Context:** [memory-bank/context-eval-optimization.md](../../memory-bank/context-eval-optimization.md)  
 **Created:** February 5, 2026  
-**Updated:** February 5, 2026 8:13 PM  
+**Updated:** February 6, 2026 (1:00 PM)  
 **Duration:** 1-2 weeks  
-**Progress:** 0% - Sprint just started  
 **Dependencies:** ✅ Sprint 2 complete (merged to main)  
 **Previous:** [Sprint 2 Plan](plan_eval-optimization-s2.md)
+
+---
+
+## 🚨 Critical Infrastructure Remediation
+
+**Priority:** HIGHEST - Completed
+
+The `module-eval-opt` infrastructure template violated the CORA module interface contract. This has been resolved with a new validator and template fixes.
+
+### Remediation Tasks
+
+- [x] **1. Refactor `variables.tf`** (Completed)
+- [x] **2. Refactor `main.tf`** (Completed)
+- [x] **3. Refactor `outputs.tf`** (Completed)
+- [x] **4. Sync & Deploy** (Completed)
+  - [x] Created `terraform-module-validator` to prevent recurrence
+  - [x] Updated build automation (`backend/build.sh`)
+  - [x] Fixed configuration to include `module-voice` (restored lambda count)
 
 ---
 
@@ -22,7 +39,9 @@ Complete the evaluation optimization workflow with integration testing and resul
 
 | Phase | Status | Key Deliverables | Completion |
 |-------|--------|------------------|------------|
-| **Phase 4D** | 📋 NEXT | Integration testing (deploy and test end-to-end) | 0% |
+| **Remediation** | ✅ COMPLETE | Fix infrastructure templates & validation | 100% |
+| **Auth Fixes** | ✅ COMPLETE | next-auth v5, API routes, sign-in page | 100% |
+| **Phase 4D** | 🟡 ACTIVE | Integration testing (deploy and test end-to-end) | 40% |
 | **Phase 5** | 📋 PLANNED | Results display & A/B comparison | 0% |
 | **Phase 6** | 📋 PLANNED | Bug fixes & polish | 0% |
 
@@ -58,9 +77,9 @@ Complete the evaluation optimization workflow with integration testing and resul
 
 ### 4D.1: Deployment Setup
 - [ ] Deploy database schemas to test environment
-- [ ] Deploy Lambda function
-- [ ] Deploy Lambda layer
-- [ ] Configure API Gateway routes
+- [x] Deploy Lambda function (29 lambdas + module-eval-opt)
+- [x] Deploy Lambda layer (eval_opt_common)
+- [x] Configure API Gateway routes
 - [ ] Verify module-kb integration works
 
 ### 4D.2: Workflow Testing
@@ -158,9 +177,9 @@ Complete the evaluation optimization workflow with integration testing and resul
 
 ## Testing Environment
 
-**Test Project:** TBD (create fresh test project for Sprint 3)
-- Stack: `{test-project}-stack`
-- Infra: `{test-project}-infra`
+**Test Project:** `~/code/bodhix/testing/test-eval-opt/`
+- Stack: `ai-mod-stack`
+- Infra: `ai-mod-infra`
 - Uses: module-eval-optimizer
 
 **Test Data:**
@@ -211,6 +230,21 @@ Complete the evaluation optimization workflow with integration testing and resul
 
 ## Session Log
 
+### February 6, 2026 Morning (8:15 AM) - Infrastructure Remediation
+
+**Issue:** Deployment blocked by Terraform variable mismatch.
+**Root Cause:** `module-eval-opt` templates violated CORA module interface contract by requiring non-standard variables.
+**Action:** Paused to refactor templates to match standard `module-eval` pattern.
+
+### February 6, 2026 Morning (7:12-7:55 AM) - Test Environment Setup
+
+**Completed:**
+- [x] Code sync from main
+- [x] Test project creation (ai-mod)
+- [x] Template fixes (permissions.py, build.sh)
+- [x] Documentation updates (API reference)
+- [x] AWS credentials verification
+
 ### February 5, 2026 Evening (8:13 PM) - Sprint 3 Created
 
 **Session Goal:** Close Sprint 2 and open Sprint 3
@@ -221,10 +255,49 @@ Complete the evaluation optimization workflow with integration testing and resul
 - [x] Created Sprint 3 plan document
 
 **Next Steps:**
-1. Update context document for Sprint 3
-2. Set up test environment
-3. Begin Phase 4D integration testing
+1. Fix infrastructure templates (variables.tf, main.tf, outputs.tf)
+2. Sync fixes to test project
+3. Deploy infrastructure
 
 ---
 
-**Last Updated:** February 5, 2026 8:13 PM
+### February 6, 2026 Afternoon (12:00-1:00 PM) - Auth Flow Complete
+
+**Session Goal:** Fix authentication issues blocking eval-opt testing
+
+**Issues Fixed:**
+
+1. **next-auth Version Mismatch** (FIXED)
+   - **Problem:** eval-opt had `next-auth: ^4.24.0` but auth.ts used v5 patterns
+   - **Fix:** Updated template to `next-auth: ^5.0.0-beta.30` (matching web app)
+   - **Files:** `apps/eval-opt/package.json`
+
+2. **Missing API Auth Routes** (FIXED)
+   - **Problem:** No `app/api/auth/[...nextauth]/route.ts` file
+   - **Fix:** Created route handler exporting `{ GET, POST }` from handlers
+   - **Files:** `apps/eval-opt/app/api/auth/[...nextauth]/route.ts` (NEW)
+
+3. **Missing Sign-in Page** (FIXED)
+   - **Problem:** Custom sign-in page not found (`/auth/signin` 404)
+   - **Fix:** Created simplified sign-in page using `useSession` from NextAuth
+   - **Files:** `apps/eval-opt/app/auth/signin/page.tsx` (NEW)
+
+4. **Okta Redirect URI** (USER ACTION)
+   - **Problem:** Okta rejected `http://localhost:3001` redirect
+   - **Fix:** User added redirect URI in Okta admin console
+   - **Result:** ✅ User successfully logged in!
+
+**Template Files Modified:**
+- `apps/eval-opt/package.json` - Updated next-auth to v5
+- `apps/eval-opt/app/api/auth/[...nextauth]/route.ts` - NEW
+- `apps/eval-opt/app/auth/signin/page.tsx` - NEW
+- `scripts/start-opt.sh` - NEXTAUTH_URL override + .env.local symlink
+
+**Next Steps:**
+1. Deploy database schemas (7 eval_opt tables)
+2. Test workspace creation flow
+3. Test optimization run workflow
+
+---
+
+**Last Updated:** February 6, 2026 1:05 PM
