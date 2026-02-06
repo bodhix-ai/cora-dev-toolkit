@@ -20,8 +20,8 @@ This is a **minimal prototype** demonstrating that the eval-optimizer can be dep
 - NextAuth session management works across apps
 
 ### ✅ Code Reuse
-- Imports `createAuthenticatedClient` from `@{project}/api-client` package
-- Uses shared TypeScript types from `@{project}/shared-types`
+- Imports `createAuthenticatedClient` from `@{{PROJECT_NAME}}/api-client` package
+- Uses shared TypeScript types from `@{{PROJECT_NAME}}/shared-types`
 - Demonstrates ADR-004 factory pattern compliance
 - No code duplication
 

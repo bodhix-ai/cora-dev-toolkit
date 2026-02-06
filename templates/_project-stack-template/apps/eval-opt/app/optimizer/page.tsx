@@ -1,8 +1,14 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { useState } from "react";
-import { createApiClient } from "@/lib/api-client";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Paper from "@mui/material/Paper";
+import Button from "@mui/material/Button";
+import Alert from "@mui/material/Alert";
+import CircularProgress from "@mui/material/CircularProgress";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 
 /**
  * Optimizer Workflow Page - Sprint 1 Prototype
@@ -10,17 +16,17 @@ import { createApiClient } from "@/lib/api-client";
  * Purpose: Prove end-to-end API integration with CORA modules.
  * 
  * Demonstrates:
- * - createApiClient() factory pattern (ADR-004 compliance)
+ * - createCoraAuthenticatedClient() pattern (ADR-004 compliance)
  * - API calls to module-access, module-ws, module-kb, module-eval
  * - Workflow: Create test org → Create workspace → Upload doc → Run eval
  * 
  * This proves Option A (Same Stack Repo) enables:
- * - Shared authentication (access token from session)
- * - Code reuse (api-client factory from workspace package)
+ * - Shared authentication (via module-access useUser hook)
+ * - Code reuse (api-client from workspace package)
  * - Direct CORA module API integration
  */
 export default function OptimizerPage() {
-  const { data: session } = useSession();
+  const { profile, isAuthenticated, authAdapter, loading: authLoading } = useUser();
   const [logs, setLogs] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -29,7 +35,13 @@ export default function OptimizerPage() {
   };
 
   const runWorkflow = async () => {
-    if (!session?.accessToken) {
+    if (!authAdapter) {
+      addLog("❌ No auth adapter available");
+      return;
+    }
+
+    const token = await authAdapter.getToken();
+    if (!token) {
       addLog("❌ No access token available");
       return;
     }
@@ -39,13 +51,13 @@ export default function OptimizerPage() {
 
     try {
       // Create authenticated API client using shared factory
-      const client = createApiClient(session.accessToken);
+      const client = createCoraAuthenticatedClient(token);
       
       addLog("✅ API client created with access token");
 
       // Step 1: Create test organization (module-access)
       addLog("📝 Step 1: Creating test organization...");
-      const orgResponse = await client.post("/access/orgs", {
+      const orgResponse = await client.post<{ id: string }>("/access/orgs", {
         name: `eval-opt-test-${Date.now()}`,
         description: "Test org for prompt optimization",
       });
@@ -54,7 +66,7 @@ export default function OptimizerPage() {
 
       // Step 2: Create workspace (module-ws)
       addLog("📝 Step 2: Creating workspace...");
-      const wsResponse = await client.post("/ws/workspaces", {
+      const wsResponse = await client.post<{ id: string }>("/ws/workspaces", {
         org_id: orgId,
         name: "Optimization Workspace",
         description: "Test workspace for eval optimization",
@@ -64,7 +76,7 @@ export default function OptimizerPage() {
 
       // Step 3: Upload sample document (module-kb)
       addLog("📝 Step 3: Uploading sample document...");
-      const docResponse = await client.post("/kb/documents", {
+      const docResponse = await client.post<{ id: string }>("/kb/documents", {
         ws_id: wsId,
         name: "Sample Policy Document",
         content: "This is a sample policy document for testing evaluation optimization.",
@@ -75,7 +87,7 @@ export default function OptimizerPage() {
 
       // Step 4: Run evaluation (module-eval)
       addLog("📝 Step 4: Running evaluation...");
-      const evalResponse = await client.post("/eval/run", {
+      const evalResponse = await client.post<{ id: string }>("/eval/run", {
         ws_id: wsId,
         doc_ids: [docId],
         criteria_set_id: "default", // Would use actual criteria set ID
@@ -101,85 +113,84 @@ export default function OptimizerPage() {
     }
   };
 
-  if (!session) {
+  if (authLoading) {
     return (
-      <div style={{ padding: "2rem" }}>
-        <h1>Optimizer Workflow</h1>
-        <p>Please sign in to continue.</p>
-      </div>
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "50vh" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h4" gutterBottom>Optimizer Workflow</Typography>
+        <Alert severity="info">Please sign in to continue.</Alert>
+      </Box>
     );
   }
 
   return (
-    <div style={{ padding: "2rem", maxWidth: "1000px", margin: "0 auto" }}>
-      <h1>Optimizer Workflow - Sprint 1 Prototype</h1>
+    <Box sx={{ p: 3, maxWidth: 1000, mx: "auto" }}>
+      <Typography variant="h4" gutterBottom>
+        Optimizer Workflow - Sprint 1 Prototype
+      </Typography>
       
-      <div style={{ marginTop: "2rem", padding: "1rem", backgroundColor: "#f5f5f5", borderRadius: "8px" }}>
-        <h2>End-to-End API Integration Test</h2>
-        <p>This workflow demonstrates calling CORA module APIs:</p>
-        <ol>
+      <Paper sx={{ mt: 3, p: 2, bgcolor: "grey.100" }}>
+        <Typography variant="h6" gutterBottom>End-to-End API Integration Test</Typography>
+        <Typography variant="body2" gutterBottom>
+          This workflow demonstrates calling CORA module APIs:
+        </Typography>
+        <Typography variant="body2" component="ol" sx={{ pl: 2 }}>
           <li><strong>module-access:</strong> Create test organization</li>
           <li><strong>module-ws:</strong> Create workspace</li>
           <li><strong>module-kb:</strong> Upload sample document</li>
           <li><strong>module-eval:</strong> Run evaluation</li>
-        </ol>
-      </div>
+        </Typography>
+      </Paper>
 
-      <div style={{ marginTop: "2rem" }}>
-        <button
+      <Box sx={{ mt: 3 }}>
+        <Button
+          variant="contained"
+          color="success"
           onClick={runWorkflow}
           disabled={loading}
-          style={{
-            padding: "0.75rem 1.5rem",
-            backgroundColor: loading ? "#ccc" : "#28a745",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: loading ? "not-allowed" : "pointer",
-            fontSize: "1rem",
-            fontWeight: "bold",
-          }}
+          startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
         >
           {loading ? "Running Workflow..." : "▶ Run Workflow"}
-        </button>
-      </div>
+        </Button>
+      </Box>
 
       {logs.length > 0 && (
-        <div style={{ marginTop: "2rem" }}>
-          <h3>Workflow Logs</h3>
-          <pre
-            style={{
-              backgroundColor: "#1e1e1e",
+        <Box sx={{ mt: 3 }}>
+          <Typography variant="h6" gutterBottom>Workflow Logs</Typography>
+          <Paper
+            sx={{
+              bgcolor: "#1e1e1e",
               color: "#d4d4d4",
-              padding: "1rem",
-              borderRadius: "8px",
+              p: 2,
+              borderRadius: 1,
               overflow: "auto",
-              maxHeight: "400px",
+              maxHeight: 400,
+              fontFamily: "monospace",
               fontSize: "0.875rem",
-              lineHeight: "1.5",
+              lineHeight: 1.5,
+              whiteSpace: "pre-wrap",
             }}
           >
             {logs.join("\n")}
-          </pre>
-        </div>
+          </Paper>
+        </Box>
       )}
 
-      <div style={{ marginTop: "2rem", padding: "1rem", backgroundColor: "#fff3cd", borderRadius: "8px" }}>
-        <h3>⚠️ Note: Sprint 1 Prototype</h3>
-        <p>This is a <strong>minimal prototype</strong> to prove Option A architecture works.</p>
-        <p><strong>Expected behavior:</strong></p>
-        <ul>
-          <li>API calls may fail (CORS, auth, endpoints not ready) - that's OK!</li>
-          <li>The goal is to prove the <em>integration pattern</em> works</li>
-          <li>Error messages should show proper auth headers, request structure, etc.</li>
-        </ul>
-        <p><strong>Success criteria:</strong></p>
-        <ul>
-          <li>✅ Access token retrieved from session</li>
-          <li>✅ API client factory works (from shared package)</li>
-          <li>✅ API requests are properly formatted</li>
-        </ul>
-      </div>
-    </div>
+      <Alert severity="warning" sx={{ mt: 3 }}>
+        <Typography variant="subtitle2" gutterBottom>⚠️ Note: Sprint 1 Prototype</Typography>
+        <Typography variant="body2">
+          This is a <strong>minimal prototype</strong> to prove Option A architecture works.
+          API calls may fail (CORS, auth, endpoints not ready) - that's OK!
+          The goal is to prove the <em>integration pattern</em> works.
+        </Typography>
+      </Alert>
+    </Box>
   );
 }

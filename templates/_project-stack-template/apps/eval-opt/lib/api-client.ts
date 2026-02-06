@@ -4,7 +4,7 @@
  * CRITICAL: This demonstrates ADR-004 compliance and code reuse in Option A.
  * 
  * Key Points:
- * - Imports createAuthenticatedClient from shared @{project}/api-client package
+ * - Imports createAuthenticatedClient from shared @{{PROJECT_NAME}}/api-client package
  * - Uses factory pattern (not direct exports)
  * - Wraps shared factory with optimizer-specific configuration
  * 
@@ -17,7 +17,7 @@
  * @see templates/_project-stack-template/packages/api-client/
  */
 
-import { createAuthenticatedClient } from "@{project}/api-client";
+import { createAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 
 /**
  * Create API client for CORA module APIs
@@ -41,10 +41,10 @@ export function createApiClient(accessToken: string) {
 /**
  * Example: Type-safe API calls
  * 
- * Future enhancement: Import shared types from @{project}/shared-types
+ * Future enhancement: Import shared types from @{{PROJECT_NAME}}/shared-types
  * 
  * ```ts
- * import type { Organization, Workspace, Document } from "@{project}/shared-types";
+ * import type { Organization, Workspace, Document } from "@{{PROJECT_NAME}}/shared-types";
  * 
  * const org: Organization = await client.post<Organization>('/access/orgs', { ... });
  * const ws: Workspace = await client.post<Workspace>('/ws/workspaces', { ... });

@@ -1,78 +1,26 @@
 "use client";
 
-import { signIn, useSession } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
-import { Box, Button, Typography, Alert, CircularProgress } from "@mui/material";
-import { useEffect } from "react";
+import { Box, Button, Typography, Alert } from "@mui/material";
 
 /**
  * Sign In Page for Eval Optimizer
  *
- * Simplified sign-in page that uses NextAuth's useSession directly.
- * Checks if user is already authenticated and redirects if so.
- * Otherwise shows sign-in button and handles Okta redirect.
+ * Simple sign-in page that shows sign-in button and handles Okta redirect.
+ * Does NOT use useSession to avoid SessionProvider dependency issues.
+ * 
+ * Note: This page doesn't check if user is already authenticated.
+ * If authenticated users land here, the auth flow will redirect them appropriately.
  */
 export default function SignInPage() {
   const searchParams = useSearchParams();
-  const { data: session, status } = useSession();
-  const isLoading = status === "loading";
-  const isSignedIn = status === "authenticated";
   const error = searchParams.get("error");
   const callbackUrl = searchParams.get("callbackUrl") || "/";
-
-  // Redirect authenticated users away from signin page
-  useEffect(() => {
-    if (isSignedIn) {
-      console.log("[SIGNIN PAGE] User already authenticated, redirecting to:", callbackUrl);
-      window.location.href = callbackUrl;
-    }
-  }, [isSignedIn, callbackUrl]);
 
   const handleSignIn = () => {
     signIn("okta", { callbackUrl });
   };
-
-  // Show loading while checking session
-  if (isLoading) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-          gap: 2,
-        }}
-      >
-        <CircularProgress />
-        <Typography variant="body2" color="text.secondary">
-          Checking authentication...
-        </Typography>
-      </Box>
-    );
-  }
-
-  // Show loading while redirecting authenticated user
-  if (isSignedIn) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-          gap: 2,
-        }}
-      >
-        <CircularProgress />
-        <Typography variant="body2" color="text.secondary">
-          Redirecting...
-        </Typography>
-      </Box>
-    );
-  }
 
   return (
     <Box

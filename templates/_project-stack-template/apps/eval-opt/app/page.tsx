@@ -1,81 +1,80 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Paper from "@mui/material/Paper";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import Alert from "@mui/material/Alert";
 import Link from "next/link";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
 
 /**
- * Landing Page for Eval Optimizer - Sprint 1 Prototype
+ * Landing Page for Eval Optimizer
  * 
- * Purpose: Prove authentication integration works with shared Okta/Cognito.
- * 
- * Demonstrates:
- * - useSession() hook retrieves session from NextAuth
- * - Access token is available for API calls
- * - User can navigate to optimizer workflow
+ * Purpose: Entry point for the evaluation optimization workbench.
+ * Uses module-access for authentication state.
  */
 export default function HomePage() {
-  const { data: session, status } = useSession();
+  const { profile, isAuthenticated, loading } = useUser();
 
-  if (status === "loading") {
+  if (loading) {
     return (
-      <div style={{ padding: "2rem" }}>
-        <h1>CORA Eval Optimizer</h1>
-        <p>Loading session...</p>
-      </div>
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "50vh" }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
-  if (!session) {
+  if (!isAuthenticated) {
     return (
-      <div style={{ padding: "2rem" }}>
-        <h1>CORA Eval Optimizer</h1>
-        <p>Please sign in to continue.</p>
-      </div>
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h4" gutterBottom>CORA Eval Optimizer</Typography>
+        <Alert severity="info">Please sign in to continue.</Alert>
+      </Box>
     );
   }
 
   return (
-    <div style={{ padding: "2rem", maxWidth: "800px", margin: "0 auto" }}>
-      <h1>CORA Eval Optimizer</h1>
-      <p>Welcome, {session.user?.name || session.user?.email}!</p>
+    <Box sx={{ p: 3, maxWidth: 800, mx: "auto" }}>
+      <Typography variant="h4" gutterBottom>
+        CORA Eval Optimizer
+      </Typography>
+      <Typography variant="body1" gutterBottom>
+        Welcome, {profile?.name || profile?.email}!
+      </Typography>
       
-      <div style={{ marginTop: "2rem", padding: "1rem", backgroundColor: "#f5f5f5", borderRadius: "8px" }}>
-        <h2>Sprint 1 Prototype</h2>
-        <p>This minimal prototype demonstrates:</p>
-        <ul>
-          <li>✅ Shared authentication with main CORA app</li>
-          <li>✅ Session management via NextAuth</li>
-          <li>✅ Access token available for API calls</li>
-          <li>⏳ API integration with CORA modules (next step)</li>
-        </ul>
-      </div>
+      <Paper sx={{ mt: 3, p: 2, bgcolor: "grey.100" }}>
+        <Typography variant="h6" gutterBottom>Evaluation Optimization Workbench</Typography>
+        <Typography variant="body2" gutterBottom>
+          This workbench enables business analysts to optimize prompt configurations
+          for document evaluation using sample-driven training.
+        </Typography>
+        <Typography variant="body2" component="ul" sx={{ pl: 2 }}>
+          <li>Upload sample documents with truth keys</li>
+          <li>Configure response structures</li>
+          <li>Run automated optimization</li>
+          <li>Compare results and deploy best configurations</li>
+        </Typography>
+      </Paper>
 
-      <div style={{ marginTop: "2rem" }}>
-        <h3>Session Information</h3>
-        <pre style={{ backgroundColor: "#f5f5f5", padding: "1rem", borderRadius: "8px", overflow: "auto" }}>
-          {JSON.stringify({
-            user: session.user,
-            hasAccessToken: !!session.accessToken,
-            expiresAt: session.expiresAt,
-          }, null, 2)}
-        </pre>
-      </div>
-
-      <div style={{ marginTop: "2rem" }}>
-        <Link 
-          href="/optimizer" 
-          style={{ 
-            display: "inline-block",
-            padding: "0.75rem 1.5rem",
-            backgroundColor: "#007bff",
-            color: "white",
-            textDecoration: "none",
-            borderRadius: "4px",
-          }}
+      <Box sx={{ mt: 3, display: "flex", gap: 2 }}>
+        <Button
+          component={Link}
+          href="/ws"
+          variant="contained"
+          color="primary"
         >
-          Go to Optimizer Workflow →
-        </Link>
-      </div>
-    </div>
+          View Workspaces
+        </Button>
+        <Button
+          component={Link}
+          href="/optimizer"
+          variant="outlined"
+        >
+          Sprint 1 Prototype
+        </Button>
+      </Box>
+    </Box>
   );
 }

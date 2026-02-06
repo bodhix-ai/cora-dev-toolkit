@@ -1,29 +1,34 @@
 import * as React from "react";
 import type { Metadata } from "next";
-import { SessionProvider } from "next-auth/react";
+import { AuthProvider, UserProviderWrapper } from "@{{PROJECT_NAME}}/module-access";
+import OrgProviderWrapper from "../components/OrgProviderWrapper";
+import ThemeRegistry from "../components/ThemeRegistry";
+import AppShell from "../components/AppShell";
 import { auth } from "@/auth";
 
 export const metadata: Metadata = {
   title: "CORA Eval Optimizer",
   description: "Evaluation prompt optimization workbench",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
 };
 
 /**
- * Root Layout for Eval Optimizer - Sprint 1 Prototype
+ * Root Layout for Eval Optimizer - Following ADR-007 CORA Auth Shell Standard
  * 
- * CRITICAL: This is a MINIMAL prototype to prove Option A (Same Stack Repo) works.
+ * Provider hierarchy: AuthProvider → ThemeRegistry → UserProviderWrapper → OrgProviderWrapper → AppShell
  * 
- * Key Features Demonstrated:
- * - Shared auth with main app (same Okta/Cognito provider)
- * - SessionProvider for NextAuth integration
- * - Simplified layout (no AppShell/OrgProvider complexity)
+ * This layout provides the full CORA shell with:
+ * - AuthProvider for Okta/NextAuth session management
+ * - UserProviderWrapper for user profile loading
+ * - OrgProviderWrapper for organization context (required for optimization workspaces)
+ * - AppShell with sidebar navigation and org selector
  * 
- * Future Enhancements (Sprint 2+):
- * - Full provider hierarchy (UserProvider, ThemeRegistry, etc.)
- * - Navigation and app shell
- * - Organization context
- * 
- * @see Sprint 1 Plan: docs/plans/plan_eval-optimization-s1.md
+ * @see cora-dev-toolkit/docs/ADR-007-CORA-AUTH-SHELL-STANDARD.md
+ * @see cora-dev-toolkit/docs/ADR-008-SIDEBAR-AND-ORG-SELECTOR-STANDARD.md
  */
 export default async function RootLayout({
   children,
@@ -33,15 +38,17 @@ export default async function RootLayout({
   const session = await auth();
 
   return (
-    <html lang="en">
-      <head>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </head>
-      <body style={{ margin: 0, fontFamily: "system-ui, sans-serif" }}>
-        <SessionProvider session={session}>
-          {children}
-        </SessionProvider>
+    <html lang="en" style={{ height: "100%" }}>
+      <body style={{ margin: 0, height: "100%" }}>
+        <AuthProvider session={session}>
+          <ThemeRegistry>
+            <UserProviderWrapper>
+              <OrgProviderWrapper>
+                <AppShell>{children}</AppShell>
+              </OrgProviderWrapper>
+            </UserProviderWrapper>
+          </ThemeRegistry>
+        </AuthProvider>
       </body>
     </html>
   );
