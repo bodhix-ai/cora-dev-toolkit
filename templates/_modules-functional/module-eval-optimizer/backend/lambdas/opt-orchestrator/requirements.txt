@@ -1,0 +1,11 @@
+# Eval Optimization Orchestrator Lambda Dependencies
+
+# AWS SDK (included in Lambda runtime but pinned for local dev)
+boto3>=1.34.0
+
+# AI Provider SDKs (optional - only needed if using direct API)
+openai>=1.12.0
+anthropic>=0.18.0
+
+# Utilities
+requests>=2.31.0

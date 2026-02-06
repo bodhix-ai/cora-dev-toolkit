@@ -1,0 +1,94 @@
+{
+  "name": "module-eval-optimizer",
+  "version": "1.0.0",
+  "description": "Business Analyst Workbench for optimizing evaluation prompts using sample-driven training",
+  "author": "CORA Development Team",
+  "license": "MIT",
+
+  "dependencies": {
+    "modules": ["module-eval", "module-kb", "module-ws", "module-access"],
+    "packages": ["@supabase/supabase-js", "@aws-sdk/client-bedrock-runtime"]
+  },
+
+  "provides": {
+    "database": {
+      "schema": [
+        "db/schema/001-eval-opt-projects.sql",
+        "db/schema/002-eval-opt-doc-groups.sql",
+        "db/schema/003-eval-opt-truth-keys.sql",
+        "db/schema/004-eval-opt-runs.sql",
+        "db/schema/005-eval-opt-prompt-versions.sql",
+        "db/schema/006-eval-opt-rls.sql"
+      ],
+      "tables": [
+        "eval_opt_projects",
+        "eval_opt_proj_members",
+        "eval_opt_test_orgs",
+        "eval_opt_doc_groups",
+        "eval_opt_doc_group_members",
+        "eval_opt_truth_keys",
+        "eval_opt_runs",
+        "eval_opt_run_results",
+        "eval_opt_prompt_versions",
+        "eval_opt_prompt_deployments"
+      ],
+      "functions": []
+    },
+
+    "api": {
+      "endpoints": [
+        "GET /api/eval-optimizer/projects",
+        "POST /api/eval-optimizer/projects",
+        "GET /api/eval-optimizer/projects/:id",
+        "PUT /api/eval-optimizer/projects/:id",
+        "DELETE /api/eval-optimizer/projects/:id",
+        "POST /api/eval-optimizer/projects/:id/members",
+        "DELETE /api/eval-optimizer/projects/:id/members/:user_id",
+        "GET /api/eval-optimizer/projects/:id/samples",
+        "POST /api/eval-optimizer/projects/:id/samples",
+        "GET /api/eval-optimizer/projects/:id/samples/:group_id",
+        "DELETE /api/eval-optimizer/projects/:id/samples/:group_id",
+        "GET /api/eval-optimizer/projects/:id/truth-keys",
+        "POST /api/eval-optimizer/projects/:id/truth-keys",
+        "PUT /api/eval-optimizer/projects/:id/truth-keys/:truth_key_id",
+        "DELETE /api/eval-optimizer/projects/:id/truth-keys/:truth_key_id",
+        "GET /api/eval-optimizer/projects/:id/runs",
+        "POST /api/eval-optimizer/projects/:id/runs",
+        "GET /api/eval-optimizer/projects/:id/runs/:run_id",
+        "GET /api/eval-optimizer/projects/:id/runs/:run_id/results"
+      ]
+    },
+
+    "frontend": {
+      "components": [],
+      "hooks": [],
+      "contexts": [],
+      "note": "Frontend is in separate app at apps/eval-optimizer/"
+    }
+  },
+
+  "permissions": {
+    "database": ["rds:ExecuteStatement"],
+    "storage": ["s3:GetObject", "s3:PutObject"],
+    "external": ["bedrock:InvokeModel"]
+  },
+
+  "integrations": {
+    "module-eval": {
+      "purpose": "Run AI evaluations and compare to truth keys",
+      "required": true
+    },
+    "module-kb": {
+      "purpose": "Store and retrieve sample documents",
+      "required": true
+    },
+    "module-ws": {
+      "purpose": "Create workspaces for optimization projects",
+      "required": true
+    },
+    "module-access": {
+      "purpose": "Create test organizations for optimization runs",
+      "required": false
+    }
+  }
+}

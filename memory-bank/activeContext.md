@@ -16,6 +16,7 @@ This repository uses **initiative-scoped context files** to avoid merge conflict
 | WS Plugin Architecture | `context-ws-plugin-architecture.md` | Module integration patterns | **P1** |
 | Module-Eval Development | `context-module-eval.md` | Eval features (citations, scoring) | P2, P3 |
 | Auth Standardization | `context-auth-standardization.md` | Centralized auth library | **P0** 🔴 Critical |
+| Evaluation Optimization | `context-eval-optimization.md` | Business Analyst Workbench for prompt optimization | **P2-P3** |
 | Module-Voice Development | `context-module-voice.md` | Voice interview features | - |
 | Module-KB Development | `context-module-kb.md` | Knowledge base features | - |
 
@@ -56,4 +57,4 @@ This repository uses **initiative-scoped context files** to avoid merge conflict
 
 ---
 
-**Updated:** January 30, 2026
+**Updated:** February 4, 2026 (Added Evaluation Optimization initiative)
