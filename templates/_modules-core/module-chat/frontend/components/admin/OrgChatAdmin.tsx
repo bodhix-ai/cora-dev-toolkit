@@ -1,11 +1,23 @@
 /**
- * Organization Chat Admin Component
- *
- * Main admin page for Chat module organization-level management.
+ * @component OrgChatAdmin
+ * @description Organization Chat Admin Component - Main admin page for Chat module organization-level management
+ * 
  * Provides tabbed interface for:
  * - Organization chat settings (overrides)
  * - Organization session management (view, delete, restore)
  * - Organization analytics and usage stats
+ * 
+ * @routes
+ * - GET /admin/org/chat/config - Get organization chat configuration
+ * - PUT /admin/org/chat/config - Update organization chat configuration
+ * - GET /admin/org/chat/sessions - List organization chat sessions
+ * - GET /admin/org/chat/sessions/{id} - Get session details
+ * - DELETE /admin/org/chat/sessions/{id} - Delete chat session
+ * - POST /admin/org/chat/sessions/{id}/restore - Restore deleted session
+ * - GET /admin/org/chat/analytics - Get organization chat analytics
+ * - GET /admin/org/chat/analytics/users - Get user activity stats
+ * - GET /admin/org/chat/analytics/workspaces - Get workspace activity stats
+ * - GET /admin/org/chat/messages/{id} - View message content (read-only)
  */
 
 import React, { useState } from "react";
