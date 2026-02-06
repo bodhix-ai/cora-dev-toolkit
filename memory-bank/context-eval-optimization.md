@@ -44,14 +44,14 @@ Currently, module-eval uses the same prompt for all document types, leading to s
 ## Current Sprint
 
 - **Sprint 1:** ✅ COMPLETE (Feb 5, 2026 AM)
-- **Sprint 2:** 🚧 IN PROGRESS - Phases 0-4C Complete (Feb 5, 2026)
+- **Sprint 2:** ✅ COMPLETE (Feb 5, 2026)
 - **Branch:** `feature/eval-optimization-s2`
 - **Plan:** `docs/plans/plan_eval-optimization-s2.md`
-- **Status:** All UI complete, backend Lambda complete, Terraform infrastructure complete, ADR-019c module layer complete
-- **Current Phase:** Ready for Phase 4D (Integration Testing)
-- **Duration:** 4-5 weeks total (2.5 weeks complete)
-- **Progress:** 95% complete (Phase 4B-C done)
-- **Next Session:** Phase 4D integration testing, Phase 5 results display
+- **Status:** All code merged to main - Ready for Sprint 3
+- **Current Phase:** Sprint 2 COMPLETE
+- **Duration:** 2.5 weeks
+- **Progress:** 100% complete (Phase 4D/5 deferred to Sprint 3)
+- **Next Session:** Sprint 3 - Integration testing + results display
 
 ## Key Design Decisions
 
@@ -688,7 +688,7 @@ The system provides statistical guidance on result reliability based on sample s
 | Phase 4D | 📋 NEXT | Integration testing | 0% |
 | Phase 5 | 📋 PLANNED | Results display & A/B comparison | 0% |
 
-**Overall Sprint 2 Progress:** 95% complete (Phase 4B-C done, Phase 4D-5 remaining)
+**Overall Sprint 2 Progress:** ✅ COMPLETE - Merged to main (Phase 4D/5 deferred to Sprint 3)
 
 ---
 
