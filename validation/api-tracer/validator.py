@@ -991,12 +991,13 @@ class FullStackValidator:
             if frontend_path.exists():
                 for ext in ['tsx', 'ts']:
                     for file_path in frontend_path.glob(f"**/*.{ext}"):
-                        # Skip templates and node_modules
-                        if '_module-template' in str(file_path) or 'node_modules' in str(file_path):
+                        # Skip templates, node_modules, and build artifacts
+                        path_str = str(file_path)
+                        if any(skip in path_str for skip in ['_module-template', 'node_modules', '.next']):
                             continue
                         
                         # Only validate admin pages
-                        if '/admin/' in str(file_path) or '/workspace/' in str(file_path):
+                        if '/admin/' in path_str or '/workspace/' in path_str:
                             try:
                                 with open(file_path, 'r', encoding='utf-8') as f:
                                     content = f.read()
