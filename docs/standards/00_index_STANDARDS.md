@@ -58,6 +58,7 @@ Where:
 
 | File | ADR | Validator | Description |
 |------|-----|-----------|-------------|
+| `01_std_front_ADMIN-COMPONENTS.md` | ADR-004, ADR-015, ADR-016 | api-tracer | Admin page component pattern (all pages use module components with route metadata) |
 | `01_std_front_AUTH.md` | ADR-019a | api-tracer | Frontend authorization patterns |
 
 ### 02 - API Standards
