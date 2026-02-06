@@ -279,3 +279,40 @@ modules:
         - ECS-based Pipecat bot orchestration
         - Voice interview management
     config_file: module.config.yaml
+
+  module-eval-opt:
+    type: functional
+    tier: null
+    name: "Evaluation Optimizer"
+    description: "Business Analyst Workbench for optimizing evaluation prompts using sample-driven training with truth keys"
+    required: false
+    version: "0.1.0"
+    min_toolkit_version: "0.1.0"
+    dependencies:
+      - module: module-eval
+        type: required
+        min_version: "0.1.0"
+        reason: "Run AI evaluations and compare to truth keys"
+      - module: module-access
+        type: required
+        min_version: "0.1.0"
+        reason: "User authentication and workspace membership"
+      - module: module-ws
+        type: required
+        min_version: "0.1.0"
+        reason: "Workspace-scoped optimization projects"
+      - module: module-kb
+        type: required
+        min_version: "0.1.0"
+        reason: "Context document storage and RAG for domain knowledge"
+    dependents: []
+    breaking_changes: {}
+    changelog: |
+      0.1.0 (2026-02-05) - Initial release
+        - BA Workbench for prompt optimization
+        - Truth key management via web UI
+        - RAG + LLM meta-prompting for automatic prompt generation
+        - Optimization run orchestration
+        - Results comparison and recommendations
+    config_file: module.config.yaml
+    companion_app: apps/eval-opt

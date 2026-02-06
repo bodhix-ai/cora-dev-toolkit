@@ -1674,7 +1674,7 @@ consolidate_database_schemas() {
   local tier1_modules=("module-access")
   local tier2_modules=("module-ai" "module-ws")
   local tier3_modules=("module-chat" "module-kb" "module-mgmt")
-  local functional_modules=("module-eval" "module-voice")
+  local functional_modules=("module-eval" "module-voice" "module-eval-opt")
   
   # Collect schema files in dependency order
   local schema_files=()

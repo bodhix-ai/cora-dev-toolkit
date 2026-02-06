@@ -29,7 +29,7 @@ import {
   InputLabel,
 } from "@mui/material";
 import { Search, Person, Edit, Delete } from "@mui/icons-material";
-import { useUser } from "../../hooks/useUser";
+import { useUser } from "../../contexts/UserContext";
 import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 
 /**

@@ -1,0 +1,29 @@
+{
+  "name": "@{{PROJECT_NAME}}/module-eval-opt",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CORA Evaluation Optimizer - BA Workbench for prompt optimization using sample-driven training with truth keys",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "next dev",
+    "build": "tsc -b",
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@{{PROJECT_NAME}}/api-client": "workspace:*",
+    "@{{PROJECT_NAME}}/module-eval": "workspace:*",
+    "@{{PROJECT_NAME}}/module-kb": "workspace:*",
+    "@mui/material": "^5.15.20",
+    "@mui/icons-material": "^5.15.20",
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.5",
+    "react": "^18.2.0",
+    "next": "^14.0.0",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "typescript": "^5.0.0"
+  }
+}
