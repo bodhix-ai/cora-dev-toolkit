@@ -1088,8 +1088,110 @@ Always review database naming standards (ADR-011) BEFORE creating any schemas. T
 
 ---
 
-**Document Status:** ✅ Sprint 1 Complete, ✅ Sprint 2 Complete, � Sprint 3 In Progress (Auth Working)  
-**Last Updated:** February 6, 2026 1:05 PM
+### February 6, 2026 Afternoon (2:30 PM) - UI Build Errors Investigation
+
+**Session Duration:** 1 hour
+**Branch:** `feature/eval-optimization-s3`
+**Objective:** Troubleshoot eval-opt UI after first successful login
+
+**User-Reported Issues:**
+1. No left menu or org selector visible
+2. Build error when clicking home page button (`@{project}/api-client` not found)
+
+**Issues Fixed:**
+- ✅ `@{project}/api-client` → `@{{PROJECT_NAME}}/api-client` (placeholder syntax)
+- ✅ `@cora/module-kb` → `@{{PROJECT_NAME}}/module-kb` (placeholder fix)
+- ✅ `app/page.tsx` → Refactored to use `useUser()` from module-access
+- ✅ `app/optimizer/page.tsx` → Updated to use module-access auth pattern
+- ✅ Context page → Simplified to placeholder (module-kb integration deferred)
+- ✅ Added `module-kb` dependency to eval-opt package.json
+
+**Systemic Issue Discovered:**
+- **47+ `session.accessToken` usages** across 9 workspace pages
+- Original Sprint 1-2 code used `useSession()` + `session.accessToken` pattern
+- NextAuth v5 Session type doesn't expose `accessToken` by default
+- All pages need refactor to use CORA module-access auth pattern
+
+**Next Session Priority: Auth Pattern Refactor**
+
+Files requiring refactor (update templates first, then sync):
+
+| File | usages | Priority |
+|------|--------|----------|
+| `app/ws/page.tsx` | 3 | HIGH |
+| `app/ws/new/page.tsx` | 8 | HIGH |
+| `app/ws/[wsId]/page.tsx` | 12 | HIGH |
+| `app/ws/[wsId]/runs/page.tsx` | 3 | MEDIUM |
+| `app/ws/[wsId]/runs/new/page.tsx` | 2 | MEDIUM |
+| `app/ws/[wsId]/evaluate/[groupId]/page.tsx` | 5 | MEDIUM |
+| `app/ws/[wsId]/samples/upload/page.tsx` | 4 | MEDIUM |
+| `app/ws/[wsId]/response-structure/page.tsx` | 4 | MEDIUM |
+
+**Pattern to Follow:**
+```typescript
+// OLD (broken with NextAuth v5):
+const { data: session } = useSession();
+if (!session?.accessToken) return;
+const client = createApiClient(session.accessToken);
+
+// NEW (CORA module-access pattern):
+const { profile, isAuthenticated, authAdapter } = useUser();
+if (!isAuthenticated) return;
+const token = await authAdapter.getAccessToken();
+const client = createApiClient(token);
+```
+
+**Reference Files:**
+- `app/page.tsx` - Fixed landing page
+- `app/optimizer/page.tsx` - Fixed prototype page
+
+---
+
+**Document Status:** ✅ Sprint 1 Complete, ✅ Sprint 2 Complete, 🟡 Sprint 3 In Progress (Phase 1 UI Complete)  
+**Last Updated:** February 6, 2026 5:20 PM
+
+---
+
+### February 6, 2026 Afternoon (3:00-5:20 PM) - UX Design & Workspace Integration
+
+**Session Goal:** Fix workspace detail page and design eval-opt UX
+
+**Major Accomplishments:**
+
+1. **Fixed Workspace Pages** - Migrated from old NextAuth pattern to CORA module-access pattern
+2. **Created UX Specification** - `docs/specifications/spec_eval-opt-workspace-integration.md`
+3. **Designed Optimization Workflow** through user discussion
+4. **Created Custom Workspace Detail Page** with proper tabs
+
+**Workspace Tabs Implemented:**
+| Tab | Purpose | Implementation |
+|-----|---------|----------------|
+| Overview | Stats + getting started guide | Custom |
+| Context | Domain context docs for RAG | Reuse module-kb WorkspaceDataKBTab |
+| Optimization | List runs + create new | Custom (new) |
+| Settings | Workspace settings | Standard pattern |
+
+**Optimization Workflow Designed:**
+1. Create Optimization Run (select doc type + criteria set)
+2. Define Response Sections (JSON structure for AI response)
+3. Create Truth Sets (document + manual criterion evaluation)
+4. Run Optimization (system generates/tests prompts)
+5. Review Results (ranked configurations)
+
+**Truth Set Wizard Design:**
+- Score Range: 5-tier system (0-20, 21-40, 41-60, 61-80, 81-100)
+- Response Sections: Configurable per run (justification, findings, recommendations)
+- Wizard-style with progress indicator and save/resume capability
+
+**Files Created:**
+- `docs/specifications/spec_eval-opt-workspace-integration.md`
+- `apps/eval-opt/app/ws/[id]/page.tsx` (custom workspace detail)
+- `apps/eval-opt/components/WorkspacePluginProvider.tsx`
+
+**Implementation Phases:**
+- Phase 1: Workspace tabs ✅ COMPLETE
+- Phase 2: Optimization Run Details page (future)
+- Phase 3: Truth Set wizard (future)
 
 ---
 

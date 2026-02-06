@@ -1,13 +1,14 @@
 # Plan: Evaluation Optimization - Sprint 3 (Integration Testing & Results Display)
 
-**Status:** 🟡 IN PROGRESS (Auth Flow Working)  
+**Status:** ✅ COMPLETE (Scope Reduced - UX Design Focus)  
 **Branch:** `feature/eval-optimization-s3`  
 **Context:** [memory-bank/context-eval-optimization.md](../../memory-bank/context-eval-optimization.md)  
 **Created:** February 5, 2026  
-**Updated:** February 6, 2026 (1:00 PM)  
-**Duration:** 1-2 weeks  
+**Updated:** February 6, 2026 (5:25 PM)  
+**Duration:** 2 days (Feb 5-6, 2026)  
 **Dependencies:** ✅ Sprint 2 complete (merged to main)  
-**Previous:** [Sprint 2 Plan](plan_eval-optimization-s2.md)
+**Previous:** [Sprint 2 Plan](plan_eval-optimization-s2.md)  
+**Next:** [Sprint 4 Plan](plan_eval-optimization-s4.md) (to be created)
 
 ---
 
@@ -29,21 +30,34 @@ The `module-eval-opt` infrastructure template violated the CORA module interface
 
 ---
 
-## Sprint Goal
+## Sprint Goal (Original → Revised)
 
-Complete the evaluation optimization workflow with integration testing and results display. This sprint focuses on **validation and polish** - all code was built in Sprint 2, now we test and refine.
+**Original Goal:** Complete the evaluation optimization workflow with integration testing and results display.
+
+**Revised Goal (Actual):** Fix auth issues, design UX for optimization workflow, and create workspace integration.
+
+**Rationale for Pivot:** During testing, we discovered fundamental UX issues that required redesign before integration testing could proceed meaningfully. Sprint 3 became a "stabilization and UX design" sprint.
+
+**Remaining scope deferred to Sprint 4:**
+- Phase 2: Optimization Run Details page (`/ws/[id]/runs/[runId]`)
+- Phase 3: Response Sections Builder UI
+- Phase 4: Truth Set creation wizard
+- Phase 5: Optimization execution and results display
 
 ---
 
-## 📊 Sprint 3 Progress Tracker
+## 📊 Sprint 3 Progress Tracker (Final)
 
 | Phase | Status | Key Deliverables | Completion |
 |-------|--------|------------------|------------|
 | **Remediation** | ✅ COMPLETE | Fix infrastructure templates & validation | 100% |
 | **Auth Fixes** | ✅ COMPLETE | next-auth v5, API routes, sign-in page | 100% |
-| **Phase 4D** | 🟡 ACTIVE | Integration testing (deploy and test end-to-end) | 40% |
-| **Phase 5** | 📋 PLANNED | Results display & A/B comparison | 0% |
-| **Phase 6** | 📋 PLANNED | Bug fixes & polish | 0% |
+| **Auth Pattern Migration** | ✅ COMPLETE | Migrate workspace pages from NextAuth to module-access | 100% |
+| **UX Design** | ✅ COMPLETE | Specification doc + workflow design | 100% |
+| **Phase 1: Workspace Tabs** | ✅ COMPLETE | Overview, Context, Optimization, Settings tabs | 100% |
+| **Phase 2-5** | ➡️ DEFERRED | Run Details, Truth Set wizard, Optimization | → Sprint 4 |
+
+**Sprint 3 Complete:** Auth working, workspace tabs implemented, UX designed
 
 ---
 
@@ -300,4 +314,119 @@ Complete the evaluation optimization workflow with integration testing and resul
 
 ---
 
-**Last Updated:** February 6, 2026 1:05 PM
+### February 6, 2026 Afternoon (2:30-3:00 PM) - Auth Pattern Migration (HIGH Priority)
+
+**Session Goal:** Fix `useSession` must be wrapped in `<SessionProvider />` error
+
+**Root Cause:**
+- eval-opt workspace pages used old NextAuth v4 pattern (`useSession()` from `next-auth/react`)
+- Layout.tsx has `AuthProvider` from module-access (correct)
+- Pages need to use `useUser()` from module-access (not direct NextAuth)
+
+**Files Fixed (3 HIGH Priority):**
+
+| File | Before | After | Status |
+|------|--------|-------|--------|
+| `app/ws/page.tsx` | `useSession()` | `useUser()` + `authAdapter.getToken()` | ✅ FIXED |
+| `app/ws/new/page.tsx` | `useSession()` | `useUser()` + `authAdapter.getToken()` | ✅ FIXED |
+| `app/ws/[wsId]/page.tsx` | `useSession()` + nested components | `useUser()` + props passing | ✅ FIXED |
+
+**Pattern Applied:**
+```typescript
+// OLD (broken with NextAuth v5):
+import { useSession } from "next-auth/react";
+const { data: session } = useSession();
+if (!session?.accessToken) return;
+const client = createApiClient(session.accessToken);
+
+// NEW (CORA module-access pattern):
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
+const { isAuthenticated, loading: authLoading, authAdapter } = useUser();
+if (!isAuthenticated) return;
+const token = await authAdapter.getToken();
+const client = createApiClient(token);
+```
+
+**Sync to Test Project:**
+- ✅ `app/ws/page.tsx` synced to `ai-mod-stack`
+- ✅ `app/ws/new/page.tsx` synced to `ai-mod-stack`
+- ✅ `app/ws/[wsId]/page.tsx` synced to `ai-mod-stack`
+
+**Remaining MEDIUM Priority Files (if issues persist):**
+
+| File | Status |
+|------|--------|
+| `app/ws/[wsId]/runs/page.tsx` | Pending |
+| `app/ws/[wsId]/runs/new/page.tsx` | Pending |
+| `app/ws/[wsId]/evaluate/[groupId]/page.tsx` | Pending |
+| `app/ws/[wsId]/samples/upload/page.tsx` | Pending |
+| `app/ws/[wsId]/response-structure/page.tsx` | Pending |
+
+**Test Project:**
+- Stack: `~/code/bodhix/testing/eval-opt/ai-mod-stack/`
+- Infra: `~/code/bodhix/testing/eval-opt/ai-mod-infra/`
+
+**Next Steps:**
+1. User restarts dev server: `cd ~/code/bodhix/testing/eval-opt/ai-mod-stack && ./scripts/start-opt.sh`
+2. User tests workspace list page (`/ws`)
+3. If additional pages have errors, fix remaining MEDIUM priority files
+
+---
+
+### February 6, 2026 Afternoon (3:00-5:20 PM) - UX Design & Workspace Integration
+
+**Session Goal:** Fix workspace detail page and design eval-opt UX
+
+**Issues Fixed:**
+
+1. **Workspace Detail Page Using Wrong Pattern** (FIXED)
+   - **Problem:** `ws/[wsId]/page.tsx` had custom implementation with hardcoded `/eval-opt/workspaces/` API routes
+   - **Fix:** Replaced with module-ws pattern initially, then created custom eval-opt workspace page
+   - **Files:** `apps/eval-opt/app/ws/[id]/page.tsx` (rewritten)
+
+2. **Missing WorkspacePluginProvider** (FIXED)
+   - **Problem:** WorkspacePluginProvider not in eval-opt components
+   - **Fix:** Copied from main app's components folder
+   - **Files:** `apps/eval-opt/components/WorkspacePluginProvider.tsx` (NEW)
+
+3. **UX Design Clarification** (COMPLETED)
+   - Clarified workflow through user discussion
+   - Created specification document: `docs/specifications/spec_eval-opt-workspace-integration.md`
+
+**UX Design Decisions:**
+
+| Tab | Purpose | Implementation |
+|-----|---------|----------------|
+| Overview | Stats + getting started guide | Custom |
+| Context | Domain context docs for RAG | Reuse module-kb WorkspaceDataKBTab |
+| Optimization | List runs + create new | Custom (new) |
+| Settings | Workspace settings | Standard pattern |
+
+**Optimization Workflow Defined:**
+1. Create Optimization Run (select doc type + criteria set)
+2. Define Response Sections (JSON structure for AI response)
+3. Create Truth Sets (document + manual criterion evaluation)
+4. Run Optimization (system generates/tests prompts)
+5. Review Results (ranked configurations)
+
+**Truth Set Wizard Design:**
+- Score Range: 5-tier system (0-20, 21-40, 41-60, 61-80, 81-100)
+- Response Sections: Configurable per run (justification, findings, recommendations)
+- Wizard-style with progress indicator and save/resume capability
+
+**Files Created:**
+- `docs/specifications/spec_eval-opt-workspace-integration.md` - Full UX specification
+- `apps/eval-opt/app/ws/[id]/page.tsx` - Custom workspace detail with 4 tabs
+- `apps/eval-opt/components/WorkspacePluginProvider.tsx` - Copied from main app
+
+**Synced to Test Project:**
+- ✅ All new files synced to `~/code/bodhix/testing/eval-opt/ai-mod-stack/`
+
+**Implementation Phases Defined:**
+- Phase 1: Workspace tabs (Context + Optimization) ✅ COMPLETE
+- Phase 2: Optimization Run Details page (future)
+- Phase 3: Truth Set wizard (future)
+
+---
+
+**Last Updated:** February 6, 2026 5:20 PM
