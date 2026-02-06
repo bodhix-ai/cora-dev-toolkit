@@ -268,6 +268,111 @@ Hooks matching pattern `useOrg*` MUST:
 
 ---
 
+## 2.4 Multi-Tenant Context Requirements (MANDATORY)
+
+**🔴 CRITICAL: Every API call MUST pass the required context for multi-tenant verification.**
+
+This is a **bright line security requirement** to prevent cross-tenant data leakage. Failure to pass required context compromises the integrity of the multi-tenant application.
+
+### Context Requirements by Route Type
+
+| Route Pattern | Frontend MUST Pass | Backend Verifies | Reference |
+|---------------|-------------------|------------------|-----------|
+| `/admin/sys/*` | — (nothing) | `is_sys_admin(user_id)` | [ADR-019a](../arch%20decisions/ADR-019a-AUTH-FRONTEND.md), [ADR-019b](../arch%20decisions/ADR-019b-AUTH-BACKEND.md) |
+| `/admin/org/*` | `orgId` (X-Org-Id header) | `is_org_admin(user_id, org_id)` + `is_org_member(org_id, user_id)` | [ADR-019a](../arch%20decisions/ADR-019a-AUTH-FRONTEND.md), [ADR-019b](../arch%20decisions/ADR-019b-AUTH-BACKEND.md) |
+| `/admin/ws/*` | `orgId` + `wsId` (headers) | `is_ws_admin(user_id, ws_id)` + `is_ws_member(ws_id, user_id)` | [ADR-019a](../arch%20decisions/ADR-019a-AUTH-FRONTEND.md), [ADR-019b](../arch%20decisions/ADR-019b-AUTH-BACKEND.md) |
+| `/{module}/{resourceId}` | `orgId` (header) + `resourceId` (URL path) | `is_org_member(org_id, user_id)` + `is_resource_owner(user_id, resource_id)` | [ADR-019c](../arch%20decisions/ADR-019c-AUTH-RESOURCE-PERMISSIONS.md) |
+
+### Failure Modes
+
+**Missing orgId for org-scoped routes:**
+- Backend response: `400 Bad Request` with message "Organization ID required"
+- Frontend behavior: MUST NOT call API without orgId
+- Error is client-side (not 403) - the frontend failed to provide required context
+
+**Missing wsId for workspace-scoped routes:**
+- Backend response: `400 Bad Request` with message "Workspace ID required"
+- Frontend behavior: MUST NOT call API without wsId
+
+**Missing resourceId for resource routes:**
+- Backend response: `400 Bad Request` with message "Resource ID required"
+- Frontend behavior: MUST include resourceId in URL path
+
+### Implementation Pattern
+
+```typescript
+// System Admin - No context needed
+export default function SysAdminPage() {
+  return <SysModuleAdmin />;  // Component checks isSysAdmin internally
+}
+
+// Organization Admin - Component gets orgId internally
+export default function OrgAdminPage() {
+  return <OrgModuleAdmin />;  // Component uses useOrganizationContext() internally
+}
+
+// Workspace Admin - Component gets wsId + orgId internally
+export default function WsAdminPage() {
+  return <WsModuleAdmin />;  // Component uses workspace context internally
+}
+
+// Resource Route - Component gets all context internally
+export default function ResourceDetailPage() {
+  return <ResourceDetail />;  // Component reads params from URL + context
+}
+```
+
+### Validation
+
+The api-tracer validator enforces these requirements:
+
+```bash
+# Validate multi-tenant context passing
+python3 validation/api-tracer/cli.py validate --path <stack-path> --context-check
+```
+
+**Validator checks:**
+- ✅ Org-scoped hooks accept `orgId` parameter
+- ✅ API calls include X-Org-Id header for org routes
+- ✅ API calls include X-Ws-Id header for workspace routes
+- ✅ Resource IDs are in URL path, not body
+- ❌ ERROR: Org route called without orgId
+- ❌ ERROR: Workspace route called without wsId
+
+### Resource Permissions (Backend-Enforced)
+
+**IMPORTANT:** Resource permissions (Layer 2 from ADR-019c) are **backend-enforced**. The frontend does NOT perform permission checks.
+
+**Frontend responsibilities:**
+1. Display resources the user has access to (based on API response)
+2. May hide UI elements based on ownership for UX (not security)
+3. Backend is the authoritative source for permissions
+
+**Example:**
+```typescript
+// Frontend component - display resources
+export function ChatList() {
+  const { data: chats } = useChats(); // Backend filters to accessible chats
+  
+  return (
+    <List>
+      {chats.map(chat => (
+        <ChatItem 
+          key={chat.id} 
+          chat={chat}
+          // Show edit button only for owned chats (UX hint, not security)
+          canEdit={chat.created_by === currentUser.id}
+        />
+      ))}
+    </List>
+  );
+}
+```
+
+For complete resource permission patterns, see [ADR-019c: Resource Permissions](../arch%20decisions/ADR-019c-AUTH-RESOURCE-PERMISSIONS.md).
+
+---
+
 ## 3. Module Hook Standards
 
 ### 3.1 Data Fetching Hooks
