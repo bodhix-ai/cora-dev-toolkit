@@ -3,24 +3,30 @@
 /**
  * System Management Admin Page
  *
- * System-level management page for Lambda warming, performance monitoring,
- * storage management, and cost tracking.
+ * System-level management page for module configuration, Lambda warming,
+ * performance monitoring, storage management, and cost tracking.
  *
  * Access: System admins only (sys_owner, sys_admin)
  *
+ * Note: "Platform" terminology deprecated - use "System" (sys) instead.
+ *
  * @example
- * Route: /admin/mgmt
+ * Route: /admin/sys/mgmt
  */
 
 import React from "react";
-import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
-import { PlatformMgmtAdmin } from "@{{PROJECT_NAME}}/module-mgmt";
-import { CircularProgress, Box, Alert } from "@mui/material";
+import { SysMgmtAdmin } from "@{{PROJECT_NAME}}/module-mgmt";
 
 /**
  * System Management Admin Page Component
  *
- * Renders the System Management admin interface with tabs for:
+ * This page follows the standard admin component pattern (01_std_front_ADMIN-COMPONENTS.md):
+ * - All admin pages use module-provided components
+ * - Component handles auth, loading, and API calls internally
+ * - Route metadata documented in component docstring
+ *
+ * Integrated functionality:
+ * - Module configuration (formerly at /admin/sys/mgmt/modules)
  * - Lambda warming schedule management
  * - Performance monitoring (planned)
  * - Storage management (planned)
@@ -29,46 +35,5 @@ import { CircularProgress, Box, Alert } from "@mui/material";
  * Requires system admin role (sys_owner or sys_admin).
  */
 export default function SystemManagementPage() {
-  const { profile, loading, isAuthenticated } = useUser();
-  const { isSysAdmin } = useRole();
-
-  // Show loading state while user profile is being fetched
-  if (loading) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "400px",
-        }}
-      >
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  // Check if user is authenticated
-  if (!isAuthenticated || !profile) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error">
-          You must be logged in to access this page.
-        </Alert>
-      </Box>
-    );
-  }
-
-  // Check if user has system admin role
-  if (!isSysAdmin) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error">
-          Access denied. This page is only accessible to system administrators.
-        </Alert>
-      </Box>
-    );
-  }
-
-  return <PlatformMgmtAdmin />;
+  return <SysMgmtAdmin />;
 }
