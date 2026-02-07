@@ -45,22 +45,22 @@ Implement the Optimization Run Details page and Truth Set creation wizard, enabl
 
 ### 1.1: Page Structure
 
-- [ ] Create `app/ws/[id]/runs/[runId]/page.tsx`
-- [ ] Header with run name, doc type, criteria set badges
-- [ ] Status indicator (Draft, In Progress, Optimized, Failed)
-- [ ] Breadcrumbs navigation
+- [x] Create `app/ws/[id]/runs/[runId]/page.tsx`
+- [x] Header with run name, doc type, criteria set badges
+- [x] Status indicator (Draft, In Progress, Optimized, Failed)
+- [x] Breadcrumbs navigation
 
 ### 1.2: Three-Section Layout
 
-- [ ] **Section 1: Response Sections** - Define/edit response structure
-- [ ] **Section 2: Truth Sets** - List + "New Truth Set" button
-- [ ] **Section 3: Optimization** - "Optimize Eval Config" button + results area
+- [x] **Section 1: Response Sections** - Define/edit response structure
+- [x] **Section 2: Truth Sets** - List + "New Truth Set" button
+- [x] **Section 3: Optimization** - "Optimize Eval Config" button + results area
 
 ### Success Criteria Phase 1
 
-- [ ] Run details page loads and displays run info
-- [ ] Navigation from Optimization tab works correctly
-- [ ] Three sections visible with proper layout
+- [x] Run details page loads and displays run info
+- [ ] Navigation from Optimization tab works correctly (needs testing)
+- [x] Three sections visible with proper layout
 
 ---
 
