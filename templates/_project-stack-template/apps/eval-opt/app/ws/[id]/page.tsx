@@ -682,12 +682,12 @@ function CreateOptimizationRunDialog({
       if (!token) return;
       const client = createAuthenticatedClient(token);
 
-      // Load doc types from module-eval
-      const docTypesRes = await client.get("/eval/doc-types");
+      // Load doc types from module-eval (workspace-level config route)
+      const docTypesRes = await client.get(`/ws/${workspaceId}/eval/config/doc-types`);
       setDocTypes(docTypesRes.data || []);
 
-      // Load criteria sets from module-eval
-      const criteriaSetsRes = await client.get("/eval/criteria-sets");
+      // Load criteria sets from module-eval (workspace-level config route)
+      const criteriaSetsRes = await client.get(`/ws/${workspaceId}/eval/config/criteria-sets`);
       setCriteriaSets(criteriaSetsRes.data || []);
     } catch (err: any) {
       console.error("Error loading options:", err);
