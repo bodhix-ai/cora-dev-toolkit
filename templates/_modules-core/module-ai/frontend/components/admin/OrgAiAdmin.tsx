@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser, useRole, createAuthenticatedClient } from '@{{PROJECT_NAME}}/module-access';
+import { useUser, useRole } from '@{{PROJECT_NAME}}/module-access';
+import { createAuthenticatedClient } from '@{{PROJECT_NAME}}/api-client';
 
 /**
  * Organization AI Admin Component
@@ -49,8 +50,8 @@ export const OrgAiAdmin = () => {
   // Authenticated client state
   const [apiClient, setApiClient] = useState<ReturnType<typeof createAuthenticatedClient> | null>(null);
 
-  // Check if user has permission to edit (org_owner only)
-  const canEdit = profile?.role === 'org_owner';
+  // Check if user has permission to edit (org admins can edit)
+  const canEdit = isOrgAdmin;
 
   // Initialize authenticated API client
   useEffect(() => {
@@ -89,7 +90,7 @@ export const OrgAiAdmin = () => {
       setLoading(true);
       setError(null);
 
-      const data = await apiClient.get('/admin/org/ai/config');
+      const data = await apiClient.get('/admin/org/ai/config') as any;
       
       if (data.success && data.data) {
         setConfig(data.data);
@@ -123,7 +124,7 @@ export const OrgAiAdmin = () => {
 
       const data = await apiClient.put('/admin/org/ai/config', {
         orgSystemPrompt: orgSystemPrompt || null,
-      });
+      }) as any;
       
       if (data.success && data.data) {
         setConfig(data.data);

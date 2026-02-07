@@ -39,7 +39,8 @@ import {
   Visibility as VisibilityIcon,
   Restore as RestoreIcon,
 } from "@mui/icons-material";
-import { useUser, AuthAdapter } from "@{{PROJECT_NAME}}/module-access";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
 import {
   listOrgAdminSessions,
   getOrgAdminSession,
@@ -53,7 +54,7 @@ import {
  */
 interface OrgSessionsTabProps {
   orgId: string;
-  authAdapter: AuthAdapter;
+  authAdapter: CoraAuthAdapter;
 }
 
 interface Session {

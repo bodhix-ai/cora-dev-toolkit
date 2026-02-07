@@ -22,5 +22,5 @@ export { OrgDetailsTab } from './OrgDetailsTab';
 export { OrgDomainsTab } from './OrgDomainsTab';
 export { OrgInvitesTab } from './OrgInvitesTab';
 export { OrgMembersTab } from './OrgMembersTab';
-export { OrgMgmt } from './OrgMgmt';
+export { default as OrgMgmt } from './OrgMgmt';
 export { OrgAIConfigTab } from './OrgAIConfigTab';

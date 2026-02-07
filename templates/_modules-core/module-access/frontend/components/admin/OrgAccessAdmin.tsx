@@ -29,7 +29,7 @@ import {
   InputLabel,
 } from "@mui/material";
 import { Search, Person, Edit, Delete } from "@mui/icons-material";
-import { useUser } from "../../hooks/useUser";
+import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
 import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 
 /**
@@ -53,7 +53,9 @@ interface OrgUser {
 }
 
 export const OrgAccessAdmin = () => {
-  const { profile, loading: authLoading, isAuthenticated } = useUser();
+  const { authAdapter, loading: authLoading, isAuthenticated, profile } = useUser();
+  const { isOrgAdmin, hasPermission } = useRole();
+  const isOrgOwner = hasPermission('org_owner');
   const [users, setUsers] = useState<OrgUser[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<OrgUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,8 +63,6 @@ export const OrgAccessAdmin = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingUser, setEditingUser] = useState<OrgUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<OrgUser | null>(null);
-
-  const isOrgOwner = profile?.currentOrgRole === "org_owner";
 
   useEffect(() => {
     if (!authLoading && profile) {
@@ -79,12 +79,12 @@ export const OrgAccessAdmin = () => {
       setLoading(true);
       setError(null);
       
-      if (!profile?.authAdapter) {
+      if (!authAdapter) {
         setError("Authentication required");
         return;
       }
 
-      const token = await profile.authAdapter.getToken();
+      const token = await authAdapter.getToken();
       if (!token) {
         setError("Authentication required");
         return;
@@ -125,9 +125,9 @@ export const OrgAccessAdmin = () => {
 
   const handleUpdateRole = async (userId: string, newRole: string) => {
     try {
-      if (!profile?.authAdapter) return;
+      if (!authAdapter) return;
 
-      const token = await profile.authAdapter.getToken();
+      const token = await authAdapter.getToken();
       if (!token) return;
 
       const apiClient = createCoraAuthenticatedClient(token);
@@ -145,9 +145,9 @@ export const OrgAccessAdmin = () => {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      if (!profile?.authAdapter) return;
+      if (!authAdapter) return;
 
-      const token = await profile.authAdapter.getToken();
+      const token = await authAdapter.getToken();
       if (!token) return;
 
       const apiClient = createCoraAuthenticatedClient(token);
@@ -191,12 +191,12 @@ export const OrgAccessAdmin = () => {
     );
   }
 
-  if (!["org_admin", "org_owner"].includes(profile.currentOrgRole || "")) {
+  if (!isOrgAdmin && !isOrgOwner) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">
           <AlertTitle>Access Denied</AlertTitle>
-          Organization admin access required. Current role: {profile?.currentOrgRole || "none"}
+          Organization admin access required.
         </Alert>
       </Box>
     );

@@ -104,7 +104,8 @@ export function SysKbAdmin(): React.ReactElement {
     deleteDocument,
     refresh: refreshDocuments,
   } = useKbDocuments({
-    kbId: selectedKb?.kbId || null,
+    scope: 'kb',
+    scopeId: selectedKb?.id || null,
     apiClient: apiClientWrapper as any,
     autoFetch: !!selectedKb && !!apiClientWrapper,
   });
@@ -135,18 +136,15 @@ export function SysKbAdmin(): React.ReactElement {
       kbs={kbs}
       kbsLoading={kbsLoading}
       kbsError={kbsError}
-      onCreateKb={createKb}
-      onUpdateKb={updateKb}
+      onCreateKb={async (data: any) => { await createKb(data); }}
+      onUpdateKb={async (kbId: string, data: any) => { await updateKb(kbId, data); }}
       onDeleteKb={deleteKb}
       onRefreshKbs={refreshKbs}
       selectedKb={selectedKb}
-      onSelectKb={setSelectedKb}
       documents={documents}
       documentsLoading={documentsLoading}
-      documentsError={documentsError}
-      onUploadDocument={uploadDocument}
+      onUploadDocument={async (file: File) => { await uploadDocument(file); }}
       onDeleteDocument={deleteDocument}
-      onRefreshDocuments={refreshDocuments}
     />
   );
 }
