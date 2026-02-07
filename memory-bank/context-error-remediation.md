@@ -448,6 +448,117 @@ Cannot proceed with full standardization until:
 
 ---
 
+### February 7, 2026 - Session 21: Admin Page Thin Wrapper Migration ✅
+
+**Session Summary:**
+- **Duration:** ~2 hours
+- **Focus:** Migrate admin pages to thin wrapper pattern (01_std_front_ADMIN-ARCH.md)
+- **Result:** 5 pages migrated, 4 new components created, 15% error reduction
+- **Status:** Tier 1 + Tier 2 + Partial Tier 3 complete
+
+**Key Accomplishments:**
+
+1. **Components Created (4 new):**
+   - `SysKbAdmin.tsx` (module-kb) - System KB admin with @routes metadata
+   - `OrgKbAdmin.tsx` (module-kb) - Org KB admin with @routes metadata
+   - `SysAccessAdmin.tsx` (module-access) - System access admin with @routes metadata
+   - `SysAiAdmin.tsx` (module-ai) - System AI admin with @routes metadata
+
+2. **Admin Index Files Created (3 new):**
+   - `module-access/frontend/components/admin/index.ts` - Exports OrgAccessAdmin, SysAccessAdmin
+   - `module-ai/frontend/components/admin/index.ts` - Exports OrgAiAdmin, SysAiAdmin
+   - `module-kb/frontend/components/admin/index.ts` - Exports OrgKbAdmin, SysKbAdmin (updated)
+
+3. **Pages Migrated to Thin Wrappers (5 pages):**
+   - `/admin/org/chat/page.tsx` - Fixed OrgChatAdmin component hooks
+   - `/admin/sys/chat/page.tsx` - Converted to render SysChatAdmin only
+   - `/admin/org/kb/page.tsx` - Converted to render OrgKbAdmin only
+   - `/admin/sys/kb/page.tsx` - Converted to render SysKbAdmin only
+   - `/admin/sys/access/page.tsx` - Converted to render SysAccessAdmin only
+   - `/admin/sys/ai/page.tsx` - Converted to render SysAiAdmin only
+
+4. **Error Reduction:**
+   - **Before:** 34 "admin not thin wrapper" errors
+   - **After:** 29 "admin not thin wrapper" errors
+   - **Reduction:** 5 errors eliminated (15% improvement)
+
+**Progress by Tier:**
+- ✅ Tier 1 (Chat): 2 pages migrated (34→33 errors)
+- ✅ Tier 2 (KB): 2 pages migrated (33→31 errors)
+- ✅ Tier 3 (Partial): 2 pages migrated (31→29 errors)
+
+**Components Status:**
+- **Now Compliant:** 8 admin components with @routes metadata
+- **Created in Session 21:** 4 components (SysKbAdmin, OrgKbAdmin, SysAccessAdmin, SysAiAdmin)
+- **Already Existed:** 4 components (OrgAccessAdmin, OrgAiAdmin, OrgChatAdmin, SysChatAdmin)
+- **Remaining:** 8 components needed (WS, Mgmt, Eval, Voice)
+
+**Architecture Pattern:**
+All components follow standard pattern:
+- Handle auth/loading internally (useUser, useRole hooks)
+- Include @routes metadata for API-tracer validation
+- Self-sufficient (no props required from page)
+- Pages are thin wrappers (just render component)
+
+**Files Modified:**
+- Created: 4 admin components (KB, Access, AI sys variants)
+- Created: 3 admin index.ts files
+- Updated: 6 page files to thin wrappers
+- Synced: All changes to test project via /fix-and-sync.md workflow
+
+**Test Project:**
+- `/Users/aaron/code/bodhix/testing/ws-optim/ai-mod-stack`
+- Build status: No TypeScript errors in migrated modules
+- Pre-existing errors in module-mgmt (not related to migration)
+
+**Current Baseline:**
+- Total: 29 "admin not thin wrapper" errors
+- Auth lifecycle: 3 errors (false positives)
+- Code quality: 403 errors (deferred to API naming migration)
+- DB function: 13 errors
+- Route not found: 0 errors
+
+**Context Status:**
+- 85% tokens used at session end
+- Recommend new session for remaining work
+
+**Next Session Priorities (Session 22):**
+
+**Priority 1: WS Pages (1.5 hours)**
+- Create `module-ws/frontend/components/admin/` directory
+- Create `OrgWsAdmin` and `SysWsAdmin` components
+- Create admin index.ts
+- Update web app pages to thin wrappers
+- Expected: 29→27 errors
+
+**Priority 2: Mgmt Pages (1.5 hours)**
+- Create `OrgMgmtAdmin` component
+- Fix `SysMgmtAdmin` component (broken TypeScript)
+- Create admin index.ts
+- Update web app pages to thin wrappers
+- Expected: 27→25 errors
+
+**Priority 3: Eval Pages (1 hour - Optional)**
+- Create `OrgEvalAdmin` and `SysEvalAdmin` components
+- Expected: 25→23 errors
+
+**Priority 4: Voice Pages (1 hour - Optional)**
+- Create `OrgVoiceAdmin` and `SysVoiceAdmin` components
+- Expected: 23→21 errors
+
+**Priority 5: Module Routes (2-3 hours - If time permits)**
+- Update `packages/module-*/routes/admin/*/page.tsx` files
+- These also need to become thin wrappers using same components
+- Expected: Could reach 0 errors if all module routes fixed
+
+**Key Insight:**
+The 29 remaining errors include BOTH web app pages AND module route pages. Each module has its own routes in `packages/module-*/routes/admin/` that must also follow the thin wrapper pattern. Complete elimination requires fixing both sets of pages.
+
+**Plan Updated:**
+- `docs/plans/plan_admin-page-std-compliance-fixes.md` - Session 21 complete, Session 22 priorities defined
+
+---
+
 ### February 6, 2026 - Session 19: Frontend Standards Consolidation ✅
 
 **Session Summary:**
