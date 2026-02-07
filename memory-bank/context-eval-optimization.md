@@ -72,15 +72,15 @@ Updated the configuration file to explicitly include `module-voice` to restore t
 | S1 | `feature/eval-optimization-s1` | `plan_eval-optimization-s1.md` | ✅ COMPLETE | Feb 5, 2026 |
 | S2 | `feature/eval-optimization-s2` | `plan_eval-optimization-s2.md` | ✅ COMPLETE | Feb 5, 2026 |
 | S3 | `feature/eval-optimization-s3` | `plan_eval-optimization-s3.md` | ✅ COMPLETE | Feb 6, 2026 |
-| S4 | `feature/eval-optimization-s4` | `plan_eval-optimization-s4.md` | 📋 PLANNED | - |
+| S4 | `feature/eval-optimization-s4` | `plan_eval-optimization-s4.md` | � Active | - |
 
 ## Current Sprint
 
 - **Sprint 1:** ✅ COMPLETE (Feb 5, 2026 AM)
 - **Sprint 2:** ✅ COMPLETE (Feb 5, 2026 PM)
 - **Sprint 3:** ✅ COMPLETE (Feb 5-6, 2026) - UX Design Focus
-- **Sprint 4:** 📋 PLANNED (next sprint)
-- **Branch:** `feature/eval-optimization-s4` (to be created after S3 merge)
+- **Sprint 4:** � ACTIVE (Feb 7, 2026) - Run Details & Truth Set Wizard
+- **Branch:** `feature/eval-optimization-s4`
 - **Plan:** `docs/plans/plan_eval-optimization-s4.md`
 - **Focus:** Run Details page + Truth Set wizard
 - **Test Project:** `~/code/bodhix/testing/eval-opt/ai-mod-stack/`
