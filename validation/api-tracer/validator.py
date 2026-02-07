@@ -310,6 +310,12 @@ class FullStackValidator:
         # Build index for fast lookup
         self.component_routes_index = self.component_parser.get_component_routes_index()
         logger.info(f"Found {len(component_routes)} routes documented in {len(self.component_parser.components_with_metadata)} admin components")
+        
+        # Update auth validator with known components for delegation verification
+        if self.auth_validator:
+            component_names = self.component_parser.components_with_metadata  # Already a set
+            self.auth_validator.frontend_validator.known_components = component_names
+            logger.debug(f"Updated auth validator with {len(component_names)} known components: {component_names}")
     
     def _enhance_lambda_path_inference(self, project: Path):
         """

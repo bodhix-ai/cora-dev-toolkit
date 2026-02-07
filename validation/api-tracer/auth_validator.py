@@ -52,6 +52,13 @@ class AuthIssueType:
     ADMIN_DIRECT_ROLE_ACCESS = 'auth_admin_direct_role_access'
     ADMIN_MISSING_ORG_ID_IN_API_CALL = 'auth_admin_missing_org_id_in_api_call'
     ADMIN_INVALID_HOOK_DESTRUCTURING = 'auth_admin_invalid_hook_destructuring'
+    ADMIN_NOT_THIN_WRAPPER = 'auth_admin_not_thin_wrapper'  # Page has hooks instead of delegating to component
+    
+    # Component issues (Layer 1) - For admin components that pages delegate to
+    COMPONENT_MISSING_USE_ROLE = 'auth_component_missing_use_role'  # Component needs useRole() for auth
+    COMPONENT_MISSING_ORG_CONTEXT = 'auth_component_missing_org_context'  # Org component needs useOrganizationContext()
+    COMPONENT_MISSING_LOADING_CHECK = 'auth_component_missing_loading_check'  # Component needs loading state handling
+    COMPONENT_ROUTE_NOT_CALLED = 'auth_component_route_not_called'  # @routes lists a route not called in component
     
     # Lambda issues (Layer 1)
     ADMIN_MISSING_CHECK_SYS_ADMIN = 'auth_admin_missing_check_sys_admin'
@@ -104,12 +111,14 @@ class FrontendAuthValidator:
     - useRole() hook for admin pages
     - useOrganizationContext() for org routes
     - Loading state checks before role access
+    - Component delegation pattern (verifies component exists)
     """
     
-    def __init__(self):
+    def __init__(self, known_components: Optional[Set[str]] = None):
         self.issues: List[AuthIssue] = []
         self.current_file: str = ""
         self.current_route_type: str = ""  # Track current route type for scope attribution
+        self.known_components: Set[str] = known_components or set()  # Components with @routes metadata
     
     def validate_file(self, file_path: str, content: str) -> List[AuthIssue]:
         """
@@ -139,19 +148,46 @@ class FrontendAuthValidator:
             # Not an admin page, no auth requirements
             return []
         
-        # Check if this is a server component that delegates to client component
-        # This is a valid Next.js pattern: server component loads data, client component handles auth
-        if self._is_server_component(content) and self._delegates_to_client_component(content):
-            # Server component delegates to client component for auth - skip validation
-            # The client component will be validated separately
-            return []
+        # =======================================================================
+        # THIN WRAPPER CHECK (01_std_front_ADMIN-ARCH.md)
+        # Admin pages MUST be thin wrappers that ONLY render a module component.
+        # Pages should NOT have hooks - all logic belongs in the component.
+        # =======================================================================
         
-        # Check for required hooks
-        self._check_use_user(content, route_type)
-        self._check_use_role(content, route_type)
-        self._check_org_context(content, route_type)
-        self._check_loading_state(content, route_type)
-        self._check_direct_role_access(content)
+        # Check if page has any hooks directly (indicates non-compliant page)
+        hooks_found = self._count_hooks_in_page(content)
+        
+        if hooks_found:
+            # Page has hooks - this violates the thin wrapper pattern
+            self.issues.append(AuthIssue(
+                severity='error',
+                issue_type=AuthIssueType.ADMIN_NOT_THIN_WRAPPER,
+                layer='frontend',
+                file=self.current_file,
+                line=1,
+                issue=f"Admin page has {hooks_found} hook(s) - violates thin wrapper pattern (01_std_front_ADMIN-ARCH.md)",
+                suggestion="Remove ALL hooks from page. A compliant page should ONLY: import component → return <ComponentName />. Move auth, loading, and data logic into the component.",
+                standard_ref="01_std_front_ADMIN-ARCH.md",
+                admin_scope=route_type
+            ))
+            return self.issues
+        
+        # Check if page delegates to an admin component
+        delegates_to_component = self._delegates_to_client_component(content)
+        
+        if not delegates_to_component:
+            # Page doesn't delegate AND doesn't have hooks - unusual, flag it
+            self.issues.append(AuthIssue(
+                severity='error',
+                issue_type=AuthIssueType.ADMIN_NOT_THIN_WRAPPER,
+                layer='frontend',
+                file=self.current_file,
+                line=1,
+                issue="Admin page doesn't delegate to a module admin component",
+                suggestion="Import and render a module admin component: import { OrgModuleAdmin } from '@project/module-name'; return <OrgModuleAdmin />;",
+                standard_ref="01_std_front_ADMIN-ARCH.md",
+                admin_scope=route_type
+            ))
         
         return self.issues
     
@@ -189,24 +225,69 @@ class FrontendAuthValidator:
         """
         Check if server component delegates to a client component for auth.
         
-        Pattern: Server component renders a ClientComponent that handles auth.
-        E.g., return <OrgAdminClientPage ... /> or <SystemAdminClientPage ... />
+        Pattern: Server component renders a ClientComponent or AdminComponent that handles auth.
+        E.g., return <OrgAdminClientPage ... /> or <OrgAiAdmin /> or <SysMgmtAdmin />
+        
+        Per 01_std_front_ADMIN-ARCH.md: Admin pages delegate all logic to components.
+        
+        **ENHANCED:** Now verifies that the delegated component actually exists with @routes metadata.
+        If component doesn't exist, reports an error instead of silently passing.
         
         Returns:
-            True if delegates to client component
+            True if delegates to a valid client component or admin component
         """
-        # Look for pattern: return <SomeClientPage ...>
+        # Look for pattern: return <SomeClientPage ...> or return <OrgXxxAdmin ...>
         # Common patterns: 
         # - page.tsx (server) delegates to ClientPage.tsx (client)
         # - return <OrgAdminClientPage adminCards={adminCards} />
-        client_component_patterns = [
-            r'return\s*<\w*ClientPage',  # return <OrgAdminClientPage ... />
-            r'return\s*<System\w+ClientPage',  # return <SystemAdminClientPage ... />
-            r'return\s*<Org\w+ClientPage',  # return <OrgAdminClientPage ... />
+        # - Admin component delegation (01_std_front_ADMIN-ARCH.md):
+        #   - return <OrgAiAdmin /> or <SysMgmtAdmin /> or <OrgAccessAdmin />
+        delegation_patterns = [
+            # ClientPage patterns (existing) - these are trusted, not checked
+            (r'return[^<]*<\w*ClientPage', True),  # return <OrgAdminClientPage ... /> or return (\n<...
+            (r'return[^<]*<System\w+ClientPage', True),  # return <SystemAdminClientPage ... />
+            (r'return[^<]*<Org\w+ClientPage', True),  # return <OrgAdminClientPage ... />
+            # Admin component patterns (NEW - 01_std_front_ADMIN-ARCH.md) - these MUST exist
+            (r'return[^<]*<(Org\w+Admin)', False),  # return <OrgAiAdmin /> or return (\n  <OrgAccessAdmin
+            (r'return[^<]*<(Sys\w+Admin)', False),  # return <SysMgmtAdmin /> or return (\n  <SysAccessAdmin
+            (r'return[^<]*<(Ws\w+Admin)', False),   # return <WsConfigAdmin /> (if any exist)
         ]
         
-        for pattern in client_component_patterns:
-            if re.search(pattern, content):
+        for pattern_or_tuple in delegation_patterns:
+            # Handle both old patterns (string) and new patterns (tuple with check flag)
+            if isinstance(pattern_or_tuple, tuple):
+                pattern, skip_check = pattern_or_tuple
+            else:
+                pattern = pattern_or_tuple
+                skip_check = True
+            
+            match = re.search(pattern, content)
+            if match:
+                # If this is an admin component pattern that needs verification
+                if not skip_check:
+                    # Extract component name from capture group
+                    component_name = match.group(1) if match.lastindex and match.lastindex >= 1 else None
+                    
+                    if component_name and self.known_components:
+                        # Check if component exists in known components
+                        if component_name not in self.known_components:
+                            # Component doesn't exist - report error
+                            line = content[:match.start()].count('\n') + 1
+                            self.issues.append(AuthIssue(
+                                severity='error',
+                                issue_type=AuthIssueType.ADMIN_MISSING_USE_USER,  # Reuse existing type
+                                layer='frontend',
+                                file=self.current_file,
+                                line=line,
+                                issue=f"Page delegates to component '{component_name}' which does not exist or lacks @routes metadata",
+                                suggestion=f"Create {component_name} component in module's frontend/components/admin/ directory with @routes metadata (see 01_std_front_ADMIN-ARCH.md)",
+                                standard_ref="01_std_front_ADMIN-ARCH.md",
+                                admin_scope=self.current_route_type
+                            ))
+                            # Still return True so we don't also complain about missing hooks
+                            return True
+                
+                # Component pattern found and either skipped check or passed check
                 return True
         
         return False
@@ -244,6 +325,57 @@ class FrontendAuthValidator:
                 return 'ws'
         
         return 'none'
+    
+    def _count_hooks_in_page(self, content: str) -> int:
+        """
+        Count the number of React hooks used directly in a page file.
+        
+        Per 01_std_front_ADMIN-ARCH.md: Admin pages MUST be thin wrappers.
+        Pages should NOT have any hooks - all logic belongs in the component.
+        
+        Returns:
+            Number of hooks found in the page
+        """
+        # Hooks that should NEVER be in admin pages (should be in components)
+        hooks_to_check = [
+            r'\buseUser\s*\(',
+            r'\buseRole\s*\(',
+            r'\buseOrganizationContext\s*\(',
+            r'\buseSession\s*\(',
+            r'\buseState\s*[<(]',
+            r'\buseEffect\s*\(',
+            r'\buseCallback\s*\(',
+            r'\buseMemo\s*\(',
+            r'\buseRef\s*[<(]',
+            r'\buseContext\s*\(',
+        ]
+        
+        count = 0
+        for pattern in hooks_to_check:
+            matches = re.findall(pattern, content)
+            count += len(matches)
+        
+        return count
+    
+    def _uses_hooks_directly(self, content: str) -> bool:
+        """
+        Check if page uses hooks directly (OLD pattern that needs migration).
+        
+        The NEW pattern is: page ONLY renders component, no hooks in page.
+        The OLD pattern is: page has hooks AND delegates to component.
+        
+        Returns:
+            True if page uses hooks directly (useUser, useRole, useOrganizationContext)
+        """
+        # Check for hooks that should only be in components, not pages
+        hooks = [
+            'useUser(',
+            'useRole(',
+            'useOrganizationContext(',
+            'useSession(',  # NextAuth pattern
+        ]
+        
+        return any(hook in content for hook in hooks)
     
     def _check_use_user(self, content: str, route_type: str):
         """Check for useUser() hook usage."""
@@ -495,6 +627,179 @@ class FrontendAuthValidator:
                     admin_scope=self.current_route_type
                 ))
                 break
+    
+    def validate_admin_component(self, file_path: str, content: str, component_type: str = 'org') -> List[AuthIssue]:
+        """
+        Validate an admin component (the target of page delegation).
+        
+        Per 01_std_front_ADMIN-ARCH.md: Components MUST have auth logic internally.
+        Unlike pages (thin wrappers), components SHOULD have hooks.
+        
+        Args:
+            file_path: Path to the component file
+            content: File content
+            component_type: 'sys', 'org', or 'ws' based on component name pattern
+            
+        Returns:
+            List of AuthIssue objects
+        """
+        self.current_file = file_path
+        self.issues = []
+        self.current_route_type = component_type
+        
+        # Skip if not an admin component (by naming convention)
+        is_admin_component = any(pattern in file_path for pattern in [
+            'Admin.tsx', 'Admin.ts', '/admin/', 'components/admin/'
+        ])
+        if not is_admin_component:
+            return []
+        
+        # Check 1: Component must use useRole() for authorization
+        self._check_component_use_role(content, component_type)
+        
+        # Check 2: Org components must use useOrganizationContext()
+        if component_type == 'org':
+            self._check_component_org_context(content)
+        
+        # Check 3: Component must handle loading states
+        self._check_component_loading_state(content)
+        
+        # Check 4: @routes metadata must match actual API calls
+        self._check_routes_match_api_calls(content)
+        
+        return self.issues
+    
+    def _check_component_use_role(self, content: str, component_type: str):
+        """Check that admin component uses useRole() for authorization."""
+        has_use_role = 'useRole' in content
+        
+        if not has_use_role:
+            self.issues.append(AuthIssue(
+                severity='error',
+                issue_type=AuthIssueType.COMPONENT_MISSING_USE_ROLE,
+                layer='frontend',
+                file=self.current_file,
+                line=1,
+                issue="Admin component missing useRole() hook for authorization",
+                suggestion="Add: const { isSysAdmin, isOrgAdmin } = useRole() to check admin permissions",
+                standard_ref="01_std_front_ADMIN-ARCH.md",
+                admin_scope=component_type
+            ))
+    
+    def _check_component_org_context(self, content: str):
+        """Check that org-scoped component uses useOrganizationContext()."""
+        has_org_context = (
+            'useOrganizationContext' in content or
+            'useOrgContext' in content or
+            'OrgContext' in content
+        )
+        
+        if not has_org_context:
+            self.issues.append(AuthIssue(
+                severity='error',
+                issue_type=AuthIssueType.COMPONENT_MISSING_ORG_CONTEXT,
+                layer='frontend',
+                file=self.current_file,
+                line=1,
+                issue="Organization admin component missing useOrganizationContext() hook",
+                suggestion="Add: const { currentOrganization, orgId } = useOrganizationContext()",
+                standard_ref="01_std_front_ADMIN-ARCH.md",
+                admin_scope='org'
+            ))
+    
+    def _check_component_loading_state(self, content: str):
+        """Check that component handles loading states before accessing role."""
+        has_loading_handling = (
+            'isLoading' in content or
+            'loading' in content.lower() or
+            '<Loading' in content or
+            '<Spinner' in content or
+            '<CircularProgress' in content or
+            'Skeleton' in content
+        )
+        
+        if not has_loading_handling:
+            self.issues.append(AuthIssue(
+                severity='error',
+                issue_type=AuthIssueType.COMPONENT_MISSING_LOADING_CHECK,
+                layer='frontend',
+                file=self.current_file,
+                line=1,
+                issue="Admin component missing loading state handling",
+                suggestion="Add loading check: if (loading) return <CircularProgress />; or use isLoading from hooks",
+                standard_ref="01_std_front_ADMIN-ARCH.md",
+                admin_scope=self.current_route_type
+            ))
+    
+    def _check_routes_match_api_calls(self, content: str):
+        """
+        Check that @routes in docstring match actual API calls in component.
+        
+        Per 01_std_front_ADMIN-ARCH.md Section 5: Components must document all routes.
+        """
+        # Extract routes from @routes docstring
+        routes_pattern = r'@routes\s*\n((?:\s*\*?\s*-\s+(?:GET|POST|PUT|DELETE|PATCH)\s+/[^\n]+\n?)+)'
+        routes_match = re.search(routes_pattern, content)
+        
+        if not routes_match:
+            # No @routes metadata - this is checked elsewhere
+            return
+        
+        # Parse documented routes
+        documented_routes = set()
+        route_lines = routes_match.group(1)
+        for match in re.finditer(r'-\s+(GET|POST|PUT|DELETE|PATCH)\s+(/\S+)', route_lines):
+            method = match.group(1)
+            path = match.group(2)
+            documented_routes.add((method, path))
+        
+        # Find API calls in component (fetch, client.get, etc.)
+        api_call_patterns = [
+            r'fetch\s*\(\s*[`\'"]([^`\'"]+)[`\'"]',
+            r'\.get\s*\(\s*[`\'"]([^`\'"]+)[`\'"]',
+            r'\.post\s*\(\s*[`\'"]([^`\'"]+)[`\'"]',
+            r'\.put\s*\(\s*[`\'"]([^`\'"]+)[`\'"]',
+            r'\.delete\s*\(\s*[`\'"]([^`\'"]+)[`\'"]',
+            r'\.patch\s*\(\s*[`\'"]([^`\'"]+)[`\'"]',
+        ]
+        
+        called_paths = set()
+        for pattern in api_call_patterns:
+            for match in re.finditer(pattern, content):
+                path = match.group(1)
+                # Normalize path (remove query params, template vars)
+                path = re.sub(r'\?.*$', '', path)  # Remove query params
+                path = re.sub(r'\$\{[^}]+\}', '{id}', path)  # Normalize template vars
+                if path.startswith('/admin/') or path.startswith('/api/'):
+                    called_paths.add(path)
+        
+        # Check for documented routes that aren't called
+        for method, doc_path in documented_routes:
+            # Normalize documented path
+            normalized_doc = re.sub(r'\{[^}]+\}', '{id}', doc_path)
+            
+            # Check if this path is called
+            path_found = any(
+                normalized_doc in called or called in normalized_doc
+                for called in called_paths
+            )
+            
+            if not path_found and called_paths:  # Only flag if component has some API calls
+                line = content.find(doc_path)
+                line_num = content[:line].count('\n') + 1 if line > 0 else 1
+                
+                self.issues.append(AuthIssue(
+                    severity='warning',
+                    issue_type=AuthIssueType.COMPONENT_ROUTE_NOT_CALLED,
+                    layer='frontend',
+                    file=self.current_file,
+                    line=line_num,
+                    route_path=doc_path,
+                    route_method=method,
+                    issue=f"Route '{method} {doc_path}' documented in @routes but not found in component API calls",
+                    suggestion="Remove from @routes if route is unused, or add the API call to the component",
+                    standard_ref="01_std_front_ADMIN-ARCH.md"
+                ))
     
     def _check_org_id_in_api_calls(self, content: str):
         """
@@ -1270,8 +1575,8 @@ class AuthLifecycleValidator:
     Layer 2: Resource Permissions (ADR-019c) - /{module}/* data routes
     """
     
-    def __init__(self):
-        self.frontend_validator = FrontendAuthValidator()
+    def __init__(self, known_components: Optional[Set[str]] = None):
+        self.frontend_validator = FrontendAuthValidator(known_components=known_components)
         self.lambda_validator = LambdaAuthValidator()
         self.resource_validator = ResourcePermissionValidator()
         self.issues: List[AuthIssue] = []
