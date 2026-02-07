@@ -14,13 +14,15 @@
  * Route: /admin/sys/mgmt
  */
 
+"use client";
+
 import React from "react";
-import { SysMgmtAdmin } from "@{{PROJECT_NAME}}/module-mgmt";
+import { SysMgmtAdmin } from "@{{PROJECT_NAME}}/module-mgmt/admin";
 
 /**
- * System Management Admin Page Component
+ * System Management Admin Page
  *
- * This page follows the standard admin component pattern (01_std_front_ADMIN-COMPONENTS.md):
+ * This page follows the standard admin component pattern (01_std_front_ADMIN-ARCH.md):
  * - All admin pages use module-provided components
  * - Component handles auth, loading, and API calls internally
  * - Route metadata documented in component docstring
