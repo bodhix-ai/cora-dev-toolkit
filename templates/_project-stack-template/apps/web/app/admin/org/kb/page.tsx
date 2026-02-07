@@ -1,6 +1,6 @@
 "use client";
 
-import { OrgKbAdmin } from "@{{PROJECT_NAME}}/module-kb";
+import { OrgKbAdmin } from "@{{PROJECT_NAME}}/module-kb/admin";
 
 /**
  * Organization KB Admin Page
