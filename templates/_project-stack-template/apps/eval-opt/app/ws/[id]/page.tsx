@@ -125,9 +125,31 @@ export default function EvalOptWorkspaceDetailPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [runs, setRuns] = useState<OptimizationRun[]>([]);
   const [runsLoading, setRunsLoading] = useState(false);
+  const [kbApiClient, setKbApiClient] = useState<{ kb: ReturnType<typeof createKbModuleClient> } | null>(null);
 
   // Get workspace config for navigation labels
   const { navLabelPlural } = useWorkspaceConfig({ orgId });
+
+  // Initialize KB API client when authenticated
+  useEffect(() => {
+    const initKbClient = async () => {
+      if (!isAuthenticated || !authAdapter) {
+        setKbApiClient(null);
+        return;
+      }
+      try {
+        const token = await authAdapter.getToken();
+        if (token) {
+          const authClient = createAuthenticatedClient(token);
+          const kbClient = createKbModuleClient(authClient);
+          setKbApiClient({ kb: kbClient });
+        }
+      } catch (err) {
+        console.error('Failed to initialize KB client:', err);
+      }
+    };
+    initKbClient();
+  }, [isAuthenticated, authAdapter]);
 
   // Get workspace data from module-ws
   const {
@@ -136,13 +158,6 @@ export default function EvalOptWorkspaceDetailPage() {
     error: wsError,
     toggleFavorite,
   } = useWorkspace(workspaceId, { autoFetch: true, orgId });
-
-  // Create KB API client for Context tab
-  const kbApiClient = useMemo(() => {
-    if (!isAuthenticated || !authAdapter) return null;
-    // Note: We'll get token when needed
-    return null; // Will be created in useEffect when we have token
-  }, [isAuthenticated, authAdapter]);
 
   // KB hooks for workspace (Context tab)
   const {
@@ -154,7 +169,8 @@ export default function EvalOptWorkspaceDetailPage() {
   } = useKnowledgeBase({
     scope: "workspace",
     scopeId: workspaceId,
-    autoFetch: isAuthenticated,
+    apiClient: kbApiClient || undefined,
+    autoFetch: isAuthenticated && !!kbApiClient,
   });
 
   const {
@@ -166,7 +182,8 @@ export default function EvalOptWorkspaceDetailPage() {
   } = useKbDocuments({
     scope: "workspace",
     scopeId: workspaceId,
-    autoFetch: isAuthenticated,
+    apiClient: kbApiClient || undefined,
+    autoFetch: isAuthenticated && !!kbApiClient,
   });
 
   // Group available KBs for WorkspaceDataKBTab
