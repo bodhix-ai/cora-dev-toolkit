@@ -31,20 +31,22 @@ logger = logging.getLogger(__name__)
 def can_access_opt_ws(user_id: str, ws_id: str) -> bool:
     """
     Check if user can access an optimization workspace.
-    
+
     Access granted if:
-    - User is a member of the workspace (via workspace_members)
-    
+    - User is a member of the workspace (via ws_members)
+
     Note: This uses the standard workspace membership check.
     Admin roles do NOT provide automatic access.
     """
     try:
-        from org_common.db import rpc
-        
-        return rpc('is_ws_member', {
-            'p_ws_id': ws_id,
-            'p_user_id': user_id
+        import org_common as common
+
+        # Check workspace membership (table is ws_members per ADR-011)
+        member = common.find_one('ws_members', {
+            'ws_id': ws_id,
+            'user_id': user_id
         })
+        return member is not None
     except Exception as e:
         logger.error(f"Error checking workspace access: {e}")
         return False
@@ -61,9 +63,9 @@ def is_opt_run_owner(user_id: str, run_id: str) -> bool:
     Ownership is determined by the created_by field.
     """
     try:
-        from org_common.db import find_one
+        import org_common as common
         
-        run = find_one('eval_opt_runs', {'id': run_id})
+        run = common.find_one('eval_opt_runs', {'id': run_id})
         if not run:
             return False
         return run.get('created_by') == user_id
@@ -83,10 +85,10 @@ def can_access_opt_run(user_id: str, run_id: str) -> bool:
     Admin roles do NOT provide automatic access.
     """
     try:
-        from org_common.db import find_one
+        import org_common as common
         
         # Fetch run to get workspace ID
-        run = find_one('eval_opt_runs', {'id': run_id})
+        run = common.find_one('eval_opt_runs', {'id': run_id})
         if not run:
             return False
         
@@ -117,14 +119,14 @@ def can_manage_opt_run(user_id: str, run_id: str) -> bool:
     Admin roles do NOT provide automatic access.
     """
     try:
-        from org_common.db import find_one, rpc
+        import org_common as common
         
         # Check ownership first (most common case)
         if is_opt_run_owner(user_id, run_id):
             return True
         
         # Fetch run to get workspace ID
-        run = find_one('eval_opt_runs', {'id': run_id})
+        run = common.find_one('eval_opt_runs', {'id': run_id})
         if not run:
             return False
         
@@ -132,8 +134,13 @@ def can_manage_opt_run(user_id: str, run_id: str) -> bool:
         if not ws_id:
             return False
         
-        # Check if user is workspace owner (can manage any run in workspace)
-        if rpc('is_ws_owner', {'p_ws_id': ws_id, 'p_user_id': user_id}):
+        # Check if user is workspace owner (by checking ws_members with owner role)
+        member = common.find_one('ws_members', {
+            'ws_id': ws_id,
+            'user_id': user_id,
+            'role': 'owner'
+        })
+        if member:
             return True
         
         return False
@@ -156,10 +163,10 @@ def can_access_opt_doc_group(user_id: str, group_id: str) -> bool:
     Admin roles do NOT provide automatic access.
     """
     try:
-        from org_common.db import find_one
+        import org_common as common
         
         # Fetch doc group to get workspace ID
-        group = find_one('eval_opt_doc_groups', {'id': group_id})
+        group = common.find_one('eval_opt_doc_groups', {'id': group_id})
         if not group:
             return False
         
@@ -187,10 +194,10 @@ def can_access_opt_truth_key(user_id: str, truth_key_id: str) -> bool:
     Admin roles do NOT provide automatic access.
     """
     try:
-        from org_common.db import find_one
+        import org_common as common
         
         # Fetch truth key to get doc group ID
-        truth_key = find_one('eval_opt_truth_keys', {'id': truth_key_id})
+        truth_key = common.find_one('eval_opt_truth_keys', {'id': truth_key_id})
         if not truth_key:
             return False
         
@@ -215,10 +222,10 @@ def can_edit_opt_truth_key(user_id: str, truth_key_id: str) -> bool:
     Regular workspace members can view but not edit others' truth keys.
     """
     try:
-        from org_common.db import find_one, rpc
+        import org_common as common
         
         # Fetch truth key
-        truth_key = find_one('eval_opt_truth_keys', {'id': truth_key_id})
+        truth_key = common.find_one('eval_opt_truth_keys', {'id': truth_key_id})
         if not truth_key:
             return False
         
@@ -231,7 +238,7 @@ def can_edit_opt_truth_key(user_id: str, truth_key_id: str) -> bool:
         if not group_id:
             return False
         
-        group = find_one('eval_opt_doc_groups', {'id': group_id})
+        group = common.find_one('eval_opt_doc_groups', {'id': group_id})
         if not group:
             return False
         
@@ -239,8 +246,13 @@ def can_edit_opt_truth_key(user_id: str, truth_key_id: str) -> bool:
         if not ws_id:
             return False
         
-        # Check if user is workspace owner
-        if rpc('is_ws_owner', {'p_ws_id': ws_id, 'p_user_id': user_id}):
+        # Check if user is workspace owner (table is ws_members per ADR-011)
+        member = common.find_one('ws_members', {
+            'ws_id': ws_id,
+            'user_id': user_id,
+            'role': 'owner'
+        })
+        if member:
             return True
         
         return False
