@@ -98,8 +98,9 @@ function TabPanel(props: TabPanelProps) {
 export function OrgWsAdmin(): React.ReactElement {
   const { data: session } = useSession();
   const { profile, loading: userLoading, isAuthenticated } = useUser();
-  const { hasRole } = useRole();
-  const { selectedOrgId } = useOrganizationContext();
+  const { isOrgAdmin } = useRole();
+  const { currentOrganization } = useOrganizationContext();
+  const selectedOrgId = currentOrganization?.orgId;
   
   const [activeTab, setActiveTab] = useState(0);
   const [analytics, setAnalytics] = useState<WorkspaceAnalytics | null>(null);
@@ -152,7 +153,7 @@ export function OrgWsAdmin(): React.ReactElement {
   }
 
   // Check if user has org admin role
-  if (!hasRole("org_owner") && !hasRole("org_admin")) {
+  if (!isOrgAdmin) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">

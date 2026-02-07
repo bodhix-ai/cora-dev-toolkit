@@ -47,7 +47,7 @@ import { Save, Refresh, TrendingUp, TrendingDown, NavigateNext } from "@mui/icon
 import * as MuiIcons from "@mui/icons-material";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { useUser, useAuthAdapter } from "@{{PROJECT_NAME}}/module-access";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { useWorkspaceConfig } from "../../hooks/useWorkspaceConfig";
 import { ColorPicker } from "../../components/ColorPicker";
 import { WORKSPACE_COLORS } from "../../types";
@@ -78,8 +78,7 @@ function TabPanel(props: TabPanelProps) {
 
 export function SysWsAdmin(): React.ReactElement {
   const { data: session } = useSession();
-  const { profile, loading: userLoading, isAuthenticated } = useUser();
-  const authAdapter = useAuthAdapter();
+  const { profile, loading: userLoading, isAuthenticated, authAdapter } = useUser();
   
   const {
     config,
@@ -182,7 +181,7 @@ export function SysWsAdmin(): React.ReactElement {
 
   // Fetch platform analytics
   const fetchAnalytics = useCallback(async () => {
-    const token = authAdapter.getToken();
+    const token = await authAdapter.getToken();
     if (!token) return;
 
     setAnalyticsLoading(true);
@@ -206,7 +205,7 @@ export function SysWsAdmin(): React.ReactElement {
 
   // Fetch analytics when tab changes to Usage Summary (only once)
   useEffect(() => {
-    if (activeTab === 1 && !analyticsInitiated.current && authAdapter.getToken()) {
+    if (activeTab === 1 && !analyticsInitiated.current && authAdapter) {
       analyticsInitiated.current = true;
       fetchAnalytics();
     }

@@ -11,9 +11,8 @@
  */
 
 import React, { useState } from "react";
-import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
-import { useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
-import { useOrgModuleConfig, type OrgModuleConfig } from "@{{PROJECT_NAME}}/module-mgmt";
+import { useUser, useRole, useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
+import { useOrgModuleConfig, type OrgModuleConfig } from "../../hooks";
 import {
   Box,
   Alert,
@@ -53,7 +52,7 @@ import {
  */
 export function OrgMgmtAdmin(): React.ReactElement {
   // ADR-019 Layer 1: Admin Authorization Pattern
-  const { user, loading: userLoading, isAuthenticated, profile } = useUser();
+  const { loading: userLoading, isAuthenticated, profile } = useUser();
   const { isOrgAdmin } = useRole();
   const { currentOrganization, isLoading: orgLoading } = useOrganizationContext();
 
@@ -77,7 +76,7 @@ export function OrgMgmtAdmin(): React.ReactElement {
   // Combined loading state (REQUIRED by ADR-019)
   const isLoading = userLoading || orgLoading || modulesLoading;
 
-  const handleToggleEnabled = async (module: OrgModuleConfig) => {
+  const handleToggleEnabled = async (module: OrgModuleConfig): Promise<void> => {
     try {
       setUpdateError(null);
 
@@ -100,7 +99,7 @@ export function OrgMgmtAdmin(): React.ReactElement {
     }
   };
 
-  const handleViewDetails = (module: OrgModuleConfig) => {
+  const handleViewDetails = (module: OrgModuleConfig): void => {
     setSelectedModule(module);
     setDetailsOpen(true);
   };
@@ -201,7 +200,7 @@ export function OrgMgmtAdmin(): React.ReactElement {
           <CardContent>
             <Typography variant="h5">Enabled</Typography>
             <Typography variant="body1" color="success.main" sx={{ fontSize: '2.5rem', fontWeight: 500 }}>
-              {modules.filter((m) => m.isEnabled).length}
+              {modules.filter((m: OrgModuleConfig) => m.isEnabled).length}
             </Typography>
           </CardContent>
         </Card>
@@ -209,7 +208,7 @@ export function OrgMgmtAdmin(): React.ReactElement {
           <CardContent>
             <Typography variant="h5">System Disabled</Typography>
             <Typography variant="body1" color="text.secondary" sx={{ fontSize: '2.5rem', fontWeight: 500 }}>
-              {modules.filter((m) => !m.systemEnabled).length}
+              {modules.filter((m: OrgModuleConfig) => !m.systemEnabled).length}
             </Typography>
           </CardContent>
         </Card>
@@ -229,7 +228,7 @@ export function OrgMgmtAdmin(): React.ReactElement {
             </TableRow>
           </TableHead>
           <TableBody>
-            {modules.map((module) => (
+            {modules.map((module: OrgModuleConfig) => (
               <TableRow key={module.id || module.name}>
                 <TableCell>
                   <Box>
@@ -307,7 +306,7 @@ export function OrgMgmtAdmin(): React.ReactElement {
                 <TableCell>
                   {module.dependencies && module.dependencies.length > 0 ? (
                     <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                      {module.dependencies.map((dep) => (
+                      {module.dependencies.map((dep: string) => (
                         <Chip key={dep} label={dep} size="small" />
                       ))}
                     </Box>
