@@ -475,21 +475,158 @@ export const OrgModuleAdmin = () => {
 };
 ```
 
-### 8.2 Auth Checks
+### 8.2 Auth Checks by Scope
 
-**Handled by component, not page:**
+**IMPORTANT:** Each admin scope has a different pattern. Choose the correct one:
+
+---
+
+#### 8.2.1 System Admin Pattern
+
+**No organization context needed:**
 ```typescript
-// Component checks auth internally
+// packages/module-{name}/frontend/components/admin/Sys{Module}Admin.tsx
+export const SysModuleAdmin = () => {
+  // ✅ useUser() provides: loading, authAdapter, isAuthenticated
+  const { loading, authAdapter, isAuthenticated } = useUser();
+  
+  // ✅ useRole() provides: isSysAdmin (NO loading here!)
+  const { isSysAdmin } = useRole();
+  
+  // ✅ Extract token for tabs that need token string
+  const [token, setToken] = useState<string | null>(null);
+  const [tokenLoading, setTokenLoading] = useState(true);
+  
+  useEffect(() => {
+    if (!authAdapter || !isAuthenticated) {
+      setToken(null);
+      setTokenLoading(false);
+      return;
+    }
+    authAdapter.getToken().then(setToken).finally(() => setTokenLoading(false));
+  }, [authAdapter, isAuthenticated]);
+  
+  // ✅ Check loading FIRST
+  if (loading || tokenLoading) return <CircularProgress />;
+  
+  // ✅ Then check authorization (sys admin only, no org context)
+  if (!isSysAdmin) return <UnauthorizedMessage />;
+  
+  // ✅ Pass token to child tabs
+  return <AdminUI token={token} />;
+};
+```
+
+**Sys Admin Tab Props:**
+```typescript
+interface SysSettingsTabProps {
+  token: string;  // Token for direct API calls
+}
+```
+
+---
+
+#### 8.2.2 Organization Admin Pattern
+
+**Requires organization context:**
+```typescript
+// packages/module-{name}/frontend/components/admin/Org{Module}Admin.tsx
 export const OrgModuleAdmin = () => {
+  // ✅ useUser() provides: loading, authAdapter
+  const { loading, authAdapter } = useUser();
+  
+  // ✅ useRole() provides: isOrgAdmin (NO loading here!)
   const { isOrgAdmin } = useRole();
+  
+  // ✅ useOrganizationContext() provides: currentOrganization
   const { currentOrganization } = useOrganizationContext();
   
+  // ✅ Check loading FIRST (from useUser, NOT useRole)
+  if (loading) return <CircularProgress />;
+  
+  // ✅ Then check authorization
   if (!isOrgAdmin) return <UnauthorizedMessage />;
   if (!currentOrganization) return <SelectOrganization />;
   
-  return <AdminUI />;
+  // ✅ Pass authAdapter AND orgId to child tabs
+  return <AdminUI authAdapter={authAdapter} orgId={currentOrganization.orgId} />;
 };
 ```
+
+**Org Admin Tab Props:**
+```typescript
+interface OrgSettingsTabProps {
+  authAdapter: AuthAdapter;  // For API calls via adapter
+  orgId: string;             // Organization scope
+}
+```
+
+---
+
+#### 8.2.3 Workspace Admin Pattern
+
+**Requires organization AND workspace context:**
+```typescript
+// packages/module-{name}/frontend/components/admin/Ws{Module}Admin.tsx
+export const WsModuleAdmin = () => {
+  // ✅ useUser() provides: loading, authAdapter
+  const { loading, authAdapter } = useUser();
+  
+  // ✅ useRole() provides: isWsAdmin (NO loading here!)
+  const { isWsAdmin } = useRole();
+  
+  // ✅ useOrganizationContext() provides: currentOrganization
+  const { currentOrganization } = useOrganizationContext();
+  
+  // ✅ useWorkspaceContext() provides: currentWorkspace
+  const { currentWorkspace } = useWorkspaceContext();
+  
+  // ✅ Check loading FIRST
+  if (loading) return <CircularProgress />;
+  
+  // ✅ Then check authorization
+  if (!isWsAdmin) return <UnauthorizedMessage />;
+  if (!currentOrganization) return <SelectOrganization />;
+  if (!currentWorkspace) return <SelectWorkspace />;
+  
+  // ✅ Pass authAdapter, orgId, AND wsId to child tabs
+  return (
+    <AdminUI 
+      authAdapter={authAdapter} 
+      orgId={currentOrganization.orgId}
+      wsId={currentWorkspace.wsId}
+    />
+  );
+};
+```
+
+**Workspace Admin Tab Props:**
+```typescript
+interface WsSettingsTabProps {
+  authAdapter: AuthAdapter;  // For API calls via adapter
+  orgId: string;             // Organization scope
+  wsId: string;              // Workspace scope
+}
+```
+
+---
+
+#### Hook Reference by Scope
+
+| Scope | Hooks Required | Props to Pass to Tabs |
+|-------|----------------|----------------------|
+| **Sys Admin** | `useUser()`, `useRole()` | `token` |
+| **Org Admin** | `useUser()`, `useRole()`, `useOrganizationContext()` | `authAdapter`, `orgId` |
+| **Ws Admin** | `useUser()`, `useRole()`, `useOrganizationContext()`, `useWorkspaceContext()` | `authAdapter`, `orgId`, `wsId` |
+
+#### Hook Property Reference
+
+| Hook | Returns | Use For |
+|------|---------|---------|
+| `useUser()` | `loading`, `authAdapter`, `profile`, `isAuthenticated` | Loading state, auth adapter |
+| `useRole()` | `isOrgAdmin`, `isSysAdmin`, `isWsAdmin` | Permission checks (NO loading) |
+| `useOrganizationContext()` | `currentOrganization`, `orgId` | Org context |
+| `useWorkspaceContext()` | `currentWorkspace`, `wsId` | Workspace context |
 
 ### 8.3 API Calls
 
