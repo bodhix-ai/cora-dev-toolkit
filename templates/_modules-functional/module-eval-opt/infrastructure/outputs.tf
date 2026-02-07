@@ -83,6 +83,63 @@ output "api_routes" {
       path        = "/ws/{wsId}/optimization/runs/{runId}"
       integration = aws_lambda_function.opt_orchestrator.invoke_arn
       public      = false
+    },
+    # =========================================================================
+    # Response Sections
+    # =========================================================================
+    {
+      method      = "GET"
+      path        = "/ws/{wsId}/optimization/runs/{runId}/sections"
+      integration = aws_lambda_function.opt_orchestrator.invoke_arn
+      public      = false
+    },
+    {
+      method      = "PUT"
+      path        = "/ws/{wsId}/optimization/runs/{runId}/sections"
+      integration = aws_lambda_function.opt_orchestrator.invoke_arn
+      public      = false
+    },
+    # =========================================================================
+    # Truth Sets
+    # =========================================================================
+    {
+      method      = "GET"
+      path        = "/ws/{wsId}/optimization/runs/{runId}/truth-sets"
+      integration = aws_lambda_function.opt_orchestrator.invoke_arn
+      public      = false
+    },
+    {
+      method      = "POST"
+      path        = "/ws/{wsId}/optimization/runs/{runId}/truth-sets"
+      integration = aws_lambda_function.opt_orchestrator.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/ws/{wsId}/optimization/runs/{runId}/truth-sets/{tsId}"
+      integration = aws_lambda_function.opt_orchestrator.invoke_arn
+      public      = false
+    },
+    {
+      method      = "PUT"
+      path        = "/ws/{wsId}/optimization/runs/{runId}/truth-sets/{tsId}"
+      integration = aws_lambda_function.opt_orchestrator.invoke_arn
+      public      = false
+    },
+    {
+      method      = "DELETE"
+      path        = "/ws/{wsId}/optimization/runs/{runId}/truth-sets/{tsId}"
+      integration = aws_lambda_function.opt_orchestrator.invoke_arn
+      public      = false
+    },
+    # =========================================================================
+    # Optimization Trigger
+    # =========================================================================
+    {
+      method      = "POST"
+      path        = "/ws/{wsId}/optimization/runs/{runId}/optimize"
+      integration = aws_lambda_function.opt_orchestrator.invoke_arn
+      public      = false
     }
   ]
 }
