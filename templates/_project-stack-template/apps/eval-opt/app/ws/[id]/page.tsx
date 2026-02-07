@@ -209,7 +209,7 @@ export default function EvalOptWorkspaceDetailPage() {
       const token = await authAdapter.getToken();
       if (!token) return;
       const client = createAuthenticatedClient(token);
-      const response = await client.get(`/eval-opt/workspaces/${workspaceId}/runs`);
+      const response = await client.get(`/ws/${workspaceId}/optimization/runs`);
       setRuns(response.data || []);
     } catch (err: any) {
       console.error("Error loading optimization runs:", err);
@@ -711,7 +711,7 @@ function CreateOptimizationRunDialog({
       }
       const client = createAuthenticatedClient(token);
 
-      const response = await client.post(`/eval-opt/workspaces/${workspaceId}/runs`, {
+      const response = await client.post(`/ws/${workspaceId}/optimization/runs`, {
         name: name.trim(),
         doc_type_id: docTypeId,
         criteria_set_id: criteriaSetId,
