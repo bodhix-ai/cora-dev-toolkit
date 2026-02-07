@@ -14,7 +14,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useOrganizationContext, useUser } from "@{{PROJECT_NAME}}/module-access";
 import { useWorkspace, useWorkspaceConfig } from "@{{PROJECT_NAME}}/module-ws";
-import { createAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
+import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import {
   Box,
   Container,
@@ -157,18 +157,18 @@ export default function OptimizationRunDetailsPage() {
     try {
       const token = await authAdapter.getToken();
       if (!token) return;
-      const client = createAuthenticatedClient(token);
+      const client = createCoraAuthenticatedClient(token);
 
       // Load run details
-      const runRes = await client.get(`/eval-opt/workspaces/${workspaceId}/runs/${runId}`);
+      const runRes = await client.get(`/ws/${workspaceId}/optimization/runs/${runId}`);
       setRun(runRes.data);
 
       // Load response sections
-      const sectionsRes = await client.get(`/eval-opt/runs/${runId}/sections`);
+      const sectionsRes = await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/sections`);
       setSections(sectionsRes.data || []);
 
       // Load truth sets
-      const truthSetsRes = await client.get(`/eval-opt/runs/${runId}/truth-sets`);
+      const truthSetsRes = await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/truth-sets`);
       setTruthSets(truthSetsRes.data || []);
     } catch (err: any) {
       console.error("Error loading run details:", err);
@@ -212,9 +212,9 @@ export default function OptimizationRunDetailsPage() {
     try {
       const token = await authAdapter.getToken();
       if (!token) return;
-      const client = createAuthenticatedClient(token);
+      const client = createCoraAuthenticatedClient(token);
 
-      await client.post(`/eval-opt/runs/${runId}/optimize`);
+      await client.post(`/ws/${workspaceId}/optimization/runs/${runId}/optimize`);
 
       // Refresh run details to get updated status
       await loadRunDetails();

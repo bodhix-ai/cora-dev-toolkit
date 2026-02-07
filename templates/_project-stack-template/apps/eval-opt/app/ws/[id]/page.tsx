@@ -21,7 +21,7 @@ import {
   useKbDocuments,
   createKbModuleClient,
 } from "@{{PROJECT_NAME}}/module-kb";
-import { createAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
+import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import {
   Box,
   Container,
@@ -140,7 +140,7 @@ export default function EvalOptWorkspaceDetailPage() {
       try {
         const token = await authAdapter.getToken();
         if (token) {
-          const authClient = createAuthenticatedClient(token);
+          const authClient = createCoraAuthenticatedClient(token);
           const kbClient = createKbModuleClient(authClient);
           setKbApiClient({ kb: kbClient });
         }
@@ -208,7 +208,7 @@ export default function EvalOptWorkspaceDetailPage() {
     try {
       const token = await authAdapter.getToken();
       if (!token) return;
-      const client = createAuthenticatedClient(token);
+      const client = createCoraAuthenticatedClient(token);
       const response = await client.get(`/ws/${workspaceId}/optimization/runs`);
       setRuns(response.data || []);
     } catch (err: any) {
@@ -680,7 +680,7 @@ function CreateOptimizationRunDialog({
     try {
       const token = await authAdapter.getToken();
       if (!token) return;
-      const client = createAuthenticatedClient(token);
+      const client = createCoraAuthenticatedClient(token);
 
       // Load doc types from module-eval (workspace-level config route)
       const docTypesRes = await client.get(`/ws/${workspaceId}/eval/config/doc-types`);
@@ -709,7 +709,7 @@ function CreateOptimizationRunDialog({
         setError("Authentication error");
         return;
       }
-      const client = createAuthenticatedClient(token);
+      const client = createCoraAuthenticatedClient(token);
 
       const response = await client.post(`/ws/${workspaceId}/optimization/runs`, {
         name: name.trim(),
