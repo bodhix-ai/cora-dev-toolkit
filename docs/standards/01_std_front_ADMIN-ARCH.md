@@ -531,8 +531,10 @@ interface SysSettingsTabProps {
 **Requires organization context:**
 ```typescript
 // packages/module-{name}/frontend/components/admin/Org{Module}Admin.tsx
+import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
+
 export const OrgModuleAdmin = () => {
-  // ✅ useUser() provides: loading, authAdapter
+  // ✅ useUser() provides: loading, authAdapter (CoraAuthAdapter type)
   const { loading, authAdapter } = useUser();
   
   // ✅ useRole() provides: isOrgAdmin (NO loading here!)
@@ -555,11 +557,15 @@ export const OrgModuleAdmin = () => {
 
 **Org Admin Tab Props:**
 ```typescript
+import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
+
 interface OrgSettingsTabProps {
-  authAdapter: AuthAdapter;  // For API calls via adapter
-  orgId: string;             // Organization scope
+  authAdapter: CoraAuthAdapter;  // For API calls (use createCoraAuthenticatedClient(token))
+  orgId: string;                  // Organization scope
 }
 ```
+
+**Note:** Use `createCoraAuthenticatedClient(token)` for HTTP calls. The auth adapter provides authentication, not HTTP client methods.
 
 ---
 
@@ -568,8 +574,10 @@ interface OrgSettingsTabProps {
 **Requires organization AND workspace context:**
 ```typescript
 // packages/module-{name}/frontend/components/admin/Ws{Module}Admin.tsx
+import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
+
 export const WsModuleAdmin = () => {
-  // ✅ useUser() provides: loading, authAdapter
+  // ✅ useUser() provides: loading, authAdapter (CoraAuthAdapter type)
   const { loading, authAdapter } = useUser();
   
   // ✅ useRole() provides: isWsAdmin (NO loading here!)
@@ -602,12 +610,16 @@ export const WsModuleAdmin = () => {
 
 **Workspace Admin Tab Props:**
 ```typescript
+import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
+
 interface WsSettingsTabProps {
-  authAdapter: AuthAdapter;  // For API calls via adapter
-  orgId: string;             // Organization scope
-  wsId: string;              // Workspace scope
+  authAdapter: CoraAuthAdapter;  // For API calls (use createCoraAuthenticatedClient(token))
+  orgId: string;                  // Organization scope
+  wsId: string;                   // Workspace scope
 }
 ```
+
+**Note:** Use `createCoraAuthenticatedClient(token)` for HTTP calls. The auth adapter provides authentication, not HTTP client methods.
 
 ---
 
@@ -616,14 +628,14 @@ interface WsSettingsTabProps {
 | Scope | Hooks Required | Props to Pass to Tabs |
 |-------|----------------|----------------------|
 | **Sys Admin** | `useUser()`, `useRole()` | `token` |
-| **Org Admin** | `useUser()`, `useRole()`, `useOrganizationContext()` | `authAdapter`, `orgId` |
-| **Ws Admin** | `useUser()`, `useRole()`, `useOrganizationContext()`, `useWorkspaceContext()` | `authAdapter`, `orgId`, `wsId` |
+| **Org Admin** | `useUser()`, `useRole()`, `useOrganizationContext()` | `authAdapter` (CoraAuthAdapter), `orgId` |
+| **Ws Admin** | `useUser()`, `useRole()`, `useOrganizationContext()`, `useWorkspaceContext()` | `authAdapter` (CoraAuthAdapter), `orgId`, `wsId` |
 
 #### Hook Property Reference
 
 | Hook | Returns | Use For |
 |------|---------|---------|
-| `useUser()` | `loading`, `authAdapter`, `profile`, `isAuthenticated` | Loading state, auth adapter |
+| `useUser()` | `loading`, `authAdapter` (CoraAuthAdapter), `profile`, `isAuthenticated` | Loading state, auth adapter |
 | `useRole()` | `isOrgAdmin`, `isSysAdmin`, `isWsAdmin` | Permission checks (NO loading) |
 | `useOrganizationContext()` | `currentOrganization`, `orgId` | Org context |
 | `useWorkspaceContext()` | `currentWorkspace`, `wsId` | Workspace context |
@@ -761,7 +773,8 @@ def lambda_handler(event, context):
 ## Changelog
 
 | Version | Date | Changes |
-|---------|------|------------|
+|---------|------|--------|
+| 2.1 | 2026-02-07 | Standardized auth adapter type to `CoraAuthAdapter` from `@api-client` for ALL admin tab components (org, sys, ws scopes). Added note about using `createCoraAuthenticatedClient(token)` for HTTP calls. |
 | 2.0 | 2026-02-06 | Merged ADMIN-COMPONENTS and ADMIN-CARD-PATTERN into single comprehensive standard |
 | 1.0 | 2026-02-05 | Initial ADMIN-COMPONENTS standard |
 | 1.0 | 2025-12-24 | Initial ADMIN-CARD-PATTERN standard |
