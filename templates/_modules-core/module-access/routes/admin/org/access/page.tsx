@@ -1,117 +1,29 @@
 "use client";
 
-import { useUser, useOrganizationContext, useRole } from "@{{PROJECT_NAME}}/module-access";
-import { OrgAccessPage } from "@{{PROJECT_NAME}}/module-access";
-import {
-  Box,
-  CircularProgress,
-  Alert,
-  Typography,
-  Breadcrumbs,
-  Link,
-  Paper,
-} from "@mui/material";
-import {
-  NavigateNext as NavigateNextIcon,
-  People as PeopleIcon,
-} from "@mui/icons-material";
-import NextLink from "next/link";
+/**
+ * Organization Access Admin Page
+ *
+ * Organization-level access management page for member and role management.
+ *
+ * Access: Organization admins only (org_owner, org_admin)
+ *
+ * @example
+ * Route: /admin/org/access
+ */
+
+import React from "react";
+import { OrgAccessAdmin } from "@{{PROJECT_NAME}}/module-access/admin";
 
 /**
- * Organization Admin Access Management Route
- * 
- * Allows org admins and owners to manage users in their organization.
- * 
- * Auth: org_admin or org_owner
- * Breadcrumbs: Org Admin > Access
+ * Organization Access Admin Page Component
+ *
+ * Renders the Organization Access admin interface for:
+ * - Member management for the organization
+ * - Role assignment and permissions
+ * - Invitation management
+ *
+ * Requires organization admin role (org_owner or org_admin).
  */
-export default function OrgAccessRoute() {
-  const { profile, loading, isAuthenticated } = useUser();
-  const { currentOrganization: organization } = useOrganizationContext();
-  const { isOrgAdmin, role } = useRole();
-
-  // Loading state
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  // Authentication check
-  if (!isAuthenticated || !profile) {
-    return (
-      <Box p={4}>
-        <Alert severity="error">
-          You must be logged in to access this page.
-        </Alert>
-      </Box>
-    );
-  }
-
-  // Authorization check - org admins only (revised ADR-016)
-  // Sys admins needing access should add themselves to the org
-  if (!isOrgAdmin) {
-    return (
-      <Box p={4}>
-        <Alert severity="error">
-          Access denied. Organization administrator role required.
-        </Alert>
-      </Box>
-    );
-  }
-
-  // Organization context check
-  if (!organization) {
-    return (
-      <Box p={4}>
-        <Alert severity="warning">
-          Please select an organization to manage access.
-        </Alert>
-      </Box>
-    );
-  }
-
-  const isOwner = role === "org_owner";
-
-  return (
-    <Box sx={{ p: 3, maxWidth: 1200, mx: "auto" }}>
-      {/* Breadcrumbs */}
-      <Breadcrumbs
-        separator={<NavigateNextIcon fontSize="small" />}
-        sx={{ mb: 3 }}
-        aria-label="breadcrumb"
-      >
-        <Link
-          component={NextLink}
-          href="/admin/org"
-          underline="hover"
-          color="inherit"
-          aria-label="Return to organization admin"
-        >
-          Org Admin
-        </Link>
-        <Typography color="text.primary">Member Management</Typography>
-      </Breadcrumbs>
-
-      {/* Page Header */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
-        <PeopleIcon sx={{ fontSize: 32, color: "primary.main" }} />
-        <Box>
-          <Typography variant="h4" component="h1">
-            Member Management
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Manage members and roles for {organization.orgName}
-          </Typography>
-        </Box>
-      </Box>
-
-      {/* Access Management Content */}
-      <Paper sx={{ p: 3 }}>
-        <OrgAccessPage orgId={organization.orgId} isOwner={isOwner} />
-      </Paper>
-    </Box>
-  );
+export default function OrganizationAccessAdminPage() {
+  return <OrgAccessAdmin />;
 }
