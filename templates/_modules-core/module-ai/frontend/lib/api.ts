@@ -454,3 +454,143 @@ export function createAIEnablementClient(
     },
   };
 }
+
+// =============================================================================
+// ORG ADMIN API
+// =============================================================================
+
+/**
+ * Get the API base URL from environment
+ */
+const getApiBase = (): string => {
+  if (typeof window !== "undefined") {
+    return (
+      process.env.NEXT_PUBLIC_CORA_API_URL ||
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
+      "/api"
+    );
+  }
+  return process.env.NEXT_PUBLIC_CORA_API_URL || "";
+};
+
+/**
+ * Build URL with query parameters
+ */
+function buildUrl(
+  endpoint: string,
+  params?: Record<string, string | number | boolean | undefined>
+): string {
+  const url = new URL(endpoint, 'https://placeholder');
+  
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) {
+        url.searchParams.append(key, String(value));
+      }
+    });
+  }
+
+  return `${url.pathname}${url.search}`;
+}
+
+/**
+ * Make an authenticated API request
+ */
+async function apiRequest<T>(
+  endpoint: string,
+  token: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const url = endpoint.startsWith("http") ? endpoint : `${getApiBase()}${endpoint}`;
+
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (options.body && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = `Request failed with status ${response.status}`;
+    try {
+      const errorJson = JSON.parse(errorText);
+      errorMessage = errorJson.error || errorJson.message || errorMessage;
+    } catch {
+      if (errorText) errorMessage = errorText;
+    }
+    throw new Error(errorMessage);
+  }
+
+  if (!response.body || response.status === 204) {
+    return {} as T;
+  }
+
+  return response.json();
+}
+
+/**
+ * Get organization AI configuration (org admin)
+ * GET /admin/org/ai/config?orgId={orgId}
+ * 
+ * ✅ STANDARD PATTERN: Accepts token string and orgId (extracted at page level)
+ */
+export async function getOrgAdminConfig(token: string, orgId: string): Promise<{
+  orgId: string;
+  orgSystemPrompt?: string | null;
+  policyMissionType?: string | null;
+  customSystemPrompt?: string | null;
+  customContextPrompt?: string | null;
+  citationStyle?: string | null;
+  includePageNumbers?: boolean | null;
+  includeSourceMetadata?: boolean | null;
+  responseTone?: string | null;
+  maxResponseLength?: number | null;
+  platformConfig?: {
+    systemPrompt?: string;
+    defaultChatDeploymentId?: string;
+    defaultEmbeddingDeploymentId?: string;
+    chatDeployment?: any;
+    embeddingDeployment?: any;
+  };
+  combinedPrompt?: string;
+}> {
+  const url = buildUrl("/admin/org/ai/config", { orgId });
+  const response = await apiRequest<{ success: boolean; data: any }>(url, token);
+  return response.data;
+}
+
+/**
+ * Update organization AI configuration (org admin)
+ * PUT /admin/org/ai/config?orgId={orgId}
+ * 
+ * ✅ STANDARD PATTERN: Accepts token string and orgId (extracted at page level)
+ */
+export async function updateOrgAdminConfig(
+  token: string,
+  orgId: string,
+  config: {
+    orgSystemPrompt?: string | null;
+    policyMissionType?: string | null;
+    customSystemPrompt?: string | null;
+    customContextPrompt?: string | null;
+    citationStyle?: string | null;
+    includePageNumbers?: boolean | null;
+    includeSourceMetadata?: boolean | null;
+    responseTone?: string | null;
+    maxResponseLength?: number | null;
+  }
+): Promise<{ message: string }> {
+  const url = buildUrl("/admin/org/ai/config", { orgId });
+  return apiRequest(url, token, {
+    method: "PUT",
+    body: JSON.stringify(config),
+  });
+}

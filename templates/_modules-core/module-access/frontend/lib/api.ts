@@ -144,3 +144,144 @@ export function createOrgModuleClient(
       authenticatedClient.delete<void>(`/orgs/${orgId}/members/${memberId}`),
   };
 }
+
+// =============================================================================
+// ORG ADMIN API
+// =============================================================================
+
+/**
+ * Get the API base URL from environment
+ */
+const getApiBase = (): string => {
+  if (typeof window !== "undefined") {
+    return (
+      process.env.NEXT_PUBLIC_CORA_API_URL ||
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
+      "/api"
+    );
+  }
+  return process.env.NEXT_PUBLIC_CORA_API_URL || "";
+};
+
+/**
+ * Build URL with query parameters
+ */
+function buildUrl(
+  endpoint: string,
+  params?: Record<string, string | number | boolean | undefined>
+): string {
+  const url = new URL(endpoint, 'https://placeholder');
+  
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) {
+        url.searchParams.append(key, String(value));
+      }
+    });
+  }
+
+  return `${url.pathname}${url.search}`;
+}
+
+/**
+ * Make an authenticated API request
+ */
+async function apiRequest<T>(
+  endpoint: string,
+  token: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const url = endpoint.startsWith("http") ? endpoint : `${getApiBase()}${endpoint}`;
+
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (options.body && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = `Request failed with status ${response.status}`;
+    try {
+      const errorJson = JSON.parse(errorText);
+      errorMessage = errorJson.error || errorJson.message || errorMessage;
+    } catch {
+      if (errorText) errorMessage = errorText;
+    }
+    throw new Error(errorMessage);
+  }
+
+  if (!response.body || response.status === 204) {
+    return {} as T;
+  }
+
+  return response.json();
+}
+
+/**
+ * Org user interface for admin endpoints
+ */
+interface OrgUser {
+  userId: string;
+  email: string;
+  fullName?: string;
+  orgRole: string;
+  createdAt: string;
+  lastSigninAt?: string;
+}
+
+/**
+ * Get organization users (org admin)
+ * GET /admin/org/access/users?orgId={orgId}
+ * 
+ * ✅ STANDARD PATTERN: Accepts token string and orgId (extracted at page level)
+ */
+export async function getOrgAdminUsers(token: string, orgId: string): Promise<{ success: boolean; data: OrgUser[] }> {
+  const url = buildUrl("/admin/org/access/users", { orgId });
+  const data = await apiRequest<{ success: boolean; data: OrgUser[] }>(url, token);
+  return data;
+}
+
+/**
+ * Update organization user role (org admin)
+ * PUT /admin/org/access/users/{userId}?orgId={orgId}
+ * 
+ * ✅ STANDARD PATTERN: Accepts token string and orgId (extracted at page level)
+ */
+export async function updateOrgUserRole(
+  token: string,
+  orgId: string,
+  userId: string,
+  role: string
+): Promise<{ message: string }> {
+  const url = buildUrl(`/admin/org/access/users/${userId}`, { orgId });
+  return apiRequest(url, token, {
+    method: "PUT",
+    body: JSON.stringify({ org_role: role }),
+  });
+}
+
+/**
+ * Remove organization user (org admin)
+ * DELETE /admin/org/access/users/{userId}?orgId={orgId}
+ * 
+ * ✅ STANDARD PATTERN: Accepts token string and orgId (extracted at page level)
+ */
+export async function removeOrgUser(
+  token: string,
+  orgId: string,
+  userId: string
+): Promise<{ message: string }> {
+  const url = buildUrl(`/admin/org/access/users/${userId}`, { orgId });
+  return apiRequest(url, token, {
+    method: "DELETE",
+  });
+}
