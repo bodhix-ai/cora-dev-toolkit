@@ -92,9 +92,21 @@ class DBFunctionValidator:
         """Load table and column definitions from schema files."""
         logger.info(f"Loading schema from {schema_dir}")
         
-        # Look for table definition files (001-tables.sql, etc.)
+        # Look for table definition files
+        # Pattern 1: Files with "tables" in name (001-tables.sql)
+        # Pattern 2: Numbered files without "rpc" or "rls" (001-eval-opt-doc-groups.sql)
         for sql_file in schema_dir.glob('*.sql'):
-            if 'tables' in sql_file.name.lower() and not 'rpc' in sql_file.name.lower():
+            file_name_lower = sql_file.name.lower()
+            
+            # Skip RPC and RLS files
+            if 'rpc' in file_name_lower or 'rls' in file_name_lower:
+                continue
+            
+            # Include if:
+            # - Has "tables" in name, OR
+            # - Starts with number pattern (e.g., 001-, 002-)
+            if 'tables' in file_name_lower or re.match(r'^\d{3}-', sql_file.name):
+                logger.debug(f"Parsing table definitions from {sql_file.name}")
                 self._parse_table_definitions(sql_file)
         
         logger.info(f"Loaded {len(self.schema_tables)} tables from schema")

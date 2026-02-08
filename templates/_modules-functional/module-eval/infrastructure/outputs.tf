@@ -349,6 +349,12 @@ output "api_routes" {
       integration = aws_lambda_function.eval_results.invoke_arn
       public      = false
     },
+    {
+      method      = "GET"
+      path        = "/ws/{wsId}/eval/config/criteria-sets/{criteriaSetId}/items"
+      integration = aws_lambda_function.eval_results.invoke_arn
+      public      = false
+    },
 
     # =========================================================================
     # eval-results: Evaluation CRUD
