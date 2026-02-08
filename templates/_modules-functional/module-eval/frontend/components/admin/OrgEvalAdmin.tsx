@@ -1,0 +1,102 @@
+/**
+ * OrgEvalAdmin - Organization Evaluation Admin Component
+ *
+ * @routes
+ * - /admin/org/eval - Organization evaluation configuration
+ *
+ * Admin component with tabs for all org eval admin functions:
+ * - Configuration (eval_cfg_org)
+ * - AI Prompts (eval_cfg_org_prompts)
+ * - Document Types
+ * - Evaluation Criteria
+ */
+
+"use client";
+
+import React, { useState } from "react";
+import { useUser, useOrganizationContext, useRole } from "@{{PROJECT_NAME}}/module-access";
+import {
+  OrgEvalConfigPage,
+  OrgEvalPromptsPage,
+  OrgEvalDocTypesPageV2,
+  OrgEvalCriteriaPageV2,
+} from "../../pages";
+import { Box, Tabs, Tab, CircularProgress, Alert, Breadcrumbs, Typography, Link } from "@mui/material";
+import { NavigateNext } from "@mui/icons-material";
+import NextLink from "next/link";
+
+type TabValue = "config" | "doc-types" | "criteria" | "prompts";
+
+export function OrgEvalAdmin() {
+  const { profile, loading, isAuthenticated } = useUser();
+  const { currentOrganization: organization } = useOrganizationContext();
+  const { isOrgAdmin } = useRole();
+  const [activeTab, setActiveTab] = useState<TabValue>("config");
+
+  // Loading state
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Authentication check
+  if (!isAuthenticated || !profile) {
+    return (
+      <Box p={4}>
+        <Alert severity="error">You must be logged in to access this page.</Alert>
+      </Box>
+    );
+  }
+
+  // Authorization check - org admins only (revised ADR-016)
+  // Sys admins needing access should add themselves to the org
+  if (!isOrgAdmin) {
+    return (
+      <Box p={4}>
+        <Alert severity="error">Access denied. Organization administrator role required.</Alert>
+      </Box>
+    );
+  }
+
+  // Check if organization is selected
+  if (!organization) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="warning">Please select an organization to manage evaluation settings.</Alert>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ width: "100%", p: 4 }}>
+      {/* Breadcrumbs: Org Admin > Eval */}
+      <Breadcrumbs separator={<NavigateNext fontSize="small" />} sx={{ mb: 2 }}>
+        <Link component={NextLink} href="/admin/org" underline="hover" color="inherit" aria-label="Return to organization admin">
+          Org Admin
+        </Link>
+        <Typography color="text.primary">Eval</Typography>
+      </Breadcrumbs>
+
+      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+        <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} aria-label="Evaluation admin tabs">
+          <Tab label="Configuration" value="config" />
+          <Tab label="Policy Areas" value="doc-types" />
+          <Tab label="Criteria" value="criteria" />
+          <Tab label="AI Prompts" value="prompts" />
+        </Tabs>
+      </Box>
+
+      <Box sx={{ p: 3 }}>
+        {activeTab === "config" && <OrgEvalConfigPage orgId={organization.orgId} />}
+        {activeTab === "doc-types" && <OrgEvalDocTypesPageV2 orgId={organization.orgId} />}
+        {activeTab === "criteria" && <OrgEvalCriteriaPageV2 orgId={organization.orgId} />}
+        {activeTab === "prompts" && <OrgEvalPromptsPage orgId={organization.orgId} />}
+      </Box>
+    </Box>
+  );
+}
+
+export default OrgEvalAdmin;

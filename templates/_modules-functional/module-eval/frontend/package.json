@@ -4,6 +4,10 @@
   "private": true,
   "description": "CORA Evaluation Module - AI-powered document evaluation with criteria management and scoring",
   "main": "index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./admin": "./components/admin/index.ts"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "tsc -b",
