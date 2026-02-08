@@ -385,16 +385,19 @@ resource "aws_s3_bucket" "transcripts" {
 resource "aws_s3_bucket_lifecycle_configuration" "transcripts" {
   count  = var.module_voice_enabled && var.transcript_s3_bucket == "" ? 1 : 0
   bucket = aws_s3_bucket.transcripts[0].id
-  
+
   rule {
     id     = "archive-old-transcripts"
     status = "Enabled"
     
+    # Apply to all objects in the bucket
+    filter {}
+
     transition {
       days          = 90
       storage_class = "GLACIER"
     }
-    
+
     expiration {
       days = 365
     }

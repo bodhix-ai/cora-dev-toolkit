@@ -545,3 +545,50 @@ def test_parse_evaluation_with_direct_score():
 **Document Status:** Draft v1.0  
 **Review Status:** Pending user approval  
 **Implementation Timeline:** Sprint 5-6 (post-optimization module testing)
+---
+
+## Response Sections Architecture (Sprint 4 Discovery)
+
+**Discovery Date:** February 8, 2026  
+**Context:** While implementing truth set creation wizard in Sprint 4
+
+### Problem
+
+Users were creating response sections (via Response Sections Builder) that duplicated fixed database columns, not realizing some fields are built into the schema.
+
+### Fixed vs Custom Sections Pattern
+
+**Fixed Sections** (always present, map to database columns):
+- **Status** → Numerical eval score (0-100) ← Will replace dropdown in Sprint 5
+- **Justification** → `truth_explanation` TEXT
+- **Confidence** → `truth_confidence` INTEGER (0-100)
+- **Citations** → `truth_citations` JSONB
+
+**Custom Sections** (user-defined, stored in JSONB):
+- Stored in new column: `section_responses JSONB` on `eval_opt_truth_keys`
+- Examples: "Gaps", "Recommendations", "Risk Level"
+- Used for AI prompt generation during optimization
+
+### Implementation Plan (Sprint
+---
+
+## Response Sections Architecture (Sprint 4 Discovery)
+
+**Discovery D_op
+#tru
+**Discovery Date:** February 8, 2026  
+**Context:** dat**Context:** While implementing truthSh
+### Problem
+
+Users were creating response sections (via Response Setio
+Users werdde
+### Fixed vs Custom Sections Pattern
+
+**Fixed Sections** (always present, map to database columns):
+- **Status** → Numerical eval score (0-100) ← Will repla
+1.
+**Fixed Sections** (always presentsec- **Status** → Numerical eval score (0-100) ← Will repla_r- **Justification** → `truth_explanation` TEXT
+- **Confidence** → `truth_confi c- **Confidence** → `truth_confidence` INTEGERld- **Citations** → `truth_citations` JSONB
+
+**Custom and domain-specific extensions
+

@@ -401,12 +401,13 @@ No changes needed to deployment architecture; this is a **data model enhancement
 ### Open Source + Paid Add-On Model
 
 **Structure:**
-- **Open Source Core**: module-eval (evaluation execution)
+- **Open Source Core**: `module-eval` (evaluation execution)
   - Core evaluation processing pipeline
   - Basic prompt configuration
   - Available in CORA open source distribution
   
-- **Paid Enhancement**: eval-optimizer (Business Analyst Workbench)
+- **Paid Enhancement**: `module-eval-studio` (Evaluation Studio)
+  - Eval configuration design (rubrics, response structures)
   - Sample-driven prompt optimization
   - Truth key management
   - Quality metrics and A/B testing
@@ -415,7 +416,7 @@ No changes needed to deployment architecture; this is a **data model enhancement
 ### Benefits
 
 1. **Monetization of Investment**
-   - Development cost of optimizer can be recovered through sales
+   - Development cost of studio/optimizer can be recovered through sales
    - Sustainable funding for continued innovation
    
 2. **Value Alignment**
@@ -424,7 +425,7 @@ No changes needed to deployment architecture; this is a **data model enhancement
    
 3. **Clear Feature Boundaries**
    - Core evaluation: Open source, free
-   - Advanced optimization: Paid, premium
+   - Advanced studio: Paid, premium
    
 4. **Architectural Flexibility**
    - Paid app can evolve independently
@@ -442,7 +443,41 @@ This architectural decision **enables business sustainability** while keeping co
 
 ---
 
+## Sprint 4 Addendum: Module Naming & Premium Tier Convention
+
+**Date**: February 8, 2026
+**Context**: Rebranding from "Eval Optimizer" to "Eval Studio" to reflect broader "designer" functionality (rubrics, response structures).
+
+### Naming Decisions
+
+1. **Module Name**: `module-eval-studio`
+   - Public Name: "Evaluation Studio"
+   - Directory: `packages/module-eval-studio` (formerly `module-eval-opt`)
+   - Purpose: Designer workbench for evaluation configuration (rubrics, truth sets, prompts)
+
+2. **Premium Module Naming Convention**
+   - Pattern: `module-{core}-studio`
+   - Examples: 
+     - `module-eval-studio` (extends `module-eval`)
+     - `module-kb-studio` (extends `module-kb`)
+     - `module-chat-studio` (extends `module-chat`)
+   - Suffix `-studio` denotes premium/paid workbench functionality
+
+3. **Table Naming Convention**
+   - Pattern: `{module}_opt_{entity}`
+   - Meaning: `opt` = "optional" (premium/paid tier)
+   - Rationale: Avoids database migrations when rebranding; clearly indicates optional dependency
+   - Examples: `eval_opt_truth_keys`, `eval_opt_runs`
+
+4. **Integration**
+   - Studio modules depend on their core module
+   - Core modules NEVER depend on studio modules
+   - Studio modules implement the same 2-layer auth pattern (Admin + Resource)
+
+---
+
 ## Success Criteria
+
 
 - [x] ✅ Prototype validates shared authentication (Cognito/NextAuth)
 - [x] ✅ Prototype validates API integration (access, ws, kb, eval)

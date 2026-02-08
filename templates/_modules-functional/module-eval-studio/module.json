@@ -1,7 +1,7 @@
 {
-  "name": "module-eval-opt",
+  "name": "module-eval-studio",
   "version": "1.0.0",
-  "description": "Business Analyst Workbench for optimizing evaluation prompts using sample-driven training",
+  "description": "Business Analyst Workbench for designing evaluation rubrics, creating truth sets, and optimizing evaluation prompts",
   "author": "CORA Development Team",
   "license": "MIT",
 
@@ -63,7 +63,7 @@
       "components": [],
       "hooks": [],
       "contexts": [],
-      "note": "Frontend is in separate app at apps/eval-opt/"
+      "note": "Frontend is in separate app at apps/studio/"
     }
   },
 

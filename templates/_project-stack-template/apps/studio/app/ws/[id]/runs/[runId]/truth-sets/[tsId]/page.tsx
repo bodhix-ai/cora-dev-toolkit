@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useUser, useOrganizationContext } from "@ai-mod/module-access";
-import { createCoraAuthenticatedClient } from "@ai-mod/api-client";
-import { createKbModuleClient } from "@ai-mod/module-kb";
+import { useUser, useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
+import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
+import { createKbModuleClient } from "@{{PROJECT_NAME}}/module-kb";
+import Pagination from "@mui/material/Pagination";
+import Stack from "@mui/material/Stack";
 import DocumentViewer from "../../../../../../../components/DocumentViewer";
 import CriteriaEvaluationForm from "../../../../../../../components/CriteriaEvaluationForm";
 
@@ -39,7 +41,6 @@ interface ResponseSection {
 
 interface CriterionEvaluation {
   criteria_item_id: string;
-  status_id: string;
   section_responses: Record<string, any>;
 }
 
@@ -47,6 +48,24 @@ interface KBDocument {
   id: string;
   name: string;
   extracted_text?: string;
+  content?: string;
+  text_content?: string;
+}
+
+// Helper function to format time ago
+function formatTimeAgo(date: Date): string {
+  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+  
+  if (seconds < 5) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  
+  return date.toLocaleTimeString();
 }
 
 export default function TruthSetDetailPage() {
@@ -74,6 +93,12 @@ export default function TruthSetDetailPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  
+  // Auto-save refs
+  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const statusFadeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch truth set data
   useEffect(() => {
@@ -154,12 +179,77 @@ export default function TruthSetDetailPage() {
     fetchData();
   }, [wsId, runId, tsId, isAuthenticated, authLoading, authAdapter, orgId]);
 
+  // Auto-save function with debounce
+  const performSave = useCallback(async (evaluationsToSave: Map<string, CriterionEvaluation>) => {
+    setSaveStatus('saving');
+    setError(null);
+
+    try {
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setSaveStatus('error');
+        setError("Authentication token not available");
+        return;
+      }
+      const client = createCoraAuthenticatedClient(token);
+      await client.put(`/ws/${wsId}/optimization/runs/${runId}/truth-sets/${tsId}`, {
+        evaluations: Array.from(evaluationsToSave.values()),
+      });
+
+      setHasChanges(false);
+      setSaveStatus('saved');
+      setLastSavedAt(new Date());
+      
+      // Fade out "Saved" status after 3 seconds
+      if (statusFadeTimerRef.current) {
+        clearTimeout(statusFadeTimerRef.current);
+      }
+      statusFadeTimerRef.current = setTimeout(() => {
+        setSaveStatus('idle');
+      }, 3000);
+    } catch (err) {
+      console.error("Error auto-saving evaluations:", err);
+      setSaveStatus('error');
+      setError(err instanceof Error ? err.message : "Failed to auto-save");
+    }
+  }, [wsId, runId, tsId, authAdapter]);
+
+  // Debounced auto-save trigger
+  const triggerAutoSave = useCallback(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+    }
+    
+    saveTimerRef.current = setTimeout(() => {
+      performSave(evaluations);
+    }, 500); // 500ms debounce
+  }, [evaluations, performSave]);
+
   const handleEvaluationChange = (evaluation: CriterionEvaluation) => {
     const newEvaluations = new Map(evaluations);
     newEvaluations.set(evaluation.criteria_item_id, evaluation);
     setEvaluations(newEvaluations);
     setHasChanges(true);
   };
+
+  // Handler for field blur (triggers auto-save)
+  const handleFieldBlur = () => {
+    if (hasChanges) {
+      triggerAutoSave();
+    }
+  };
+  
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+      if (statusFadeTimerRef.current) {
+        clearTimeout(statusFadeTimerRef.current);
+      }
+    };
+  }, []);
 
   const handlePrevious = () => {
     if (currentCriterionIndex > 0) {
@@ -173,38 +263,15 @@ export default function TruthSetDetailPage() {
     }
   };
 
+  // Manual save handler (fallback)
   const handleSave = async () => {
     setSaving(true);
-    setError(null);
-
-    try {
-      const token = await authAdapter.getToken();
-      if (!token) {
-        setError("Authentication token not available");
-        setSaving(false);
-        return;
-      }
-      const client = createCoraAuthenticatedClient(token);
-      await client.put(`/ws/${wsId}/optimization/runs/${runId}/truth-sets/${tsId}`, {
-        evaluations: Array.from(evaluations.values()),
-      });
-
-      setHasChanges(false);
-      alert("Changes saved successfully!");
-    } catch (err) {
-      console.error("Error saving evaluations:", err);
-      setError(err instanceof Error ? err.message : "Failed to save");
-    } finally {
-      setSaving(false);
-    }
+    await performSave(evaluations);
+    setSaving(false);
   };
 
   const handleBack = () => {
-    if (hasChanges) {
-      if (!confirm("You have unsaved changes. Are you sure you want to leave?")) {
-        return;
-      }
-    }
+    // Auto-save handles persistence, so no need to warn about unsaved changes
     router.push(`/ws/${wsId}/runs/${runId}`);
   };
 
@@ -260,7 +327,7 @@ export default function TruthSetDetailPage() {
           <div>
             <h1 style={{ margin: "0 0 0.5rem 0" }}>{truthSet.name}</h1>
             <p style={{ color: "#666", margin: 0 }}>
-              Edit evaluations for this truth set. Changes will be saved when you click Save.
+              Edit evaluations for this truth set. Changes are saved automatically.
             </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -276,17 +343,47 @@ export default function TruthSetDetailPage() {
             >
               {truthSet.status === "complete" ? "✓ COMPLETE" : "IN PROGRESS"}
             </span>
-            {hasChanges && (
+            {/* Auto-save status indicator */}
+            {saveStatus === 'saving' && (
               <span
                 style={{
                   padding: "0.25rem 0.75rem",
-                  backgroundColor: "#ffc107",
-                  color: "#212529",
+                  backgroundColor: "#17a2b8",
+                  color: "white",
+                  borderRadius: "4px",
+                  fontSize: "0.75rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.25rem",
+                }}
+              >
+                <span style={{ animation: "spin 1s linear infinite" }}>⟳</span> Saving...
+              </span>
+            )}
+            {saveStatus === 'saved' && lastSavedAt && (
+              <span
+                style={{
+                  padding: "0.25rem 0.75rem",
+                  backgroundColor: "#28a745",
+                  color: "white",
                   borderRadius: "4px",
                   fontSize: "0.75rem",
                 }}
               >
-                Unsaved Changes
+                ✓ Saved {formatTimeAgo(lastSavedAt)}
+              </span>
+            )}
+            {saveStatus === 'error' && (
+              <span
+                style={{
+                  padding: "0.25rem 0.75rem",
+                  backgroundColor: "#dc3545",
+                  color: "white",
+                  borderRadius: "4px",
+                  fontSize: "0.75rem",
+                }}
+              >
+                ✗ Save failed
               </span>
             )}
           </div>
@@ -351,7 +448,12 @@ export default function TruthSetDetailPage() {
         {/* Left: Document Viewer */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <DocumentViewer
-            documentContent={document?.extracted_text || "Loading document..."}
+            documentContent={
+              document?.extracted_text || 
+              document?.content || 
+              document?.text_content || 
+              (document ? "No text content found in document" : "Loading document...")
+            }
             documentName={document?.name || truthSet.name}
             onTextSelected={setSelectedText}
           />
@@ -359,6 +461,37 @@ export default function TruthSetDetailPage() {
 
         {/* Right: Evaluation Form */}
         <div style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
+          {/* Top Pagination - Quick Jump */}
+          {criteriaItems.length > 0 && (
+            <div style={{ 
+              padding: "0.75rem 1rem", 
+              backgroundColor: "#f8f9fa", 
+              borderRadius: "8px", 
+              marginBottom: "1rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "1rem"
+            }}>
+              <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#495057" }}>
+                Criterion {currentCriterionIndex + 1} of {criteriaItems.length}
+              </span>
+              <Stack spacing={2}>
+                <Pagination
+                  count={criteriaItems.length}
+                  page={currentCriterionIndex + 1}
+                  onChange={(event, page) => setCurrentCriterionIndex(page - 1)}
+                  color="primary"
+                  size="small"
+                  showFirstButton
+                  showLastButton
+                  siblingCount={1}
+                  boundaryCount={1}
+                />
+              </Stack>
+            </div>
+          )}
+
           {currentCriterion ? (
             <CriteriaEvaluationForm
               criterion={currentCriterion}
@@ -367,6 +500,7 @@ export default function TruthSetDetailPage() {
               initialValue={evaluations.get(currentCriterion.id)}
               selectedText={selectedText}
               onChange={handleEvaluationChange}
+              onBlur={handleFieldBlur}
             />
           ) : (
             <div style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
@@ -374,7 +508,7 @@ export default function TruthSetDetailPage() {
             </div>
           )}
 
-          {/* Navigation Buttons */}
+          {/* Bottom Navigation Buttons - Sequential */}
           <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
             <button
               onClick={handlePrevious}
@@ -434,20 +568,21 @@ export default function TruthSetDetailPage() {
           ← Back
         </button>
 
+        {/* Manual save fallback button - auto-save handles persistence automatically */}
         <button
           onClick={handleSave}
-          disabled={saving || !hasChanges}
+          disabled={saving}
           style={{
             padding: "0.75rem 1.5rem",
-            backgroundColor: saving || !hasChanges ? "#ccc" : "#28a745",
+            backgroundColor: saving ? "#ccc" : "#28a745",
             color: "white",
             border: "none",
             borderRadius: "4px",
-            cursor: saving || !hasChanges ? "not-allowed" : "pointer",
+            cursor: saving ? "not-allowed" : "pointer",
             fontSize: "1rem",
           }}
         >
-          {saving ? "Saving..." : "Save Changes"}
+          {saving ? "Saving..." : "Save Now"}
         </button>
       </div>
     </div>

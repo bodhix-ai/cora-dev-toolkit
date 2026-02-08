@@ -32,6 +32,7 @@ import { useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
  */
 
 const DRAWER_WIDTH = 280;
+const DRAWER_WIDTH_COLLAPSED = 72;
 
 // Eval Optimizer specific navigation
 const EVAL_OPT_NAVIGATION = [
@@ -40,7 +41,11 @@ const EVAL_OPT_NAVIGATION = [
   { href: "/optimizer", label: "Run Optimizer", icon: <PlayArrowIcon /> },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  collapsed?: boolean;
+}
+
+export function Sidebar({ collapsed = false }: SidebarProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -49,6 +54,9 @@ export function Sidebar() {
   
   // Get current organization for app branding
   const { currentOrganization } = useOrganizationContext();
+  
+  // Use collapsed width on desktop when in focus mode
+  const drawerWidth = collapsed ? DRAWER_WIDTH_COLLAPSED : DRAWER_WIDTH;
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -64,15 +72,26 @@ export function Sidebar() {
   const drawerContent = (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {/* Logo/Header */}
-      <Box sx={{ p: 3, borderBottom: 1, borderColor: "divider", display: "flex", alignItems: "center", gap: 1.5 }}>
+      <Box sx={{ 
+        p: collapsed ? 1.5 : 3, 
+        borderBottom: 1, 
+        borderColor: "divider", 
+        display: "flex", 
+        alignItems: "center", 
+        justifyContent: collapsed ? "center" : "flex-start",
+        gap: 1.5,
+        transition: "all 0.3s ease"
+      }}>
         <TuneIcon sx={{ color: "primary.main", fontSize: 28 }} />
-        <Typography variant="h6" fontWeight={600}>
-          Eval Optimizer
-        </Typography>
+        {!collapsed && (
+          <Typography variant="h6" fontWeight={600}>
+            Design Studio
+          </Typography>
+        )}
       </Box>
 
-      {/* Current Organization Display */}
-      {currentOrganization && (
+      {/* Current Organization Display - Hidden when collapsed */}
+      {!collapsed && currentOrganization && (
         <Box sx={{ px: 3, py: 1.5, bgcolor: "action.hover" }}>
           <Typography variant="caption" color="text.secondary">
             Organization
@@ -86,12 +105,14 @@ export function Sidebar() {
       {/* Navigation Items */}
       <List sx={{ flexGrow: 1, overflowY: "auto", py: 2 }}>
         {EVAL_OPT_NAVIGATION.map((item) => (
-          <ListItem key={item.href} disablePadding sx={{ px: 2 }}>
+          <ListItem key={item.href} disablePadding sx={{ px: collapsed ? 1 : 2 }}>
             <ListItemButton
               selected={pathname === item.href}
               onClick={() => handleNavigation(item.href)}
               sx={{
                 borderRadius: 1,
+                justifyContent: collapsed ? "center" : "flex-start",
+                minHeight: 48,
                 "&.Mui-selected": {
                   bgcolor: "primary.main",
                   color: "primary.contrastText",
@@ -104,15 +125,20 @@ export function Sidebar() {
                 },
               }}
             >
-              <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} />
+              <ListItemIcon sx={{ 
+                minWidth: collapsed ? 0 : 40,
+                justifyContent: "center"
+              }}>
+                {item.icon}
+              </ListItemIcon>
+              {!collapsed && <ListItemText primary={item.label} />}
             </ListItemButton>
           </ListItem>
         ))}
       </List>
 
-      {/* Organization Switcher at Bottom */}
-      <OrganizationSwitcher />
+      {/* Organization Switcher at Bottom - Hidden when collapsed */}
+      {!collapsed && <OrganizationSwitcher />}
     </Box>
   );
 
@@ -146,11 +172,12 @@ export function Sidebar() {
         variant="permanent"
         sx={{
           display: { xs: "none", md: "block" },
-          width: DRAWER_WIDTH,
+          width: drawerWidth,
           flexShrink: 0,
           "& .MuiDrawer-paper": {
-            width: DRAWER_WIDTH,
+            width: drawerWidth,
             boxSizing: "border-box",
+            transition: "width 0.3s ease",
           },
         }}
       >
