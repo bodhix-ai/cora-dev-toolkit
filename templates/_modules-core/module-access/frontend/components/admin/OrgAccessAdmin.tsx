@@ -27,10 +27,12 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  Breadcrumbs,
+  Link,
 } from "@mui/material";
-import { Search, Person, Edit, Delete } from "@mui/icons-material";
-import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
-import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
+import { Search, Person, Edit, Delete, NavigateNext as NavigateNextIcon } from "@mui/icons-material";
+import { useUser, useRole, useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
+import { getOrgAdminUsers, updateOrgUserRole, removeOrgUser } from "../../lib/api";
 
 /**
  * Organization Access Admin Component
@@ -55,6 +57,7 @@ interface OrgUser {
 export const OrgAccessAdmin = () => {
   const { authAdapter, loading: authLoading, isAuthenticated, profile } = useUser();
   const { isOrgAdmin, hasPermission } = useRole();
+  const { currentOrganization } = useOrganizationContext();
   const isOrgOwner = hasPermission('org_owner');
   const [users, setUsers] = useState<OrgUser[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<OrgUser[]>([]);
@@ -65,10 +68,10 @@ export const OrgAccessAdmin = () => {
   const [deletingUser, setDeletingUser] = useState<OrgUser | null>(null);
 
   useEffect(() => {
-    if (!authLoading && profile) {
+    if (!authLoading && profile && currentOrganization?.orgId) {
       fetchUsers();
     }
-  }, [authLoading, profile]);
+  }, [authLoading, profile, currentOrganization?.orgId]);
 
   useEffect(() => {
     filterUsers();
@@ -84,16 +87,19 @@ export const OrgAccessAdmin = () => {
         return;
       }
 
+      if (!currentOrganization?.orgId) {
+        setError("No organization selected");
+        return;
+      }
+
       const token = await authAdapter.getToken();
       if (!token) {
         setError("Authentication required");
         return;
       }
 
-      const apiClient = createCoraAuthenticatedClient(token);
-      const response = await apiClient.get<{ success: boolean; data: OrgUser[] }>(
-        "/admin/org/access/users"
-      );
+      // Use helper function (orgId as query param)
+      const response = await getOrgAdminUsers(token, currentOrganization.orgId);
 
       if (response.success) {
         setUsers(response.data || []);
@@ -125,15 +131,13 @@ export const OrgAccessAdmin = () => {
 
   const handleUpdateRole = async (userId: string, newRole: string) => {
     try {
-      if (!authAdapter) return;
+      if (!authAdapter || !currentOrganization?.orgId) return;
 
       const token = await authAdapter.getToken();
       if (!token) return;
 
-      const apiClient = createCoraAuthenticatedClient(token);
-      await apiClient.put(`/admin/org/access/users/${userId}`, {
-        org_role: newRole,
-      });
+      // Use helper function (orgId as query param)
+      await updateOrgUserRole(token, currentOrganization.orgId, userId, newRole);
 
       await fetchUsers();
       setEditingUser(null);
@@ -145,13 +149,13 @@ export const OrgAccessAdmin = () => {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      if (!authAdapter) return;
+      if (!authAdapter || !currentOrganization?.orgId) return;
 
       const token = await authAdapter.getToken();
       if (!token) return;
 
-      const apiClient = createCoraAuthenticatedClient(token);
-      await apiClient.delete(`/admin/org/access/users/${userId}`);
+      // Use helper function (orgId as query param)
+      await removeOrgUser(token, currentOrganization.orgId, userId);
 
       await fetchUsers();
       setDeletingUser(null);
@@ -212,6 +216,23 @@ export const OrgAccessAdmin = () => {
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Breadcrumb Navigation */}
+      <Breadcrumbs
+        separator={<NavigateNextIcon fontSize="small" />}
+        aria-label="breadcrumb"
+        sx={{ mb: 2 }}
+      >
+        <Link
+          underline="hover"
+          color="inherit"
+          href="/admin/org"
+          sx={{ display: 'flex', alignItems: 'center' }}
+        >
+          Org Admin
+        </Link>
+        <Typography color="text.primary">Access</Typography>
+      </Breadcrumbs>
+
       <Box sx={{ mb: 3 }}>
         <Typography variant="h4" gutterBottom>
           Organization Access Management
