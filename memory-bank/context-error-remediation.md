@@ -778,6 +778,115 @@ The 29 remaining errors include BOTH web app pages AND module route pages. Each 
 
 ---
 
+### February 7, 2026 - Session 24: Admin Page Standard Pattern Implementation ✅
+
+**Session Summary:**
+- **Duration:** ~2 hours
+- **Focus:** Fix admin page API patterns and organization context handling
+- **Result:** All updated admin pages (mgmt, access, ai) now working correctly
+- **Status:** COMPLETE - All changes tested and verified
+
+**Issues Fixed:**
+
+**1. Missing Breadcrumbs:**
+- ❌ `/admin/org/mgmt` had no breadcrumb navigation
+- ✅ Added breadcrumbs to `OrgMgmtAdmin.tsx` component
+
+**2. API Helper Functions Missing:**
+- ❌ `module-ai` and `module-access` had no org admin helper functions
+- ❌ Components making direct API calls instead of using helpers
+- ✅ Created standard helper functions following module-chat pattern:
+  - `getOrgAdminConfig()`, `updateOrgAdminConfig()` in module-ai
+  - `getOrgAdminUsers()`, `updateOrgUserRole()`, `removeOrgUser()` in module-access
+
+**3. API Base URL Not Added:**
+- ❌ Helper functions weren't prepending API base URL, causing 404 errors
+- ❌ Requests going to `localhost:3000` instead of API Gateway
+- ✅ Added `getApiBase()` function to both modules
+- ✅ Updated `apiRequest()` to prepend base URL
+
+**4. Organization Context Not Awaited:**
+- ❌ Components fetching data before organization context loaded
+- ❌ Error: "No organization selected"
+- ✅ Updated useEffect to wait for `currentOrganization?.orgId`
+
+**5. API Response Not Unwrapped:**
+- ❌ Helper functions returning wrapped response `{ success, data }`
+- ❌ Components trying to access `config.platformConfig` but getting `undefined`
+- ✅ Updated `getOrgAdminConfig()` to unwrap and return just `data`
+
+**Files Modified (5 total):**
+
+1. **`templates/_modules-core/module-mgmt/frontend/components/admin/OrgMgmtAdmin.tsx`**
+   - Added breadcrumb navigation
+
+2. **`templates/_modules-core/module-ai/frontend/lib/api.ts`**
+   - Added `getApiBase()` function
+   - Added `getOrgAdminConfig()` and `updateOrgAdminConfig()` helpers
+   - Fixed `apiRequest()` to prepend API base URL
+   - Fixed response unwrapping
+
+3. **`templates/_modules-core/module-access/frontend/lib/api.ts`**
+   - Added `getApiBase()` function
+   - Added `getOrgAdminUsers()`, `updateOrgUserRole()`, `removeOrgUser()` helpers
+   - Fixed `apiRequest()` to prepend API base URL
+
+4. **`templates/_modules-core/module-ai/frontend/components/admin/OrgAiAdmin.tsx`**
+   - Updated to use helper functions instead of direct API calls
+   - Updated useEffect to wait for organization context
+   - Added helpful message when no platform config exists
+
+5. **`templates/_modules-core/module-access/frontend/components/admin/OrgAccessAdmin.tsx`**
+   - Updated to use helper functions instead of direct API calls
+   - Updated useEffect to wait for organization context
+
+**Standard Pattern Established:**
+
+All org admin routes now follow this pattern:
+```typescript
+// 1. Get token and orgId at component level
+const { authAdapter } = useUser();
+const { currentOrganization } = useOrganizationContext();
+
+// 2. Wait for organization context before fetching
+useEffect(() => {
+  if (!userLoading && profile && authAdapter && currentOrganization?.orgId) {
+    fetchData();
+  }
+}, [userLoading, profile, authAdapter, currentOrganization?.orgId]);
+
+// 3. Use helper function with orgId as query param
+const token = await authAdapter.getToken();
+const data = await getOrgAdminConfig(token, currentOrganization.orgId);
+```
+
+**Helper Function Pattern:**
+```typescript
+// In lib/api.ts:
+export async function getOrgAdminConfig(token: string, orgId: string): Promise<ConfigType> {
+  const url = buildUrl("/admin/org/ai/config", { orgId }); // Query param, not header
+  const response = await apiRequest<{ success: boolean; data: ConfigType }>(url, token);
+  return response.data; // Unwrap response
+}
+```
+
+**Pages Verified Working:**
+- ✅ `/admin/org/mgmt` - Breadcrumbs present, loads correctly
+- ✅ `/admin/org/ai` - Platform defaults displayed, config loads
+- ✅ `/admin/org/access` - Users list loads successfully
+
+**Test Project:**
+- `/Users/aaron/code/bodhix/testing/ws-optim/ai-mod-stack`
+
+**Remaining Work:**
+- Other admin pages (ws, chat sys variants, kb sys variants, eval, voice) still need migration to standard pattern
+- These can be migrated using the same approach in future sessions
+
+**Branch:** feature/admin-component-migration-s24 (to be created)
+**Ready for:** Commit and push to remote
+
+---
+
 ## Previously Completed Sprint
 
 **Sprint S5: Validation Errors - Low-Hanging Fruit** ✅ COMPLETE

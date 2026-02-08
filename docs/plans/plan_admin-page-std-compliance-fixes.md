@@ -213,38 +213,70 @@ The high error count (34) includes both web app pages AND module route pages. Ea
 
 **Branch:** feature/admin-component-migration-s22
 
-**Next Steps:**
-1. **Fix Backend API Errors** (separate task):
-   - Debug Lambda 500 errors on `/admin/sys/ai/*`
-   - Debug 403 authorization on `/admin/org/access/users`
-2. **Complete Testing** (original scope):
-   - Test remaining 8 admin pages
-   - Run validation to confirm error reduction
-3. **Add Breadcrumbs** (separate task - UX improvement)
-4. **Continue Migration** (if needed):
-   - WS, Mgmt, Eval, Voice pages (if not all pages working yet)
+---
 
-### Session 23 (Next - TBD)
-**Focus:** Backend API debugging OR Complete validation scope
+### Session 24 ✅ COMPLETE (Feb 7, 2026) - Admin Page Standard Pattern Implementation
+**Focus:** Fix admin page API patterns and organization context handling
 
-**Option A: Fix Backend APIs (2-4 hours)**
-1. Investigate Lambda 500 errors on `/admin/sys/ai/*` routes
-2. Investigate 403 authorization on `/admin/org/access/users`
-3. Check Lambda logs for error traces
-4. Fix backend bugs causing crashes
+**Completed:**
+1. ✅ Added breadcrumbs to OrgMgmtAdmin component
+2. ✅ Created org admin helper functions (module-ai, module-access)
+3. ✅ Fixed API base URL prepending (404 errors resolved)
+4. ✅ Fixed organization context awaiting (components wait for context)
+5. ✅ Fixed API response unwrapping (platform config now displays)
+6. ✅ Updated OrgAiAdmin and OrgAccessAdmin to use standard pattern
+7. ✅ All three pages verified working (mgmt, ai, access)
 
-**Option B: Complete Original Scope (1-2 hours)**
-1. Test remaining 8 admin pages (verify frontend loads)
-2. Run validation to confirm error reduction
-3. Document backend issues for separate task
-4. Close out this migration session
+**Issues Fixed:**
+- ❌ Missing breadcrumbs → ✅ Added to OrgMgmtAdmin
+- ❌ 404 errors → ✅ API base URL now prepended
+- ❌ "No organization selected" → ✅ Components wait for context
+- ❌ Empty platform defaults → ✅ API response unwrapped properly
 
-**Option C: Continue Migration (3-4 hours)**
-1. Create remaining admin components (WS, Mgmt, Eval, Voice)
+**Files Modified (5 total):**
+1. `templates/_modules-core/module-mgmt/frontend/components/admin/OrgMgmtAdmin.tsx`
+2. `templates/_modules-core/module-ai/frontend/lib/api.ts`
+3. `templates/_modules-core/module-access/frontend/lib/api.ts`
+4. `templates/_modules-core/module-ai/frontend/components/admin/OrgAiAdmin.tsx`
+5. `templates/_modules-core/module-access/frontend/components/admin/OrgAccessAdmin.tsx`
+
+**Standard Pattern Established:**
+- ✅ Query params instead of headers
+- ✅ Helper functions unwrap responses
+- ✅ Components wait for organization context
+- ✅ API base URL prepended automatically
+
+**Pages Verified Working:**
+- ✅ `/admin/org/mgmt` - Breadcrumbs present, loads correctly
+- ✅ `/admin/org/ai` - Platform defaults displayed, config loads
+- ✅ `/admin/org/access` - Users list loads successfully
+
+**Status:** COMPLETE - All changes tested and verified
+
+**Branch:** feature/admin-component-migration-s24 (to be created)
+
+**Recommended Commits:**
+1. `feat(module-mgmt): add breadcrumbs to OrgMgmtAdmin component`
+2. `feat(api): add org admin helper functions with standard pattern`
+3. `fix(admin): wait for organization context before fetching data`
+
+---
+
+### Session 25 (Next - TBD)
+**Focus:** Continue admin page migration OR other validation errors
+
+**Option A: Continue Admin Page Migration (3-4 hours)**
+1. Create remaining admin components (WS, Mgmt sys, Eval, Voice)
 2. Update all pages to thin wrappers
-3. Run validation to confirm 0 errors
+3. Run validation to confirm error reduction
+4. Goal: Reduce remaining "admin not thin wrapper" errors
 
-**Recommendation:** Option B (complete original scope) → Track backend issues separately
+**Option B: Focus on Other Validation Errors (2-3 hours)**
+1. DB function errors (13 remaining)
+2. Other validation categories
+3. Work toward clean baseline goal
+
+**Recommendation:** Option A (complete admin migration) for consistency
 
 ---
 
