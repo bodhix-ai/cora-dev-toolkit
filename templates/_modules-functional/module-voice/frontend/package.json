@@ -4,6 +4,10 @@
   "private": true,
   "description": "CORA Voice Module - AI-powered voice interviews with Daily.co WebRTC, real-time transcription, and ECS-based Pipecat bot orchestration",
   "main": "index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./admin": "./components/admin/index.ts"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "tsc -b",
