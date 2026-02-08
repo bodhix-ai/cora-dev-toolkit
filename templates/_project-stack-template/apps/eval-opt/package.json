@@ -1,0 +1,36 @@
+{
+  "name": "@{{PROJECT_NAME}}/eval-opt",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Evaluation prompt optimizer workbench for CORA",
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "build": "next build",
+    "start": "next start --port 3001",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@{{PROJECT_NAME}}/api-client": "workspace:*",
+    "@{{PROJECT_NAME}}/module-access": "workspace:*",
+    "@{{PROJECT_NAME}}/module-kb": "workspace:*",
+    "@{{PROJECT_NAME}}/module-ws": "workspace:*",
+    "@{{PROJECT_NAME}}/shared-types": "workspace:*",
+    "@mui/material": "^5.14.0",
+    "@mui/icons-material": "^5.14.0",
+    "@emotion/react": "^11.11.0",
+    "@emotion/styled": "^11.11.0",
+    "next": "14.2.33",
+    "next-auth": "^5.0.0-beta.30",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "swr": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.5",
+    "typescript": "^5"
+  }
+}

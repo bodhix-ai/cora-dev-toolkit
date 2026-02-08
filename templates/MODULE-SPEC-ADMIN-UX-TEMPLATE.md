@@ -408,7 +408,7 @@ Access → Required Settings → Optional Settings → Enable → Verify
 
 import React from 'react';
 import {ModuleIcon} from '@mui/icons-material';
-import type { AdminCardConfig } from '@{project}/shared-types';
+import type { AdminCardConfig } from '@{{PROJECT_NAME}}/shared-types';
 
 export const {module}PlatformAdminCard: AdminCardConfig = {
   id: '{module}-platform-admin',
@@ -484,7 +484,7 @@ export function AdminCard({ config, onClick }: AdminCardProps) {
 
 ```typescript
 // Register cards with module-mgmt
-import { registerAdminCard } from '@{project}/module-mgmt-frontend';
+import { registerAdminCard } from '@{{PROJECT_NAME}}/module-mgmt-frontend';
 
 registerAdminCard({module}PlatformAdminCard);
 registerAdminCard({module}OrgAdminCard);
