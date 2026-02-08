@@ -97,15 +97,47 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 return common.forbidden_response('Access denied to this workspace')
         
         # Route to appropriate handler
-        if '/results' in path and run_id and http_method == 'GET':
+        # Order matters - more specific routes first
+        
+        # Sections routes
+        if '/sections' in path and run_id:
+            if http_method == 'GET':
+                return handle_get_sections(supabase_user_id, ws_id, run_id)
+            elif http_method == 'PUT':
+                return handle_update_sections(event, supabase_user_id, ws_id, run_id)
+        
+        # Truth sets routes
+        elif '/truth-sets' in path and run_id:
+            ts_id = path_params.get('tsId')
+            if ts_id:
+                if http_method == 'GET':
+                    return handle_get_truth_set(supabase_user_id, ws_id, run_id, ts_id)
+                elif http_method == 'PUT':
+                    return handle_update_truth_set(event, supabase_user_id, ws_id, run_id, ts_id)
+                elif http_method == 'DELETE':
+                    return handle_delete_truth_set(supabase_user_id, ws_id, run_id, ts_id)
+            else:
+                if http_method == 'GET':
+                    return handle_list_truth_sets(supabase_user_id, ws_id, run_id)
+                elif http_method == 'POST':
+                    return handle_create_truth_set(event, supabase_user_id, ws_id, run_id)
+        
+        # Optimize trigger route
+        elif '/optimize' in path and run_id and http_method == 'POST':
+            return handle_trigger_optimization(event, supabase_user_id, ws_id, run_id)
+        
+        # Results route
+        elif '/results' in path and run_id and http_method == 'GET':
             return handle_get_detailed_results(supabase_user_id, ws_id, run_id)
         
+        # Single run routes
         elif run_id and http_method == 'GET':
             return handle_get_run(supabase_user_id, ws_id, run_id)
         
         elif run_id and http_method == 'DELETE':
             return handle_delete_run(supabase_user_id, ws_id, run_id)
         
+        # Runs collection routes
         elif http_method == 'POST' and not run_id:
             return handle_start_run(event, supabase_user_id, ws_id)
         
@@ -147,115 +179,56 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
 def handle_start_run(event: Dict[str, Any], user_id: str, ws_id: str) -> Dict[str, Any]:
     """
-    Start a new optimization run.
+    Create a new optimization run (does NOT start optimization).
+    
+    Per spec, the workflow is:
+    1. Create run with doc_type_id + criteria_set_id
+    2. User defines response sections on Run Details page
+    3. User creates truth sets (uploads docs + manual evaluation)
+    4. User triggers optimization via POST /runs/{runId}/optimize
     
     Request body:
     {
         "name": "Run name",
-        "thoroughness": "fast" | "balanced" | "thorough",
-        "metaPromptModelId": "uuid" (optional),
-        "evalModelId": "uuid" (optional)
+        "doc_type_id": "uuid",
+        "criteria_set_id": "uuid"
     }
     """
-    import boto3
-    
     body = json.loads(event.get('body', '{}'))
     
     # Validate required fields
     name = common.validate_required(body.get('name'), 'name')
-    thoroughness = body.get('thoroughness', 'balanced')
+    doc_type_id = common.validate_required(body.get('doc_type_id'), 'doc_type_id')
+    criteria_set_id = common.validate_required(body.get('criteria_set_id'), 'criteria_set_id')
     
-    if thoroughness not in ['fast', 'balanced', 'thorough']:
-        raise common.ValidationError(f"Invalid thoroughness: {thoroughness}. Must be fast, balanced, or thorough.")
+    # Validate UUIDs
+    doc_type_id = common.validate_uuid(doc_type_id, 'doc_type_id')
+    criteria_set_id = common.validate_uuid(criteria_set_id, 'criteria_set_id')
     
-    # Get workspace to verify response structure exists
-    response_structure = common.find_one(
-        'eval_opt_response_structures',
-        {'ws_id': ws_id}
-    )
-    response_structure_id = response_structure['id'] if response_structure else None
-    
-    # Get context document IDs from workspace KB
-    # Context documents are regular KB docs in the workspace
-    context_docs = common.find_many(
-        'eval_opt_context_docs',
-        {'ws_id': ws_id}
-    )
-    context_doc_ids = [doc['kb_doc_id'] for doc in context_docs]
-    
-    # Verify we have truth keys to optimize against
-    doc_groups = common.find_many(
-        'eval_opt_doc_groups',
-        {'ws_id': ws_id, 'status': 'evaluated'}
-    )
-    
-    if not doc_groups:
-        raise common.ValidationError(
-            "No evaluated samples found. Please manually evaluate at least one sample document "
-            "before running optimization."
-        )
-    
-    # Get LLM configuration
-    llm_config = get_llm_config(ws_id)
-    meta_prompt_model_id = body.get('metaPromptModelId') or llm_config.get('meta_prompt_model_id')
-    eval_model_id = body.get('evalModelId') or llm_config.get('eval_model_id')
-    
-    # Create run record
+    # Create run record in 'draft' status
+    # User will configure response sections and truth sets before triggering optimization
     run_data = {
         'ws_id': ws_id,
         'name': name,
-        'thoroughness': thoroughness,
-        'status': 'pending',
+        'doc_type_id': doc_type_id,
+        'criteria_set_id': criteria_set_id,
+        'status': 'draft',
         'progress': 0,
-        'context_doc_ids': context_doc_ids,
-        'response_structure_id': response_structure_id,
-        'meta_prompt_model_id': meta_prompt_model_id,
-        'eval_model_id': eval_model_id,
-        'total_samples': len(doc_groups),
         'created_by': user_id
     }
     
     run = common.insert_one('eval_opt_runs', run_data)
     run_id = run['id']
     
-    # Invoke Lambda asynchronously to process optimization
-    lambda_client = boto3.client('lambda')
-    
-    async_payload = {
-        'source': 'async-optimization-worker',
-        'run_id': run_id,
-        'ws_id': ws_id,
-        'user_id': user_id
-    }
-    
-    try:
-        lambda_client.invoke(
-            FunctionName=LAMBDA_FUNCTION_NAME,
-            InvocationType='Event',  # Async invocation
-            Payload=json.dumps(async_payload)
-        )
-        logger.info(f"Async optimization invoked for run {run_id}")
-    except Exception as e:
-        logger.error(f"Error invoking async optimization: {str(e)}")
-        # Mark run as failed
-        common.update_one(
-            'eval_opt_runs',
-            {'id': run_id},
-            {
-                'status': 'failed',
-                'error_message': f'Failed to start optimization: {str(e)}',
-                'completed_at': datetime.now(timezone.utc).isoformat()
-            }
-        )
-        return common.internal_error_response(f'Failed to start optimization: {str(e)}')
+    logger.info(f"Created optimization run {run_id} for workspace {ws_id}")
     
     return common.created_response({
         'id': run_id,
         'name': name,
-        'status': 'pending',
-        'message': 'Optimization run started',
-        'thoroughness': thoroughness,
-        'totalSamples': len(doc_groups)
+        'status': 'draft',
+        'message': 'Optimization run created. Define response sections and add truth sets before running optimization.',
+        'docTypeId': doc_type_id,
+        'criteriaSetId': criteria_set_id
     })
 
 
@@ -295,11 +268,22 @@ def handle_get_run(user_id: str, ws_id: str, run_id: str) -> Dict[str, Any]:
         'progressMessage': run.get('progress_message'),
         'thoroughness': run.get('thoroughness'),
         'totalSamples': run.get('total_samples'),
+        'docTypeId': run.get('doc_type_id'),
+        'criteriaSetId': run.get('criteria_set_id'),
+        'responseStructureId': run.get('response_structure_id'),
         'createdAt': run.get('created_at'),
         'startedAt': run.get('started_at'),
         'completedAt': run.get('completed_at'),
         'errorMessage': run.get('error_message')
     }
+    
+    # Include response sections inline
+    response_structure_id = run.get('response_structure_id')
+    if response_structure_id:
+        structure = common.find_one('eval_opt_response_structures', {'id': response_structure_id})
+        if structure:
+            sections = structure.get('structure_schema', {}).get('sections', [])
+            response['responseSections'] = sections
     
     # Include results if completed
     if run.get('status') == 'completed':
@@ -434,6 +418,340 @@ def handle_delete_run(user_id: str, ws_id: str, run_id: str) -> Dict[str, Any]:
 
 
 # =============================================================================
+# RESPONSE SECTIONS HANDLERS
+# =============================================================================
+
+def handle_get_sections(user_id: str, ws_id: str, run_id: str) -> Dict[str, Any]:
+    """Get response sections for an optimization run."""
+    run_id = common.validate_uuid(run_id, 'runId')
+    
+    # Check run access
+    if not can_access_opt_run(user_id, run_id):
+        raise common.ForbiddenError('Access denied to this optimization run')
+    
+    run = common.find_one('eval_opt_runs', {'id': run_id, 'ws_id': ws_id})
+    if not run:
+        raise common.NotFoundError(f"Optimization run {run_id} not found")
+    
+    # Get response structure if exists
+    response_structure_id = run.get('response_structure_id')
+    if not response_structure_id:
+        return common.success_response([])
+    
+    structure = common.find_one('eval_opt_response_structures', {'id': response_structure_id})
+    if not structure:
+        return common.success_response([])
+    
+    sections = structure.get('structure_schema', {}).get('sections', [])
+    return common.success_response(sections)
+
+
+def handle_update_sections(event: Dict[str, Any], user_id: str, ws_id: str, run_id: str) -> Dict[str, Any]:
+    """Update response sections for an optimization run."""
+    run_id = common.validate_uuid(run_id, 'runId')
+    
+    # Check run management permission
+    if not can_manage_opt_run(user_id, run_id):
+        raise common.ForbiddenError('Permission denied to update this run')
+    
+    run = common.find_one('eval_opt_runs', {'id': run_id, 'ws_id': ws_id})
+    if not run:
+        raise common.NotFoundError(f"Optimization run {run_id} not found")
+    
+    body = json.loads(event.get('body', '{}'))
+    sections = body.get('sections', [])
+    
+    # Validate sections format
+    for section in sections:
+        if not section.get('name'):
+            raise common.ValidationError('Each section must have a name')
+        if section.get('type') not in ['text', 'list', 'number', 'boolean', 'object']:
+            section['type'] = 'text'
+    
+    # Get or create response structure
+    response_structure_id = run.get('response_structure_id')
+    
+    if response_structure_id:
+        # Update existing
+        common.update_one(
+            'eval_opt_response_structures',
+            {'id': response_structure_id},
+            {
+                'structure_schema': {'sections': sections},
+                'updated_at': datetime.now(timezone.utc).isoformat()
+            }
+        )
+    else:
+        # Create new (note: table uses structure_schema column, not 'name' or 'structure')
+        new_structure = common.insert_one('eval_opt_response_structures', {
+            'ws_id': ws_id,
+            'structure_schema': {'sections': sections},
+            'created_by': user_id
+        })
+        response_structure_id = new_structure['id']
+        
+        # Link to run
+        common.update_one(
+            'eval_opt_runs',
+            {'id': run_id},
+            {'response_structure_id': response_structure_id}
+        )
+    
+    return common.success_response({
+        'message': 'Sections updated',
+        'sections': sections
+    })
+
+
+# =============================================================================
+# TRUTH SETS HANDLERS
+# =============================================================================
+
+def handle_list_truth_sets(user_id: str, ws_id: str, run_id: str) -> Dict[str, Any]:
+    """List truth sets for an optimization run."""
+    run_id = common.validate_uuid(run_id, 'runId')
+    
+    if not can_access_opt_run(user_id, run_id):
+        raise common.ForbiddenError('Access denied to this optimization run')
+    
+    # Get document groups (truth sets) linked to this run via workspace
+    # Truth sets are doc_groups with evaluated truth keys
+    run = common.find_one('eval_opt_runs', {'id': run_id, 'ws_id': ws_id})
+    if not run:
+        raise common.NotFoundError(f"Optimization run {run_id} not found")
+    
+    doc_groups = common.find_many(
+        'eval_opt_doc_groups',
+        {'ws_id': ws_id},
+        order='created_at.desc'
+    )
+    
+    # Enrich with truth key count
+    result = []
+    for group in doc_groups:
+        truth_keys = common.find_many(
+            'eval_opt_truth_keys',
+            {'group_id': group['id']}
+        )
+        total_criteria = len(truth_keys) if truth_keys else 0
+        completed_criteria = len([tk for tk in (truth_keys or []) if tk.get('truth_status_id')])
+        
+        result.append({
+            'id': group['id'],
+            'document_name': group.get('name', 'Untitled'),
+            'document_id': group.get('primary_doc_id'),
+            'progress_pct': int((completed_criteria / total_criteria * 100) if total_criteria > 0 else 0),
+            'completed_criteria': completed_criteria,
+            'total_criteria': total_criteria,
+            'status': 'complete' if completed_criteria == total_criteria and total_criteria > 0 else 'incomplete',
+            'created_at': group.get('created_at')
+        })
+    
+    return common.success_response(result)
+
+
+def handle_create_truth_set(event: Dict[str, Any], user_id: str, ws_id: str, run_id: str) -> Dict[str, Any]:
+    """Create a new truth set (doc group) for an optimization run."""
+    run_id = common.validate_uuid(run_id, 'runId')
+    
+    if not can_manage_opt_run(user_id, run_id):
+        raise common.ForbiddenError('Permission denied to modify this run')
+    
+    body = json.loads(event.get('body', '{}'))
+    
+    name = common.validate_required(body.get('name'), 'name')
+    document_id = common.validate_required(body.get('document_id'), 'document_id')
+    
+    # Create doc group
+    doc_group = common.insert_one('eval_opt_doc_groups', {
+        'ws_id': ws_id,
+        'name': name,
+        'primary_doc_id': document_id,
+        'status': 'pending',
+        'created_by': user_id
+    })
+    
+    return common.created_response({
+        'id': doc_group['id'],
+        'name': name,
+        'document_id': document_id,
+        'message': 'Truth set created. Add criterion evaluations to complete.'
+    })
+
+
+def handle_get_truth_set(user_id: str, ws_id: str, run_id: str, ts_id: str) -> Dict[str, Any]:
+    """Get a single truth set with its evaluations."""
+    run_id = common.validate_uuid(run_id, 'runId')
+    ts_id = common.validate_uuid(ts_id, 'tsId')
+    
+    if not can_access_opt_run(user_id, run_id):
+        raise common.ForbiddenError('Access denied')
+    
+    doc_group = common.find_one('eval_opt_doc_groups', {'id': ts_id, 'ws_id': ws_id})
+    if not doc_group:
+        raise common.NotFoundError(f"Truth set {ts_id} not found")
+    
+    # Get truth keys
+    truth_keys = common.find_many(
+        'eval_opt_truth_keys',
+        {'group_id': ts_id}
+    )
+    
+    return common.success_response({
+        'id': doc_group['id'],
+        'name': doc_group.get('name'),
+        'document_id': doc_group.get('primary_doc_id'),
+        'status': doc_group.get('status'),
+        'evaluations': common.format_records(truth_keys or [])
+    })
+
+
+def handle_update_truth_set(event: Dict[str, Any], user_id: str, ws_id: str, run_id: str, ts_id: str) -> Dict[str, Any]:
+    """Update truth set evaluations."""
+    run_id = common.validate_uuid(run_id, 'runId')
+    ts_id = common.validate_uuid(ts_id, 'tsId')
+    
+    if not can_manage_opt_run(user_id, run_id):
+        raise common.ForbiddenError('Permission denied')
+    
+    doc_group = common.find_one('eval_opt_doc_groups', {'id': ts_id, 'ws_id': ws_id})
+    if not doc_group:
+        raise common.NotFoundError(f"Truth set {ts_id} not found")
+    
+    body = json.loads(event.get('body', '{}'))
+    evaluations = body.get('evaluations', [])
+    
+    # Upsert truth keys
+    for eval_data in evaluations:
+        criteria_item_id = eval_data.get('criteria_item_id')
+        if not criteria_item_id:
+            continue
+        
+        existing = common.find_one('eval_opt_truth_keys', {
+            'group_id': ts_id,
+            'criteria_item_id': criteria_item_id
+        })
+        
+        truth_key_data = {
+            'group_id': ts_id,
+            'criteria_item_id': criteria_item_id,
+            'truth_status_id': eval_data.get('status_id'),
+            'truth_confidence': eval_data.get('confidence'),
+            'truth_explanation': eval_data.get('explanation'),
+            'truth_citations': json.dumps(eval_data.get('citations', [])) if eval_data.get('citations') else None
+        }
+        
+        if existing:
+            common.update_one('eval_opt_truth_keys', {'id': existing['id']}, truth_key_data)
+        else:
+            truth_key_data['created_by'] = user_id
+            common.insert_one('eval_opt_truth_keys', truth_key_data)
+    
+    # Update doc group status if all criteria evaluated
+    total_evaluated = len(evaluations)
+    if total_evaluated > 0:
+        common.update_one('eval_opt_doc_groups', {'id': ts_id}, {'status': 'evaluated'})
+    
+    return common.success_response({'message': 'Evaluations saved'})
+
+
+def handle_delete_truth_set(user_id: str, ws_id: str, run_id: str, ts_id: str) -> Dict[str, Any]:
+    """Delete a truth set."""
+    run_id = common.validate_uuid(run_id, 'runId')
+    ts_id = common.validate_uuid(ts_id, 'tsId')
+    
+    if not can_manage_opt_run(user_id, run_id):
+        raise common.ForbiddenError('Permission denied')
+    
+    doc_group = common.find_one('eval_opt_doc_groups', {'id': ts_id, 'ws_id': ws_id})
+    if not doc_group:
+        raise common.NotFoundError(f"Truth set {ts_id} not found")
+    
+    # Delete truth keys first
+    common.delete_many('eval_opt_truth_keys', {'group_id': ts_id})
+    
+    # Delete doc group
+    common.delete_one('eval_opt_doc_groups', {'id': ts_id})
+    
+    return common.success_response({'message': 'Truth set deleted', 'id': ts_id})
+
+
+# =============================================================================
+# OPTIMIZATION TRIGGER HANDLER
+# =============================================================================
+
+def handle_trigger_optimization(event: Dict[str, Any], user_id: str, ws_id: str, run_id: str) -> Dict[str, Any]:
+    """Trigger the optimization process for a run."""
+    run_id = common.validate_uuid(run_id, 'runId')
+    
+    if not can_manage_opt_run(user_id, run_id):
+        raise common.ForbiddenError('Permission denied to start optimization')
+    
+    run = common.find_one('eval_opt_runs', {'id': run_id, 'ws_id': ws_id})
+    if not run:
+        raise common.NotFoundError(f"Optimization run {run_id} not found")
+    
+    # Check preconditions
+    if run.get('status') in ['processing', 'running']:
+        return common.bad_request_response('Optimization is already in progress')
+    
+    # Check for response structure
+    if not run.get('response_structure_id'):
+        return common.bad_request_response('Define response sections before running optimization')
+    
+    # Check for truth sets
+    doc_groups = common.find_many('eval_opt_doc_groups', {'ws_id': ws_id, 'status': 'evaluated'})
+    if not doc_groups:
+        return common.bad_request_response('Create at least one truth set before running optimization')
+    
+    # Update status to pending
+    common.update_one(
+        'eval_opt_runs',
+        {'id': run_id},
+        {
+            'status': 'pending',
+            'progress': 0,
+            'progress_message': 'Queued for optimization...',
+            'started_at': datetime.now(timezone.utc).isoformat()
+        }
+    )
+    
+    # Invoke async worker
+    import boto3
+    lambda_client = boto3.client('lambda')
+    
+    try:
+        lambda_client.invoke(
+            FunctionName=LAMBDA_FUNCTION_NAME,
+            InvocationType='Event',  # Async
+            Payload=json.dumps({
+                'source': 'async-optimization-worker',
+                'run_id': run_id,
+                'ws_id': ws_id,
+                'user_id': user_id
+            })
+        )
+    except Exception as e:
+        logger.error(f"Failed to invoke async worker: {e}")
+        # Fall back to synchronous processing
+        # (In production, use SQS or Step Functions)
+        common.update_one(
+            'eval_opt_runs',
+            {'id': run_id},
+            {
+                'status': 'processing',
+                'progress_message': 'Starting optimization...'
+            }
+        )
+    
+    return common.success_response({
+        'message': 'Optimization started',
+        'runId': run_id,
+        'status': 'pending'
+    })
+
+
+# =============================================================================
 # ASYNC WORKER
 # =============================================================================
 
@@ -534,7 +852,7 @@ def process_optimization_run(
         if response_structure_id:
             rs = common.find_one('eval_opt_response_structures', {'id': response_structure_id})
             if rs:
-                response_structure = rs.get('structure', {})
+                response_structure = rs.get('structure_schema', {})
         
         # Get criteria items from workspace (via doc groups)
         criteria_items = get_workspace_criteria(ws_id)
@@ -613,7 +931,7 @@ def process_optimization_run(
                 # Get truth keys for this document group
                 truth_keys = common.find_many(
                     'eval_opt_truth_keys',
-                    {'doc_group_id': group['id']}
+                    {'group_id': group['id']}
                 )
                 
                 # Run evaluation with this variation's prompt
@@ -650,13 +968,10 @@ def process_optimization_run(
                     # Save individual result
                     common.insert_one('eval_opt_run_results', {
                         'run_id': run_id,
-                        'variation_name': variation.name,
-                        'strategy': variation.strategy,
-                        'doc_group_id': group['id'],
+                        'group_id': group['id'],
                         'criteria_item_id': criteria_item_id,
                         'truth_key_id': truth_key['id'],
-                        'truth_status': truth_status_id,
-                        'ai_status': ai_status_id,
+                        'ai_status_id': ai_status_id,
                         'status_match': status_match,
                         'result_type': result_type
                     })
@@ -878,7 +1193,7 @@ def get_llm_config(ws_id: str) -> Dict[str, Any]:
     3. Fallback defaults
     """
     # Try system config
-    sys_config = common.find_one('eval_opt_cfg_sys', {})
+    sys_config = common.find_one('eval_cfg_sys', {})
     
     if sys_config:
         return {

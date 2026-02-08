@@ -72,15 +72,15 @@ Updated the configuration file to explicitly include `module-voice` to restore t
 | S1 | `feature/eval-optimization-s1` | `plan_eval-optimization-s1.md` | ✅ COMPLETE | Feb 5, 2026 |
 | S2 | `feature/eval-optimization-s2` | `plan_eval-optimization-s2.md` | ✅ COMPLETE | Feb 5, 2026 |
 | S3 | `feature/eval-optimization-s3` | `plan_eval-optimization-s3.md` | ✅ COMPLETE | Feb 6, 2026 |
-| S4 | `feature/eval-optimization-s4` | `plan_eval-optimization-s4.md` | 📋 PLANNED | - |
+| S4 | `feature/eval-optimization-s4` | `plan_eval-optimization-s4.md` | � Active | - |
 
 ## Current Sprint
 
 - **Sprint 1:** ✅ COMPLETE (Feb 5, 2026 AM)
 - **Sprint 2:** ✅ COMPLETE (Feb 5, 2026 PM)
 - **Sprint 3:** ✅ COMPLETE (Feb 5-6, 2026) - UX Design Focus
-- **Sprint 4:** 📋 PLANNED (next sprint)
-- **Branch:** `feature/eval-optimization-s4` (to be created after S3 merge)
+- **Sprint 4:** � ACTIVE (Feb 7, 2026) - Run Details & Truth Set Wizard
+- **Branch:** `feature/eval-optimization-s4`
 - **Plan:** `docs/plans/plan_eval-optimization-s4.md`
 - **Focus:** Run Details page + Truth Set wizard
 - **Test Project:** `~/code/bodhix/testing/eval-opt/ai-mod-stack/`
@@ -337,6 +337,27 @@ The system provides statistical guidance on result reliability based on sample s
   - Location: `docs/arch decisions/ADR-021-EVAL-OPTIMIZER-DEPLOYMENT.md`
 
 ## Session Log
+
+### February 7, 2026 (1:00 PM - 1:30 PM) - Document Upload Regression
+
+**Session Duration:** 30 minutes
+**Branch:** `feature/eval-optimization-s4`
+**Objective:** Fix document upload and selection in Truth Set creation
+
+**Completed:**
+- Updated `NewTruthSetPage` to use `useKbDocuments` hook for file handling
+- Fixed UI issue where document filenames weren't displaying
+- Added file upload button to the UI
+
+**Regressions Discovered:**
+- **CRITICAL:** `useKbDocuments` hook initialization seems to be causing API errors
+- Error: `Failed to execute 'fetch' on 'Window': Invalid value` during upload
+- Existing document list loading also broke (probably due to client initialization)
+
+**Next Steps (Sprint 4):**
+1. **Fix Regression:** Debug `useKbDocuments` client initialization in `NewTruthSetPage`
+2. Ensure `apiClient` passed to hook has correct structure (`{ kb: ... }`)
+3. Verify upload workflow with presigned URLs works correctly
 
 ### February 5, 2026 Morning (10:00 AM) - Sprint 2 Phase 2 & 3 Complete
 
@@ -1040,6 +1061,46 @@ Always review database naming standards (ADR-011) BEFORE creating any schemas. T
 
 ---
 
+### February 7, 2026 Evening (1:00-7:00 PM) - Major Architecture Discoveries ✅
+
+**Session Duration:** 6 hours  
+**Branch:** `feature/eval-optimization-s4`  
+**Objective:** Fix Lambda regression, discover eval scoring flaw, design UX enhancements
+
+**Major Milestones:**
+- 🎉 **Fixed critical Lambda deployment issue**
+- 🚨 **Discovered fundamental flaw in module-eval scoring architecture**
+- 📝 **Created comprehensive solution specifications**
+
+**Part 1: Lambda Deployment Fix**
+- Issue: API response missing `responseSections` field
+- Root cause: Test project Lambda out of sync with template
+- Fix: Synced, rebuilt, deployed via Terraform (6:01 PM)
+- Result: Lambda now includes responseSections correctly
+
+**Part 2: Module-Eval Scoring Architecture Discovery**
+- **CRITICAL FLAW FOUND:** Score derived from status instead of AI providing score
+- Current (WRONG): AI picks "Compliant" → System assigns score 100
+- Result: All scores are 0, 50, or 100 (no granularity!)
+- Impact: Optimization cannot measure incremental improvement
+
+**Solution Designed:**
+- AI provides numerical score directly (0-100)
+- Rubric guides scoring (stored in database)
+- UI derives status label from score
+- Spec created: `docs/specifications/spec_eval-scoring-rubric-architecture.md`
+
+**Part 3: Truth Set Wizard UX Enhancements**
+- User tested wizard, identified 5 critical UX issues
+- Designed auto-save pattern (field blur + visual feedback)
+- Plan created: `docs/plans/plan_eval-optimization-s4-ux-enhancements.md`
+
+**Deliverables:**
+1. `spec_eval-scoring-rubric-architecture.md` - Complete solution spec
+2. `plan_eval-optimization-s4-ux-enhancements.md` - 5 UX issues with implementation
+
+---
+
 ### February 6, 2026 Afternoon (12:00-1:05 PM) - Auth Flow Complete ✅
 
 **Session Duration:** 1 hour 5 minutes  
@@ -1147,8 +1208,8 @@ const client = createApiClient(token);
 
 ---
 
-**Document Status:** ✅ Sprint 1 Complete, ✅ Sprint 2 Complete, 🟡 Sprint 3 In Progress (Phase 1 UI Complete)  
-**Last Updated:** February 6, 2026 5:20 PM
+**Document Status:** ✅ Sprint 1-3 Complete, 🟡 Sprint 4 Active (Phase 2 Complete, Architecture Work In Progress)  
+**Last Updated:** February 7, 2026 7:00 PM
 
 ---
 

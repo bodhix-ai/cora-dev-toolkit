@@ -46,42 +46,13 @@ const DEFAULT_SECTIONS: ResponseSection[] = [
   },
 ];
 
-const SECTION_TEMPLATES: ResponseSection[] = [
-  {
-    id: "evidence_cited",
-    name: "Evidence Cited",
-    description: "Quotes from the document supporting the evaluation",
-    type: "list",
-    required: false,
-  },
-  {
-    id: "risk_assessment",
-    name: "Risk Assessment",
-    description: "Identified risks and their severity levels",
-    type: "object",
-    required: false,
-  },
-  {
-    id: "confidence_score",
-    name: "Confidence Score",
-    description: "Numeric confidence level (0-100) for the evaluation",
-    type: "number",
-    required: false,
-  },
-  {
-    id: "requires_review",
-    name: "Requires Review",
-    description: "Flag indicating if human review is recommended",
-    type: "boolean",
-    required: false,
-  },
-  {
-    id: "summary",
-    name: "Summary",
-    description: "Brief summary of the evaluation findings",
-    type: "text",
-    required: false,
-  },
+// Available field types for adding new sections
+const FIELD_TYPES: Array<{ type: ResponseSection["type"]; label: string; description: string }> = [
+  { type: "text", label: "Text", description: "Free-form text response" },
+  { type: "list", label: "List", description: "Array of items" },
+  { type: "object", label: "Object", description: "Structured key-value data" },
+  { type: "number", label: "Number", description: "Numeric value" },
+  { type: "boolean", label: "Boolean", description: "True/false flag" },
 ];
 
 export default function ResponseStructureBuilder({
@@ -94,16 +65,18 @@ export default function ResponseStructureBuilder({
   );
   const [showAddMenu, setShowAddMenu] = useState(false);
 
-  const handleAddSection = (template: ResponseSection) => {
-    // Generate unique ID if section already exists
-    let id = template.id;
-    let counter = 1;
-    while (sections.some((s) => s.id === id)) {
-      id = `${template.id}_${counter}`;
-      counter++;
-    }
+  const handleAddSection = (fieldType: ResponseSection["type"]) => {
+    // Generate unique ID based on type and count
+    const typeCount = sections.filter((s) => s.type === fieldType).length;
+    const id = `${fieldType}_field_${typeCount + 1}`;
 
-    const newSection = { ...template, id };
+    const newSection: ResponseSection = {
+      id,
+      name: "", // User will enter the name
+      description: "",
+      type: fieldType,
+      required: false,
+    };
     const newSections = [...sections, newSection];
     setSections(newSections);
     onChange(newSections);
@@ -148,6 +121,14 @@ export default function ResponseStructureBuilder({
     onChange(newSections);
   };
 
+  const handleUpdateName = (sectionId: string, name: string) => {
+    const newSections = sections.map((s) =>
+      s.id === sectionId ? { ...s, name } : s
+    );
+    setSections(newSections);
+    onChange(newSections);
+  };
+
   const getTypeColor = (type: ResponseSection["type"]): string => {
     switch (type) {
       case "text":
@@ -168,40 +149,122 @@ export default function ResponseStructureBuilder({
   const generatePreview = (): string => {
     const structure: Record<string, any> = {};
     sections.forEach((section) => {
+      // Use the section name as the key (convert to snake_case), or fall back to ID
+      const key = section.name 
+        ? section.name.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "")
+        : section.id;
+      
       switch (section.type) {
         case "text":
-          structure[section.id] = "...";
+          structure[key] = "...";
           break;
         case "list":
-          structure[section.id] = ["..."];
+          structure[key] = ["..."];
           break;
         case "object":
-          structure[section.id] = { "...": "..." };
+          structure[key] = { "...": "..." };
           break;
         case "number":
-          structure[section.id] = 0;
+          structure[key] = 0;
           break;
         case "boolean":
-          structure[section.id] = false;
+          structure[key] = false;
           break;
       }
     });
     return JSON.stringify(structure, null, 2);
   };
 
-  const availableTemplates = SECTION_TEMPLATES.filter(
-    (t) => !sections.some((s) => s.id === t.id)
-  );
 
   return (
     <div style={{ display: "flex", gap: "2rem" }}>
       {/* Left: Section List */}
       <div style={{ flex: 1 }}>
-        <div style={{ marginBottom: "1rem" }}>
-          <h3 style={{ margin: "0 0 0.5rem 0" }}>Response Sections</h3>
-          <p style={{ color: "#666", fontSize: "0.875rem", margin: 0 }}>
-            Define what information the AI evaluation should return
-          </p>
+        <div style={{ marginBottom: "1rem", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <h3 style={{ margin: "0 0 0.5rem 0" }}>Response Sections</h3>
+            <p style={{ color: "#666", fontSize: "0.875rem", margin: 0 }}>
+              Define what information the AI evaluation should return
+            </p>
+          </div>
+          
+          {/* Add Section Button - positioned at top right */}
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setShowAddMenu(!showAddMenu)}
+              disabled={disabled}
+              style={{
+                padding: "0.5rem 1rem",
+                backgroundColor: disabled ? "#ccc" : "#007bff",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: disabled ? "not-allowed" : "pointer",
+                fontSize: "0.875rem",
+              }}
+            >
+              + Add Section
+            </button>
+
+            {/* Add Menu - Select Field Type */}
+            {showAddMenu && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  right: 0,
+                  marginTop: "0.5rem",
+                  padding: "0.5rem",
+                  backgroundColor: "white",
+                  border: "1px solid #ddd",
+                  borderRadius: "8px",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                  zIndex: 10,
+                  minWidth: "250px",
+                }}
+              >
+                <div style={{ padding: "0.5rem", borderBottom: "1px solid #eee", marginBottom: "0.5rem" }}>
+                  <strong style={{ fontSize: "0.875rem" }}>Select Field Type</strong>
+                </div>
+                {FIELD_TYPES.map((fieldType) => (
+                  <button
+                    key={fieldType.type}
+                    onClick={() => handleAddSection(fieldType.type)}
+                    style={{
+                      width: "100%",
+                      padding: "0.75rem",
+                      backgroundColor: "transparent",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.75rem",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8f9fa")}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                  >
+                    <span
+                      style={{
+                        padding: "0.25rem 0.75rem",
+                        backgroundColor: getTypeColor(fieldType.type),
+                        color: "white",
+                        borderRadius: "4px",
+                        fontSize: "0.75rem",
+                        fontWeight: "bold",
+                        minWidth: "60px",
+                        textAlign: "center",
+                      }}
+                    >
+                      {fieldType.label}
+                    </span>
+                    <span style={{ fontSize: "0.875rem", color: "#666" }}>{fieldType.description}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Section List */}
@@ -231,7 +294,21 @@ export default function ResponseStructureBuilder({
                   >
                     {section.type}
                   </span>
-                  <strong>{section.name}</strong>
+                  <input
+                    type="text"
+                    value={section.name}
+                    onChange={(e) => handleUpdateName(section.id, e.target.value)}
+                    disabled={disabled}
+                    placeholder="Section name..."
+                    style={{
+                      padding: "0.25rem 0.5rem",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
+                      fontSize: "0.875rem",
+                      fontWeight: "bold",
+                      minWidth: "150px",
+                    }}
+                  />
                   {section.required && (
                     <span style={{ color: "#dc3545", fontSize: "0.875rem" }}>*</span>
                   )}
@@ -313,88 +390,15 @@ export default function ResponseStructureBuilder({
                   Required
                 </label>
                 <span style={{ fontSize: "0.75rem", color: "#999" }}>
-                  Key: <code>{section.id}</code>
+                  JSON Key: <code>{section.name 
+                    ? section.name.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "")
+                    : "(enter name)"}</code>
                 </span>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Add Section Button */}
-        <div style={{ marginTop: "1rem", position: "relative" }}>
-          <button
-            onClick={() => setShowAddMenu(!showAddMenu)}
-            disabled={disabled}
-            style={{
-              padding: "0.75rem 1.5rem",
-              backgroundColor: disabled ? "#ccc" : "#007bff",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: disabled ? "not-allowed" : "pointer",
-              fontSize: "1rem",
-            }}
-          >
-            + Add Section
-          </button>
-
-          {/* Add Menu */}
-          {showAddMenu && availableTemplates.length > 0 && (
-            <div
-              style={{
-                position: "absolute",
-                top: "100%",
-                left: 0,
-                marginTop: "0.5rem",
-                padding: "0.5rem",
-                backgroundColor: "white",
-                border: "1px solid #ddd",
-                borderRadius: "8px",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                zIndex: 10,
-                minWidth: "300px",
-              }}
-            >
-              {availableTemplates.map((template) => (
-                <button
-                  key={template.id}
-                  onClick={() => handleAddSection(template)}
-                  style={{
-                    width: "100%",
-                    padding: "0.75rem",
-                    backgroundColor: "transparent",
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    textAlign: "left",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8f9fa")}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                >
-                  <span
-                    style={{
-                      padding: "0.125rem 0.5rem",
-                      backgroundColor: getTypeColor(template.type),
-                      color: "white",
-                      borderRadius: "4px",
-                      fontSize: "0.625rem",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    {template.type}
-                  </span>
-                  <div>
-                    <div style={{ fontWeight: "bold", fontSize: "0.875rem" }}>{template.name}</div>
-                    <div style={{ fontSize: "0.75rem", color: "#666" }}>{template.description}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Right: Preview */}

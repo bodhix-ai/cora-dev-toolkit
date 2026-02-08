@@ -4,21 +4,21 @@ import React, { useState } from "react";
  * Criteria Evaluation Form Component
  * 
  * Form for evaluating a single criterion against a document.
- * Includes status dropdown, confidence slider, explanation textarea,
- * and citations list.
+ * Dynamically renders fields based on configured response sections.
  */
 
-interface Citation {
-  text: string;
-  timestamp: string;
+interface ResponseSection {
+  id: string;
+  name: string;
+  type: 'number' | 'text' | 'list' | 'boolean' | 'object';
+  required: boolean;
+  description?: string;
 }
 
 interface CriterionEvaluation {
   criteria_item_id: string;
   status_id: string;
-  confidence: number;
-  explanation: string;
-  citations: string[];
+  section_responses: Record<string, any>; // section_id -> value
 }
 
 interface CriteriaEvaluationFormProps {
@@ -33,6 +33,7 @@ interface CriteriaEvaluationFormProps {
     name: string;
     description?: string;
   }>;
+  responseSections: ResponseSection[];
   initialValue?: CriterionEvaluation;
   selectedText?: string;
   onChange: (evaluation: CriterionEvaluation) => void;
@@ -41,64 +42,127 @@ interface CriteriaEvaluationFormProps {
 export default function CriteriaEvaluationForm({
   criterion,
   statusOptions,
+  responseSections,
   initialValue,
   selectedText,
   onChange,
 }: CriteriaEvaluationFormProps) {
   const [statusId, setStatusId] = useState(initialValue?.status_id || "");
-  const [confidence, setConfidence] = useState(initialValue?.confidence || 50);
-  const [explanation, setExplanation] = useState(initialValue?.explanation || "");
-  const [citations, setCitations] = useState<string[]>(initialValue?.citations || []);
+  const [sectionResponses, setSectionResponses] = useState<Record<string, any>>(
+    initialValue?.section_responses || {}
+  );
 
   // Update parent when any field changes
   const notifyChange = (
     newStatusId: string,
-    newConfidence: number,
-    newExplanation: string,
-    newCitations: string[]
+    newSectionResponses: Record<string, any>
   ) => {
     onChange({
       criteria_item_id: criterion.id,
       status_id: newStatusId,
-      confidence: newConfidence,
-      explanation: newExplanation,
-      citations: newCitations,
+      section_responses: newSectionResponses,
     });
   };
 
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatusId = e.target.value;
     setStatusId(newStatusId);
-    notifyChange(newStatusId, confidence, explanation, citations);
+    notifyChange(newStatusId, sectionResponses);
   };
 
-  const handleConfidenceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newConfidence = parseInt(e.target.value);
-    setConfidence(newConfidence);
-    notifyChange(statusId, newConfidence, explanation, citations);
+  const handleSectionChange = (sectionId: string, value: any) => {
+    const newSectionResponses = {
+      ...sectionResponses,
+      [sectionId]: value,
+    };
+    setSectionResponses(newSectionResponses);
+    notifyChange(statusId, newSectionResponses);
   };
 
-  const handleExplanationChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newExplanation = e.target.value;
-    setExplanation(newExplanation);
-    notifyChange(statusId, confidence, newExplanation, citations);
-  };
+  // Check if all required fields are filled
+  const isComplete = statusId && responseSections.every(
+    section => !section.required || (sectionResponses[section.id] !== undefined && sectionResponses[section.id] !== '')
+  );
 
-  const handleAddCitation = () => {
-    if (selectedText && selectedText.trim().length > 0) {
-      const newCitations = [...citations, selectedText.trim()];
-      setCitations(newCitations);
-      notifyChange(statusId, confidence, explanation, newCitations);
+  // Render field based on section type
+  const renderSectionField = (section: ResponseSection) => {
+    const value = sectionResponses[section.id] || '';
+
+    switch (section.type) {
+      case 'number':
+        return (
+          <input
+            type="number"
+            value={value}
+            onChange={(e) => handleSectionChange(section.id, parseFloat(e.target.value) || 0)}
+            placeholder={section.description || `Enter ${section.name.toLowerCase()}...`}
+            required={section.required}
+            style={{
+              width: "100%",
+              padding: "0.5rem",
+              border: "1px solid #ccc",
+              borderRadius: "4px",
+              fontSize: "0.875rem",
+              boxSizing: "border-box",
+            }}
+          />
+        );
+
+      case 'text':
+        return (
+          <textarea
+            value={value}
+            onChange={(e) => handleSectionChange(section.id, e.target.value)}
+            placeholder={section.description || `Enter ${section.name.toLowerCase()}...`}
+            required={section.required}
+            rows={4}
+            style={{
+              width: "100%",
+              padding: "0.5rem",
+              border: "1px solid #ccc",
+              borderRadius: "4px",
+              fontSize: "0.875rem",
+              resize: "vertical",
+              fontFamily: "inherit",
+              boxSizing: "border-box",
+            }}
+          />
+        );
+
+      case 'boolean':
+        return (
+          <input
+            type="checkbox"
+            checked={value === true}
+            onChange={(e) => handleSectionChange(section.id, e.target.checked)}
+            style={{
+              width: "1.25rem",
+              height: "1.25rem",
+              cursor: "pointer",
+            }}
+          />
+        );
+
+      default:
+        return (
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => handleSectionChange(section.id, e.target.value)}
+            placeholder={section.description || `Enter ${section.name.toLowerCase()}...`}
+            required={section.required}
+            style={{
+              width: "100%",
+              padding: "0.5rem",
+              border: "1px solid #ccc",
+              borderRadius: "4px",
+              fontSize: "0.875rem",
+              boxSizing: "border-box",
+            }}
+          />
+        );
     }
   };
-
-  const handleRemoveCitation = (index: number) => {
-    const newCitations = citations.filter((_, i) => i !== index);
-    setCitations(newCitations);
-    notifyChange(statusId, confidence, explanation, newCitations);
-  };
-
-  const isComplete = statusId && explanation.trim().length > 0;
 
   return (
     <div
@@ -165,137 +229,38 @@ export default function CriteriaEvaluationForm({
         </select>
       </div>
 
-      {/* Confidence Slider */}
-      <div style={{ marginBottom: "1rem" }}>
-        <label style={{ display: "block", fontWeight: "bold", marginBottom: "0.5rem", fontSize: "0.875rem" }}>
-          Confidence: {confidence}%
-        </label>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          step="5"
-          value={confidence}
-          onChange={handleConfidenceChange}
-          style={{
-            width: "100%",
-            cursor: "pointer",
-          }}
-        />
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", color: "#666" }}>
-          <span>Not Confident</span>
-          <span>Very Confident</span>
+      {/* Dynamic Response Section Fields */}
+      {responseSections.map((section) => (
+        <div key={section.id} style={{ marginBottom: "1rem" }}>
+          <label style={{ display: "block", fontWeight: "bold", marginBottom: "0.5rem", fontSize: "0.875rem" }}>
+            {section.name} {section.required && '*'}
+          </label>
+          {section.description && (
+            <p style={{ margin: "0 0 0.5rem", fontSize: "0.75rem", color: "#666" }}>
+              {section.description}
+            </p>
+          )}
+          {renderSectionField(section)}
         </div>
-      </div>
+      ))}
 
-      {/* Explanation */}
-      <div style={{ marginBottom: "1rem" }}>
-        <label style={{ display: "block", fontWeight: "bold", marginBottom: "0.5rem", fontSize: "0.875rem" }}>
-          Explanation *
-        </label>
-        <textarea
-          value={explanation}
-          onChange={handleExplanationChange}
-          placeholder="Explain your assessment..."
-          required
-          rows={3}
+      {/* Selected Text Helper (for citations) */}
+      {selectedText && (
+        <div
           style={{
-            width: "100%",
-            padding: "0.5rem",
-            border: "1px solid #ccc",
+            marginTop: "1rem",
+            padding: "0.75rem",
+            backgroundColor: "#fff3cd",
             borderRadius: "4px",
             fontSize: "0.875rem",
-            resize: "vertical",
-            fontFamily: "inherit",
-            boxSizing: "border-box",
           }}
-        />
-      </div>
-
-      {/* Citations */}
-      <div>
-        <label style={{ display: "block", fontWeight: "bold", marginBottom: "0.5rem", fontSize: "0.875rem" }}>
-          Citations
-        </label>
-        
-        {selectedText && (
-          <div
-            style={{
-              padding: "0.75rem",
-              backgroundColor: "#fff3cd",
-              borderRadius: "4px",
-              marginBottom: "0.5rem",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: "0.5rem",
-            }}
-          >
-            <div style={{ flex: 1, fontSize: "0.875rem" }}>
-              "{selectedText.substring(0, 100)}{selectedText.length > 100 ? "..." : ""}"
-            </div>
-            <button
-              type="button"
-              onClick={handleAddCitation}
-              style={{
-                padding: "0.25rem 0.75rem",
-                backgroundColor: "#007bff",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "0.75rem",
-                whiteSpace: "nowrap",
-              }}
-            >
-              + Add Citation
-            </button>
-          </div>
-        )}
-
-        {citations.length > 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {citations.map((citation, index) => (
-              <div
-                key={index}
-                style={{
-                  padding: "0.5rem",
-                  backgroundColor: "#e7f3ff",
-                  border: "1px solid #b3d7ff",
-                  borderRadius: "4px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "start",
-                  gap: "0.5rem",
-                }}
-              >
-                <div style={{ flex: 1, fontSize: "0.75rem", fontStyle: "italic" }}>
-                  "{citation}"
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveCitation(index)}
-                  style={{
-                    padding: "0.125rem 0.5rem",
-                    backgroundColor: "transparent",
-                    color: "#dc3545",
-                    border: "1px solid #dc3545",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    fontSize: "0.75rem",
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p style={{ margin: 0, fontSize: "0.75rem", color: "#999", fontStyle: "italic" }}>
-            Select text in the document and click "Add Citation" to add supporting quotes
+        >
+          <strong>Selected Text:</strong> "{selectedText.substring(0, 100)}{selectedText.length > 100 ? "..." : ""}"
+          <p style={{ margin: "0.5rem 0 0", fontSize: "0.75rem", color: "#666" }}>
+            Copy this text to cite it in your response sections above.
           </p>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -13,30 +13,45 @@ CREATE TABLE IF NOT EXISTS eval_opt_runs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ws_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
+    
+    -- Document type and criteria set for this run
+    doc_type_id UUID,  -- References eval_cfg_org_doc_types
+    criteria_set_id UUID,  -- References eval_cfg_org_criteria_sets
+    
     prompt_version_id UUID,  -- Future: REFERENCES eval_opt_prompt_versions(id)
-    
-    -- Prompt configuration (stored for this run)
-    system_prompt TEXT NOT NULL,
-    user_prompt_template TEXT NOT NULL,
-    temperature DECIMAL(3,2) NOT NULL,
-    max_tokens INTEGER NOT NULL,
-    
+
+    -- Prompt configuration (nullable - filled during optimization)
+    system_prompt TEXT,
+    user_prompt_template TEXT,
+    temperature DECIMAL(3,2),
+    max_tokens INTEGER,
+
     -- Phase 4 Redesign: Context docs and response structure
     context_doc_ids UUID[],  -- Array of KB doc IDs used for RAG
     response_structure_id UUID,  -- Future: REFERENCES eval_opt_response_structures(id)
     generated_prompts JSONB,  -- Array of prompt variations generated and tested
-    
+
     -- Run metadata
-    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    status VARCHAR(50) NOT NULL DEFAULT 'draft',
+    progress INTEGER NOT NULL DEFAULT 0,
+    progress_message TEXT,
+    thoroughness VARCHAR(50) DEFAULT 'balanced',
     started_at TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
     error_message TEXT,
-    
+
     -- Results summary
     total_samples INTEGER NOT NULL DEFAULT 0,
     total_criteria INTEGER NOT NULL DEFAULT 0,
     overall_accuracy DECIMAL(5,2),  -- Percentage
+    best_variation VARCHAR(255),
+    recommendations JSONB,
+    variation_summary JSONB,
     
+    -- LLM configuration
+    meta_prompt_model_id UUID,
+    eval_model_id UUID,
+
     -- Audit fields
     created_by UUID NOT NULL REFERENCES auth.users(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -46,6 +61,8 @@ CREATE TABLE IF NOT EXISTS eval_opt_runs (
 COMMENT ON TABLE eval_opt_runs IS 'Optimization runs with prompt configurations and results';
 COMMENT ON COLUMN eval_opt_runs.ws_id IS 'Workspace foreign key';
 COMMENT ON COLUMN eval_opt_runs.name IS 'Run name';
+COMMENT ON COLUMN eval_opt_runs.doc_type_id IS 'Document type for this optimization run';
+COMMENT ON COLUMN eval_opt_runs.criteria_set_id IS 'Criteria set for this optimization run';
 COMMENT ON COLUMN eval_opt_runs.prompt_version_id IS 'Prompt version foreign key (future)';
 COMMENT ON COLUMN eval_opt_runs.system_prompt IS 'System prompt used for this run';
 COMMENT ON COLUMN eval_opt_runs.user_prompt_template IS 'User prompt template used for this run';
@@ -54,32 +71,38 @@ COMMENT ON COLUMN eval_opt_runs.max_tokens IS 'Maximum tokens for AI response';
 COMMENT ON COLUMN eval_opt_runs.context_doc_ids IS 'Array of context document IDs used for RAG';
 COMMENT ON COLUMN eval_opt_runs.response_structure_id IS 'Response structure foreign key (future)';
 COMMENT ON COLUMN eval_opt_runs.generated_prompts IS 'Array of prompt variations generated and tested';
-COMMENT ON COLUMN eval_opt_runs.status IS 'Run status: pending, running, completed, failed';
+COMMENT ON COLUMN eval_opt_runs.status IS 'Run status: draft, pending, processing, running, completed, failed, cancelled';
+COMMENT ON COLUMN eval_opt_runs.progress IS 'Progress percentage (0-100)';
+COMMENT ON COLUMN eval_opt_runs.progress_message IS 'Current progress status message';
+COMMENT ON COLUMN eval_opt_runs.thoroughness IS 'Optimization thoroughness: fast, balanced, thorough';
 COMMENT ON COLUMN eval_opt_runs.overall_accuracy IS 'Overall accuracy percentage';
+COMMENT ON COLUMN eval_opt_runs.best_variation IS 'Name of the best performing prompt variation';
+COMMENT ON COLUMN eval_opt_runs.recommendations IS 'JSON array of actionable improvement recommendations';
+COMMENT ON COLUMN eval_opt_runs.variation_summary IS 'Summary of all tested variations and their metrics';
 
 -- Add constraint for status values (idempotent)
-DO $$ 
+DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint 
+        SELECT 1 FROM pg_constraint
         WHERE conname = 'eval_opt_runs_status_check'
     ) THEN
-        ALTER TABLE eval_opt_runs 
-          ADD CONSTRAINT eval_opt_runs_status_check 
-          CHECK (status IN ('pending', 'running', 'completed', 'failed'));
+        ALTER TABLE eval_opt_runs
+          ADD CONSTRAINT eval_opt_runs_status_check
+          CHECK (status IN ('draft', 'pending', 'processing', 'running', 'completed', 'failed', 'cancelled'));
     END IF;
 END $$;
 
--- Add constraint for temperature range (idempotent)
-DO $$ 
+-- Add constraint for temperature range (idempotent) - nullable so check for NULL
+DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint 
+        SELECT 1 FROM pg_constraint
         WHERE conname = 'eval_opt_runs_temperature_check'
     ) THEN
-        ALTER TABLE eval_opt_runs 
-          ADD CONSTRAINT eval_opt_runs_temperature_check 
-          CHECK (temperature >= 0.0 AND temperature <= 1.0);
+        ALTER TABLE eval_opt_runs
+          ADD CONSTRAINT eval_opt_runs_temperature_check
+          CHECK (temperature IS NULL OR (temperature >= 0.0 AND temperature <= 1.0));
     END IF;
 END $$;
 
@@ -103,8 +126,12 @@ CREATE INDEX IF NOT EXISTS idx_eval_opt_run_status
     ON eval_opt_runs(ws_id, status);
 CREATE INDEX IF NOT EXISTS idx_eval_opt_run_created_by 
     ON eval_opt_runs(created_by);
-CREATE INDEX IF NOT EXISTS idx_eval_opt_run_created_at 
+CREATE INDEX IF NOT EXISTS idx_eval_opt_run_created_at
     ON eval_opt_runs(ws_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_eval_opt_run_doc_type
+    ON eval_opt_runs(doc_type_id);
+CREATE INDEX IF NOT EXISTS idx_eval_opt_run_criteria_set
+    ON eval_opt_runs(criteria_set_id);
 
 -- ============================================================================
 -- RUN RESULTS

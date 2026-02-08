@@ -9,6 +9,7 @@ import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
+import { createKbModuleClient } from "@{{PROJECT_NAME}}/module-kb";
 
 /**
  * Optimizer Workflow Page - Sprint 1 Prototype
@@ -76,14 +77,9 @@ export default function OptimizerPage() {
 
       // Step 3: Upload sample document (module-kb)
       addLog("📝 Step 3: Uploading sample document...");
-      const docResponse = await client.post<{ id: string }>("/kb/documents", {
-        ws_id: wsId,
-        name: "Sample Policy Document",
-        content: "This is a sample policy document for testing evaluation optimization.",
-        doc_type: "policy",
-      });
-      const docId = docResponse.id;
-      addLog(`✅ Uploaded document: ${docId}`);
+      const kbClient = createKbModuleClient(client);
+      // Note: This is a simplified prototype - actual upload requires presigned URL flow
+      addLog(`✅ KB client created (actual upload would use presigned URL flow)`);
 
       // Step 4: Run evaluation (module-eval)
       addLog("📝 Step 4: Running evaluation...");

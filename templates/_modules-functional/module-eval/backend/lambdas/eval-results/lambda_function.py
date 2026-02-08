@@ -107,6 +107,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if '/eval/config/doc-types' in path and http_method == 'GET':
             return handle_get_config_doc_types(event, org_id)
         
+        # Criteria items for a criteria set
+        criteria_set_id = path_params.get('criteriaSetId')
+        if '/eval/config/criteria-sets' in path and '/items' in path and criteria_set_id and http_method == 'GET':
+            return handle_get_config_criteria_items(event, org_id, criteria_set_id)
+        
         # Criteria sets for workspace's org
         if '/eval/config/criteria-sets' in path and http_method == 'GET':
             return handle_get_config_criteria_sets(event, org_id)
@@ -260,6 +265,45 @@ def handle_get_config_criteria_sets(event: Dict[str, Any], org_id: str) -> Dict[
         formatted = common.format_record(cs)
         formatted['criteriaCount'] = len(items)
         result.append(formatted)
+    
+    return common.success_response(result)
+
+
+def handle_get_config_criteria_items(event: Dict[str, Any], org_id: str, criteria_set_id: str) -> Dict[str, Any]:
+    """
+    Get criteria items for a specific criteria set.
+    
+    This is a resource-level API (not admin API) that allows any workspace member
+    to see criteria items when creating truth sets for evaluation optimization.
+    
+    Query params:
+    - includeInactive: bool (default false)
+    """
+    query_params = event.get('queryStringParameters', {}) or {}
+    include_inactive = query_params.get('includeInactive', 'false').lower() == 'true'
+    
+    criteria_set_id = common.validate_uuid(criteria_set_id, 'criteriaSetId')
+    
+    # Verify criteria set exists and belongs to org
+    criteria_set = common.find_one('eval_criteria_sets', {'id': criteria_set_id})
+    if not criteria_set:
+        raise common.NotFoundError('Criteria set not found')
+    
+    # Verify criteria set's doc type belongs to org
+    doc_type = common.find_one('eval_doc_types', {'id': criteria_set['doc_type_id'], 'org_id': org_id})
+    if not doc_type:
+        raise common.NotFoundError('Criteria set does not belong to organization')
+    
+    # Build filters
+    filters = {'criteria_set_id': criteria_set_id}
+    if not include_inactive:
+        filters['is_active'] = True
+    
+    # Get criteria items
+    items = common.find_many('eval_criteria_items', filters, order='order_index.asc')
+    
+    # Format results
+    result = [common.format_record(item) for item in items]
     
     return common.success_response(result)
 
