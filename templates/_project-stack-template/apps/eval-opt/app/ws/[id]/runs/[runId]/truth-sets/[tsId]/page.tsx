@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
-import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
+import { useUser, useOrganizationContext } from "@ai-mod/module-access";
+import { createCoraAuthenticatedClient } from "@ai-mod/api-client";
+import { createKbModuleClient } from "@ai-mod/module-kb";
 import DocumentViewer from "../../../../../../../components/DocumentViewer";
 import CriteriaEvaluationForm from "../../../../../../../components/CriteriaEvaluationForm";
 
@@ -28,12 +29,18 @@ interface StatusOption {
   description?: string;
 }
 
+interface ResponseSection {
+  id: string;
+  name: string;
+  type: 'number' | 'text' | 'list' | 'boolean' | 'object';
+  required: boolean;
+  description?: string;
+}
+
 interface CriterionEvaluation {
   criteria_item_id: string;
   status_id: string;
-  confidence: number;
-  explanation: string;
-  citations: string[];
+  section_responses: Record<string, any>;
 }
 
 interface KBDocument {
@@ -50,12 +57,14 @@ export default function TruthSetDetailPage() {
   const tsId = params?.tsId as string;
 
   const { authAdapter, isAuthenticated, isLoading: authLoading } = useUser();
+  const { orgId, organization } = useOrganizationContext();
 
   // Data state
   const [truthSet, setTruthSet] = useState<TruthSet | null>(null);
   const [document, setDocument] = useState<KBDocument | null>(null);
   const [criteriaItems, setCriteriaItems] = useState<CriteriaItem[]>([]);
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
+  const [responseSections, setResponseSections] = useState<ResponseSection[]>([]);
   const [currentCriterionIndex, setCurrentCriterionIndex] = useState(0);
   const [evaluations, setEvaluations] = useState<Map<string, CriterionEvaluation>>(new Map());
   const [selectedText, setSelectedText] = useState("");
@@ -68,16 +77,40 @@ export default function TruthSetDetailPage() {
 
   // Fetch truth set data
   useEffect(() => {
-    if (!isAuthenticated || authLoading) return;
+    if (!isAuthenticated || authLoading || !orgId) return;
 
     const fetchData = async () => {
       try {
         const token = await authAdapter.getToken();
+        if (!token) {
+          setError("Authentication token not available");
+          setLoading(false);
+          return;
+        }
         const client = createCoraAuthenticatedClient(token);
+
+        // Fetch optimization run to get criteria_set_id and response sections
+        const runResponse = await client.get(`/ws/${wsId}/optimization/runs/${runId}`);
+        const run = (runResponse as any).data;
+        
+        // Lambda returns camelCase field names
+        const criteriaSetId = run.criteriaSetId;
+        
+        if (!criteriaSetId) {
+          console.error("No criteriaSetId found in run response:", run);
+          setError("Run is missing criteria set configuration. Cannot load criteria items.");
+          setLoading(false);
+          return;
+        }
+
+        // Get response sections from run response (embedded inline)
+        if (run.responseSections && Array.isArray(run.responseSections)) {
+          setResponseSections(run.responseSections);
+        }
 
         // Fetch truth set
         const tsResponse = await client.get(`/ws/${wsId}/optimization/runs/${runId}/truth-sets/${tsId}`);
-        const ts = tsResponse.data;
+        const ts = (tsResponse as any).data;
         setTruthSet(ts);
 
         // Initialize evaluations from existing data
@@ -91,22 +124,24 @@ export default function TruthSetDetailPage() {
 
         // Fetch document content
         if (ts.document_id) {
-          const docResponse = await client.get(`/kb/documents/${ts.document_id}`);
+          const kbClient = createKbModuleClient(client);
+          const docResponse = await kbClient.workspace.getDocument(wsId, ts.document_id);
           if (docResponse.data) {
-            setDocument(docResponse.data);
+            setDocument(docResponse.data as any);
           }
         }
 
-        // Fetch criteria items
-        const criteriaResponse = await client.get("/eval/criteria-items");
-        if (criteriaResponse.data) {
-          setCriteriaItems(criteriaResponse.data);
+        // Fetch criteria items using workspace-scoped route
+        const criteriaResponse = await client.get(`/ws/${wsId}/eval/config/criteria-sets/${criteriaSetId}/items`);
+        if ((criteriaResponse as any).data) {
+          setCriteriaItems((criteriaResponse as any).data);
         }
 
-        // Fetch status options
-        const statusResponse = await client.get("/eval/status-options");
-        if (statusResponse.data) {
-          setStatusOptions(statusResponse.data);
+        // Fetch status options using org-scoped route
+        // orgId is guaranteed to be available here (checked at useEffect entry)
+        const statusResponse = await client.get(`/admin/org/eval/status-options?orgId=${orgId}`);
+        if ((statusResponse as any).data) {
+          setStatusOptions((statusResponse as any).data);
         }
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -117,7 +152,7 @@ export default function TruthSetDetailPage() {
     };
 
     fetchData();
-  }, [wsId, runId, tsId, isAuthenticated, authLoading, authAdapter]);
+  }, [wsId, runId, tsId, isAuthenticated, authLoading, authAdapter, orgId]);
 
   const handleEvaluationChange = (evaluation: CriterionEvaluation) => {
     const newEvaluations = new Map(evaluations);
@@ -144,6 +179,11 @@ export default function TruthSetDetailPage() {
 
     try {
       const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Authentication token not available");
+        setSaving(false);
+        return;
+      }
       const client = createCoraAuthenticatedClient(token);
       await client.put(`/ws/${wsId}/optimization/runs/${runId}/truth-sets/${tsId}`, {
         evaluations: Array.from(evaluations.values()),
@@ -323,6 +363,7 @@ export default function TruthSetDetailPage() {
             <CriteriaEvaluationForm
               criterion={currentCriterion}
               statusOptions={statusOptions}
+              responseSections={responseSections}
               initialValue={evaluations.get(currentCriterion.id)}
               selectedText={selectedText}
               onChange={handleEvaluationChange}

@@ -4,14 +4,25 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
+import { useKbDocuments, createKbModuleClient, createAuthenticatedClient } from "@{{PROJECT_NAME}}/module-kb";
 import DocumentViewer from "../../../../../../../components/DocumentViewer";
 import CriteriaEvaluationForm from "../../../../../../../components/CriteriaEvaluationForm";
 
 interface KBDocument {
   id: string;
-  name: string;
-  file_type: string;
-  extracted_text?: string;
+  kbId: string;
+  filename: string;
+  s3Key: string;
+  s3Bucket: string;
+  fileSize: number;
+  mimeType: string;
+  status: string;
+  errorMessage: string | null;
+  chunkCount: number;
+  metadata: Record<string, any>;
+  createdAt: string;
+  createdBy: string;
+  extractedText?: string;
 }
 
 interface CriteriaItem {
@@ -43,16 +54,58 @@ export default function NewTruthSetPage() {
 
   const { authAdapter, isAuthenticated, isLoading: authLoading } = useUser();
 
+  // KB documents hook for upload/list functionality
+  // Create API client wrapper for KB module
+  const [apiClientWrapper, setApiClientWrapper] = useState<{ kb: ReturnType<typeof createKbModuleClient> } | null>(null);
+
+  // Initialize API client when auth is ready
+  useEffect(() => {
+    if (!authAdapter || !isAuthenticated) {
+      setApiClientWrapper(null);
+      return;
+    }
+    
+    // Create API client wrapper
+    const initClient = async () => {
+      try {
+        const token = await authAdapter.getToken();
+        if (token) {
+          const authenticatedClient = createAuthenticatedClient(token);
+          const kbClient = createKbModuleClient(authenticatedClient);
+          setApiClientWrapper({ kb: kbClient });
+        }
+      } catch (err) {
+        console.error('Failed to initialize KB API client:', err);
+        setApiClientWrapper(null);
+      }
+    };
+    
+    initClient();
+  }, [authAdapter, isAuthenticated]);
+
+  const { 
+    documents, 
+    uploadDocument, 
+    uploading,
+    refresh: refreshDocuments,
+    loading: docsLoading
+  } = useKbDocuments({
+    scope: 'workspace',
+    scopeId: wsId,
+    apiClient: apiClientWrapper as any,
+    autoFetch: isAuthenticated && !!apiClientWrapper,
+  });
+
   // Wizard step state
   const [step, setStep] = useState<"document" | "evaluate">("document");
 
   // Step 1: Document selection
-  const [documents, setDocuments] = useState<KBDocument[]>([]);
   const [selectedDocId, setSelectedDocId] = useState<string>("");
   const [selectedDoc, setSelectedDoc] = useState<KBDocument | null>(null);
   const [truthSetName, setTruthSetName] = useState("");
 
   // Step 2: Evaluation
+  const [criteriaSetId, setCriteriaSetId] = useState<string>("");
   const [criteriaItems, setCriteriaItems] = useState<CriteriaItem[]>([]);
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [currentCriterionIndex, setCurrentCriterionIndex] = useState(0);
@@ -65,38 +118,48 @@ export default function NewTruthSetPage() {
   const [error, setError] = useState<string | null>(null);
   const [truthSetId, setTruthSetId] = useState<string | null>(null);
 
-  // Fetch KB documents
+  // Initialize loading state
   useEffect(() => {
-    if (!isAuthenticated || authLoading) return;
+    if (!authLoading && apiClientWrapper) {
+      setLoading(false);
+    }
+  }, [authLoading, apiClientWrapper]);
 
-    const fetchDocuments = async () => {
+  // Fetch run details on mount to get criteria set ID
+  useEffect(() => {
+    if (!isAuthenticated || !runId || !wsId) return;
+
+    const fetchRunDetails = async () => {
       try {
         const token = await authAdapter.getToken();
         const client = createCoraAuthenticatedClient(token);
-        const response = await client.get(`/kb/workspaces/${wsId}/documents`);
-        setDocuments(response.data || []);
+
+        const response = await client.get(`/ws/${wsId}/optimization/runs/${runId}`);
+        if (response.data?.criteriaSetId) {
+          setCriteriaSetId(response.data.criteriaSetId);
+        }
       } catch (err) {
-        console.error("Error fetching documents:", err);
-        setError(err instanceof Error ? err.message : "Failed to load documents");
-      } finally {
-        setLoading(false);
+        console.error("Error fetching run details:", err);
+        setError("Failed to load optimization run details");
       }
     };
 
-    fetchDocuments();
-  }, [wsId, isAuthenticated, authLoading, authAdapter]);
+    fetchRunDetails();
+  }, [isAuthenticated, runId, wsId, authAdapter]);
 
   // Fetch criteria and status options when entering evaluation step
   useEffect(() => {
-    if (step !== "evaluate" || !isAuthenticated) return;
+    if (step !== "evaluate" || !isAuthenticated || !criteriaSetId) return;
 
     const fetchCriteriaAndStatus = async () => {
       try {
         const token = await authAdapter.getToken();
         const client = createCoraAuthenticatedClient(token);
 
-        // Fetch criteria items
-        const criteriaResponse = await client.get("/eval/criteria-items");
+        // Fetch criteria items for the run's criteria set
+        const criteriaResponse = await client.get(
+          `/ws/${wsId}/eval/config/criteria-sets/${criteriaSetId}/items`
+        );
         if (criteriaResponse.data) {
           setCriteriaItems(criteriaResponse.data);
         }
@@ -108,37 +171,73 @@ export default function NewTruthSetPage() {
         }
       } catch (err) {
         console.error("Error fetching criteria/status:", err);
+        setError("Failed to load criteria items");
       }
     };
 
     fetchCriteriaAndStatus();
-  }, [step, isAuthenticated, authAdapter]);
+  }, [step, isAuthenticated, criteriaSetId, wsId, authAdapter]);
 
-  // Fetch document content when selected
+  // Fetch full document content when selected
   useEffect(() => {
-    if (!selectedDocId || !isAuthenticated) return;
+    if (!selectedDocId || !isAuthenticated || !apiClientWrapper) return;
 
     const fetchDocContent = async () => {
       try {
-        const token = await authAdapter.getToken();
-        const client = createCoraAuthenticatedClient(token);
-        const response = await client.get(`/kb/documents/${selectedDocId}`);
+        const response = await apiClientWrapper.kb.workspace.getDocument(wsId, selectedDocId);
         if (response.data) {
           setSelectedDoc(response.data);
         }
       } catch (err) {
-        console.error("Error fetching document:", err);
+        console.error("Error fetching document content:", err);
+        // Fallback: try to find in the list, though it might not have content
+        const docInList = documents.find((d) => d.id === selectedDocId);
+        if (docInList) {
+          setSelectedDoc(docInList as unknown as KBDocument);
+        }
       }
     };
 
     fetchDocContent();
-  }, [selectedDocId, isAuthenticated, authAdapter]);
+  }, [selectedDocId, isAuthenticated, apiClientWrapper, wsId, documents]);
 
   const handleDocumentSelect = (docId: string) => {
     setSelectedDocId(docId);
     const doc = documents.find((d) => d.id === docId);
     if (doc) {
-      setTruthSetName(doc.name);
+      setTruthSetName(doc.filename);
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setError(null);
+
+    try {
+      // Upload all selected files using the KB hook
+      const uploadedDocs: KBDocument[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const doc = await uploadDocument(file);
+        if (doc) {
+            uploadedDocs.push(doc as unknown as KBDocument);
+        }
+      }
+
+      // Auto-select the first uploaded document
+      if (uploadedDocs.length > 0) {
+        const firstDoc = uploadedDocs[0];
+        setSelectedDocId(firstDoc.id);
+        setTruthSetName(firstDoc.filename);
+      }
+
+      // Reset file input
+      event.target.value = "";
+    } catch (err) {
+      console.error("Error uploading documents:", err);
+      setError(err instanceof Error ? err.message : "Failed to upload documents");
     }
   };
 
@@ -313,16 +412,47 @@ export default function NewTruthSetPage() {
           >
             <h3 style={{ margin: "0 0 1rem 0" }}>Select Document</h3>
 
-            {documents.length === 0 ? (
+            {/* Upload Button */}
+            <div style={{ marginBottom: "1rem" }}>
+              <input
+                type="file"
+                id="file-upload"
+                multiple
+                accept=".pdf,.doc,.docx,.txt"
+                onChange={handleFileUpload}
+                style={{ display: "none" }}
+              />
+              <label
+                htmlFor="file-upload"
+                style={{
+                  display: "inline-block",
+                  padding: "0.75rem 1.5rem",
+                  backgroundColor: uploading ? "#ccc" : "#28a745",
+                  color: "white",
+                  borderRadius: "4px",
+                  cursor: uploading ? "not-allowed" : "pointer",
+                  fontSize: "1rem",
+                  border: "none",
+                }}
+              >
+                {uploading ? "Uploading..." : "+ Upload Document(s)"}
+              </label>
+              <span style={{ marginLeft: "1rem", color: "#666", fontSize: "0.875rem" }}>
+                Supports PDF, Word, and text files. Multiple files allowed.
+              </span>
+            </div>
+
+            {documents.length === 0 && !docsLoading ? (
               <div style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
                 <p>No documents found in the workspace knowledge base.</p>
-                <p>Upload documents via the Context tab first.</p>
+                <p>Upload documents using the button above or via the Context tab.</p>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                 <select
                   value={selectedDocId}
                   onChange={(e) => handleDocumentSelect(e.target.value)}
+                  disabled={docsLoading}
                   style={{
                     width: "100%",
                     padding: "0.75rem",
@@ -331,10 +461,10 @@ export default function NewTruthSetPage() {
                     fontSize: "1rem",
                   }}
                 >
-                  <option value="">-- Select a document --</option>
+                  <option value="">{docsLoading ? "Loading documents..." : "-- Select a document --"}</option>
                   {documents.map((doc) => (
                     <option key={doc.id} value={doc.id}>
-                      {doc.name} ({doc.file_type})
+                      {doc.filename} ({doc.mimeType})
                     </option>
                   ))}
                 </select>
@@ -449,8 +579,8 @@ export default function NewTruthSetPage() {
             {/* Left: Document Viewer */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <DocumentViewer
-                documentContent={selectedDoc?.extracted_text || "Loading document..."}
-                documentName={selectedDoc?.name || truthSetName}
+                documentContent={selectedDoc?.extractedText || "Loading document..."}
+                documentName={selectedDoc?.filename || truthSetName}
                 onTextSelected={setSelectedText}
               />
             </div>
