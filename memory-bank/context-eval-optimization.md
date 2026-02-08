@@ -1,11 +1,19 @@
-# Context: Evaluation Optimization Initiative
+# Context: Evaluation Studio Initiative
 
 **Created:** February 4, 2026  
-**Primary Focus:** Business Analyst Workbench for prompt optimization in module-eval
+**Primary Focus:** Business Analyst Workbench for evaluation design and optimization  
+**Module Name:** `module-eval-studio` (Premium/Optional tier)  
+**Internal Prefix:** `eval_opt_*` (database tables, internal references)
 
 ## Initiative Overview
 
-The Evaluation Optimization initiative develops a **supplemental application** (companion to the main CORA app) that enables business analysts to optimize prompt configurations for document evaluation processing. The system uses sample-driven training with human-verified "truth keys" to tune prompts for specific document domains (IT security policies, appraisals, proposals, etc.), reducing false positives and false negatives in automated evaluations.
+The Evaluation Studio initiative develops a **premium companion application** (paid add-on to the free core CORA platform) that enables business analysts to design and optimize evaluation configurations. The system provides tools for:
+- Defining response structure schemas (what AI outputs)
+- Creating scoring rubrics (how to evaluate)
+- Building truth sets (ground truth training data via manual evaluation)
+- Optimizing prompts (automated prompt generation via RAG + meta-prompting)
+
+This enables accurate, domain-specific document evaluation across industries (IT security audits, appraisals, proposals, FOIA requests, etc.).
 
 ### 🚨 CRITICAL: RAG Architecture Constraint
 
@@ -79,13 +87,55 @@ Updated the configuration file to explicitly include `module-voice` to restore t
 - **Sprint 1:** ✅ COMPLETE (Feb 5, 2026 AM)
 - **Sprint 2:** ✅ COMPLETE (Feb 5, 2026 PM)
 - **Sprint 3:** ✅ COMPLETE (Feb 5-6, 2026) - UX Design Focus
-- **Sprint 4:** � ACTIVE (Feb 7, 2026) - Run Details & Truth Set Wizard
+- **Sprint 4:** 🎯 ACTIVE (Feb 8, 2026) - Naming decision + Truth Set Wizard completion
 - **Branch:** `feature/eval-optimization-s4`
 - **Plan:** `docs/plans/plan_eval-optimization-s4.md`
-- **Focus:** Run Details page + Truth Set wizard
+- **Focus:** Module naming + document loading fix + focus mode
 - **Test Project:** `~/code/bodhix/testing/eval-opt/ai-mod-stack/`
 
 ## Key Design Decisions
+
+### 0. Module Naming & Architecture (DECIDED - Feb 8, 2026) 🎯 **STRATEGIC**
+
+**Status:** ✅ Complete - Session planning decision
+
+**Decision:** Module name is `module-eval-studio` (premium tier companion to free core `module-eval`)
+
+**Naming Convention for Premium Modules:**
+```
+module-{core}-studio
+```
+
+**Rationale:**
+- `studio` suffix denotes professional design/workbench environment
+- Instantly recognizable as premium companion to core module
+- Extensible pattern: `module-kb-studio`, `module-chat-studio`, `module-voice-studio`
+- Aligns with industry precedent (Visual Studio, Android Studio, Databricks)
+
+**Implementation:**
+- **Public name:** "Eval Studio" or "Evaluation Studio"
+- **Module directory:** `module-eval-studio` (to be renamed from `module-eval-opt`)
+- **Database tables:** `eval_opt_*` (KEEP AS-IS, reinterpret "opt" = "optional/premium")
+- **Internal files:** Keep `eval-opt` references (no migration needed)
+
+**Table Naming Rationale:**
+- `opt` reinterpreted as "optional" (premium/paid features)
+- Core app functions without these tables (truly optional)
+- Avoids risky database table rename migrations
+- Forward-looking: `kb_opt_*`, `chat_opt_*`, `voice_opt_*` for future studio modules
+
+**Business Model:**
+| Tier | Module | Features | Cost |
+|------|--------|----------|------|
+| Free | `module-eval` | Evaluation execution | FREE (open source) |
+| Premium | `module-eval-studio` | Eval design, rubrics, truth sets, optimization | PAID ADD-ON |
+
+**Future Premium Library:**
+- `module-kb-studio` - RAG pipeline designer
+- `module-chat-studio` - Conversation flow designer  
+- `module-voice-studio` - Voice interaction designer
+
+**Documentation:** ADR-021 addendum (to be created)
 
 ### 1. Deployment Architecture (DECIDED - ADR-021)
 
@@ -112,7 +162,7 @@ Updated the configuration file to explicitly include `module-voice` to restore t
 
 **Strategic Rationale:**
 - Open Source Core: module-eval (evaluation execution) - FREE
-- Paid Enhancement: eval-optimizer (BA Workbench) - PAID ADD-ON
+- Paid Enhancement: module-eval-studio (Evaluation Studio) - PAID ADD-ON
 - Business Model: Sustainable funding while keeping CORA core open source
 
 **Documentation:** See `docs/arch decisions/ADR-021-EVAL-OPTIMIZER-DEPLOYMENT.md`
@@ -337,6 +387,51 @@ The system provides statistical guidance on result reliability based on sample s
   - Location: `docs/arch decisions/ADR-021-EVAL-OPTIMIZER-DEPLOYMENT.md`
 
 ## Session Log
+
+### February 8, 2026 (8:00 AM - 9:00 AM) - Module Naming Decision
+
+**Session Duration:** ~1 hour  
+**Branch:** `feature/eval-optimization-s4`  
+**Objective:** Resolve module naming and define S4 implementation scope
+
+**Architectural Decisions:**
+
+1. **Module Name: `module-eval-studio`**
+   - User insight: This is more "eval designer" than "eval optimizer"
+   - Functionality: Design rubrics, response structures, truth sets, AND optimize prompts
+   - Pattern: `-studio` suffix for all premium companion modules
+   - Benefits: Professional, extensible, instantly recognizable as paid tier
+
+2. **Keep Separate from module-eval (Confirmed)**
+   - Maintains business model (free core + paid add-on)
+   - Different user persona (BAs designing configs vs. end users running evals)
+   - ADR-021 strategic rationale stands
+
+3. **Table Naming: Keep `eval_opt_*` (No Migration)**
+   - Reinterpret "opt" as "optional" (premium/paid features)
+   - Avoids risky database table renames
+   - Extensible: `kb_opt_*`, `chat_opt_*` for future studio modules
+   - Core app functions without these tables (truly optional)
+
+**Naming Convention Update:**
+- Core modules: `module-{purpose}` (single word)
+- Premium modules: `module-{core}-studio` (extends a core module)
+
+**Documentation Tasks:**
+- [ ] Update ADR-021 with naming convention addendum
+- [ ] Update ADR-011 with `opt` abbreviation definition
+- [ ] Rename module directory: `module-eval-opt` → `module-eval-studio`
+- [ ] Update module registry entry
+- [ ] Update all user-facing docs to use "Eval Studio"
+
+**Next Steps:**
+1. Document naming decisions in ADRs
+2. Rename module directory
+3. Fix document loading (Issue 1 - CRITICAL)
+4. Implement focus mode (Issue 3 - HIGH)
+5. Complete truth set wizard
+
+---
 
 ### February 7, 2026 (1:00 PM - 1:30 PM) - Document Upload Regression
 
@@ -1058,6 +1153,87 @@ Always review database naming standards (ADR-011) BEFORE creating any schemas. T
 
 - Phase 4A: Context Document Management UI implementation
 - Phase 4B-D: Response Structure Builder + RAG Pipeline + Automated Optimization
+
+---
+
+### February 8, 2026 Morning (8:00 AM - 11:15 AM) - Rename + Document Loading + Focus Mode ✅
+
+**Session Duration:** ~3 hours 15 minutes  
+**Branch:** `feature/eval-optimization-s4`  
+**Objective:** Complete premium naming rename, fix document loading, implement focus mode
+
+**Three Major Milestones Complete:**
+
+**1. Coordinated Premium Studio Rename ✅ VALIDATED**
+
+Renamed the module from `module-eval-opt` to `module-eval-studio` to align with premium naming convention.
+
+**Changes Made:**
+- ✅ Module directory: `templates/_modules-functional/module-eval-opt/` → `module-eval-studio/`
+- ✅ App directory: `templates/_project-stack-template/apps/eval-opt/` → `apps/studio/`
+- ✅ Updated `module-registry.yaml` (module name, display name, companion_app path)
+- ✅ Updated `create-cora-project.sh` functional modules list
+- ✅ Updated all module metadata files (module.json, frontend/package.json, frontend/index.ts)
+- ✅ Updated app package.json (name, description)
+- ✅ Renamed and updated start script: `start-opt.sh` → `start-studio.sh`
+- ✅ Updated `.clinerules` module table and functional modules list
+
+**Validation:**
+- ✅ Created test project at `/Users/aaron/code/bodhix/testing/eval-studio/`
+- ✅ Verified `module-eval-studio` directory created correctly
+- ✅ Verified `apps/studio` directory created correctly
+- ✅ Validation tools recognized new module name
+
+**2. Document Loading Fix ✅ SYNCED**
+
+Fixed critical UX issue where truth set wizard showed "Loading document..." permanently.
+
+**Problem:**
+- Document viewer only checked `document?.extracted_text` with fallback to "Loading document..."
+- If field was missing or named differently, it showed loading message permanently
+
+**Solution:**
+- Updated `apps/studio/app/ws/[id]/runs/[runId]/truth-sets/[tsId]/page.tsx`
+- Now checks multiple field names: `extracted_text`, `content`, `text_content`
+- Provides clear error if document loads but has no content
+- Only shows "Loading..." during actual loading
+
+**Status:**
+- ✅ Fix implemented in template
+- ✅ Synced to test project (2026-02-08)
+
+**3. Focus Mode ✅ SYNCED**
+
+Implemented accessible focus mode to hide sidebar and maximize working space.
+
+**Features:**
+- 🎹 Keyboard shortcut: **Shift+Ctrl/Cmd+F** to toggle
+- 🔘 Accessible MUI IconButton (Fullscreen icons)
+- 💬 Tooltip showing keyboard shortcut
+- ♿ Proper aria-labels for screen readers
+- 🎨 Visual feedback (button changes color when active)
+- 📏 Hides sidebar, reduces padding for maximum space
+- ✨ Smooth transitions (0.3s ease)
+
+**Implementation:**
+- Updated `apps/studio/components/AppShell.tsx`
+- Added focus mode state with keyboard listener
+- Conditionally hides `<Sidebar />` when active
+- Fixed position IconButton in top-right corner
+
+**Status:**
+- ✅ Fix implemented in template
+- ✅ Synced to test project (2026-02-08)
+
+**Outstanding Work:**
+- ❌ **Auto-save on field blur** - NOT IMPLEMENTED (deferred due to context limit)
+- ⏸️ End-to-end testing (requires user verification)
+
+**Next Steps:**
+1. User tests document loading fix
+2. User tests focus mode functionality
+3. Next session: Implement auto-save on field blur
+4. End-to-end truth set creation workflow testing
 
 ---
 
