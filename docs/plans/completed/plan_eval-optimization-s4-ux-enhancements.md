@@ -1,8 +1,9 @@
 # Plan: Eval Optimization S4 - Truth Set Wizard UX Enhancements
 
-**Status:** 📋 To Do  
+**Status:** ✅ PARTIALLY COMPLETE (Critical items done, rest deferred to S5)  
 **Branch:** `feature/eval-optimization-s4`  
 **Created:** February 7, 2026  
+**Closed:** February 8, 2026  
 **Priority:** HIGH (blocks effective truth set creation)  
 
 ---
@@ -421,11 +422,11 @@ useEffect(() => {
 
 ## Implementation Order
 
-### Sprint 4 (Current) - Critical Fixes
-1. ✅ **Issue 1: Document Loading** - Blocks all testing
-2. ✅ **Issue 3: Focus Mode** - Major productivity improvement
+### Sprint 4 (Completed) - Critical Fixes
+1. ✅ **Issue 1: Document Loading** - Blocks all testing (COMPLETED)
+2. ✅ **Issue 3: Focus Mode** - Major productivity improvement (COMPLETED)
 
-### Sprint 4+ (Follow-up) - Enhancements
+### Deferred to Sprint 5
 3. ⏭️ **Issue 5: Navigation Placement** - Quick UX win
 4. ⏭️ **Issue 4: Vertical Expansion** - Layout improvement
 5. ⏭️ **Issue 2: Citation Feature** - Nice-to-have (can cite manually for now)
