@@ -141,6 +141,7 @@ CORA uses a strict naming convention for modules: `module-{purpose}` where `{pur
 | module-chat | Core | 3 | `templates/_modules-core/module-chat/` |
 | module-eval | Functional | - | `templates/_modules-functional/module-eval/` |
 | module-voice | Functional | - | `templates/_modules-functional/module-voice/` |
+| module-eval-studio | Functional | - | `templates/_modules-functional/module-eval-studio/` |
 
 ### Core Modules (Required - Always Included)
 
@@ -161,6 +162,7 @@ Functional modules are OPTIONAL and can be enabled based on project needs:
 
 - `module-eval` - Model evaluation & testing
 - `module-voice` - Voice interaction capabilities
+- `module-eval-studio` - Evaluation Studio (Premium: BA Workbench for designing rubrics, creating truth sets, and optimizing prompts)
 - (Future functional modules as needed)
 
 ## Module Build Script Locations
