@@ -36,12 +36,15 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  Breadcrumbs,
+  Link,
 } from "@mui/material";
 import {
   Info as InfoIcon,
   CheckCircle as EnabledIcon,
   Cancel as DisabledIcon,
   Lock as LockedIcon,
+  NavigateNext as NavigateNextIcon,
 } from "@mui/icons-material";
 
 /**
@@ -156,6 +159,23 @@ export function OrgMgmtAdmin(): React.ReactElement {
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Breadcrumb Navigation */}
+      <Breadcrumbs
+        separator={<NavigateNextIcon fontSize="small" />}
+        aria-label="breadcrumb"
+        sx={{ mb: 2 }}
+      >
+        <Link
+          underline="hover"
+          color="inherit"
+          href="/admin/org"
+          sx={{ display: 'flex', alignItems: 'center' }}
+        >
+          Org Admin
+        </Link>
+        <Typography color="text.primary">Management</Typography>
+      </Breadcrumbs>
+
       {/* Page Header */}
       <Typography variant="h4" gutterBottom>
         Module Configuration
