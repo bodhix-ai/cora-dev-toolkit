@@ -20,22 +20,60 @@ Implement the Optimization Run Details page and Truth Set creation wizard, enabl
 
 ---
 
-## 📊 Sprint 4 Scope
+## 📊 Sprint 4 Scope (REVISED - Feb 7, 2026)
 
-### In Scope
+### ✅ Completed This Sprint
 
-| Phase | Deliverable | Priority |
+| Phase | Deliverable | Status |
+|-------|-------------|--------|
+| **Phase 1** | Optimization Run Details page | ✅ COMPLETE |
+| **Phase 2** | Response Sections Builder UI | ✅ COMPLETE |
+| **Architecture** | Discovered eval scoring flaw + created comprehensive spec | ✅ COMPLETE |
+| **UX Design** | Documented 5 critical UX issues with implementation plan | ✅ COMPLETE |
+
+### 🎯 Remaining Work (Finish S4)
+
+**Focus:** Get truth set creation working end-to-end
+
+| Issue | Description | Priority |
 |-------|-------------|----------|
-| **Phase 1** | Optimization Run Details page (`/ws/[id]/runs/[runId]`) | HIGH |
-| **Phase 2** | Response Sections Builder UI | HIGH |
-| **Phase 3** | Truth Set creation wizard | HIGH |
-| **Phase 4** | Save/resume progress functionality | MEDIUM |
+| **Issue 1** | Document loading fix (shows "Loading..." instead of content) | 🔴 CRITICAL |
+| **Issue 3** | Focus mode (hide left nav, expand to full width) | 🟡 HIGH |
+| **Testing** | Validate complete truth set creation workflow | 🟡 HIGH |
 
-### Out of Scope (Deferred to Sprint 5)
+**Success Criteria:**
+- [ ] Document content loads and displays correctly
+- [ ] Focus mode works (Ctrl/Cmd+F toggles)
+- [ ] Auto-save on field blur works with visual feedback
+- [ ] Can create complete truth set for all criteria
+- [ ] Truth set data persists correctly to database
+- [ ] All changes synced to test project
 
-- Optimization execution backend (RAG pipeline, meta-prompter)
+### 🔄 Deferred to Sprint 5
+
+**Module-Eval Scoring Architecture:**
+- Database migration (`ai_result` TEXT → JSONB, add `scoring_rubric` column)
+- Lambda parser updates (extract score directly from AI)
+- Prompt template changes (include rubric)
+- Frontend changes (derive status from score)
+- **Spec:** `docs/specifications/spec_eval-scoring-rubric-architecture.md`
+
+**Optimization Execution Backend:**
+- RAG pipeline implementation
+- LLM meta-prompting for prompt generation
+- Variation testing and comparison
 - Results display and A/B comparison
-- Production deployment
+
+**Lower-Priority UX Enhancements:**
+- Issue 2: Citation feature (highlight text → add citations)
+- Issue 4: Vertical expansion of scoring panel
+- Issue 5: Navigation button placement
+- **Plan:** `docs/plans/plan_eval-optimization-s4-ux-enhancements.md`
+
+**Rationale for Deferral:**
+1. Eval scoring changes affect core module (higher risk, needs careful implementation)
+2. Optimization execution depends on validated truth set workflow
+3. Better to finish data collection workflow before adding AI intelligence layer
 
 ---
 
@@ -233,40 +271,106 @@ Tables already created in Sprint 2:
 
 ## Session Log
 
-### February 7, 2026 (7:25 AM - 12:50 PM) - Response Sections Complete
+### February 7, 2026 (1:00 PM - 7:00 PM) - Major Architecture Discoveries
 
-**Session Duration:** ~5 hours (with breaks)  
-**Branch:** `feature/eval-optimization-s4`  
-**Objective:** Get Response Sections workflow fully functional
+**Session Duration:** 6 hours
+**Branch:** `feature/eval-optimization-s4`
+**Objective:** Fix Lambda regression, investigate eval scoring architecture, design UX enhancements
 
-**Key Fixes Applied:**
+#### Part 1: Lambda Deployment Fix (1:00-6:01 PM)
 
-1. **Frontend Auth Pattern** - Changed from `session.accessToken` to `createCoraAuthenticatedClient`
-2. **Import Paths** - Fixed 6 → 7 level relative imports for components
-3. **ResponseStructureBuilder** - Made section names editable, type-only selection
-4. **Backend Permissions** - Fixed `workspace_members` → `ws_members` (ADR-011)
-5. **Lambda Column Fix** - Fixed `structure` → `structure_schema` column name
-6. **Lambda Column Fix** - Removed non-existent `name` column from INSERT
+**Issue:** API response missing `responseSections` field despite database having the data.
 
-**API Tracer Validation Findings (for next session):**
-- 13 routes need Lambda docstring documentation
-- 2 response format issues (snake_case → camelCase)
-- 3 key consistency issues
+**Root Cause:** Deployed Lambda in test project was out of sync with template (missing code).
 
-**Verified Working:**
-- ✅ Save new sections config to database
-- ✅ GET sections config after browser refresh
-- ✅ Edit and save changes to sections config
+**Resolution:**
+1. Synced Lambda from template to test project (5:58 PM)
+2. Rebuilt Lambda with updated code (5:59 PM)
+3. Deployed via Terraform (6:01 PM)
+4. Verified: `ai-mod-dev-eval-opt-orchestrator` updated successfully
 
-**Commits:**
-1. `fix(module-eval-opt): fix permissions and Lambda column references`
-2. `feat(eval-opt): add Response Sections and Truth Sets UI pages`
-3. `feat(module-eval-opt): add run workflow columns and API routes`
+**Result:** ✅ Lambda now includes `responseSections` in API response
+
+---
+
+#### Part 2: Module-Eval Scoring Architecture Analysis (6:03-6:38 PM)
+
+**🚨 CRITICAL DISCOVERY:** Module-eval's scoring architecture is fundamentally flawed!
+
+**Problem Identified:**
+- Current: AI picks status name → System looks up status option → Derives score from option
+- Result: All scores are binary (0, 50, or 100) - no granularity!
+- Impact: Optimization module cannot measure incremental improvement
+
+**Root Cause Example:**
+```python
+# WRONG - Gets score from status option
+ai_score_value = status_option['score_value']  # Always 0, 50, or 100
+```
+
+**Correct Architecture Designed:**
+- AI provides numerical score directly (0-100) based on rubric
+- UI derives status label from score
+- Rubric stored in database (configurable, not hardcoded)
+
+**Deliverable Created:**
+- **`docs/specifications/spec_eval-scoring-rubric-architecture.md`** (comprehensive spec)
+  - Database schema changes (ai_result TEXT → JSONB, add scoring_rubric column)
+  - Lambda parser updates (extract score directly from AI)
+  - Prompt template changes (include rubric, request numerical score)
+  - Frontend changes (derive status from score)
+  - Implementation phases (Sprint 5-6)
+
+**Key Decisions:**
+1. Store scoring rubric in `eval_criteria_sets.scoring_rubric` (JSONB, default 5-tier)
+2. Convert `ai_result` to JSONB to support structured response sections
+3. AI returns: `{"score": 73, "confidence": 85, "justification": "...", ...}`
+4. Frontend: `getStatusFromScore(73)` → "Mostly Compliant"
+
+---
+
+#### Part 3: Truth Set Wizard UX Enhancements (6:47-7:00 PM)
+
+**User Feedback on Truth Set UI:**
+1. ❌ Document section shows "Loading document..." (CRITICAL - blocks testing)
+2. ❌ No citation feature (can't highlight text and add to citations)
+3. ❌ No focus mode (left nav reduces working space significantly)
+4. ❌ Scoring section doesn't expand vertically (can't see all fields)
+5. ❌ Next/Previous buttons far from criterion text (not intuitive)
+
+**UX Pattern Decided:**
+- **Auto-save on field blur** (debounced 500ms)
+- **Visual feedback:** "Saving..." / "Saved just now" indicator
+- **Next/Previous as pure navigation** (no save logic, data already saved)
+- **Progress indicator** with checkmarks showing completion
+
+**Deliverable Created:**
+- **`docs/plans/plan_eval-optimization-s4-ux-enhancements.md`** (implementation plan)
+  - Issue 1: Document loading fix (CRITICAL)
+  - Issue 2: Citation feature (HIGH)
+  - Issue 3: Focus mode with keyboard shortcut (HIGH)
+  - Issue 4: Vertical expansion (MEDIUM)
+  - Issue 5: Navigation placement with icon arrows (MEDIUM)
+
+**Implementation Priority:**
+1. Issue 1: Document loading (CRITICAL) - Next session
+2. Issue 3: Focus mode (HIGH) - Next session
+3. Issues 5, 4, 2: Navigation, expansion, citations (MEDIUM/LOW)
+
+---
+
+**Session Outcomes:**
+- ✅ Fixed critical Lambda deployment issue
+- ✅ Discovered fundamental flaw in eval scoring architecture
+- ✅ Designed comprehensive solution with database-driven configuration
+- ✅ Created 2 detailed specification documents
+- ✅ Documented 5 UX enhancement issues with implementation guidance
+- ✅ Established auto-save pattern for wizard
 
 **Next Session Priorities:**
-1. Fix API tracer validation errors (Lambda docstring, response format)
-2. Test Truth Set creation workflow
-3. Continue Phase 3 (Truth Set wizard)
+1. Implement document loading fix (Issue 1 - CRITICAL)
+2. Implement focus mode (Issue 3 - HIGH)
+3. Continue truth set wizard testing and iteration
 
 ---
 
