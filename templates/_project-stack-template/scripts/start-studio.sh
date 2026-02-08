@@ -136,24 +136,24 @@ check_and_install_dependencies() {
 # Install dependencies if needed
 check_and_install_dependencies
 
-# Ensure eval-opt has access to the same .env.local as the main web app
+# Ensure studio app has access to the same .env.local as the main web app
 # Both apps share the same authentication configuration (Okta/Cognito)
 ensure_env_symlink() {
-  local eval_opt_env="${REPO_ROOT}/apps/eval-opt/.env.local"
+  local studio_env="${REPO_ROOT}/apps/studio/.env.local"
   local web_env="${REPO_ROOT}/apps/web/.env.local"
   
-  if [[ -L "$eval_opt_env" ]]; then
-    echo "[start-opt] .env.local symlink already exists"
-  elif [[ -f "$eval_opt_env" ]]; then
-    echo "[start-opt] .env.local file already exists (not a symlink)"
+  if [[ -L "$studio_env" ]]; then
+    echo "[start-studio] .env.local symlink already exists"
+  elif [[ -f "$studio_env" ]]; then
+    echo "[start-studio] .env.local file already exists (not a symlink)"
   elif [[ -f "$web_env" ]]; then
-    echo "[start-opt] creating .env.local symlink to ../web/.env.local"
-    ln -s ../web/.env.local "$eval_opt_env"
-    echo "[start-opt] ✅ .env.local symlink created (shared auth config)"
+    echo "[start-studio] creating .env.local symlink to ../web/.env.local"
+    ln -s ../web/.env.local "$studio_env"
+    echo "[start-studio] ✅ .env.local symlink created (shared auth config)"
   else
-    echo "[start-opt] ⚠️  No .env.local found in apps/web/"
-    echo "[start-opt] Please create apps/web/.env.local with your auth configuration"
-    echo "[start-opt] See apps/web/.env.example for required variables"
+    echo "[start-studio] ⚠️  No .env.local found in apps/web/"
+    echo "[start-studio] Please create apps/web/.env.local with your auth configuration"
+    echo "[start-studio] See apps/web/.env.example for required variables"
   fi
 }
 
@@ -170,19 +170,19 @@ check_and_build_packages() {
     if [[ -d "$pkg_dir" && -f "$pkg_dir/package.json" ]]; then
       local main_path=$(grep -o '"main"[[:space:]]*:[[:space:]]*"[^"]*"' "$pkg_dir/package.json" | grep -o '"[^"]*"$' | tr -d '"')
       if [[ "$main_path" == dist/* && ! -d "$pkg_dir/dist" ]]; then
-        echo "[start-opt] Package '${pkg}' needs building (dist/ missing)"
+        echo "[start-studio] Package '${pkg}' needs building (dist/ missing)"
         needs_build=true
       fi
     fi
   done
   
   if [[ "$needs_build" == "true" ]]; then
-    echo "[start-opt] Building shared packages (first-time setup)..."
+    echo "[start-studio] Building shared packages (first-time setup)..."
     pnpm -r --filter './packages/*' run build 2>&1 || {
-      echo "[start-opt] ⚠️  Some packages failed to build. This may cause import errors."
-      echo "[start-opt] Try running 'pnpm build' manually to see detailed errors."
+      echo "[start-studio] ⚠️  Some packages failed to build. This may cause import errors."
+      echo "[start-studio] Try running 'pnpm build' manually to see detailed errors."
     }
-    echo "[start-opt] ✅ Shared packages built"
+    echo "[start-studio] ✅ Shared packages built"
   fi
 }
 
@@ -190,23 +190,23 @@ check_and_build_packages() {
 check_and_build_packages
 
 if [[ "${DO_BUILD}" == "true" ]]; then
-  echo "[start-opt] running pnpm build..."
+  echo "[start-studio] running pnpm build..."
   pnpm build
 elif [[ "${DO_TYPE_CHECK}" == "true" && "${SKIP_TYPE_CHECK}" == "false" ]]; then
-  echo "[start-opt] running TypeScript type check (use --skip-type-check to bypass)..."
+  echo "[start-studio] running TypeScript type check (use --skip-type-check to bypass)..."
   pnpm -r run type-check 2>&1 || {
-    echo "[start-opt] ⚠️  Type errors found. Run 'pnpm build' for details."
-    echo "[start-opt] Starting dev server anyway (type errors may cause issues)..."
+    echo "[start-studio] ⚠️  Type errors found. Run 'pnpm build' for details."
+    echo "[start-studio] Starting dev server anyway (type errors may cause issues)..."
   }
 elif [[ "${SKIP_TYPE_CHECK}" == "true" ]]; then
-  echo "[start-opt] skipping type check (--skip-type-check flag)"
+  echo "[start-studio] skipping type check (--skip-type-check flag)"
 fi
 
-echo "[start-opt] starting eval-optimizer app on port ${PORT}..."
-# Override NEXTAUTH_URL to use the correct port for eval-opt
-# The shared .env.local has port 3000 (main app), but eval-opt needs its own port
+echo "[start-studio] starting studio app on port ${PORT}..."
+# Override NEXTAUTH_URL to use the correct port for studio app
+# The shared .env.local has port 3000 (main app), but studio needs its own port
 export NEXTAUTH_URL="http://localhost:${PORT}"
-echo "[start-opt] NEXTAUTH_URL set to ${NEXTAUTH_URL}"
+echo "[start-studio] NEXTAUTH_URL set to ${NEXTAUTH_URL}"
 
-# Use pnpm filter to run only the eval-opt app
-PORT="${PORT}" exec pnpm --filter "**/eval-opt" dev
+# Use pnpm filter to run only the studio app
+PORT="${PORT}" exec pnpm --filter "**/studio" dev

@@ -5,6 +5,10 @@ import { usePathname } from "next/navigation";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
+import FullscreenIcon from "@mui/icons-material/Fullscreen";
+import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { Sidebar } from "./Sidebar";
 
@@ -42,6 +46,25 @@ export default function AppShell({ children }: AppShellProps) {
  */
 function AppShellWithProfile({ children }: { children: React.ReactNode }) {
   const { profile, loading, isAuthenticated } = useUser();
+  const [focusMode, setFocusMode] = React.useState(false);
+
+  // Keyboard shortcut for focus mode (Ctrl/Cmd+F)
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check for Ctrl+F (Windows/Linux) or Cmd+F (Mac)
+      if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+        // Only toggle focus mode, don't prevent default browser find
+        // We use a modifier check to distinguish from regular Cmd+F
+        if (event.shiftKey) {
+          event.preventDefault();
+          setFocusMode(prev => !prev);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Show loading while auth state is being determined
   if (loading && isAuthenticated) {
@@ -72,15 +95,40 @@ function AppShellWithProfile({ children }: { children: React.ReactNode }) {
   // Normal authenticated user - show full app shell with sidebar
   return (
     <Box sx={{ display: "flex", height: "100vh" }}>
-      <Sidebar />
+      <Sidebar collapsed={focusMode} />
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
+          p: focusMode ? 1 : 3,
           overflow: "auto",
+          transition: "padding 0.3s ease",
         }}
       >
+        {/* Focus Mode Toggle Button */}
+        <Tooltip 
+          title={focusMode ? "Exit Focus Mode (Shift+Ctrl/Cmd+F)" : "Enter Focus Mode (Shift+Ctrl/Cmd+F)"}
+          placement="left"
+        >
+          <IconButton
+            onClick={() => setFocusMode(prev => !prev)}
+            aria-label={focusMode ? "Exit focus mode" : "Enter focus mode"}
+            sx={{
+              position: "fixed",
+              top: 16,
+              right: 16,
+              backgroundColor: focusMode ? "primary.main" : "background.paper",
+              color: focusMode ? "white" : "text.primary",
+              zIndex: 1000,
+              boxShadow: 2,
+              "&:hover": {
+                backgroundColor: focusMode ? "primary.dark" : "action.hover",
+              },
+            }}
+          >
+            {focusMode ? <FullscreenExitIcon /> : <FullscreenIcon />}
+          </IconButton>
+        </Tooltip>
         {children}
       </Box>
     </Box>

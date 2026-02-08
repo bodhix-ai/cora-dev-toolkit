@@ -17,7 +17,6 @@ interface ResponseSection {
 
 interface CriterionEvaluation {
   criteria_item_id: string;
-  status_id: string;
   section_responses: Record<string, any>; // section_id -> value
 }
 
@@ -37,6 +36,7 @@ interface CriteriaEvaluationFormProps {
   initialValue?: CriterionEvaluation;
   selectedText?: string;
   onChange: (evaluation: CriterionEvaluation) => void;
+  onBlur?: () => void; // Auto-save trigger on field blur
 }
 
 export default function CriteriaEvaluationForm({
@@ -46,28 +46,18 @@ export default function CriteriaEvaluationForm({
   initialValue,
   selectedText,
   onChange,
+  onBlur,
 }: CriteriaEvaluationFormProps) {
-  const [statusId, setStatusId] = useState(initialValue?.status_id || "");
   const [sectionResponses, setSectionResponses] = useState<Record<string, any>>(
     initialValue?.section_responses || {}
   );
 
   // Update parent when any field changes
-  const notifyChange = (
-    newStatusId: string,
-    newSectionResponses: Record<string, any>
-  ) => {
+  const notifyChange = (newSectionResponses: Record<string, any>) => {
     onChange({
       criteria_item_id: criterion.id,
-      status_id: newStatusId,
       section_responses: newSectionResponses,
     });
-  };
-
-  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newStatusId = e.target.value;
-    setStatusId(newStatusId);
-    notifyChange(newStatusId, sectionResponses);
   };
 
   const handleSectionChange = (sectionId: string, value: any) => {
@@ -76,11 +66,11 @@ export default function CriteriaEvaluationForm({
       [sectionId]: value,
     };
     setSectionResponses(newSectionResponses);
-    notifyChange(statusId, newSectionResponses);
+    notifyChange(newSectionResponses);
   };
 
   // Check if all required fields are filled
-  const isComplete = statusId && responseSections.every(
+  const isComplete = responseSections.every(
     section => !section.required || (sectionResponses[section.id] !== undefined && sectionResponses[section.id] !== '')
   );
 
@@ -95,6 +85,7 @@ export default function CriteriaEvaluationForm({
             type="number"
             value={value}
             onChange={(e) => handleSectionChange(section.id, parseFloat(e.target.value) || 0)}
+            onBlur={onBlur}
             placeholder={section.description || `Enter ${section.name.toLowerCase()}...`}
             required={section.required}
             style={{
@@ -113,6 +104,7 @@ export default function CriteriaEvaluationForm({
           <textarea
             value={value}
             onChange={(e) => handleSectionChange(section.id, e.target.value)}
+            onBlur={onBlur}
             placeholder={section.description || `Enter ${section.name.toLowerCase()}...`}
             required={section.required}
             rows={4}
@@ -135,6 +127,7 @@ export default function CriteriaEvaluationForm({
             type="checkbox"
             checked={value === true}
             onChange={(e) => handleSectionChange(section.id, e.target.checked)}
+            onBlur={onBlur}
             style={{
               width: "1.25rem",
               height: "1.25rem",
@@ -149,6 +142,7 @@ export default function CriteriaEvaluationForm({
             type="text"
             value={value}
             onChange={(e) => handleSectionChange(section.id, e.target.value)}
+            onBlur={onBlur}
             placeholder={section.description || `Enter ${section.name.toLowerCase()}...`}
             required={section.required}
             style={{
@@ -201,32 +195,6 @@ export default function CriteriaEvaluationForm({
             {criterion.description}
           </p>
         )}
-      </div>
-
-      {/* Status Selection */}
-      <div style={{ marginBottom: "1rem" }}>
-        <label style={{ display: "block", fontWeight: "bold", marginBottom: "0.5rem", fontSize: "0.875rem" }}>
-          Status *
-        </label>
-        <select
-          value={statusId}
-          onChange={handleStatusChange}
-          required
-          style={{
-            width: "100%",
-            padding: "0.5rem",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            fontSize: "0.875rem",
-          }}
-        >
-          <option value="">-- Select Status --</option>
-          {statusOptions.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.name}
-            </option>
-          ))}
-        </select>
       </div>
 
       {/* Dynamic Response Section Fields */}
