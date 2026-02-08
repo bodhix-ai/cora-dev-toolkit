@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS eval_opt_doc_groups (
     ws_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     primary_doc_id UUID NOT NULL,  -- References kb_docs.id
-    status VARCHAR(50) NOT NULL DEFAULT 'pending_evaluation',
+    status VARCHAR(50) NOT NULL DEFAULT 'pending',
     
     -- Audit fields
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -28,7 +28,7 @@ COMMENT ON TABLE eval_opt_doc_groups IS 'Document groups (primary doc + supporti
 COMMENT ON COLUMN eval_opt_doc_groups.ws_id IS 'Workspace foreign key';
 COMMENT ON COLUMN eval_opt_doc_groups.name IS 'Document group name';
 COMMENT ON COLUMN eval_opt_doc_groups.primary_doc_id IS 'Primary document ID from kb_docs';
-COMMENT ON COLUMN eval_opt_doc_groups.status IS 'Evaluation status: pending_evaluation, evaluated, validated';
+COMMENT ON COLUMN eval_opt_doc_groups.status IS 'Evaluation status: pending, evaluated, validated';
 
 -- Add constraint for status values (idempotent)
 DO $$ 
@@ -39,7 +39,7 @@ BEGIN
     ) THEN
         ALTER TABLE eval_opt_doc_groups 
           ADD CONSTRAINT eval_opt_doc_groups_status_check 
-          CHECK (status IN ('pending_evaluation', 'evaluated', 'validated'));
+          CHECK (status IN ('pending', 'evaluated', 'validated'));
     END IF;
 END $$;
 

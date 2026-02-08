@@ -268,11 +268,22 @@ def handle_get_run(user_id: str, ws_id: str, run_id: str) -> Dict[str, Any]:
         'progressMessage': run.get('progress_message'),
         'thoroughness': run.get('thoroughness'),
         'totalSamples': run.get('total_samples'),
+        'docTypeId': run.get('doc_type_id'),
+        'criteriaSetId': run.get('criteria_set_id'),
+        'responseStructureId': run.get('response_structure_id'),
         'createdAt': run.get('created_at'),
         'startedAt': run.get('started_at'),
         'completedAt': run.get('completed_at'),
         'errorMessage': run.get('error_message')
     }
+    
+    # Include response sections inline
+    response_structure_id = run.get('response_structure_id')
+    if response_structure_id:
+        structure = common.find_one('eval_opt_response_structures', {'id': response_structure_id})
+        if structure:
+            sections = structure.get('structure_schema', {}).get('sections', [])
+            response['responseSections'] = sections
     
     # Include results if completed
     if run.get('status') == 'completed':
@@ -520,7 +531,7 @@ def handle_list_truth_sets(user_id: str, ws_id: str, run_id: str) -> Dict[str, A
     for group in doc_groups:
         truth_keys = common.find_many(
             'eval_opt_truth_keys',
-            {'doc_group_id': group['id']}
+            {'group_id': group['id']}
         )
         total_criteria = len(truth_keys) if truth_keys else 0
         completed_criteria = len([tk for tk in (truth_keys or []) if tk.get('truth_status_id')])
@@ -583,7 +594,7 @@ def handle_get_truth_set(user_id: str, ws_id: str, run_id: str, ts_id: str) -> D
     # Get truth keys
     truth_keys = common.find_many(
         'eval_opt_truth_keys',
-        {'doc_group_id': ts_id}
+        {'group_id': ts_id}
     )
     
     return common.success_response({
@@ -617,12 +628,12 @@ def handle_update_truth_set(event: Dict[str, Any], user_id: str, ws_id: str, run
             continue
         
         existing = common.find_one('eval_opt_truth_keys', {
-            'doc_group_id': ts_id,
+            'group_id': ts_id,
             'criteria_item_id': criteria_item_id
         })
         
         truth_key_data = {
-            'doc_group_id': ts_id,
+            'group_id': ts_id,
             'criteria_item_id': criteria_item_id,
             'truth_status_id': eval_data.get('status_id'),
             'truth_confidence': eval_data.get('confidence'),
@@ -657,7 +668,7 @@ def handle_delete_truth_set(user_id: str, ws_id: str, run_id: str, ts_id: str) -
         raise common.NotFoundError(f"Truth set {ts_id} not found")
     
     # Delete truth keys first
-    common.delete_many('eval_opt_truth_keys', {'doc_group_id': ts_id})
+    common.delete_many('eval_opt_truth_keys', {'group_id': ts_id})
     
     # Delete doc group
     common.delete_one('eval_opt_doc_groups', {'id': ts_id})
@@ -920,7 +931,7 @@ def process_optimization_run(
                 # Get truth keys for this document group
                 truth_keys = common.find_many(
                     'eval_opt_truth_keys',
-                    {'doc_group_id': group['id']}
+                    {'group_id': group['id']}
                 )
                 
                 # Run evaluation with this variation's prompt
@@ -957,13 +968,10 @@ def process_optimization_run(
                     # Save individual result
                     common.insert_one('eval_opt_run_results', {
                         'run_id': run_id,
-                        'variation_name': variation.name,
-                        'strategy': variation.strategy,
-                        'doc_group_id': group['id'],
+                        'group_id': group['id'],
                         'criteria_item_id': criteria_item_id,
                         'truth_key_id': truth_key['id'],
-                        'truth_status': truth_status_id,
-                        'ai_status': ai_status_id,
+                        'ai_status_id': ai_status_id,
                         'status_match': status_match,
                         'result_type': result_type
                     })
@@ -1185,7 +1193,7 @@ def get_llm_config(ws_id: str) -> Dict[str, Any]:
     3. Fallback defaults
     """
     # Try system config
-    sys_config = common.find_one('eval_opt_cfg_sys', {})
+    sys_config = common.find_one('eval_cfg_sys', {})
     
     if sys_config:
         return {
