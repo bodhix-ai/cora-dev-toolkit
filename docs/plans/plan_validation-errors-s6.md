@@ -1,12 +1,15 @@
 # CORA Validation Errors - Sprint S6
 
-**Status:** ✅ COMPLETE  
-**Branch:** `feature/validation-errors-s6` (merged to main)  
+**Status:** 🔄 IN PROGRESS (Dead Code Removed)  
+**Branch:** `main` (S6 work continues on main)  
 **Created:** February 5, 2026  
-**Completed:** February 5, 2026  
+**Updated:** February 6, 2026 - Session 17  
 **Context:** `memory-bank/context-error-remediation.md`  
-**Baseline:** Post S5 completion (560 errors)  
-**Achievement:** Admin component standard, validator enhancements, route analysis foundation
+**Baseline:** 428 errors (down from 430 after Session 17)  
+**Current Focus:** Fix auth lifecycle violations (9 errors), investigate DB function errors (13 errors)
+
+> **⚠️ Issue Alert:** This sprint has faced recurrent "Prompt is too long" errors (>8 sessions restarted). 
+> **Corrective Action:** A strict strategy for managing context size has been implemented in `.clinerules`, requiring the use of filtering tools (`grep`, `head`, `tail`, `jq`) instead of reading large files entirely.
 
 ---
 
@@ -63,75 +66,64 @@ This sprint focuses on Phase 2: Architecture Review of the remaining 560 validat
 
 ---
 
-## 📝 Implementation Plan
+## 📝 Implementation Plan (REFOCUSED ON ERROR REDUCTION)
 
-### Phase 2.1: Configuration & Exclusion (2 hours)
-- [x] Create `validation/api-tracer/config.yaml` (if not exists) or update it
-- [x] Add exclusions for `.next`, `node_modules`, `dist`, `build`
-- [x] Add exclusions for test directories
-- [x] Run validation to measure impact
+### Phase 1: Fix Parser False Positives (~150 error reduction) - PRIORITY
+**Goal:** Stop validator from flagging valid code as errors
 
-### Phase 2.2: Admin Component Standard (COMPLETED 2026-02-05)
-- [x] Audit all 22 admin pages
-- [x] Identify root cause of 103 orphaned route errors (validator limitation)
-- [x] Design standardized solution (all pages use module components + metadata)
-- [x] Create standard document: `docs/standards/01_std_front_ADMIN-COMPONENTS.md`
-- [x] Update standards index
-- [x] Fix AI admin page template to use authenticated client
-- [x] Sync fix to test project
+- [ ] **Fix Template Literal Parsing** (validation/api-tracer/frontend_parser.py)
+  - Update regex to handle `${...}` template variables in route paths
+  - Excludes false "Route Not Found" errors like `/orgs/${organization.id}`
+  
+- [ ] **Exclude Internal SWR/NextAuth Keys** (validation/api-tracer/config.yaml)
+  - Add exclusion list: `/api/`, `/key`, `/{signInUrl}`, etc.
+  - These are not API routes, just internal cache keys
+  
+- [ ] **Fix Hook API Call Detection** (validation/api-tracer/frontend_parser.py)
+  - Currently shows "0 API calls" for module-voice and module-chat hooks
+  - Update parser to recognize API client patterns in hooks
+  - Should eliminate ~100+ "orphaned route" false positives
 
-### Phase 2.3: Admin Component Implementation (60% COMPLETE - 2026-02-05)
-**Phase 1: Create Missing Module Components (COMPLETE - 3 hours)**
-- [x] Create `OrgAiAdmin` component in module-ai with route metadata
-- [x] Create `OrgAccessAdmin` component in module-access with route metadata
-- [x] Create `SysMgmtModulesAdmin` component in module-mgmt with route metadata
-- [x] Export all components from module frontend indexes
+### Phase 2: Fix Real Architecture Bugs (~29 error reduction) - PRIORITY
+**Goal:** Ensure all frontend calls have matching backend routes
 
-**Phase 2: Convert Pages to Use Components (COMPLETE - 3 hours)**
-- [x] Convert `admin/org/ai/page.tsx` → uses `OrgAiAdmin` (300→15 lines)
-- [x] Convert `admin/org/access/page.tsx` → uses `OrgAccessAdmin` (400→15 lines)
-- [x] Convert `admin/sys/mgmt/modules/page.tsx` → uses `SysMgmtModulesAdmin` (370→15 lines)
-- [x] KB pages already use components (different pattern - accepted)
+- [ ] **Fix KB Document Routes** (~15 errors)
+  - Frontend calls: `/ws/{wsId}/kb/documents/*` and `/chats/{chatId}/kb/documents/*`
+  - Add missing routes to `module-kb/infrastructure/outputs.tf`
+  
+- [ ] **Fix Mgmt Module Routes** (~5 errors)
+  - Frontend calls: `/admin/ws/{workspaceId}/mgmt/modules`
+  - Add missing routes to `module-mgmt/infrastructure/outputs.tf`
+  
+- [ ] **Fix Auth Violations** (~9 errors)
+  - Add missing hooks to `admin/org/page.tsx`: `useUser()`, `useRole()`
+  - Add missing hooks to `admin/org/eval/page.tsx`: `useOrganizationContext()`
 
-**Phase 3: Add Route Metadata to Existing Components (NEXT - 2-3 hours)**
-- [ ] Add `@routes` docstrings to OrgChatAdmin, SysChatAdmin
-- [ ] Add `@routes` docstrings to OrgEvalAdmin, SysEvalAdmin
-- [ ] Add `@routes` docstrings to OrgMgmtAdmin, SysMgmtAdmin
-- [ ] Add `@routes` docstrings to OrgVoiceAdmin, SysVoiceAdmin
-- [ ] Add `@routes` docstrings to OrgWsAdmin, SysWsAdmin
-- [ ] Add `@routes` docstrings to OrgKbAdmin, SysKbAdmin (if standardizing)
-- [ ] Add `@routes` docstrings to all other module admin components (~18+ total)
+### Phase 3: Whitelist Valid Non-Routes (~50 error reduction)
+**Goal:** Configure validator to ignore webhooks and internal APIs
 
-**Phase 4: Enhance Validator (2-3 hours)**
-- [ ] Update api-tracer to detect admin component imports
-- [ ] Parse `@routes` docstrings from component files
-- [ ] Mark documented routes as "called by component"
-- [ ] Add validation check: component missing metadata = ERROR
-- [ ] Add validation check: admin page uses direct API calls = ERROR
+- [ ] **Webhook Patterns** (validation/api-tracer/config.yaml)
+  - Add to `valid_orphans`: `/webhooks/stripe/*`, `/webhooks/supabase/*`
+  - These are called externally, not from frontend
+  
+- [ ] **Internal API Patterns**
+  - Document and whitelist any internal-only routes
 
-### Phase 2.4: Route Whitelisting (1-2 hours)
-- [ ] Identify webhook patterns
-- [ ] Identify internal API patterns
-- [ ] Update config with `valid_orphans` list
-- [ ] Update config with `valid_missing_routes` list
-
-### Phase 2.5: Tech Debt Documentation (1 hour)
-- [ ] Document remaining actionable errors
-- [ ] Categorize into "Fix Now", "Fix Later", "Won't Fix"
-- [ ] Update API Naming Migration plan with specifics from analysis
+### Phase 4: Re-Baseline & Document Results
+- [ ] Re-run validation to measure actual error reduction
+- [ ] Update baseline: 570 → <400 errors (target)
+- [ ] Document remaining errors with categorization
 
 ---
 
-## ✅ Success Criteria
+## ✅ Success Criteria (REFOCUSED)
 
-- [x] `.next/` and build artifacts excluded from scanning
-- [x] Admin component standard created and documented (2026-02-05)
-- [ ] All admin pages converted to use module components (Phase 2.3)
-- [ ] All module components document their routes (Phase 2.3)
-- [ ] Validator enhanced to read component metadata (Phase 2.3)
-- [ ] Webhooks and internal APIs whitelisted (Phase 2.4)
-- [ ] Error count reduced from 560 → <200
-- [ ] Clear path to Silver certification documented
+- [ ] Parser fixes eliminate ~150 false positive errors
+- [ ] Real route bugs fixed (~29 errors)
+- [ ] Webhooks/internal APIs whitelisted (~50 errors)
+- [ ] **Error count reduced from 570 → <350** (minimum 38% reduction)
+- [ ] All remaining errors are actionable (no false positives)
+- [ ] Clear baseline for next sprint
 
 **Note:** Original assumption "No new code changes required (config only)" was revised after discovering admin component architecture issue. Standard-compliant implementation requires code changes (7-9 hours).
 
@@ -265,6 +257,133 @@ This sprint focuses on Phase 2: Architecture Review of the remaining 560 validat
 - Option A: Validate admin route metadata detection (20 min)
 - Option B: Continue module analysis (2-3 hours)
 - Option C: Hooks-based route strategy (1-2 hours)
+
+---
+
+### 2026-02-06 Session 17: Dead Code Removal & Auth Investigation 🧹
+
+**Duration:** ~1 hour  
+**Focus:** Remove dead frontend code & investigate auth lifecycle errors  
+**Status:** Phase 1 complete, Phase 2 requires targeted approach  
+
+**Accomplishments:**
+
+1. **Dead Code Elimination (2 errors fixed):**
+   - Deleted `apps/web/lib/kb-api.ts` (194 lines of dead code)
+   - File had zero imports across entire codebase
+   - All KB operations now properly use module-kb
+   - Eliminated duplicate implementations:
+     - `uploadDocument()` - duplicate of module-kb
+     - `uploadProjectDocument()` - non-existent route (projects deprecated)
+     - `deleteDocument()` - duplicate of module-kb
+
+2. **Architecture Improvement:**
+   - Module-KB confirmed as single source of truth for all KB operations
+   - Supports all 4 scopes: sys, org, workspace (ws), chat
+   - Proper hooks available: `useKbDocuments`, `useWorkspaceKB`
+
+3. **Auth Investigation (incomplete):**
+   - Attempted to identify 9 auth lifecycle errors
+   - Found most admin pages already have required hooks
+   - Challenge: Validation output doesn't provide file paths for auth errors in verbose mode
+   - Needs JSON parsing or alternative approach
+
+**Error Impact:**
+- **Before:** 430 errors
+- **After:** 428 errors (-2, -0.5%)
+- **Route not found:** 0 errors (all eliminated!)
+
+**Remaining Auth Errors (9 total):**
+- admin missing org context: 3 occurrences
+- admin missing use user: 2 occurrences
+- admin missing use role: 2 occurrences
+- admin missing loading check: 2 occurrences
+
+**Files Modified:**
+- **Template:** Deleted `templates/_project-stack-template/apps/web/lib/kb-api.ts`
+- **Test Project:** Deleted `/Users/aaron/code/bodhix/testing/ws-optim/ai-mod-stack/apps/web/lib/kb-api.ts`
+
+**Next Session Priorities:**
+
+**Option A: Extract Auth Error File Paths (30 min) - RECOMMENDED**
+- Parse JSON output to get specific file paths for auth errors
+- Or manually audit remaining admin pages
+- Apply fixes using `/fix-and-sync.md` workflow
+
+**Option B: Focus on DB Function Errors (1 hour)**
+- 13 DB function errors (table naming, schema organization)
+- More straightforward than auth errors
+- Good progress candidate
+
+**Option C: Defer Code Quality to Migration**
+- 403 code quality errors covered by API Naming Migration Plan
+- Not worth fixing piecemeal
+
+**Recommendation:** Option A → Option B → Option C
+
+---
+
+### 2026-02-06 Session 18: Standards Inconsistency Discovery & Resolution 🔍
+
+**Duration:** ~1 hour  
+**Focus:** Standards audit, invalid page cleanup, component integration  
+**Status:** Phase 1 partial completion, blocked on component integration  
+
+**Major Discovery - Conflicting Standards:**
+- `01_std_front_ORG-ADMIN-PAGE-AUTH.md` (Jan 23) - Pages use hooks directly
+- `01_std_front_ADMIN-COMPONENTS.md` (Feb 5) - Pages render components only
+- Auth validator enforces OLD standard → causes false positives
+- Only 3 of 18 module pages (17%) follow new component pattern
+
+**Architecture Clarifications:**
+- 16 primary module admin pages (8 org + 8 sys)
+- Sub-pages valid ONLY if accessed through primary pages
+- Valid: `/admin/sys/access/orgs/` and `/admin/sys/access/orgs/[id]/`
+- Invalid (deleted): `/admin/sys/mgmt/modules/`, `/admin/workspaces/`
+
+**Accomplishments:**
+
+1. **Validator Enhancement:**
+   - Updated `validation/api-tracer/validator.py` to exclude `.next` directories
+   - Eliminated 6 false positive auth errors (428 → 422 total errors)
+
+2. **Invalid Pages Deleted:**
+   - `/admin/sys/mgmt/modules/` - Violated 1-page-per-module rule
+   - `/admin/workspaces/` - Violated ADR-019 route prefix requirement
+
+3. **Mgmt Page Integration:**
+   - Updated `/admin/sys/mgmt/page.tsx` to render `<SysMgmtAdmin />`
+   - Noted "Platform" terminology deprecated → use "System" (sys)
+
+**Remaining Issues:**
+- 3 auth errors (false positives from validator limitation)
+- 13 pages need standardization to component pattern
+- 4 standards need consolidation into ONE document
+
+**Blocked Status:**
+Cannot proceed with full standardization until:
+1. Module-mgmt updates `SysMgmtAdmin` component to integrate:
+   - `PlatformMgmtAdmin` functionality (warming, monitoring)
+   - `SysMgmtModulesAdmin` functionality (module config)
+2. User reviews UI and confirms integration
+
+**Next Session (3-4 hours):**
+1. Verify SysMgmtAdmin component integration
+2. Standardize 13 non-compliant pages to component pattern
+3. Consolidate 4 standards into `01_std_front_ADMIN-PAGES.md`
+4. Update auth validator to recognize component delegation
+
+**Files Modified:**
+- `validation/api-tracer/validator.py`
+- `templates/_project-stack-template/apps/web/app/admin/sys/mgmt/page.tsx`
+- Deleted: `templates/_project-stack-template/apps/web/app/admin/sys/mgmt/modules/`
+- Deleted: `templates/_modules-core/module-ws/routes/admin/workspaces/`
+
+**Current Baseline:**
+- Total: 422 errors (down from 428)
+- Auth: 3 errors (false positives)
+- DB function: 13 errors
+- Code quality: 403 errors
 
 ---
 

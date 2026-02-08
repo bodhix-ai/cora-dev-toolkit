@@ -6,6 +6,10 @@
   "types": "./index.ts",
   "exports": {
     ".": "./index.ts",
+    "./admin": {
+      "types": "./components/admin/index.ts",
+      "default": "./components/admin/index.ts"
+    },
     "./frontend/pages/OrgModuleConfigPage": "./frontend/pages/OrgModuleConfigPage.tsx"
   },
   "scripts": {

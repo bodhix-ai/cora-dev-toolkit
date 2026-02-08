@@ -40,7 +40,7 @@ interface Module {
 }
 
 export const SysMgmtModulesAdmin = () => {
-  const { profile, loading: authLoading, isAuthenticated } = useUser();
+  const { profile, loading: authLoading, isAuthenticated, authAdapter } = useUser();
   const { isSysAdmin } = useRole();
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,11 +55,19 @@ export const SysMgmtModulesAdmin = () => {
   }, [isSysAdmin]);
 
   const fetchModules = async () => {
+    if (!authAdapter) return;
+    
     try {
       setLoading(true);
       setError(null);
-      const client = createAuthenticatedClient();
-      const data = await client.get("/admin/sys/mgmt/modules");
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Failed to get authentication token");
+        setLoading(false);
+        return;
+      }
+      const client = createAuthenticatedClient(token);
+      const data = await client.get("/admin/sys/mgmt/modules") as any;
       setModules(data.modules || []);
     } catch (err) {
       console.error("Error fetching modules:", err);
@@ -70,11 +78,18 @@ export const SysMgmtModulesAdmin = () => {
   };
 
   const handleToggleEnabled = async (module: Module) => {
+    if (!authAdapter) return;
+    
     try {
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError("Failed to get authentication token");
+        return;
+      }
       const endpoint = module.isEnabled
         ? `/admin/sys/mgmt/modules/${module.name}/disable`
         : `/admin/sys/mgmt/modules/${module.name}/enable`;
-      const client = createAuthenticatedClient();
+      const client = createAuthenticatedClient(token);
       await client.post(endpoint, {});
       await fetchModules();
     } catch (err) {

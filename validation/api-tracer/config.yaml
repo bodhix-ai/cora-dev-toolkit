@@ -24,6 +24,36 @@ route_exclusions:
   - pattern: "^/auth/callback"
     reason: "OAuth callback endpoints (redirects)"
     enabled: true
+    
+  - pattern: "^/api/auth/"
+    reason: "NextAuth internal endpoints (session, csrf, signin, etc.)"
+    enabled: true
+    
+  - pattern: "^/api/$"
+    reason: "NextAuth/SWR generic cache keys"
+    enabled: true
+
+# Frontend API call exclusions (patterns to ignore when parsing frontend code)
+frontend_exclusions:
+  - pattern: "^/key$"
+    reason: "Generic SWR cache key (not a real API route)"
+    enabled: true
+    
+  - pattern: "^/\\{signInUrl\\}$"
+    reason: "NextAuth placeholder (not a real API route)"
+    enabled: true
+    
+  - pattern: "^/\\$\\{signInUrl\\}$"
+    reason: "NextAuth template literal placeholder"
+    enabled: true
+    
+  - pattern: "^/api/auth/"
+    reason: "NextAuth internal API routes"
+    enabled: true
+    
+  - pattern: "^/swr/"
+    reason: "SWR internal cache keys"
+    enabled: true
 
 # Path exclusion patterns (directories to skip during file scanning)
 path_exclusions:

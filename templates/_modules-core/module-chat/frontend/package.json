@@ -4,6 +4,13 @@
   "private": true,
   "description": "CORA Chat Module - Core chat and messaging functionality",
   "main": "index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./admin": {
+      "types": "./components/admin/index.d.ts",
+      "default": "./components/admin/index.ts"
+    }
+  },
   "scripts": {
     "dev": "next dev",
     "build": "tsc -b",

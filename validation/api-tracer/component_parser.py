@@ -147,10 +147,17 @@ class ComponentParser:
         
         Converts different parameter formats to standard {param} format:
             /admin/org/chat/config -> /admin/org/chat/config
-            /admin/org/ai/{providerId} -> /admin/org/ai/{providerId}
+            /admin/org/ai/{providerId} -> /admin/org/ai/{param}
         """
-        # Already in correct format for most cases
-        # Could add more normalization if needed
+        # Ensure path starts with /
+        if not path.startswith('/'):
+            path = f"/{path}"
+
+        # Normalize all path parameter names to generic {param}
+        # This allows matching paths with different param names:
+        # /ws/{id}/members matches /ws/{workspaceId}/members
+        path = re.sub(r'\{[^}]+\}', '{param}', path)
+        
         return path
     
     def get_component_routes_index(self) -> Dict[str, List[ComponentRoute]]:

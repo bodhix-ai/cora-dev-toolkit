@@ -310,6 +310,12 @@ class FullStackValidator:
         # Build index for fast lookup
         self.component_routes_index = self.component_parser.get_component_routes_index()
         logger.info(f"Found {len(component_routes)} routes documented in {len(self.component_parser.components_with_metadata)} admin components")
+        
+        # Update auth validator with known components for delegation verification
+        if self.auth_validator:
+            component_names = self.component_parser.components_with_metadata  # Already a set
+            self.auth_validator.frontend_validator.known_components = component_names
+            logger.debug(f"Updated auth validator with {len(component_names)} known components: {component_names}")
     
     def _enhance_lambda_path_inference(self, project: Path):
         """
@@ -991,12 +997,13 @@ class FullStackValidator:
             if frontend_path.exists():
                 for ext in ['tsx', 'ts']:
                     for file_path in frontend_path.glob(f"**/*.{ext}"):
-                        # Skip templates and node_modules
-                        if '_module-template' in str(file_path) or 'node_modules' in str(file_path):
+                        # Skip templates, node_modules, and build artifacts
+                        path_str = str(file_path)
+                        if any(skip in path_str for skip in ['_module-template', 'node_modules', '.next']):
                             continue
                         
                         # Only validate admin pages
-                        if '/admin/' in str(file_path) or '/workspace/' in str(file_path):
+                        if '/admin/' in path_str or '/workspace/' in path_str:
                             try:
                                 with open(file_path, 'r', encoding='utf-8') as f:
                                     content = f.read()

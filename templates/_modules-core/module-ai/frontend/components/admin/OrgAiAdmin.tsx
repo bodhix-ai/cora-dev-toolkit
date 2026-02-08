@@ -1,7 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser, useRole, createAuthenticatedClient } from '@{{PROJECT_NAME}}/module-access';
+import {
+  Box,
+  Typography,
+  Breadcrumbs,
+  Link,
+  Card,
+  CardContent,
+  TextField,
+  Button,
+  CircularProgress,
+  Alert,
+} from '@mui/material';
+import { NavigateNext as NavigateNextIcon } from '@mui/icons-material';
+import { useUser, useRole, useOrganizationContext } from '@{{PROJECT_NAME}}/module-access';
+import { getOrgAdminConfig, updateOrgAdminConfig } from '../../lib/api';
 
 /**
  * Organization AI Admin Component
@@ -37,6 +51,7 @@ interface OrgAIConfig {
 export const OrgAiAdmin = () => {
   const { profile, loading: userLoading, isAuthenticated, authAdapter } = useUser();
   const { isOrgAdmin } = useRole();
+  const { currentOrganization } = useOrganizationContext();
   const [config, setConfig] = useState<OrgAIConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -46,57 +61,34 @@ export const OrgAiAdmin = () => {
   // Form state
   const [orgSystemPrompt, setOrgSystemPrompt] = useState('');
 
-  // Authenticated client state
-  const [apiClient, setApiClient] = useState<ReturnType<typeof createAuthenticatedClient> | null>(null);
+  // Check if user has permission to edit (org admins can edit)
+  const canEdit = isOrgAdmin;
 
-  // Check if user has permission to edit (org_owner only)
-  const canEdit = profile?.role === 'org_owner';
-
-  // Initialize authenticated API client
+  // Fetch config when auth and org context are ready
   useEffect(() => {
-    if (!authAdapter || !isAuthenticated) {
-      setApiClient(null);
-      return;
-    }
-
-    const initClient = async () => {
-      try {
-        const token = await authAdapter.getToken();
-        if (token) {
-          const authenticatedClient = createAuthenticatedClient(token);
-          setApiClient(authenticatedClient);
-        }
-      } catch (err) {
-        console.error('Failed to initialize API client:', err);
-        setApiClient(null);
-      }
-    };
-
-    initClient();
-  }, [authAdapter, isAuthenticated]);
-
-  // Fetch config when client is ready
-  useEffect(() => {
-    if (!userLoading && profile && apiClient) {
+    if (!userLoading && profile && authAdapter && currentOrganization?.orgId) {
       fetchConfig();
     }
-  }, [userLoading, profile, apiClient]);
+  }, [userLoading, profile, authAdapter, currentOrganization?.orgId]);
 
   const fetchConfig = async () => {
-    if (!apiClient) return;
+    if (!authAdapter || !currentOrganization?.orgId) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      const data = await apiClient.get('/admin/org/ai/config');
-      
-      if (data.success && data.data) {
-        setConfig(data.data);
-        setOrgSystemPrompt(data.data.orgSystemPrompt || '');
-      } else {
-        throw new Error(data.error || 'Failed to load configuration');
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError('Failed to get authentication token');
+        return;
       }
+
+      // Use helper function (orgId as query param)
+      const data = await getOrgAdminConfig(token, currentOrganization.orgId);
+      
+      setConfig(data);
+      setOrgSystemPrompt(data.orgSystemPrompt || '');
     } catch (err) {
       console.error('Error fetching config:', err);
       setError(err instanceof Error ? err.message : 'Failed to load configuration');
@@ -111,8 +103,8 @@ export const OrgAiAdmin = () => {
       return;
     }
 
-    if (!apiClient) {
-      setError('API client not initialized');
+    if (!authAdapter || !currentOrganization?.orgId) {
+      setError('No organization selected');
       return;
     }
 
@@ -121,17 +113,21 @@ export const OrgAiAdmin = () => {
       setError(null);
       setSuccessMessage(null);
 
-      const data = await apiClient.put('/admin/org/ai/config', {
+      const token = await authAdapter.getToken();
+      if (!token) {
+        setError('Failed to get authentication token');
+        return;
+      }
+
+      // Use helper function (orgId as query param)
+      await updateOrgAdminConfig(token, currentOrganization.orgId, {
         orgSystemPrompt: orgSystemPrompt || null,
       });
       
-      if (data.success && data.data) {
-        setConfig(data.data);
-        setSuccessMessage('Configuration updated successfully');
-        setTimeout(() => setSuccessMessage(null), 3000);
-      } else {
-        throw new Error(data.error || 'Failed to update configuration');
-      }
+      // Refresh config to get updated data
+      await fetchConfig();
+      setSuccessMessage('Configuration updated successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       console.error('Error updating config:', err);
       setError(err instanceof Error ? err.message : 'Failed to update configuration');
@@ -142,168 +138,211 @@ export const OrgAiAdmin = () => {
 
   if (userLoading || loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading AI configuration...</p>
-        </div>
-      </div>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress sx={{ mb: 2 }} />
+          <Typography color="text.secondary">Loading AI configuration...</Typography>
+        </Box>
+      </Box>
     );
   }
 
   // Authentication check
   if (!isAuthenticated || !profile) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <p className="text-destructive">You must be logged in to access this page.</p>
-        </div>
-      </div>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography color="error">You must be logged in to access this page.</Typography>
+        </Box>
+      </Box>
     );
   }
 
   // Authorization check - org admins only
   if (!isOrgAdmin) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <p className="text-destructive">You do not have permission to access this page.</p>
-          <p className="text-sm text-muted-foreground mt-2">Organization admin role required.</p>
-        </div>
-      </div>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography color="error">You do not have permission to access this page.</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Organization admin role required.
+          </Typography>
+        </Box>
+      </Box>
     );
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Organization AI Configuration</h1>
-        <p className="text-muted-foreground mt-2">
-          Customize AI behavior for your organization
-        </p>
-      </div>
+    <Box sx={{ p: 4 }}>
+      {/* Breadcrumb Navigation */}
+      <Breadcrumbs
+        separator={<NavigateNextIcon fontSize="small" />}
+        aria-label="breadcrumb"
+        sx={{ mb: 2 }}
+      >
+        <Link
+          underline="hover"
+          color="inherit"
+          href="/admin/org"
+          sx={{ display: 'flex', alignItems: 'center' }}
+        >
+          Org Admin
+        </Link>
+        <Typography color="text.primary">AI Configuration</Typography>
+      </Breadcrumbs>
+
+      <Typography variant="h4" gutterBottom>
+        Organization AI Configuration
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+        Customize AI behavior for your organization
+      </Typography>
 
       {error && (
-        <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded">
+        <Alert severity="error" sx={{ mb: 3 }}>
           {error}
-        </div>
+        </Alert>
       )}
 
       {successMessage && (
-        <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded">
+        <Alert severity="success" sx={{ mb: 3 }}>
           {successMessage}
-        </div>
+        </Alert>
       )}
 
       {/* Platform Defaults Section */}
-      <div className="bg-muted/50 border rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">Platform Defaults</h2>
-        <div className="space-y-4">
-          {config?.platformConfig?.chatDeployment && (
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">
-                Default Chat Model
-              </label>
-              <p className="text-sm mt-1">
-                {config.platformConfig.chatDeployment.modelName || 
-                 config.platformConfig.chatDeployment.modelId}
-              </p>
-            </div>
-          )}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            Platform Defaults
+          </Typography>
+          {config?.platformConfig && (
+            config.platformConfig.chatDeployment || 
+            config.platformConfig.embeddingDeployment || 
+            config.platformConfig.systemPrompt
+          ) ? (
+            <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {config.platformConfig.chatDeployment && (
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Default Chat Model
+                  </Typography>
+                  <Typography variant="body2">
+                    {config.platformConfig.chatDeployment.modelName || 
+                     config.platformConfig.chatDeployment.modelId}
+                  </Typography>
+                </Box>
+              )}
 
-          {config?.platformConfig?.embeddingDeployment && (
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">
-                Default Embedding Model
-              </label>
-              <p className="text-sm mt-1">
-                {config.platformConfig.embeddingDeployment.modelName || 
-                 config.platformConfig.embeddingDeployment.modelId}
-              </p>
-            </div>
-          )}
+              {config.platformConfig.embeddingDeployment && (
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Default Embedding Model
+                  </Typography>
+                  <Typography variant="body2">
+                    {config.platformConfig.embeddingDeployment.modelName || 
+                     config.platformConfig.embeddingDeployment.modelId}
+                  </Typography>
+                </Box>
+              )}
 
-          {config?.platformConfig?.systemPrompt && (
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">
-                Platform System Prompt
-              </label>
-              <p className="text-sm mt-1 whitespace-pre-wrap">
-                {config.platformConfig.systemPrompt}
-              </p>
-            </div>
+              {config.platformConfig.systemPrompt && (
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Platform System Prompt
+                  </Typography>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mt: 1 }}>
+                    {config.platformConfig.systemPrompt}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          ) : (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              No platform defaults configured. Contact your system administrator to set up AI models and system prompts.
+            </Alert>
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Organization-Specific Configuration */}
-      <div className="bg-card border rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">Organization Configuration</h2>
-        
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="orgSystemPrompt" className="block text-sm font-medium mb-2">
-              Organization System Prompt
-              {!canEdit && (
-                <span className="ml-2 text-xs text-muted-foreground">(Read-only)</span>
-              )}
-            </label>
-            <textarea
-              id="orgSystemPrompt"
+      <Card>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            Organization Configuration
+          </Typography>
+          
+          <Box sx={{ mt: 3 }}>
+            <TextField
+              label="Organization System Prompt"
+              multiline
+              rows={8}
+              fullWidth
               value={orgSystemPrompt}
               onChange={(e) => setOrgSystemPrompt(e.target.value)}
               disabled={!canEdit}
-              className="w-full min-h-[200px] px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-muted disabled:cursor-not-allowed"
               placeholder="Add organization-specific instructions (optional)"
+              helperText="This prompt will be appended to the platform system prompt for all AI interactions in your organization."
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              This prompt will be appended to the platform system prompt for all AI interactions in your organization.
-            </p>
-          </div>
 
-          {config?.combinedPrompt && (
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Combined Prompt Preview
-              </label>
-              <div className="bg-muted/50 border rounded p-3 max-h-[300px] overflow-y-auto">
-                <pre className="text-xs whitespace-pre-wrap">{config.combinedPrompt}</pre>
-              </div>
-            </div>
+            {config?.combinedPrompt && (
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Combined Prompt Preview
+                </Typography>
+                <Box
+                  sx={{
+                    bgcolor: 'grey.100',
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                    p: 2,
+                    maxHeight: '300px',
+                    overflow: 'auto',
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    component="pre"
+                    sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.75rem' }}
+                  >
+                    {config.combinedPrompt}
+                  </Typography>
+                </Box>
+              </Box>
+            )}
+          </Box>
+
+          {canEdit ? (
+            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setOrgSystemPrompt(config?.orgSystemPrompt || '');
+                  setError(null);
+                }}
+                disabled={saving}
+              >
+                Reset
+              </Button>
+              <Button
+                variant="contained"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </Box>
+          ) : (
+            <Alert severity="info" sx={{ mt: 3 }}>
+              <Typography variant="body2">
+                <strong>Note:</strong> Only organization owners can modify AI configuration.
+                Contact your organization owner to request changes.
+              </Typography>
+            </Alert>
           )}
-        </div>
-
-        {canEdit && (
-          <div className="mt-6 flex justify-end gap-3">
-            <button
-              onClick={() => {
-                setOrgSystemPrompt(config?.orgSystemPrompt || '');
-                setError(null);
-              }}
-              disabled={saving}
-              className="px-4 py-2 border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Reset
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
-        )}
-
-        {!canEdit && (
-          <div className="mt-6 p-4 bg-muted/50 border rounded">
-            <p className="text-sm text-muted-foreground">
-              <strong>Note:</strong> Only organization owners can modify AI configuration.
-              Contact your organization owner to request changes.
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
+        </CardContent>
+      </Card>
+    </Box>
   );
 };

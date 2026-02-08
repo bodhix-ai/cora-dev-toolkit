@@ -1,7 +1,24 @@
 # Standard: Org Admin Page Authorization Pattern
 
-**Status:** ACTIVE  
+> ## ⚠️ DEPRECATED (February 6, 2026)
+> 
+> **This standard has been superseded by:**
+> - [01_std_front_ADMIN-ARCH.md](./01_std_front_ADMIN-ARCH.md) - Admin page structure (component delegation pattern)
+> - [01_std_front_AUTH.md](./01_std_front_AUTH.md) - Auth patterns with BRIGHT LINE context table
+>
+> **Why deprecated:**
+> - This standard prescribes hooks directly in pages (OLD pattern)
+> - NEW pattern: Pages render module components that handle auth internally
+> - Only 19% of admin pages followed this pattern (13 need migration)
+> - Conflicts with industry best practices (Smart Components, Dumb Pages)
+>
+> **Migration:** See [01_std_front_ADMIN-ARCH.md § 7. Migration Guide](./01_std_front_ADMIN-ARCH.md#7-migration-guide)
+>
+> ---
+
+**Status:** ⚠️ **DEPRECATED**  
 **Date:** January 23, 2026  
+**Deprecated:** February 6, 2026  
 **Related ADR:** ADR-015-ADMIN-PAGE-AUTH-PATTERN.md
 
 ---
