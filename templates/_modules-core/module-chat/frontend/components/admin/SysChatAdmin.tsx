@@ -1,12 +1,12 @@
 /**
  * @component SysChatAdmin
  * @description System Chat Admin Component - Main admin page for Chat module system-level management
- * 
+ *
  * Provides tabbed interface for:
  * - Platform chat settings configuration
  * - Platform-wide analytics and statistics
  * - Session management across all organizations
- * 
+ *
  * @routes
  * - GET /admin/sys/chat/config - Get platform chat configuration
  * - PUT /admin/sys/chat/config - Update platform chat configuration
@@ -18,7 +18,8 @@
  * - DELETE /admin/sys/chat/sessions/{id} - Force delete chat session
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useUser, useRole } from "@ai-mod/module-access";
 import {
   Box,
   Tabs,
@@ -26,15 +27,13 @@ import {
   Typography,
   Breadcrumbs,
   Link,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import { NavigateNext as NavigateNextIcon } from "@mui/icons-material";
 import { SysSettingsTab } from "./SysSettingsTab";
 import { SysAnalyticsTab } from "./SysAnalyticsTab";
 import { SysSessionsTab } from "./SysSessionsTab";
-
-interface SysChatAdminProps {
-  token: string;
-}
 
 /**
  * System Chat Admin Page
@@ -44,18 +43,66 @@ interface SysChatAdminProps {
  * - Platform-wide analytics (usage across all orgs)
  * - Session management (view/delete sessions from any org)
  *
- * ✅ KB PATTERN: Receives token (extracted once at page level)
- * - Token retrieved once at mount, no repeated calls
- * - Tabs receive token and pass to API functions
- * - API functions accept token string directly
+ * ✅ STANDARD PATTERN (01_std_front_ADMIN-ARCH.md):
+ * - Component handles auth, loading internally
+ * - No props required - thin wrapper page just renders this component
+ * - Passes authAdapter to child tabs
  *
  * @example
  * ```tsx
- * <SysChatAdmin token={token} />
+ * <SysChatAdmin />
  * ```
  */
-export function SysChatAdmin({ token }: SysChatAdminProps): React.ReactElement {
+export function SysChatAdmin(): React.ReactElement {
+  // ✅ Auth and context hooks - component is self-sufficient
+  const { authAdapter, loading, isAuthenticated } = useUser();
+  const { isSysAdmin } = useRole();
+  
   const [activeTab, setActiveTab] = useState(0);
+  const [token, setToken] = useState<string | null>(null);
+  const [tokenLoading, setTokenLoading] = useState(true);
+
+  // ✅ Extract token from authAdapter (for tabs that need token string)
+  useEffect(() => {
+    if (!authAdapter || !isAuthenticated) {
+      setToken(null);
+      setTokenLoading(false);
+      return;
+    }
+
+    const initToken = async () => {
+      try {
+        const authToken = await authAdapter.getToken();
+        setToken(authToken);
+      } catch (err) {
+        console.error("Failed to retrieve token:", err);
+      } finally {
+        setTokenLoading(false);
+      }
+    };
+
+    initToken();
+  }, [authAdapter, isAuthenticated]);
+
+  // ✅ Loading state handling (from useUser OR token extraction)
+  if (loading || tokenLoading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "400px" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // ✅ Authorization check
+  if (!isSysAdmin) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          You do not have permission to access this page. System admin role required.
+        </Alert>
+      </Box>
+    );
+  }
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -83,10 +130,10 @@ export function SysChatAdmin({ token }: SysChatAdminProps): React.ReactElement {
 
       <Box sx={{ mb: 3 }}>
         <Typography variant="h4" component="h1" gutterBottom>
-          Chat Management
+          Platform Chat Management
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Manage platform-wide chat settings, monitor usage, and administrate chat sessions
+          Configure platform-wide chat settings, view analytics, and manage sessions across all organizations
         </Typography>
       </Box>
 
@@ -94,7 +141,7 @@ export function SysChatAdmin({ token }: SysChatAdminProps): React.ReactElement {
         <Tabs
           value={activeTab}
           onChange={handleTabChange}
-          aria-label="chat management tabs"
+          aria-label="platform chat management tabs"
         >
           <Tab label="Settings" id="tab-settings" aria-controls="tabpanel-settings" />
           <Tab label="Analytics" id="tab-analytics" aria-controls="tabpanel-analytics" />
@@ -103,15 +150,15 @@ export function SysChatAdmin({ token }: SysChatAdminProps): React.ReactElement {
       </Box>
 
       <Box role="tabpanel" hidden={activeTab !== 0} id="tabpanel-settings" aria-labelledby="tab-settings">
-        {activeTab === 0 && <SysSettingsTab token={token} />}
+        {activeTab === 0 && token && <SysSettingsTab token={token} />}
       </Box>
 
       <Box role="tabpanel" hidden={activeTab !== 1} id="tabpanel-analytics" aria-labelledby="tab-analytics">
-        {activeTab === 1 && <SysAnalyticsTab token={token} />}
+        {activeTab === 1 && token && <SysAnalyticsTab token={token} />}
       </Box>
 
       <Box role="tabpanel" hidden={activeTab !== 2} id="tabpanel-sessions" aria-labelledby="tab-sessions">
-        {activeTab === 2 && <SysSessionsTab token={token} />}
+        {activeTab === 2 && token && <SysSessionsTab token={token} />}
       </Box>
     </Box>
   );

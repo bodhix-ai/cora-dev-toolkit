@@ -4,6 +4,16 @@
   "description": "CORA Workspace Module - Frontend components, hooks, and API client",
   "main": "index.ts",
   "types": "index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.ts"
+    },
+    "./admin": {
+      "types": "./components/admin/index.ts",
+      "default": "./components/admin/index.ts"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "lint": "eslint . --ext .ts,.tsx",

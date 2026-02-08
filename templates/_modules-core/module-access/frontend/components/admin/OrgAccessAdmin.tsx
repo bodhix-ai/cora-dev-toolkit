@@ -27,10 +27,12 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  Breadcrumbs,
+  Link,
 } from "@mui/material";
-import { Search, Person, Edit, Delete } from "@mui/icons-material";
-import { useUser } from "../../contexts/UserContext";
-import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
+import { Search, Person, Edit, Delete, NavigateNext as NavigateNextIcon } from "@mui/icons-material";
+import { useUser, useRole, useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
+import { getOrgAdminUsers, updateOrgUserRole, removeOrgUser } from "../../lib/api";
 
 /**
  * Organization Access Admin Component
@@ -53,7 +55,10 @@ interface OrgUser {
 }
 
 export const OrgAccessAdmin = () => {
-  const { profile, loading: authLoading, isAuthenticated } = useUser();
+  const { authAdapter, loading: authLoading, isAuthenticated, profile } = useUser();
+  const { isOrgAdmin, hasPermission } = useRole();
+  const { currentOrganization } = useOrganizationContext();
+  const isOrgOwner = hasPermission('org_owner');
   const [users, setUsers] = useState<OrgUser[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<OrgUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,13 +67,11 @@ export const OrgAccessAdmin = () => {
   const [editingUser, setEditingUser] = useState<OrgUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<OrgUser | null>(null);
 
-  const isOrgOwner = profile?.currentOrgRole === "org_owner";
-
   useEffect(() => {
-    if (!authLoading && profile) {
+    if (!authLoading && profile && currentOrganization?.orgId) {
       fetchUsers();
     }
-  }, [authLoading, profile]);
+  }, [authLoading, profile, currentOrganization?.orgId]);
 
   useEffect(() => {
     filterUsers();
@@ -79,21 +82,24 @@ export const OrgAccessAdmin = () => {
       setLoading(true);
       setError(null);
       
-      if (!profile?.authAdapter) {
+      if (!authAdapter) {
         setError("Authentication required");
         return;
       }
 
-      const token = await profile.authAdapter.getToken();
+      if (!currentOrganization?.orgId) {
+        setError("No organization selected");
+        return;
+      }
+
+      const token = await authAdapter.getToken();
       if (!token) {
         setError("Authentication required");
         return;
       }
 
-      const apiClient = createCoraAuthenticatedClient(token);
-      const response = await apiClient.get<{ success: boolean; data: OrgUser[] }>(
-        "/admin/org/access/users"
-      );
+      // Use helper function (orgId as query param)
+      const response = await getOrgAdminUsers(token, currentOrganization.orgId);
 
       if (response.success) {
         setUsers(response.data || []);
@@ -125,15 +131,13 @@ export const OrgAccessAdmin = () => {
 
   const handleUpdateRole = async (userId: string, newRole: string) => {
     try {
-      if (!profile?.authAdapter) return;
+      if (!authAdapter || !currentOrganization?.orgId) return;
 
-      const token = await profile.authAdapter.getToken();
+      const token = await authAdapter.getToken();
       if (!token) return;
 
-      const apiClient = createCoraAuthenticatedClient(token);
-      await apiClient.put(`/admin/org/access/users/${userId}`, {
-        org_role: newRole,
-      });
+      // Use helper function (orgId as query param)
+      await updateOrgUserRole(token, currentOrganization.orgId, userId, newRole);
 
       await fetchUsers();
       setEditingUser(null);
@@ -145,13 +149,13 @@ export const OrgAccessAdmin = () => {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      if (!profile?.authAdapter) return;
+      if (!authAdapter || !currentOrganization?.orgId) return;
 
-      const token = await profile.authAdapter.getToken();
+      const token = await authAdapter.getToken();
       if (!token) return;
 
-      const apiClient = createCoraAuthenticatedClient(token);
-      await apiClient.delete(`/admin/org/access/users/${userId}`);
+      // Use helper function (orgId as query param)
+      await removeOrgUser(token, currentOrganization.orgId, userId);
 
       await fetchUsers();
       setDeletingUser(null);
@@ -191,12 +195,12 @@ export const OrgAccessAdmin = () => {
     );
   }
 
-  if (!["org_admin", "org_owner"].includes(profile.currentOrgRole || "")) {
+  if (!isOrgAdmin && !isOrgOwner) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">
           <AlertTitle>Access Denied</AlertTitle>
-          Organization admin access required. Current role: {profile?.currentOrgRole || "none"}
+          Organization admin access required.
         </Alert>
       </Box>
     );
@@ -212,6 +216,23 @@ export const OrgAccessAdmin = () => {
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Breadcrumb Navigation */}
+      <Breadcrumbs
+        separator={<NavigateNextIcon fontSize="small" />}
+        aria-label="breadcrumb"
+        sx={{ mb: 2 }}
+      >
+        <Link
+          underline="hover"
+          color="inherit"
+          href="/admin/org"
+          sx={{ display: 'flex', alignItems: 'center' }}
+        >
+          Org Admin
+        </Link>
+        <Typography color="text.primary">Access</Typography>
+      </Breadcrumbs>
+
       <Box sx={{ mb: 3 }}>
         <Typography variant="h4" gutterBottom>
           Organization Access Management

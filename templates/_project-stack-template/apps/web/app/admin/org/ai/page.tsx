@@ -1,6 +1,6 @@
 'use client';
 
-import { OrgAiAdmin } from '@{{PROJECT_NAME}}/module-ai';
+import { OrgAiAdmin } from '@{{PROJECT_NAME}}/module-ai/admin';
 
 /**
  * Organization AI Admin Page

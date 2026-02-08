@@ -1,12 +1,12 @@
 /**
  * @component OrgChatAdmin
  * @description Organization Chat Admin Component - Main admin page for Chat module organization-level management
- * 
+ *
  * Provides tabbed interface for:
  * - Organization chat settings (overrides)
  * - Organization session management (view, delete, restore)
  * - Organization analytics and usage stats
- * 
+ *
  * @routes
  * - GET /admin/org/chat/config - Get organization chat configuration
  * - PUT /admin/org/chat/config - Update organization chat configuration
@@ -21,7 +21,7 @@
  */
 
 import React, { useState } from "react";
-import type { AuthAdapter } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole, useOrganizationContext } from "@ai-mod/module-access";
 import {
   Box,
   Tabs,
@@ -29,17 +29,13 @@ import {
   Typography,
   Breadcrumbs,
   Link,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import { NavigateNext as NavigateNextIcon } from "@mui/icons-material";
 import { OrgSettingsTab } from "./OrgSettingsTab";
 import { OrgSessionsTab } from "./OrgSessionsTab";
 import { OrgAnalyticsTab } from "./OrgAnalyticsTab";
-
-interface OrgChatAdminProps {
-  authAdapter: AuthAdapter;
-  orgId: string;
-  orgName?: string;
-}
 
 /**
  * Organization Chat Admin Page
@@ -49,20 +45,61 @@ interface OrgChatAdminProps {
  * - Session management (view/delete/restore sessions)
  * - Organization analytics (usage by users/workspaces)
  *
- * ✅ STANDARD PATTERN: Receives authAdapter from page, passes to tabs
- * Follows KB admin component pattern for consistent authentication.
+ * ✅ STANDARD PATTERN (01_std_front_ADMIN-ARCH.md):
+ * - Component handles auth, loading, and org context internally
+ * - No props required - thin wrapper page just renders this component
+ * - Passes authAdapter and orgId to child tabs
  *
  * @example
  * ```tsx
- * <OrgChatAdmin authAdapter={authAdapter} />
+ * <OrgChatAdmin />
  * ```
  */
-export function OrgChatAdmin({ authAdapter, orgId, orgName }: OrgChatAdminProps): React.ReactElement {
+export function OrgChatAdmin(): React.ReactElement {
+  // ✅ Auth and context hooks - component is self-sufficient
+  const { authAdapter, loading } = useUser();
+  const { isOrgAdmin } = useRole();
+  const { currentOrganization } = useOrganizationContext();
+  
   const [activeTab, setActiveTab] = useState(0);
+
+  // ✅ Loading state handling (from useUser)
+  if (loading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "400px" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // ✅ Authorization check
+  if (!isOrgAdmin) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          You do not have permission to access this page. Organization admin role required.
+        </Alert>
+      </Box>
+    );
+  }
+
+  // ✅ Organization context check
+  if (!currentOrganization) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="warning">
+          Please select an organization to manage chat settings.
+        </Alert>
+      </Box>
+    );
+  }
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
   };
+
+  // Extract orgId from organization context
+  const orgId = currentOrganization.orgId;
 
   return (
     <Box sx={{ width: "100%", p: 3 }}>

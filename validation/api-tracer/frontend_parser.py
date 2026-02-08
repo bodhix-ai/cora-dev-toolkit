@@ -57,6 +57,11 @@ class FrontendParser:
             self._parse_fetch_calls(content)
             self._parse_authenticated_client_calls(content)
             self._parse_swr_calls(content)
+            # Note: buildUrl and JSDoc parsing disabled for now
+            # They cause route mismatches due to parameter name differences
+            # TODO: Need to align normalization between frontend and backend parsers
+            # self._parse_build_url_calls(content)
+            # self._parse_jsdoc_routes(content)
             
             logger.info(f"Parsed {file_path}: found {len(self.api_calls)} API calls")
             return self.api_calls
@@ -80,9 +85,13 @@ class FrontendParser:
         path = Path(directory)
         
         # Handle glob pattern with multiple extensions
+        # Skip common directories that shouldn't be scanned
+        skip_dirs = ['.next', 'node_modules', '.build', 'dist', 'build', '__pycache__', '.venv']
+        
         for ext in ['ts', 'tsx', 'js', 'jsx']:
             for file_path in path.glob(f"**/*.{ext}"):
-                if file_path.is_file() and 'node_modules' not in str(file_path):
+                # Skip if file is in an excluded directory
+                if file_path.is_file() and not any(skip in str(file_path) for skip in skip_dirs):
                     calls = self.parse_file(str(file_path))
                     all_calls.extend(calls)
         
@@ -246,6 +255,116 @@ class FrontendParser:
                     query_params=query_params,
                     source_code=match.group(0)
                 ))
+    
+    def _parse_build_url_calls(self, content: str):
+        """
+        Parse buildUrl() calls commonly used in CORA API clients.
+        
+        Example:
+            buildUrl(`/ws/${wsId}/chats`, params)
+            buildUrl('/users/me/chats', {})
+        """
+        # Pattern: buildUrl('url') or buildUrl(`url`)
+        build_url_pattern = r"buildUrl\s*\(\s*[`'\"]([^`'\"]+)[`'\"]"
+        
+        for match in re.finditer(build_url_pattern, content):
+            raw_endpoint = match.group(1)
+            
+            # Extract line number
+            line = content[:match.start()].count('\n') + 1
+            
+            # Strip query parameters from endpoint
+            endpoint, query_params = self._strip_query_params(raw_endpoint)
+            
+            # Skip overly generic patterns
+            if self._is_generic_pattern(endpoint):
+                logger.debug(f"Skipping generic pattern: {endpoint}")
+                continue
+            
+            # Try to determine HTTP method from surrounding context
+            # Look for JSDoc comment or function name hints
+            method = self._infer_method_from_context(content, match.start())
+            
+            path_params = self._extract_path_params(endpoint)
+            self.api_calls.append(APICall(
+                file=self.current_file,
+                line=line,
+                method=method,
+                endpoint=endpoint,
+                path_params=path_params,
+                query_params=query_params,
+                source_code=match.group(0)
+            ))
+    
+    def _parse_jsdoc_routes(self, content: str):
+        """
+        Parse JSDoc route comments.
+        
+        Example:
+            * GET /users/me/chats
+            * POST /ws/{wsId}/chats
+            * DELETE /chats/{sessionId}
+        """
+        # Pattern: * METHOD /path (in JSDoc comments)
+        jsdoc_pattern = r"\*\s+(GET|POST|PUT|PATCH|DELETE)\s+(/[^\s\n*]+)"
+        
+        for match in re.finditer(jsdoc_pattern, content, re.IGNORECASE):
+            method = match.group(1).upper()
+            raw_endpoint = match.group(2)
+            
+            # Extract line number
+            line = content[:match.start()].count('\n') + 1
+            
+            # Strip query parameters from endpoint
+            endpoint, query_params = self._strip_query_params(raw_endpoint)
+            
+            # Skip overly generic patterns
+            if self._is_generic_pattern(endpoint):
+                continue
+            
+            path_params = self._extract_path_params(endpoint)
+            self.api_calls.append(APICall(
+                file=self.current_file,
+                line=line,
+                method=method,
+                endpoint=endpoint,
+                path_params=path_params,
+                query_params=query_params,
+                source_code=match.group(0)
+            ))
+    
+    def _infer_method_from_context(self, content: str, position: int) -> str:
+        """
+        Infer HTTP method from surrounding context.
+        
+        Looks at:
+        1. Nearby JSDoc comments (e.g., * POST /path)
+        2. Function name patterns (e.g., createX, updateX, deleteX)
+        """
+        # Get surrounding context (200 chars before)
+        start = max(0, position - 200)
+        context = content[start:position]
+        
+        # Check for JSDoc method comment
+        jsdoc_match = re.search(r'\*\s+(GET|POST|PUT|PATCH|DELETE)\s+/', context, re.IGNORECASE)
+        if jsdoc_match:
+            return jsdoc_match.group(1).upper()
+        
+        # Check for function name patterns
+        func_match = re.search(r'function\s+(\w+)', context)
+        if func_match:
+            func_name = func_match.group(1).lower()
+            if func_name.startswith('create') or func_name.startswith('add'):
+                return 'POST'
+            elif func_name.startswith('update') or func_name.startswith('edit'):
+                return 'PATCH'
+            elif func_name.startswith('delete') or func_name.startswith('remove'):
+                return 'DELETE'
+            elif func_name.startswith('get') or func_name.startswith('list') or func_name.startswith('fetch'):
+                return 'GET'
+        
+        # Default to GET
+        return 'GET'
     
     def _parse_swr_calls(self, content: str):
         """
@@ -434,15 +553,17 @@ class FrontendParser:
         Examples:
             /organizations/${orgId}/kb -> ['orgId']
             /organizations/{orgId}/kb/{kbId} -> ['orgId', 'kbId']
+            /organizations/${organization.id}/kb -> ['organization.id']
         """
         params = []
         
-        # Template literal parameters: ${param}
-        template_params = re.findall(r'\$\{(\w+)\}', endpoint)
+        # Template literal parameters: ${param} or ${obj.prop}
+        # Handle dot notation for object property access
+        template_params = re.findall(r'\$\{([\w.]+)\}', endpoint)
         params.extend(template_params)
         
         # Curly brace parameters: {param}
-        curly_params = re.findall(r'\{(\w+)\}', endpoint)
+        curly_params = re.findall(r'\{([\w.]+)\}', endpoint)
         params.extend(curly_params)
         
         return params
@@ -450,12 +571,21 @@ class FrontendParser:
     def normalize_endpoint(self, endpoint: str) -> str:
         """
         Normalize endpoint path for comparison.
-        
-        Converts template literals to curly brace format:
-            /organizations/${orgId}/kb -> /organizations/{orgId}/kb
+
+        Converts ALL path parameters to generic {param} format to avoid false positives
+        from parameter naming differences:
+            /chats/${sessionId}/kb -> /chats/{param}/kb
+            /chats/{chatId}/kb -> /chats/{param}/kb
+            /organizations/${orgId}/kb -> /organizations/{param}/kb
+            
+        This matches the approach used in component_parser.py.
         """
-        # Replace template literal parameters with curly brace format
-        normalized = re.sub(r'\$\{(\w+)\}', r'{\1}', endpoint)
+        # Step 1: Replace template literal parameters (${var}) with {param}
+        normalized = re.sub(r'\$\{[\w.]+\}', '{param}', endpoint)
+        
+        # Step 2: Replace curly brace parameters ({var}) with {param}
+        normalized = re.sub(r'\{[\w.]+\}', '{param}', normalized)
+        
         return normalized
     
     def get_unique_endpoints(self) -> Set[str]:

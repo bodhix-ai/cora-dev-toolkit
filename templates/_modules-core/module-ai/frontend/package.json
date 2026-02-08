@@ -5,7 +5,11 @@
   "main": "./index.ts",
   "types": "./index.ts",
   "exports": {
-    ".": "./index.ts"
+    ".": "./index.ts",
+    "./admin": {
+      "types": "./components/admin/index.d.ts",
+      "default": "./components/admin/index.ts"
+    }
   },
   "scripts": {
     "lint": "eslint .",

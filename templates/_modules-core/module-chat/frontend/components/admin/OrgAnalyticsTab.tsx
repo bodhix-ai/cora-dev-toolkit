@@ -24,7 +24,8 @@ import {
   TableRow,
   Paper,
 } from "@mui/material";
-import { useUser, AuthAdapter } from "@{{PROJECT_NAME}}/module-access";
+import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
 import {
   getOrgAdminAnalytics,
   getOrgAdminUserStats,
@@ -37,7 +38,7 @@ import {
  */
 interface OrgAnalyticsTabProps {
   orgId: string;
-  authAdapter: AuthAdapter;
+  authAdapter: CoraAuthAdapter;
 }
 
 interface AnalyticsData {

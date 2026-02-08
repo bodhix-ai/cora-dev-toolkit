@@ -72,3 +72,19 @@ validation-results-current.txt
 # Temporary validation and error logs
 typescript-errors*.txt
 validation-*.txt
+
+# API Tracer validation outputs
+api-tracer-*.txt
+api-tracer-*.json
+
+# Session validation baselines
+s6-session*.json
+s6-session*.txt
+
+# General validation outputs (not already covered)
+validation-output.json
+validation-step*.json
+
+# Temp files
+0,
+json

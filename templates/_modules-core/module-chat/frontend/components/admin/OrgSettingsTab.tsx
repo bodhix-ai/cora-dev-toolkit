@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import type { AuthAdapter } from "@{{PROJECT_NAME}}/module-access";
+import type { CoraAuthAdapter } from "@{{PROJECT_NAME}}/api-client";
 import {
   Box,
   Card,
@@ -33,7 +33,7 @@ interface ConfigState {
 }
 
 interface OrgSettingsTabProps {
-  authAdapter?: AuthAdapter;
+  authAdapter?: CoraAuthAdapter;
   orgId: string;
 }
 

@@ -1,6 +1,6 @@
 /**
- * @component PlatformMgmtAdmin
- * @description Platform Management Admin Component - Main admin page for Platform Management module
+ * @component SysMgmtAdmin
+ * @description System Management Admin Component - Main admin page for System Management module
  * 
  * Provides tabbed interface for:
  * - Lambda warming schedule management
@@ -27,8 +27,11 @@ import {
   Typography,
   Breadcrumbs,
   Link,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import { NavigateNext as NavigateNextIcon } from "@mui/icons-material";
+import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
 import { ScheduleTab } from "./ScheduleTab";
 import { PerformanceTab } from "./PerformanceTab";
 import { StorageTab } from "./StorageTab";
@@ -49,12 +52,47 @@ import { ModuleConfigTab } from "./ModuleConfigTab";
  * <PlatformMgmtAdmin />
  * ```
  */
-export function PlatformMgmtAdmin(): React.ReactElement {
+export function SysMgmtAdmin(): React.ReactElement {
+  // Auth hooks (ADR-019a compliance)
+  const { loading, isAuthenticated, profile } = useUser();
+  const { isSysAdmin } = useRole();
+  
   const [activeTab, setActiveTab] = useState(0);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Authentication check
+  if (!isAuthenticated || !profile) {
+    return (
+      <Box p={3}>
+        <Alert severity="error">
+          You must be logged in to access this page.
+        </Alert>
+      </Box>
+    );
+  }
+
+  // Authorization check - system admins only
+  if (!isSysAdmin) {
+    return (
+      <Box p={3}>
+        <Alert severity="error">
+          Access denied. System administrator role required.
+        </Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ width: "100%", p: 3 }}>
@@ -134,4 +172,4 @@ export function PlatformMgmtAdmin(): React.ReactElement {
   );
 }
 
-export default PlatformMgmtAdmin;
+export default SysMgmtAdmin;
