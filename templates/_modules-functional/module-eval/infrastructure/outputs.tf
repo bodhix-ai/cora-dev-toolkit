@@ -335,6 +335,28 @@ output "api_routes" {
     },
 
     # =========================================================================
+    # eval-results: Workspace Config Access (for eval-opt and evaluation creation)
+    # =========================================================================
+    {
+      method      = "GET"
+      path        = "/ws/{wsId}/eval/config/doc-types"
+      integration = aws_lambda_function.eval_results.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/ws/{wsId}/eval/config/criteria-sets"
+      integration = aws_lambda_function.eval_results.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/ws/{wsId}/eval/config/criteria-sets/{criteriaSetId}/items"
+      integration = aws_lambda_function.eval_results.invoke_arn
+      public      = false
+    },
+
+    # =========================================================================
     # eval-results: Evaluation CRUD
     # =========================================================================
     {

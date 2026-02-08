@@ -230,6 +230,8 @@ class QueryParser:
         
         # ENHANCEMENT: Extract columns from 'filters' parameter for ALL methods
         # This catches column mismatches in WHERE clauses (e.g., invite_id vs id)
+        
+        # Check keyword argument: common.find_many('table', filters={'col': val})
         for keyword in node.keywords:
             if keyword.arg == 'filters':
                 if isinstance(keyword.value, ast.Dict):
@@ -238,6 +240,18 @@ class QueryParser:
                             columns.append(key.value)
                         elif isinstance(key, ast.Str):  # Python 3.7 compatibility
                             columns.append(key.s)
+        
+        # CRITICAL FIX: Also check SECOND positional argument for filters dict
+        # Pattern: common.find_many('table', {'col': val})
+        # This is the most common pattern in CORA Lambda code
+        if len(node.args) > 1:
+            arg = node.args[1]
+            if isinstance(arg, ast.Dict):
+                for key in arg.keys:
+                    if isinstance(key, ast.Constant):
+                        columns.append(key.value)
+                    elif isinstance(key, ast.Str):  # Python 3.7 compatibility
+                        columns.append(key.s)
         
         # Create query reference
         if table_name:
