@@ -37,6 +37,12 @@ CREATE TABLE IF NOT EXISTS eval_opt_truth_keys (
     invalidated_at TIMESTAMPTZ,
     invalidation_reason TEXT,
     
+    -- Audit columns (ADR-015)
+    created_by UUID NOT NULL REFERENCES auth.users(id),
+    updated_by UUID REFERENCES auth.users(id),  -- Nullable: only set on UPDATE, not INSERT
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    
     UNIQUE(group_id, criteria_item_id)
 );
 
@@ -55,6 +61,10 @@ COMMENT ON COLUMN eval_opt_truth_keys.evaluated_by IS 'Analyst who performed man
 COMMENT ON COLUMN eval_opt_truth_keys.evaluated_at IS 'Manual evaluation timestamp';
 COMMENT ON COLUMN eval_opt_truth_keys.validated IS 'Whether truth key has been validated by second analyst';
 COMMENT ON COLUMN eval_opt_truth_keys.is_valid IS 'Whether truth key is still valid (false if criteria changed)';
+COMMENT ON COLUMN eval_opt_truth_keys.created_by IS 'User who created this record (audit column per ADR-015)';
+COMMENT ON COLUMN eval_opt_truth_keys.updated_by IS 'User who last updated this record (NULL until first update, audit column per ADR-015)';
+COMMENT ON COLUMN eval_opt_truth_keys.created_at IS 'Record creation timestamp (audit column per ADR-015)';
+COMMENT ON COLUMN eval_opt_truth_keys.updated_at IS 'Record last update timestamp (audit column per ADR-015)';
 
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_eval_opt_truth_key_group 
@@ -73,6 +83,27 @@ CREATE INDEX IF NOT EXISTS idx_eval_opt_truth_key_validated
     ON eval_opt_truth_keys(group_id, validated);
 CREATE INDEX IF NOT EXISTS idx_eval_opt_truth_key_valid 
     ON eval_opt_truth_keys(group_id, is_valid);
+
+-- ============================================================================
+-- TRIGGERS
+-- ============================================================================
+
+-- Trigger function to auto-update updated_at
+CREATE OR REPLACE FUNCTION update_eval_opt_truth_keys_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    -- Note: updated_by should be set by application code (org_common handles this)
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger for updated_at
+DROP TRIGGER IF EXISTS eval_opt_truth_keys_updated_at_trigger ON eval_opt_truth_keys;
+CREATE TRIGGER eval_opt_truth_keys_updated_at_trigger
+    BEFORE UPDATE ON eval_opt_truth_keys
+    FOR EACH ROW
+    EXECUTE FUNCTION update_eval_opt_truth_keys_updated_at();
 
 -- ============================================================================
 -- End of migration

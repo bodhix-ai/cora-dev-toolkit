@@ -1,8 +1,8 @@
 {
-  "name": "@{{PROJECT_NAME}}/module-eval-opt",
+  "name": "@{{PROJECT_NAME}}/module-eval-studio",
   "version": "1.0.0",
   "private": true,
-  "description": "CORA Evaluation Optimizer - BA Workbench for prompt optimization using sample-driven training with truth keys",
+  "description": "CORA Evaluation Studio - BA Workbench for designing evaluation rubrics, creating truth sets, and optimizing prompts",
   "main": "index.ts",
   "scripts": {
     "dev": "next dev",

@@ -610,48 +610,95 @@ def handle_update_truth_set(event: Dict[str, Any], user_id: str, ws_id: str, run
     """Update truth set evaluations."""
     run_id = common.validate_uuid(run_id, 'runId')
     ts_id = common.validate_uuid(ts_id, 'tsId')
-    
+
     if not can_manage_opt_run(user_id, run_id):
         raise common.ForbiddenError('Permission denied')
+
+    # Get run data to extract doc_type_id and criteria_set_id
+    run = common.find_one('eval_opt_runs', {'id': run_id, 'ws_id': ws_id})
+    if not run:
+        raise common.NotFoundError(f"Optimization run {run_id} not found")
     
     doc_group = common.find_one('eval_opt_doc_groups', {'id': ts_id, 'ws_id': ws_id})
     if not doc_group:
         raise common.NotFoundError(f"Truth set {ts_id} not found")
     
+    # Get criteria set to extract version
+    criteria_set_id = run.get('criteria_set_id')
+    doc_type_id = run.get('doc_type_id')
+    
+    if not criteria_set_id:
+        raise common.BadRequestError("Run is missing criteria_set_id")
+    if not doc_type_id:
+        raise common.BadRequestError("Run is missing doc_type_id")
+    
+    criteria_set = common.find_one('eval_criteria_sets', {'id': criteria_set_id})
+    if not criteria_set:
+        raise common.NotFoundError(f"Criteria set {criteria_set_id} not found")
+    
+    # Convert version to integer (database column is INTEGER, not DECIMAL)
+    # Use float() first to handle string "1.0", then int()
+    criteria_set_version = int(float(criteria_set.get('version', 1)))
+
     body = json.loads(event.get('body', '{}'))
     evaluations = body.get('evaluations', [])
-    
+
     # Upsert truth keys
     for eval_data in evaluations:
         criteria_item_id = eval_data.get('criteria_item_id')
         if not criteria_item_id:
             continue
-        
+
         existing = common.find_one('eval_opt_truth_keys', {
             'group_id': ts_id,
             'criteria_item_id': criteria_item_id
         })
         
+        # Extract section_responses (new format from frontend)
+        section_responses = eval_data.get('section_responses', {})
+        
+        # Map new format to database fields
+        # For now, map justification to truth_explanation
+        truth_explanation = section_responses.get('justification', '') or section_responses.get('Justification', '')
+        
+        # If no justification, require at least some text
+        if not truth_explanation:
+            truth_explanation = 'Manual evaluation'
+
         truth_key_data = {
             'group_id': ts_id,
             'criteria_item_id': criteria_item_id,
-            'truth_status_id': eval_data.get('status_id'),
-            'truth_confidence': eval_data.get('confidence'),
-            'truth_explanation': eval_data.get('explanation'),
-            'truth_citations': json.dumps(eval_data.get('citations', [])) if eval_data.get('citations') else None
+            'doc_type_id': doc_type_id,
+            'criteria_set_id': criteria_set_id,
+            'criteria_set_version': criteria_set_version,
+            'truth_status_id': eval_data.get('status_id'),  # May be None - will be handled below
+            'truth_confidence': section_responses.get('score', eval_data.get('confidence')),
+            'truth_explanation': truth_explanation,
+            'truth_citations': json.dumps(section_responses.get('citations', [])) if section_responses.get('citations') else None,
+            'evaluated_by': user_id
         }
         
+        # If truth_status_id is None, use a default status (get first available status)
+        if not truth_key_data['truth_status_id']:
+            # Get first available status option as fallback (use find_many with limit)
+            default_statuses = common.find_many('eval_sys_status_options', {}, order='score_value.asc', limit=1)
+            if default_statuses and len(default_statuses) > 0:
+                truth_key_data['truth_status_id'] = default_statuses[0]['id']
+            else:
+                raise common.BadRequestError("No status options available in system")
+
         if existing:
+            truth_key_data['updated_by'] = user_id
             common.update_one('eval_opt_truth_keys', {'id': existing['id']}, truth_key_data)
         else:
             truth_key_data['created_by'] = user_id
             common.insert_one('eval_opt_truth_keys', truth_key_data)
-    
+
     # Update doc group status if all criteria evaluated
     total_evaluated = len(evaluations)
     if total_evaluated > 0:
         common.update_one('eval_opt_doc_groups', {'id': ts_id}, {'status': 'evaluated'})
-    
+
     return common.success_response({'message': 'Evaluations saved'})
 
 
