@@ -33,6 +33,22 @@ VALID_MODULES = {
     'eval',    # module-eval - Evaluation & testing
 }
 
+# Valid entity-based data route prefixes
+# Data routes use entity names (not module shortnames) as first path segment
+VALID_DATA_PREFIXES = {
+    'chats',       # Chat sessions and messages (module-chat, module-kb)
+    'orgs',        # Organizations (module-access)
+    'users',       # User accounts (module-access)
+    'profiles',    # User profiles (module-access)
+    'identities',  # Identity provisioning (module-access)
+    'workspaces',  # Workspace resources (module-ws)
+    'kbs',         # Knowledge bases (module-kb)
+    'documents',   # Documents (module-kb)
+    'evaluations', # Evaluation runs (module-eval)
+    'models',      # AI models (module-ai)
+    'providers',   # AI providers (module-ai)
+}
+
 # Route patterns
 # Updated to support path parameters like {kbId}, {docId} at resource level
 ADMIN_SYS_PATTERN = re.compile(r'^/admin/sys/([a-z]+)/([a-z][a-z0-9-]*|\{[a-zA-Z]+\})(/.*)?$')
@@ -248,13 +264,14 @@ def validate_route(route: str, file: str, line: int) -> List[Violation]:
     elif category == 'data_api':
         match = DATA_API_PATTERN.match(route)
         if match:
-            module = match.group(1)
-            if module not in VALID_MODULES:
+            prefix = match.group(1)
+            # Check against both valid modules and valid data prefixes
+            if prefix not in VALID_MODULES and prefix not in VALID_DATA_PREFIXES:
                 # Data routes can have any valid path, just warn if it looks like a module
-                if len(module) <= 10:  # Short names might be modules
+                if len(prefix) <= 10:  # Short names might be unrecognized entities
                     violations.append(Violation(
                         route=route,
-                        message=f"Data route module '{module}' not in standard module list (may be intentional)",
+                        message=f"Data route prefix '{prefix}' not in standard module or entity list (may be intentional)",
                         severity=Severity.WARNING,
                         file=file,
                         line=line,
