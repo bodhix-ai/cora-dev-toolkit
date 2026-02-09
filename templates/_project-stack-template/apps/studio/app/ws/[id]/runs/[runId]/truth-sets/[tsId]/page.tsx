@@ -162,12 +162,8 @@ export default function TruthSetDetailPage() {
           setCriteriaItems((criteriaResponse as any).data);
         }
 
-        // Fetch status options using org-scoped route
-        // orgId is guaranteed to be available here (checked at useEffect entry)
-        const statusResponse = await client.get(`/admin/org/eval/status-options?orgId=${orgId}`);
-        if ((statusResponse as any).data) {
-          setStatusOptions((statusResponse as any).data);
-        }
+        // Status options removed — Sprint 5 uses rubric-based scoring (0-100)
+        // BA provides score directly, status label derived from rubric
       } catch (err) {
         console.error("Error fetching data:", err);
         setError(err instanceof Error ? err.message : "Failed to load truth set");
@@ -495,7 +491,6 @@ export default function TruthSetDetailPage() {
           {currentCriterion ? (
             <CriteriaEvaluationForm
               criterion={currentCriterion}
-              statusOptions={statusOptions}
               responseSections={responseSections}
               initialValue={evaluations.get(currentCriterion.id)}
               selectedText={selectedText}

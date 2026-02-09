@@ -27,7 +27,7 @@ interface CriteriaEvaluationFormProps {
     requirement: string;
     description?: string;
   };
-  statusOptions: Array<{
+  statusOptions?: Array<{
     id: string;
     name: string;
     description?: string;
@@ -70,7 +70,7 @@ export default function CriteriaEvaluationForm({
   };
 
   // Check if all required fields are filled
-  const isComplete = responseSections.every(
+  const isComplete = (responseSections || []).every(
     section => !section.required || (sectionResponses[section.id] !== undefined && sectionResponses[section.id] !== '')
   );
 
@@ -198,7 +198,7 @@ export default function CriteriaEvaluationForm({
       </div>
 
       {/* Dynamic Response Section Fields */}
-      {responseSections.map((section) => (
+      {(responseSections || []).map((section) => (
         <div key={section.id} style={{ marginBottom: "1rem" }}>
           <label style={{ display: "block", fontWeight: "bold", marginBottom: "0.5rem", fontSize: "0.875rem" }}>
             {section.name} {section.required && '*'}
