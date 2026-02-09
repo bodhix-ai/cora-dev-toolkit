@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
+import { useWorkspace } from "@{{PROJECT_NAME}}/module-ws";
 import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import ResponseStructureBuilder from "../../../../../../components/ResponseStructureBuilder";
 
@@ -29,8 +30,10 @@ export default function ResponseSectionsPage() {
   const runId = params?.runId as string;
 
   const { authAdapter, isAuthenticated, isLoading: authLoading } = useUser();
+  const { currentOrganization } = useOrganizationContext();
+  const orgId = currentOrganization?.orgId || "";
+  const { workspace, loading: wsLoading } = useWorkspace(wsId, { autoFetch: true, orgId });
   const [sections, setSections] = useState<ResponseSection[]>([]);
-  const [wsName, setWsName] = useState<string>("");
   const [runName, setRunName] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -44,12 +47,6 @@ export default function ResponseSectionsPage() {
       try {
         const token = await authAdapter.getToken();
         const client = createCoraAuthenticatedClient(token);
-        // Fetch workspace name
-        try {
-          const wsRes = await client.get(`/ws/${wsId}`);
-          if ((wsRes as any).data?.name) setWsName((wsRes as any).data.name);
-        } catch (_) { /* breadcrumb falls back to generic */ }
-
         // Fetch run name
         try {
           const runRes = await client.get(`/ws/${wsId}/optimization/runs/${runId}`);
@@ -124,7 +121,7 @@ export default function ResponseSectionsPage() {
           <a
             onClick={() => router.push(`/ws/${wsId}?tab=2`)}
             style={{ color: "#007bff", cursor: "pointer", textDecoration: "none" }}
-          >{wsName || "Workspace"}</a>
+          >{workspace?.name || "Workspace"}</a>
           <span style={{ margin: "0 0.5rem", color: "#999" }}>/</span>
           <a
             onClick={handleCancel}

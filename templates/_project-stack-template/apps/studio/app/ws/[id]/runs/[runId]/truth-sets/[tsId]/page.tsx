@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser, useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
+import { useWorkspace } from "@{{PROJECT_NAME}}/module-ws";
 import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import { createKbModuleClient } from "@{{PROJECT_NAME}}/module-kb";
 import Pagination from "@mui/material/Pagination";
@@ -83,6 +84,7 @@ export default function TruthSetDetailPage() {
 
   const { authAdapter, isAuthenticated, isLoading: authLoading } = useUser();
   const { orgId, organization } = useOrganizationContext();
+  const { workspace } = useWorkspace(wsId, { autoFetch: true, orgId });
 
   // Data state
   const [truthSet, setTruthSet] = useState<TruthSet | null>(null);
@@ -93,7 +95,6 @@ export default function TruthSetDetailPage() {
   const [currentCriterionIndex, setCurrentCriterionIndex] = useState(0);
   const [evaluations, setEvaluations] = useState<Map<string, CriterionEvaluation>>(new Map());
   const [selectedText, setSelectedText] = useState("");
-  const [wsName, setWsName] = useState<string>("");
   const [runName, setRunName] = useState<string>("");
 
   // UI state
@@ -121,12 +122,6 @@ export default function TruthSetDetailPage() {
           return;
         }
         const client = createCoraAuthenticatedClient(token);
-
-        // Fetch workspace name for breadcrumbs
-        try {
-          const wsRes = await client.get(`/ws/${wsId}`);
-          if ((wsRes as any).data?.name) setWsName((wsRes as any).data.name);
-        } catch (_) { /* breadcrumb falls back to generic */ }
 
         // Fetch optimization run to get criteria_set_id and response sections
         const runResponse = await client.get(`/ws/${wsId}/optimization/runs/${runId}`);
@@ -329,7 +324,7 @@ export default function TruthSetDetailPage() {
           <a
             onClick={() => router.push(`/ws/${wsId}?tab=2`)}
             style={{ color: "#007bff", cursor: "pointer", textDecoration: "none" }}
-          >{wsName || "Workspace"}</a>
+          >{workspace?.name || "Workspace"}</a>
           <span style={{ margin: "0 0.5rem", color: "#999" }}>/</span>
           <a
             onClick={handleBack}
