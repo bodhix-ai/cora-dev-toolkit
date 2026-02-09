@@ -24,12 +24,14 @@ This repository uses **initiative-scoped context files** to avoid merge conflict
 
 ## Current Priority Order (February 8, 2026)
 
-1. **Error Remediation S7 (Active)** - Admin page thin wrapper migration (completing S6 work)
+1. **Error Remediation S8 (Active)** - Error category remediation (Phase 1 org admin tabs complete, Schema PASSES, 506 errors remaining)
 2. **WS Plugin Architecture S5** - Tab ordering, module metrics (S1-S4 complete)
 3. **Module-Eval Citations** - Complete citations implementation (unblocked, awaiting capacity)
 4. **Test Project Resource Isolation** - Parallel test environments
 
 **Recent Completions:**
+- ✅ Error Remediation S8 Phase 1 + Schema Fix (February 8, 2026 - Org admin tabs, Auth 18→0, Schema 2→0)
+- ✅ Error Remediation S7 (February 8, 2026 - Admin thin wrapper migration, 98.5% compliance)
 - ✅ Auth Standardization S1-S3 (February 2026 - 312 permission errors fixed, 100% ADR-019 compliance)
 - ✅ WS Plugin Architecture S4 (February 2026 - Left nav filtering, DB naming compliance)
 - ✅ Error Remediation S1-S6 (571→422 errors, 26% reduction post-S6)
@@ -57,4 +59,4 @@ This repository uses **initiative-scoped context files** to avoid merge conflict
 
 ---
 
-**Updated:** February 8, 2026 (Updated Error Remediation to Sprint S7)
+**Updated:** February 8, 2026 (S8 Session 30: Schema fix, 506 errors remaining)
