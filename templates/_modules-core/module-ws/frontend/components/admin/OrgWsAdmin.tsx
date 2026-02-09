@@ -1,7 +1,6 @@
 /**
- * OrgWsAdmin Component
- *
- * Organization admin page for workspace statistics and management.
+ * @component OrgWsAdmin
+ * @description Organization admin page for workspace statistics and management.
  * 
  * Features:
  * - All Workspaces Tab: Complete workspace list with bulk operations
@@ -9,7 +8,6 @@
  * - Settings Tab: Organization-level workspace settings
  * 
  * @routes
- * Routes - Organization Admin:
  * - GET /admin/org/ws/settings - Get org workspace settings
  * - PUT /admin/org/ws/settings - Update org workspace settings
  * - GET /admin/org/ws/analytics - Get workspace analytics for organization

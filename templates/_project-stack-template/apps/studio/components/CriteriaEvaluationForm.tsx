@@ -83,6 +83,7 @@ export default function CriteriaEvaluationForm({
         return (
           <input
             type="number"
+            aria-label={section.name}
             value={value}
             onChange={(e) => handleSectionChange(section.id, parseFloat(e.target.value) || 0)}
             onBlur={onBlur}
@@ -102,6 +103,7 @@ export default function CriteriaEvaluationForm({
       case 'text':
         return (
           <textarea
+            aria-label={section.name}
             value={value}
             onChange={(e) => handleSectionChange(section.id, e.target.value)}
             onBlur={onBlur}
@@ -125,6 +127,7 @@ export default function CriteriaEvaluationForm({
         return (
           <input
             type="checkbox"
+            aria-label={section.name}
             checked={value === true}
             onChange={(e) => handleSectionChange(section.id, e.target.checked)}
             onBlur={onBlur}
@@ -140,6 +143,7 @@ export default function CriteriaEvaluationForm({
         return (
           <input
             type="text"
+            aria-label={section.name}
             value={value}
             onChange={(e) => handleSectionChange(section.id, e.target.value)}
             onBlur={onBlur}

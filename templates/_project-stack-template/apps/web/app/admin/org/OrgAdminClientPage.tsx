@@ -15,11 +15,15 @@ interface OrgAdminClientPageProps {
 const FUNCTIONAL_MODULES = ['chat', 'eval', 'voice'];
 
 /**
- * Organization Administration Client Page
+ * @component OrgAdminClientPage
+ * @description Organization Administration Client Page
  *
  * Client component that handles authentication and displays admin cards.
  * Cards are passed from server component (loaded with fs access).
  * Functional module cards are filtered based on runtime module enabled state.
+ *
+ * @routes
+ * - GET /admin/org - Organization administration dashboard
  */
 export default function OrgAdminClientPage({ adminCards }: OrgAdminClientPageProps) {
   const { profile, loading, isAuthenticated } = useUser();

@@ -353,7 +353,7 @@ export default function EvalOptWorkspaceDetailPage() {
         {/* Tab: Overview */}
         <TabPanel value={activeTab} index={0}>
           <Box sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h5" gutterBottom>
               Optimization Overview
             </Typography>
             <Grid container spacing={3}>
@@ -484,7 +484,7 @@ export default function EvalOptWorkspaceDetailPage() {
               sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}
             >
               <div>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h5" gutterBottom>
                   Optimization Runs
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
@@ -507,7 +507,7 @@ export default function EvalOptWorkspaceDetailPage() {
             ) : runs.length === 0 ? (
               <Paper variant="outlined" sx={{ p: 4, textAlign: "center" }}>
                 <Science sx={{ fontSize: 48, color: "text.secondary", mb: 2 }} />
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h5" gutterBottom>
                   No optimization runs yet
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -587,7 +587,7 @@ export default function EvalOptWorkspaceDetailPage() {
         {/* Tab: Settings */}
         <TabPanel value={activeTab} index={3}>
           <Box sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h5" gutterBottom>
               Workspace Settings
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>

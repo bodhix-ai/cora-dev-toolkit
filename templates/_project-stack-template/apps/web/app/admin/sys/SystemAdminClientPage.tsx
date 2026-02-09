@@ -15,11 +15,15 @@ interface SystemAdminClientPageProps {
 const FUNCTIONAL_MODULES = ['chat', 'eval', 'voice'];
 
 /**
- * System Administration Client Page
+ * @component SystemAdminClientPage
+ * @description System Administration Client Page
  *
  * Client component that handles authentication and displays admin cards.
  * Cards are passed from server component (loaded with fs access).
  * Functional module cards are filtered based on runtime module enabled state.
+ *
+ * @routes
+ * - GET /admin/sys - System administration dashboard
  */
 export default function SystemAdminClientPage({ adminCards }: SystemAdminClientPageProps) {
   const { profile, loading, isAuthenticated } = useUser();

@@ -138,7 +138,7 @@ def can_manage_opt_run(user_id: str, run_id: str) -> bool:
         member = common.find_one('ws_members', {
             'ws_id': ws_id,
             'user_id': user_id,
-            'role': 'owner'
+            'ws_role': 'owner'
         })
         if member:
             return True
@@ -250,7 +250,7 @@ def can_edit_opt_truth_key(user_id: str, truth_key_id: str) -> bool:
         member = common.find_one('ws_members', {
             'ws_id': ws_id,
             'user_id': user_id,
-            'role': 'owner'
+            'ws_role': 'owner'
         })
         if member:
             return True

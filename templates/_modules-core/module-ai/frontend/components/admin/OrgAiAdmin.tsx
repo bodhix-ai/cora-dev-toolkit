@@ -185,6 +185,7 @@ export const OrgAiAdmin = () => {
           color="inherit"
           href="/admin/org"
           sx={{ display: 'flex', alignItems: 'center' }}
+          aria-label="Navigate to Org Admin"
         >
           Org Admin
         </Link>
@@ -213,7 +214,7 @@ export const OrgAiAdmin = () => {
       {/* Platform Defaults Section */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h5" gutterBottom>
             Platform Defaults
           </Typography>
           {config?.platformConfig && (
@@ -268,7 +269,7 @@ export const OrgAiAdmin = () => {
       {/* Organization-Specific Configuration */}
       <Card>
         <CardContent>
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h5" gutterBottom>
             Organization Configuration
           </Typography>
           

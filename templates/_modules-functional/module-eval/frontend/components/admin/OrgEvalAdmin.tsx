@@ -1,14 +1,15 @@
 /**
- * OrgEvalAdmin - Organization Evaluation Admin Component
- *
- * @routes
- * - /admin/org/eval - Organization evaluation configuration
+ * @component OrgEvalAdmin
+ * @description Organization Evaluation Admin Component
  *
  * Admin component with tabs for all org eval admin functions:
  * - Configuration (eval_cfg_org)
  * - AI Prompts (eval_cfg_org_prompts)
  * - Document Types
  * - Evaluation Criteria
+ *
+ * @routes
+ * - GET /admin/org/eval - Organization evaluation configuration
  */
 
 "use client";

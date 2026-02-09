@@ -45,7 +45,7 @@ export default function HomePage() {
       </Typography>
       
       <Paper sx={{ mt: 3, p: 2, bgcolor: "grey.100" }}>
-        <Typography variant="h6" gutterBottom>Evaluation Optimization Workbench</Typography>
+        <Typography variant="h5" gutterBottom>Evaluation Optimization Workbench</Typography>
         <Typography variant="body2" gutterBottom>
           This workbench enables business analysts to optimize prompt configurations
           for document evaluation using sample-driven training.

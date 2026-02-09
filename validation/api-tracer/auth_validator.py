@@ -149,6 +149,18 @@ class FrontendAuthValidator:
             return []
         
         # =======================================================================
+        # SKIP COMPONENT FILES (Files with @component metadata)
+        # Component files are allowed to have hooks - they're the TARGET of page delegation.
+        # Only route pages (page.tsx files that delegate to components) need thin wrapper validation.
+        # =======================================================================
+        
+        component_name = self._extract_component_name_from_path(file_path)
+        if component_name and component_name in self.known_components:
+            # This is a component file with @component metadata, not a route page
+            # Components are SUPPOSED to have hooks - skip thin wrapper validation
+            return []
+        
+        # =======================================================================
         # THIN WRAPPER CHECK (01_std_front_ADMIN-ARCH.md)
         # Admin pages MUST be thin wrappers that ONLY render a module component.
         # Pages should NOT have hooks - all logic belongs in the component.
@@ -243,14 +255,17 @@ class FrontendAuthValidator:
         # - Admin component delegation (01_std_front_ADMIN-ARCH.md):
         #   - return <OrgAiAdmin /> or <SysMgmtAdmin /> or <OrgAccessAdmin />
         delegation_patterns = [
+            # Component patterns (FIRST - most specific) - for components ending in "Component"
+            (r'return[^<]*<(\w+Component)', False),  # return <OrgsRedirectComponent /> or <OrgWsDetailAdminComponent />
             # ClientPage patterns (existing) - these are trusted, not checked
             (r'return[^<]*<\w*ClientPage', True),  # return <OrgAdminClientPage ... /> or return (\n<...
             (r'return[^<]*<System\w+ClientPage', True),  # return <SystemAdminClientPage ... />
             (r'return[^<]*<Org\w+ClientPage', True),  # return <OrgAdminClientPage ... />
             # Admin component patterns (NEW - 01_std_front_ADMIN-ARCH.md) - these MUST exist
-            (r'return[^<]*<(Org\w+Admin)', False),  # return <OrgAiAdmin /> or return (\n  <OrgAccessAdmin
-            (r'return[^<]*<(Sys\w+Admin)', False),  # return <SysMgmtAdmin /> or return (\n  <SysAccessAdmin
-            (r'return[^<]*<(Ws\w+Admin)', False),   # return <WsConfigAdmin /> (if any exist)
+            # NOTE: Negative lookahead (?!Component) prevents matching *AdminComponent patterns
+            (r'return[^<]*<(Org\w+Admin)(?!Component)', False),  # return <OrgAiAdmin /> but NOT <OrgWsDetailAdminComponent />
+            (r'return[^<]*<(Sys\w+Admin)(?!Component)', False),  # return <SysMgmtAdmin /> but NOT <SysAccessAdminComponent />
+            (r'return[^<]*<(Ws\w+Admin)(?!Component)', False),   # return <WsConfigAdmin /> but NOT <WsDetailAdminComponent />
         ]
         
         for pattern_or_tuple in delegation_patterns:
@@ -291,6 +306,25 @@ class FrontendAuthValidator:
                 return True
         
         return False
+    
+    def _extract_component_name_from_path(self, file_path: str) -> Optional[str]:
+        """
+        Extract component name from file path.
+        
+        E.g., /path/to/OrgAdminClientPage.tsx → OrgAdminClientPage
+        
+        Returns:
+            Component name or None if not applicable
+        """
+        path_obj = Path(file_path)
+        # Get filename without extension
+        filename = path_obj.stem  # e.g., OrgAdminClientPage from OrgAdminClientPage.tsx
+        
+        # Only return if it looks like a component name (PascalCase)
+        if filename and filename[0].isupper():
+            return filename
+        
+        return None
     
     def _detect_route_type(self, file_path: str) -> str:
         """
