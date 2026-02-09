@@ -460,7 +460,56 @@ The system provides statistical guidance on result reliability based on sample s
 
 ---
 
-### February 9, 2026 (1:30 PM) - Phase 2B ResponseStructureBuilder Redesign (IN PROGRESS)
+### February 9, 2026 (1:30 PM - 4:10 PM) - Phase 2B UX Fixes + Document Viewer Issue Discovery
+
+**Session Duration:** ~2.5 hours  
+**Branch:** `feature/eval-optimization-s5`  
+**Objective:** Fix ResponseStructureBuilder rendering issues, improve truth set UX, discover document viewer blocker
+
+**Completed:**
+
+1. **CriteriaEvaluationForm — Table/List Type Rendering** ✅
+   - Added table type with add/remove rows, column headers (key/label format support)
+   - Added list type with add/remove items
+   - Auto-expanding textarea for text-type table columns
+   - Form state reset when switching between criteria (useEffect on criterion.id)
+
+2. **Breadcrumb Navigation — All Pages** ✅
+   - Run page: removed redundant ArrowBack icon (breadcrumbs sufficient)
+   - Sections page: replaced `← Back to Run Details` with full breadcrumbs
+   - Truth set page: replaced `← Back to Run Details` with full breadcrumbs
+   - Breadcrumb hierarchy: Workspaces > Workspace Name > Run Name > [Page]
+   - Sections + truth set pages use `useWorkspace` hook for real ws name
+
+3. **Removed Dead Code** ✅
+   - Removed `/admin/org/eval/status-options` call from truth set page (Sprint 5 uses rubric scoring)
+   - Made `statusOptions` prop optional (dead code path)
+
+**Issues Discovered (Next Session Priorities):**
+
+4. **🚨 Document Viewer — No Text Content** ❌
+   - `KbDocument` type has NO text content fields (only metadata: filename, s3Key, status, chunkCount)
+   - `getDocument()` returns metadata only — no extracted text
+   - KB stores document text as chunks in vector DB, not as a single field
+   - **User requirement:** BA should view the **formatted document** (not unformatted chunk text)
+   - Needs investigation: how does main CORA app display docs? presigned URLs? document viewer library?
+
+5. **🚨 Truth Set Save/Load — Data Not Persisting** ❌
+   - User enters evaluations, sees "Saving..." → "Saved" feedback
+   - But navigating away and returning shows no saved content
+   - Need to investigate: which table stores evaluations? Is data actually written? Is GET returning it?
+
+**Files Modified (All committed + pushed to `f29fab4`):**
+- `studio/components/CriteriaEvaluationForm.tsx` (table/list types, column format, textarea, state reset)
+- `studio/app/ws/[id]/runs/[runId]/page.tsx` (breadcrumbs)
+- `studio/app/ws/[id]/runs/[runId]/sections/page.tsx` (breadcrumbs + real names)
+- `studio/app/ws/[id]/runs/[runId]/truth-sets/[tsId]/page.tsx` (breadcrumbs + real names)
+
+**Next Session:** Fix document viewer (formatted doc display) + truth set save/load persistence
+
+---
+
+### February 9, 2026 (1:30 PM) - Phase 2B ResponseStructureBuilder Redesign (SUPERSEDED)
 
 **Session Duration:** 1 hour
 **Branch:** `feature/eval-optimization-s5`
