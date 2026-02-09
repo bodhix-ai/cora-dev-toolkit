@@ -6,12 +6,20 @@ import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import ResponseStructureBuilder from "../../../../../../components/ResponseStructureBuilder";
 
+interface TableColumn {
+  key: string;
+  label: string;
+  type: "text" | "number";
+}
+
 interface ResponseSection {
   id: string;
   name: string;
   description: string;
-  type: "text" | "list" | "object" | "number" | "boolean";
+  type: "text" | "list" | "table" | "number" | "boolean";
   required: boolean;
+  builtIn?: boolean;
+  columns?: TableColumn[];
 }
 
 export default function ResponseSectionsPage() {

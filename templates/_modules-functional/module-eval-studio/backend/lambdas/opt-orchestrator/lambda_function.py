@@ -465,7 +465,7 @@ def handle_update_sections(event: Dict[str, Any], user_id: str, ws_id: str, run_
     for section in sections:
         if not section.get('name'):
             raise common.ValidationError('Each section must have a name')
-        if section.get('type') not in ['text', 'list', 'number', 'boolean', 'object']:
+        if section.get('type') not in ['text', 'list', 'table', 'number', 'boolean', 'object']:
             section['type'] = 'text'
     
     # Get or create response structure
