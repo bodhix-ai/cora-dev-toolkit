@@ -30,6 +30,8 @@ export default function ResponseSectionsPage() {
 
   const { authAdapter, isAuthenticated, isLoading: authLoading } = useUser();
   const [sections, setSections] = useState<ResponseSection[]>([]);
+  const [wsName, setWsName] = useState<string>("");
+  const [runName, setRunName] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +44,18 @@ export default function ResponseSectionsPage() {
       try {
         const token = await authAdapter.getToken();
         const client = createCoraAuthenticatedClient(token);
+        // Fetch workspace name
+        try {
+          const wsRes = await client.get(`/ws/${wsId}`);
+          if ((wsRes as any).data?.name) setWsName((wsRes as any).data.name);
+        } catch (_) { /* breadcrumb falls back to generic */ }
+
+        // Fetch run name
+        try {
+          const runRes = await client.get(`/ws/${wsId}/optimization/runs/${runId}`);
+          if ((runRes as any).data?.name) setRunName((runRes as any).data.name);
+        } catch (_) { /* breadcrumb falls back to generic */ }
+
         const response = await client.get(`/ws/${wsId}/optimization/runs/${runId}/sections`);
 
         if (response.data && Array.isArray(response.data)) {
@@ -110,12 +124,12 @@ export default function ResponseSectionsPage() {
           <a
             onClick={() => router.push(`/ws/${wsId}?tab=2`)}
             style={{ color: "#007bff", cursor: "pointer", textDecoration: "none" }}
-          >Workspace</a>
+          >{wsName || "Workspace"}</a>
           <span style={{ margin: "0 0.5rem", color: "#999" }}>/</span>
           <a
             onClick={handleCancel}
             style={{ color: "#007bff", cursor: "pointer", textDecoration: "none" }}
-          >Optimization Run</a>
+          >{runName || "Optimization Run"}</a>
           <span style={{ margin: "0 0.5rem", color: "#999" }}>/</span>
           <span style={{ color: "#333" }}>Response Sections</span>
         </nav>

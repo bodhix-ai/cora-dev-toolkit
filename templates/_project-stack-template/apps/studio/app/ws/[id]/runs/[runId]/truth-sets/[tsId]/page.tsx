@@ -93,6 +93,8 @@ export default function TruthSetDetailPage() {
   const [currentCriterionIndex, setCurrentCriterionIndex] = useState(0);
   const [evaluations, setEvaluations] = useState<Map<string, CriterionEvaluation>>(new Map());
   const [selectedText, setSelectedText] = useState("");
+  const [wsName, setWsName] = useState<string>("");
+  const [runName, setRunName] = useState<string>("");
 
   // UI state
   const [loading, setLoading] = useState(true);
@@ -120,9 +122,16 @@ export default function TruthSetDetailPage() {
         }
         const client = createCoraAuthenticatedClient(token);
 
+        // Fetch workspace name for breadcrumbs
+        try {
+          const wsRes = await client.get(`/ws/${wsId}`);
+          if ((wsRes as any).data?.name) setWsName((wsRes as any).data.name);
+        } catch (_) { /* breadcrumb falls back to generic */ }
+
         // Fetch optimization run to get criteria_set_id and response sections
         const runResponse = await client.get(`/ws/${wsId}/optimization/runs/${runId}`);
         const run = (runResponse as any).data;
+        if (run.name) setRunName(run.name);
         
         // Lambda returns camelCase field names
         const criteriaSetId = run.criteriaSetId;
@@ -320,12 +329,12 @@ export default function TruthSetDetailPage() {
           <a
             onClick={() => router.push(`/ws/${wsId}?tab=2`)}
             style={{ color: "#007bff", cursor: "pointer", textDecoration: "none" }}
-          >Workspace</a>
+          >{wsName || "Workspace"}</a>
           <span style={{ margin: "0 0.5rem", color: "#999" }}>/</span>
           <a
             onClick={handleBack}
             style={{ color: "#007bff", cursor: "pointer", textDecoration: "none" }}
-          >Optimization Run</a>
+          >{runName || "Optimization Run"}</a>
           <span style={{ margin: "0 0.5rem", color: "#999" }}>/</span>
           <span style={{ color: "#333" }}>Truth Set</span>
         </nav>
