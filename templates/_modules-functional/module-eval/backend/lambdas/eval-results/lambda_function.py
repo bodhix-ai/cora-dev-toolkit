@@ -41,6 +41,7 @@ sys.path.insert(0, '/opt/python')
 import org_common as common
 from org_common import can_access_org_resource
 from eval_common.permissions import can_view_eval, can_edit_eval, is_eval_owner as eval_is_owner
+from eval_common.queries import get_criteria_results
 import boto3
 
 # Configure logging
@@ -642,10 +643,8 @@ def handle_get_evaluation(eval_id: str, workspace_id: str, org_id: str, user_id:
         order='order_index.asc'
     )
     
-    criteria_results = common.find_many(
-        'eval_criteria_results',
-        {'eval_summary_id': eval_id}
-    )
+    # Use RPC to fetch criteria results (avoids Supabase JSONB 406 error)
+    criteria_results = get_criteria_results(eval_id)
     
     results_map = {r['criteria_item_id']: r for r in criteria_results}
     
@@ -673,12 +672,34 @@ def handle_get_evaluation(eval_id: str, workspace_id: str, org_id: str, user_id:
             if edits:
                 current_edit = common.format_record(edits[0])
         
-        # Determine effective status
-        effective_status_id = (
-            current_edit.get('editedStatusId') if current_edit
-            else ai_result.get('ai_status_id')
-        )
-        effective_status = status_map.get(effective_status_id, {})
+        # Determine effective status - derive from score using eval_sys_status_options (new scoring architecture)
+        if current_edit and current_edit.get('editedScoreValue') is not None:
+            # Use edited score
+            effective_score = current_edit.get('editedScoreValue')
+            matched_status = get_status_for_score(effective_score, status_options)
+            effective_status = {
+                'id': matched_status.get('id') if matched_status else None,
+                'name': matched_status.get('name') if matched_status else 'Unknown',
+                'color': matched_status.get('color') if matched_status else None,
+                'scoreValue': effective_score
+            }
+        elif ai_result.get('ai_score_value') is not None:
+            # Derive status from AI score using status_options
+            ai_score = ai_result.get('ai_score_value')
+            matched_status = get_status_for_score(ai_score, status_options)
+            effective_status = {
+                'id': matched_status.get('id') if matched_status else None,
+                'name': matched_status.get('name') if matched_status else 'Unknown',
+                'color': matched_status.get('color') if matched_status else None,
+                'scoreValue': ai_score
+            }
+        else:
+            # Legacy fallback: use status_id (deprecated)
+            effective_status_id = (
+                current_edit.get('editedStatusId') if current_edit
+                else ai_result.get('ai_status_id')
+            )
+            effective_status = status_map.get(effective_status_id, {})
         
         criteria_result_list.append({
             'criteriaItem': {
@@ -1203,10 +1224,8 @@ def handle_export_pdf(
         story.append(Paragraph("Criteria Results", styles['Heading2']))
         story.append(Spacer(1, 12))
         
-        criteria_results = common.find_many(
-            'eval_criteria_results',
-            {'eval_summary_id': eval_id}
-        )
+        # Use RPC to fetch criteria results (avoids Supabase JSONB 406 error)
+        criteria_results = get_criteria_results(eval_id)
         
         criteria_items = common.find_many(
             'eval_criteria_items',
@@ -1340,10 +1359,8 @@ def handle_export_xlsx(
             cell.fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
         
         # Get results data
-        criteria_results = common.find_many(
-            'eval_criteria_results',
-            {'eval_summary_id': eval_id}
-        )
+        # Use RPC to fetch criteria results (avoids Supabase JSONB 406 error)
+        criteria_results = get_criteria_results(eval_id)
         
         criteria_items = common.find_many(
             'eval_criteria_items',
@@ -1491,6 +1508,49 @@ def send_processing_message(
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
+
+def get_status_for_score(score: Optional[float], status_options: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """
+    Map a numerical score (0-100) to a status option using floor-based matching.
+    
+    Finds the status option whose score_value is the highest value ≤ AI score.
+    
+    Args:
+        score: Numerical score from AI (0-100)
+        status_options: List of status options from eval_sys_status_options or eval_org_status_options
+    
+    Returns:
+        Status option dict with {id, name, color, score_value} or None
+    
+    Examples:
+        score=20  → finds status with score_value=0   (Non-Compliant)
+        score=85  → finds status with score_value=75  (Partial)
+        score=96  → finds status with score_value=96  (Compliant)
+        score=100 → finds status with score_value=100 (Perfect)
+    """
+    if score is None or not status_options:
+        return None
+    
+    # Clamp score to 0-100 range
+    clamped_score = max(0, min(100, score))
+    
+    # Sort status options by score_value ascending (in case not already sorted)
+    sorted_options = sorted(
+        status_options,
+        key=lambda opt: float(opt.get('score_value', 0))
+    )
+    
+    # Find the highest score_value that doesn't exceed the AI score (floor match)
+    matched_status = None
+    for option in sorted_options:
+        option_score = float(option.get('score_value', 0))
+        if option_score <= clamped_score:
+            matched_status = option
+        else:
+            break  # Stop once we exceed the AI score
+    
+    return matched_status
+
 
 def remove_file_extension(filename: str) -> str:
     """

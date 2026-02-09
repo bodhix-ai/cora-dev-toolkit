@@ -628,9 +628,9 @@ def handle_update_truth_set(event: Dict[str, Any], user_id: str, ws_id: str, run
     doc_type_id = run.get('doc_type_id')
     
     if not criteria_set_id:
-        raise common.BadRequestError("Run is missing criteria_set_id")
+        raise common.ValidationError("Run is missing criteria_set_id")
     if not doc_type_id:
-        raise common.BadRequestError("Run is missing doc_type_id")
+        raise common.ValidationError("Run is missing doc_type_id")
     
     criteria_set = common.find_one('eval_criteria_sets', {'id': criteria_set_id})
     if not criteria_set:
@@ -685,7 +685,7 @@ def handle_update_truth_set(event: Dict[str, Any], user_id: str, ws_id: str, run
             if default_statuses and len(default_statuses) > 0:
                 truth_key_data['truth_status_id'] = default_statuses[0]['id']
             else:
-                raise common.BadRequestError("No status options available in system")
+                raise common.ValidationError("No status options available in system")
 
         if existing:
             truth_key_data['updated_by'] = user_id
