@@ -510,7 +510,7 @@ export default function TruthSetDetailPage() {
                     if (!token) return;
                     const c = createCoraAuthenticatedClient(token);
                     const kbClient = createKbModuleClient(c);
-                    const resp = await kbClient.workspace.downloadDocument(wsId, document?.id || "");
+                    const resp = await kbClient.workspace.downloadDocument(wsId, truthSet.document_id);
                     if (resp.data && (resp.data as any).downloadUrl) {
                       window.open((resp.data as any).downloadUrl, "_blank");
                     }
@@ -518,15 +518,15 @@ export default function TruthSetDetailPage() {
                     console.error("Failed to get download URL:", err);
                   }
                 }}
-                disabled={!document?.id}
+                disabled={!truthSet.document_id}
                 style={{
                   padding: "0.75rem 1.5rem",
                   fontSize: "0.95rem",
-                  backgroundColor: document?.id ? "#1976d2" : "#ccc",
+                  backgroundColor: truthSet.document_id ? "#1976d2" : "#ccc",
                   color: "#fff",
                   border: "none",
                   borderRadius: "6px",
-                  cursor: document?.id ? "pointer" : "not-allowed",
+                  cursor: truthSet.document_id ? "pointer" : "not-allowed",
                 }}
               >
                 📥 View Document in New Tab
