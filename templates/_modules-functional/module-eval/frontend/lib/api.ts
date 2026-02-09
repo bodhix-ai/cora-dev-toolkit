@@ -539,7 +539,72 @@ export async function testOrgPrompt(
 }
 
 // =============================================================================
-// DOC TYPES API
+// RESOURCE API (Workspace-scoped — any workspace member can access)
+// =============================================================================
+
+/**
+ * List doc types available for evaluation creation in a workspace
+ * GET /ws/{wsId}/eval/config/doc-types
+ *
+ * This is a RESOURCE route (not admin) — any workspace member can call it.
+ * Use this for evaluation creation flows instead of the admin listDocTypes().
+ */
+export async function getConfigDocTypes(
+  token: string,
+  wsId: string,
+  options?: { includeInactive?: boolean }
+): Promise<EvalDocType[]> {
+  const params: Record<string, string | boolean | undefined> = {
+    includeInactive: options?.includeInactive,
+  };
+  const url = buildUrl(`/ws/${wsId}/eval/config/doc-types`, params);
+  return apiRequest<EvalDocType[]>(url, token);
+}
+
+/**
+ * List criteria sets available for evaluation creation in a workspace
+ * GET /ws/{wsId}/eval/config/criteria-sets
+ *
+ * This is a RESOURCE route (not admin) — any workspace member can call it.
+ * Use this for evaluation creation flows instead of the admin listCriteriaSets().
+ */
+export async function getConfigCriteriaSets(
+  token: string,
+  wsId: string,
+  options?: { docTypeId?: string; includeInactive?: boolean }
+): Promise<EvalCriteriaSet[]> {
+  const params: Record<string, string | boolean | undefined> = {
+    docTypeId: options?.docTypeId,
+    includeInactive: options?.includeInactive,
+  };
+  const url = buildUrl(`/ws/${wsId}/eval/config/criteria-sets`, params);
+  return apiRequest<EvalCriteriaSet[]>(url, token);
+}
+
+/**
+ * List criteria items for a specific criteria set in a workspace
+ * GET /ws/{wsId}/eval/config/criteria-sets/{id}/items
+ *
+ * This is a RESOURCE route (not admin) — any workspace member can call it.
+ */
+export async function getConfigCriteriaItems(
+  token: string,
+  wsId: string,
+  criteriaSetId: string,
+  options?: { includeInactive?: boolean }
+): Promise<EvalCriteriaItem[]> {
+  const params: Record<string, string | boolean | undefined> = {
+    includeInactive: options?.includeInactive,
+  };
+  const url = buildUrl(
+    `/ws/${wsId}/eval/config/criteria-sets/${criteriaSetId}/items`,
+    params
+  );
+  return apiRequest<EvalCriteriaItem[]>(url, token);
+}
+
+// =============================================================================
+// DOC TYPES API (Admin — org admin access required)
 // =============================================================================
 
 /**

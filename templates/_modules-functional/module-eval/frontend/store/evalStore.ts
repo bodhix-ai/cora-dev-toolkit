@@ -206,7 +206,19 @@ interface EvalState {
     id: string
   ) => Promise<void>;
 
-  // === Doc Types Actions ===
+  // === Doc Types Actions (Resource — workspace-scoped) ===
+  loadConfigDocTypes: (
+    token: string,
+    wsId: string,
+    options?: { includeInactive?: boolean }
+  ) => Promise<void>;
+  loadConfigCriteriaSets: (
+    token: string,
+    wsId: string,
+    options?: { docTypeId?: string; includeInactive?: boolean }
+  ) => Promise<void>;
+
+  // === Doc Types Actions (Admin — org-scoped) ===
   loadDocTypes: (
     token: string,
     orgId: string,
@@ -711,7 +723,47 @@ export const useEvalStore = create<EvalState>()(
       },
 
       // =================================================================
-      // DOC TYPES ACTIONS
+      // RESOURCE ACTIONS (Workspace-scoped — any workspace member)
+      // =================================================================
+
+      loadConfigDocTypes: async (token, wsId, options) => {
+        set({ docTypesLoading: true, docTypesError: null });
+
+        try {
+          const docTypes = await api.getConfigDocTypes(token, wsId, options);
+          set({ docTypes, docTypesLoading: false });
+        } catch (error) {
+          console.error("Failed to load config doc types:", error);
+          set({
+            docTypesLoading: false,
+            docTypesError:
+              error instanceof Error
+                ? error.message
+                : "Failed to load document types",
+          });
+        }
+      },
+
+      loadConfigCriteriaSets: async (token, wsId, options) => {
+        set({ criteriaSetsLoading: true, criteriaSetsError: null });
+
+        try {
+          const sets = await api.getConfigCriteriaSets(token, wsId, options);
+          set({ criteriaSets: sets, criteriaSetsLoading: false });
+        } catch (error) {
+          console.error("Failed to load config criteria sets:", error);
+          set({
+            criteriaSetsLoading: false,
+            criteriaSetsError:
+              error instanceof Error
+                ? error.message
+                : "Failed to load criteria sets",
+          });
+        }
+      },
+
+      // =================================================================
+      // DOC TYPES ACTIONS (Admin — org-scoped)
       // =================================================================
 
       loadDocTypes: async (token, orgId, options) => {
