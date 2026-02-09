@@ -7,12 +7,18 @@ import React, { useState } from "react";
  * Dynamically renders fields based on configured response sections.
  */
 
+interface TableColumn {
+  name: string;
+  type: 'text' | 'number' | 'boolean';
+}
+
 interface ResponseSection {
   id: string;
   name: string;
-  type: 'number' | 'text' | 'list' | 'boolean' | 'object';
+  type: 'number' | 'text' | 'list' | 'boolean' | 'object' | 'table';
   required: boolean;
   description?: string;
+  columns?: TableColumn[];
 }
 
 interface CriterionEvaluation {
@@ -135,6 +141,127 @@ export default function CriteriaEvaluationForm({
             }}
           />
         );
+
+      case 'list':
+        return (
+          <div>
+            {(Array.isArray(value) ? value : ['']).map((item: string, idx: number) => (
+              <div key={idx} style={{ display: "flex", gap: "0.5rem", marginBottom: "0.25rem" }}>
+                <input
+                  type="text"
+                  value={item}
+                  onChange={(e) => {
+                    const arr = Array.isArray(value) ? [...value] : [''];
+                    arr[idx] = e.target.value;
+                    handleSectionChange(section.id, arr);
+                  }}
+                  onBlur={onBlur}
+                  placeholder={`Item ${idx + 1}`}
+                  style={{
+                    flex: 1, padding: "0.4rem", border: "1px solid #ccc",
+                    borderRadius: "4px", fontSize: "0.875rem", boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const arr = Array.isArray(value) ? value.filter((_: string, i: number) => i !== idx) : [];
+                    handleSectionChange(section.id, arr.length > 0 ? arr : ['']);
+                  }}
+                  style={{ padding: "0.25rem 0.5rem", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer", backgroundColor: "#f8f8f8" }}
+                >✕</button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                const arr = Array.isArray(value) ? [...value, ''] : [''];
+                handleSectionChange(section.id, arr);
+              }}
+              style={{ padding: "0.25rem 0.75rem", border: "1px solid #007bff", borderRadius: "4px", cursor: "pointer", color: "#007bff", backgroundColor: "white", fontSize: "0.75rem", marginTop: "0.25rem" }}
+            >+ Add Item</button>
+          </div>
+        );
+
+      case 'table': {
+        const columns = section.columns || [{ name: 'Value', type: 'text' as const }];
+        const rows: Record<string, any>[] = Array.isArray(value) ? value : [];
+        return (
+          <div style={{ border: "1px solid #ddd", borderRadius: "4px", overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
+              <thead>
+                <tr style={{ backgroundColor: "#f0f0f0" }}>
+                  {columns.map((col, ci) => (
+                    <th key={ci} style={{ padding: "0.5rem", borderBottom: "1px solid #ddd", textAlign: "left", fontWeight: "600" }}>
+                      {col.name}
+                    </th>
+                  ))}
+                  <th style={{ padding: "0.5rem", borderBottom: "1px solid #ddd", width: "40px" }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, ri) => (
+                  <tr key={ri} style={{ borderBottom: "1px solid #eee" }}>
+                    {columns.map((col, ci) => (
+                      <td key={ci} style={{ padding: "0.25rem" }}>
+                        {col.type === 'boolean' ? (
+                          <input
+                            type="checkbox"
+                            checked={row[col.name] === true}
+                            onChange={(e) => {
+                              const newRows = [...rows];
+                              newRows[ri] = { ...newRows[ri], [col.name]: e.target.checked };
+                              handleSectionChange(section.id, newRows);
+                            }}
+                            onBlur={onBlur}
+                          />
+                        ) : (
+                          <input
+                            type={col.type === 'number' ? 'number' : 'text'}
+                            value={row[col.name] || ''}
+                            onChange={(e) => {
+                              const newRows = [...rows];
+                              newRows[ri] = { ...newRows[ri], [col.name]: col.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value };
+                              handleSectionChange(section.id, newRows);
+                            }}
+                            onBlur={onBlur}
+                            style={{ width: "100%", padding: "0.4rem", border: "1px solid #ddd", borderRadius: "3px", boxSizing: "border-box" }}
+                          />
+                        )}
+                      </td>
+                    ))}
+                    <td style={{ padding: "0.25rem", textAlign: "center" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleSectionChange(section.id, rows.filter((_, i) => i !== ri));
+                        }}
+                        style={{ border: "none", background: "none", cursor: "pointer", color: "#dc3545", fontSize: "1rem" }}
+                      >✕</button>
+                    </td>
+                  </tr>
+                ))}
+                {rows.length === 0 && (
+                  <tr>
+                    <td colSpan={columns.length + 1} style={{ padding: "1rem", textAlign: "center", color: "#999" }}>
+                      No rows yet. Click "Add Row" below.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            <button
+              type="button"
+              onClick={() => {
+                const emptyRow: Record<string, any> = {};
+                columns.forEach(col => { emptyRow[col.name] = col.type === 'boolean' ? false : col.type === 'number' ? 0 : ''; });
+                handleSectionChange(section.id, [...rows, emptyRow]);
+              }}
+              style={{ width: "100%", padding: "0.5rem", border: "none", borderTop: "1px solid #ddd", cursor: "pointer", color: "#007bff", backgroundColor: "#f8f9fa", fontSize: "0.875rem" }}
+            >+ Add Row</button>
+          </div>
+        );
+      }
 
       default:
         return (

@@ -31,12 +31,18 @@ interface StatusOption {
   description?: string;
 }
 
+interface TableColumn {
+  name: string;
+  type: 'text' | 'number' | 'boolean';
+}
+
 interface ResponseSection {
   id: string;
   name: string;
-  type: 'number' | 'text' | 'list' | 'boolean' | 'object';
+  type: 'number' | 'text' | 'list' | 'boolean' | 'object' | 'table';
   required: boolean;
   description?: string;
+  columns?: TableColumn[];
 }
 
 interface CriterionEvaluation {
@@ -466,12 +472,8 @@ export default function TruthSetDetailPage() {
               marginBottom: "1rem",
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
-              gap: "1rem"
+              justifyContent: "center",
             }}>
-              <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#495057" }}>
-                Criterion {currentCriterionIndex + 1} of {criteriaItems.length}
-              </span>
               <Stack spacing={2}>
                 <Pagination
                   count={criteriaItems.length}
