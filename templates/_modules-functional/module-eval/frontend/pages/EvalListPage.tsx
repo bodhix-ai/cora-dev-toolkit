@@ -43,7 +43,7 @@ import {
 import { useUser } from "@{{PROJECT_NAME}}/module-access";
 import {
   useEvaluations,
-  useEvalDocTypes,
+  useWsDocTypeSelect,
   useAnyProcessing,
   useBulkExport,
 } from "../hooks";
@@ -57,8 +57,6 @@ import type { Evaluation, EvaluationStatus, ListEvaluationsOptions } from "../ty
 export interface EvalListPageProps {
   /** Workspace ID */
   workspaceId: string;
-  /** Organization ID (for doc types) */
-  orgId: string;
   /** Optional CSS class */
   className?: string;
   /** Callback when evaluation is selected */
@@ -377,7 +375,6 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
 
 export function EvalListPage({
   workspaceId,
-  orgId,
   className = "",
   onSelectEvaluation,
   onCreateEvaluation,
@@ -420,7 +417,7 @@ export function EvalListPage({
     docTypeId: filters.docTypeId,
   });
 
-  const { docTypes } = useEvalDocTypes(token, orgId);
+  const { docTypes } = useWsDocTypeSelect(token, workspaceId);
   const { isAnyProcessing, stopAllPolling } = useAnyProcessing();
   const { exportAllPdf, exportAllXlsx, isExporting } = useBulkExport(token, workspaceId);
 
