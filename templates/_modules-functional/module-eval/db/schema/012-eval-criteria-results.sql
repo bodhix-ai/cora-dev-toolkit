@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS eval_criteria_results (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     eval_summary_id UUID NOT NULL REFERENCES eval_doc_summaries(id) ON DELETE CASCADE,
     criteria_item_id UUID NOT NULL REFERENCES eval_criteria_items(id) ON DELETE RESTRICT,
-    ai_result TEXT,
+    ai_result JSONB,
     ai_status_id UUID,
     ai_score_value DECIMAL(5,2),
     ai_confidence INTEGER,
@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS eval_criteria_results (
 COMMENT ON TABLE eval_criteria_results IS 'AI-generated evaluation results (immutable for audit)';
 COMMENT ON COLUMN eval_criteria_results.eval_summary_id IS 'Evaluation this result belongs to';
 COMMENT ON COLUMN eval_criteria_results.criteria_item_id IS 'Criteria item being evaluated';
-COMMENT ON COLUMN eval_criteria_results.ai_result IS 'AI-generated explanation';
-COMMENT ON COLUMN eval_criteria_results.ai_status_id IS 'Status option selected by AI';
+COMMENT ON COLUMN eval_criteria_results.ai_result IS 'AI-generated structured response (JSONB with sections defined by response_structure)';
+COMMENT ON COLUMN eval_criteria_results.ai_status_id IS 'DEPRECATED: Status option selected by AI. New evaluations use ai_score_value directly. Frontend derives status label from score.';
 COMMENT ON COLUMN eval_criteria_results.ai_score_value IS 'Score value captured at evaluation time (0-100)';
 COMMENT ON COLUMN eval_criteria_results.ai_confidence IS 'AI confidence score (0-100)';
 COMMENT ON COLUMN eval_criteria_results.ai_citations IS 'Array of citation objects (JSONB)';

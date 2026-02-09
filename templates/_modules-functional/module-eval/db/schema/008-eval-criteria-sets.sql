@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS eval_criteria_sets (
     description TEXT,
     version TEXT DEFAULT '1.0',
     use_weighted_scoring BOOLEAN NOT NULL DEFAULT false,
+    scoring_rubric JSONB DEFAULT '{"tiers": [{"min": 0, "max": 20, "label": "Non-Compliant", "description": "Criterion not addressed or completely fails to meet requirement. No evidence of compliance found."}, {"min": 21, "max": 40, "label": "Mostly Non-Compliant", "description": "Some attempt made but significant gaps exist. Fails to address key aspects of the requirement."}, {"min": 41, "max": 60, "label": "Partially Compliant", "description": "Addresses some requirements but incomplete or unclear. Mixed evidence of compliance."}, {"min": 61, "max": 80, "label": "Mostly Compliant", "description": "Meets most requirements with minor gaps or areas for improvement. Strong evidence overall."}, {"min": 81, "max": 100, "label": "Fully Compliant", "description": "Fully meets or exceeds the requirement with clear, comprehensive evidence."}]}'::jsonb,
     source_file_name TEXT,
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -30,6 +31,7 @@ COMMENT ON COLUMN eval_criteria_sets.name IS 'Criteria set name';
 COMMENT ON COLUMN eval_criteria_sets.description IS 'Set description';
 COMMENT ON COLUMN eval_criteria_sets.version IS 'Version identifier';
 COMMENT ON COLUMN eval_criteria_sets.use_weighted_scoring IS 'Use weights for score calculation';
+COMMENT ON COLUMN eval_criteria_sets.scoring_rubric IS 'Scoring guidance for AI (JSONB). Defines tier ranges, labels, and descriptions for consistent scoring.';
 COMMENT ON COLUMN eval_criteria_sets.source_file_name IS 'Original import file name';
 COMMENT ON COLUMN eval_criteria_sets.is_active IS 'Soft delete flag';
 
