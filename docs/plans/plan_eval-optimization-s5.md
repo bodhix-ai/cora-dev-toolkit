@@ -456,41 +456,29 @@ effective_status = get_tier_from_score(score, rubric)
 
 ## Next Session Priorities
 
-### 🚨 Priority 1: Document Viewer — Formatted Document Display
-**Issue:** Truth set page shows "No text content found in document" because `KbDocument` type has NO text content fields — only metadata (filename, s3Key, status, chunkCount).
+### ✅ RESOLVED: Document Viewer — Formatted Document Display
+**Issue:** Truth set page showed "No text content found in document" because `KbDocument` type has no text content fields.
+**Root Cause:** `getDocument()` returns metadata only. Document text lives as chunks in vector DB.
+**Fix:** Use `downloadDocument()` presigned URL → render original file in iframe. Preserves PDF/DOCX formatting.
+**Files:** `DocumentViewer.tsx` (accepts `documentUrl` prop), truth set page (fetches presigned URL)
 
-**Root Cause:** KB documents are processed into chunks for RAG. The extracted text isn't stored as a single field on the document record. The `getDocument()` endpoint returns metadata only.
+### ✅ RESOLVED: Truth Set Save/Load — Data Not Persisting
+**Issue:** Evaluations saved but not displayed on reload.
+**Root Cause:** Data format mismatch — PUT stores to flat columns, GET returns flat column names (camelCase) instead of reconstructing the `section_responses` object the frontend expects. Additionally, migration was not synced to test project and Lambda was not redeployed.
+**Fix:**
+1. DB migration: Added `section_responses` JSONB column to `eval_opt_truth_keys`
+2. PUT handler: Stores full `section_responses` JSON alongside flat columns
+3. GET handler: Returns `criteria_item_id` + `section_responses` directly (not `format_records()`)
+4. Backfill migration reconstructs data from existing flat columns
+5. Base schema `002-eval-opt-truth-keys.sql` updated with `section_responses` column
+6. Migration synced to test project + Lambda rebuilt and redeployed (Feb 9, 5:19 PM)
+**Files:** `opt-orchestrator/lambda_function.py`, DB migration `20260209_truth_set_section_responses.sql`, schema `002-eval-opt-truth-keys.sql`
 
-**Investigation Needed:**
-1. How does the main CORA app display documents? (check module-kb frontend components for document preview patterns)
-2. Does `downloadDocument()` return a presigned S3 URL for the raw file?
-3. Can chunks be reassembled into readable text, or should we show the original formatted document?
-4. **User requirement:** BA should view the **formatted document** (not unformatted chunk text) — this may mean rendering PDFs/DOCX in an iframe or using a document viewer library
-
-**Possible Approaches:**
-- A) Presigned URL → embed original file in iframe/viewer (best for formatted docs)
-- B) New KB endpoint to return extracted text (plain text only, loses formatting)
-- C) S3 direct fetch of original file + client-side rendering
-
-### 🚨 Priority 2: Truth Set Save/Load — Data Not Persisting
-**Issue:** User enters truth set criteria evaluations, sees "Saving..." → "Saved" UI feedback, but when navigating away and returning, the saved content is NOT displayed.
-
-**Investigation Needed:**
-1. Which database table stores truth set evaluations? (likely `eval_opt_truth_keys` or similar)
-2. Is the PUT/POST endpoint actually writing to the DB? (check opt-orchestrator Lambda handler)
-3. Is the GET endpoint returning saved evaluations when truth set is reloaded?
-4. Check if `ts.evaluations` array is populated on page load
-
-**Debugging Steps:**
-- Check Supabase directly for records in the truth set evaluation table
-- Check CloudWatch logs for the save request
-- Verify the GET response includes saved evaluation data
-
-### Priority 3: Phase 2 Remaining Items
+### Priority 1: Phase 2 Remaining Items
 1. Backend validation of AI response against response structure (2C)
 2. Phase 2 testing (2D)
 
-### Priority 4: Phase 3 - Optimization Execution
+### Priority 2: Phase 3 - Optimization Execution
 1. Implement RAG pipeline in opt-orchestrator Lambda
 2. Implement meta-prompter for domain-aware prompt generation
 3. Execution loop: run evaluations, compare to truth keys

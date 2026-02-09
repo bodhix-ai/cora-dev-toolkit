@@ -91,7 +91,7 @@ Updated the configuration file to explicitly include `module-voice` to restore t
 - **Plan:** `docs/plans/plan_eval-optimization-s5.md`
 - **Focus:** Scoring rubric, JSON results, RAG pipeline, Meta-prompter
 - **Test Project:** `/Users/aaron/code/bodhix/testing/eval-studio/` (ai-mod-stack + ai-mod-infra)
-- **Session Progress:** Phase 1 ✅ COMPLETE + TESTED (Scoring, Custom Fields, UX — PASSED Feb 9). Phase 2 planning complete — sidebar org selector fix, route migration, response sections, optimization execution.
+- **Session Progress:** Phase 1 ✅ COMPLETE + TESTED. Phase 2B ✅ COMPLETE + TESTED. Document Viewer ✅ RESOLVED (pragmatic button). Truth Set Persistence ✅ RESOLVED. Next: Phase 2C (backend validation) → Phase 3 (optimization execution).
 
 ## Key Design Decisions
 
@@ -387,6 +387,43 @@ The system provides statistical guidance on result reliability based on sample s
   - Location: `docs/arch decisions/ADR-021-EVAL-OPTIMIZER-DEPLOYMENT.md`
 
 ## Session Log
+
+### February 9, 2026 (4:33 PM - 6:24 PM) - Truth Set Persistence + Document Viewer Fix ✅ COMPLETE
+
+**Session Duration:** ~2 hours  
+**Branch:** `feature/eval-optimization-s5`  
+**Objective:** Fix truth set save/load persistence blocker + document viewer display
+
+**Completed:**
+
+1. **Schema Update Verified** ✅
+   - `002-eval-opt-truth-keys.sql` already contains `section_responses JSONB` column
+   - Mirrors migration `20260209_truth_set_section_responses.sql`
+
+2. **Document Viewer — Options Analysis** ✅
+   - **Option A (KB Chunks):** ❌ Eliminated — 200-char chunk overlap causes duplicated text
+   - **Option B (Fix KB inline):** Requires KB Lambda deploy + S3 CORS changes
+   - **Option C (Next.js proxy):** Built but failed — auto-download persisted after restart
+   - **Option D (Manual button):** ✅ Selected — pragmatic, zero infrastructure changes
+
+3. **Document Viewer — Pragmatic Fix** ✅
+   - Removed `downloadDocument()` call from page load (caused immediate download dialog)
+   - Replaced DocumentViewer component with manual "📥 View Document in New Tab" button
+   - Download URL fetched on-demand only when BA clicks button
+   - Fixed disabled button state — used `truthSet.document_id` instead of `document?.id`
+
+4. **Deployed & Synced** ✅
+   - Synced truth set page to test project
+   - User confirmed: button enabled, downloads doc in new tab
+
+**Files Modified:**
+- `templates/_project-stack-template/apps/studio/app/ws/[id]/runs/[runId]/truth-sets/[tsId]/page.tsx`
+
+**Next Session Priorities:**
+1. Phase 2C: Backend validation of AI response against response structure
+2. Phase 3: Optimization execution (RAG + meta-prompter + execution engine)
+
+---
 
 ### February 9, 2026 (1:18 PM - 2:10 PM) - Phase 2B ResponseStructureBuilder Fixes ✅ COMPLETE
 
@@ -1665,8 +1702,8 @@ const client = createApiClient(token);
 
 ---
 
-**Document Status:** ✅ Sprint 1-4 Complete, 🟡 Sprint 5 Active (Phase 1 ✅ PASSED, Phase 2 Next)  
-**Last Updated:** February 9, 2026 10:30 AM
+**Document Status:** ✅ Sprint 1-4 Complete, 🟡 Sprint 5 Active (Phase 1 ✅, Phase 2B ✅, Doc Viewer ✅, Phase 2C Next)  
+**Last Updated:** February 9, 2026 6:24 PM
 
 ---
 
