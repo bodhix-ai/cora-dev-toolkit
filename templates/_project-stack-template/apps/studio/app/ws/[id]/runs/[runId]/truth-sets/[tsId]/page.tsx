@@ -173,16 +173,8 @@ export default function TruthSetDetailPage() {
             setDocument(docResponse.data as any);
           }
 
-          // Get presigned download URL for the original file
-          try {
-            const downloadResponse = await kbClient.workspace.downloadDocument(wsId, ts.document_id);
-            if (downloadResponse.data && (downloadResponse.data as any).downloadUrl) {
-              setDocumentUrl((downloadResponse.data as any).downloadUrl);
-            }
-          } catch (dlErr) {
-            console.warn("Could not get document download URL:", dlErr);
-            // Non-fatal — will fall back to text content or "no content" message
-          }
+          // Note: Download URL fetched on-demand when user clicks "View Document"
+          // to avoid triggering browser download dialog on page load
         }
 
         // Fetch criteria items using workspace-scoped route
@@ -476,19 +468,74 @@ export default function TruthSetDetailPage() {
       <div style={{ display: "flex", gap: "1.5rem", height: "600px" }}>
         {/* Left: Document Viewer */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <DocumentViewer
-            documentUrl={documentUrl || undefined}
-            documentContent={
-              !documentUrl ? (
-                document?.extracted_text || 
-                document?.content || 
-                document?.text_content || 
-                (document ? "No text content found in document. Try opening the document directly." : undefined)
-              ) : undefined
-            }
-            documentName={document?.name || truthSet.name}
-            onTextSelected={setSelectedText}
-          />
+          <div style={{
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            border: "1px solid #ddd",
+            borderRadius: "8px",
+            overflow: "hidden",
+            backgroundColor: "#fff",
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: "0.75rem 1rem",
+              borderBottom: "1px solid #ddd",
+              backgroundColor: "#f8f9fa",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+            }}>
+              <span style={{ fontSize: "1.1rem" }}>📄</span>
+              <strong style={{ fontSize: "0.9rem" }}>{document?.name || truthSet.name}</strong>
+            </div>
+            {/* Content */}
+            <div style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "2rem",
+              textAlign: "center",
+              color: "#555",
+            }}>
+              <p style={{ fontSize: "1rem", marginBottom: "1rem" }}>
+                Open the document in a new tab to review while evaluating criteria.
+              </p>
+              <button
+                onClick={async () => {
+                  try {
+                    const token = await authAdapter.getToken();
+                    if (!token) return;
+                    const c = createCoraAuthenticatedClient(token);
+                    const kbClient = createKbModuleClient(c);
+                    const resp = await kbClient.workspace.downloadDocument(wsId, document?.id || "");
+                    if (resp.data && (resp.data as any).downloadUrl) {
+                      window.open((resp.data as any).downloadUrl, "_blank");
+                    }
+                  } catch (err) {
+                    console.error("Failed to get download URL:", err);
+                  }
+                }}
+                disabled={!document?.id}
+                style={{
+                  padding: "0.75rem 1.5rem",
+                  fontSize: "0.95rem",
+                  backgroundColor: document?.id ? "#1976d2" : "#ccc",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: document?.id ? "pointer" : "not-allowed",
+                }}
+              >
+                📥 View Document in New Tab
+              </button>
+              <p style={{ fontSize: "0.8rem", color: "#999", marginTop: "1rem" }}>
+                Tip: Arrange browser windows side-by-side for efficient evaluation.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Right: Evaluation Form */}
