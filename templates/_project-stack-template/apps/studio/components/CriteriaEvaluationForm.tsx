@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 /**
  * Criteria Evaluation Form Component
@@ -59,6 +59,11 @@ export default function CriteriaEvaluationForm({
   const [sectionResponses, setSectionResponses] = useState<Record<string, any>>(
     initialValue?.section_responses || {}
   );
+
+  // Reset form state when criterion changes (parent navigates to different criterion)
+  useEffect(() => {
+    setSectionResponses(initialValue?.section_responses || {});
+  }, [criterion.id, initialValue]);
 
   // Update parent when any field changes
   const notifyChange = (newSectionResponses: Record<string, any>) => {
