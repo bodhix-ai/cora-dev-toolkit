@@ -47,6 +47,9 @@ Routes - Criteria Items:
 - POST /admin/org/eval/criteria-sets/{id}/items - Add criteria item
 - PATCH /admin/org/eval/criteria-items/{id} - Update criteria item
 - DELETE /admin/org/eval/criteria-items/{id} - Delete criteria item
+
+Routes - Workspace Config:
+- GET /ws/{wsId}/eval/config/criteria-sets/{criteriaSetId}/items - Get criteria items for workspace
 """
 
 import json
