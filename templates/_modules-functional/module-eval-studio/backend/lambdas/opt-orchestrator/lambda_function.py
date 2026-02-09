@@ -522,7 +522,7 @@ def handle_list_truth_sets(user_id: str, ws_id: str, run_id: str) -> Dict[str, A
     
     doc_groups = common.find_many(
         'eval_opt_doc_groups',
-        {'ws_id': ws_id},
+        {'ws_id': ws_id, 'run_id': run_id},
         order='created_at.desc'
     )
     
@@ -562,9 +562,10 @@ def handle_create_truth_set(event: Dict[str, Any], user_id: str, ws_id: str, run
     name = common.validate_required(body.get('name'), 'name')
     document_id = common.validate_required(body.get('document_id'), 'document_id')
     
-    # Create doc group
+    # Create doc group scoped to this run
     doc_group = common.insert_one('eval_opt_doc_groups', {
         'ws_id': ws_id,
+        'run_id': run_id,
         'name': name,
         'primary_doc_id': document_id,
         'status': 'pending',
