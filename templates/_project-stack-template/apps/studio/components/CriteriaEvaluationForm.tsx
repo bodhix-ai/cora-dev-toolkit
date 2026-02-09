@@ -8,7 +8,9 @@ import React, { useState } from "react";
  */
 
 interface TableColumn {
-  name: string;
+  name?: string;
+  key?: string;
+  label?: string;
   type: 'text' | 'number' | 'boolean';
 }
 
@@ -187,6 +189,9 @@ export default function CriteriaEvaluationForm({
         const columns = (section.columns && section.columns.length > 0)
           ? section.columns
           : [{ name: 'Column 1', type: 'text' as const }, { name: 'Column 2', type: 'text' as const }];
+        // API returns columns with key/label format; normalize to get display name and data key
+        const getColLabel = (col: TableColumn, idx: number) => col.label || col.name || `Column ${idx + 1}`;
+        const getColKey = (col: TableColumn, idx: number) => col.key || col.name || `col_${idx}`;
         const rows: Record<string, any>[] = Array.isArray(value) ? value : [];
         return (
           <div style={{ border: "1px solid #ddd", borderRadius: "4px", overflow: "hidden" }}>
@@ -195,7 +200,7 @@ export default function CriteriaEvaluationForm({
                 <tr style={{ backgroundColor: "#e8edf2" }}>
                   {columns.map((col, ci) => (
                     <th key={ci} style={{ padding: "0.5rem 0.75rem", borderBottom: "2px solid #bbb", textAlign: "left", fontWeight: "700", fontSize: "0.875rem", color: "#333" }}>
-                      {col.name || `Column ${ci + 1}`}
+                      {getColLabel(col, ci)}
                     </th>
                   ))}
                   <th style={{ padding: "0.5rem", borderBottom: "2px solid #bbb", width: "40px" }}></th>
@@ -204,35 +209,38 @@ export default function CriteriaEvaluationForm({
               <tbody>
                 {rows.map((row, ri) => (
                   <tr key={ri} style={{ borderBottom: "1px solid #eee" }}>
-                    {columns.map((col, ci) => (
-                      <td key={ci} style={{ padding: "0.25rem" }}>
-                        {col.type === 'boolean' ? (
-                          <input
-                            type="checkbox"
-                            checked={row[col.name] === true}
-                            onChange={(e) => {
-                              const newRows = [...rows];
-                              newRows[ri] = { ...newRows[ri], [col.name]: e.target.checked };
-                              handleSectionChange(section.id, newRows);
-                            }}
-                            onBlur={onBlur}
-                          />
-                        ) : (
-                          <input
-                            type={col.type === 'number' ? 'number' : 'text'}
-                            value={row[col.name] || ''}
-                            onChange={(e) => {
-                              const newRows = [...rows];
-                              newRows[ri] = { ...newRows[ri], [col.name]: col.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value };
-                              handleSectionChange(section.id, newRows);
-                            }}
-                            onBlur={onBlur}
-                            placeholder={col.name || `Column ${ci + 1}`}
-                            style={{ width: "100%", padding: "0.4rem", border: "1px solid #ddd", borderRadius: "3px", boxSizing: "border-box" }}
-                          />
-                        )}
-                      </td>
-                    ))}
+                    {columns.map((col, ci) => {
+                      const dataKey = getColKey(col, ci);
+                      return (
+                        <td key={ci} style={{ padding: "0.25rem" }}>
+                          {col.type === 'boolean' ? (
+                            <input
+                              type="checkbox"
+                              checked={row[dataKey] === true}
+                              onChange={(e) => {
+                                const newRows = [...rows];
+                                newRows[ri] = { ...newRows[ri], [dataKey]: e.target.checked };
+                                handleSectionChange(section.id, newRows);
+                              }}
+                              onBlur={onBlur}
+                            />
+                          ) : (
+                            <input
+                              type={col.type === 'number' ? 'number' : 'text'}
+                              value={row[dataKey] || ''}
+                              onChange={(e) => {
+                                const newRows = [...rows];
+                                newRows[ri] = { ...newRows[ri], [dataKey]: col.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value };
+                                handleSectionChange(section.id, newRows);
+                              }}
+                              onBlur={onBlur}
+                              placeholder={getColLabel(col, ci)}
+                              style={{ width: "100%", padding: "0.4rem", border: "1px solid #ddd", borderRadius: "3px", boxSizing: "border-box" }}
+                            />
+                          )}
+                        </td>
+                      );
+                    })}
                     <td style={{ padding: "0.25rem", textAlign: "center" }}>
                       <button
                         type="button"
@@ -257,7 +265,10 @@ export default function CriteriaEvaluationForm({
               type="button"
               onClick={() => {
                 const emptyRow: Record<string, any> = {};
-                columns.forEach(col => { emptyRow[col.name] = col.type === 'boolean' ? false : col.type === 'number' ? 0 : ''; });
+                columns.forEach((col, ci) => {
+                  const dk = getColKey(col, ci);
+                  emptyRow[dk] = col.type === 'boolean' ? false : col.type === 'number' ? 0 : '';
+                });
                 handleSectionChange(section.id, [...rows, emptyRow]);
               }}
               style={{ width: "100%", padding: "0.5rem", border: "none", borderTop: "1px solid #ddd", cursor: "pointer", color: "#007bff", backgroundColor: "#f8f9fa", fontSize: "0.875rem" }}
