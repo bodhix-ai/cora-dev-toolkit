@@ -29,6 +29,7 @@ import type {
   ScoreConfig,
 } from "../types";
 import { ComplianceScoreChip, getStatusForScore } from "./ComplianceScoreChip";
+import { getStatusFromScore } from "../utils/scoring";
 
 // =============================================================================
 // TYPES
@@ -154,6 +155,62 @@ function markdownToHtml(markdown: string): string {
 }
 
 /**
+ * Parse ai_result field (handles both legacy string and new JSONB format)
+ */
+interface ParsedAIResult {
+  score?: number;
+  confidence?: number;
+  explanation: string;
+  citations?: Citation[];
+  customFields?: Record<string, any>;
+}
+
+function parseAIResult(aiResult: any): ParsedAIResult {
+  // Handle null/undefined
+  if (!aiResult) {
+    return { explanation: "" };
+  }
+
+  // Legacy format: plain string
+  if (typeof aiResult === "string") {
+    return { explanation: aiResult };
+  }
+
+  // Legacy format: object with "result" field as string
+  if (aiResult.result && typeof aiResult.result === "string") {
+    return {
+      explanation: aiResult.result,
+      score: aiResult.scoreValue,
+      confidence: aiResult.confidence,
+      citations: aiResult.citations,
+    };
+  }
+
+  // New JSONB format: aiResult.result is a JSONB object (not a string)
+  if (aiResult.result && typeof aiResult.result === "object") {
+    const { score, confidence, explanation, citations, ...customFields } = aiResult.result;
+    return {
+      score: typeof score === "number" ? score : aiResult.scoreValue,
+      confidence: typeof confidence === "number" ? confidence : aiResult.confidence,
+      explanation: explanation || "",
+      citations: Array.isArray(citations) ? citations : aiResult.citations,
+      customFields: Object.keys(customFields).length > 0 ? customFields : undefined,
+    };
+  }
+
+  // Fallback: treat entire aiResult as the data (should not reach here with new format)
+  const { score, confidence, explanation, citations, ...customFields } = aiResult;
+
+  return {
+    score: typeof score === "number" ? score : undefined,
+    confidence: typeof confidence === "number" ? confidence : undefined,
+    explanation: explanation || "",
+    citations: Array.isArray(citations) ? citations : undefined,
+    customFields: Object.keys(customFields).length > 0 ? customFields : undefined,
+  };
+}
+
+/**
  * Get status option by ID
  */
 function getStatusOption(
@@ -233,23 +290,35 @@ export function EvalQACard({
   // Text-level expand state (for long result text)
   const [textExpanded, setTextExpanded] = useState(false);
 
-  // Get effective result (considering edits)
-  const effectiveResult = result.currentEdit?.editedResult ?? result.aiResult?.result;
+  // Parse AI result (handles both legacy and new JSONB format)
+  const parsedAI = result.aiResult ? parseAIResult(result.aiResult) : null;
+
+  // Get effective values (considering edits)
+  const effectiveScore = result.currentEdit?.editedScoreValue ?? parsedAI?.score;
+  const effectiveConfidence = result.currentEdit?.editedConfidence ?? parsedAI?.confidence;
+  const effectiveExplanation = result.currentEdit?.editedResult ?? parsedAI?.explanation ?? "";
+  
+  // Derive status label from score using rubric (new scoring architecture)
+  const effectiveStatusLabel = effectiveScore !== undefined && effectiveScore !== null
+    ? getStatusFromScore(effectiveScore)
+    : result.effectiveStatus?.name ?? "Not Evaluated";
+
+  // Legacy: Get status by ID if no score available
   const effectiveStatusId = result.currentEdit?.editedStatusId ?? result.aiResult?.statusId;
   const effectiveStatus =
     result.effectiveStatus ?? getStatusOption(effectiveStatusId, statusOptions);
-  
-  // Get score value (prefer captured score, fallback to status option score)
-  const effectiveScoreValue = result.currentEdit?.editedScoreValue ?? result.aiResult?.scoreValue;
+
+  // Custom fields from AI result
+  const customFields = parsedAI?.customFields;
   
   // Use score-based color for more consistent compliance visualization
   // Falls back to status-based color if no score available
-  const badgeColor = effectiveScoreValue !== null && effectiveScoreValue !== undefined
-    ? getScoreColor(effectiveScoreValue)
+  const badgeColor = effectiveScore !== null && effectiveScore !== undefined
+    ? getScoreColor(effectiveScore)
     : getStatusColor(effectiveStatus);
 
-  // Citations
-  const citations = result.aiResult?.citations ?? [];
+  // Citations (from parsed AI result or legacy field)
+  const citations = parsedAI?.citations ?? result.aiResult?.citations ?? [];
   const hasCitations = citations.length > 0;
 
   return (
@@ -308,19 +377,28 @@ export function EvalQACard({
             </Box>
           </Box>
 
-          {/* Right side: Status Badge + Expand/Collapse Button - NEVER HIDE */}
+            {/* Right side: Score Display + Expand/Collapse Button - NEVER HIDE */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
-            {effectiveScoreValue !== null && effectiveScoreValue !== undefined && scoreConfig ? (
+            {effectiveScore !== null && effectiveScore !== undefined ? (
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                <ComplianceScoreChip
-                  score={effectiveScoreValue}
-                  config={{
-                    categoricalMode: scoreConfig.categoricalMode,
-                    showDecimalScore: scoreConfig.showDecimalScore,
-                  }}
-                  statusOptions={scoreConfig.statusOptions}
-                  size="small"
-                />
+                {scoreConfig ? (
+                  <ComplianceScoreChip
+                    score={effectiveScore}
+                    config={{
+                      categoricalMode: scoreConfig.categoricalMode,
+                      showDecimalScore: scoreConfig.showDecimalScore,
+                    }}
+                    statusOptions={scoreConfig.statusOptions}
+                    size="small"
+                  />
+                ) : (
+                  <Chip
+                    label={`${Math.round(effectiveScore)}% - ${effectiveStatusLabel}`}
+                    color={badgeColor}
+                    size="small"
+                    sx={{ flexShrink: 0 }}
+                  />
+                )}
                 {result.hasEdit && (
                   <Box component="span" sx={{ fontSize: "0.75rem", color: "text.secondary" }} title="Edited">
                     ✎
@@ -342,12 +420,15 @@ export function EvalQACard({
                 color={badgeColor}
                 size="small"
                 sx={{ flexShrink: 0 }}
-                title={effectiveScoreValue !== null && effectiveScoreValue !== undefined
-                  ? `Score: ${effectiveScoreValue}`
-                  : undefined
-                }
               />
-            ) : null}
+            ) : (
+              <Chip
+                label="Not Evaluated"
+                color="default"
+                size="small"
+                sx={{ flexShrink: 0 }}
+              />
+            )}
             
             {/* Card Expand/Collapse Button */}
             <IconButton
@@ -363,15 +444,15 @@ export function EvalQACard({
 
         {/* Collapsible Result Section */}
         <Collapse in={cardExpanded}>
-          {effectiveResult && (
+          {effectiveExplanation && (
             <Box sx={{ mb: 1.5, bgcolor: "grey.50", borderRadius: 1, p: 1.5 }}>
               <Box sx={{ mb: 0.5, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <Typography variant="caption" color="text.secondary" fontWeight={500}>
                   {result.hasEdit ? "Edited Response" : "AI Response"}
                 </Typography>
-                {result.aiResult?.confidence !== undefined && !result.hasEdit && (
+                {effectiveConfidence !== undefined && !result.hasEdit && (
                   <Typography variant="caption" color="text.secondary">
-                    Confidence: {result.aiResult.confidence}%
+                    Confidence: {effectiveConfidence}%
                   </Typography>
                 )}
               </Box>
@@ -380,7 +461,7 @@ export function EvalQACard({
                 color="text.primary"
                 component="div"
                 sx={{
-                  ...((!textExpanded && effectiveResult.length > 300) && {
+                  ...((!textExpanded && effectiveExplanation.length > 300) && {
                     display: "-webkit-box",
                     WebkitLineClamp: 3,
                     WebkitBoxOrient: "vertical",
@@ -396,9 +477,9 @@ export function EvalQACard({
                   "& strong": { fontWeight: 600 },
                   "& em": { fontStyle: "italic" },
                 }}
-                dangerouslySetInnerHTML={{ __html: markdownToHtml(effectiveResult) }}
+                dangerouslySetInnerHTML={{ __html: markdownToHtml(effectiveExplanation) }}
               />
-              {effectiveResult.length > 300 && (
+              {effectiveExplanation.length > 300 && (
                 <Button
                   onClick={() => setTextExpanded(!textExpanded)}
                   size="small"
@@ -407,6 +488,27 @@ export function EvalQACard({
                   {textExpanded ? "Show less" : "Show more"}
                 </Button>
               )}
+            </Box>
+          )}
+
+          {/* Custom Fields from AI Response */}
+          {customFields && Object.keys(customFields).length > 0 && (
+            <Box sx={{ mb: 1.5, bgcolor: "blue.50", borderRadius: 1, p: 1.5, borderLeft: 3, borderColor: "blue.500" }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={500} sx={{ mb: 1, display: "block" }}>
+                Additional Response Sections
+              </Typography>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                {Object.entries(customFields).map(([key, value]) => (
+                  <Box key={key}>
+                    <Typography variant="caption" fontWeight={600} color="primary" sx={{ textTransform: "capitalize" }}>
+                      {key.replace(/_/g, " ")}:
+                    </Typography>
+                    <Typography variant="body2" color="text.primary" sx={{ mt: 0.25 }}>
+                      {typeof value === "object" ? JSON.stringify(value, null, 2) : String(value)}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
             </Box>
           )}
 
