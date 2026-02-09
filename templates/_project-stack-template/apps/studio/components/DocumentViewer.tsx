@@ -1,107 +1,133 @@
-import React, { useState } from "react";
+"use client";
+
+import React from "react";
 
 /**
- * Document Viewer Component
- * 
- * Displays document content with text selection support for creating citations.
- * Users can highlight text to add as citations for their evaluations.
+ * DocumentViewer Component
+ *
+ * Displays document content via:
+ * 1. Presigned URL in an iframe (preferred — preserves original formatting)
+ * 2. Plain text fallback (for extracted text content)
+ *
+ * Supports text selection for creating citations.
  */
 
 interface DocumentViewerProps {
-  documentContent: string;
+  /** Presigned URL for the original document (preferred) */
+  documentUrl?: string;
+  /** Plain text content fallback */
+  documentContent?: string;
+  /** Document filename for display */
   documentName: string;
-  onTextSelected?: (selectedText: string) => void;
+  /** Callback when text is selected (for citation flow) */
+  onTextSelected?: (text: string) => void;
 }
 
 export default function DocumentViewer({
+  documentUrl,
   documentContent,
   documentName,
   onTextSelected,
 }: DocumentViewerProps) {
-  const [selectedText, setSelectedText] = useState("");
-
-  const handleTextSelection = () => {
+  const handleTextSelect = () => {
     const selection = window.getSelection();
-    const text = selection?.toString().trim();
-    
-    if (text && text.length > 0) {
-      setSelectedText(text);
-      if (onTextSelected) {
-        onTextSelected(text);
-      }
+    if (selection && selection.toString().trim() && onTextSelected) {
+      onTextSelected(selection.toString().trim());
     }
   };
 
   return (
     <div
       style={{
+        height: "100%",
         display: "flex",
         flexDirection: "column",
-        height: "100%",
         border: "1px solid #ddd",
         borderRadius: "8px",
-        backgroundColor: "white",
         overflow: "hidden",
+        backgroundColor: "#fff",
       }}
     >
       {/* Header */}
       <div
         style={{
-          padding: "1rem",
+          padding: "0.75rem 1rem",
           borderBottom: "1px solid #ddd",
           backgroundColor: "#f8f9fa",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
         }}
       >
-        <h3 style={{ margin: 0, fontSize: "1rem" }}>📄 {documentName}</h3>
-        {selectedText && (
-          <div
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <span style={{ fontSize: "1.1rem" }}>📄</span>
+          <strong style={{ fontSize: "0.9rem" }}>{documentName}</strong>
+        </div>
+        {documentUrl && (
+          <a
+            href={documentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
             style={{
-              marginTop: "0.5rem",
-              padding: "0.5rem",
-              backgroundColor: "#fff3cd",
-              borderRadius: "4px",
-              fontSize: "0.875rem",
+              fontSize: "0.8rem",
+              color: "#007bff",
+              textDecoration: "none",
             }}
           >
-            <strong>Selected:</strong> "{selectedText.substring(0, 100)}
-            {selectedText.length > 100 ? "..." : ""}"
-          </div>
+            Open in new tab ↗
+          </a>
         )}
       </div>
 
-      {/* Document Content */}
+      {/* Content */}
       <div
-        onMouseUp={handleTextSelection}
         style={{
           flex: 1,
-          padding: "1.5rem",
-          overflowY: "auto",
-          lineHeight: "1.6",
-          fontSize: "1rem",
-          userSelect: "text",
-          cursor: "text",
+          overflow: "hidden",
+          position: "relative",
         }}
       >
-        {documentContent ? (
-          <div style={{ whiteSpace: "pre-wrap" }}>{documentContent}</div>
+        {documentUrl ? (
+          /* Presigned URL — render in iframe (preserves original formatting) */
+          <iframe
+            src={documentUrl}
+            style={{
+              width: "100%",
+              height: "100%",
+              border: "none",
+            }}
+            title={`Document: ${documentName}`}
+          />
+        ) : documentContent ? (
+          /* Plain text fallback */
+          <div
+            onMouseUp={handleTextSelect}
+            style={{
+              padding: "1rem",
+              height: "100%",
+              overflow: "auto",
+              lineHeight: "1.6",
+              fontSize: "0.9rem",
+              cursor: "text",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {documentContent}
+          </div>
         ) : (
-          <div style={{ textAlign: "center", color: "#999", padding: "2rem" }}>
-            <p>No document content available</p>
+          /* Loading / no content */
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              color: "#999",
+            }}
+          >
+            <p>Loading document...</p>
           </div>
         )}
-      </div>
-
-      {/* Instructions */}
-      <div
-        style={{
-          padding: "0.75rem 1rem",
-          borderTop: "1px solid #ddd",
-          backgroundColor: "#f8f9fa",
-          fontSize: "0.875rem",
-          color: "#666",
-        }}
-      >
-        💡 <strong>Tip:</strong> Select text in the document to add citations to your evaluation
       </div>
     </div>
   );

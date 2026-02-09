@@ -59,6 +59,11 @@ interface KBDocument {
   text_content?: string;
 }
 
+interface DownloadUrlResult {
+  downloadUrl: string;
+  expiresIn: number;
+}
+
 // Helper function to format time ago
 function formatTimeAgo(date: Date): string {
   const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -89,6 +94,7 @@ export default function TruthSetDetailPage() {
   // Data state
   const [truthSet, setTruthSet] = useState<TruthSet | null>(null);
   const [document, setDocument] = useState<KBDocument | null>(null);
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const [criteriaItems, setCriteriaItems] = useState<CriteriaItem[]>([]);
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [responseSections, setResponseSections] = useState<ResponseSection[]>([]);
@@ -157,12 +163,25 @@ export default function TruthSetDetailPage() {
           setEvaluations(evalMap);
         }
 
-        // Fetch document content
+        // Fetch document metadata and presigned URL for viewing
         if (ts.document_id) {
           const kbClient = createKbModuleClient(client);
+          
+          // Get document metadata (filename, status, etc.)
           const docResponse = await kbClient.workspace.getDocument(wsId, ts.document_id);
           if (docResponse.data) {
             setDocument(docResponse.data as any);
+          }
+
+          // Get presigned download URL for the original file
+          try {
+            const downloadResponse = await kbClient.workspace.downloadDocument(wsId, ts.document_id);
+            if (downloadResponse.data && (downloadResponse.data as any).downloadUrl) {
+              setDocumentUrl((downloadResponse.data as any).downloadUrl);
+            }
+          } catch (dlErr) {
+            console.warn("Could not get document download URL:", dlErr);
+            // Non-fatal — will fall back to text content or "no content" message
           }
         }
 
@@ -458,11 +477,14 @@ export default function TruthSetDetailPage() {
         {/* Left: Document Viewer */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <DocumentViewer
+            documentUrl={documentUrl || undefined}
             documentContent={
-              document?.extracted_text || 
-              document?.content || 
-              document?.text_content || 
-              (document ? "No text content found in document" : "Loading document...")
+              !documentUrl ? (
+                document?.extracted_text || 
+                document?.content || 
+                document?.text_content || 
+                (document ? "No text content found in document. Try opening the document directly." : undefined)
+              ) : undefined
             }
             documentName={document?.name || truthSet.name}
             onTextSelected={setSelectedText}

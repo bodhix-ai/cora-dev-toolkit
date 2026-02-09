@@ -598,12 +598,28 @@ def handle_get_truth_set(user_id: str, ws_id: str, run_id: str, ts_id: str) -> D
         {'group_id': ts_id}
     )
     
+    # Transform truth keys back into frontend-compatible format
+    evaluations = []
+    for tk in (truth_keys or []):
+        eval_entry = {
+            'criteria_item_id': tk.get('criteria_item_id'),
+            'section_responses': tk.get('section_responses') or {}
+        }
+        # If section_responses is empty but flat fields exist, reconstruct
+        if not eval_entry['section_responses'] and (tk.get('truth_confidence') is not None or tk.get('truth_explanation')):
+            eval_entry['section_responses'] = {
+                'score': tk.get('truth_confidence'),
+                'justification': tk.get('truth_explanation', ''),
+                'citations': json.loads(tk['truth_citations']) if tk.get('truth_citations') else []
+            }
+        evaluations.append(eval_entry)
+
     return common.success_response({
         'id': doc_group['id'],
         'name': doc_group.get('name'),
         'document_id': doc_group.get('primary_doc_id'),
         'status': doc_group.get('status'),
-        'evaluations': common.format_records(truth_keys or [])
+        'evaluations': evaluations
     })
 
 
@@ -676,6 +692,7 @@ def handle_update_truth_set(event: Dict[str, Any], user_id: str, ws_id: str, run
             'truth_confidence': section_responses.get('score', eval_data.get('confidence')),
             'truth_explanation': truth_explanation,
             'truth_citations': json.dumps(section_responses.get('citations', [])) if section_responses.get('citations') else None,
+            'section_responses': json.dumps(section_responses) if section_responses else None,
             'evaluated_by': user_id
         }
         
