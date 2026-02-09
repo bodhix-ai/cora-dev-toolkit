@@ -184,19 +184,21 @@ export default function CriteriaEvaluationForm({
         );
 
       case 'table': {
-        const columns = section.columns || [{ name: 'Value', type: 'text' as const }];
+        const columns = (section.columns && section.columns.length > 0)
+          ? section.columns
+          : [{ name: 'Column 1', type: 'text' as const }, { name: 'Column 2', type: 'text' as const }];
         const rows: Record<string, any>[] = Array.isArray(value) ? value : [];
         return (
           <div style={{ border: "1px solid #ddd", borderRadius: "4px", overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
               <thead>
-                <tr style={{ backgroundColor: "#f0f0f0" }}>
+                <tr style={{ backgroundColor: "#e8edf2" }}>
                   {columns.map((col, ci) => (
-                    <th key={ci} style={{ padding: "0.5rem", borderBottom: "1px solid #ddd", textAlign: "left", fontWeight: "600" }}>
-                      {col.name}
+                    <th key={ci} style={{ padding: "0.5rem 0.75rem", borderBottom: "2px solid #bbb", textAlign: "left", fontWeight: "700", fontSize: "0.875rem", color: "#333" }}>
+                      {col.name || `Column ${ci + 1}`}
                     </th>
                   ))}
-                  <th style={{ padding: "0.5rem", borderBottom: "1px solid #ddd", width: "40px" }}></th>
+                  <th style={{ padding: "0.5rem", borderBottom: "2px solid #bbb", width: "40px" }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -225,6 +227,7 @@ export default function CriteriaEvaluationForm({
                               handleSectionChange(section.id, newRows);
                             }}
                             onBlur={onBlur}
+                            placeholder={col.name || `Column ${ci + 1}`}
                             style={{ width: "100%", padding: "0.4rem", border: "1px solid #ddd", borderRadius: "3px", boxSizing: "border-box" }}
                           />
                         )}
