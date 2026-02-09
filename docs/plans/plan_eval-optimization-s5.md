@@ -1,6 +1,6 @@
 # Plan: Evaluation Optimization - Sprint 5 (Scoring Architecture & Execution)
 
-**Status:** 🟡 IN PROGRESS (Phase 1: ✅ COMPLETE + DEPLOYED, Phase 2: Next)  
+**Status:** 🟡 IN PROGRESS (Phase 1: ✅ COMPLETE + TESTED, Phase 2: Next)  
 **Branch:** `feature/eval-optimization-s5`  
 **Context:** [memory-bank/context-eval-optimization.md](../../memory-bank/context-eval-optimization.md)  
 **Created:** February 8, 2026  
@@ -10,7 +10,8 @@
 **Previous:** [Sprint 4 Plan](completed/plan_eval-optimization-s4.md)  
 **Specification:** [spec_eval-scoring-rubric-architecture.md](../specifications/spec_eval-scoring-rubric-architecture.md)  
 **Test Project:** `/Users/aaron/code/bodhix/testing/eval-studio/` (ai-mod-stack + ai-mod-infra)  
-**Phase 1 Verified:** February 9, 2026 (Summary section displaying correctly!)
+**Phase 1 Verified:** February 9, 2026 (Summary section displaying correctly!)  
+**Phase 1 Testing PASSED:** February 9, 2026 9:51 AM (Full E2E — scoring, custom fields, UX)
 
 ---
 
@@ -149,8 +150,8 @@ ADD COLUMN scoring_rubric JSONB DEFAULT '{"type": "5-tier", "min": 0, "max": 100
 
 ## Success Criteria
 
-- [ ] Scoring logic driven by database rubric (not hardcoded)
-- [ ] AI results stored as structured JSON
+- [x] Scoring logic driven by database rubric (not hardcoded) ✅ Phase 1
+- [x] AI results stored as structured JSON ✅ Phase 1
 - [ ] Optimization run generates real prompt variations
 - [ ] Truth key comparison works with new JSON structure
 - [ ] Citations can be added via text highlighting
@@ -407,24 +408,16 @@ effective_status = get_tier_from_score(score, rubric)
 
 ## Next Session Priorities
 
-### Priority 1: End-to-End Testing (NEXT)
-1. **Run full evaluation test** - Follow `plan_eval-optimization-s5-phase1-testing.md`
-   - Upload document to workspace
-   - Run evaluation against criteria set
-   - Verify database: `ai_result` is JSONB with score + custom fields
-   - Verify UI: Score displays as "85% - Fully Compliant" with derived label
-   - Verify custom fields appear in "Additional Response Sections" panel
-   - Confirm summary section displays correctly (✅ already verified!)
+### Priority 1: Phase 2 - Response Sections & Route Migration
+1. **Switch eval page to workspace-scoped routes** — Replace admin hooks (`useDocTypeSelect`, `useCriteriaSetSelect`) with `useWsDocTypeSelect`/`useWsCriteriaSetSelect` so eval creation uses `/ws/{wsId}/eval/config/*` instead of `/admin/org/eval/*`
+2. Update ResponseSectionsBuilder to enforce fixed sections (score, confidence, explanation, citations)
+3. Allow user to add custom sections (e.g., "Remediation", "Risk Level")
+4. Validate AI response against structure in eval-processor Lambda
 
-2. **Test custom fields capture**
-   - Check if AI returns any custom fields beyond fixed fields
-   - Verify those fields display in "Additional Response Sections" panel
-   - Test field name formatting (snake_case → Capitalized Words)
-
-### Priority 2: Phase 2 - Response Sections (Next Sprint)
-1. Update ResponseSectionsBuilder to enforce fixed sections (score, confidence, explanation, citations)
-2. Allow user to add custom sections (e.g., "Remediation", "Risk Level")
-3. Validate AI response against structure in eval-processor Lambda
+### Priority 2: Phase 3 - Optimization Execution
+1. Implement RAG pipeline in opt-orchestrator Lambda
+2. Implement meta-prompter for domain-aware prompt generation
+3. Execution loop: run evaluations, compare to truth keys
 
 ### Priority 3: Documentation Updates
 1. Update ADR-019b with new scoring architecture
