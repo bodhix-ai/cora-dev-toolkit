@@ -302,29 +302,33 @@ export default function TruthSetDetailPage() {
     return (
       <div style={{ padding: "2rem", textAlign: "center" }}>
         <p>Truth set not found.</p>
-        <button onClick={handleBack}>← Back to Run Details</button>
+        <button onClick={handleBack} style={{ background: "none", border: "none", color: "#007bff", cursor: "pointer" }}>← Back to Run Details</button>
       </div>
     );
   }
 
   return (
     <div style={{ padding: "2rem", maxWidth: "1400px", margin: "0 auto" }}>
-      {/* Header */}
+      {/* Breadcrumbs */}
       <div style={{ marginBottom: "2rem" }}>
-        <button
-          onClick={handleBack}
-          style={{
-            background: "none",
-            border: "none",
-            color: "#007bff",
-            cursor: "pointer",
-            fontSize: "1rem",
-            padding: 0,
-            marginBottom: "1rem",
-          }}
-        >
-          ← Back to Run Details
-        </button>
+        <nav style={{ marginBottom: "1rem", fontSize: "0.875rem" }}>
+          <a
+            onClick={() => router.push("/ws")}
+            style={{ color: "#007bff", cursor: "pointer", textDecoration: "none" }}
+          >Workspaces</a>
+          <span style={{ margin: "0 0.5rem", color: "#999" }}>/</span>
+          <a
+            onClick={() => router.push(`/ws/${wsId}?tab=2`)}
+            style={{ color: "#007bff", cursor: "pointer", textDecoration: "none" }}
+          >Workspace</a>
+          <span style={{ margin: "0 0.5rem", color: "#999" }}>/</span>
+          <a
+            onClick={handleBack}
+            style={{ color: "#007bff", cursor: "pointer", textDecoration: "none" }}
+          >Optimization Run</a>
+          <span style={{ margin: "0 0.5rem", color: "#999" }}>/</span>
+          <span style={{ color: "#333" }}>Truth Set</span>
+        </nav>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
           <div>
             <h1 style={{ margin: "0 0 0.5rem 0" }}>{truthSet.name}</h1>

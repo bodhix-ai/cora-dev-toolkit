@@ -101,20 +101,24 @@ export default function ResponseSectionsPage() {
     <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
       {/* Header */}
       <div style={{ marginBottom: "2rem" }}>
-        <button
-          onClick={handleCancel}
-          style={{
-            background: "none",
-            border: "none",
-            color: "#007bff",
-            cursor: "pointer",
-            fontSize: "1rem",
-            padding: 0,
-            marginBottom: "1rem",
-          }}
-        >
-          ← Back to Run Details
-        </button>
+        <nav style={{ marginBottom: "1rem", fontSize: "0.875rem" }}>
+          <a
+            onClick={() => router.push("/ws")}
+            style={{ color: "#007bff", cursor: "pointer", textDecoration: "none" }}
+          >Workspaces</a>
+          <span style={{ margin: "0 0.5rem", color: "#999" }}>/</span>
+          <a
+            onClick={() => router.push(`/ws/${wsId}?tab=2`)}
+            style={{ color: "#007bff", cursor: "pointer", textDecoration: "none" }}
+          >Workspace</a>
+          <span style={{ margin: "0 0.5rem", color: "#999" }}>/</span>
+          <a
+            onClick={handleCancel}
+            style={{ color: "#007bff", cursor: "pointer", textDecoration: "none" }}
+          >Optimization Run</a>
+          <span style={{ margin: "0 0.5rem", color: "#999" }}>/</span>
+          <span style={{ color: "#333" }}>Response Sections</span>
+        </nav>
         <h1 style={{ margin: "0 0 0.5rem 0" }}>Define Response Sections</h1>
         <p style={{ color: "#666", margin: 0 }}>
           Configure the structure of AI evaluation responses. These sections define what

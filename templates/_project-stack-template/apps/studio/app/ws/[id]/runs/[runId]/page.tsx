@@ -290,9 +290,6 @@ export default function OptimizationRunDetailsPage() {
       {/* Header */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
-          <IconButton onClick={handleBackToWorkspace} sx={{ mt: -0.5 }}>
-            <ArrowBack />
-          </IconButton>
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
               <Typography variant="h5">{run.name || "Untitled Run"}</Typography>
