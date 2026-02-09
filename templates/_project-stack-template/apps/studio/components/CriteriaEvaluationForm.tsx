@@ -224,18 +224,51 @@ export default function CriteriaEvaluationForm({
                               }}
                               onBlur={onBlur}
                             />
-                          ) : (
+                          ) : col.type === 'number' ? (
                             <input
-                              type={col.type === 'number' ? 'number' : 'text'}
+                              type="number"
                               value={row[dataKey] || ''}
                               onChange={(e) => {
                                 const newRows = [...rows];
-                                newRows[ri] = { ...newRows[ri], [dataKey]: col.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value };
+                                newRows[ri] = { ...newRows[ri], [dataKey]: parseFloat(e.target.value) || 0 };
                                 handleSectionChange(section.id, newRows);
                               }}
                               onBlur={onBlur}
                               placeholder={getColLabel(col, ci)}
                               style={{ width: "100%", padding: "0.4rem", border: "1px solid #ddd", borderRadius: "3px", boxSizing: "border-box" }}
+                            />
+                        ) : (
+                            <textarea
+                              value={row[dataKey] || ''}
+                              onChange={(e) => {
+                                const newRows = [...rows];
+                                newRows[ri] = { ...newRows[ri], [dataKey]: e.target.value };
+                                handleSectionChange(section.id, newRows);
+                                // Auto-expand height
+                                e.target.style.height = 'auto';
+                                e.target.style.height = e.target.scrollHeight + 'px';
+                              }}
+                              onBlur={onBlur}
+                              placeholder={getColLabel(col, ci)}
+                              rows={2}
+                              onFocus={(e) => {
+                                // Expand on focus to show full content
+                                e.target.style.height = 'auto';
+                                e.target.style.height = e.target.scrollHeight + 'px';
+                              }}
+                              style={{
+                                width: "100%",
+                                padding: "0.4rem",
+                                border: "1px solid #ddd",
+                                borderRadius: "3px",
+                                boxSizing: "border-box",
+                                resize: "vertical",
+                                fontFamily: "inherit",
+                                fontSize: "inherit",
+                                lineHeight: "1.4",
+                                minHeight: "2.5rem",
+                                overflow: "hidden",
+                              }}
                             />
                           )}
                         </td>
