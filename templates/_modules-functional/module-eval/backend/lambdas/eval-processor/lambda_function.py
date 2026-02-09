@@ -268,6 +268,7 @@ def process_evaluation(
             result = evaluate_criteria_item(
                 eval_id=eval_id,
                 criteria_item=criteria_item,
+                criteria_set=criteria_set,
                 ws_id=ws_id,
                 doc_ids=doc_ids,
                 prompts=prompts,
@@ -277,16 +278,11 @@ def process_evaluation(
             
             criteria_results.append(result)
             
-            # Calculate score contribution
-            if result.get('ai_status_id'):
-                status = next(
-                    (s for s in status_options if s['id'] == result['ai_status_id']),
-                    None
-                )
-                if status and status.get('score_value') is not None:
-                    weight = float(criteria_item.get('weight', 1.0))
-                    total_score += status['score_value'] * weight
-                    max_score += 100 * weight  # Assuming max score is 100
+            # Calculate score contribution using AI's direct score (new scoring architecture)
+            if result.get('ai_score_value') is not None:
+                weight = float(criteria_item.get('weight', 1.0))
+                total_score += result['ai_score_value'] * weight
+                max_score += 100 * weight  # Assuming max score is 100
         
         update_evaluation_status(eval_id, 'processing', PROGRESS_CRITERIA_END)
         
@@ -431,14 +427,26 @@ Description: {description}
 DOCUMENT CONTEXT:
 {context}
 
-AVAILABLE STATUS OPTIONS:
-{status_options}
+SCORING RUBRIC (for reference - return ONLY the numerical score):
+{scoring_rubric}
 
-Respond with a JSON object containing:
-- "status": The status option name that best matches
-- "confidence": Your confidence level (0-100)
-- "explanation": Detailed explanation of your assessment
-- "citations": Array of relevant quotes from the document''',
+IMPORTANT: You must return a JSON object with EXACTLY these fields:
+- "score": A numerical value from 0-100 (required, must be a number, not null)
+- "confidence": Your confidence level from 0-100 (required, must be a number)
+- "explanation": Detailed explanation of your assessment (required, must be a string)
+- "citations": Array of relevant quotes from the document (required, must be an array)
+
+DO NOT include a "status" field. Only return the numerical score.
+
+Example response format:
+{{
+  "score": 85,
+  "confidence": 90,
+  "explanation": "The document demonstrates strong compliance...",
+  "citations": ["Quote from document..."]
+}}
+
+Now evaluate the document:''',
             'temperature': 0.2,
             'max_tokens': 1500
         },
@@ -586,6 +594,7 @@ def save_doc_set_summary(
 def evaluate_criteria_item(
     eval_id: str,
     criteria_item: Dict[str, Any],
+    criteria_set: Dict[str, Any],
     ws_id: str,
     doc_ids: List[str],
     prompts: Dict[str, Dict[str, Any]],
@@ -613,8 +622,9 @@ def evaluate_criteria_item(
             # Fall back to using combined doc content
             context = combined_doc_content[:30000]  # Limit size
         
-        # Format status options for prompt
-        status_options_text = format_status_options(status_options)
+        # Get scoring rubric from criteria set
+        scoring_rubric = criteria_set.get('scoring_rubric')
+        scoring_rubric_text = format_scoring_rubric(scoring_rubric)
         
         # Get evaluation prompt config
         eval_prompt = prompts.get('evaluation', get_default_prompt_config('evaluation'))
@@ -628,27 +638,22 @@ def evaluate_criteria_item(
                 'requirement': requirement,
                 'description': description or 'N/A',
                 'context': context,
-                'status_options': status_options_text
+                'scoring_rubric': scoring_rubric_text
             }
         )
         
-        # Parse AI response
-        parsed = parse_evaluation_response(response, status_options)
+        # Parse AI response (new scoring architecture - extracts score directly from AI)
+        parsed = parse_evaluation_response(response)
         
-        # Get score_value from selected status option
-        ai_score_value = None
-        status_id = parsed.get('status_id')
-        if status_id:
-            status_option = next((s for s in status_options if s['id'] == status_id), None)
-            if status_option and status_option.get('score_value') is not None:
-                ai_score_value = float(status_option['score_value'])
+        # Use AI's direct score (0-100)
+        ai_score_value = parsed.get('score')
         
-        # Save result
+        # Save result with full JSON (fixed + custom fields)
         result = save_criteria_result(
             eval_id=eval_id,
             criteria_item_id=criteria_item_id,
-            ai_result=parsed.get('explanation', response),
-            ai_status_id=status_id,
+            ai_result=parsed,  # Full dict with all fields
+            ai_status_id=None,  # DEPRECATED (no longer derived from status options)
             ai_score_value=ai_score_value,
             ai_confidence=parsed.get('confidence'),
             ai_citations=parsed.get('citations', [])
@@ -729,7 +734,7 @@ def get_rag_context(
 
 
 def format_status_options(status_options: List[Dict[str, Any]]) -> str:
-    """Format status options for inclusion in prompt."""
+    """Format status options for inclusion in prompt (DEPRECATED - use format_scoring_rubric instead)."""
     if not status_options:
         return "- Compliant (score: 100)\n- Non-Compliant (score: 0)\n- Partially Compliant (score: 50)"
     
@@ -747,20 +752,73 @@ def format_status_options(status_options: List[Dict[str, Any]]) -> str:
     return formatted
 
 
-def parse_evaluation_response(
-    response: str,
-    status_options: List[Dict[str, Any]]
-) -> Dict[str, Any]:
-    """Parse AI evaluation response into structured data."""
+def format_scoring_rubric(rubric: Optional[Dict[str, Any]]) -> str:
+    """
+    Format scoring rubric for inclusion in prompt.
+    
+    Takes rubric JSONB from eval_criteria_sets and formats it as human-readable text for AI.
+    """
+    if not rubric or 'tiers' not in rubric:
+        # Fallback to default 5-tier rubric
+        return """
+- 0-20 (Non-Compliant): Criterion not addressed or completely fails requirement
+- 21-40 (Mostly Non-Compliant): Significant gaps exist, fails key aspects
+- 41-60 (Partially Compliant): Addresses some requirements but incomplete
+- 61-80 (Mostly Compliant): Meets most requirements with minor gaps
+- 81-100 (Fully Compliant): Fully meets or exceeds requirement with clear evidence
+"""
+    
+    lines = []
+    for tier in rubric['tiers']:
+        min_val = tier['min']
+        max_val = tier['max']
+        label = tier['label']
+        desc = tier['description']
+        lines.append(f"- {min_val}-{max_val} ({label}): {desc}")
+    
+    formatted = '\n'.join(lines)
+    
+    # DEBUG: Log formatted rubric
+    logger.info(f"[DEBUG] Formatted scoring rubric for AI:\n{formatted}")
+    
+    return formatted
+
+
+def parse_evaluation_response(response: str) -> Dict[str, Any]:
+    """
+    Parse AI evaluation response into structured data.
+    
+    Extracts fixed fields (score, confidence, explanation, citations) and
+    dynamically captures ALL other JSON fields from the AI response for 
+    custom fields configured in eval-studio (e.g., compliance_findings).
+    
+    Args:
+        response: Raw AI response text (may contain JSON)
+    
+    Returns:
+        Dict with fixed fields + all custom fields from AI JSON:
+        {
+            'score': int (0-100),
+            'confidence': int (0-100),
+            'explanation': str,
+            'citations': list,
+            'custom_field_1': any,  # Dynamic custom fields
+            'custom_field_2': any,
+            ...
+        }
+    """
+    # Fixed field names (these are extracted explicitly)
+    FIXED_FIELDS = {'score', 'confidence', 'explanation', 'citations'}
+    
     # DEBUG: Log raw AI response
     logger.info(f"[DEBUG] ===== PARSING AI RESPONSE =====")
     logger.info(f"[DEBUG] Raw AI response (first 1000 chars):\n{response[:1000]}")
-    logger.info(f"[DEBUG] Available status options: {[opt['name'] for opt in status_options]}")
     
+    # Default result with fixed fields
     result = {
-        'status_id': None,
+        'score': None,
         'confidence': None,
-        'explanation': response,
+        'explanation': response,  # Fallback to raw response
         'citations': []
     }
     
@@ -777,63 +835,53 @@ def parse_evaluation_response(
             parsed = json.loads(json_str)
             logger.info(f"[DEBUG] Parsed JSON: {parsed}")
             
-            # Extract status
-            status_name = parsed.get('status', '')
-            logger.info(f"[DEBUG] AI returned status name: '{status_name}'")
-            
-            status_name_lower = status_name.lower()
-            
-            # First pass: Try exact match
-            for opt in status_options:
-                if opt['name'].lower() == status_name_lower:
-                    result['status_id'] = opt['id']
-                    logger.info(f"[DEBUG] ✅ Exact matched status '{status_name}' to option '{opt['name']}' (ID: {opt['id'][:8]})")
-                    break
-            
-            # Second pass: Try fuzzy match only if exact match not found
-            if not result['status_id']:
-                for opt in status_options:
-                    if status_name_lower in opt['name'].lower():
-                        result['status_id'] = opt['id']
-                        logger.info(f"[DEBUG] ✅ Fuzzy matched status '{status_name}' to option '{opt['name']}' (ID: {opt['id'][:8]})")
-                        break
-            
-            if not result['status_id']:
-                logger.warning(f"[DEBUG] ❌ Could not match status '{status_name}' to any option")
+            # Extract score (direct from AI, 0-100)
+            if 'score' in parsed:
+                try:
+                    score = int(parsed['score'])
+                    result['score'] = max(0, min(100, score))  # Clamp to 0-100
+                    logger.info(f"[DEBUG] Score: {result['score']}")
+                except (ValueError, TypeError):
+                    logger.warning(f"[DEBUG] Invalid score value: {parsed.get('score')}")
             
             # Extract confidence
             if 'confidence' in parsed:
-                conf = int(parsed['confidence'])
-                result['confidence'] = max(0, min(100, conf))
-                logger.info(f"[DEBUG] Confidence: {result['confidence']}%")
+                try:
+                    conf = int(parsed['confidence'])
+                    result['confidence'] = max(0, min(100, conf))  # Clamp to 0-100
+                    logger.info(f"[DEBUG] Confidence: {result['confidence']}%")
+                except (ValueError, TypeError):
+                    logger.warning(f"[DEBUG] Invalid confidence value: {parsed.get('confidence')}")
             
             # Extract explanation
             if 'explanation' in parsed:
-                result['explanation'] = parsed['explanation']
+                result['explanation'] = str(parsed['explanation'])
                 logger.info(f"[DEBUG] Explanation length: {len(result['explanation'])} chars")
             
             # Extract citations
             if 'citations' in parsed and isinstance(parsed['citations'], list):
                 result['citations'] = parsed['citations'][:10]  # Limit to 10 citations
                 logger.info(f"[DEBUG] Citations: {len(result['citations'])} found")
+            
+            # Dynamically capture ALL other custom fields from AI response
+            custom_fields = {}
+            for key, value in parsed.items():
+                if key not in FIXED_FIELDS:
+                    custom_fields[key] = value
+                    logger.info(f"[DEBUG] Custom field captured: '{key}' (type: {type(value).__name__})")
+            
+            # Merge custom fields into result
+            result.update(custom_fields)
+            
+            if custom_fields:
+                logger.info(f"[DEBUG] Total custom fields captured: {len(custom_fields)}")
+                logger.info(f"[DEBUG] Custom field names: {list(custom_fields.keys())}")
                 
     except (json.JSONDecodeError, ValueError) as e:
         logger.warning(f"[DEBUG] Could not parse response as JSON: {e}")
-        
-        # Try to extract status from text
-        response_lower = response.lower()
-        logger.info(f"[DEBUG] Trying text-based status extraction...")
-        
-        for opt in status_options:
-            if opt['name'].lower() in response_lower:
-                result['status_id'] = opt['id']
-                logger.info(f"[DEBUG] ✅ Found status '{opt['name']}' in text (ID: {opt['id'][:8]})")
-                break
-        
-        if not result['status_id']:
-            logger.warning(f"[DEBUG] ❌ Could not find any status option in text")
+        logger.warning(f"[DEBUG] Storing raw response text as explanation")
     
-    logger.info(f"[DEBUG] Final parsed result: status_id={result['status_id'][:8] if result['status_id'] else None}, confidence={result['confidence']}")
+    logger.info(f"[DEBUG] Final parsed result: score={result.get('score')}, confidence={result.get('confidence')}")
     logger.info(f"[DEBUG] ===== END PARSING =====")
     
     return result
@@ -842,13 +890,19 @@ def parse_evaluation_response(
 def save_criteria_result(
     eval_id: str,
     criteria_item_id: str,
-    ai_result: str,
+    ai_result,  # Union[str, Dict] - Dict for new JSON format, str for legacy/error cases
     ai_status_id: Optional[str],
     ai_score_value: Optional[float],
     ai_confidence: Optional[int],
     ai_citations: List[Any]
 ) -> Dict[str, Any]:
-    """Save criteria evaluation result to database."""
+    """
+    Save criteria evaluation result to database.
+    
+    Args:
+        ai_result: Full JSON dict with fixed + custom fields (new format),
+                   or plain string for legacy/error cases
+    """
     try:
         # Check for existing result
         existing = common.find_one(
@@ -856,9 +910,19 @@ def save_criteria_result(
             {'eval_summary_id': eval_id, 'criteria_item_id': criteria_item_id}
         )
         
+        # Handle ai_result format (dict or string)
+        if isinstance(ai_result, dict):
+            # New format: Store full JSON with all fields (fixed + custom)
+            ai_result_json = ai_result
+            logger.info(f"[DEBUG] Storing JSONB ai_result with {len(ai_result)} fields: {list(ai_result.keys())}")
+        else:
+            # Legacy/error format: Wrap string in explanation field
+            ai_result_json = {'explanation': str(ai_result)}
+            logger.info(f"[DEBUG] Storing legacy string ai_result (wrapped in explanation field)")
+        
         data = {
-            'ai_result': ai_result,
-            'ai_status_id': ai_status_id,
+            'ai_result': ai_result_json,  # Store as JSONB (Supabase/PostgreSQL handles serialization)
+            'ai_status_id': ai_status_id,  # DEPRECATED (will be None for new scoring)
             'ai_score_value': ai_score_value,
             'ai_confidence': ai_confidence,
             'ai_citations': json.dumps(ai_citations) if ai_citations else '[]',
@@ -1266,17 +1330,23 @@ def build_results_summary(
         criteria_id = item.get('criteria_id', 'N/A')
         requirement = item.get('requirement', 'Unknown')
         
-        status_id = result.get('ai_status_id')
-        status = status_map.get(status_id, {})
-        status_name = status.get('name', 'Unknown')
+        # Handle JSONB ai_result (new scoring architecture)
+        ai_result = result.get('ai_result', {})
+        if isinstance(ai_result, dict):
+            # New format: Extract explanation from JSONB
+            explanation = ai_result.get('explanation', 'No explanation')[:300]
+            score = ai_result.get('score', 'N/A')
+        else:
+            # Legacy format: ai_result is a plain string
+            explanation = str(ai_result)[:300]
+            score = 'N/A'
         
         confidence = result.get('ai_confidence', 'N/A')
-        explanation = result.get('ai_result', 'No explanation')[:300]
         
         lines.append(f"""
 Criteria: {criteria_id}
 Requirement: {requirement}
-Status: {status_name}
+Score: {score}
 Confidence: {confidence}%
 Assessment: {explanation}
 ---""")

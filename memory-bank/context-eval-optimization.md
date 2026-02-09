@@ -80,18 +80,18 @@ Updated the configuration file to explicitly include `module-voice` to restore t
 | S1 | `feature/eval-optimization-s1` | `plan_eval-optimization-s1.md` | ✅ COMPLETE | Feb 5, 2026 |
 | S2 | `feature/eval-optimization-s2` | `plan_eval-optimization-s2.md` | ✅ COMPLETE | Feb 5, 2026 |
 | S3 | `feature/eval-optimization-s3` | `plan_eval-optimization-s3.md` | ✅ COMPLETE | Feb 6, 2026 |
-| S4 | `feature/eval-optimization-s4` | `plan_eval-optimization-s4.md` | � Active | - |
+| S4 | `feature/eval-optimization-s4` | `plan_eval-optimization-s4.md` | ✅ COMPLETE | Feb 8, 2026 |
+| S5 | `feature/eval-optimization-s5` | `plan_eval-optimization-s5.md` | 🎯 Active | - |
 
 ## Current Sprint
 
-- **Sprint 1:** ✅ COMPLETE (Feb 5, 2026 AM)
-- **Sprint 2:** ✅ COMPLETE (Feb 5, 2026 PM)
-- **Sprint 3:** ✅ COMPLETE (Feb 5-6, 2026) - UX Design Focus
-- **Sprint 4:** 🎯 ACTIVE (Feb 8, 2026) - Naming decision + Truth Set Wizard completion
-- **Branch:** `feature/eval-optimization-s4`
-- **Plan:** `docs/plans/plan_eval-optimization-s4.md`
-- **Focus:** Module naming + document loading fix + focus mode
-- **Test Project:** `~/code/bodhix/testing/eval-opt/ai-mod-stack/`
+- **Sprint 4:** ✅ COMPLETE (Feb 8, 2026) - Auto-save + Studio Naming + UX Fixes
+- **Sprint 5:** 🎯 ACTIVE (Feb 8, 2026) - Scoring Architecture & Execution
+- **Branch:** `feature/eval-optimization-s5`
+- **Plan:** `docs/plans/plan_eval-optimization-s5.md`
+- **Focus:** Scoring rubric, JSON results, RAG pipeline, Meta-prompter
+- **Test Project:** `/Users/aaron/code/bodhix/testing/eval-studio/` (ai-mod-stack + ai-mod-infra)
+- **Session Progress:** Phase 1 ✅ COMPLETE (Backend + Frontend + Deployment + Verification)
 
 ## Key Design Decisions
 
@@ -387,6 +387,142 @@ The system provides statistical guidance on result reliability based on sample s
   - Location: `docs/arch decisions/ADR-021-EVAL-OPTIMIZER-DEPLOYMENT.md`
 
 ## Session Log
+
+### February 9, 2026 (12:26 AM - 12:36 AM) - Sprint 5 Phase 1 Deployment & Verification ✅ COMPLETE
+
+**Session Duration:** 10 minutes  
+**Branch:** `feature/eval-optimization-s5`  
+**Objective:** Deploy scoring architecture fixes and verify summary display
+
+**Completed:**
+
+1. **Lambda Deployment (All 3 Lambdas)** ✅
+   - Built all module-eval Lambdas (eval-config, eval-processor, eval-results)
+   - Copied zips to infra repo build directory
+   - Deployed via Terraform (21 added, 6 changed, 21 destroyed)
+   - New eval_common layer v22 created with updated code
+   - All Lambda aliases updated to new versions
+   - Duration: ~3 minutes deployment
+
+2. **Verification** ✅
+   - eval-processor: Updated 2026-02-09T05:27:57 UTC
+   - eval-results: Updated 2026-02-09T05:28:52 UTC
+   - eval-config: Updated (part of deployment)
+   - ✅ **USER CONFIRMED: Summary section now displays correctly!**
+
+3. **Critical Fix Validated** ✅
+   - eval-results Lambda now derives `effectiveStatus` from score using rubric
+   - RPC function bypasses Supabase 406 error on JSONB columns
+   - UI no longer shows "Not Evaluated" chips when scores exist
+   - Score-first architecture working as designed
+
+**Key Achievements:**
+- Phase 1 scoring architecture fully deployed and verified
+- All backend Lambdas updated with new scoring logic
+- Database-driven rubric system working correctly
+- Summary section displaying scores with derived status labels
+
+**Files Deployed:**
+- `eval-processor/lambda_function.py` (score extraction, custom fields)
+- `eval-results/lambda_function.py` (status derivation from score)
+- `eval_common` layer v22 (RPC function, scoring utilities)
+
+**Next Session Priorities:**
+1. **Phase 2: Response Sections** - Implement Fixed vs Custom section logic
+2. **End-to-end testing** - Run full evaluation to verify custom fields display
+3. **Frontend enhancements** - Citation highlighting, scoring panel improvements
+4. **Phase 3: Optimization Execution** - RAG pipeline + Meta-prompter (deferred)
+
+---
+
+### February 8, 2026 (7:16 PM - 8:30 PM) - Sprint 5 Phase 1: Scoring Architecture Implementation
+
+**Session Duration:** 1 hour 14 minutes  
+**Branch:** `feature/eval-optimization-s5`  
+**Objective:** Implement database-driven scoring architecture and dynamic custom fields
+
+**Completed:**
+
+1. **Backend Lambda Updates (eval-processor)** ✅
+   - Updated `parse_evaluation_response()` - Extracts score directly from AI (0-100), captures ALL custom fields dynamically
+   - Updated `save_criteria_result()` - Stores full JSON (fixed + custom fields) in JSONB ai_result column
+   - Updated `evaluate_criteria_item()` - Uses AI's direct score instead of deriving from status options
+   - Marked `format_status_options()` as DEPRECATED, added `format_scoring_rubric()` replacement
+
+2. **Frontend Scoring Utilities** ✅
+   - Created `frontend/utils/scoring.ts` (NEW)
+   - `getStatusFromScore()` - Maps numerical score to rubric tier label
+   - `getTierFromScore()` - Gets full tier object from score
+   - `getScoreColorClass()` - Tailwind color classes for scores
+   - `formatScore()` - Formats score as percentage
+   - `DEFAULT_RUBRIC` - 5-tier rubric matching database default
+
+3. **Frontend Component Updates (EvalQAList.tsx)** ✅
+   - Added `parseAIResult()` - Handles legacy string and new JSONB formats
+   - Updated score display - Shows score + derived status label using rubric
+   - Added custom fields section - Displays dynamic fields from AI response in blue-highlighted panel
+   - Backward compatible with legacy format
+
+4. **Error Fix (opt-orchestrator Lambda)** ✅
+   - Fixed 3 instances of `BadRequestError` → `ValidationError`
+   - Created fix plan document: `docs/plans/plan_fix-bad-request-error.md`
+
+**Architecture Change:**
+- **OLD (WRONG):** AI picks status → System assigns score from status mapping
+- **NEW (CORRECT):** AI provides score → System derives status label from score using rubric
+
+**Custom Fields Support:**
+- Lambda now captures ANY fields AI returns beyond fixed fields (score, confidence, explanation, citations)
+- Example: AI can return `{"score": 85, "compliance_findings": "...", "recommendations": "..."}` and all fields are stored
+- Frontend displays custom fields in "Additional Response Sections" panel
+
+**Files Modified:**
+- `templates/_modules-functional/module-eval/backend/lambdas/eval-processor/lambda_function.py`
+- `templates/_modules-functional/module-eval-studio/backend/lambdas/opt-orchestrator/lambda_function.py`
+- `templates/_modules-functional/module-eval/frontend/utils/scoring.ts` (NEW)
+- `templates/_modules-functional/module-eval/frontend/components/EvalQAList.tsx`
+- `docs/plans/plan_fix-bad-request-error.md` (NEW)
+
+**Database Status:**
+- ✅ Migration already applied: `20260208_sprint5_scoring_architecture.sql`
+- `eval_criteria_results.ai_result` → JSONB
+- `eval_criteria_sets.scoring_rubric` → JSONB with default 5-tier rubric
+
+**Remaining Work:**
+- [ ] Sync files to test project
+- [ ] Deploy Lambda (eval-processor)
+- [ ] Restart frontend dev server
+- [ ] End-to-end testing with real evaluation
+
+**Next Session Priorities:**
+1. Sync scoring architecture to test project (`/fix-and-sync.md` workflow)
+2. Deploy eval-processor Lambda with updated code
+3. Run test evaluation to verify scoring works
+4. Verify custom fields display correctly
+5. Begin Phase 2: Response Sections (Fixed vs Custom)
+
+---
+
+### February 8, 2026 (3:00 PM - 3:30 PM) - Sprint 4 Completion & S5 Planning
+
+**Session Duration:** 30 minutes
+**Branch:** `feature/eval-optimization-s4` -> `feature/eval-optimization-s5`
+**Objective:** Close Sprint 4, merge to main, and start Sprint 5
+
+**Completed:**
+- ✅ Validated Sprint 4 deliverables (Auto-save, Studio Naming, UX Fixes)
+- ✅ Merged Sprint 4 PR to main
+- ✅ Created Sprint 5 branch `feature/eval-optimization-s5`
+- ✅ Created `docs/plans/plan_eval-optimization-s5.md`
+- ✅ Closed S4 UX enhancement plan
+
+**Sprint 5 Plan Defined:**
+- **Scoring Architecture:** Migrate to JSONB results + database-driven rubric
+- **Response Sections:** Implement Fixed vs Custom section logic
+- **Optimization Execution:** RAG pipeline + Meta-prompter + Variation Generator
+- **UX Enhancements:** Citation highlighting + Scoring panel improvements
+
+---
 
 ### February 8, 2026 (8:00 AM - 9:00 AM) - Module Naming Decision
 
@@ -1384,8 +1520,8 @@ const client = createApiClient(token);
 
 ---
 
-**Document Status:** ✅ Sprint 1-3 Complete, 🟡 Sprint 4 Active (Phase 2 Complete, Architecture Work In Progress)  
-**Last Updated:** February 7, 2026 7:00 PM
+**Document Status:** ✅ Sprint 1-4 Complete, 🟡 Sprint 5 Active (Phase 1 ~60% complete)  
+**Last Updated:** February 8, 2026 7:50 PM
 
 ---
 

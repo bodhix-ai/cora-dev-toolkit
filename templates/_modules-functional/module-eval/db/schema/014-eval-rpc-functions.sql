@@ -224,5 +224,50 @@ $$;
 COMMENT ON FUNCTION get_eval_prompt_config IS 'Resolve prompt config with delegation check';
 
 -- ============================================================================
+-- Data Access Functions
+-- ============================================================================
+
+-- Get criteria results for an evaluation with ai_result cast to text
+-- Sprint 5 Phase 1: Avoids Supabase REST API 406 error on JSONB columns
+CREATE OR REPLACE FUNCTION get_eval_criteria_results(p_eval_summary_id UUID)
+RETURNS TABLE (
+    id UUID,
+    eval_summary_id UUID,
+    criteria_item_id UUID,
+    ai_result TEXT,
+    ai_status_id UUID,
+    ai_score_value NUMERIC,
+    ai_confidence INTEGER,
+    ai_citations TEXT,
+    processed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        ecr.id,
+        ecr.eval_summary_id,
+        ecr.criteria_item_id,
+        ecr.ai_result::TEXT,
+        ecr.ai_status_id,
+        ecr.ai_score_value,
+        ecr.ai_confidence,
+        ecr.ai_citations::TEXT,
+        ecr.processed_at,
+        ecr.created_at
+    FROM eval_criteria_results ecr
+    WHERE ecr.eval_summary_id = p_eval_summary_id
+    ORDER BY ecr.created_at ASC;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION get_eval_criteria_results(UUID) TO authenticated;
+
+COMMENT ON FUNCTION get_eval_criteria_results IS 'Fetch criteria results with ai_result cast to text to avoid JSONB 406 error';
+
+-- ============================================================================
 -- End of migration
 -- ============================================================================
