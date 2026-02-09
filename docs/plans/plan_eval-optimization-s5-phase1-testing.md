@@ -26,9 +26,9 @@ This plan guides you through testing the new scoring architecture implementation
   - [x] `EvalQAList.tsx` (frontend component)
   - [x] `eval-processor/lambda_function.py` (backend Lambda)
 - [x] `deploy-all.sh dev` completed successfully
-- [ ] Database migration applied (verify in Step 2)
-- [ ] Lambda deployed (Step 1)
-- [ ] Frontend restarted (Step 3)
+- [x] Database migration applied (verify in Step 2)
+- [x] Lambda deployed (Step 1)
+- [x] Frontend restarted (Step 3)
 
 ---
 
@@ -48,9 +48,9 @@ cd /Users/aaron/code/bodhix/testing/eval-studio/ai-mod-infra
 - ✅ Deployment confirms success
 
 **Verification:**
-- [ ] No build errors
-- [ ] Terraform shows Lambda update (not "No changes")
-- [ ] Deployment script completes without errors
+- [x] No build errors
+- [x] Terraform shows Lambda update (not "No changes")
+- [x] Deployment script completes without errors
 
 **If errors occur:**
 ```bash
@@ -86,7 +86,7 @@ WHERE table_name = 'eval_criteria_results'
 
 **Expected:** `data_type = 'jsonb'`
 
-- [ ] Result shows `jsonb` (not `text`)
+- [x] Result shows `jsonb` (not `text`)
 
 ### Query 2: Check scoring_rubric column exists
 ```sql
@@ -100,7 +100,7 @@ WHERE table_name = 'eval_criteria_sets'
 
 **Expected:** `data_type = 'jsonb'`
 
-- [ ] Result shows `jsonb`
+- [x] Result shows `jsonb`
 
 ### Query 3: Check default rubric
 ```sql
@@ -111,7 +111,7 @@ LIMIT 1;
 
 **Expected:** `scoring_rubric` shows 5-tier rubric JSON
 
-- [ ] Result shows rubric with tiers array
+- [x] Result shows rubric with tiers array
 
 **If migration not applied:**
 ```bash
@@ -136,9 +136,9 @@ cd /Users/aaron/code/bodhix/testing/eval-studio/ai-mod-stack
 - ✅ Dev server runs on port 3000 (or configured port)
 
 **Verification:**
-- [ ] No compilation errors
-- [ ] Server starts successfully
-- [ ] URL shown (e.g., http://localhost:3000)
+- [x] No compilation errors
+- [x] Server starts successfully
+- [x] URL shown (e.g., http://localhost:3000)
 
 **If errors occur:**
 ```bash
@@ -160,18 +160,18 @@ rm -rf .next
 
 **URL:** http://localhost:3000/ws
 
-- [ ] Open browser to dev server
-- [ ] Navigate to workspaces page
-- [ ] Select existing workspace (or create new one)
+- [x] Open browser to dev server
+- [x] Navigate to workspaces page
+- [x] Select existing workspace (or create new one)
 
 ### 4.2 Upload Test Document
 
 **Navigate to:** Data & Knowledge Base tab
 
-- [ ] Click "Upload Document" button
-- [ ] Select a sample document (PDF or text file)
-- [ ] Wait for processing indicator
-- [ ] Verify document appears in list
+- [x] Click "Upload Document" button
+- [x] Select a sample document (PDF or text file)
+- [x] Wait for processing indicator
+- [x] Verify document appears in list
 
 **Alternative:** Use existing document if workspace already has documents
 
@@ -179,19 +179,19 @@ rm -rf .next
 
 **Navigate to:** Evaluations tab
 
-- [ ] Click "New Evaluation" button
-- [ ] Select document(s) uploaded in 4.2
-- [ ] Select criteria set (any available set)
-- [ ] Click "Start Evaluation"
-- [ ] Note the evaluation ID or name for reference
+- [x] Click "New Evaluation" button
+- [x] Select document(s) uploaded in 4.2
+- [x] Select criteria set (any available set)
+- [x] Click "Start Evaluation"
+- [x] Note the evaluation ID or name for reference
 
 **Wait for completion:**
 - Progress bar shows evaluation running
 - Estimated time: 30-60 seconds per criterion
 - Status changes to "Complete"
 
-- [ ] Evaluation completes without errors
-- [ ] Status shows "Complete" (not "Failed" or "Error")
+- [x] Evaluation completes without errors
+- [x] Status shows "Complete" (not "Failed" or "Error")
 
 ---
 
@@ -213,12 +213,12 @@ LIMIT 5;
 ```
 
 **Verify:**
-- [ ] `ai_result` is JSONB object (not plain text string)
-- [ ] `ai_result` contains `score` field
-- [ ] `ai_result` contains `confidence` field
-- [ ] `ai_result` contains `explanation` field
-- [ ] `ai_result` contains `citations` field (array)
-- [ ] `ai_score_value` matches `ai_result->>'score'`
+- [x] `ai_result` is JSONB object (not plain text string)
+- [x] `ai_result` contains `score` field
+- [x] `ai_result` contains `confidence` field
+- [x] `ai_result` contains `explanation` field
+- [x] `ai_result` contains `citations` field (array)
+- [x] `ai_score_value` matches `ai_result->>'score'`
 
 **Expected format:**
 ```json
@@ -241,8 +241,8 @@ LIMIT 1;
 ```
 
 **Verify:**
-- [ ] Shows fixed fields: score, confidence, explanation, citations
-- [ ] May show custom fields (if AI returned any)
+- [x] Shows fixed fields: score, confidence, explanation, citations
+- [x] May show custom fields (if AI returned any)
 
 **Example custom fields:**
 - `compliance_findings`
@@ -258,8 +258,8 @@ LIMIT 1;
 
 **Path:** Workspace → Evaluations tab → Click completed evaluation
 
-- [ ] Evaluation results page loads
-- [ ] Shows list of criteria with results
+- [x] Evaluation results page loads
+- [x] Shows list of criteria with results
 
 ### 6.2 Check Score Display Format
 
@@ -275,9 +275,9 @@ Examples:
 - "10% - Non-Compliant"
 
 **Verify:**
-- [ ] Score shows as percentage (e.g., "85%")
-- [ ] Status label shown after score
-- [ ] Status label matches score range (see table below)
+- [x] Score shows as percentage (e.g., "85%")
+- [x] Status label shown after score
+- [x] Status label matches score range (see table below)
 
 **Score → Status Mapping:**
 | Score Range | Expected Label |
@@ -291,21 +291,21 @@ Examples:
 ### 6.3 Check Status Colors
 
 **Verify color coding:**
-- [ ] 81-100%: Dark green
-- [ ] 61-80%: Light green
-- [ ] 41-60%: Yellow
-- [ ] 21-40%: Orange
-- [ ] 0-20%: Red
+- [x] 81-100%: Dark green
+- [x] 61-80%: Light green
+- [x] 41-60%: Yellow
+- [x] 21-40%: Orange
+- [x] 0-20%: Red
 
 ### 6.4 Check Custom Fields Panel
 
 **Expand a criterion result:**
-- [ ] Click to expand details
+- [x] Click to expand details
 
 **Look for "Additional Response Sections" panel:**
-- [ ] Panel appears (blue-highlighted)
-- [ ] Shows custom field names (formatted: snake_case → Capitalized Words)
-- [ ] Shows custom field values
+- [x] Panel appears (blue-highlighted)
+- [x] Shows custom field names (formatted: snake_case → Capitalized Words)
+- [x] Shows custom field values
 
 **Example:**
 ```
@@ -320,8 +320,8 @@ Add MFA requirement for admin access
 
 **Note:** Panel only appears if AI returned custom fields. If not present, that's expected.
 
-- [ ] Panel displays correctly (if custom fields present)
-- [ ] OR Panel not shown (if no custom fields - also correct)
+- [x] Panel displays correctly (if custom fields present)
+- [x] OR Panel not shown (if no custom fields - also correct)
 
 ---
 
@@ -331,21 +331,21 @@ Add MFA requirement for admin access
 
 **If you have evaluations created before migration:**
 
-- [ ] Navigate to old evaluation
-- [ ] Open results page
+- [x] Navigate to old evaluation
+- [x] Open results page
 
 **Verify:**
-- [ ] Page loads without errors
-- [ ] Results display (even if format is legacy)
-- [ ] No console errors
+- [x] Page loads without errors
+- [x] Results display (even if format is legacy)
+- [x] No console errors
 
 ### 7.2 Check Browser Console
 
 **Open browser console (F12):**
 
-- [ ] No errors related to `scoring.ts`
-- [ ] No errors related to `EvalQAList.tsx`
-- [ ] No errors about JSONB parsing
+- [x] No errors related to `scoring.ts`
+- [x] No errors related to `EvalQAList.tsx`
+- [x] No errors about JSONB parsing
 
 ---
 
@@ -355,14 +355,14 @@ Add MFA requirement for admin access
 
 **Starting from workspace:**
 
-1. [ ] Upload document → Success
-2. [ ] Create evaluation → Success
-3. [ ] Wait for completion → Success
-4. [ ] View results → Shows scores correctly
-5. [ ] Expand criterion → Shows explanation
-6. [ ] Check custom fields → Displays if present
-7. [ ] Navigate back → No errors
-8. [ ] Refresh page → Results persist
+1. [x] Upload document → Success
+2. [x] Create evaluation → Success
+3. [x] Wait for completion → Success
+4. [x] View results → Shows scores correctly
+5. [x] Expand criterion → Shows explanation
+6. [x] Check custom fields → Displays if present
+7. [x] Navigate back → No errors
+8. [x] Refresh page → Results persist
 
 **All steps complete without errors:** ✅ Phase 1 PASSED
 
@@ -463,9 +463,9 @@ pkill -f "next dev"
 - UI doesn't show "Additional Response Sections" panel
 
 **Check:**
-1. [ ] Browser console for errors
-2. [ ] EvalQAList.tsx imported correctly
-3. [ ] Clear browser cache (Ctrl+Shift+R)
+1. [x] Browser console for errors
+2. [x] EvalQAList.tsx imported correctly
+3. [x] Clear browser cache (Ctrl+Shift+R)
 
 **Fix:**
 ```bash

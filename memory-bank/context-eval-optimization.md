@@ -91,7 +91,7 @@ Updated the configuration file to explicitly include `module-voice` to restore t
 - **Plan:** `docs/plans/plan_eval-optimization-s5.md`
 - **Focus:** Scoring rubric, JSON results, RAG pipeline, Meta-prompter
 - **Test Project:** `/Users/aaron/code/bodhix/testing/eval-studio/` (ai-mod-stack + ai-mod-infra)
-- **Session Progress:** Phase 1 ✅ COMPLETE + TESTED (Scoring, Custom Fields, UX — PASSED Feb 9)
+- **Session Progress:** Phase 1 ✅ COMPLETE + TESTED (Scoring, Custom Fields, UX — PASSED Feb 9). Phase 2 planning complete — sidebar org selector fix, route migration, response sections, optimization execution.
 
 ## Key Design Decisions
 
@@ -387,6 +387,102 @@ The system provides statistical guidance on result reliability based on sample s
   - Location: `docs/arch decisions/ADR-021-EVAL-OPTIMIZER-DEPLOYMENT.md`
 
 ## Session Log
+
+### February 9, 2026 (1:18 PM - 2:10 PM) - Phase 2B ResponseStructureBuilder Fixes ✅ COMPLETE
+
+**Session Duration:** ~50 minutes  
+**Branch:** `feature/eval-optimization-s5`  
+**Objective:** Fix 3 ResponseStructureBuilder issues (table type, built-in sections, insertion order)
+
+**Completed:**
+
+1. **Root Cause Found: Backend Lambda Validation** ✅
+   - `opt-orchestrator/lambda_function.py` line 468: validation whitelist missing `'table'` type
+   - All table sections silently converted to `'text'` on save
+   - Fix: Added `'table'` to `ALLOWED_TYPES` list
+
+2. **Frontend Type Sync** ✅
+   - `sections/page.tsx`: Added `TableColumn` interface, `'table'` to type union, `builtIn?` and `columns?` fields
+   - `ResponseStructureBuilder.tsx`: Added `mergeWithBuiltIns()` function
+
+3. **Built-in Section Restore on Reload** ✅
+   - `mergeWithBuiltIns()` re-applies `builtIn: true` flag when loading from DB (DB doesn't store it)
+   - Auto-prepends missing built-in sections (Explanation, Citations) if absent
+
+4. **Section Insertion Order** ✅
+   - Fixed: New sections now append at end of list (was inserting at index 0)
+
+5. **Deployed & Verified** ✅
+   - Synced 3 files to test project via `sync-fix-to-project.sh`
+   - Built opt-orchestrator Lambda (20MB zip)
+   - Deployed via Terraform
+   - **USER CONFIRMED**: Table type persists, built-in sections restore, ordering correct
+
+**Files Modified:**
+- `templates/_modules-functional/module-eval-studio/backend/lambdas/opt-orchestrator/lambda_function.py`
+- `templates/_project-stack-template/apps/studio/app/ws/[id]/runs/[runId]/sections/page.tsx`
+- `templates/_project-stack-template/apps/studio/components/ResponseStructureBuilder.tsx`
+
+**Next Session Priorities:**
+1. Phase 2C: Backend validation of AI response against response structure
+2. Phase 3: Optimization execution (RAG + meta-prompter + execution engine)
+3. Phase 4: UX enhancements (citations, layout)
+
+---
+
+### February 9, 2026 (10:22 AM - 10:35 AM) - Sprint 5 Phase 2-4 Planning & Sidebar Issue Scoping
+
+**Session Duration:** 13 minutes  
+**Branch:** `feature/eval-optimization-s5`  
+**Objective:** Define task plan for remaining Sprint 5 phases + scope sidebar org selector fix
+
+**Completed:**
+
+1. **Phase 2-4 Task Plan Defined** ✅
+   - Phase 2.0: Sidebar & Org Selector collapsed mode fix (quick win)
+   - Phase 2A: Route migration to workspace-scoped eval config
+   - Phase 2B: ResponseStructureBuilder fixed vs custom sections
+   - Phase 2C: Backend validation of AI response against structure
+   - Phase 2D: Testing
+   - Phase 3: Optimization execution (RAG + meta-prompter + execution engine)
+   - Phase 4: UX enhancements (citations, layout)
+   - Documentation updates
+
+2. **Sidebar Issue Scoped** ✅
+   - `Sidebar.tsx` line 130: `{!collapsed && <OrganizationSwitcher />}` hides entire bottom menu when collapsed
+   - Fix: Pass `collapsed` prop, show only Avatar as IconButton, open same org selector Menu
+   - Must support org switching, logout, and current org indicator in collapsed mode
+
+3. **Plan Document Updated** ✅
+   - Updated `plan_eval-optimization-s5.md` with detailed Phase 2-4 checklist items
+
+**Next:** Implement sidebar collapsed org selector fix (Phase 2.0)
+
+---
+
+### February 9, 2026 (1:30 PM) - Phase 2B ResponseStructureBuilder Redesign (IN PROGRESS)
+
+**Session Duration:** 1 hour
+**Branch:** `feature/eval-optimization-s5`
+**Objective:** Redesign ResponseStructureBuilder to support fixed/custom sections and table types
+
+**Completed:**
+1. **Redesigned Component Architecture**
+   - Split fields into **Header** (Score, Confidence - fixed) and **Body** (orderable)
+   - Added **Table** type support with user-defined columns
+   - Added **Inline Citations** support (Explanation + References pair)
+   - Updated JSON preview to reflect new structure
+
+2. **Issues Identified (To Fix Next Session):**
+   - ❌ Table type options not showing in UI (rendering as text field)
+   - ❌ Fixed fields (Explanation, Citations) not displayed in orderable section
+   - ❌ New sections inserting at wrong position (should be after built-ins)
+
+**Next Session Priorities:**
+1. Fix `ResponseStructureBuilder.tsx` rendering issues
+2. Ensure built-in sections are visible and orderable
+3. Verify table column configuration UI works
+4. Sync fixed component to test project
 
 ### February 9, 2026 (12:26 AM - 12:36 AM) - Sprint 5 Phase 1 Deployment & Verification ✅ COMPLETE
 
@@ -1521,7 +1617,7 @@ const client = createApiClient(token);
 ---
 
 **Document Status:** ✅ Sprint 1-4 Complete, 🟡 Sprint 5 Active (Phase 1 ✅ PASSED, Phase 2 Next)  
-**Last Updated:** February 9, 2026 10:00 AM
+**Last Updated:** February 9, 2026 10:30 AM
 
 ---
 

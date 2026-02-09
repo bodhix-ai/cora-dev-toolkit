@@ -1,6 +1,6 @@
 # Plan: Evaluation Optimization - Sprint 5 (Scoring Architecture & Execution)
 
-**Status:** 🟡 IN PROGRESS (Phase 1: ✅ COMPLETE + TESTED, Phase 2: Next)  
+**Status:** 🟡 IN PROGRESS (Phase 1: ✅ COMPLETE + TESTED, Phase 2B: ✅ COMPLETE + TESTED)  
 **Branch:** `feature/eval-optimization-s5`  
 **Context:** [memory-bank/context-eval-optimization.md](../../memory-bank/context-eval-optimization.md)  
 **Created:** February 8, 2026  
@@ -88,49 +88,97 @@ Implement the new database-driven scoring architecture, support custom response 
 
 ---
 
-## Phase 2: Response Sections
+## Phase 2: Response Sections, Route Migration & UX Fixes
 
-### 2.1 Fixed Sections
-- **Status:** (enum/score)
-- **Confidence:** (0-100)
-- **Justification:** (text)
-- **Citations:** (array)
+### 2.0 Sidebar & Org Selector Collapsed Mode Fix (Quick Win) ✅ COMPLETE
+- [x] ✅ Pass `collapsed` prop to `<OrganizationSwitcher />`
+- [x] ✅ Update `OrganizationSwitcher.tsx` to accept `collapsed` prop
+- [x] ✅ When collapsed: render only Avatar as centered IconButton (no name/org/expand arrow)
+- [x] ✅ Clicking collapsed avatar opens same org selector Menu (org list + logout)
+- [x] ✅ Adjust Menu `anchorOrigin` for collapsed positioning (popover opens to the right of the icon)
+- [x] ✅ Org selector menu lists all orgs with check mark on current org (same as expanded behavior)
+- [x] ✅ Org switching works from collapsed state (call `switchOrganization()` + `router.refresh()`)
+- [x] ✅ Logout action works from collapsed state
+- [x] ✅ Show current org indicator on collapsed avatar (title/aria-label with org name)
 
-### 2.2 Custom Sections
-- Allow user to add extra fields (e.g., "Remediation", "Risk Level")
-- Store in `additional_data` JSONB field in result
-- Update `ResponseSectionsBuilder` to show Fixed (read-only) vs Custom (editable)
+**Files:** `Sidebar.tsx`, `OrganizationSwitcher.tsx`
+
+### 2A. Route Migration — Workspace-Scoped Eval Config ✅ COMPLETE
+- [x] Replace admin hooks (`useDocTypeSelect`, `useCriteriaSetSelect`) with workspace-scoped equivalents
+- [x] Update eval creation pages (EvalListPage, EvalDetailPage) to use `/ws/{wsId}/eval/config/*`
+- [x] Verify eval config loads from workspace context (not admin context)
+
+### 2B. ResponseStructureBuilder — Fixed vs Custom Sections ✅ COMPLETE
+- [x] Update `ResponseStructureBuilder.tsx` to mark Fixed sections as read-only:
+  - `score` (number, 0-100) — 🔒 locked, non-removable
+  - `confidence` (number, 0-100) — 🔒 locked, non-removable
+- [x] **Fix Issues (Feb 9, 2026):**
+  - [x] ✅ **ROOT CAUSE:** Backend Lambda validation whitelist missing `'table'` type — silently converted to `'text'`
+  - [x] ✅ Added `'table'` to allowed types in `opt-orchestrator/lambda_function.py` line 468
+  - [x] ✅ Updated `sections/page.tsx` ResponseSection interface to include `table` type + `columns` + `builtIn` fields
+  - [x] ✅ Added `mergeWithBuiltIns()` function to re-apply `builtIn` flag when loading from DB
+  - [x] ✅ Fixed section insertion order — new sections now append at end (not after built-ins at index 0)
+  - [x] ✅ Missing built-in sections auto-prepended on load
+- [x] Allow users to add/remove Custom sections (e.g., "Compliance Gaps", "Recommendations")
+- [x] JSON preview includes fixed sections first, then custom sections
+- [x] Store custom section definitions in `eval_opt_response_structures` table (via opt-orchestrator Lambda)
+
+### 2C. Backend Validation
+- [ ] Update `eval-processor` Lambda to validate AI response against response structure
+- [ ] Ensure fixed fields always extracted; custom fields captured dynamically
+- [ ] Sync + deploy Lambda
+
+### 2D. Testing
+- [ ] Sync all Phase 2 changes to test project (`/fix-and-sync.md` workflow)
+- [ ] Deploy updated Lambda
+- [ ] Verify fixed sections always appear in results
+- [ ] Verify custom sections display in "Additional Response Sections" panel
 
 ---
 
 ## Phase 3: Optimization Execution
 
-### 3.1 RAG Pipeline
+### 3A. RAG Pipeline
 - [ ] Implement `rag_pipeline.py` in `opt-orchestrator` Lambda
 - [ ] Retrieve context docs from module-kb
+- [ ] Extract domain knowledge for prompt generation
 
-### 3.2 Meta-Prompter
+### 3B. Meta-Prompter
 - [ ] Implement `meta_prompter.py`
-- [ ] Use LLM to generate system prompts based on context + criteria
+- [ ] Use LLM to generate system prompts based on context docs + criteria + response structure
 
-### 3.3 Execution Engine
-- [ ] Loop through variations
-- [ ] Call module-eval for each sample
-- [ ] Compare results with truth keys
-- [ ] Calculate accuracy metrics
+### 3C. Execution Engine
+- [ ] Loop through generated prompt variations
+- [ ] Call module-eval for each sample document × variation
+- [ ] Compare AI results with truth keys
+- [ ] Calculate accuracy metrics (precision, recall, F1)
+- [ ] Store run results in `eval_opt_run_results`
+
+### 3D. Testing
+- [ ] End-to-end optimization run test
+- [ ] Verify prompt variations generated
+- [ ] Verify accuracy metrics calculated correctly
 
 ---
 
 ## Phase 4: UX Enhancements
 
-### 4.1 Citations
-- [ ] Implement text highlighting in `DocumentViewer`
-- [ ] "Add Citation" button popup
-- [ ] Store citation with criterion evaluation
+### 4A. Citations
+- [ ] Implement text highlighting in `DocumentViewer.tsx`
+- [ ] "Add Citation" button popup on text selection
+- [ ] Store citation with criterion evaluation in truth set wizard
 
-### 4.2 Layout Improvements
+### 4B. Layout Improvements
 - [ ] Fix vertical scrolling in scoring panel
 - [ ] Move Next/Prev buttons to header/footer of criterion card
+
+---
+
+## Documentation Updates
+
+- [ ] Update ADR-019b with new scoring architecture details
+- [ ] Create user-facing docs on custom response fields
+- [ ] Update module-eval README with scoring rubric configuration guide
 
 ---
 
