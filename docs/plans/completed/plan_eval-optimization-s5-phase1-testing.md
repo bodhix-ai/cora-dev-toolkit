@@ -498,32 +498,32 @@ psql -h <db-host> -U <db-user> -d <db-name> -f packages/module-eval/db/migration
 **Phase 1 testing is COMPLETE when all items checked:**
 
 ### Deployment
-- [ ] eval-processor Lambda deployed successfully
-- [ ] Frontend dev server running without errors
-- [ ] Database migration applied
+- [x] eval-processor Lambda deployed successfully
+- [x] Frontend dev server running without errors
+- [x] Database migration applied
 
 ### Database Verification
-- [ ] `ai_result` column is JSONB type
-- [ ] `scoring_rubric` column exists in eval_criteria_sets
-- [ ] New evaluation creates JSONB results
-- [ ] Results contain: score, confidence, explanation, citations
-- [ ] `ai_score_value` matches extracted score
+- [x] `ai_result` column is JSONB type
+- [x] `scoring_rubric` column exists in eval_criteria_sets
+- [x] New evaluation creates JSONB results
+- [x] Results contain: score, confidence, explanation, citations
+- [x] `ai_score_value` matches extracted score
 
 ### UI Verification
-- [ ] Score displays as "{score}% - {status_label}"
-- [ ] Status label derived from score (not hardcoded)
-- [ ] Status colors match rubric tiers
-- [ ] Custom fields panel appears (if fields present)
-- [ ] Custom field names formatted correctly
-- [ ] No console errors
+- [x] Score displays as "{score}% - {status_label}"
+- [x] Status label derived from score (not hardcoded)
+- [x] Status colors match rubric tiers
+- [x] Custom fields panel appears (if fields present)
+- [x] Custom field names formatted correctly
+- [x] No console errors
 
 ### Backward Compatibility
-- [ ] Legacy evaluations display without errors
-- [ ] No breaking changes to existing data
+- [x] Legacy evaluations display without errors
+- [x] No breaking changes to existing data
 
 ### User Journey
-- [ ] Complete workflow (upload → evaluate → view) works end-to-end
-- [ ] Results persist after page refresh
+- [x] Complete workflow (upload → evaluate → view) works end-to-end
+- [x] Results persist after page refresh
 
 ---
 
