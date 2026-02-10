@@ -39,6 +39,10 @@ CREATE TABLE IF NOT EXISTS eval_opt_runs (
     started_at TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
     error_message TEXT,
+    
+    -- Phase tracking (Sprint 5 Phase 2)
+    current_phase INTEGER,
+    current_phase_name VARCHAR(255),
 
     -- Results summary
     total_samples INTEGER NOT NULL DEFAULT 0,
@@ -145,22 +149,28 @@ CREATE TABLE IF NOT EXISTS eval_opt_run_results (
     criteria_item_id UUID NOT NULL REFERENCES eval_criteria_items(id),
     truth_key_id UUID NOT NULL REFERENCES eval_opt_truth_keys(id),
     
-    -- AI evaluation results
-    ai_status_id UUID NOT NULL REFERENCES eval_sys_status_options(id),
+    -- AI evaluation results (score-based architecture - Sprint 5 Phase 3)
+    ai_score INTEGER CHECK (ai_score >= 0 AND ai_score <= 100),
+    ai_result JSONB,
+    ai_status_id UUID REFERENCES eval_sys_status_options(id),  -- DEPRECATED (nullable for backward compat)
     ai_confidence INTEGER CHECK (ai_confidence >= 0 AND ai_confidence <= 100),
-    ai_explanation TEXT NOT NULL,
+    ai_explanation TEXT,  -- DEPRECATED: Use ai_result JSONB instead (nullable for backward compatibility)
     ai_citations JSONB,
     
     -- Comparison to truth key
-    status_match BOOLEAN NOT NULL,
+    status_match BOOLEAN NOT NULL,  -- Reinterpreted: score within tolerance (±10 points)
     confidence_diff INTEGER,
+    score_diff INTEGER,  -- Absolute difference between AI score and truth score
     
     -- Classification
     result_type VARCHAR(50) NOT NULL,
     
+    -- Variation Tracking
+    variation_name VARCHAR(255) NOT NULL,
+    
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     
-    UNIQUE(run_id, group_id, criteria_item_id)
+    UNIQUE(run_id, group_id, criteria_item_id, variation_name)
 );
 
 -- Add table comment
@@ -169,12 +179,15 @@ COMMENT ON COLUMN eval_opt_run_results.run_id IS 'Run foreign key';
 COMMENT ON COLUMN eval_opt_run_results.group_id IS 'Document group foreign key';
 COMMENT ON COLUMN eval_opt_run_results.criteria_item_id IS 'Criteria item foreign key';
 COMMENT ON COLUMN eval_opt_run_results.truth_key_id IS 'Truth key foreign key';
-COMMENT ON COLUMN eval_opt_run_results.ai_status_id IS 'AI assessment status (from eval_sys_status_options)';
+COMMENT ON COLUMN eval_opt_run_results.ai_score IS 'AI assessment score (0-100, direct from AI)';
+COMMENT ON COLUMN eval_opt_run_results.ai_result IS 'Full AI response JSON (score, confidence, explanation, citations, custom fields)';
+COMMENT ON COLUMN eval_opt_run_results.ai_status_id IS 'DEPRECATED: Legacy status option reference (nullable for backward compat)';
 COMMENT ON COLUMN eval_opt_run_results.ai_confidence IS 'AI assessment confidence (0-100)';
-COMMENT ON COLUMN eval_opt_run_results.ai_explanation IS 'AI assessment explanation';
+COMMENT ON COLUMN eval_opt_run_results.ai_explanation IS 'DEPRECATED: AI assessment explanation (use ai_result JSONB instead, nullable for backward compatibility)';
 COMMENT ON COLUMN eval_opt_run_results.ai_citations IS 'AI-generated citations';
-COMMENT ON COLUMN eval_opt_run_results.status_match IS 'Whether AI status matched truth status';
+COMMENT ON COLUMN eval_opt_run_results.status_match IS 'Reinterpreted: Whether AI score within tolerance of truth score (±10 points)';
 COMMENT ON COLUMN eval_opt_run_results.confidence_diff IS 'Absolute difference in confidence';
+COMMENT ON COLUMN eval_opt_run_results.score_diff IS 'Absolute difference between AI score and truth score';
 COMMENT ON COLUMN eval_opt_run_results.result_type IS 'Classification: true_positive, true_negative, false_positive, false_negative';
 
 -- Add constraint for result_type values (idempotent)
@@ -199,10 +212,14 @@ CREATE INDEX IF NOT EXISTS idx_eval_opt_result_criteria
     ON eval_opt_run_results(criteria_item_id);
 CREATE INDEX IF NOT EXISTS idx_eval_opt_result_truth_key 
     ON eval_opt_run_results(truth_key_id);
+CREATE INDEX IF NOT EXISTS idx_eval_opt_result_score
+    ON eval_opt_run_results(ai_score);
 CREATE INDEX IF NOT EXISTS idx_eval_opt_result_status_match 
     ON eval_opt_run_results(run_id, status_match);
 CREATE INDEX IF NOT EXISTS idx_eval_opt_result_type 
     ON eval_opt_run_results(run_id, result_type);
+CREATE INDEX IF NOT EXISTS idx_eval_opt_result_variation 
+    ON eval_opt_run_results(run_id, variation_name);
 
 -- ============================================================================
 -- End of migration
