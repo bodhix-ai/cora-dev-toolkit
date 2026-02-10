@@ -1,6 +1,6 @@
 # Plan: Fix BadRequestError - org_common Exception Standardization
 
-**Status:** ✅ COMPLETE  
+**Status:** 🟢 READY FOR IMPLEMENTATION  
 **Created:** February 8, 2026  
 **Priority:** HIGH (Breaks Lambda execution)  
 **Scope:** All CORA Lambdas  
@@ -165,7 +165,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 ## Known Affected Files (February 2026)
 
 ### Templates (Fixed)
-- ✅ `templates/_modules-functional/module-eval-studio/backend/lambdas/opt-orchestrator/lambda_function.py` (3 occurrences → replaced with `common.ValidationError`, local `BadRequestError` class removed)
+- ✅ `templates/_modules-functional/module-eval-studio/backend/lambdas/opt-orchestrator/lambda_function.py` (3 occurrences)
 
 ### Projects Requiring Fix
 Check these locations in **your project**:
@@ -182,12 +182,12 @@ grep -rn "BadRequestError" packages/
 
 ## Checklist
 
-- [x] Search codebase for `BadRequestError`
-- [x] Replace with `ValidationError` (or `bad_request_response()`)
-- [x] Verify lambda_handler catches `ValidationError`
-- [x] Test with invalid input → HTTP 400 response
-- [x] Update template if changes were in test project
-- [x] Sync fix to any other projects using same code
+- [ ] Search codebase for `BadRequestError`
+- [ ] Replace with `ValidationError` (or `bad_request_response()`)
+- [ ] Verify lambda_handler catches `ValidationError`
+- [ ] Test with invalid input → HTTP 400 response
+- [ ] Update template if changes were in test project
+- [ ] Sync fix to any other projects using same code
 
 ---
 

@@ -696,6 +696,27 @@ export function EvalQACard({
             </Box>
           )}
 
+          {/* Custom Fields from AI Response */}
+          {customFields && Object.keys(customFields).length > 0 && (
+            <Box sx={{ mb: 1.5, bgcolor: "blue.50", borderRadius: 1, p: 1.5, borderLeft: 3, borderColor: "blue.500" }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={500} sx={{ mb: 1, display: "block" }}>
+                Additional Response Sections
+              </Typography>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                {Object.entries(customFields).map(([key, value]) => (
+                  <Box key={key}>
+                    <Typography variant="caption" fontWeight={600} color="primary" sx={{ textTransform: "capitalize" }}>
+                      {key.replace(/_/g, " ")}:
+                    </Typography>
+                    <Typography variant="body2" color="text.primary" sx={{ mt: 0.25 }}>
+                      {typeof value === "object" ? JSON.stringify(value, null, 2) : String(value)}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
+
           {/* Footer */}
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>

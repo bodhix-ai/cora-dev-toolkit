@@ -170,6 +170,7 @@ export function OrgMgmtAdmin(): React.ReactElement {
           color="inherit"
           href="/admin/org"
           sx={{ display: 'flex', alignItems: 'center' }}
+          aria-label="Navigate to Org Admin"
         >
           Org Admin
         </Link>

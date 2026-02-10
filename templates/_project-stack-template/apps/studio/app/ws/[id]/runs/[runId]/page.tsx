@@ -384,6 +384,7 @@ export default function OptimizationRunDetailsPage() {
           variant="body2"
           onClick={handleBackToWorkspaces}
           sx={{ cursor: "pointer" }}
+          aria-label="Navigate to workspaces"
         >
           {navLabelPlural}
         </Link>
@@ -392,6 +393,7 @@ export default function OptimizationRunDetailsPage() {
           variant="body2"
           onClick={handleBackToWorkspace}
           sx={{ cursor: "pointer" }}
+          aria-label="Navigate to workspace"
         >
           {workspace?.name || "Workspace"}
         </Link>
@@ -455,7 +457,7 @@ export default function OptimizationRunDetailsPage() {
               }}
             >
               <Box>
-                <Typography variant="h6">Response Sections</Typography>
+                <Typography variant="h5">Response Sections</Typography>
                 <Typography variant="body2" color="text.secondary">
                   Define the structure of AI responses for evaluation criteria.
                 </Typography>
@@ -502,7 +504,7 @@ export default function OptimizationRunDetailsPage() {
               }}
             >
               <Box>
-                <Typography variant="h6">Truth Sets</Typography>
+                <Typography variant="h5">Truth Sets</Typography>
                 <Typography variant="body2" color="text.secondary">
                   Sample documents with manually evaluated criteria (the "ground truth").
                 </Typography>
@@ -526,7 +528,7 @@ export default function OptimizationRunDetailsPage() {
             {!hasTruthSets ? (
               <Box sx={{ textAlign: "center", py: 4 }}>
                 <Description sx={{ fontSize: 48, color: "text.secondary", mb: 2 }} />
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h5" gutterBottom>
                   No truth sets yet
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
@@ -594,7 +596,7 @@ export default function OptimizationRunDetailsPage() {
               }}
             >
               <Box>
-                <Typography variant="h6">Optimization</Typography>
+                <Typography variant="h5">Optimization</Typography>
                 <Typography variant="body2" color="text.secondary">
                   Generate and test prompts automatically using your truth sets.
                 </Typography>

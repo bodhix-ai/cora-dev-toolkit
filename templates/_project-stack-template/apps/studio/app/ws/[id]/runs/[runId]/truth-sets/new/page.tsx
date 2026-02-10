@@ -410,7 +410,7 @@ export default function NewTruthSetPage() {
               backgroundColor: "white",
             }}
           >
-            <h3 style={{ margin: "0 0 1rem 0" }}>Select Document</h3>
+            <h2 style={{ margin: "0 0 1rem 0", fontSize: "1.25rem" }}>Select Document</h2>
 
             {/* Upload Button */}
             <div style={{ marginBottom: "1rem" }}>
@@ -449,10 +449,15 @@ export default function NewTruthSetPage() {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <label htmlFor="document-select" className="sr-only" style={{ position: "absolute", width: "1px", height: "1px", padding: 0, margin: "-1px", overflow: "hidden", clip: "rect(0,0,0,0)", border: 0 }}>
+                  Select a document
+                </label>
                 <select
+                  id="document-select"
                   value={selectedDocId}
                   onChange={(e) => handleDocumentSelect(e.target.value)}
                   disabled={docsLoading}
+                  aria-label="Select a document"
                   style={{
                     width: "100%",
                     padding: "0.75rem",
@@ -470,11 +475,12 @@ export default function NewTruthSetPage() {
                 </select>
 
                 <div>
-                  <label style={{ display: "block", fontWeight: "bold", marginBottom: "0.5rem" }}>
+                  <label htmlFor="truth-set-name" style={{ display: "block", fontWeight: "bold", marginBottom: "0.5rem" }}>
                     Truth Set Name
                   </label>
                   <input
                     type="text"
+                    id="truth-set-name"
                     value={truthSetName}
                     onChange={(e) => setTruthSetName(e.target.value)}
                     placeholder="Enter a name for this truth set..."

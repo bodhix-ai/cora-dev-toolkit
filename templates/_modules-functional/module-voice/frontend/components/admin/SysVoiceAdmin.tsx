@@ -1,10 +1,11 @@
 /**
- * SysVoiceAdmin - System Voice Admin Component
- * 
- * @routes
- * - /admin/sys/voice - System voice configuration
+ * @component SysVoiceAdmin
+ * @description System Voice Admin Component
  * 
  * Thin admin wrapper that handles auth/loading and renders SysVoiceConfigPage.
+ * 
+ * @routes
+ * - GET /admin/sys/voice - System voice configuration
  */
 
 "use client";

@@ -15,6 +15,42 @@
 
 ---
 
+## 📖 MANDATORY: Read Standards Before Writing Code
+
+**Before writing ANY code, you MUST read the applicable standards and ADRs.**
+
+**This is NOT optional. Do NOT write code first and check standards later.**
+
+| Change Type | MUST READ First |
+|------------|----------------|
+| Admin page (any scope) | `docs/standards/01_std_front_ADMIN-ARCH.md` (full file) |
+| Auth/role checks (frontend) | `docs/arch decisions/ADR-019a-AUTH-FRONTEND.md` + `ADR-016` |
+| Org admin pages | `ADR-016` + `01_std_front_ADMIN-ARCH.md` §3.2 + §8.2.2 |
+| Backend Lambda auth | `docs/arch decisions/ADR-019b-AUTH-BACKEND.md` |
+| Resource permissions | `docs/arch decisions/ADR-019c-AUTH-RESOURCE-PERMISSIONS.md` |
+| API routes | `docs/arch decisions/ADR-018-API-ROUTE-STRUCTURE.md` |
+| Database schema/naming | `docs/arch decisions/ADR-011-TABLE-NAMING-STANDARDS.md` + `ADR-015` |
+| UI components | `docs/standards/01_std_front_UI-LIBRARY.md` |
+| Lambda infrastructure | `docs/standards/standard_LAMBDA-DEPLOYMENT.md` |
+| Workspace plugins | `docs/arch decisions/ADR-017-WS-PLUGIN-ARCHITECTURE.md` |
+
+**Process:**
+1. Identify which standards apply to your change
+2. `read_file` the applicable standard(s) BEFORE writing any code
+3. Extract the exact pattern/template from the standard
+4. Implement using that pattern verbatim
+5. Verify your implementation matches the standard
+
+**Common Failures (DO NOT REPEAT):**
+- ❌ Putting auth/loading logic in route pages (violates Component Delegation Pattern)
+- ❌ Checking `isSysAdmin` in org admin pages (violates no-inheritance rule)
+- ❌ Writing code from memory instead of reading the standard first
+- ❌ Assuming you know the pattern without verifying against the standard
+
+**If you skip this step, you WILL write non-compliant code that wastes time.**
+
+---
+
 ## ⚠️ CRITICAL: ALWAYS USE WORKFLOWS FIRST
 
 **BEFORE doing ANYTHING, check if a workflow exists in `.cline/workflows/` for the task.**

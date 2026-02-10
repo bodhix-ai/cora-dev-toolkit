@@ -1,10 +1,11 @@
 /**
- * OrgVoiceAdmin - Organization Voice Admin Component
- * 
- * @routes
- * - /admin/org/voice - Organization voice configuration
+ * @component OrgVoiceAdmin
+ * @description Organization Voice Admin Component
  * 
  * Thin admin wrapper that handles auth/loading and renders OrgVoiceConfigPage.
+ * 
+ * @routes
+ * - GET /admin/org/voice - Organization voice configuration
  */
 
 "use client";

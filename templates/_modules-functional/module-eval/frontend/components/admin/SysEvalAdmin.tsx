@@ -1,14 +1,15 @@
 /**
- * SysEvalAdmin - System Evaluation Admin Component
- *
- * @routes
- * - /admin/sys/eval - System evaluation configuration
+ * @component SysEvalAdmin
+ * @description System Evaluation Admin Component
  *
  * Admin component with tabs for all sys eval admin functions:
  * - Configuration (eval_cfg_sys)
  * - AI Prompts (eval_cfg_sys_prompts)
  *
  * Access: Platform admins only (sys_owner, sys_admin)
+ *
+ * @routes
+ * - GET /admin/sys/eval - System evaluation configuration
  */
 
 "use client";
