@@ -12,25 +12,27 @@ This repository uses **initiative-scoped context files** to avoid merge conflict
 
 | Initiative | Context File | Primary Focus | Priority |
 |------------|--------------|---------------|----------|
-| Error Remediation & Clean Baseline | `context-error-remediation.md` | Eliminate validation errors | **P1** |
+| Mono-Repo Deployment & App Runner | `context-monorepo-deployment.md` | Consolidate repos + deploy web app | **P0** 🔴 Critical |
+| Error Remediation & Clean Baseline | `context-error-remediation.md` | Eliminate validation errors | **P1** ⏸️ Paused |
 | WS Plugin Architecture | `context-ws-plugin-architecture.md` | Module integration patterns | **P1** |
 | Module-Eval Development | `context-module-eval.md` | Eval features (citations, scoring) | P2, P3 |
-| Auth Standardization | `context-auth-standardization.md` | Centralized auth library | **P0** 🔴 Critical |
+| Auth Standardization | `context-auth-standardization.md` | Centralized auth library | ✅ Complete |
 | Evaluation Optimization | `context-eval-optimization.md` | Business Analyst Workbench for prompt optimization | **P2-P3** |
 | Module-Voice Development | `context-module-voice.md` | Voice interview features | - |
 | Module-KB Development | `context-module-kb.md` | Knowledge base features | - |
 
 ---
 
-## Current Priority Order (February 8, 2026)
+## Current Priority Order (February 9, 2026)
 
-1. **Error Remediation S8 (Active)** - Error category remediation (Phase 1 org admin tabs complete, Schema PASSES, 506 errors remaining)
-2. **WS Plugin Architecture S5** - Tab ordering, module metrics (S1-S4 complete)
-3. **Module-Eval Citations** - Complete citations implementation (unblocked, awaiting capacity)
-4. **Test Project Resource Isolation** - Parallel test environments
+1. **Mono-Repo Deployment S1 (Active)** - Phase 1: Template structure creation (zero-impact on existing projects)
+2. **Error Remediation S9 (Paused)** - Silver certification target (<100 errors) - deferred to prioritize deployment
+3. **WS Plugin Architecture S5** - Tab ordering, module metrics (S1-S4 complete)
+4. **Module-Eval Citations** - Complete citations implementation (unblocked, awaiting capacity)
+5. **Test Project Resource Isolation** - Parallel test environments
 
 **Recent Completions:**
-- ✅ Error Remediation S8 Phase 1 + Schema Fix (February 8, 2026 - Org admin tabs, Auth 18→0, Schema 2→0)
+- ✅ Error Remediation S8 (February 9, 2026 - 507→204 errors (-59.8%), Frontend + Code Quality validator fixes)
 - ✅ Error Remediation S7 (February 8, 2026 - Admin thin wrapper migration, 98.5% compliance)
 - ✅ Auth Standardization S1-S3 (February 2026 - 312 permission errors fixed, 100% ADR-019 compliance)
 - ✅ WS Plugin Architecture S4 (February 2026 - Left nav filtering, DB naming compliance)
@@ -59,4 +61,4 @@ This repository uses **initiative-scoped context files** to avoid merge conflict
 
 ---
 
-**Updated:** February 8, 2026 (S8 Session 30: Schema fix, 506 errors remaining)
+**Updated:** February 9, 2026 (S8 Complete, S9 Paused, Mono-Repo S1 Started)

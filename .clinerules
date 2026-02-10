@@ -466,12 +466,146 @@ cd ~/code/sts/security/ai-sec-infra/lambdas/authorizer
 - **Fixes must persist** - If you only fix the test project, the bug returns in the next project
 - **No wasted work** - Updating templates ensures your work benefits all future projects
 
+## 🚨 CRITICAL: NEVER Use Manual cp for Template Files
+
+**When syncing fixes from templates to test projects, you MUST use the sync scripts. Manual `cp` commands will break placeholder substitution.**
+
+### The Problem with Manual cp
+
+When you use `cp` to copy template files to test projects, placeholders like `{{PROJECT_NAME}}` are NOT replaced:
+
+❌ **WRONG - Manual Copy:**
+```bash
+# This copies the file but leaves placeholders intact!
+cp templates/_project-monorepo-template/apps/web/app/admin/org/ai/page.tsx \
+   /Users/aaron/code/bodhix/testing/mono-s1/ai-mod-stack/apps/web/app/admin/org/ai/page.tsx
+
+# Result: File contains @{{PROJECT_NAME}}/module-ai instead of @ai-mod/module-ai
+# Build fails: "Module not found: Can't resolve '@{{PROJECT_NAME}}/module-ai'"
+```
+
+### The Correct Approach
+
+✅ **CORRECT - Use Sync Script:**
+```bash
+# Script handles placeholder replacement automatically
+./scripts/sync-fix-to-project.sh \
+  /Users/aaron/code/bodhix/testing/mono-s1/ai-mod-stack \
+  "apps/web/app/admin/org/ai/page.tsx"
+
+# Result: {{PROJECT_NAME}} → ai-mod (automatically replaced!)
+```
+
+### What the Sync Script Does
+
+The `sync-fix-to-project.sh` script:
+
+1. **Finds the template file** - Searches template directories automatically
+2. **Replaces placeholders** - `{{PROJECT_NAME}}` → actual project name (e.g., `ai-mod`)
+3. **Copies to correct location** - Handles path mapping automatically
+4. **Validates the copy** - Ensures file was synced correctly
+
+### Mandatory Usage
+
+| Action | MUST USE | NEVER DO |
+|--------|----------|----------|
+| Sync frontend fix | `./scripts/sync-fix-to-project.sh <stack-path> <filename>` | ❌ `cp templates/.../file.tsx test-project/.../file.tsx` |
+| Sync backend Lambda | `./scripts/sync-fix-to-project.sh <stack-path> "module/lambda_function.py"` | ❌ `cp templates/.../lambda_function.py test-project/...` |
+| Sync infrastructure | `./scripts/sync-infra-to-project.sh <stack-path> <filename>` | ❌ `cp templates/.../main.tf test-project/.../main.tf` |
+
+### Script Features
+
+**Automatic Project Name Detection:**
+```bash
+# Script extracts project name from directory name
+# /Users/aaron/.../ai-mod-stack → PROJECT_NAME = "ai-mod"
+# /Users/aaron/.../pm-app-stack → PROJECT_NAME = "pm-app"
+```
+
+**Supports Multiple Template Types:**
+```bash
+# Works with all template patterns:
+# - templates/_project-stack-template/...
+# - templates/_project-infra-template/...
+# - templates/_project-monorepo-template/...
+# - templates/_modules-core/...
+# - templates/_modules-functional/...
+```
+
+**Smart Path Matching:**
+```bash
+# You can specify just the filename (if unique)
+./scripts/sync-fix-to-project.sh <stack-path> "page.tsx"
+
+# Or include parent directory for clarity
+./scripts/sync-fix-to-project.sh <stack-path> "admin/org/ai/page.tsx"
+
+# Or full module path
+./scripts/sync-fix-to-project.sh <stack-path> "apps/web/app/admin/org/ai/page.tsx"
+```
+
+### Common Mistake Pattern
+
+This mistake happens repeatedly. Here's how it occurs:
+
+1. You fix a template file ✅ CORRECT
+2. You need to sync it to test project
+3. You think: "I'll just copy it quickly with `cp`" ❌ WRONG
+4. You forget placeholders need replacement
+5. Build fails with "Can't resolve '@{{PROJECT_NAME}}/...'"
+6. You waste 30+ minutes debugging
+
+**STOP THIS CYCLE:** Always use `./scripts/sync-fix-to-project.sh`
+
+### When to Use Each Script
+
+| File Type | Script | Example |
+|-----------|--------|---------|
+| Frontend (components, pages, hooks) | `sync-fix-to-project.sh` | `"apps/web/app/admin/org/ai/page.tsx"` |
+| Backend Lambda | `sync-fix-to-project.sh` | `"module-eval/backend/lambdas/eval-processor/lambda_function.py"` |
+| Infrastructure (Terraform) | `sync-infra-to-project.sh` | `"module-eval/infrastructure/main.tf"` |
+| Package files | `sync-fix-to-project.sh` | `"packages/shared/package.json"` |
+
+### After Syncing
+
+After using the sync script, you may need to:
+
+**For Frontend Changes:**
+```bash
+cd test-project/apps/web
+pnpm run dev  # Restart dev server
+```
+
+**For Backend Lambda Changes:**
+```bash
+# See .cline/workflows/deploy-lambda.md for complete deployment workflow
+cd test-project-stack/packages/module-name/backend
+bash build.sh  # Build the Lambda
+# Then deploy via Terraform (see deploy-lambda.md)
+```
+
+**For Infrastructure Changes:**
+```bash
+cd test-project-infra
+./scripts/deploy-terraform.sh dev
+```
+
+### Related Workflows
+
+- `.cline/workflows/fix-and-sync.md` - Complete workflow (fix template + sync + test)
+- `.cline/workflows/deploy-lambda.md` - Lambda deployment after backend changes
+- `.cline/workflows/fix-cycle.md` - Iterative error fixing with syncing
+
+**Bottom Line:** If you find yourself typing `cp templates/...`, STOP and use the sync script instead.
+
+---
+
 ## AI Agent Instructions
 
 When working on this toolkit:
 
 1. **USE WORKFLOWS FIRST** - Check `.cline/workflows/` for established workflows before making up approaches
-   - Available workflows: `test-module.md`, `validate.md`, `fix-cycle.md`, `fix-and-sync.md`, `fix-backend.md`, `fix-data.md`, `fix-frontend.md`, `fix-structure.md`
+   - Available workflows: `test-module.md`, `validate.md`, `fix-cycle.md`, `fix-and-sync.md`, `fix-backend.md`, `fix-data.md`, `fix-frontend.md`, `fix-structure.md`, `deploy-lambda.md`
    - These workflows save time and tokens by following proven patterns
    - Run `/help-validation.md` to see all available workflows
 2. **Read memory-bank first** - Understand current context
@@ -537,6 +671,7 @@ python3 validation/api-tracer/cli.py validate \
 | **fix-structure.md** | Structure expertise (Imports, Files) | `/fix-structure.md` |
 | **validate-backend.md** | Backend validation only | `/validate-backend.md` |
 | **validate-frontend.md** | Frontend validation only | `/validate-frontend.md` |
+| **deploy-lambda.md** | Deploy single Lambda function | `/deploy-lambda.md <module>/<lambda>` |
 | **help-validation.md** | Show workflow help | `/help-validation.md` |
 
 ### Workflow Philosophy
@@ -807,6 +942,7 @@ Auth patterns are validated by `validation/auth-pattern-validator/`:
 
 ## Do NOT
 
+- **Do NOT use `cp` to copy template files to test projects** - Placeholders won't be replaced! Use `./scripts/sync-fix-to-project.sh` instead
 - **Do NOT update test projects before templates** - See CRITICAL rule above
 - **Do NOT make changes only to test projects** - Changes will be lost when project is deleted
 - **Do NOT use AWS CLI for infrastructure changes** - Terraform only! (See rule above)
