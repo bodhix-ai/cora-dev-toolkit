@@ -85,6 +85,21 @@ output "api_routes" {
       public      = false
     },
     # =========================================================================
+    # Phase & Variation Tracking
+    # =========================================================================
+    {
+      method      = "GET"
+      path        = "/ws/{wsId}/optimization/runs/{runId}/phases"
+      integration = aws_lambda_function.opt_orchestrator.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/ws/{wsId}/optimization/runs/{runId}/variations"
+      integration = aws_lambda_function.opt_orchestrator.invoke_arn
+      public      = false
+    },
+    # =========================================================================
     # Response Sections
     # =========================================================================
     {
