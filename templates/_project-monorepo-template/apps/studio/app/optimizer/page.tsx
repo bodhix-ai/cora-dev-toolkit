@@ -79,6 +79,7 @@ export default function OptimizerPage() {
       addLog("📝 Step 3: Uploading sample document...");
       const kbClient = createKbModuleClient(client);
       // Note: This is a simplified prototype - actual upload requires presigned URL flow
+      const docId = "sample-doc-id"; // Mock document ID for prototype
       addLog(`✅ KB client created (actual upload would use presigned URL flow)`);
 
       // Step 4: Run evaluation (module-eval)

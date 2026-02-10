@@ -1,6 +1,6 @@
 "use client";
 
-import { SysAiAdmin } from "@{{PROJECT_NAME}}/module-ai/admin";
+import { SysAiAdmin } from "@{{PROJECT_NAME}}/module-ai";
 
 /**
  * System AI Admin Page

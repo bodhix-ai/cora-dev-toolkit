@@ -17,7 +17,7 @@
 "use client";
 
 import React from "react";
-import { SysMgmtAdmin } from "@{{PROJECT_NAME}}/module-mgmt/admin";
+import { SysMgmtAdmin } from "@{{PROJECT_NAME}}/module-mgmt";
 
 /**
  * System Management Admin Page

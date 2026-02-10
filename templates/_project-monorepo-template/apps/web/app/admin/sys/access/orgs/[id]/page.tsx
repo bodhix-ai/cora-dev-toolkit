@@ -1,6 +1,6 @@
 "use client";
 
-import { SysOrgDetailsAdmin } from "@{{PROJECT_NAME}}/module-access/admin";
+import { SysOrgDetailsAdmin } from "@{{PROJECT_NAME}}/module-access";
 
 /**
  * System Admin - Organization Details Page

@@ -341,7 +341,7 @@ describe("Organization API Client Tests", () => {
       const result = await createOrganization(
         "Provisioned Organization",
         mockToken,
-        "clerk-user-id"
+        "external-user-id"
       );
 
       expect(result.owner_id).toBe("newly-provisioned-user-id");

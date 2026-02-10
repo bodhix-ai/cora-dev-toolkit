@@ -1,6 +1,6 @@
 "use client";
 
-import { SysAccessAdmin } from "@{{PROJECT_NAME}}/module-access/admin";
+import { SysAccessAdmin } from "@{{PROJECT_NAME}}/module-access";
 
 /**
  * System Access Admin Page

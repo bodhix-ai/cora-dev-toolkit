@@ -3,15 +3,18 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "main": "./workspace-plugin/index.ts",
-  "types": "./workspace-plugin/index.ts",
+  "main": "./dist/workspace-plugin/index.js",
+  "types": "./dist/workspace-plugin/index.d.ts",
   "exports": {
     "./workspace-plugin": {
-      "types": "./workspace-plugin/index.ts",
-      "import": "./workspace-plugin/index.ts"
+      "types": "./dist/workspace-plugin/index.d.ts",
+      "import": "./dist/workspace-plugin/index.js"
     }
   },
   "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
     "type-check": "tsc --noEmit"
   },
   "peerDependencies": {

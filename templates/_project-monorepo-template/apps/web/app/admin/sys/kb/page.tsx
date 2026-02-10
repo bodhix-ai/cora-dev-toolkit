@@ -1,6 +1,6 @@
 "use client";
 
-import { SysKbAdmin } from "@{{PROJECT_NAME}}/module-kb/admin";
+import { SysKbAdmin } from "@{{PROJECT_NAME}}/module-kb";
 
 /**
  * System KB Admin Page

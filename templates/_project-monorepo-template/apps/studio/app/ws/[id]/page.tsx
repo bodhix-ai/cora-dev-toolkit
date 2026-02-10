@@ -209,7 +209,7 @@ export default function EvalOptWorkspaceDetailPage() {
       const token = await authAdapter.getToken();
       if (!token) return;
       const client = createCoraAuthenticatedClient(token);
-      const response = await client.get(`/ws/${workspaceId}/optimization/runs`);
+      const response = await client.get<{ data: OptimizationRun[] }>(`/ws/${workspaceId}/optimization/runs`);
       setRuns(response.data || []);
     } catch (err: any) {
       console.error("Error loading optimization runs:", err);
@@ -683,11 +683,11 @@ function CreateOptimizationRunDialog({
       const client = createCoraAuthenticatedClient(token);
 
       // Load doc types from module-eval (workspace-level config route)
-      const docTypesRes = await client.get(`/ws/${workspaceId}/eval/config/doc-types`);
+      const docTypesRes = await client.get<{ data: any[] }>(`/ws/${workspaceId}/eval/config/doc-types`);
       setDocTypes(docTypesRes.data || []);
 
       // Load criteria sets from module-eval (workspace-level config route)
-      const criteriaSetsRes = await client.get(`/ws/${workspaceId}/eval/config/criteria-sets`);
+      const criteriaSetsRes = await client.get<{ data: any[] }>(`/ws/${workspaceId}/eval/config/criteria-sets`);
       setCriteriaSets(criteriaSetsRes.data || []);
     } catch (err: any) {
       console.error("Error loading options:", err);
@@ -711,7 +711,7 @@ function CreateOptimizationRunDialog({
       }
       const client = createCoraAuthenticatedClient(token);
 
-      const response = await client.post(`/ws/${workspaceId}/optimization/runs`, {
+      const response = await client.post<{ data: { id: string } }>(`/ws/${workspaceId}/optimization/runs`, {
         name: name.trim(),
         doc_type_id: docTypeId,
         criteria_set_id: criteriaSetId,

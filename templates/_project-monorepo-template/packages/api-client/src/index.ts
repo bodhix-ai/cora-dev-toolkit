@@ -224,7 +224,3 @@ export {
 
 // Re-export CORA authentication adapters
 export { type CoraAuthAdapter, type CreateAuthAdapter } from "./auth/types";
-export {
-  createClerkAuthAdapter,
-  isClerkAuthenticated,
-} from "./auth/adapters/clerk-adapter";

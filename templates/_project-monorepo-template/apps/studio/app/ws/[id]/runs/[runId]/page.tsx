@@ -160,15 +160,15 @@ export default function OptimizationRunDetailsPage() {
       const client = createCoraAuthenticatedClient(token);
 
       // Load run details
-      const runRes = await client.get(`/ws/${workspaceId}/optimization/runs/${runId}`);
+      const runRes = await client.get<{ data: OptimizationRun }>(`/ws/${workspaceId}/optimization/runs/${runId}`);
       setRun(runRes.data);
 
       // Load response sections
-      const sectionsRes = await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/sections`);
+      const sectionsRes = await client.get<{ data: ResponseSection[] }>(`/ws/${workspaceId}/optimization/runs/${runId}/sections`);
       setSections(sectionsRes.data || []);
 
       // Load truth sets
-      const truthSetsRes = await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/truth-sets`);
+      const truthSetsRes = await client.get<{ data: TruthSet[] }>(`/ws/${workspaceId}/optimization/runs/${runId}/truth-sets`);
       setTruthSets(truthSetsRes.data || []);
     } catch (err: any) {
       console.error("Error loading run details:", err);
@@ -214,7 +214,7 @@ export default function OptimizationRunDetailsPage() {
       if (!token) return;
       const client = createCoraAuthenticatedClient(token);
 
-      await client.post(`/ws/${workspaceId}/optimization/runs/${runId}/optimize`);
+      await client.post<void>(`/ws/${workspaceId}/optimization/runs/${runId}/optimize`);
 
       // Refresh run details to get updated status
       await loadRunDetails();

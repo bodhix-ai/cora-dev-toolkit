@@ -29,7 +29,7 @@ import { CircularProgress, Box, Alert } from "@mui/material";
  */
 export default function OrganizationVoiceAdminPage() {
   const { profile, loading, isAuthenticated } = useUser();
-  const { hasRole } = useRole();
+  const { isOrgAdmin } = useRole();
 
   // Show loading state while user profile is being fetched
   if (loading) {
@@ -59,7 +59,7 @@ export default function OrganizationVoiceAdminPage() {
   }
 
   // Check if user has org admin role
-  if (!hasRole("org_owner") && !hasRole("org_admin")) {
+  if (!isOrgAdmin) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">

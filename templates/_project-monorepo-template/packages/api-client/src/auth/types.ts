@@ -5,8 +5,8 @@
  * various Identity Providers (IdPs) without being coupled to any specific implementation.
  *
  * Supported IdPs (via adapters):
- * - Clerk (clerk-adapter.ts)
- * - Future: NextAuth, Okta, AWS Cognito, Azure AD, etc.
+ * - NextAuth (for Okta integration)
+ * - Future: AWS Cognito, Azure AD, etc.
  */
 
 /**

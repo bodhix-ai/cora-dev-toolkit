@@ -1,6 +1,6 @@
 "use client";
 
-import { OrgAccessAdmin } from "@{{PROJECT_NAME}}/module-access/admin";
+import { OrgAccessAdmin } from "@{{PROJECT_NAME}}/module-access";
 
 /**
  * Organization Access Admin Page
