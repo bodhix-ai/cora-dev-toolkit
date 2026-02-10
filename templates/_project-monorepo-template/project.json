@@ -1,0 +1,21 @@
+{
+  "$schema": "../schemas/project.schema.json",
+  "name": "{{PROJECT_NAME}}",
+  "type": "stack",
+  "version": "1.0.0",
+  "description": "Application stack for {{PROJECT_NAME}} CORA application",
+  "cora": {
+    "version": "1.0",
+    "infraRepo": "{{PROJECT_NAME}}-infra"
+  },
+  "packageManager": "pnpm",
+  "monorepo": {
+    "tool": "turborepo",
+    "apps": ["apps/*"],
+    "packages": ["packages/*"]
+  },
+  "modules": {
+    "core": [],
+    "functional": []
+  }
+}

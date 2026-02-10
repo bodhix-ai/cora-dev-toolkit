@@ -1,0 +1,15 @@
+# {{PROJECT_NAME}}-stack pnpm workspace configuration
+# Defines which directories contain packages in this monorepo
+
+packages:
+  # Application
+  - "apps/*"
+
+  # CORA Modules (frontend packages)
+  - "packages/module-*/frontend"
+
+  # Shared packages
+  - "packages/api-client"
+  - "packages/shared-types"
+  - "packages/contracts"
+  - "packages/shared"
