@@ -44,9 +44,8 @@ Currently, module-eval uses the same prompt for all document types, leading to s
 
 ## Current Sprint
 
-- **Sprint 5:** ✅ COMPLETE (Feb 8-10, 2026) - Scoring Architecture & Execution
-- **Sprint 6:** 🚀 PLANNED - Executions & AI-Assisted Truth Sets
-- **Branch:** `feature/eval-optimization-s6` (to be created)
+- **Sprint 6:** 🟡 ACTIVE (Feb 10, 2026) - Executions & AI-Assisted Truth Sets
+- **Branch:** `feature/eval-optimization-s6`
 - **Plan:** `docs/plans/plan_eval-optimization-s6.md`
 - **Focus:** 
   - Execution concept (multiple optimization runs per configuration)
@@ -104,12 +103,13 @@ Updated the configuration file to explicitly include `module-voice` to restore t
 ## Sprint History
 
 | Sprint | Branch | Plan | Status | Completed |
-|--------|--------|------|--------|-----------|
+|--------|--------|------|--------|--------------|
 | S1 | `feature/eval-optimization-s1` | `plan_eval-optimization-s1.md` | ✅ COMPLETE | Feb 5, 2026 |
 | S2 | `feature/eval-optimization-s2` | `plan_eval-optimization-s2.md` | ✅ COMPLETE | Feb 5, 2026 |
 | S3 | `feature/eval-optimization-s3` | `plan_eval-optimization-s3.md` | ✅ COMPLETE | Feb 6, 2026 |
 | S4 | `feature/eval-optimization-s4` | `plan_eval-optimization-s4.md` | ✅ COMPLETE | Feb 8, 2026 |
-| S5 | `feature/eval-optimization-s5` | `plan_eval-optimization-s5.md` | 🎯 Active | - |
+| S5 | `feature/eval-optimization-s5` | `plan_eval-optimization-s5.md` | ✅ COMPLETE | Feb 10, 2026 |
+| S6 | `feature/eval-optimization-s6` | `plan_eval-optimization-s6.md` | 🟡 Active | - |
 
 ## Current Sprint
 
