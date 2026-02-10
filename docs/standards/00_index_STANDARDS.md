@@ -94,12 +94,14 @@ Where:
 | File | ADR | Validator | Description |
 |------|-----|-----------|-------------|
 | `10_std_cora_MODULE-ARCH.md` | ADR-013 | - | Core module criteria |
+| `10_std_cora_MONOREPO.md` | ADR-023 | - | Monorepo workspace configuration (pnpm, TypeScript, Next.js) |
 
 ### 30 - Infrastructure
 
 | File | ADR | Validator | Description |
 |------|-----|-----------|-------------|
 | `30_std_infra_LAMBDA-DEPLOY.md` | - | - | Lambda deployment patterns |
+| `30_std_infra_DOCKER-BUILD.md` | ADR-023 | - | Docker build standards for monorepo (pnpm, Next.js, memory) |
 
 ---
 
@@ -143,6 +145,7 @@ This table maps api-tracer validation checks to their authoritative standards:
 | ADR-019a | 01_std_front_AUTH | Frontend auth patterns |
 | ADR-019b | 03_std_back_AUTH | Backend auth patterns |
 | ADR-020 | 04_std_data_RPC-FUNCTIONS | RPC function standards (comprehensive) |
+| ADR-023 | 10_std_cora_MONOREPO, 30_std_infra_DOCKER-BUILD | Monorepo build standards (workspace config + Docker) |
 
 ---
 

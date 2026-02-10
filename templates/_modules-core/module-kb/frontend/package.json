@@ -2,13 +2,16 @@
   "name": "@{{PROJECT_NAME}}/module-kb",
   "version": "1.0.0",
   "description": "Knowledge Base and RAG frontend for CORA",
-  "main": "./index.ts",
-  "types": "./index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./index.ts",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
     "./admin": {
-      "types": "./components/admin/index.d.ts",
-      "default": "./components/admin/index.ts"
+      "types": "./dist/components/admin/index.d.ts",
+      "import": "./dist/components/admin/index.js"
     }
   },
   "scripts": {
@@ -19,6 +22,7 @@
   "dependencies": {
     "@{{PROJECT_NAME}}/api-client": "workspace:*",
     "@{{PROJECT_NAME}}/shared-types": "workspace:*",
+    "@{{PROJECT_NAME}}/shared": "workspace:*",
     "@types/react": "^18.3.3",
     "swr": "^2.2.4"
   },

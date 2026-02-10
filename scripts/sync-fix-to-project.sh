@@ -310,6 +310,10 @@ elif [[ "$REL_PATH" == _project-stack-template/* ]]; then
 elif [[ "$REL_PATH" == _project-infra-template/* ]]; then
   DEST_FILE="${PROJECT_PATH}/${REL_PATH#_project-infra-template/}"
 
+# Monorepo template: _project-monorepo-template/... → ...
+elif [[ "$REL_PATH" == _project-monorepo-template/* ]]; then
+  DEST_FILE="${PROJECT_PATH}/${REL_PATH#_project-monorepo-template/}"
+
 else
   log_error "Could not determine destination path for: $REL_PATH"
   log_info "Template path structure not recognized"
@@ -323,6 +327,7 @@ else
   log_info "  • _modules-functional/module-{name}/backend/lambdas/..."
   log_info "  • _project-stack-template/..."
   log_info "  • _project-infra-template/..."
+  log_info "  • _project-monorepo-template/..."
   exit 1
 fi
 
@@ -353,13 +358,15 @@ fi
 cp "$SOURCE_FILE" "$DEST_FILE"
 
 # --- Replace Template Placeholders ---
-# Extract project name from PROJECT_PATH (e.g., "ai-sec-stack" → "ai-sec")
+# Extract project name from PROJECT_PATH
+# For two-repo pattern: "ai-sec-stack" → "ai-sec", "ai-sec-infra" → "ai-sec"
+# For monorepo pattern: "ai-mod-stack" → "ai-mod" (strip -stack suffix)
 PROJECT_NAME=""
-if [[ "$PROJECT_PATH" =~ ([^/]+)-(stack|infra)/?$ ]]; then
-  PROJECT_NAME="${BASH_REMATCH[1]}"
-elif [[ "$PROJECT_PATH" =~ /([^/]+)/?$ ]]; then
-  # Fallback: use last directory name
+
+if [[ "$PROJECT_PATH" =~ /([^/]+)/?$ ]]; then
   LAST_DIR="${BASH_REMATCH[1]}"
+  
+  # Strip -stack or -infra suffix to get base project name
   if [[ "$LAST_DIR" == *"-stack" ]]; then
     PROJECT_NAME="${LAST_DIR%-stack}"
   elif [[ "$LAST_DIR" == *"-infra" ]]; then
@@ -370,7 +377,8 @@ elif [[ "$PROJECT_PATH" =~ /([^/]+)/?$ ]]; then
 fi
 
 # Only replace placeholders in text files (not binary)
-if [[ -n "$PROJECT_NAME" ]] && file "$DEST_FILE" | grep -q "text"; then
+# Note: JSON files return "JSON data", not "text", so we check for both
+if [[ -n "$PROJECT_NAME" ]] && file "$DEST_FILE" | grep -qE "text|JSON"; then
   log_info "Replacing template placeholders with project name: $PROJECT_NAME"
   
   # Replace {{PROJECT_NAME}} placeholder
@@ -378,6 +386,15 @@ if [[ -n "$PROJECT_NAME" ]] && file "$DEST_FILE" | grep -q "text"; then
     sed -i '' "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$DEST_FILE" 2>/dev/null || \
     sed -i "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$DEST_FILE"
     log_info "  Replaced {{PROJECT_NAME}} with $PROJECT_NAME"
+  fi
+  
+  # Replace {{PROJECT_DISPLAY_NAME}} placeholder
+  # Note: Sync script doesn't have access to config file, so we use PROJECT_NAME as fallback
+  if grep -q "{{PROJECT_DISPLAY_NAME}}" "$DEST_FILE" 2>/dev/null; then
+    sed -i '' "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_NAME}/g" "$DEST_FILE" 2>/dev/null || \
+    sed -i "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_NAME}/g" "$DEST_FILE"
+    log_info "  Replaced {{PROJECT_DISPLAY_NAME}} with $PROJECT_NAME (fallback)"
+    log_warn "  To use custom display name, regenerate project from config file"
   fi
   
   # Replace {project} placeholder (used in TypeScript imports like '@{project}/module-name')

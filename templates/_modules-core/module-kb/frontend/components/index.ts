@@ -13,4 +13,4 @@ export { KBStatsCard } from './KBStatsCard';
 export { WorkspaceDataKBTab } from './WorkspaceDataKBTab';
 
 // Admin Components
-export { OrgKBList, SysKBList, KBFormDialog } from './admin';
+export { OrgKBList, SysKBList, KBFormDialog, OrgKbAdmin, SysKbAdmin } from './admin';

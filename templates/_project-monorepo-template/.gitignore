@@ -1,0 +1,88 @@
+# =============================================================================
+# CORA Project Stack - Git Ignore
+# =============================================================================
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment files with secrets - NEVER commit these
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# CORA setup configuration files (contain credentials)
+# Keep the example but ignore all actual configs
+setup.config.yaml
+setup.config.*.yaml
+!setup.config.example.yaml
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+!*.tfvars.example
+crash.log
+
+# AWS
+.aws-sam/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Test outputs
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+.eggs/
+
+# Lambda build artifacts
+*.zip
+build/
+
+# Generated SQL files
+*-schema-deployment.sql
+cora-schema-deployment.sql
+
+# Secrets and credentials
+*secret*
+*credentials*
+*.pem
+*.key
+!*.example

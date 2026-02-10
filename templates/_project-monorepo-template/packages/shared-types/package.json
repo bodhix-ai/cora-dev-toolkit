@@ -1,0 +1,22 @@
+{
+  "name": "@{{PROJECT_NAME}}/shared-types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript type definitions for CORA modules",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "typescript": "^5.3.3"
+  }
+}

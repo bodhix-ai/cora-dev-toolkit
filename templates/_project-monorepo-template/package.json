@@ -1,0 +1,20 @@
+{
+  "name": "{{PROJECT_NAME}}-stack",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Application stack for {{PROJECT_NAME}} CORA application",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter {{PROJECT_NAME}}-web dev",
+    "dev:opt": "pnpm --filter **/eval-opt dev",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "keywords": [
+    "cora",
+    "monorepo"
+  ],
+  "author": "",
+  "license": "MIT"
+}

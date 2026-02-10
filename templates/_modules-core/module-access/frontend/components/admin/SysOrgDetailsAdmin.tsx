@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Box, CircularProgress, Alert, Typography } from "@mui/material";
-import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useRole } from "../..";
 import { OrgDetails } from "./OrgDetails";
 
 /**

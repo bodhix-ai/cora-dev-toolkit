@@ -1,0 +1,29 @@
+{
+  "name": "@{{PROJECT_NAME}}/shared",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/workspace-plugin/index.js",
+  "types": "./dist/workspace-plugin/index.d.ts",
+  "exports": {
+    "./workspace-plugin": {
+      "types": "./dist/workspace-plugin/index.d.ts",
+      "import": "./dist/workspace-plugin/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "react": "^18.3.1",
+    "@types/react": "^18.3.12",
+    "@types/node": "^20.17.10",
+    "typescript": "^5.6.3"
+  }
+}

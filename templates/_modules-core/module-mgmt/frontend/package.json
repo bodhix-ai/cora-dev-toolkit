@@ -2,15 +2,21 @@
   "name": "@{{PROJECT_NAME}}/module-mgmt",
   "version": "1.0.0",
   "description": "Lambda Management Module for CORA projects - warming, monitoring, and configuration",
-  "main": "./index.ts",
-  "types": "./index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./index.ts",
-    "./admin": {
-      "types": "./components/admin/index.ts",
-      "default": "./components/admin/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
-    "./frontend/pages/OrgModuleConfigPage": "./frontend/pages/OrgModuleConfigPage.tsx"
+    "./admin": {
+      "types": "./dist/components/admin/index.d.ts",
+      "import": "./dist/components/admin/index.js"
+    },
+    "./frontend/pages/OrgModuleConfigPage": {
+      "types": "./dist/frontend/pages/OrgModuleConfigPage.d.ts",
+      "import": "./dist/frontend/pages/OrgModuleConfigPage.js"
+    }
   },
   "scripts": {
     "build": "tsc",

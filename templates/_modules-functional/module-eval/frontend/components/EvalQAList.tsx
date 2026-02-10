@@ -463,7 +463,7 @@ export function EvalQACard({
 
   // Get effective values (considering edits)
   const effectiveScore = result.currentEdit?.editedScoreValue ?? parsedAI?.score;
-  const effectiveConfidence = result.currentEdit?.editedConfidence ?? parsedAI?.confidence;
+  const effectiveConfidence = parsedAI?.confidence; // Confidence is AI-only, not editable
   const effectiveExplanation = result.currentEdit?.editedResult ?? parsedAI?.explanation ?? "";
   
   // Derive status label from score using rubric (new scoring architecture)

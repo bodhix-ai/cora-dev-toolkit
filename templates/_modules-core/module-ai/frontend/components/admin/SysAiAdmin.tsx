@@ -22,7 +22,7 @@
  */
 
 import React from 'react';
-import { useUser, useRole } from '@ai-mod/module-access';
+import { useUser, useRole } from '@{{PROJECT_NAME}}/module-access';
 import { Box, CircularProgress, Alert } from '@mui/material';
 import { AIEnablementAdmin } from './AIEnablementAdmin';
 

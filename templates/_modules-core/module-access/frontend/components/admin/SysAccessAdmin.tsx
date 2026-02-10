@@ -22,7 +22,7 @@
  */
 
 import React from 'react';
-import { useUser, useRole, createOktaAuthAdapter } from '@ai-mod/module-access';
+import { useUser, useRole, createOktaAuthAdapter } from '../..';
 import { Box, CircularProgress, Alert } from '@mui/material';
 import { AccessControlAdmin } from './AccessControlAdmin';
 

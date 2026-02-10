@@ -1,0 +1,200 @@
+import { NavigationConfig, NavItemConfig, AdminCardConfig } from "@{{PROJECT_NAME}}/shared-types";
+import { getIcon } from "./iconMap";
+import fs from "fs";
+import path from "path";
+import yaml from "js-yaml";
+
+/**
+ * Module Registry Loader
+ * 
+ * Loads module configurations from the merged cora-modules.config.yaml file
+ * and builds navigation and admin card configurations dynamically.
+ * 
+ * This enables modules to be added/removed without changing application code.
+ */
+
+interface ModuleConfigNavigation {
+  label_singular?: string;
+  label_plural?: string;
+  icon?: string;
+  show_in_main_nav?: boolean;
+  nav_priority?: number;
+}
+
+interface ModuleConfigAdminCard {
+  enabled?: boolean;
+  path?: string;
+  title?: string;
+  description?: string;
+  icon?: string;
+  priority?: number;
+  context?: "platform" | "organization";
+}
+
+interface ModuleConfigAdminCards {
+  platform?: ModuleConfigAdminCard;
+  organization?: ModuleConfigAdminCard;
+}
+
+interface ModuleConfig {
+  display_name?: string;
+  navigation?: ModuleConfigNavigation;
+  admin_card?: ModuleConfigAdminCard;  // Old format (flat)
+  admin_cards?: ModuleConfigAdminCards;  // New format (nested)
+}
+
+interface MergedModuleConfig {
+  [moduleName: string]: ModuleConfig;
+}
+
+/**
+ * Load and parse the merged module configuration file
+ */
+function loadModuleConfig(): MergedModuleConfig {
+  try {
+    // Try multiple possible config locations to handle both:
+    // 1. Running from apps/web directory (process.cwd() = apps/web)
+    // 2. Running from monorepo root via pnpm/turbo (process.cwd() = monorepo root)
+    const possiblePaths = [
+      path.join(process.cwd(), "config", "cora-modules.config.yaml"),
+      path.join(process.cwd(), "apps", "web", "config", "cora-modules.config.yaml"),
+    ];
+    
+    let configPath = "";
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        configPath = p;
+        break;
+      }
+    }
+    
+    // Check if config file exists
+    if (!configPath) {
+      console.warn(`Module config not found. Checked:\n  ${possiblePaths.join("\n  ")}\nUsing empty config.`);
+      return {};
+    }
+    
+    // Read and parse YAML
+    const fileContent = fs.readFileSync(configPath, "utf8");
+    const config = yaml.load(fileContent) as MergedModuleConfig;
+    
+    return config || {};
+  } catch (error) {
+    console.error("Failed to load module config:", error);
+    return {};
+  }
+}
+
+/**
+ * Build navigation configuration from module configs
+ */
+export function buildNavigationConfig(): NavigationConfig {
+  const moduleConfig = loadModuleConfig();
+  const navItems: NavItemConfig[] = [];
+  
+  // Always include Dashboard as first item
+  navItems.push({
+    id: "dashboard",
+    label: "Dashboard",
+    href: "/",
+    icon: getIcon("Dashboard"),
+  });
+  
+  // Add navigation items from modules
+  Object.entries(moduleConfig).forEach(([moduleName, config]) => {
+    const nav = config.navigation;
+    
+    // Only include modules that should show in main nav
+    if (nav && nav.show_in_main_nav) {
+      const moduleId = moduleName.replace("module_", "");
+      const label = nav.label_plural || config.display_name || moduleName;
+      const href = `/${moduleId}`;
+      
+      navItems.push({
+        id: moduleId,
+        label,
+        href,
+        icon: getIcon(nav.icon),
+      });
+    }
+  });
+  
+  // Sort by priority (if we add priority to nav config in future)
+  // For now, just return in order found
+  
+  // Wrap in a single section
+  const navigationConfig: NavigationConfig = [
+    {
+      id: "main",
+      label: "Main",
+      order: 0,
+      items: navItems,
+    },
+  ];
+  
+  return navigationConfig;
+}
+
+/**
+ * Build admin card configuration for a specific context
+ */
+export function buildAdminCards(context: "platform" | "organization"): AdminCardConfig[] {
+  const moduleConfig = loadModuleConfig();
+  const adminCards: AdminCardConfig[] = [];
+  
+  Object.entries(moduleConfig).forEach(([moduleName, config]) => {
+    const moduleId = moduleName.replace("module_", "");
+    
+    // Handle both old format (admin_card) and new format (admin_cards)
+    let card: ModuleConfigAdminCard | undefined;
+    
+    // New format: admin_cards.platform / admin_cards.organization
+    if (config.admin_cards) {
+      card = context === "platform" ? config.admin_cards.platform : config.admin_cards.organization;
+    }
+    // Old format: admin_card (flat)
+    else if (config.admin_card) {
+      card = config.admin_card;
+      
+      // Check if card matches the requested context
+      // If no context specified in config, assume it's for both
+      if (card.context && card.context !== context) {
+        return;
+      }
+    }
+    
+    // Only include enabled cards
+    if (!card || !card.enabled) {
+      return;
+    }
+    
+    adminCards.push({
+      id: moduleId,
+      title: card.title || config.display_name || moduleName,
+      description: card.description || "",
+      icon: getIcon(card.icon),
+      href: card.path || `/admin/${moduleId}`,
+      context,
+      order: card.priority || 999,
+    });
+  });
+  
+  // Sort by priority (lower number = higher priority)
+  adminCards.sort((a, b) => (a.order || 999) - (b.order || 999));
+  
+  return adminCards;
+}
+
+/**
+ * Get platform admin cards
+ */
+export function getPlatformAdminCards(): AdminCardConfig[] {
+  return buildAdminCards("platform");
+}
+
+/**
+ * Get organization admin cards
+ */
+export function getOrganizationAdminCards(): AdminCardConfig[] {
+  return buildAdminCards("organization");
+}

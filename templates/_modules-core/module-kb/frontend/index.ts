@@ -79,6 +79,9 @@ export {
   OrgKBList,
   SysKBList,
   KBFormDialog,
+  // Admin Page Components
+  OrgKbAdmin,
+  SysKbAdmin,
 } from './components';
 
 // Pages

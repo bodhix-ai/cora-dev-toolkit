@@ -1,0 +1,49 @@
+name: Deploy Infrastructure
+
+# TODO: Phase 4 - Complete workflow implementation
+# This workflow deploys Terraform infrastructure (Lambda, API Gateway, etc.)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'envs/**'
+      - 'modules/**'
+      - 'lambdas/**'
+      - 'packages/*/infrastructure/**'
+      - 'packages/*/backend/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options: [dev, stg, prd]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: {{AWS_REGION}}
+
+jobs:
+  deploy-infrastructure:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+
+    steps:
+      # TODO: Implement workflow steps
+      # 1. Checkout code
+      # 2. Configure AWS credentials (use STS central hub-and-spoke OIDC)
+      # 3. Setup Terraform
+      # 4. Build Lambda packages (build-cora-modules.sh)
+      # 5. Terraform plan
+      # 6. Terraform apply
+      
+      - name: Placeholder
+        run: |
+          echo "TODO: Implement infrastructure deployment workflow"
+          echo "See: docs/plans/plan_app-runner-monorepo.md Phase 4"
