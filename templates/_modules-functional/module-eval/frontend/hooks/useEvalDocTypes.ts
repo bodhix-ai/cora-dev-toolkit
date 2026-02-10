@@ -135,7 +135,7 @@ export function useEvalDocType(
 }
 
 /**
- * Hook for doc type selection in forms/dropdowns
+ * Hook for doc type selection in forms/dropdowns (Admin — org-scoped)
  */
 export function useDocTypeSelect(
   token: string | null,
@@ -156,6 +156,47 @@ export function useDocTypeSelect(
   }, [token, orgId, docTypes.length, docTypesLoading, activeOnly]);
 
   // Filter to active only if requested
+  const selectOptions = useMemo(() => {
+    const filtered = activeOnly
+      ? docTypes.filter((dt) => dt.isActive)
+      : docTypes;
+
+    return filtered.map((dt) => ({
+      value: dt.id,
+      label: dt.name,
+      description: dt.description,
+    }));
+  }, [docTypes, activeOnly]);
+
+  return {
+    options: selectOptions,
+    isLoading: docTypesLoading,
+    docTypes: activeOnly ? docTypes.filter((dt) => dt.isActive) : docTypes,
+  };
+}
+
+/**
+ * Hook for doc type selection using RESOURCE routes (workspace-scoped).
+ * Use this for evaluation creation flows — any workspace member can call it.
+ * Uses GET /ws/{wsId}/eval/config/doc-types (not admin route).
+ */
+export function useWsDocTypeSelect(
+  token: string | null,
+  wsId: string | null,
+  options: { activeOnly?: boolean } = {}
+) {
+  const { activeOnly = true } = options;
+
+  const { docTypes, docTypesLoading, loadConfigDocTypes } = useEvalStore();
+
+  // Load doc types via resource route
+  useEffect(() => {
+    if (token && wsId && docTypes.length === 0 && !docTypesLoading) {
+      loadConfigDocTypes(token, wsId, { includeInactive: !activeOnly });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, wsId, docTypes.length, docTypesLoading, activeOnly]);
+
   const selectOptions = useMemo(() => {
     const filtered = activeOnly
       ? docTypes.filter((dt) => dt.isActive)

@@ -12,6 +12,7 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Typography from "@mui/material/Typography";
 import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -82,7 +83,9 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
         gap: 1.5,
         transition: "all 0.3s ease"
       }}>
-        <TuneIcon sx={{ color: "primary.main", fontSize: 28 }} />
+        <Tooltip title={collapsed ? "Design Studio" : ""} placement="right" arrow>
+          <TuneIcon sx={{ color: "primary.main", fontSize: 28 }} />
+        </Tooltip>
         {!collapsed && (
           <Typography variant="h6" fontWeight={600}>
             Design Studio
@@ -106,39 +109,46 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
       <List sx={{ flexGrow: 1, overflowY: "auto", py: 2 }}>
         {EVAL_OPT_NAVIGATION.map((item) => (
           <ListItem key={item.href} disablePadding sx={{ px: collapsed ? 1 : 2 }}>
-            <ListItemButton
-              selected={pathname === item.href}
-              onClick={() => handleNavigation(item.href)}
-              sx={{
-                borderRadius: 1,
-                justifyContent: collapsed ? "center" : "flex-start",
-                minHeight: 48,
-                "&.Mui-selected": {
-                  bgcolor: "primary.main",
-                  color: "primary.contrastText",
-                  "&:hover": {
-                    bgcolor: "primary.dark",
-                  },
-                  "& .MuiListItemIcon-root": {
-                    color: "primary.contrastText",
-                  },
-                },
-              }}
+            <Tooltip
+              title={collapsed ? item.label : ""}
+              placement="right"
+              arrow
+              disableHoverListener={!collapsed}
             >
-              <ListItemIcon sx={{ 
-                minWidth: collapsed ? 0 : 40,
-                justifyContent: "center"
-              }}>
-                {item.icon}
-              </ListItemIcon>
-              {!collapsed && <ListItemText primary={item.label} />}
-            </ListItemButton>
+              <ListItemButton
+                selected={pathname === item.href}
+                onClick={() => handleNavigation(item.href)}
+                sx={{
+                  borderRadius: 1,
+                  justifyContent: collapsed ? "center" : "flex-start",
+                  minHeight: 48,
+                  "&.Mui-selected": {
+                    bgcolor: "primary.main",
+                    color: "primary.contrastText",
+                    "&:hover": {
+                      bgcolor: "primary.dark",
+                    },
+                    "& .MuiListItemIcon-root": {
+                      color: "primary.contrastText",
+                    },
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ 
+                  minWidth: collapsed ? 0 : 40,
+                  justifyContent: "center"
+                }}>
+                  {item.icon}
+                </ListItemIcon>
+                {!collapsed && <ListItemText primary={item.label} />}
+              </ListItemButton>
+            </Tooltip>
           </ListItem>
         ))}
       </List>
 
-      {/* Organization Switcher at Bottom - Hidden when collapsed */}
-      {!collapsed && <OrganizationSwitcher />}
+      {/* Organization Switcher at Bottom - Always visible, adapts to collapsed state */}
+      <OrganizationSwitcher collapsed={collapsed} />
     </Box>
   );
 

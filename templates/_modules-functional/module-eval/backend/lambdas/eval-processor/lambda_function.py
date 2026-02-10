@@ -75,6 +75,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             doc_ids = body.get('doc_ids', [])
             criteria_set_id = body.get('criteria_set_id')
             action = body.get('action', 'evaluate')
+            response_structure = body.get('response_structure')  # Optional: from optimization runs
             
             if not all([eval_id, org_id, ws_id, criteria_set_id]):
                 logger.error(f"Missing required fields in message: {body}")
@@ -97,7 +98,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     org_id=org_id,
                     ws_id=ws_id,
                     doc_ids=doc_ids,
-                    criteria_set_id=criteria_set_id
+                    criteria_set_id=criteria_set_id,
+                    response_structure=response_structure
                 )
                 results.append({
                     'messageId': record.get('messageId'),
@@ -145,7 +147,8 @@ def process_evaluation(
     org_id: str,
     ws_id: str,
     doc_ids: List[str],
-    criteria_set_id: str
+    criteria_set_id: str,
+    response_structure: Optional[Dict[str, Any]] = None
 ) -> bool:
     """
     Process a complete evaluation.
@@ -273,7 +276,8 @@ def process_evaluation(
                 doc_ids=doc_ids,
                 prompts=prompts,
                 status_options=status_options,
-                combined_doc_content=combined_doc_content
+                combined_doc_content=combined_doc_content,
+                response_structure=response_structure
             )
             
             criteria_results.append(result)
@@ -435,7 +439,7 @@ IMPORTANT: You must return a JSON object with EXACTLY these fields:
 - "confidence": Your confidence level from 0-100 (required, must be a number)
 - "explanation": Detailed explanation of your assessment (required, must be a string)
 - "citations": Array of relevant quotes from the document (required, must be an array)
-
+{response_sections}
 DO NOT include a "status" field. Only return the numerical score.
 
 Example response format:
@@ -599,12 +603,18 @@ def evaluate_criteria_item(
     doc_ids: List[str],
     prompts: Dict[str, Dict[str, Any]],
     status_options: List[Dict[str, Any]],
-    combined_doc_content: str
+    combined_doc_content: str,
+    response_structure: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Evaluate a single criteria item against documents.
     
     Uses RAG to find relevant context, then AI to evaluate.
+    
+    Args:
+        response_structure: Optional response structure from eval_opt_response_structures
+            or from deployed prompt config. When present, the AI prompt includes
+            instructions for additional custom JSON fields beyond the fixed fields.
     """
     criteria_item_id = criteria_item['id']
     criteria_id = criteria_item.get('criteria_id', 'N/A')
@@ -626,6 +636,9 @@ def evaluate_criteria_item(
         scoring_rubric = criteria_set.get('scoring_rubric')
         scoring_rubric_text = format_scoring_rubric(scoring_rubric)
         
+        # Format response sections (custom fields from response structure)
+        response_sections_text = format_response_sections(response_structure)
+        
         # Get evaluation prompt config
         eval_prompt = prompts.get('evaluation', get_default_prompt_config('evaluation'))
         
@@ -638,12 +651,13 @@ def evaluate_criteria_item(
                 'requirement': requirement,
                 'description': description or 'N/A',
                 'context': context,
-                'scoring_rubric': scoring_rubric_text
+                'scoring_rubric': scoring_rubric_text,
+                'response_sections': response_sections_text
             }
         )
         
         # Parse AI response (new scoring architecture - extracts score directly from AI)
-        parsed = parse_evaluation_response(response)
+        parsed = parse_evaluation_response(response, response_structure=response_structure)
         
         # Use AI's direct score (0-100)
         ai_score_value = parsed.get('score')
@@ -752,6 +766,65 @@ def format_status_options(status_options: List[Dict[str, Any]]) -> str:
     return formatted
 
 
+def format_response_sections(response_structure: Optional[Dict[str, Any]]) -> str:
+    """
+    Format response structure sections for inclusion in AI evaluation prompt.
+
+    Converts the BA-defined response structure (from eval_opt_response_structures)
+    into prompt instructions telling the AI which additional JSON fields to return.
+
+    When an optimized prompt is deployed to production, the response structure is
+    embedded in the prompt config — this function makes eval-processor aware of
+    those custom fields for BOTH optimization runs AND production evaluations.
+
+    Args:
+        response_structure: Optional dict with 'sections' key containing list of
+            section definitions, each with 'name', 'type', and optional 'description'.
+
+    Returns:
+        Formatted string for prompt injection, or empty string if no structure.
+    """
+    if not response_structure:
+        return ''
+
+    sections = response_structure.get('sections', [])
+    if not sections:
+        return ''
+
+    # Filter out fixed/built-in fields (already in the prompt)
+    BUILTIN_NAMES = {'score', 'confidence', 'explanation', 'citations'}
+    custom_sections = [s for s in sections if s.get('name', '').lower() not in BUILTIN_NAMES]
+
+    if not custom_sections:
+        return ''
+
+    lines = ['\nADDITIONAL RESPONSE SECTIONS (include these in your JSON response):']
+    for section in custom_sections:
+        name = section.get('name', '')
+        section_type = section.get('type', 'text')
+        description = section.get('description', '')
+
+        # Map types to JSON format hints
+        type_hints = {
+            'text': 'string',
+            'list': 'array of strings',
+            'table': 'array of objects',
+            'number': 'number',
+            'boolean': 'boolean',
+            'object': 'object'
+        }
+        type_hint = type_hints.get(section_type, 'string')
+
+        if description:
+            lines.append(f'- "{name}" ({type_hint}): {description}')
+        else:
+            lines.append(f'- "{name}" ({type_hint})')
+
+    formatted = '\n'.join(lines)
+    logger.info(f"[DEBUG] Response sections for AI prompt:\n{formatted}")
+    return formatted
+
+
 def format_scoring_rubric(rubric: Optional[Dict[str, Any]]) -> str:
     """
     Format scoring rubric for inclusion in prompt.
@@ -784,7 +857,10 @@ def format_scoring_rubric(rubric: Optional[Dict[str, Any]]) -> str:
     return formatted
 
 
-def parse_evaluation_response(response: str) -> Dict[str, Any]:
+def parse_evaluation_response(
+    response: str,
+    response_structure: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     """
     Parse AI evaluation response into structured data.
     
@@ -792,8 +868,15 @@ def parse_evaluation_response(response: str) -> Dict[str, Any]:
     dynamically captures ALL other JSON fields from the AI response for 
     custom fields configured in eval-studio (e.g., compliance_findings).
     
+    When a response_structure is provided, validates that declared custom
+    sections are present in the AI response and fills missing ones with
+    null defaults so the frontend always has a consistent structure.
+    
     Args:
         response: Raw AI response text (may contain JSON)
+        response_structure: Optional response structure with 'sections' list.
+            Used to validate completeness and provide null defaults for
+            missing custom fields.
     
     Returns:
         Dict with fixed fields + all custom fields from AI JSON:
@@ -880,6 +963,34 @@ def parse_evaluation_response(response: str) -> Dict[str, Any]:
     except (json.JSONDecodeError, ValueError) as e:
         logger.warning(f"[DEBUG] Could not parse response as JSON: {e}")
         logger.warning(f"[DEBUG] Storing raw response text as explanation")
+    
+    # Validate against response structure (if provided)
+    if response_structure:
+        BUILTIN_NAMES = {'score', 'confidence', 'explanation', 'citations'}
+        expected_sections = response_structure.get('sections', [])
+        custom_expected = [s for s in expected_sections if s.get('name', '').lower() not in BUILTIN_NAMES]
+        
+        missing_sections = []
+        for section in custom_expected:
+            name = section.get('name', '')
+            if name and name not in result:
+                # Fill missing custom field with type-appropriate default
+                section_type = section.get('type', 'text')
+                default_values = {
+                    'text': None,
+                    'list': [],
+                    'table': [],
+                    'number': None,
+                    'boolean': None,
+                    'object': None
+                }
+                result[name] = default_values.get(section_type, None)
+                missing_sections.append(name)
+        
+        if missing_sections:
+            logger.warning(f"[DEBUG] Response structure validation: {len(missing_sections)} sections missing from AI response: {missing_sections}")
+        else:
+            logger.info(f"[DEBUG] Response structure validation: All {len(custom_expected)} custom sections present")
     
     logger.info(f"[DEBUG] Final parsed result: score={result.get('score')}, confidence={result.get('confidence')}")
     logger.info(f"[DEBUG] ===== END PARSING =====")

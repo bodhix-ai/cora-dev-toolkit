@@ -1,107 +1,297 @@
-import React, { useState } from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
 
 /**
- * Document Viewer Component
- * 
- * Displays document content with text selection support for creating citations.
- * Users can highlight text to add as citations for their evaluations.
+ * DocumentViewer Component
+ *
+ * Displays document content inline:
+ * 1. Fetches presigned URL as blob → creates local object URL (avoids S3 Content-Disposition: attachment)
+ * 2. Renders PDF/images via <object> tag (preserves formatting, supports browser PDF viewer)
+ * 3. Plain text fallback for extracted text content
+ *
+ * Supports text selection for creating citations.
  */
 
 interface DocumentViewerProps {
-  documentContent: string;
+  /** Presigned URL for the original document (preferred) */
+  documentUrl?: string;
+  /** Plain text content fallback */
+  documentContent?: string;
+  /** Document filename for display */
   documentName: string;
-  onTextSelected?: (selectedText: string) => void;
+  /** Callback when text is selected (for citation flow) */
+  onTextSelected?: (text: string) => void;
+}
+
+/** Infer MIME type from filename extension */
+function getMimeType(filename: string): string {
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+  const mimeMap: Record<string, string> = {
+    pdf: "application/pdf",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    gif: "image/gif",
+    svg: "image/svg+xml",
+    txt: "text/plain",
+    html: "text/html",
+    htm: "text/html",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  };
+  return mimeMap[ext] || "application/octet-stream";
 }
 
 export default function DocumentViewer({
+  documentUrl,
   documentContent,
   documentName,
   onTextSelected,
 }: DocumentViewerProps) {
-  const [selectedText, setSelectedText] = useState("");
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleTextSelection = () => {
+  // Fetch presigned URL as blob to bypass S3 Content-Disposition: attachment
+  useEffect(() => {
+    if (!documentUrl) {
+      setBlobUrl(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    // Route through server-side proxy to bypass S3 CORS and Content-Disposition: attachment
+    fetch(`/api/document-proxy?url=${encodeURIComponent(documentUrl)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        return res.blob();
+      })
+      .then((blob) => {
+        if (cancelled) return;
+        // Create blob with correct MIME type (S3 may return generic type)
+        const mimeType = getMimeType(documentName);
+        const typedBlob = new Blob([blob], { type: mimeType });
+        const url = URL.createObjectURL(typedBlob);
+        setBlobUrl(url);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("DocumentViewer: Failed to fetch document", err);
+        setError(err.message || "Failed to load document");
+        setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      // Revoke previous blob URL to prevent memory leaks
+      setBlobUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    };
+  }, [documentUrl, documentName]);
+
+  // Cleanup blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [blobUrl]);
+
+  const handleTextSelect = () => {
     const selection = window.getSelection();
-    const text = selection?.toString().trim();
-    
-    if (text && text.length > 0) {
-      setSelectedText(text);
-      if (onTextSelected) {
-        onTextSelected(text);
-      }
+    if (selection && selection.toString().trim() && onTextSelected) {
+      onTextSelected(selection.toString().trim());
     }
   };
+
+  const mimeType = getMimeType(documentName);
+  const isPdf = mimeType === "application/pdf";
+  const isImage = mimeType.startsWith("image/");
 
   return (
     <div
       style={{
+        height: "100%",
         display: "flex",
         flexDirection: "column",
-        height: "100%",
         border: "1px solid #ddd",
         borderRadius: "8px",
-        backgroundColor: "white",
         overflow: "hidden",
+        backgroundColor: "#fff",
       }}
     >
       {/* Header */}
       <div
         style={{
-          padding: "1rem",
+          padding: "0.75rem 1rem",
           borderBottom: "1px solid #ddd",
           backgroundColor: "#f8f9fa",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
         }}
       >
-        <h3 style={{ margin: 0, fontSize: "1rem" }}>📄 {documentName}</h3>
-        {selectedText && (
-          <div
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <span style={{ fontSize: "1.1rem" }}>📄</span>
+          <strong style={{ fontSize: "0.9rem" }}>{documentName}</strong>
+        </div>
+        {documentUrl && (
+          <a
+            href={documentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            download={documentName}
             style={{
-              marginTop: "0.5rem",
-              padding: "0.5rem",
-              backgroundColor: "#fff3cd",
-              borderRadius: "4px",
-              fontSize: "0.875rem",
+              fontSize: "0.8rem",
+              color: "#007bff",
+              textDecoration: "none",
             }}
           >
-            <strong>Selected:</strong> "{selectedText.substring(0, 100)}
-            {selectedText.length > 100 ? "..." : ""}"
-          </div>
+            Download ↓
+          </a>
         )}
       </div>
 
-      {/* Document Content */}
+      {/* Content */}
       <div
-        onMouseUp={handleTextSelection}
         style={{
           flex: 1,
-          padding: "1.5rem",
-          overflowY: "auto",
-          lineHeight: "1.6",
-          fontSize: "1rem",
-          userSelect: "text",
-          cursor: "text",
+          overflow: "hidden",
+          position: "relative",
         }}
       >
-        {documentContent ? (
-          <div style={{ whiteSpace: "pre-wrap" }}>{documentContent}</div>
+        {loading ? (
+          /* Loading state while fetching blob */
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              color: "#666",
+            }}
+          >
+            <p>Loading document...</p>
+          </div>
+        ) : error ? (
+          /* Error state */
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              color: "#dc3545",
+              padding: "2rem",
+              textAlign: "center",
+            }}
+          >
+            <p style={{ fontWeight: "bold" }}>Failed to load document</p>
+            <p style={{ fontSize: "0.85rem", color: "#666" }}>{error}</p>
+            {documentUrl && (
+              <a
+                href={documentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ marginTop: "1rem", color: "#007bff" }}
+              >
+                Try opening directly ↗
+              </a>
+            )}
+          </div>
+        ) : blobUrl && isPdf ? (
+          /* PDF — use object tag with blob URL (bypasses S3 Content-Disposition) */
+          <object
+            data={blobUrl}
+            type="application/pdf"
+            style={{
+              width: "100%",
+              height: "100%",
+              border: "none",
+            }}
+            title={`Document: ${documentName}`}
+          >
+            <div style={{ padding: "2rem", textAlign: "center" }}>
+              <p>Your browser cannot display PDFs inline.</p>
+              {documentUrl && (
+                <a
+                  href={documentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "#007bff" }}
+                >
+                  Download PDF ↓
+                </a>
+              )}
+            </div>
+          </object>
+        ) : blobUrl && isImage ? (
+          /* Image — render directly */
+          <div
+            style={{
+              height: "100%",
+              overflow: "auto",
+              display: "flex",
+              justifyContent: "center",
+              padding: "1rem",
+            }}
+          >
+            <img
+              src={blobUrl}
+              alt={documentName}
+              style={{ maxWidth: "100%", height: "auto", objectFit: "contain" }}
+            />
+          </div>
+        ) : blobUrl ? (
+          /* Other document types — use iframe with blob URL */
+          <iframe
+            src={blobUrl}
+            style={{
+              width: "100%",
+              height: "100%",
+              border: "none",
+            }}
+            title={`Document: ${documentName}`}
+          />
+        ) : documentContent ? (
+          /* Plain text fallback */
+          <div
+            onMouseUp={handleTextSelect}
+            style={{
+              padding: "1rem",
+              height: "100%",
+              overflow: "auto",
+              lineHeight: "1.6",
+              fontSize: "0.9rem",
+              cursor: "text",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {documentContent}
+          </div>
         ) : (
-          <div style={{ textAlign: "center", color: "#999", padding: "2rem" }}>
+          /* No content */
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              color: "#999",
+            }}
+          >
             <p>No document content available</p>
           </div>
         )}
-      </div>
-
-      {/* Instructions */}
-      <div
-        style={{
-          padding: "0.75rem 1rem",
-          borderTop: "1px solid #ddd",
-          backgroundColor: "#f8f9fa",
-          fontSize: "0.875rem",
-          color: "#666",
-        }}
-      >
-        💡 <strong>Tip:</strong> Select text in the document to add citations to your evaluation
       </div>
     </div>
   );

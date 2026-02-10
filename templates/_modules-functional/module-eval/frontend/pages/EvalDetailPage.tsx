@@ -383,48 +383,22 @@ function DraftConfiguration({
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loadingDocTypes, setLoadingDocTypes] = useState(true);
   const [loadingDocuments, setLoadingDocuments] = useState(true);
-  const [orgId, setOrgId] = useState<string | null>(null);
-
-  // Fetch user's current org ID first
-  React.useEffect(() => {
-    async function fetchUserOrg() {
-      if (!token) return;
-      
-      try {
-        console.log('[DraftConfig] Fetching user profile');
-        
-        const client = createCoraAuthenticatedClient(token);
-        const meData = await client.get<{ success: boolean; data?: { currentOrgId?: string }; currentOrgId?: string }>('/profiles/me');
-        console.log('[DraftConfig] User org response:', meData);
-        
-        const currentOrgId = meData?.data?.currentOrgId || meData?.currentOrgId;
-        console.log('[DraftConfig] Current org ID:', currentOrgId);
-        
-        setOrgId(currentOrgId || null);
-      } catch (err) {
-        console.error('[DraftConfig] Error fetching user org:', err);
-      }
-    }
-    
-    fetchUserOrg();
-  }, [token]);
-
-  // Fetch doc types and criteria sets after we have orgId
+  // Fetch doc types and criteria sets using workspace-scoped routes
   React.useEffect(() => {
     async function fetchConfigData() {
-      if (!token || !orgId) return;
-      
+      if (!token || !workspaceId) return;
+
       try {
-        console.log('[DraftConfig] Fetching config data for org:', orgId);
-        
+        console.log('[DraftConfig] Fetching config data for workspace:', workspaceId);
+
         const client = createCoraAuthenticatedClient(token);
-        
-        // Pass orgId as query parameter (camelCase per Lambda expectation)
+
+        // Use workspace-scoped config routes (not admin routes)
         const [docTypesData, criteriaSetsData] = await Promise.all([
-          client.get<DocType[] | { success: boolean; data: DocType[] }>(`/admin/org/eval/doc-types?orgId=${orgId}`),
-          client.get<CriteriaSet[] | { success: boolean; data: CriteriaSet[] }>(`/admin/org/eval/criteria-sets?orgId=${orgId}`)
+          client.get<DocType[] | { success: boolean; data: DocType[] }>(`/ws/${workspaceId}/eval/config/doc-types`),
+          client.get<CriteriaSet[] | { success: boolean; data: CriteriaSet[] }>(`/ws/${workspaceId}/eval/config/criteria-sets`)
         ]);
-        
+
         console.log('[DraftConfig] Doc types response:', docTypesData);
         console.log('[DraftConfig] Criteria sets response:', criteriaSetsData);
         
@@ -446,7 +420,7 @@ function DraftConfiguration({
     }
     
     fetchConfigData();
-  }, [token, orgId]); // Re-run when orgId is fetched
+  }, [token, workspaceId]); // Re-run when workspace changes
 
   // Fetch workspace documents from KB
   React.useEffect(() => {

@@ -155,6 +155,174 @@ function markdownToHtml(markdown: string): string {
 }
 
 /**
+ * Format a snake_case field name into a human-readable label
+ */
+function formatFieldLabel(key: string): string {
+  return key
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Render a field value with proper formatting for different types:
+ * - Arrays: rendered as bullet lists
+ * - Numbered text (e.g., "1. First 2. Second"): rendered as ordered list
+ * - Plain text: rendered as paragraph with markdown support
+ */
+function renderFieldValue(value: any): React.ReactNode {
+  // Handle arrays
+  if (Array.isArray(value)) {
+    // Empty array — show "None" message
+    if (value.length === 0) {
+      return (
+        <Typography variant="body2" color="text.secondary" fontStyle="italic">
+          None identified
+        </Typography>
+      );
+    }
+
+    // Array of objects (e.g., compliance_gaps: [{finding, recommendation}])
+    // Render as a numbered table for excellent UX
+    if (typeof value[0] === "object" && value[0] !== null) {
+      const keys = Object.keys(value[0]);
+      return (
+        <Box
+          component="table"
+          sx={{
+            width: "100%",
+            borderCollapse: "collapse",
+            fontSize: "0.875rem",
+            "& th": {
+              textAlign: "left",
+              fontWeight: 600,
+              color: "text.secondary",
+              borderBottom: 2,
+              borderColor: "divider",
+              py: 0.75,
+              px: 1,
+              fontSize: "0.75rem",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+            },
+            "& td": {
+              borderBottom: 1,
+              borderColor: "divider",
+              py: 1,
+              px: 1,
+              verticalAlign: "top",
+            },
+            "& tr:last-child td": {
+              borderBottom: 0,
+            },
+          }}
+        >
+          <thead>
+            <tr>
+              <Box component="th" sx={{ width: 32 }}>#</Box>
+              {keys.map((k) => (
+                <th key={k}>{formatFieldLabel(k)}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {value.map((row: any, i: number) => (
+              <tr key={i}>
+                <Box component="td" sx={{ color: "text.secondary", fontWeight: 500 }}>
+                  {i + 1}
+                </Box>
+                {keys.map((k) => (
+                  <td key={k}>
+                    <Typography variant="body2" color="text.primary">
+                      {String(row[k] || "")}
+                    </Typography>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </Box>
+      );
+    }
+
+    // Array of strings — render as bullet list
+    return (
+      <Box component="ul" sx={{ m: 0, pl: 2.5, "& li": { mb: 0.5 } }}>
+        {value.map((item, i) => (
+          <Typography key={i} component="li" variant="body2" color="text.primary">
+            {String(item)}
+          </Typography>
+        ))}
+      </Box>
+    );
+  }
+
+  // Handle objects (nested JSON — single object, not array)
+  if (typeof value === "object" && value !== null) {
+    return (
+      <Box component="ul" sx={{ m: 0, pl: 2.5, "& li": { mb: 0.5 } }}>
+        {Object.entries(value).map(([k, v]) => (
+          <Typography key={k} component="li" variant="body2" color="text.primary">
+            <strong>{formatFieldLabel(k)}:</strong> {String(v)}
+          </Typography>
+        ))}
+      </Box>
+    );
+  }
+
+  const text = String(value);
+
+  // Detect numbered list pattern - handles both:
+  // - Newline-separated: "1. First\n2. Second"
+  // - Inline: "...sentence. 2. Next item 3. Third item"
+  const numberedPattern = /(?:^|\s)\d+\.\s+/m;
+  if (numberedPattern.test(text)) {
+    // Split on number patterns (handles both inline and newline-separated)
+    const items = text
+      .split(/(?:^|\n|\s)(?=\d+\.\s)/)
+      .map((item) => item.replace(/^\d+\.\s+/, "").trim())
+      .filter((item) => item);
+    if (items.length > 1) {
+      return (
+        <Box component="ol" sx={{ m: 0, pl: 2.5, "& li": { mb: 0.5 } }}>
+          {items.map((item, i) => (
+            <Typography key={i} component="li" variant="body2" color="text.primary">
+              {item.trim()}
+            </Typography>
+          ))}
+        </Box>
+      );
+    }
+  }
+
+  // Plain text — render with markdown support
+  return (
+    <Typography
+      variant="body2"
+      color="text.primary"
+      component="div"
+      sx={{
+        "& p": { margin: "0.5em 0", "&:first-of-type": { marginTop: 0 }, "&:last-of-type": { marginBottom: 0 } },
+        "& ul, & ol": { marginLeft: "1.5em", marginTop: "0.5em", marginBottom: "0.5em" },
+        "& li": { marginBottom: "0.25em" },
+        "& strong": { fontWeight: 600 },
+      }}
+      dangerouslySetInnerHTML={{ __html: markdownToHtml(text) }}
+    />
+  );
+}
+
+/**
+ * Sort custom fields for display.
+ * Phase 1: Uses insertion order (no hardcoded sorting).
+ * Phase 2: Will use display_order from eval_opt_response_structures.
+ */
+function sortCustomFields(entries: [string, any][]): [string, any][] {
+  // Phase 1: Return as-is (insertion order from AI response)
+  // Phase 2 TODO: Accept response_structure config and sort by display_order
+  return entries;
+}
+
+/**
  * Parse ai_result field (handles both legacy string and new JSONB format)
  */
 interface ParsedAIResult {
@@ -356,13 +524,16 @@ export function EvalQACard({
               </Typography>
               <Typography 
                 variant="body2" 
-                color="text.secondary"
+                color={cardExpanded ? "text.primary" : "text.secondary"}
+                fontWeight={cardExpanded ? 700 : 400}
                 sx={{ 
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
                   flex: 1,
                   minWidth: 0,
+                  ...(!cardExpanded && {
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }),
                 }}
               >
                 {result.criteriaItem.requirement}
@@ -444,7 +615,7 @@ export function EvalQACard({
 
         {/* Collapsible Result Section */}
         <Collapse in={cardExpanded}>
-          {effectiveExplanation && (
+{(effectiveExplanation || (customFields && Object.keys(customFields).length > 0)) && (
             <Box sx={{ mb: 1.5, bgcolor: "grey.50", borderRadius: 1, p: 1.5 }}>
               <Box sx={{ mb: 0.5, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <Typography variant="caption" color="text.secondary" fontWeight={500}>
@@ -456,29 +627,63 @@ export function EvalQACard({
                   </Typography>
                 )}
               </Box>
-              <Typography
-                variant="body2"
-                color="text.primary"
-                component="div"
+
+              {/* Clamp wrapper — covers explanation + custom fields together */}
+              <Box
                 sx={{
-                  ...((!textExpanded && effectiveExplanation.length > 300) && {
-                    display: "-webkit-box",
-                    WebkitLineClamp: 3,
-                    WebkitBoxOrient: "vertical",
+                  ...(!textExpanded && effectiveExplanation.length > 300 && {
+                    maxHeight: "4.5em",
                     overflow: "hidden",
+                    position: "relative",
+                    "&::after": {
+                      content: '""',
+                      position: "absolute",
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: "1.5em",
+                      background: "linear-gradient(transparent, rgba(245,245,245,1))",
+                    },
                   }),
-                  "& p": { margin: "0.5em 0", "&:first-of-type": { marginTop: 0 }, "&:last-of-type": { marginBottom: 0 } },
-                  "& h1": { fontSize: "1.5em", fontWeight: 600, margin: "0.5em 0" },
-                  "& h2": { fontSize: "1.3em", fontWeight: 600, margin: "0.5em 0" },
-                  "& h3": { fontSize: "1.1em", fontWeight: 600, margin: "0.5em 0" },
-                  "& h4": { fontSize: "1em", fontWeight: 600, margin: "0.5em 0" },
-                  "& ul, & ol": { marginLeft: "1.5em", marginTop: "0.5em", marginBottom: "0.5em" },
-                  "& li": { marginBottom: "0.25em" },
-                  "& strong": { fontWeight: 600 },
-                  "& em": { fontStyle: "italic" },
                 }}
-                dangerouslySetInnerHTML={{ __html: markdownToHtml(effectiveExplanation) }}
-              />
+              >
+                {/* Explanation text */}
+                {effectiveExplanation && (
+                  <Typography
+                    variant="body2"
+                    color="text.primary"
+                    component="div"
+                    sx={{
+                      "& p": { margin: "0.5em 0", "&:first-of-type": { marginTop: 0 }, "&:last-of-type": { marginBottom: 0 } },
+                      "& h1": { fontSize: "1.5em", fontWeight: 600, margin: "0.5em 0" },
+                      "& h2": { fontSize: "1.3em", fontWeight: 600, margin: "0.5em 0" },
+                      "& h3": { fontSize: "1.1em", fontWeight: 600, margin: "0.5em 0" },
+                      "& h4": { fontSize: "1em", fontWeight: 600, margin: "0.5em 0" },
+                      "& ul, & ol": { marginLeft: "1.5em", marginTop: "0.5em", marginBottom: "0.5em" },
+                      "& li": { marginBottom: "0.25em" },
+                      "& strong": { fontWeight: 600 },
+                      "& em": { fontStyle: "italic" },
+                    }}
+                    dangerouslySetInnerHTML={{ __html: markdownToHtml(effectiveExplanation) }}
+                  />
+                )}
+
+                {/* Custom Fields from AI Response — inside same clamp wrapper */}
+                {customFields && Object.keys(customFields).length > 0 && (
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, mt: 1.5 }}>
+                    {sortCustomFields(Object.entries(customFields)).map(([key, value]) => (
+                      <Box key={key}>
+                        <Typography variant="subtitle2" fontWeight={600} color="text.secondary" sx={{ mb: 0.5 }}>
+                          {formatFieldLabel(key)}
+                        </Typography>
+                        {renderFieldValue(value)}
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </Box>
+
+              {/* Show more/less button — applies to entire content */}
               {effectiveExplanation.length > 300 && (
                 <Button
                   onClick={() => setTextExpanded(!textExpanded)}

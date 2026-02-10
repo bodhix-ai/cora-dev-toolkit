@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 /**
  * Criteria Evaluation Form Component
@@ -7,12 +7,20 @@ import React, { useState } from "react";
  * Dynamically renders fields based on configured response sections.
  */
 
+interface TableColumn {
+  name?: string;
+  key?: string;
+  label?: string;
+  type: 'text' | 'number' | 'boolean';
+}
+
 interface ResponseSection {
   id: string;
   name: string;
-  type: 'number' | 'text' | 'list' | 'boolean' | 'object';
+  type: 'number' | 'text' | 'list' | 'boolean' | 'object' | 'table';
   required: boolean;
   description?: string;
+  columns?: TableColumn[];
 }
 
 interface CriterionEvaluation {
@@ -27,7 +35,7 @@ interface CriteriaEvaluationFormProps {
     requirement: string;
     description?: string;
   };
-  statusOptions: Array<{
+  statusOptions?: Array<{
     id: string;
     name: string;
     description?: string;
@@ -52,6 +60,11 @@ export default function CriteriaEvaluationForm({
     initialValue?.section_responses || {}
   );
 
+  // Reset form state when criterion changes (parent navigates to different criterion)
+  useEffect(() => {
+    setSectionResponses(initialValue?.section_responses || {});
+  }, [criterion.id, initialValue]);
+
   // Update parent when any field changes
   const notifyChange = (newSectionResponses: Record<string, any>) => {
     onChange({
@@ -70,7 +83,7 @@ export default function CriteriaEvaluationForm({
   };
 
   // Check if all required fields are filled
-  const isComplete = responseSections.every(
+  const isComplete = (responseSections || []).every(
     section => !section.required || (sectionResponses[section.id] !== undefined && sectionResponses[section.id] !== '')
   );
 
@@ -139,6 +152,172 @@ export default function CriteriaEvaluationForm({
           />
         );
 
+      case 'list':
+        return (
+          <div>
+            {(Array.isArray(value) ? value : ['']).map((item: string, idx: number) => (
+              <div key={idx} style={{ display: "flex", gap: "0.5rem", marginBottom: "0.25rem" }}>
+                <input
+                  type="text"
+                  value={item}
+                  onChange={(e) => {
+                    const arr = Array.isArray(value) ? [...value] : [''];
+                    arr[idx] = e.target.value;
+                    handleSectionChange(section.id, arr);
+                  }}
+                  onBlur={onBlur}
+                  placeholder={`Item ${idx + 1}`}
+                  style={{
+                    flex: 1, padding: "0.4rem", border: "1px solid #ccc",
+                    borderRadius: "4px", fontSize: "0.875rem", boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const arr = Array.isArray(value) ? value.filter((_: string, i: number) => i !== idx) : [];
+                    handleSectionChange(section.id, arr.length > 0 ? arr : ['']);
+                  }}
+                  style={{ padding: "0.25rem 0.5rem", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer", backgroundColor: "#f8f8f8" }}
+                >✕</button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                const arr = Array.isArray(value) ? [...value, ''] : [''];
+                handleSectionChange(section.id, arr);
+              }}
+              style={{ padding: "0.25rem 0.75rem", border: "1px solid #007bff", borderRadius: "4px", cursor: "pointer", color: "#007bff", backgroundColor: "white", fontSize: "0.75rem", marginTop: "0.25rem" }}
+            >+ Add Item</button>
+          </div>
+        );
+
+      case 'table': {
+        const columns = (section.columns && section.columns.length > 0)
+          ? section.columns
+          : [{ name: 'Column 1', type: 'text' as const }, { name: 'Column 2', type: 'text' as const }];
+        // API returns columns with key/label format; normalize to get display name and data key
+        const getColLabel = (col: TableColumn, idx: number) => col.label || col.name || `Column ${idx + 1}`;
+        const getColKey = (col: TableColumn, idx: number) => col.key || col.name || `col_${idx}`;
+        const rows: Record<string, any>[] = Array.isArray(value) ? value : [];
+        return (
+          <div style={{ border: "1px solid #ddd", borderRadius: "4px", overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
+              <thead>
+                <tr style={{ backgroundColor: "#e8edf2" }}>
+                  {columns.map((col, ci) => (
+                    <th key={ci} style={{ padding: "0.5rem 0.75rem", borderBottom: "2px solid #bbb", textAlign: "left", fontWeight: "700", fontSize: "0.875rem", color: "#333" }}>
+                      {getColLabel(col, ci)}
+                    </th>
+                  ))}
+                  <th style={{ padding: "0.5rem", borderBottom: "2px solid #bbb", width: "40px" }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, ri) => (
+                  <tr key={ri} style={{ borderBottom: "1px solid #eee" }}>
+                    {columns.map((col, ci) => {
+                      const dataKey = getColKey(col, ci);
+                      return (
+                        <td key={ci} style={{ padding: "0.25rem" }}>
+                          {col.type === 'boolean' ? (
+                            <input
+                              type="checkbox"
+                              checked={row[dataKey] === true}
+                              onChange={(e) => {
+                                const newRows = [...rows];
+                                newRows[ri] = { ...newRows[ri], [dataKey]: e.target.checked };
+                                handleSectionChange(section.id, newRows);
+                              }}
+                              onBlur={onBlur}
+                            />
+                          ) : col.type === 'number' ? (
+                            <input
+                              type="number"
+                              value={row[dataKey] || ''}
+                              onChange={(e) => {
+                                const newRows = [...rows];
+                                newRows[ri] = { ...newRows[ri], [dataKey]: parseFloat(e.target.value) || 0 };
+                                handleSectionChange(section.id, newRows);
+                              }}
+                              onBlur={onBlur}
+                              placeholder={getColLabel(col, ci)}
+                              style={{ width: "100%", padding: "0.4rem", border: "1px solid #ddd", borderRadius: "3px", boxSizing: "border-box" }}
+                            />
+                        ) : (
+                            <textarea
+                              value={row[dataKey] || ''}
+                              onChange={(e) => {
+                                const newRows = [...rows];
+                                newRows[ri] = { ...newRows[ri], [dataKey]: e.target.value };
+                                handleSectionChange(section.id, newRows);
+                                // Auto-expand height
+                                e.target.style.height = 'auto';
+                                e.target.style.height = e.target.scrollHeight + 'px';
+                              }}
+                              onBlur={onBlur}
+                              placeholder={getColLabel(col, ci)}
+                              rows={2}
+                              onFocus={(e) => {
+                                // Expand on focus to show full content
+                                e.target.style.height = 'auto';
+                                e.target.style.height = e.target.scrollHeight + 'px';
+                              }}
+                              style={{
+                                width: "100%",
+                                padding: "0.4rem",
+                                border: "1px solid #ddd",
+                                borderRadius: "3px",
+                                boxSizing: "border-box",
+                                resize: "vertical",
+                                fontFamily: "inherit",
+                                fontSize: "inherit",
+                                lineHeight: "1.4",
+                                minHeight: "2.5rem",
+                                overflow: "hidden",
+                              }}
+                            />
+                          )}
+                        </td>
+                      );
+                    })}
+                    <td style={{ padding: "0.25rem", textAlign: "center" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleSectionChange(section.id, rows.filter((_, i) => i !== ri));
+                        }}
+                        style={{ border: "none", background: "none", cursor: "pointer", color: "#dc3545", fontSize: "1rem" }}
+                      >✕</button>
+                    </td>
+                  </tr>
+                ))}
+                {rows.length === 0 && (
+                  <tr>
+                    <td colSpan={columns.length + 1} style={{ padding: "1rem", textAlign: "center", color: "#999" }}>
+                      No rows yet. Click "Add Row" below.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            <button
+              type="button"
+              onClick={() => {
+                const emptyRow: Record<string, any> = {};
+                columns.forEach((col, ci) => {
+                  const dk = getColKey(col, ci);
+                  emptyRow[dk] = col.type === 'boolean' ? false : col.type === 'number' ? 0 : '';
+                });
+                handleSectionChange(section.id, [...rows, emptyRow]);
+              }}
+              style={{ width: "100%", padding: "0.5rem", border: "none", borderTop: "1px solid #ddd", cursor: "pointer", color: "#007bff", backgroundColor: "#f8f9fa", fontSize: "0.875rem" }}
+            >+ Add Row</button>
+          </div>
+        );
+      }
+
       default:
         return (
           <input
@@ -202,7 +381,7 @@ export default function CriteriaEvaluationForm({
       </div>
 
       {/* Dynamic Response Section Fields */}
-      {responseSections.map((section) => (
+      {(responseSections || []).map((section) => (
         <div key={section.id} style={{ marginBottom: "1rem" }}>
           <label style={{ display: "block", fontWeight: "bold", marginBottom: "0.5rem", fontSize: "0.875rem" }}>
             {section.name} {section.required && '*'}

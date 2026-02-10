@@ -185,7 +185,7 @@ export function useEvalCriteriaSet(
 }
 
 /**
- * Hook for criteria set selection in forms/dropdowns
+ * Hook for criteria set selection in forms/dropdowns (Admin — org-scoped)
  */
 export function useCriteriaSetSelect(
   token: string | null,
@@ -205,6 +205,51 @@ export function useCriteriaSetSelect(
     // Note: loadCriteriaSets is intentionally excluded from deps to prevent infinite loops
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, orgId, docTypeId, activeOnly]);
+
+  // Filter to doc type and active
+  const selectOptions = useMemo(() => {
+    let filtered = criteriaSets.filter((cs) => cs.docTypeId === docTypeId);
+    if (activeOnly) {
+      filtered = filtered.filter((cs) => cs.isActive);
+    }
+
+    return filtered.map((cs) => ({
+      value: cs.id,
+      label: cs.name,
+      version: cs.version,
+      itemCount: cs.itemCount,
+    }));
+  }, [criteriaSets, docTypeId, activeOnly]);
+
+  return {
+    options: selectOptions,
+    isLoading: criteriaSetsLoading,
+    criteriaSets: criteriaSets.filter((cs) => cs.docTypeId === docTypeId),
+  };
+}
+
+/**
+ * Hook for criteria set selection using RESOURCE routes (workspace-scoped).
+ * Use this for evaluation creation flows — any workspace member can call it.
+ * Uses GET /ws/{wsId}/eval/config/criteria-sets (not admin route).
+ */
+export function useWsCriteriaSetSelect(
+  token: string | null,
+  wsId: string | null,
+  docTypeId: string | null,
+  options: { activeOnly?: boolean } = {}
+) {
+  const { activeOnly = true } = options;
+
+  const { criteriaSets, criteriaSetsLoading, loadConfigCriteriaSets } = useEvalStore();
+
+  // Load criteria sets via resource route
+  useEffect(() => {
+    if (token && wsId && docTypeId) {
+      loadConfigCriteriaSets(token, wsId, { docTypeId, includeInactive: !activeOnly });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, wsId, docTypeId, activeOnly]);
 
   // Filter to doc type and active
   const selectOptions = useMemo(() => {

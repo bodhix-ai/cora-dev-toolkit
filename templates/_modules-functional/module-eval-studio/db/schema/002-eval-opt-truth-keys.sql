@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS eval_opt_truth_keys (
     truth_confidence INTEGER CHECK (truth_confidence >= 0 AND truth_confidence <= 100),
     truth_explanation TEXT NOT NULL,
     truth_citations JSONB,  -- Array of quotes from document
+    section_responses JSONB,  -- Complete section responses JSON from frontend (score, justification, citations, custom fields)
     
     -- Metadata
     evaluated_by UUID NOT NULL REFERENCES auth.users(id),
@@ -57,6 +58,7 @@ COMMENT ON COLUMN eval_opt_truth_keys.truth_status_id IS 'Manual assessment stat
 COMMENT ON COLUMN eval_opt_truth_keys.truth_confidence IS 'Manual assessment confidence (0-100)';
 COMMENT ON COLUMN eval_opt_truth_keys.truth_explanation IS 'Manual assessment explanation';
 COMMENT ON COLUMN eval_opt_truth_keys.truth_citations IS 'Quotes from document supporting assessment';
+COMMENT ON COLUMN eval_opt_truth_keys.section_responses IS 'Complete section responses JSON from frontend (score, justification, citations, custom fields)';
 COMMENT ON COLUMN eval_opt_truth_keys.evaluated_by IS 'Analyst who performed manual evaluation';
 COMMENT ON COLUMN eval_opt_truth_keys.evaluated_at IS 'Manual evaluation timestamp';
 COMMENT ON COLUMN eval_opt_truth_keys.validated IS 'Whether truth key has been validated by second analyst';

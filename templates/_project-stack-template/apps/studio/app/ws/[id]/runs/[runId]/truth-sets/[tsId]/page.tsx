@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser, useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
+import { useWorkspace } from "@{{PROJECT_NAME}}/module-ws";
 import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import { createKbModuleClient } from "@{{PROJECT_NAME}}/module-kb";
 import Pagination from "@mui/material/Pagination";
@@ -31,13 +32,38 @@ interface StatusOption {
   description?: string;
 }
 
+interface TableColumn {
+  name: string;
+  type: 'text' | 'number' | 'boolean';
+}
+
 interface ResponseSection {
   id: string;
   name: string;
-  type: 'number' | 'text' | 'list' | 'boolean' | 'object';
+  type: 'number' | 'text' | 'list' | 'boolean' | 'object' | 'table';
   required: boolean;
   description?: string;
+  columns?: TableColumn[];
 }
+
+// CRITICAL: Score and Confidence are ALWAYS required for optimization comparison
+// These are prepended to any custom response sections defined by the BA
+const HEADER_SECTIONS: ResponseSection[] = [
+  {
+    id: "score",
+    name: "Score",
+    type: "number",
+    required: true,
+    description: "Numerical compliance score (0-100) - REQUIRED for optimization"
+  },
+  {
+    id: "confidence",
+    name: "Confidence",
+    type: "number",
+    required: true,
+    description: "BA's confidence in the score (0-100)"
+  }
+];
 
 interface CriterionEvaluation {
   criteria_item_id: string;
@@ -50,6 +76,11 @@ interface KBDocument {
   extracted_text?: string;
   content?: string;
   text_content?: string;
+}
+
+interface DownloadUrlResult {
+  downloadUrl: string;
+  expiresIn: number;
 }
 
 // Helper function to format time ago
@@ -77,16 +108,19 @@ export default function TruthSetDetailPage() {
 
   const { authAdapter, isAuthenticated, isLoading: authLoading } = useUser();
   const { orgId, organization } = useOrganizationContext();
+  const { workspace } = useWorkspace(wsId, { autoFetch: true, orgId });
 
   // Data state
   const [truthSet, setTruthSet] = useState<TruthSet | null>(null);
   const [document, setDocument] = useState<KBDocument | null>(null);
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const [criteriaItems, setCriteriaItems] = useState<CriteriaItem[]>([]);
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [responseSections, setResponseSections] = useState<ResponseSection[]>([]);
   const [currentCriterionIndex, setCurrentCriterionIndex] = useState(0);
   const [evaluations, setEvaluations] = useState<Map<string, CriterionEvaluation>>(new Map());
   const [selectedText, setSelectedText] = useState("");
+  const [runName, setRunName] = useState<string>("");
 
   // UI state
   const [loading, setLoading] = useState(true);
@@ -117,6 +151,7 @@ export default function TruthSetDetailPage() {
         // Fetch optimization run to get criteria_set_id and response sections
         const runResponse = await client.get(`/ws/${wsId}/optimization/runs/${runId}`);
         const run = (runResponse as any).data;
+        if (run.name) setRunName(run.name);
         
         // Lambda returns camelCase field names
         const criteriaSetId = run.criteriaSetId;
@@ -129,8 +164,12 @@ export default function TruthSetDetailPage() {
         }
 
         // Get response sections from run response (embedded inline)
+        // CRITICAL: Always prepend HEADER_SECTIONS (score, confidence) for optimization comparison
         if (run.responseSections && Array.isArray(run.responseSections)) {
-          setResponseSections(run.responseSections);
+          setResponseSections([...HEADER_SECTIONS, ...run.responseSections]);
+        } else {
+          // Even if no custom sections, we MUST have score and confidence
+          setResponseSections(HEADER_SECTIONS);
         }
 
         // Fetch truth set
@@ -147,13 +186,18 @@ export default function TruthSetDetailPage() {
           setEvaluations(evalMap);
         }
 
-        // Fetch document content
+        // Fetch document metadata and presigned URL for viewing
         if (ts.document_id) {
           const kbClient = createKbModuleClient(client);
+          
+          // Get document metadata (filename, status, etc.)
           const docResponse = await kbClient.workspace.getDocument(wsId, ts.document_id);
           if (docResponse.data) {
             setDocument(docResponse.data as any);
           }
+
+          // Note: Download URL fetched on-demand when user clicks "View Document"
+          // to avoid triggering browser download dialog on page load
         }
 
         // Fetch criteria items using workspace-scoped route
@@ -162,12 +206,8 @@ export default function TruthSetDetailPage() {
           setCriteriaItems((criteriaResponse as any).data);
         }
 
-        // Fetch status options using org-scoped route
-        // orgId is guaranteed to be available here (checked at useEffect entry)
-        const statusResponse = await client.get(`/admin/org/eval/status-options?orgId=${orgId}`);
-        if ((statusResponse as any).data) {
-          setStatusOptions((statusResponse as any).data);
-        }
+        // Status options removed — Sprint 5 uses rubric-based scoring (0-100)
+        // BA provides score directly, status label derived from rubric
       } catch (err) {
         console.error("Error fetching data:", err);
         setError(err instanceof Error ? err.message : "Failed to load truth set");
@@ -300,29 +340,33 @@ export default function TruthSetDetailPage() {
     return (
       <div style={{ padding: "2rem", textAlign: "center" }}>
         <p>Truth set not found.</p>
-        <button onClick={handleBack}>← Back to Run Details</button>
+        <button onClick={handleBack} style={{ background: "none", border: "none", color: "#007bff", cursor: "pointer" }}>← Back to Run Details</button>
       </div>
     );
   }
 
   return (
     <div style={{ padding: "2rem", maxWidth: "1400px", margin: "0 auto" }}>
-      {/* Header */}
+      {/* Breadcrumbs */}
       <div style={{ marginBottom: "2rem" }}>
-        <button
-          onClick={handleBack}
-          style={{
-            background: "none",
-            border: "none",
-            color: "#007bff",
-            cursor: "pointer",
-            fontSize: "1rem",
-            padding: 0,
-            marginBottom: "1rem",
-          }}
-        >
-          ← Back to Run Details
-        </button>
+        <nav style={{ marginBottom: "1rem", fontSize: "0.875rem" }}>
+          <a
+            onClick={() => router.push("/ws")}
+            style={{ color: "#007bff", cursor: "pointer", textDecoration: "none" }}
+          >Workspaces</a>
+          <span style={{ margin: "0 0.5rem", color: "#999" }}>/</span>
+          <a
+            onClick={() => router.push(`/ws/${wsId}?tab=2`)}
+            style={{ color: "#007bff", cursor: "pointer", textDecoration: "none" }}
+          >{workspace?.name || "Workspace"}</a>
+          <span style={{ margin: "0 0.5rem", color: "#999" }}>/</span>
+          <a
+            onClick={handleBack}
+            style={{ color: "#007bff", cursor: "pointer", textDecoration: "none" }}
+          >{runName || "Optimization Run"}</a>
+          <span style={{ margin: "0 0.5rem", color: "#999" }}>/</span>
+          <span style={{ color: "#333" }}>Truth Set</span>
+        </nav>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
           <div>
             <h1 style={{ margin: "0 0 0.5rem 0" }}>{truthSet.name}</h1>
@@ -447,16 +491,74 @@ export default function TruthSetDetailPage() {
       <div style={{ display: "flex", gap: "1.5rem", height: "600px" }}>
         {/* Left: Document Viewer */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <DocumentViewer
-            documentContent={
-              document?.extracted_text || 
-              document?.content || 
-              document?.text_content || 
-              (document ? "No text content found in document" : "Loading document...")
-            }
-            documentName={document?.name || truthSet.name}
-            onTextSelected={setSelectedText}
-          />
+          <div style={{
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            border: "1px solid #ddd",
+            borderRadius: "8px",
+            overflow: "hidden",
+            backgroundColor: "#fff",
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: "0.75rem 1rem",
+              borderBottom: "1px solid #ddd",
+              backgroundColor: "#f8f9fa",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+            }}>
+              <span style={{ fontSize: "1.1rem" }}>📄</span>
+              <strong style={{ fontSize: "0.9rem" }}>{document?.name || truthSet.name}</strong>
+            </div>
+            {/* Content */}
+            <div style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "2rem",
+              textAlign: "center",
+              color: "#555",
+            }}>
+              <p style={{ fontSize: "1rem", marginBottom: "1rem" }}>
+                Open the document in a new tab to review while evaluating criteria.
+              </p>
+              <button
+                onClick={async () => {
+                  try {
+                    const token = await authAdapter.getToken();
+                    if (!token) return;
+                    const c = createCoraAuthenticatedClient(token);
+                    const kbClient = createKbModuleClient(c);
+                    const resp = await kbClient.workspace.downloadDocument(wsId, truthSet.document_id);
+                    if (resp.data && (resp.data as any).downloadUrl) {
+                      window.open((resp.data as any).downloadUrl, "_blank");
+                    }
+                  } catch (err) {
+                    console.error("Failed to get download URL:", err);
+                  }
+                }}
+                disabled={!truthSet.document_id}
+                style={{
+                  padding: "0.75rem 1.5rem",
+                  fontSize: "0.95rem",
+                  backgroundColor: truthSet.document_id ? "#1976d2" : "#ccc",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: truthSet.document_id ? "pointer" : "not-allowed",
+                }}
+              >
+                📥 View Document in New Tab
+              </button>
+              <p style={{ fontSize: "0.8rem", color: "#999", marginTop: "1rem" }}>
+                Tip: Arrange browser windows side-by-side for efficient evaluation.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Right: Evaluation Form */}
@@ -470,12 +572,8 @@ export default function TruthSetDetailPage() {
               marginBottom: "1rem",
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
-              gap: "1rem"
+              justifyContent: "center",
             }}>
-              <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#495057" }}>
-                Criterion {currentCriterionIndex + 1} of {criteriaItems.length}
-              </span>
               <Stack spacing={2}>
                 <Pagination
                   count={criteriaItems.length}
@@ -495,7 +593,6 @@ export default function TruthSetDetailPage() {
           {currentCriterion ? (
             <CriteriaEvaluationForm
               criterion={currentCriterion}
-              statusOptions={statusOptions}
               responseSections={responseSections}
               initialValue={evaluations.get(currentCriterion.id)}
               selectedText={selectedText}

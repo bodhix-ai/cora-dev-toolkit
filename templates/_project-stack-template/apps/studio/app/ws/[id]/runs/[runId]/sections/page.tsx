@@ -2,16 +2,25 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser, useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
+import { useWorkspace } from "@{{PROJECT_NAME}}/module-ws";
 import { createCoraAuthenticatedClient } from "@{{PROJECT_NAME}}/api-client";
 import ResponseStructureBuilder from "../../../../../../components/ResponseStructureBuilder";
+
+interface TableColumn {
+  key: string;
+  label: string;
+  type: "text" | "number";
+}
 
 interface ResponseSection {
   id: string;
   name: string;
   description: string;
-  type: "text" | "list" | "object" | "number" | "boolean";
+  type: "text" | "list" | "table" | "number" | "boolean";
   required: boolean;
+  builtIn?: boolean;
+  columns?: TableColumn[];
 }
 
 export default function ResponseSectionsPage() {
@@ -21,7 +30,11 @@ export default function ResponseSectionsPage() {
   const runId = params?.runId as string;
 
   const { authAdapter, isAuthenticated, isLoading: authLoading } = useUser();
+  const { currentOrganization } = useOrganizationContext();
+  const orgId = currentOrganization?.orgId || "";
+  const { workspace, loading: wsLoading } = useWorkspace(wsId, { autoFetch: true, orgId });
   const [sections, setSections] = useState<ResponseSection[]>([]);
+  const [runName, setRunName] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +47,12 @@ export default function ResponseSectionsPage() {
       try {
         const token = await authAdapter.getToken();
         const client = createCoraAuthenticatedClient(token);
+        // Fetch run name
+        try {
+          const runRes = await client.get(`/ws/${wsId}/optimization/runs/${runId}`);
+          if ((runRes as any).data?.name) setRunName((runRes as any).data.name);
+        } catch (_) { /* breadcrumb falls back to generic */ }
+
         const response = await client.get(`/ws/${wsId}/optimization/runs/${runId}/sections`);
 
         if (response.data && Array.isArray(response.data)) {
@@ -93,20 +112,24 @@ export default function ResponseSectionsPage() {
     <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
       {/* Header */}
       <div style={{ marginBottom: "2rem" }}>
-        <button
-          onClick={handleCancel}
-          style={{
-            background: "none",
-            border: "none",
-            color: "#007bff",
-            cursor: "pointer",
-            fontSize: "1rem",
-            padding: 0,
-            marginBottom: "1rem",
-          }}
-        >
-          ← Back to Run Details
-        </button>
+        <nav style={{ marginBottom: "1rem", fontSize: "0.875rem" }}>
+          <a
+            onClick={() => router.push("/ws")}
+            style={{ color: "#007bff", cursor: "pointer", textDecoration: "none" }}
+          >Workspaces</a>
+          <span style={{ margin: "0 0.5rem", color: "#999" }}>/</span>
+          <a
+            onClick={() => router.push(`/ws/${wsId}?tab=2`)}
+            style={{ color: "#007bff", cursor: "pointer", textDecoration: "none" }}
+          >{workspace?.name || "Workspace"}</a>
+          <span style={{ margin: "0 0.5rem", color: "#999" }}>/</span>
+          <a
+            onClick={handleCancel}
+            style={{ color: "#007bff", cursor: "pointer", textDecoration: "none" }}
+          >{runName || "Optimization Run"}</a>
+          <span style={{ margin: "0 0.5rem", color: "#999" }}>/</span>
+          <span style={{ color: "#333" }}>Response Sections</span>
+        </nav>
         <h1 style={{ margin: "0 0 0.5rem 0" }}>Define Response Sections</h1>
         <p style={{ color: "#666", margin: 0 }}>
           Configure the structure of AI evaluation responses. These sections define what

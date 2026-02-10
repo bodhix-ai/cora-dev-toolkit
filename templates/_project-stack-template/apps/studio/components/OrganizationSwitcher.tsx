@@ -9,6 +9,7 @@ import MenuItem from "@mui/material/MenuItem";
 import Avatar from "@mui/material/Avatar";
 import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
+import IconButton from "@mui/material/IconButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import LogoutIcon from "@mui/icons-material/Logout";
 import CheckIcon from "@mui/icons-material/Check";
@@ -24,7 +25,11 @@ import { signOut } from "next-auth/react";
  * 
  * @see cora-dev-toolkit/docs/ADR-008-SIDEBAR-AND-ORG-SELECTOR-STANDARD.md
  */
-export function OrganizationSwitcher() {
+interface OrganizationSwitcherProps {
+  collapsed?: boolean;
+}
+
+export function OrganizationSwitcher({ collapsed = false }: OrganizationSwitcherProps) {
   const { currentOrganization, organizations, switchOrganization, isLoading } =
     useOrganizationContext();
   const { profile } = useProfile();
@@ -69,51 +74,79 @@ export function OrganizationSwitcher() {
     return "?";
   };
 
+  // Menu positioning changes based on collapsed state
+  const menuAnchorOrigin = collapsed
+    ? { vertical: "center" as const, horizontal: "right" as const }
+    : { vertical: "top" as const, horizontal: "left" as const };
+  const menuTransformOrigin = collapsed
+    ? { vertical: "center" as const, horizontal: "left" as const }
+    : { vertical: "bottom" as const, horizontal: "left" as const };
+
   return (
-    <Box sx={{ p: 2, borderTop: 1, borderColor: "divider" }}>
-      <Box
-        onClick={handleClick}
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 1.5,
-          p: 1.5,
-          borderRadius: 1,
-          cursor: "pointer",
-          transition: "background-color 0.2s",
-          "&:hover": { bgcolor: "action.hover" },
-        }}
-      >
-        <Avatar sx={{ width: 36, height: 36, bgcolor: "primary.main" }}>
-          {getUserInitials()}
-        </Avatar>
-        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-          <Typography variant="body2" fontWeight={500} noWrap>
-            {profile?.name || profile?.email || "User"}
-          </Typography>
-          <Typography variant="caption" color="text.secondary" noWrap>
-            {currentOrganization?.orgName || "No organization"}
-          </Typography>
+    <Box sx={{ p: collapsed ? 1 : 2, borderTop: 1, borderColor: "divider" }}>
+      {collapsed ? (
+        /* Collapsed mode: Avatar-only icon button */
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <IconButton
+            onClick={handleClick}
+            aria-label={`User menu — ${currentOrganization?.orgName || "No organization"}`}
+            title={`${profile?.name || "User"} — ${currentOrganization?.orgName || "No organization"}`}
+            sx={{
+              p: 0.5,
+              "&:hover": { bgcolor: "action.hover" },
+            }}
+          >
+            <Avatar sx={{ width: 36, height: 36, bgcolor: "primary.main" }}>
+              {getUserInitials()}
+            </Avatar>
+          </IconButton>
         </Box>
-        <ExpandMoreIcon sx={{ color: "text.secondary" }} />
-      </Box>
+      ) : (
+        /* Expanded mode: Full user info row */
+        <Box
+          onClick={handleClick}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+            p: 1.5,
+            borderRadius: 1,
+            cursor: "pointer",
+            transition: "background-color 0.2s",
+            "&:hover": { bgcolor: "action.hover" },
+          }}
+        >
+          <Avatar sx={{ width: 36, height: 36, bgcolor: "primary.main" }}>
+            {getUserInitials()}
+          </Avatar>
+          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+            <Typography variant="body2" fontWeight={500} noWrap>
+              {profile?.name || profile?.email || "User"}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" noWrap>
+              {currentOrganization?.orgName || "No organization"}
+            </Typography>
+          </Box>
+          <ExpandMoreIcon sx={{ color: "text.secondary" }} />
+        </Box>
+      )}
 
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleClose}
-        anchorOrigin={{
-          vertical: "top",
-          horizontal: "left",
-        }}
-        transformOrigin={{
-          vertical: "bottom",
-          horizontal: "left",
-        }}
+        anchorOrigin={menuAnchorOrigin}
+        transformOrigin={menuTransformOrigin}
         PaperProps={{
           sx: {
             width: 280,
-            mt: -1,
+            mt: collapsed ? 0 : -1,
+            ml: collapsed ? 1 : 0,
             overflow: "visible",
             boxShadow: 3,
           },

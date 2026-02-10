@@ -34,6 +34,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from decimal import Decimal
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Add the layer to path
 import sys
@@ -137,6 +138,14 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Results route
         elif '/results' in path and run_id and http_method == 'GET':
             return handle_get_detailed_results(supabase_user_id, ws_id, run_id)
+        
+        # Phase tracking route
+        elif '/phases' in path and run_id and http_method == 'GET':
+            return handle_get_phases(supabase_user_id, ws_id, run_id)
+        
+        # Variation progress route
+        elif '/variations' in path and run_id and http_method == 'GET':
+            return handle_get_variations(supabase_user_id, ws_id, run_id)
         
         # Single run routes
         elif run_id and http_method == 'GET':
@@ -282,7 +291,9 @@ def handle_get_run(user_id: str, ws_id: str, run_id: str) -> Dict[str, Any]:
         'createdAt': run.get('created_at'),
         'startedAt': run.get('started_at'),
         'completedAt': run.get('completed_at'),
-        'errorMessage': run.get('error_message')
+        'errorMessage': run.get('error_message'),
+        'currentPhase': run.get('current_phase'),
+        'currentPhaseName': run.get('current_phase_name')
     }
     
     # Include response sections inline
@@ -473,7 +484,7 @@ def handle_update_sections(event: Dict[str, Any], user_id: str, ws_id: str, run_
     for section in sections:
         if not section.get('name'):
             raise common.ValidationError('Each section must have a name')
-        if section.get('type') not in ['text', 'list', 'number', 'boolean', 'object']:
+        if section.get('type') not in ['text', 'list', 'table', 'number', 'boolean', 'object']:
             section['type'] = 'text'
     
     # Get or create response structure
@@ -530,7 +541,7 @@ def handle_list_truth_sets(user_id: str, ws_id: str, run_id: str) -> Dict[str, A
     
     doc_groups = common.find_many(
         'eval_opt_doc_groups',
-        {'ws_id': ws_id},
+        {'ws_id': ws_id, 'run_id': run_id},
         order='created_at.desc'
     )
     
@@ -570,9 +581,10 @@ def handle_create_truth_set(event: Dict[str, Any], user_id: str, ws_id: str, run
     name = common.validate_required(body.get('name'), 'name')
     document_id = common.validate_required(body.get('document_id'), 'document_id')
     
-    # Create doc group
+    # Create doc group scoped to this run
     doc_group = common.insert_one('eval_opt_doc_groups', {
         'ws_id': ws_id,
+        'run_id': run_id,
         'name': name,
         'primary_doc_id': document_id,
         'status': 'pending',
@@ -605,12 +617,28 @@ def handle_get_truth_set(user_id: str, ws_id: str, run_id: str, ts_id: str) -> D
         {'group_id': ts_id}
     )
     
+    # Transform truth keys back into frontend-compatible format
+    evaluations = []
+    for tk in (truth_keys or []):
+        eval_entry = {
+            'criteria_item_id': tk.get('criteria_item_id'),
+            'section_responses': _parse_section_responses(tk.get('section_responses'))
+        }
+        # If section_responses is empty but flat fields exist, reconstruct
+        if not eval_entry['section_responses'] and (tk.get('truth_confidence') is not None or tk.get('truth_explanation')):
+            eval_entry['section_responses'] = {
+                'score': tk.get('truth_confidence'),
+                'justification': tk.get('truth_explanation', ''),
+                'citations': json.loads(tk['truth_citations']) if tk.get('truth_citations') else []
+            }
+        evaluations.append(eval_entry)
+
     return common.success_response({
         'id': doc_group['id'],
         'name': doc_group.get('name'),
         'document_id': doc_group.get('primary_doc_id'),
         'status': doc_group.get('status'),
-        'evaluations': common.format_records(truth_keys or [])
+        'evaluations': evaluations
     })
 
 
@@ -683,6 +711,7 @@ def handle_update_truth_set(event: Dict[str, Any], user_id: str, ws_id: str, run
             'truth_confidence': section_responses.get('score', eval_data.get('confidence')),
             'truth_explanation': truth_explanation,
             'truth_citations': json.dumps(section_responses.get('citations', [])) if section_responses.get('citations') else None,
+            'section_responses': section_responses if section_responses else None,
             'evaluated_by': user_id
         }
         
@@ -729,6 +758,99 @@ def handle_delete_truth_set(user_id: str, ws_id: str, run_id: str, ts_id: str) -
     common.delete_one('eval_opt_doc_groups', {'id': ts_id})
     
     return common.success_response({'message': 'Truth set deleted', 'id': ts_id})
+
+
+# =============================================================================
+# PHASE & VARIATION TRACKING HANDLERS
+# =============================================================================
+
+def handle_get_phases(user_id: str, ws_id: str, run_id: str) -> Dict[str, Any]:
+    """Get phase tracking data for an optimization run."""
+    run_id = common.validate_uuid(run_id, 'runId')
+    
+    # Check run access permission (ADR-019c)
+    if not can_access_opt_run(user_id, run_id):
+        raise common.ForbiddenError('Access denied to this optimization run')
+    
+    # Verify run exists and belongs to workspace
+    run = common.find_one('eval_opt_runs', {'id': run_id, 'ws_id': ws_id})
+    if not run:
+        raise common.NotFoundError(f"Optimization run {run_id} not found")
+    
+    # Get phase tracking data
+    phases = common.find_many(
+        'eval_opt_run_phases',
+        {'run_id': run_id},
+        order='phase_number.asc'
+    )
+    
+    # Format phases for frontend
+    formatted_phases = []
+    for phase in phases:
+        formatted_phases.append({
+            'phaseNumber': phase.get('phase_number'),
+            'phaseName': phase.get('phase_name'),
+            'status': phase.get('status'),
+            'startedAt': phase.get('started_at'),
+            'completedAt': phase.get('completed_at'),
+            'durationMs': phase.get('duration_ms'),
+            'errorMessage': phase.get('error_message')
+        })
+    
+    return common.success_response(formatted_phases)
+
+
+def handle_get_variations(user_id: str, ws_id: str, run_id: str) -> Dict[str, Any]:
+    """Get variation progress data for an optimization run."""
+    run_id = common.validate_uuid(run_id, 'runId')
+    
+    # Check run access permission (ADR-019c)
+    if not can_access_opt_run(user_id, run_id):
+        raise common.ForbiddenError('Access denied to this optimization run')
+    
+    # Verify run exists and belongs to workspace
+    run = common.find_one('eval_opt_runs', {'id': run_id, 'ws_id': ws_id})
+    if not run:
+        raise common.NotFoundError(f"Optimization run {run_id} not found")
+    
+    # Get variation progress data
+    variations = common.find_many(
+        'eval_opt_variation_progress',
+        {'run_id': run_id}
+    )
+    
+    # Format variations for frontend
+    formatted_variations = []
+    for variation in variations:
+        # Calculate accuracy if criteria completed
+        accuracy = None
+        criteria_completed = variation.get('criteria_completed', 0)
+        criteria_total = variation.get('criteria_total', 0)
+        
+        # Get accuracy from run results if available (when variation is complete)
+        if variation.get('status') == 'complete':
+            # Query results for this variation to get actual accuracy
+            results = common.find_many(
+                'eval_opt_run_results',
+                {'run_id': run_id, 'variation_name': variation.get('variation_name')}
+            )
+            if results:
+                matches = sum(1 for r in results if r.get('status_match', False))
+                total = len(results)
+                accuracy = (matches / total * 100) if total > 0 else 0
+        
+        formatted_variations.append({
+            'variationName': variation.get('variation_name'),
+            'status': variation.get('status'),
+            'criteriaCompleted': criteria_completed,
+            'criteriaTotal': criteria_total,
+            'accuracy': accuracy,
+            'startedAt': variation.get('started_at'),
+            'completedAt': variation.get('completed_at'),
+            'durationMs': variation.get('duration_ms')
+        })
+    
+    return common.success_response(formatted_variations)
 
 
 # =============================================================================
@@ -873,10 +995,28 @@ def process_optimization_run(
         # Update status
         update_run_status(run_id, 'processing', 0, 'Initializing...')
         
+        # Part 1A: Clean up stale results from previous failed attempts
+        # This prevents duplicate key violations when retrying runs
+        logger.info(f"Cleaning up stale results for run {run_id}")
+        common.delete_many('eval_opt_run_results', {'run_id': run_id})
+        
+        # Part 1C: Reset run status fields on retry
+        common.update_one('eval_opt_runs', {'id': run_id}, {
+            'error_message': None,
+            'best_variation': None,
+            'overall_accuracy': None,
+            'recommendations': None,
+            'variation_summary': None
+        })
+        
         # Get configuration
         thoroughness = run_config.get('thoroughness', 'balanced')
         context_doc_ids = run_config.get('context_doc_ids', [])
         response_structure_id = run_config.get('response_structure_id')
+        criteria_set_id = run_config.get('criteria_set_id')
+        
+        if not criteria_set_id:
+            raise OptimizationError("Run is missing criteria_set_id")
         
         # Get LLM configuration
         llm_config = get_llm_config(ws_id)
@@ -886,6 +1026,7 @@ def process_optimization_run(
         # ============================================
         # PHASE 1: Domain Knowledge Extraction (0-10%)
         # ============================================
+        start_phase(run_id, 1, 'Domain Knowledge Extraction')
         update_run_status(run_id, 'processing', 5, 'Extracting domain knowledge from context documents...')
         
         rag_pipeline = RAGPipeline()
@@ -896,10 +1037,12 @@ def process_optimization_run(
         )
         
         logger.info(f"Domain knowledge extracted: {len(domain_knowledge.concepts)} concepts")
+        complete_phase(run_id, 1)
         
         # ============================================
         # PHASE 2: Prompt Generation (10-20%)
         # ============================================
+        start_phase(run_id, 2, 'Prompt Generation')
         update_run_status(run_id, 'processing', 15, 'Generating domain-aware prompts...')
         
         # Get response structure
@@ -921,10 +1064,12 @@ def process_optimization_run(
         )
         
         logger.info(f"Base prompt generated: {len(base_prompt)} chars")
+        complete_phase(run_id, 2)
         
         # ============================================
         # PHASE 3: Variation Generation (20-25%)
         # ============================================
+        start_phase(run_id, 3, 'Variation Generation')
         update_run_status(run_id, 'processing', 22, 'Creating prompt variations...')
         
         variation_generator = VariationGenerator()
@@ -941,10 +1086,12 @@ def process_optimization_run(
             {'id': run_id},
             {'generated_prompts': json.dumps([v.to_dict() for v in variations])}
         )
+        complete_phase(run_id, 3)
         
         # ============================================
-        # PHASE 4: Evaluation Loop (25-85%)
+        # PHASE 4: Evaluation Loop (25-85%) - PARALLEL PROCESSING (ADR-022)
         # ============================================
+        start_phase(run_id, 4, 'Evaluation Loop')
         # Get all sample document groups with truth keys
         doc_groups = common.find_many(
             'eval_opt_doc_groups',
@@ -954,17 +1101,29 @@ def process_optimization_run(
         if not doc_groups:
             raise OptimizationError("No evaluated samples found")
         
-        total_evaluations = len(variations) * len(doc_groups)
-        completed = 0
-        
+        # Get total criteria count for progress tracking
+        criteria_items = get_workspace_criteria(ws_id)
+        total_criteria_per_doc = len(criteria_items)
+
+        # Initialize tracking variables for parallel processing
         variation_results = []
-        
-        for var_idx, variation in enumerate(variations):
+        completed = 0
+        total_evaluations = len(variations) * len(doc_groups)
+
+        # Define function to evaluate a single variation (ADR-022: Option 1 - Parallel Variations)
+        def evaluate_single_variation(variation):
+            """
+            Process one variation completely (all criteria sequentially).
+            This function runs in a separate thread for parallel processing.
+            """
             # Check if run was cancelled
             run_check = common.find_one('eval_opt_runs', {'id': run_id})
             if run_check.get('status') == 'cancelled':
                 logger.info(f"Run {run_id} was cancelled, stopping")
                 return
+            
+            # Start tracking this variation
+            start_variation(run_id, variation.name, total_criteria_per_doc * len(doc_groups))
             
             var_result = {
                 'variation_name': variation.name,
@@ -974,7 +1133,10 @@ def process_optimization_run(
                 'true_negatives': 0,
                 'false_negatives': 0
             }
-            
+
+            criteria_evaluated = 0
+            completed = 0  # Initialize completed counter for progress tracking
+
             for group in doc_groups:
                 # Calculate progress
                 progress = 25 + int((completed / total_evaluations) * 60)
@@ -994,13 +1156,17 @@ def process_optimization_run(
                     ws_id=ws_id,
                     doc_group=group,
                     variation=variation,
-                    model_id=eval_model_id
+                    model_id=eval_model_id,
+                    criteria_set_id=criteria_set_id
                 )
                 
-                # Compare results to truth keys
+                # Compare results to truth keys (Sprint 5 Phase 3: score-based comparison)
                 for truth_key in truth_keys:
                     criteria_item_id = truth_key.get('criteria_item_id')
-                    truth_status_id = truth_key.get('truth_status_id')
+                    
+                    # Get truth score from section_responses JSONB
+                    section_responses = _parse_section_responses(truth_key.get('section_responses'))
+                    truth_score = section_responses.get('score')
                     
                     # Find matching AI result
                     ai_result = next(
@@ -1008,11 +1174,17 @@ def process_optimization_run(
                         None
                     )
                     
-                    ai_status_id = ai_result.get('status_id') if ai_result else None
-                    status_match = (ai_status_id == truth_status_id)
+                    if not ai_result or ai_result.get('score') is None:
+                        logger.warning(f"No AI result or score for criterion {criteria_item_id}")
+                        continue
                     
-                    # Classify result type (simplified: match = positive, no match = negative)
-                    # In production, this would be more nuanced based on status semantics
+                    ai_score = ai_result.get('score')
+                    
+                    # Compare scores with tolerance (±10 points = match)
+                    score_diff = abs(ai_score - truth_score) if truth_score is not None else None
+                    status_match = (score_diff is not None and score_diff <= 10)
+                    
+                    # Classify result type based on score match
                     if status_match:
                         result_type = 'true_positive'
                         var_result['true_positives'] += 1
@@ -1020,18 +1192,35 @@ def process_optimization_run(
                         result_type = 'false_positive'
                         var_result['false_positives'] += 1
                     
-                    # Save individual result
-                    common.insert_one('eval_opt_run_results', {
-                        'run_id': run_id,
-                        'group_id': group['id'],
-                        'criteria_item_id': criteria_item_id,
-                        'truth_key_id': truth_key['id'],
-                        'ai_status_id': ai_status_id,
-                        'status_match': status_match,
-                        'result_type': result_type
-                    })
+                    # Save individual result with score-based fields
+                    # Part 1B: Try/except as safety net for duplicate key conflicts
+                    try:
+                        common.insert_one('eval_opt_run_results', {
+                            'run_id': run_id,
+                            'group_id': group['id'],
+                            'criteria_item_id': criteria_item_id,
+                            'truth_key_id': truth_key['id'],
+                            'variation_name': variation.name,
+                            'ai_score': ai_score,
+                            'ai_result': ai_result,  # Full JSON response
+                            'score_diff': score_diff,
+                            'status_match': status_match,
+                            'result_type': result_type,
+                            'ai_status_id': None  # DEPRECATED (nullable)
+                        })
+                    except Exception as insert_error:
+                        # Log but don't fail - Part 1A cleanup should prevent this
+                        logger.warning(f"Duplicate result for variation={variation.name}, criterion={criteria_item_id}: {insert_error}")
+                        continue
                 
                 completed += 1
+                criteria_evaluated += len(truth_keys)
+                
+                # Update variation progress
+                update_variation_progress(run_id, variation.name, criteria_evaluated)
+            
+            # Mark variation complete
+            complete_variation(run_id, variation.name, 'complete')
             
             # Calculate accuracy for this variation
             total = sum([
@@ -1043,11 +1232,36 @@ def process_optimization_run(
             correct = var_result['true_positives'] + var_result['true_negatives']
             var_result['accuracy'] = (correct / total * 100) if total > 0 else 0
             
-            variation_results.append(var_result)
+            return var_result
+
+        # Process all variations in parallel (ADR-022: Option 1)
+        logger.info(f"Starting parallel evaluation of {len(variations)} variations")
+        max_workers = min(5, len(variations))
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all variations for parallel processing
+            futures = {executor.submit(evaluate_single_variation, v): v 
+                       for v in variations}
+            
+            # Collect results as they complete
+            for future in as_completed(futures):
+                variation = futures[future]
+                try:
+                    result = future.result()
+                    if result:  # result is var_result dict
+                        variation_results.append(result)
+                    logger.info(f"Variation {variation.name} completed successfully")
+                except Exception as e:
+                    logger.error(f"Variation {variation.name} failed: {e}")
+                    # Mark variation as failed but continue with others
+                    complete_variation(run_id, variation.name, 'failed')
+
+        complete_phase(run_id, 4)
         
         # ============================================
         # PHASE 5: Analysis & Recommendations (85-100%)
         # ============================================
+        start_phase(run_id, 5, 'Analysis & Recommendations')
         update_run_status(run_id, 'processing', 90, 'Analyzing results...')
         
         # Find best variation
@@ -1073,19 +1287,29 @@ def process_optimization_run(
                 'progress_message': 'Optimization complete',
                 'best_variation': best_variation['variation_name'],
                 'overall_accuracy': Decimal(str(round(best_variation['accuracy'], 2))),
-                'recommendations': json.dumps([r.to_dict() for r in recommendations]),
-                'variation_summary': json.dumps(variation_results),
+                'recommendations': json.dumps([r.to_dict() for r in recommendations], default=str),
+                'variation_summary': json.dumps(variation_results, default=str),
                 'completed_at': datetime.now(timezone.utc).isoformat()
             }
         )
+        
+        complete_phase(run_id, 5)
         
         logger.info(f"Optimization run {run_id} completed. Best: {best_variation['variation_name']} ({best_variation['accuracy']:.1f}%)")
     
     except OptimizationError as e:
         logger.error(f"Optimization error for run {run_id}: {e}")
+        # Mark current phase as failed
+        run = common.find_one('eval_opt_runs', {'id': run_id})
+        if run and run.get('current_phase'):
+            fail_phase(run_id, run['current_phase'], str(e))
         mark_run_failed(run_id, str(e))
     except Exception as e:
         logger.exception(f"Unexpected error for run {run_id}: {e}")
+        # Mark current phase as failed
+        run = common.find_one('eval_opt_runs', {'id': run_id})
+        if run and run.get('current_phase'):
+            fail_phase(run_id, run['current_phase'], str(e))
         mark_run_failed(run_id, f"Internal error: {str(e)}")
 
 
@@ -1097,12 +1321,13 @@ def run_evaluation_with_prompt(
     ws_id: str,
     doc_group: Dict[str, Any],
     variation,  # PromptVariation
-    model_id: str
+    model_id: str,
+    criteria_set_id: str
 ) -> List[Dict[str, Any]]:
     """
     Run evaluation on a document group using the specified prompt variation.
     
-    Returns list of AI evaluation results.
+    Returns list of AI evaluation results with scores (Sprint 5 Phase 3).
     """
     results = []
     
@@ -1117,8 +1342,8 @@ def run_evaluation_with_prompt(
     # Get criteria items for this workspace
     criteria_items = get_workspace_criteria(ws_id)
     
-    # Get status options
-    status_options = get_status_options()
+    # Get scoring rubric from criteria set (Sprint 5 Phase 3)
+    rubric = get_scoring_rubric(criteria_set_id)
     
     # For each criteria item, run evaluation
     for criteria_item in criteria_items:
@@ -1126,7 +1351,7 @@ def run_evaluation_with_prompt(
             ai_result = evaluate_single_criterion(
                 doc_content=doc_content,
                 criteria_item=criteria_item,
-                status_options=status_options,
+                rubric=rubric,
                 variation=variation,
                 model_id=model_id
             )
@@ -1135,7 +1360,7 @@ def run_evaluation_with_prompt(
             logger.error(f"Error evaluating criterion {criteria_item.get('id')}: {e}")
             results.append({
                 'criteria_item_id': criteria_item.get('id'),
-                'status_id': None,
+                'score': None,
                 'error': str(e)
             })
     
@@ -1145,11 +1370,15 @@ def run_evaluation_with_prompt(
 def evaluate_single_criterion(
     doc_content: str,
     criteria_item: Dict[str, Any],
-    status_options: List[Dict[str, Any]],
+    rubric: Dict[str, Any],
     variation,  # PromptVariation
     model_id: str
 ) -> Dict[str, Any]:
-    """Evaluate a single criterion against document content."""
+    """
+    Evaluate a single criterion against document content using score-based prompting.
+    
+    Sprint 5 Phase 3: Now prompts for numerical score (0-100) instead of status name.
+    """
     from meta_prompter import call_ai_for_evaluation
     
     # Build evaluation prompt using variation's system prompt
@@ -1164,13 +1393,14 @@ ID: {criteria_item.get('criteria_id', 'N/A')}
 Requirement: {criteria_item.get('requirement', '')}
 Description: {criteria_item.get('description', '')}
 
-AVAILABLE STATUS OPTIONS:
-{format_status_options(status_options)}
+SCORING RUBRIC:
+{format_scoring_rubric(rubric)}
 
 Respond with JSON containing:
-- "status": The status option name that best matches
+- "score": Numerical score from 0-100 based on the rubric above
 - "confidence": Your confidence level (0-100)
-- "explanation": Brief explanation
+- "explanation": Brief explanation of your assessment
+- "citations": List of relevant document excerpts supporting your assessment
 """
     
     # Call AI
@@ -1182,18 +1412,53 @@ Respond with JSON containing:
         max_tokens=variation.max_tokens
     )
     
-    # Parse response to get status
-    status_id = parse_status_from_response(response, status_options)
+    # Parse response to extract score and fields
+    parsed = parse_score_from_response(response)
     
     return {
         'criteria_item_id': criteria_item.get('id'),
-        'status_id': status_id,
-        'response': response
+        'score': parsed.get('score'),
+        'confidence': parsed.get('confidence'),
+        'explanation': parsed.get('explanation'),
+        'citations': parsed.get('citations'),
+        'full_response': response
     }
 
 
+def format_scoring_rubric(rubric: Optional[Dict[str, Any]]) -> str:
+    """
+    Format scoring rubric for inclusion in prompt.
+    
+    Takes rubric JSONB from eval_criteria_sets and formats it as human-readable text for AI.
+    Copied from eval-processor (Sprint 5 Phase 1).
+    """
+    if not rubric or 'tiers' not in rubric:
+        # Fallback to default 5-tier rubric
+        return """
+- 0-20 (Non-Compliant): Criterion not addressed or completely fails requirement
+- 21-40 (Mostly Non-Compliant): Significant gaps exist, fails key aspects
+- 41-60 (Partially Compliant): Addresses some requirements but incomplete
+- 61-80 (Mostly Compliant): Meets most requirements with minor gaps
+- 81-100 (Fully Compliant): Fully meets or exceeds requirement with clear evidence
+"""
+    
+    lines = []
+    for tier in rubric['tiers']:
+        min_val = tier['min']
+        max_val = tier['max']
+        label = tier['label']
+        desc = tier['description']
+        lines.append(f"- {min_val}-{max_val} ({label}): {desc}")
+    
+    return '\n'.join(lines)
+
+
 def format_status_options(status_options: List[Dict[str, Any]]) -> str:
-    """Format status options for prompt."""
+    """
+    DEPRECATED: Use format_scoring_rubric() instead (Sprint 5 Phase 3).
+    
+    Format status options for prompt.
+    """
     lines = []
     for opt in status_options:
         score = opt.get('score_value', 'N/A')
@@ -1201,8 +1466,72 @@ def format_status_options(status_options: List[Dict[str, Any]]) -> str:
     return '\n'.join(lines)
 
 
+def parse_score_from_response(response: str) -> Dict[str, Any]:
+    """
+    Parse AI response to extract score and fields.
+    
+    Returns dict with:
+    - score: int (0-100)
+    - confidence: int (0-100)
+    - explanation: str
+    - citations: list
+    - full_response: str (for debugging)
+    """
+    result = {
+        'score': None,
+        'confidence': None,
+        'explanation': response,  # Fallback to raw response
+        'citations': [],
+        'full_response': response
+    }
+    
+    try:
+        # Try to parse as JSON
+        json_start = response.find('{')
+        json_end = response.rfind('}') + 1
+        
+        if json_start >= 0 and json_end > json_start:
+            json_str = response[json_start:json_end]
+            parsed = json.loads(json_str)
+            
+            # Extract score (direct from AI, 0-100)
+            if 'score' in parsed:
+                try:
+                    score = int(parsed['score'])
+                    result['score'] = max(0, min(100, score))  # Clamp to 0-100
+                except (ValueError, TypeError):
+                    logger.warning(f"Invalid score value: {parsed.get('score')}")
+            
+            # Extract confidence
+            if 'confidence' in parsed:
+                try:
+                    conf = int(parsed['confidence'])
+                    result['confidence'] = max(0, min(100, conf))  # Clamp to 0-100
+                except (ValueError, TypeError):
+                    logger.warning(f"Invalid confidence value: {parsed.get('confidence')}")
+            
+            # Extract explanation
+            if 'explanation' in parsed:
+                result['explanation'] = str(parsed['explanation'])
+            
+            # Extract citations
+            if 'citations' in parsed:
+                citations = parsed.get('citations', [])
+                if isinstance(citations, list):
+                    result['citations'] = citations
+    
+    except (json.JSONDecodeError, Exception) as e:
+        logger.warning(f"Could not parse response as JSON: {e}")
+    
+    return result
+
+
 def parse_status_from_response(response: str, status_options: List[Dict[str, Any]]) -> Optional[str]:
-    """Parse AI response to extract status option."""
+    """
+    DEPRECATED: Use parse_score_from_response() instead (Sprint 5 Phase 3).
+    
+    Parse AI response to extract status option.
+    """
     try:
         # Try to parse as JSON
         json_start = response.find('{')
@@ -1244,22 +1573,22 @@ def get_llm_config(ws_id: str) -> Dict[str, Any]:
     
     Priority:
     1. Workspace-level override
-    2. System-level default
+    2. System-level default (eval_cfg_sys_prompts with prompt_type='evaluation')
     3. Fallback defaults
     """
-    # Try system config
-    sys_config = common.find_one('eval_cfg_sys', {})
+    # Try system config from eval_cfg_sys_prompts (correct table)
+    sys_prompt_config = common.find_one('eval_cfg_sys_prompts', {'prompt_type': 'evaluation'})
     
-    if sys_config:
+    if sys_prompt_config:
         return {
-            'meta_prompt_provider_id': sys_config.get('meta_prompt_provider_id'),
-            'meta_prompt_model_id': sys_config.get('meta_prompt_model_id'),
-            'eval_provider_id': sys_config.get('eval_provider_id'),
-            'eval_model_id': sys_config.get('eval_model_id'),
-            'meta_prompt_temperature': float(sys_config.get('meta_prompt_temperature', 0.7)),
-            'meta_prompt_max_tokens': int(sys_config.get('meta_prompt_max_tokens', 4000)),
-            'eval_temperature': float(sys_config.get('eval_temperature', 0.2)),
-            'eval_max_tokens': int(sys_config.get('eval_max_tokens', 2000))
+            'meta_prompt_provider_id': sys_prompt_config.get('ai_provider_id'),
+            'meta_prompt_model_id': sys_prompt_config.get('ai_model_id'),
+            'eval_provider_id': sys_prompt_config.get('ai_provider_id'),
+            'eval_model_id': sys_prompt_config.get('ai_model_id'),
+            'meta_prompt_temperature': float(sys_prompt_config.get('temperature', 0.7)),
+            'meta_prompt_max_tokens': int(sys_prompt_config.get('max_tokens', 4000)),
+            'eval_temperature': float(sys_prompt_config.get('temperature', 0.2)),
+            'eval_max_tokens': int(sys_prompt_config.get('max_tokens', 2000))
         }
     
     # Fallback defaults
@@ -1288,8 +1617,34 @@ def get_workspace_criteria(ws_id: str) -> List[Dict[str, Any]]:
     return criteria_items
 
 
+def get_scoring_rubric(criteria_set_id: str) -> Dict[str, Any]:
+    """
+    Get scoring rubric from criteria set.
+    
+    Sprint 5 Phase 3: Added to support score-based evaluation.
+    """
+    if not criteria_set_id:
+        return {}
+    
+    criteria_set = common.find_one('eval_criteria_sets', {'id': criteria_set_id})
+    if not criteria_set:
+        logger.warning(f"Criteria set {criteria_set_id} not found")
+        return {}
+    
+    rubric = criteria_set.get('scoring_rubric')
+    if not rubric:
+        logger.warning(f"No rubric found for criteria set {criteria_set_id}, using default")
+        return {}
+    
+    return rubric
+
+
 def get_status_options() -> List[Dict[str, Any]]:
-    """Get evaluation status options."""
+    """
+    DEPRECATED: Use get_scoring_rubric() instead (Sprint 5 Phase 3).
+    
+    Get evaluation status options.
+    """
     # Get system status options
     status_options = common.find_many(
         'eval_sys_status_options',
@@ -1338,6 +1693,147 @@ def update_run_status(run_id: str, status: str, progress: int, message: str = No
     common.update_one('eval_opt_runs', {'id': run_id}, update_data)
 
 
+def start_phase(run_id: str, phase_number: int, phase_name: str) -> None:
+    """Mark a phase as started (idempotent - ADR-022)."""
+    # Update main run table
+    common.update_one('eval_opt_runs', {'id': run_id}, {
+        'current_phase': phase_number,
+        'current_phase_name': phase_name
+    })
+    
+    # Check if phase already exists (idempotent pattern - fixes duplicate key error)
+    existing_phase = common.find_one('eval_opt_run_phases', {
+        'run_id': run_id,
+        'phase_number': phase_number
+    })
+    
+    if existing_phase:
+        # Phase already started (retry scenario), just update status
+        logger.info(f"Phase {phase_number} already exists for run {run_id}, updating status to running")
+        common.update_one('eval_opt_run_phases', {'id': existing_phase['id']}, {
+            'status': 'running'
+        })
+    else:
+        # Phase doesn't exist, insert it
+        common.insert_one('eval_opt_run_phases', {
+            'run_id': run_id,
+            'phase_number': phase_number,
+            'phase_name': phase_name,
+            'status': 'running',
+            'started_at': datetime.now(timezone.utc).isoformat()
+        })
+        logger.info(f"Started Phase {phase_number}: {phase_name} for run {run_id}")
+
+
+def complete_phase(run_id: str, phase_number: int) -> None:
+    """Mark a phase as completed."""
+    now = datetime.now(timezone.utc)
+    
+    # Get phase record to calculate duration
+    phase = common.find_one('eval_opt_run_phases', {'run_id': run_id, 'phase_number': phase_number})
+    if not phase:
+        logger.warning(f"Phase {phase_number} not found for run {run_id}")
+        return
+    
+    started_at = phase.get('started_at')
+    if started_at:
+        if isinstance(started_at, str):
+            started_at = datetime.fromisoformat(started_at.replace('Z', '+00:00'))
+        duration_ms = int((now - started_at).total_seconds() * 1000)
+    else:
+        duration_ms = None
+    
+    # Update phase record
+    common.update_one('eval_opt_run_phases', {'id': phase['id']}, {
+        'status': 'complete',
+        'completed_at': now.isoformat(),
+        'duration_ms': duration_ms
+    })
+    
+    logger.info(f"Completed Phase {phase_number} for run {run_id} in {duration_ms}ms")
+
+
+def fail_phase(run_id: str, phase_number: int, error_message: str) -> None:
+    """Mark a phase as failed."""
+    phase = common.find_one('eval_opt_run_phases', {'run_id': run_id, 'phase_number': phase_number})
+    if not phase:
+        return
+    
+    now = datetime.now(timezone.utc)
+    started_at = phase.get('started_at')
+    if started_at:
+        if isinstance(started_at, str):
+            started_at = datetime.fromisoformat(started_at.replace('Z', '+00:00'))
+        duration_ms = int((now - started_at).total_seconds() * 1000)
+    else:
+        duration_ms = None
+    
+    common.update_one('eval_opt_run_phases', {'id': phase['id']}, {
+        'status': 'failed',
+        'completed_at': now.isoformat(),
+        'duration_ms': duration_ms,
+        'error_message': error_message[:1000]
+    })
+
+
+def start_variation(run_id: str, variation_name: str, criteria_total: int) -> None:
+    """Mark a variation as started (idempotent - ADR-022)."""
+    # Check if variation already exists (idempotent pattern)
+    existing_var = common.find_one('eval_opt_variation_progress', {
+        'run_id': run_id,
+        'variation_name': variation_name
+    })
+    
+    if existing_var:
+        # Variation already started (retry scenario), just update status
+        logger.info(f"Variation {variation_name} already exists for run {run_id}, resetting progress")
+        common.update_one('eval_opt_variation_progress', {'id': existing_var['id']}, {
+            'status': 'running',
+            'criteria_completed': 0
+        })
+    else:
+        # Variation doesn't exist, insert it
+        common.insert_one('eval_opt_variation_progress', {
+            'run_id': run_id,
+            'variation_name': variation_name,
+            'status': 'running',
+            'criteria_completed': 0,
+            'criteria_total': criteria_total,
+            'started_at': datetime.now(timezone.utc).isoformat()
+        })
+
+
+def update_variation_progress(run_id: str, variation_name: str, criteria_completed: int) -> None:
+    """Update variation progress."""
+    var_prog = common.find_one('eval_opt_variation_progress', {'run_id': run_id, 'variation_name': variation_name})
+    if var_prog:
+        common.update_one('eval_opt_variation_progress', {'id': var_prog['id']}, {
+            'criteria_completed': criteria_completed
+        })
+
+
+def complete_variation(run_id: str, variation_name: str, status: str = 'complete') -> None:
+    """Mark a variation as completed or failed."""
+    var_prog = common.find_one('eval_opt_variation_progress', {'run_id': run_id, 'variation_name': variation_name})
+    if not var_prog:
+        return
+    
+    now = datetime.now(timezone.utc)
+    started_at = var_prog.get('started_at')
+    if started_at:
+        if isinstance(started_at, str):
+            started_at = datetime.fromisoformat(started_at.replace('Z', '+00:00'))
+        duration_ms = int((now - started_at).total_seconds() * 1000)
+    else:
+        duration_ms = None
+    
+    common.update_one('eval_opt_variation_progress', {'id': var_prog['id']}, {
+        'status': status,
+        'completed_at': now.isoformat(),
+        'duration_ms': duration_ms
+    })
+
+
 def mark_run_failed(run_id: str, error_message: str) -> None:
     """Mark optimization run as failed."""
     common.update_one(
@@ -1355,7 +1851,28 @@ def mark_run_failed(run_id: str, error_message: str) -> None:
 # EXCEPTIONS
 # =============================================================================
 
+def _parse_section_responses(value) -> dict:
+    """
+    Defensively parse section_responses from DB.
+    
+    Handles:
+    - None → {}
+    - dict → return as-is (normal JSONB retrieval)
+    - str → json.loads() (double-encoded legacy data)
+    """
+    if not value:
+        return {}
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            return parsed if isinstance(parsed, dict) else {}
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    return {}
+
+
 class OptimizationError(Exception):
     """Custom exception for optimization processing errors."""
     pass
-

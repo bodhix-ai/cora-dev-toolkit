@@ -12,6 +12,7 @@
 CREATE TABLE IF NOT EXISTS eval_opt_doc_groups (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ws_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    run_id UUID REFERENCES eval_opt_runs(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     primary_doc_id UUID NOT NULL,  -- References kb_docs.id
     status VARCHAR(50) NOT NULL DEFAULT 'pending',
@@ -26,6 +27,7 @@ CREATE TABLE IF NOT EXISTS eval_opt_doc_groups (
 -- Add table comment
 COMMENT ON TABLE eval_opt_doc_groups IS 'Document groups (primary doc + supporting artifacts) for optimization';
 COMMENT ON COLUMN eval_opt_doc_groups.ws_id IS 'Workspace foreign key';
+COMMENT ON COLUMN eval_opt_doc_groups.run_id IS 'Optimization run this truth set belongs to';
 COMMENT ON COLUMN eval_opt_doc_groups.name IS 'Document group name';
 COMMENT ON COLUMN eval_opt_doc_groups.primary_doc_id IS 'Primary document ID from kb_docs';
 COMMENT ON COLUMN eval_opt_doc_groups.status IS 'Evaluation status: pending, evaluated, validated';
@@ -46,10 +48,14 @@ END $$;
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_eval_opt_doc_group_workspace 
     ON eval_opt_doc_groups(ws_id);
+CREATE INDEX IF NOT EXISTS idx_eval_opt_doc_groups_run_id
+    ON eval_opt_doc_groups(run_id);
 CREATE INDEX IF NOT EXISTS idx_eval_opt_doc_group_primary_doc 
     ON eval_opt_doc_groups(primary_doc_id);
 CREATE INDEX IF NOT EXISTS idx_eval_opt_doc_group_status 
     ON eval_opt_doc_groups(ws_id, status);
+CREATE INDEX IF NOT EXISTS idx_eval_opt_doc_groups_run_status
+    ON eval_opt_doc_groups(run_id, status);
 
 -- Create updated_at trigger
 CREATE OR REPLACE FUNCTION update_eval_opt_doc_groups_updated_at()

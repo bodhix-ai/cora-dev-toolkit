@@ -299,5 +299,95 @@ CREATE POLICY eval_opt_context_docs_delete ON eval_opt_context_docs
     ));
 
 -- ============================================================================
+-- RUN PHASES (Sprint 5 Phase 2)
+-- ============================================================================
+
+-- Enable RLS
+ALTER TABLE eval_opt_run_phases ENABLE ROW LEVEL SECURITY;
+
+-- Select: Users can see run phases for their workspaces
+DROP POLICY IF EXISTS eval_opt_run_phases_select ON eval_opt_run_phases;
+CREATE POLICY eval_opt_run_phases_select ON eval_opt_run_phases
+    FOR SELECT
+    USING (run_id IN (
+        SELECT id FROM eval_opt_runs
+        WHERE ws_id IN (
+            SELECT ws_id FROM ws_members
+            WHERE user_id = auth.uid()
+        )
+    ));
+
+-- Insert: System can create run phases (during optimization runs)
+DROP POLICY IF EXISTS eval_opt_run_phases_insert ON eval_opt_run_phases;
+CREATE POLICY eval_opt_run_phases_insert ON eval_opt_run_phases
+    FOR INSERT
+    WITH CHECK (run_id IN (
+        SELECT id FROM eval_opt_runs
+        WHERE ws_id IN (
+            SELECT ws_id FROM ws_members
+            WHERE user_id = auth.uid()
+        )
+    ));
+
+-- Update: System can update run phases (status, duration, etc.)
+DROP POLICY IF EXISTS eval_opt_run_phases_update ON eval_opt_run_phases;
+CREATE POLICY eval_opt_run_phases_update ON eval_opt_run_phases
+    FOR UPDATE
+    USING (run_id IN (
+        SELECT id FROM eval_opt_runs
+        WHERE ws_id IN (
+            SELECT ws_id FROM ws_members
+            WHERE user_id = auth.uid()
+        )
+    ));
+
+-- Delete: Cascade delete with run (no direct delete policy needed)
+
+-- ============================================================================
+-- VARIATION PROGRESS (Sprint 5 Phase 2)
+-- ============================================================================
+
+-- Enable RLS
+ALTER TABLE eval_opt_variation_progress ENABLE ROW LEVEL SECURITY;
+
+-- Select: Users can see variation progress for their workspaces
+DROP POLICY IF EXISTS eval_opt_variation_progress_select ON eval_opt_variation_progress;
+CREATE POLICY eval_opt_variation_progress_select ON eval_opt_variation_progress
+    FOR SELECT
+    USING (run_id IN (
+        SELECT id FROM eval_opt_runs
+        WHERE ws_id IN (
+            SELECT ws_id FROM ws_members
+            WHERE user_id = auth.uid()
+        )
+    ));
+
+-- Insert: System can create variation progress (during optimization runs)
+DROP POLICY IF EXISTS eval_opt_variation_progress_insert ON eval_opt_variation_progress;
+CREATE POLICY eval_opt_variation_progress_insert ON eval_opt_variation_progress
+    FOR INSERT
+    WITH CHECK (run_id IN (
+        SELECT id FROM eval_opt_runs
+        WHERE ws_id IN (
+            SELECT ws_id FROM ws_members
+            WHERE user_id = auth.uid()
+        )
+    ));
+
+-- Update: System can update variation progress (criteria_completed, status, etc.)
+DROP POLICY IF EXISTS eval_opt_variation_progress_update ON eval_opt_variation_progress;
+CREATE POLICY eval_opt_variation_progress_update ON eval_opt_variation_progress
+    FOR UPDATE
+    USING (run_id IN (
+        SELECT id FROM eval_opt_runs
+        WHERE ws_id IN (
+            SELECT ws_id FROM ws_members
+            WHERE user_id = auth.uid()
+        )
+    ));
+
+-- Delete: Cascade delete with run (no direct delete policy needed)
+
+-- ============================================================================
 -- End of migration
 -- ============================================================================

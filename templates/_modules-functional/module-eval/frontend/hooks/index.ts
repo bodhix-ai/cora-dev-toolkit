@@ -18,19 +18,21 @@ export {
   useEvalConfig,
 } from "./useEvalConfig";
 
-// Doc types hooks
+// Doc types hooks (Admin — org-scoped)
 export {
   useEvalDocTypes,
   useEvalDocType,
   useDocTypeSelect,
+  useWsDocTypeSelect,
 } from "./useEvalDocTypes";
 
-// Criteria sets hooks
+// Criteria sets hooks (Admin — org-scoped)
 export {
   useEvalCriteriaSets,
   useEvalCriteriaSetsByDocType,
   useEvalCriteriaSet,
   useCriteriaSetSelect,
+  useWsCriteriaSetSelect,
   useEvalCriteriaItems,
 } from "./useEvalCriteriaSets";
 
