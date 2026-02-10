@@ -296,6 +296,7 @@ export default function ResponseStructureBuilder({
                   </span>
                   <input
                     type="text"
+                    aria-label={`Section name for ${section.name || 'new section'}`}
                     value={section.name}
                     onChange={(e) => handleUpdateName(section.id, e.target.value)}
                     disabled={disabled}
@@ -363,6 +364,7 @@ export default function ResponseStructureBuilder({
               {/* Section Description */}
               <input
                 type="text"
+                aria-label={`Description for ${section.name || 'section'}`}
                 value={section.description}
                 onChange={(e) => handleUpdateDescription(section.id, e.target.value)}
                 disabled={disabled}
@@ -383,6 +385,7 @@ export default function ResponseStructureBuilder({
                 <label style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.875rem", cursor: "pointer" }}>
                   <input
                     type="checkbox"
+                    aria-label={`Mark ${section.name || 'section'} as required`}
                     checked={section.required}
                     onChange={() => handleToggleRequired(section.id)}
                     disabled={disabled}

@@ -1220,6 +1220,8 @@ def lambda_handler(event: Dict[str, Any], context: object) -> Dict[str, Any]:
     - GET  /admin/sys/ai/rag-config - Get platform RAG configuration
     - PUT  /admin/sys/ai/rag-config - Update platform RAG configuration
     - POST /admin/sys/ai/providers/test - Test AI provider connection
+    - GET  /admin/sys/ai/orgs/{orgId}/config - Get organization AI configuration (sys admin)
+    - PUT  /admin/sys/ai/orgs/{orgId}/config - Update organization AI configuration (sys admin)
     
     Routes - Organization Admin - AI Configuration:
     - GET  /admin/org/ai/config - Get organization AI configuration

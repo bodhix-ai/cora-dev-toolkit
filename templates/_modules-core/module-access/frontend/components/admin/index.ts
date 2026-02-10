@@ -7,6 +7,7 @@
 // Admin Page Components (thin wrapper pattern)
 export { OrgAccessAdmin } from './OrgAccessAdmin';
 export { SysAccessAdmin } from './SysAccessAdmin';
+export { SysOrgDetailsAdmin } from './SysOrgDetailsAdmin';
 
 // Admin Tab Components
 export { AccessControlAdmin } from './AccessControlAdmin';

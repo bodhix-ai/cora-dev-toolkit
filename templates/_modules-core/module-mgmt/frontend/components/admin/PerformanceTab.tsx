@@ -241,6 +241,7 @@ export function PerformanceTab(): React.ReactElement {
           <TextField
             fullWidth
             variant="outlined"
+            label="Search functions"
             placeholder="Search by function name, runtime, description, or handler..."
             value={searchQuery}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}

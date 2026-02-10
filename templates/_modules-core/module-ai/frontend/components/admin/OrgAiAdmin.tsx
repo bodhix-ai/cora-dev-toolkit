@@ -27,6 +27,11 @@ import { getOrgAdminConfig, updateOrgAdminConfig } from '../../lib/api';
  * - PUT /admin/org/ai/config - Update organization AI configuration
  */
 
+interface AIDeployment {
+  modelName?: string;
+  modelId?: string;
+}
+
 interface OrgAIConfig {
   orgId: string;
   orgSystemPrompt?: string | null;
@@ -42,8 +47,8 @@ interface OrgAIConfig {
     systemPrompt?: string;
     defaultChatDeploymentId?: string;
     defaultEmbeddingDeploymentId?: string;
-    chatDeployment?: any;
-    embeddingDeployment?: any;
+    chatDeployment?: AIDeployment;
+    embeddingDeployment?: AIDeployment;
   };
   combinedPrompt?: string;
 }
@@ -185,6 +190,7 @@ export const OrgAiAdmin = () => {
           color="inherit"
           href="/admin/org"
           sx={{ display: 'flex', alignItems: 'center' }}
+          aria-label="Navigate to Org Admin"
         >
           Org Admin
         </Link>
@@ -213,7 +219,7 @@ export const OrgAiAdmin = () => {
       {/* Platform Defaults Section */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h5" gutterBottom>
             Platform Defaults
           </Typography>
           {config?.platformConfig && (
@@ -268,7 +274,7 @@ export const OrgAiAdmin = () => {
       {/* Organization-Specific Configuration */}
       <Card>
         <CardContent>
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h5" gutterBottom>
             Organization Configuration
           </Typography>
           

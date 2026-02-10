@@ -1,7 +1,7 @@
 /**
- * SysWsAdmin Component
- *
- * System admin page for managing workspace module configuration.
+ * @component SysWsAdmin
+ * @description System admin page for managing workspace module configuration.
+ * 
  * Controls navigation labels, feature flags, and default settings.
  * 
  * Features:
@@ -9,7 +9,6 @@
  * - Usage Summary Tab: Cross-organization workspace statistics
  * 
  * @routes
- * Routes - System Admin:
  * - GET /admin/sys/ws/analytics - Get platform-wide workspace analytics
  * - GET /admin/sys/ws/config - Get workspace module configuration
  * - PUT /admin/sys/ws/config - Update workspace module configuration

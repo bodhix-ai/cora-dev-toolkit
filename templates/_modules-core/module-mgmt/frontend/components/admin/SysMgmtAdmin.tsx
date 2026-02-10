@@ -149,7 +149,7 @@ export function SysMgmtAdmin(): React.ReactElement {
       <Box role="tabpanel" hidden={activeTab !== 2} id="tabpanel-ai" aria-labelledby="tab-ai">
         {activeTab === 2 && (
           <Box sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>AI Configuration</Typography>
+            <Typography variant="h5" gutterBottom>AI Configuration</Typography>
             <Typography variant="body2" color="text.secondary">
               AI provider and model configuration coming soon.
             </Typography>

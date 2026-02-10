@@ -133,7 +133,7 @@ export default function OptimizerPage() {
       </Typography>
       
       <Paper sx={{ mt: 3, p: 2, bgcolor: "grey.100" }}>
-        <Typography variant="h6" gutterBottom>End-to-End API Integration Test</Typography>
+        <Typography variant="h5" gutterBottom>End-to-End API Integration Test</Typography>
         <Typography variant="body2" gutterBottom>
           This workflow demonstrates calling CORA module APIs:
         </Typography>
@@ -159,7 +159,7 @@ export default function OptimizerPage() {
 
       {logs.length > 0 && (
         <Box sx={{ mt: 3 }}>
-          <Typography variant="h6" gutterBottom>Workflow Logs</Typography>
+          <Typography variant="h5" gutterBottom>Workflow Logs</Typography>
           <Paper
             sx={{
               bgcolor: "#1e1e1e",

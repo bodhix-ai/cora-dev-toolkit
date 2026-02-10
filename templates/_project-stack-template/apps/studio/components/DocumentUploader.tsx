@@ -146,6 +146,7 @@ export default function DocumentUploader({
         <input
           ref={fileInputRef}
           type="file"
+          aria-label="Upload document"
           onChange={handleFileInputChange}
           accept={acceptedFileTypes}
           multiple={multiple}

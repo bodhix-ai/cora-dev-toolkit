@@ -130,25 +130,25 @@ export function OrgDetails({ orgId, authAdapter, isSysAdmin }: OrgDetailsProps) 
 
   return (
     <Box sx={{ p: 4 }}>
-      {/* Breadcrumbs */}
-      <Breadcrumbs 
-        separator={<NavigateNext fontSize="small" />} 
+      {/* Breadcrumbs - context-aware for sys admin vs org admin */}
+      <Breadcrumbs
+        separator={<NavigateNext fontSize="small" />}
         sx={{ mb: 2 }}
       >
         <Link
           color="inherit"
-          href="/admin/sys"
+          href={isSysAdmin ? "/admin/sys" : "/admin/org"}
           sx={{ cursor: "pointer" }}
-          aria-label="Go to Sys Admin"
+          aria-label={isSysAdmin ? "Go to Sys Admin" : "Go to Org Admin"}
         >
-          Sys Admin
+          {isSysAdmin ? "Sys Admin" : "Org Admin"}
         </Link>
         <Link
           color="inherit"
-          href="/admin/sys/access"
+          href={isSysAdmin ? "/admin/sys/access" : "/admin/org/access"}
           onClick={(e) => {
             e.preventDefault();
-            router.push("/admin/sys/access");
+            router.push(isSysAdmin ? "/admin/sys/access" : "/admin/org/access");
           }}
           sx={{ cursor: "pointer" }}
           aria-label="Back to Access Control"

@@ -102,9 +102,13 @@ class ComponentParser:
         """
         Parse all admin component files in a directory.
         
+        Scans multiple locations:
+        - Module admin components: **/components/admin/*.tsx
+        - App-shell admin components: **/app/admin/**/*.tsx
+        
         Args:
             directory: Directory path
-            pattern: Glob pattern for component files
+            pattern: Glob pattern for component files (default for module components)
             
         Returns:
             List of all ComponentRoute objects found
@@ -112,22 +116,25 @@ class ComponentParser:
         all_routes = []
         path = Path(directory)
         
-        # Find all admin component files
-        for file_path in path.glob(pattern):
-            if file_path.is_file():
-                routes = self.parse_component_file(str(file_path))
-                all_routes.extend(routes)
+        # Patterns to scan for admin components with @routes metadata
+        patterns = [
+            "**/components/admin/*.tsx",  # Module admin components
+            "**/components/admin/*.ts",   # Module admin components (TS)
+            "**/app/admin/**/*.tsx",      # App-shell admin components (ClientPage, etc.)
+            "**/app/admin/**/*.ts",       # App-shell admin components (TS)
+        ]
         
-        # Also check .ts files (not just .tsx)
-        for file_path in path.glob("**/components/admin/*.ts"):
-            if file_path.is_file():
-                routes = self.parse_component_file(str(file_path))
-                all_routes.extend(routes)
+        # Find all admin component files across all patterns
+        for glob_pattern in patterns:
+            for file_path in path.glob(glob_pattern):
+                if file_path.is_file():
+                    routes = self.parse_component_file(str(file_path))
+                    all_routes.extend(routes)
         
         logger.info(f"Parsed directory {directory}: found {len(all_routes)} component routes in {len(self.components_with_metadata)} components")
         
-        # Store routes in instance
-        self.component_routes = all_routes
+        # Accumulate routes in instance (multiple calls should add, not replace)
+        self.component_routes.extend(all_routes)
         
         return all_routes
     

@@ -786,31 +786,45 @@ class ReportFormatter:
         
         return modules
     
-    def _get_top_issues(self, modules: dict) -> list:
-        """Get top issues across all modules."""
-        issue_counts = {}
+    def _get_top_errors(self, modules: dict) -> list:
+        """Get top errors across all modules."""
+        error_counts = {}
         
         for module, data in modules.items():
             # Count errors by category
             for category, errors in data['errors'].items():
-                if category not in issue_counts:
-                    issue_counts[category] = {'count': 0, 'type': 'error'}
-                issue_counts[category]['count'] += len(errors)
-            
-            # Count warnings by category
-            for category, warnings in data['warnings'].items():
-                if category not in issue_counts:
-                    issue_counts[category] = {'count': 0, 'type': 'warning'}
-                issue_counts[category]['count'] += len(warnings)
+                if category not in error_counts:
+                    error_counts[category] = 0
+                error_counts[category] += len(errors)
         
         # Sort by count descending
-        sorted_issues = sorted(
-            issue_counts.items(),
-            key=lambda x: x[1]['count'],
+        sorted_errors = sorted(
+            error_counts.items(),
+            key=lambda x: x[1],
             reverse=True
         )
         
-        return sorted_issues[:10]  # Top 10
+        return sorted_errors[:10]  # Top 10
+    
+    def _get_top_warnings(self, modules: dict) -> list:
+        """Get top warnings across all modules."""
+        warning_counts = {}
+        
+        for module, data in modules.items():
+            # Count warnings by category
+            for category, warnings in data['warnings'].items():
+                if category not in warning_counts:
+                    warning_counts[category] = 0
+                warning_counts[category] += len(warnings)
+        
+        # Sort by count descending
+        sorted_warnings = sorted(
+            warning_counts.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+        
+        return sorted_warnings[:10]  # Top 10
 
     def _generate_module_stats(self, modules_data: dict) -> dict:
         """Generate statistics for module summary table."""
@@ -1146,22 +1160,29 @@ class ReportFormatter:
             
             lines.append("")
         
-        # TOP ISSUES - Aggregate across all modules
+        # TOP WARNINGS - Aggregate across all modules (shown first for visibility)
         if modules:
-            top_issues = self._get_top_issues(modules)
+            top_warnings = self._get_top_warnings(modules)
             
-            if top_issues:
-                lines.append(self._bold("TOP ISSUES (Across All Validators):"))
+            if top_warnings:
+                lines.append(self._bold("TOP WARNINGS (Across All Validators):"))
                 lines.append("-" * 80)
                 
-                for i, (category, info) in enumerate(top_issues, 1):
-                    count = info['count']
-                    issue_type = info['type']
-                    
-                    if issue_type == 'error':
-                        lines.append(f"{i:2}. {category}: {self._red(str(count))} occurrences")
-                    else:
-                        lines.append(f"{i:2}. {category}: {self._yellow(str(count))} occurrences")
+                for i, (category, count) in enumerate(top_warnings, 1):
+                    lines.append(f"{i:2}. {category}: {self._yellow(str(count))} occurrences")
+                
+                lines.append("")
+        
+        # TOP ERRORS - Aggregate across all modules
+        if modules:
+            top_errors = self._get_top_errors(modules)
+            
+            if top_errors:
+                lines.append(self._bold("TOP ERRORS (Across All Validators):"))
+                lines.append("-" * 80)
+                
+                for i, (category, count) in enumerate(top_errors, 1):
+                    lines.append(f"{i:2}. {category}: {self._red(str(count))} occurrences")
                 
                 lines.append("")
         
