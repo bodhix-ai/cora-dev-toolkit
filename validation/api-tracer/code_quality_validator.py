@@ -425,7 +425,70 @@ class KeyConsistencyValidator:
     Catches bugs where:
     - Function A returns {'modelId': ...} (camelCase)
     - Function B accesses dict['model_id'] (snake_case) - MISMATCH!
+    
+    CORA Architecture Note:
+    - Database columns use snake_case (PostgreSQL standard)
+    - API responses use camelCase (JavaScript/TypeScript standard)
+    - Legitimate transform pairs are allowlisted to avoid false positives
     """
+    
+    # Allowlist of legitimate snake_case↔camelCase transform pairs
+    # These are intentional patterns where CORA transforms between DB and API
+    ALLOWED_TRANSFORM_PAIRS = {
+        # ADR-015 Audit columns (database → API transform)
+        ('created_at', 'createdAt'),
+        ('updated_at', 'updatedAt'),
+        ('created_by', 'createdBy'),
+        ('updated_by', 'updatedBy'),
+        ('deleted_at', 'deletedAt'),
+        ('deleted_by', 'deletedBy'),
+        ('is_deleted', 'isDeleted'),
+        
+        # Common ID fields (database → API transform)
+        ('user_id', 'userId'),
+        ('org_id', 'orgId'),
+        ('ws_id', 'wsId'),
+        ('workspace_id', 'workspaceId'),
+        ('provider_id', 'providerId'),
+        ('config_id', 'configId'),
+        ('kb_id', 'kbId'),
+        ('doc_id', 'docId'),
+        ('doc_type_id', 'docTypeId'),
+        ('message_id', 'messageId'),
+        ('criteria_set_id', 'criteriaSetId'),
+        ('criteria_id', 'criteriaId'),
+        ('run_id', 'runId'),
+        ('eval_id', 'evalId'),
+        ('session_id', 'sessionId'),
+        
+        # Common entity fields (database → API transform)
+        ('display_name', 'displayName'),
+        ('avatar_url', 'avatarUrl'),
+        ('api_key', 'apiKey'),
+        ('user_role', 'userRole'),
+        ('order_index', 'orderIndex'),
+        ('is_favorited', 'isFavorited'),
+        ('is_active', 'isActive'),
+        ('is_default', 'isDefault'),
+        
+        # Module-specific fields (database → API transform)
+        ('system_prompt', 'systemPrompt'),
+        ('user_prompt_template', 'userPromptTemplate'),
+        ('max_message_length', 'maxMessageLength'),
+        ('message_retention_days', 'messageRetentionDays'),
+        ('max_kb_groundings', 'maxKbGroundings'),
+        ('score_value', 'scoreValue'),
+        ('started_at', 'startedAt'),
+        ('completed_at', 'completedAt'),
+        ('error_message', 'errorMessage'),
+        ('model_id', 'modelId'),
+        ('model_name', 'modelName'),
+        ('temperature', 'temperature'),  # Usually same, but sometimes transformed
+        ('max_tokens', 'maxTokens'),
+        ('top_p', 'topP'),
+        ('frequency_penalty', 'frequencyPenalty'),
+        ('presence_penalty', 'presencePenalty'),
+    }
     
     @staticmethod
     def snake_to_camel(snake_str: str) -> str:
@@ -518,9 +581,29 @@ class KeyConsistencyValidator:
             camel_variants = [v for v in variants if self.is_camel_case(v)]
             
             if snake_variants and camel_variants:
-                # Found inconsistency
+                # Check if this is an allowed transform pair (database ↔ API)
+                for snake_var in snake_variants:
+                    for camel_var in camel_variants:
+                        if (snake_var, camel_var) in self.ALLOWED_TRANSFORM_PAIRS:
+                            # This is a legitimate DB→API transform, skip it
+                            continue
+                
+                # Found inconsistency (not in allowlist)
                 producer_keys = set(literal_keys.keys())
                 consumer_keys = set(access_keys.keys())
+                
+                # Skip if any variant pair is in the allowlist
+                is_allowed = False
+                for snake_var in snake_variants:
+                    for camel_var in camel_variants:
+                        if (snake_var, camel_var) in self.ALLOWED_TRANSFORM_PAIRS:
+                            is_allowed = True
+                            break
+                    if is_allowed:
+                        break
+                
+                if is_allowed:
+                    continue  # Skip this group entirely if it's an allowed transform
                 
                 for variant in variants:
                     if variant in access_keys and variant not in literal_keys:
