@@ -10,7 +10,7 @@
  * - Optimization: Trigger optimization and view results
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useOrganizationContext, useUser } from "@{{PROJECT_NAME}}/module-access";
 import { useWorkspace, useWorkspaceConfig } from "@{{PROJECT_NAME}}/module-ws";
@@ -34,6 +34,7 @@ import {
   ListItemSecondaryAction,
   IconButton,
   LinearProgress,
+  Snackbar,
 } from "@mui/material";
 import {
   ArrowBack,
@@ -46,6 +47,9 @@ import {
   Schedule,
   Error as ErrorIcon,
 } from "@mui/icons-material";
+import OptimizationResults from "@/components/OptimizationResults";
+import OptimizationStepper from "@/components/OptimizationStepper";
+import VariationProgressTable from "@/components/VariationProgressTable";
 
 // ============================================================================
 // TYPES
@@ -78,12 +82,37 @@ interface OptimizationRun {
   doc_type_name?: string;
   criteria_set_id: string;
   criteria_set_name?: string;
-  status: "draft" | "in_progress" | "optimized" | "failed";
+  status: "draft" | "pending" | "processing" | "completed" | "failed" | "cancelled";
   response_structure_id?: string;
   truth_set_count: number;
   accuracy?: number;
   created_at: string;
   updated_at: string;
+  currentPhase?: number;
+  currentPhaseName?: string;
+  progress?: number;
+  progressMessage?: string;
+}
+
+interface PhaseData {
+  phaseNumber: number;
+  phaseName: string;
+  status: "pending" | "in_progress" | "complete" | "failed";
+  startedAt?: string;
+  completedAt?: string;
+  errorMessage?: string;
+  metadata?: Record<string, any>;
+}
+
+interface VariationProgress {
+  variationName: string;
+  status: "pending" | "running" | "complete" | "error";
+  criteriaTotal: number;
+  criteriaCompleted: number;
+  accuracy?: number;
+  startedAt?: string;
+  completedAt?: string;
+  errorMessage?: string;
 }
 
 // ============================================================================
@@ -92,11 +121,13 @@ interface OptimizationRun {
 
 function getStatusColor(status: OptimizationRun["status"]) {
   switch (status) {
-    case "optimized":
+    case "completed":
       return "success";
-    case "in_progress":
+    case "pending":
+    case "processing":
       return "info";
     case "failed":
+    case "cancelled":
       return "error";
     default:
       return "default";
@@ -105,12 +136,16 @@ function getStatusColor(status: OptimizationRun["status"]) {
 
 function getStatusLabel(status: OptimizationRun["status"]) {
   switch (status) {
-    case "optimized":
+    case "completed":
       return "Optimized";
-    case "in_progress":
-      return "In Progress";
+    case "pending":
+      return "Pending";
+    case "processing":
+      return "Processing";
     case "failed":
       return "Failed";
+    case "cancelled":
+      return "Cancelled";
     default:
       return "Draft";
   }
@@ -130,13 +165,29 @@ export default function OptimizationRunDetailsPage() {
   const runId = params.runId as string;
   const orgId = currentOrganization?.orgId || "";
 
+  // Refs for stability
+  const authAdapterRef = useRef(authAdapter);
+  const isAuthenticatedRef = useRef(isAuthenticated);
+
+  useEffect(() => {
+    authAdapterRef.current = authAdapter;
+    isAuthenticatedRef.current = isAuthenticated;
+  }, [authAdapter, isAuthenticated]);
+
   // State
   const [run, setRun] = useState<OptimizationRun | null>(null);
   const [sections, setSections] = useState<ResponseSection[]>([]);
   const [truthSets, setTruthSets] = useState<TruthSet[]>([]);
+  const [phases, setPhases] = useState<PhaseData[]>([]);
+  const [variations, setVariations] = useState<VariationProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [optimizing, setOptimizing] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" | "info" }>({
+    open: false,
+    message: "",
+    severity: "info",
+  });
 
   // Get workspace config for navigation labels
   const { navLabelPlural } = useWorkspaceConfig({ orgId });
@@ -147,42 +198,78 @@ export default function OptimizationRunDetailsPage() {
     orgId,
   });
 
-  // Load run details
+  // Load run details - STABILIZED to prevent infinite loops
   const loadRunDetails = useCallback(async () => {
-    if (!isAuthenticated || !workspaceId || !runId) return;
+    if (!isAuthenticatedRef.current || !workspaceId || !runId) return;
 
-    setLoading(true);
-    setError(null);
+    // Don't set loading state if we already have data (polling)
+    // Only set loading on initial fetch if run is null
+    // But we can't access state easily inside callback without deps
+    // So we'll skip the loading indicator for polling updates
 
     try {
-      const token = await authAdapter.getToken();
+      const token = await authAdapterRef.current.getToken();
       if (!token) return;
       const client = createCoraAuthenticatedClient(token);
 
       // Load run details
-      const runRes = await client.get(`/ws/${workspaceId}/optimization/runs/${runId}`);
+      const runRes = (await client.get(`/ws/${workspaceId}/optimization/runs/${runId}`)) as any;
       setRun(runRes.data);
 
       // Load response sections
-      const sectionsRes = await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/sections`);
+      const sectionsRes = (await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/sections`)) as any;
       setSections(sectionsRes.data || []);
 
       // Load truth sets
-      const truthSetsRes = await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/truth-sets`);
+      const truthSetsRes = (await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/truth-sets`)) as any;
       setTruthSets(truthSetsRes.data || []);
+
+      // Load phase data (if run is in progress)
+      if (runRes.data.status === "pending" || runRes.data.status === "processing") {
+        try {
+          const phasesRes = (await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/phases`)) as any;
+          setPhases(phasesRes.data || []);
+        } catch (phaseErr) {
+          // Phases endpoint might not exist yet, silently fail
+          console.warn("Phase data not available:", phaseErr);
+        }
+
+        // Load variation progress (if in Phase 4 - evaluation loop)
+        if (runRes.data.currentPhase === 4) {
+          try {
+            const variationsRes = (await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/variations`)) as any;
+            setVariations(variationsRes.data || []);
+          } catch (varErr) {
+            // Variations endpoint might not exist yet, silently fail
+            console.warn("Variation data not available:", varErr);
+          }
+        }
+      }
     } catch (err: any) {
       console.error("Error loading run details:", err);
-      setError(err.message || "Failed to load run details");
-    } finally {
-      setLoading(false);
+      // Only set error on initial load failure
+      // setError(err.message || "Failed to load run details");
     }
-  }, [isAuthenticated, workspaceId, runId, authAdapter]);
+  }, [workspaceId, runId]); // Removed authAdapter and isAuthenticated
 
+  // Initial load
   useEffect(() => {
-    if (isAuthenticated && workspaceId && runId) {
-      loadRunDetails();
+    if (isAuthenticated && workspaceId && runId && !run) {
+      setLoading(true);
+      loadRunDetails().finally(() => setLoading(false));
     }
-  }, [isAuthenticated, workspaceId, runId, loadRunDetails]);
+  }, [isAuthenticated, workspaceId, runId, loadRunDetails, run]);
+
+  // Poll for status updates when run is in progress
+  useEffect(() => {
+    if (!run || (run.status !== "pending" && run.status !== "processing")) return;
+
+    const pollInterval = setInterval(() => {
+      loadRunDetails();
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [run?.status, loadRunDetails]);
 
   // Navigation handlers
   const handleBackToWorkspace = () => {
@@ -216,14 +303,40 @@ export default function OptimizationRunDetailsPage() {
 
       await client.post(`/ws/${workspaceId}/optimization/runs/${runId}/optimize`);
 
+      // Show success notification
+      setSnackbar({
+        open: true,
+        message: "✅ Optimization started! Results will appear as processing completes.",
+        severity: "success",
+      });
+
       // Refresh run details to get updated status
       await loadRunDetails();
     } catch (err: any) {
       console.error("Error starting optimization:", err);
-      setError(err.message || "Failed to start optimization");
+      const errorMsg = err.message || "Failed to start optimization";
+      setError(errorMsg);
+      setSnackbar({
+        open: true,
+        message: `❌ ${errorMsg}`,
+        severity: "error",
+      });
     } finally {
       setOptimizing(false);
     }
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
+  const handleLoadResults = async () => {
+    const token = await authAdapter.getToken();
+    if (!token) throw new Error("Not authenticated");
+    const client = createCoraAuthenticatedClient(token);
+
+    const res = (await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/results`)) as any;
+    return res.data;
   };
 
   // Loading state
@@ -260,7 +373,7 @@ export default function OptimizationRunDetailsPage() {
 
   const hasSections = sections.length > 0;
   const hasTruthSets = truthSets.length > 0;
-  const canOptimize = hasSections && hasTruthSets && run.status !== "in_progress";
+  const canOptimize = hasSections && hasTruthSets && run.status !== "pending" && run.status !== "processing";
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -503,30 +616,54 @@ export default function OptimizationRunDetailsPage() {
                   ? "Define response sections first."
                   : !hasTruthSets
                   ? "Create at least one truth set."
-                  : run.status === "in_progress"
+                  : (run.status === "pending" || run.status === "processing")
                   ? "Optimization is already running."
                   : "Ready to optimize."}
               </Alert>
             )}
 
-            {run.status === "in_progress" && (
+            {(run.status === "pending" || run.status === "processing") && (
               <Box sx={{ py: 3 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-                  <CircularProgress size={24} />
-                  <Typography>Optimization in progress...</Typography>
-                </Box>
-                <LinearProgress />
+                {/* 5-Phase Progress Stepper */}
+                <OptimizationStepper
+                  currentPhase={run.currentPhase || 1}
+                  currentPhaseName={run.currentPhaseName || ""}
+                  status={run.status}
+                  phases={phases}
+                  progressMessage={run.progressMessage}
+                />
+
+                {/* Variation Progress Table (only show in Phase 4) */}
+                {run.currentPhase === 4 && variations.length > 0 && (
+                  <Box sx={{ mt: 3 }}>
+                    <Typography variant="h6" gutterBottom>
+                      Prompt Variations
+                    </Typography>
+                    <VariationProgressTable
+                      variations={variations}
+                      loading={run.status === "processing"}
+                    />
+                  </Box>
+                )}
               </Box>
             )}
 
-            {run.status === "optimized" && (
-              <Alert severity="success" icon={<CheckCircle />}>
-                <Typography variant="subtitle2">Optimization Complete!</Typography>
-                <Typography variant="body2">
-                  Best configuration achieved {Math.round((run.accuracy || 0) * 100)}% accuracy.
-                  View detailed results below.
-                </Typography>
-              </Alert>
+            {run.status === "completed" && (
+              <>
+                <Alert severity="success" icon={<CheckCircle />}>
+                  <Typography variant="subtitle2">Optimization Complete!</Typography>
+                  <Typography variant="body2">
+                    Best configuration achieved {Math.round((run.accuracy || 0) * 100)}% accuracy.
+                    View detailed results below.
+                  </Typography>
+                </Alert>
+
+                <OptimizationResults
+                  runId={runId}
+                  workspaceId={workspaceId}
+                  onLoadResults={handleLoadResults}
+                />
+              </>
             )}
 
             {run.status === "failed" && (
@@ -540,6 +677,18 @@ export default function OptimizationRunDetailsPage() {
           </Paper>
         </Grid>
       </Grid>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: "100%" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 }

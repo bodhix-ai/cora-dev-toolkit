@@ -46,6 +46,25 @@ interface ResponseSection {
   columns?: TableColumn[];
 }
 
+// CRITICAL: Score and Confidence are ALWAYS required for optimization comparison
+// These are prepended to any custom response sections defined by the BA
+const HEADER_SECTIONS: ResponseSection[] = [
+  {
+    id: "score",
+    name: "Score",
+    type: "number",
+    required: true,
+    description: "Numerical compliance score (0-100) - REQUIRED for optimization"
+  },
+  {
+    id: "confidence",
+    name: "Confidence",
+    type: "number",
+    required: true,
+    description: "BA's confidence in the score (0-100)"
+  }
+];
+
 interface CriterionEvaluation {
   criteria_item_id: string;
   section_responses: Record<string, any>;
@@ -145,8 +164,12 @@ export default function TruthSetDetailPage() {
         }
 
         // Get response sections from run response (embedded inline)
+        // CRITICAL: Always prepend HEADER_SECTIONS (score, confidence) for optimization comparison
         if (run.responseSections && Array.isArray(run.responseSections)) {
-          setResponseSections(run.responseSections);
+          setResponseSections([...HEADER_SECTIONS, ...run.responseSections]);
+        } else {
+          // Even if no custom sections, we MUST have score and confidence
+          setResponseSections(HEADER_SECTIONS);
         }
 
         // Fetch truth set
