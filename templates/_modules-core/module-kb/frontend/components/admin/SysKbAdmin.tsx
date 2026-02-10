@@ -136,8 +136,8 @@ export function SysKbAdmin(): React.ReactElement {
       kbs={kbs}
       kbsLoading={kbsLoading}
       kbsError={kbsError}
-      onCreateKb={async (data: any) => { await createKb(data); }}
-      onUpdateKb={async (kbId: string, data: any) => { await updateKb(kbId, data); }}
+      onCreateKb={async (data: Record<string, unknown>) => { await createKb(data); }}
+      onUpdateKb={async (kbId: string, data: Record<string, unknown>) => { await updateKb(kbId, data); }}
       onDeleteKb={deleteKb}
       onRefreshKbs={refreshKbs}
       selectedKb={selectedKb}

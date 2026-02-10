@@ -536,13 +536,12 @@ async function apiRequest<T>(
   return response.json();
 }
 
-/**
- * Get organization AI configuration (org admin)
- * GET /admin/org/ai/config?orgId={orgId}
- * 
- * ✅ STANDARD PATTERN: Accepts token string and orgId (extracted at page level)
- */
-export async function getOrgAdminConfig(token: string, orgId: string): Promise<{
+interface AIDeployment {
+  modelName?: string;
+  modelId?: string;
+}
+
+interface OrgAIConfigResponse {
   orgId: string;
   orgSystemPrompt?: string | null;
   policyMissionType?: string | null;
@@ -557,13 +556,21 @@ export async function getOrgAdminConfig(token: string, orgId: string): Promise<{
     systemPrompt?: string;
     defaultChatDeploymentId?: string;
     defaultEmbeddingDeploymentId?: string;
-    chatDeployment?: any;
-    embeddingDeployment?: any;
+    chatDeployment?: AIDeployment;
+    embeddingDeployment?: AIDeployment;
   };
   combinedPrompt?: string;
-}> {
+}
+
+/**
+ * Get organization AI configuration (org admin)
+ * GET /admin/org/ai/config?orgId={orgId}
+ * 
+ * ✅ STANDARD PATTERN: Accepts token string and orgId (extracted at page level)
+ */
+export async function getOrgAdminConfig(token: string, orgId: string): Promise<OrgAIConfigResponse> {
   const url = buildUrl("/admin/org/ai/config", { orgId });
-  const response = await apiRequest<{ success: boolean; data: any }>(url, token);
+  const response = await apiRequest<{ success: boolean; data: OrgAIConfigResponse }>(url, token);
   return response.data;
 }
 

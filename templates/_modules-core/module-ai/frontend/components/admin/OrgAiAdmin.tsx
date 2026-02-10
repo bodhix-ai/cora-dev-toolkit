@@ -27,6 +27,11 @@ import { getOrgAdminConfig, updateOrgAdminConfig } from '../../lib/api';
  * - PUT /admin/org/ai/config - Update organization AI configuration
  */
 
+interface AIDeployment {
+  modelName?: string;
+  modelId?: string;
+}
+
 interface OrgAIConfig {
   orgId: string;
   orgSystemPrompt?: string | null;
@@ -42,8 +47,8 @@ interface OrgAIConfig {
     systemPrompt?: string;
     defaultChatDeploymentId?: string;
     defaultEmbeddingDeploymentId?: string;
-    chatDeployment?: any;
-    embeddingDeployment?: any;
+    chatDeployment?: AIDeployment;
+    embeddingDeployment?: AIDeployment;
   };
   combinedPrompt?: string;
 }
