@@ -3,10 +3,17 @@
   "version": "1.0.0",
   "private": true,
   "description": "CORA Evaluation Module - AI-powered document evaluation with criteria management and scoring",
-  "main": "index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./index.ts",
-    "./admin": "./components/admin/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./admin": {
+      "types": "./dist/components/admin/index.d.ts",
+      "import": "./dist/components/admin/index.js"
+    }
   },
   "scripts": {
     "dev": "next dev",
@@ -16,6 +23,7 @@
   },
   "dependencies": {
     "@{{PROJECT_NAME}}/api-client": "workspace:*",
+    "@{{PROJECT_NAME}}/shared": "workspace:*",
     "@mui/material": "^5.15.20",
     "@mui/icons-material": "^5.15.20",
     "@emotion/react": "^11.11.4",

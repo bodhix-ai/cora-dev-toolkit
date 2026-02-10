@@ -2,16 +2,16 @@
   "name": "@{{PROJECT_NAME}}/module-ws",
   "version": "1.0.0",
   "description": "CORA Workspace Module - Frontend components, hooks, and API client",
-  "main": "index.ts",
-  "types": "index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./index.ts",
-      "default": "./index.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./admin": {
-      "types": "./components/admin/index.ts",
-      "default": "./components/admin/index.ts"
+      "types": "./dist/components/admin/index.d.ts",
+      "import": "./dist/components/admin/index.js"
     }
   },
   "scripts": {
@@ -23,7 +23,8 @@
     "@{{PROJECT_NAME}}/api-client": "workspace:*",
     "@{{PROJECT_NAME}}/module-access": "workspace:*",
     "@{{PROJECT_NAME}}/module-kb": "workspace:*",
-    "@{{PROJECT_NAME}}/shared-types": "workspace:*"
+    "@{{PROJECT_NAME}}/shared-types": "workspace:*",
+    "@{{PROJECT_NAME}}/shared": "workspace:*"
   },
   "peerDependencies": {
     "@mui/icons-material": "^5.0.0",

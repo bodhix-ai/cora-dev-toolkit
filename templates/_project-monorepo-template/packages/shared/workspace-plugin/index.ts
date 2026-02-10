@@ -9,6 +9,7 @@
 export type {
   WorkspacePluginContext,
   WorkspacePluginContextValue,
+  ModuleConfig,
 } from './types';
 
 export { WorkspacePluginContext as WorkspacePluginContextInstance } from './context';

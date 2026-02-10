@@ -10,7 +10,7 @@ WORKDIR /app
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/ ./packages/
-RUN pnpm install --frozen-lockfile --filter=web...
+RUN pnpm install --frozen-lockfile --filter={{PROJECT_NAME}}-web...
 
 # Stage 2: Build the app
 FROM base AS builder
@@ -18,8 +18,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY . .
-ENV NEXT_TELEMETRY_DISABLED 1
-RUN pnpm --filter=web build
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+RUN pnpm --filter={{PROJECT_NAME}}-web build
 
 # Stage 3: Production image
 FROM base AS runner

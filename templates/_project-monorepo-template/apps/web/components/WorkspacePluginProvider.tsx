@@ -136,8 +136,8 @@ export function WorkspacePluginProvider({
     // Filter to modules that are enabled at the workspace level (after cascade)
     // API returns: name, isEnabled, isInstalled, systemEnabled, orgEnabled, wsEnabled
     const enabledModules = modules
-      .filter((m: WorkspaceModuleData) => m.isEnabled)
-      .map((m: WorkspaceModuleData) => m.name);
+      .filter((m) => m.isEnabled)
+      .map((m) => m.name);
     
     return {
       /**
@@ -151,7 +151,7 @@ export function WorkspacePluginProvider({
        * Get module configuration (resolved from sys → org → ws cascade)
        */
       getModuleConfig: (moduleName: string): ModuleConfig | null => {
-        const foundModule = modules.find((m: WorkspaceModuleData) => m.name === moduleName);
+        const foundModule = modules.find((m) => m.name === moduleName);
         if (!foundModule) return null;
 
         return {
@@ -160,7 +160,7 @@ export function WorkspacePluginProvider({
           isEnabled: foundModule.isEnabled,
           isInstalled: foundModule.isInstalled,
           config: foundModule.config || {},
-          featureFlags: foundModule.featureFlags || {},
+          featureFlags: (foundModule.featureFlags || {}) as Record<string, boolean>,
         };
       },
       

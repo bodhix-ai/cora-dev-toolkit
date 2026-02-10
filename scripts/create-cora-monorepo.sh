@@ -103,31 +103,62 @@ read_yaml_config() {
   
   log_info "Reading configuration from: $config_file"
   
-  # Parse YAML (simple key-value parsing)
-  while IFS=': ' read -r key value; do
-    # Skip comments and empty lines
-    [[ "$key" =~ ^#.*$ ]] && continue
-    [[ -z "$key" ]] && continue
+  # Parse project settings
+  # Read project.name (base identifier used for package names)
+  PROJECT_NAME=$(grep "^  name:" "$config_file" | head -1 | sed 's/.*name: *"\([^"]*\)".*/\1/')
+  
+  # Read project.display_name (human-readable name for UI)
+  PROJECT_DISPLAY_NAME=$(grep "^  display_name:" "$config_file" | head -1 | sed 's/.*display_name: *"\([^"]*\)".*/\1/')
+
+  # Read github.mono_repo_stack (directory/repo name, defaults to PROJECT_NAME-stack)
+  REPO_NAME=$(grep "^  mono_repo_stack:" "$config_file" | sed 's/.*mono_repo_stack: *"\([^"]*\)".*/\1/' || echo "${PROJECT_NAME}-stack")
+  
+  GITHUB_ORG=$(grep "^  organization:" "$config_file" | sed 's/.*organization: *"\([^"]*\)".*/\1/')
+  AWS_REGION=$(grep "^  region:" "$config_file" | sed 's/.*region: *"\([^"]*\)".*/\1/')
+
+  # Read folder_path and folder_name from config (if not specified via CLI)
+  if command -v yq &> /dev/null; then
+    [[ -z "$PROJECT_FOLDER" ]] && PROJECT_FOLDER=$(yq '.project.folder_name // ""' "$config_file")
+    [[ -z "$OUTPUT_DIR" || "$OUTPUT_DIR" == "." ]] && OUTPUT_DIR=$(yq '.project.folder_path // "."' "$config_file")
+  else
+    [[ -z "$PROJECT_FOLDER" ]] && PROJECT_FOLDER=$(grep "^  folder_name:" "$config_file" | head -1 | sed 's/.*folder_name: *"\([^"]*\)".*/\1/' || echo "")
+    [[ -z "$OUTPUT_DIR" || "$OUTPUT_DIR" == "." ]] && OUTPUT_DIR=$(grep "^  folder_path:" "$config_file" | head -1 | sed 's/.*folder_path: *"\([^"]*\)".*/\1/' || echo ".")
+  fi
+  
+  # Core modules are always enabled in monorepo
+  WITH_CORE_MODULES=true
+  
+  # Parse modules.enabled array
+  local in_modules_section=false
+  while IFS= read -r line; do
+    # Detect modules: section
+    if [[ "$line" =~ ^modules: ]]; then
+      in_modules_section=true
+      continue
+    fi
     
-    # Remove quotes from value
-    value="${value//\"/}"
-    value="${value//\'/}"
+    # Exit modules section when we hit another top-level key
+    if $in_modules_section && [[ "$line" =~ ^[a-z_]+: ]]; then
+      in_modules_section=false
+    fi
     
-    case "$key" in
-      project_name) PROJECT_NAME="$value" ;;
-      github_org) GITHUB_ORG="$value" ;;
-      aws_region) AWS_REGION="$value" ;;
-      core_modules)
-        if [[ "$value" == "true" ]]; then
-          WITH_CORE_MODULES=true
-        fi
-        ;;
-      functional_modules)
-        # Parse comma-separated list
-        IFS=',' read -ra ENABLED_MODULES <<< "$value"
-        ;;
-    esac
+    # Parse module entries (e.g., "    - module-voice")
+    if $in_modules_section && [[ "$line" =~ ^[[:space:]]*-[[:space:]]*(module-[a-z-]+) ]]; then
+      local module_name="${BASH_REMATCH[1]}"
+      # Remove "module-" prefix for ENABLED_MODULES array
+      local module_short="${module_name#module-}"
+      ENABLED_MODULES+=("$module_short")
+    fi
   done < "$config_file"
+  
+  log_info "Parsed from config:"
+  log_info "  Project: ${PROJECT_NAME}"
+  log_info "  Org: ${GITHUB_ORG}"
+  log_info "  Region: ${AWS_REGION}"
+  log_info "  Core modules: enabled (always)"
+  if [[ ${#ENABLED_MODULES[@]} -gt 0 ]]; then
+    log_info "  Functional modules: ${ENABLED_MODULES[*]}"
+  fi
 }
 
 # Function to add module to Terraform configuration
@@ -151,10 +182,11 @@ add_module_to_terraform() {
   log_info "Adding ${module_name} to Terraform configuration..."
   
   local module_underscore="${module_name//-/_}"
+  local module_upper=$(echo "${module_name}" | tr '[:lower:]' '[:upper:]')
   
   # Module declaration (monorepo uses local path)
   local module_declaration="
-# ${module_name^^} - CORA Module
+# ${module_upper} - CORA Module
 module \"${module_underscore}\" {
   source = \"../../packages/${module_name}/infrastructure\"
 
@@ -179,6 +211,271 @@ module \"${module_underscore}\" {
   echo "$module_declaration" >> "$main_tf"
   
   log_info "✅ Added ${module_name} to Terraform configuration"
+}
+
+# Function to add module as workspace dependency in web app
+add_module_to_web_deps() {
+  local module_name="$1"
+  local project_dir="$2"
+  local project_name="$3"
+  local web_package_json="${project_dir}/apps/web/package.json"
+  
+  if [[ ! -f "$web_package_json" ]]; then
+    log_warn "web package.json not found at $web_package_json, skipping dependency injection"
+    return 1
+  fi
+  
+  local dep_key="@${project_name}/${module_name}"
+  
+  # Check if dependency already exists
+  if grep -q "\"${dep_key}\"" "$web_package_json"; then
+    log_info "Dependency ${dep_key} already in web package.json, skipping"
+    return 0
+  fi
+  
+  log_info "Adding ${dep_key} to web app dependencies..."
+  
+  # Use jq if available for precise JSON manipulation
+  if command -v jq &> /dev/null; then
+    jq --arg key "$dep_key" '.dependencies[$key] = "workspace:*"' "$web_package_json" > "${web_package_json}.tmp"
+    mv "${web_package_json}.tmp" "$web_package_json"
+  else
+    # Fallback to sed (insert before closing brace of dependencies)
+    # Find the last dependency line and add after it
+    sed -i.bak "/\"dependencies\": {/,/^[[:space:]]*}/ {
+      /^[[:space:]]*\"@${project_name}\/module-[^\"]*\": \"workspace:\*\",\?/! {
+        /^[[:space:]]*}/ i\\
+    \"${dep_key}\": \"workspace:*\",
+      }
+    }" "$web_package_json"
+    rm -f "${web_package_json}.bak"
+  fi
+  
+  log_info "✅ Added ${dep_key} to web dependencies"
+}
+
+# --- Environment File Generation ---
+generate_env_files() {
+  local config_file="$1"
+  local project_dir="$2"
+  
+  if [[ ! -f "$config_file" ]]; then
+    log_warn "Config file not found: $config_file"
+    log_info "Skipping .env generation."
+    return
+  fi
+  
+  log_step "Generating .env files from config..."
+  
+  # Extract values using yq
+  if command -v yq &> /dev/null; then
+    AUTH_PROVIDER=$(yq '.auth_provider // "okta"' "$config_file")
+    SUPABASE_URL=$(yq '.supabase.url' "$config_file")
+    SUPABASE_ANON_KEY=$(yq '.supabase.anon_key' "$config_file")
+    SUPABASE_SERVICE_KEY=$(yq '.supabase.service_role_key' "$config_file")
+    OKTA_DOMAIN=$(yq '.auth.okta.domain // ""' "$config_file")
+    OKTA_CLIENT_ID=$(yq '.auth.okta.client_id // ""' "$config_file")
+    OKTA_CLIENT_SECRET=$(yq '.auth.okta.client_secret // ""' "$config_file")
+    OKTA_ISSUER=$(yq '.auth.okta.issuer // ""' "$config_file")
+    SUPABASE_DB_HOST=$(yq '.supabase.db.host' "$config_file")
+    SUPABASE_DB_PORT=$(yq '.supabase.db.port // 6543' "$config_file")
+    SUPABASE_DB_NAME=$(yq '.supabase.db.name // "postgres"' "$config_file")
+    SUPABASE_DB_USER=$(yq '.supabase.db.user' "$config_file")
+    SUPABASE_DB_PASSWORD=$(yq '.supabase.db.password' "$config_file")
+    AWS_CONFIG_PROFILE=$(yq '.aws.profile // ""' "$config_file")
+    AWS_API_GATEWAY_ID=$(yq '.aws.api_gateway.id // ""' "$config_file")
+    AWS_API_GATEWAY_ENDPOINT=$(yq '.aws.api_gateway.endpoint // ""' "$config_file")
+  else
+    log_warn "yq not available, using grep fallback"
+    AUTH_PROVIDER=$(grep "^auth_provider:" "$config_file" | sed 's/.*auth_provider: *"\([^"]*\)".*/\1/' || echo "okta")
+    SUPABASE_URL=$(grep -A5 "^supabase:" "$config_file" | grep "url:" | sed 's/.*url: *"\([^"]*\)".*/\1/' || echo "")
+    SUPABASE_ANON_KEY=$(grep "anon_key:" "$config_file" | sed 's/.*anon_key: *"\([^"]*\)".*/\1/' || echo "")
+    SUPABASE_SERVICE_KEY=$(grep "service_role_key:" "$config_file" | sed 's/.*service_role_key: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_DOMAIN=$(grep -A5 "^auth:" "$config_file" | grep "domain:" | sed 's/.*domain: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_CLIENT_ID=$(grep "client_id:" "$config_file" | head -1 | sed 's/.*client_id: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_CLIENT_SECRET=$(grep "client_secret:" "$config_file" | head -1 | sed 's/.*client_secret: *"\([^"]*\)".*/\1/' || echo "")
+    OKTA_ISSUER=$(grep "issuer:" "$config_file" | sed 's/.*issuer: *"\([^"]*\)".*/\1/' || echo "")
+  fi
+  
+  # Generate NEXTAUTH_SECRET
+  NEXTAUTH_SECRET=$(openssl rand -base64 32)
+  
+  # Create apps/web/.env.local
+  cat > "${project_dir}/apps/web/.env.local" << ENVEOF
+# Generated from config file
+# DO NOT COMMIT THIS FILE
+
+NEXT_PUBLIC_AUTH_PROVIDER="${AUTH_PROVIDER}"
+NEXT_PUBLIC_SUPABASE_URL="${SUPABASE_URL}"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY}"
+SUPABASE_SERVICE_ROLE_KEY="${SUPABASE_SERVICE_KEY}"
+OKTA_DOMAIN="${OKTA_DOMAIN}"
+OKTA_CLIENT_ID="${OKTA_CLIENT_ID}"
+OKTA_CLIENT_SECRET="${OKTA_CLIENT_SECRET}"
+OKTA_ISSUER="${OKTA_ISSUER}"
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="${NEXTAUTH_SECRET}"
+NEXT_PUBLIC_CORA_API_URL="${AWS_API_GATEWAY_ENDPOINT}"
+AWS_REGION="${AWS_REGION}"
+ENVEOF
+  
+  log_info "Created apps/web/.env.local"
+  
+  # Create validation .env
+  mkdir -p "${project_dir}/scripts/validation"
+  cat > "${project_dir}/scripts/validation/.env" << ENVEOF
+SUPABASE_URL="${SUPABASE_URL}"
+SUPABASE_SERVICE_ROLE_KEY="${SUPABASE_SERVICE_KEY}"
+SUPABASE_DB_HOST="${SUPABASE_DB_HOST}"
+SUPABASE_DB_PORT="${SUPABASE_DB_PORT}"
+SUPABASE_DB_NAME="${SUPABASE_DB_NAME}"
+SUPABASE_DB_USER="${SUPABASE_DB_USER}"
+SUPABASE_DB_PASSWORD="${SUPABASE_DB_PASSWORD}"
+AWS_REGION="${AWS_REGION}"
+AWS_PROFILE="${AWS_CONFIG_PROFILE}"
+API_GATEWAY_ID="${AWS_API_GATEWAY_ID}"
+API_GATEWAY_ENDPOINT="${AWS_API_GATEWAY_ENDPOINT}"
+ENVEOF
+  
+  log_info "Created scripts/validation/.env"
+}
+
+# --- Terraform Variables Generation ---
+generate_terraform_vars() {
+  local config_file="$1"
+  local project_dir="$2"
+  
+  if [[ ! -f "$config_file" ]]; then
+    log_warn "Config file not found: $config_file"
+    return
+  fi
+  
+  log_step "Generating Terraform variables from config..."
+  
+  if command -v yq &> /dev/null; then
+    GITHUB_OWNER=$(yq '.github.owner' "$config_file")
+    GITHUB_REPO=$(yq '.github.repo_infra' "$config_file")
+    SUPABASE_URL=$(yq '.supabase.url' "$config_file")
+    SUPABASE_ANON_KEY=$(yq '.supabase.anon_key' "$config_file")
+    SUPABASE_SERVICE_KEY=$(yq '.supabase.service_role_key' "$config_file")
+    SUPABASE_JWT_SECRET=$(yq '.supabase.jwt_secret' "$config_file")
+    OKTA_ISSUER=$(yq '.auth.okta.issuer // ""' "$config_file")
+    OKTA_AUDIENCE=$(yq '.auth.okta.audience // "api://default"' "$config_file")
+  fi
+  
+  cat > "${project_dir}/envs/dev/local-secrets.tfvars" << TFVARSEOF
+# Generated from config file
+# DO NOT COMMIT THIS FILE
+
+github_owner = "${GITHUB_OWNER}"
+github_repo  = "${GITHUB_REPO}"
+supabase_url                    = "${SUPABASE_URL}"
+supabase_anon_key_value         = "${SUPABASE_ANON_KEY}"
+supabase_service_role_key_value = "${SUPABASE_SERVICE_KEY}"
+supabase_jwt_secret_value       = "${SUPABASE_JWT_SECRET}"
+auth_provider = "okta"
+okta_issuer = "${OKTA_ISSUER}"
+okta_audience = "${OKTA_AUDIENCE}"
+TFVARSEOF
+  
+  log_info "Created envs/dev/local-secrets.tfvars"
+}
+
+# --- Database Schema Consolidation ---
+consolidate_database_schemas() {
+  local project_dir="$1"
+  
+  log_step "Consolidating database schemas..."
+  
+  if [[ ! -d "${project_dir}/packages" ]]; then
+    log_warn "Packages directory not found"
+    return
+  fi
+  
+  local tier1_modules=("module-access")
+  local tier2_modules=("module-ai" "module-ws")
+  local tier3_modules=("module-chat" "module-kb" "module-mgmt")
+  local functional_modules=("module-eval" "module-voice" "module-eval-studio")
+  
+  local schema_files=()
+  
+  add_module_schemas() {
+    local module_name="$1"
+    local module_dir="${project_dir}/packages/${module_name}/db/schema"
+    
+    if [[ -d "$module_dir" ]]; then
+      while IFS= read -r schema_file; do
+        [[ -n "$schema_file" ]] && schema_files+=("$schema_file")
+      done < <(find "$module_dir" -name "*.sql" -not -path "*/archive/*" -type f 2>/dev/null | sort)
+    fi
+  }
+  
+  for module in "${tier1_modules[@]}" "${tier2_modules[@]}" "${tier3_modules[@]}" "${functional_modules[@]}"; do
+    add_module_schemas "$module"
+  done
+  
+  if [[ ${#schema_files[@]} -eq 0 ]]; then
+    log_warn "No database schema files found"
+    return
+  fi
+  
+  mkdir -p "${project_dir}/scripts"
+  cat > "${project_dir}/scripts/setup-database.sql" << 'SQLHEADER'
+-- CORA Database Setup Script
+-- Consolidated from all modules
+-- Idempotent and safe to run multiple times
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+SQLHEADER
+  
+  for schema_file in "${schema_files[@]}"; do
+    local module_name=$(basename "$(dirname "$(dirname "$(dirname "$schema_file")")")")
+    echo "" >> "${project_dir}/scripts/setup-database.sql"
+    echo "-- Module: ${module_name}" >> "${project_dir}/scripts/setup-database.sql"
+    cat "$schema_file" >> "${project_dir}/scripts/setup-database.sql"
+    log_info "  Added ${module_name}/$(basename "$schema_file")"
+  done
+  
+  log_info "Created scripts/setup-database.sql"
+}
+
+# --- Install Validation Dependencies ---
+install_validation_deps() {
+  local project_dir="$1"
+  local venv_dir="${project_dir}/scripts/validation/.venv"
+  
+  log_step "Setting up validation environment..."
+  
+  if ! command -v python3 &> /dev/null; then
+    log_warn "python3 not found, skipping validation setup"
+    return
+  fi
+  
+  python3 -m venv "${venv_dir}" 2>/dev/null
+  "${venv_dir}/bin/pip" install --quiet boto3 supabase python-dotenv click colorama requests 2>/dev/null
+  
+  log_info "✅ Validation environment created"
+}
+
+# --- Build Packages ---
+build_packages() {
+  local project_dir="$1"
+  
+  log_step "Building packages..."
+  
+  if ! command -v pnpm &> /dev/null; then
+    log_warn "pnpm not found, skipping build"
+    return
+  fi
+  
+  (
+    cd "$project_dir" || return 1
+    pnpm install 2>&1 | tail -10
+    pnpm build 2>&1 | tail -20
+  )
+  
+  log_info "✅ Packages built"
 }
 
 # --- Parse Arguments ---
@@ -242,8 +539,12 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Read config file if provided
+# Read config file if provided and resolve to absolute path
 if [[ -n "$INPUT_CONFIG" ]]; then
+  # Resolve to absolute path before cd'ing
+  if [[ "$INPUT_CONFIG" != /* ]]; then
+    INPUT_CONFIG="$(cd "$(dirname "$INPUT_CONFIG")" && pwd)/$(basename "$INPUT_CONFIG")"
+  fi
   read_yaml_config "$INPUT_CONFIG"
 fi
 
@@ -261,8 +562,18 @@ if [[ ! -d "$TEMPLATE_MONOREPO" ]]; then
   exit 1
 fi
 
+# Expand tilde in OUTPUT_DIR
+OUTPUT_DIR="${OUTPUT_DIR/#\~/$HOME}"
+
 # Set project folder
-PROJECT_FOLDER="${OUTPUT_DIR}/${PROJECT_NAME}"
+# If PROJECT_FOLDER (folder_name) is specified, create parent directory structure
+# Use REPO_NAME for directory (e.g., ai-mod-stack), PROJECT_NAME for package names (e.g., @ai-mod/...)
+if [[ -n "$PROJECT_FOLDER" ]]; then
+  PROJECT_FOLDER="${OUTPUT_DIR}/${PROJECT_FOLDER}/${REPO_NAME}"
+else
+  # No parent folder - create project directly in OUTPUT_DIR
+  PROJECT_FOLDER="${OUTPUT_DIR}/${REPO_NAME}"
+fi
 
 # --- Summary ---
 echo ""
@@ -330,6 +641,7 @@ if [[ "$DRY_RUN" == "false" ]]; then
   # Find all files and replace placeholders
   find "$PROJECT_FOLDER" -type f \( -name "*.tf" -o -name "*.yml" -o -name "*.yaml" -o -name "*.json" -o -name "*.ts" -o -name "*.tsx" -o -name "*.sh" -o -name "*.md" -o -name "*.mjs" \) -exec sed -i.bak \
     -e "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" \
+    -e "s/{{PROJECT_DISPLAY_NAME}}/${PROJECT_DISPLAY_NAME}/g" \
     -e "s/{{AWS_REGION}}/${AWS_REGION}/g" \
     -e "s/{{GITHUB_ORG}}/${GITHUB_ORG}/g" \
     {} \;
@@ -347,6 +659,7 @@ if [[ "$DRY_RUN" == "false" ]]; then
 else
   log_info "Would replace placeholders:"
   log_info "  {{PROJECT_NAME}} → ${PROJECT_NAME}"
+  log_info "  {{PROJECT_DISPLAY_NAME}} → ${PROJECT_DISPLAY_NAME}"
   log_info "  {{AWS_REGION}} → ${AWS_REGION}"
   log_info "  {{GITHUB_ORG}} → ${GITHUB_ORG}"
 fi
@@ -366,6 +679,14 @@ if [[ "$WITH_CORE_MODULES" == "true" ]] || [[ ${#ENABLED_MODULES[@]} -gt 0 ]]; t
       
       if [[ "$DRY_RUN" == "false" ]]; then
         cp -r "${TOOLKIT_ROOT}/templates/_modules-core/${module}" "${PROJECT_FOLDER}/packages/"
+        
+        # Replace placeholders in copied module files
+        MODULE_DIR="${PROJECT_FOLDER}/packages/${module}"
+        find "$MODULE_DIR" -type f \( -name "*.py" -o -name "*.ts" -o -name "*.tsx" -o -name "*.json" -o -name "*.tf" -o -name "*.md" -o -name "*.sql" -o -name "*.mjs" \) | while read -r file; do
+          sed -i.bak "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file"
+          rm -f "${file}.bak"
+        done
+        
         add_module_to_terraform "$module" "$PROJECT_FOLDER" "$PROJECT_NAME"
       else
         log_info "Would copy: _modules-core/${module} → packages/${module}"
@@ -382,7 +703,16 @@ if [[ "$WITH_CORE_MODULES" == "true" ]] || [[ ${#ENABLED_MODULES[@]} -gt 0 ]]; t
     if [[ "$DRY_RUN" == "false" ]]; then
       if [[ -d "${TOOLKIT_ROOT}/templates/_modules-functional/${module_name}" ]]; then
         cp -r "${TOOLKIT_ROOT}/templates/_modules-functional/${module_name}" "${PROJECT_FOLDER}/packages/"
+        
+        # Replace placeholders in copied module files
+        MODULE_DIR="${PROJECT_FOLDER}/packages/${module_name}"
+        find "$MODULE_DIR" -type f \( -name "*.py" -o -name "*.ts" -o -name "*.tsx" -o -name "*.json" -o -name "*.tf" -o -name "*.md" -o -name "*.sql" -o -name "*.mjs" \) | while read -r file; do
+          sed -i.bak "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "$file"
+          rm -f "${file}.bak"
+        done
+        
         add_module_to_terraform "$module_name" "$PROJECT_FOLDER" "$PROJECT_NAME"
+        add_module_to_web_deps "$module_name" "$PROJECT_FOLDER" "$PROJECT_NAME"
       else
         log_warn "Functional module not found: ${module_name}"
       fi
@@ -450,6 +780,20 @@ if [[ "$CREATE_REPOS" == "true" ]]; then
   fi
 else
   log_step "Step 5/5: Skipping GitHub repo creation (--create-repos not specified)"
+fi
+
+echo ""
+
+# --- Run Automation (if config file provided) ---
+if [[ -n "$INPUT_CONFIG" ]] && [[ "$DRY_RUN" == "false" ]]; then
+  generate_env_files "$INPUT_CONFIG" "$PROJECT_FOLDER"
+  generate_terraform_vars "$INPUT_CONFIG" "$PROJECT_FOLDER"
+  
+  if [[ "$WITH_CORE_MODULES" == "true" ]] || [[ ${#ENABLED_MODULES[@]} -gt 0 ]]; then
+    consolidate_database_schemas "$PROJECT_FOLDER"
+    install_validation_deps "$PROJECT_FOLDER"
+    build_packages "$PROJECT_FOLDER"
+  fi
 fi
 
 echo ""

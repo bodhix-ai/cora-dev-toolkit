@@ -17,9 +17,19 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
-      "@{{PROJECT_NAME}}/ai-config-module-frontend": [
-        "../../packages/ai-config-module/frontend"
-      ]
+      "@{{PROJECT_NAME}}/api-client": ["../../packages/api-client"],
+      "@{{PROJECT_NAME}}/shared-types": ["../../packages/shared-types"],
+      "@{{PROJECT_NAME}}/contracts": ["../../packages/contracts"],
+      "@{{PROJECT_NAME}}/shared": ["../../packages/shared"],
+      "@{{PROJECT_NAME}}/module-access": ["../../packages/module-access/frontend"],
+      "@{{PROJECT_NAME}}/module-ai": ["../../packages/module-ai/frontend"],
+      "@{{PROJECT_NAME}}/module-ws": ["../../packages/module-ws/frontend"],
+      "@{{PROJECT_NAME}}/module-mgmt": ["../../packages/module-mgmt/frontend"],
+      "@{{PROJECT_NAME}}/module-kb": ["../../packages/module-kb/frontend"],
+      "@{{PROJECT_NAME}}/module-chat": ["../../packages/module-chat/frontend"],
+      "@{{PROJECT_NAME}}/module-eval": ["../../packages/module-eval/frontend"],
+      "@{{PROJECT_NAME}}/module-voice": ["../../packages/module-voice/frontend"],
+      "@{{PROJECT_NAME}}/module-eval-studio": ["../../packages/module-eval-studio/frontend"]
     },
     "plugins": [
       {
@@ -32,11 +42,11 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "types/**/*.ts"
+    "types/**/*.ts",
+    "../../packages/*/frontend/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "../../packages/**/*",
     "**/__tests__/**",
     "**/*.test.ts",
     "**/*.test.tsx"

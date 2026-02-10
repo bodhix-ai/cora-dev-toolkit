@@ -1,12 +1,19 @@
 {
-"name": "@{{PROJECT_NAME}}/module-voice",
+  "name": "@{{PROJECT_NAME}}/module-voice",
   "version": "1.0.0",
   "private": true,
   "description": "CORA Voice Module - AI-powered voice interviews with Daily.co WebRTC, real-time transcription, and ECS-based Pipecat bot orchestration",
-  "main": "index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./index.ts",
-    "./admin": "./components/admin/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./admin": {
+      "types": "./dist/components/admin/index.d.ts",
+      "import": "./dist/components/admin/index.js"
+    }
   },
   "scripts": {
     "dev": "next dev",
@@ -17,6 +24,7 @@
   "dependencies": {
     "@{{PROJECT_NAME}}/api-client": "workspace:*",
     "@{{PROJECT_NAME}}/shared-types": "workspace:*",
+    "@{{PROJECT_NAME}}/shared": "workspace:*",
     "@daily-co/daily-js": "^0.77.0",
     "react": "^18.2.0",
     "next": "^14.0.0",
