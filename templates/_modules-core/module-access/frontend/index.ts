@@ -118,5 +118,9 @@ export { OrgAIConfigTab } from "./components/admin/OrgAIConfigTab";
 export { OrgAccessPage } from "./components/admin/OrgAccessPage";
 export { OrgAccessAdmin } from "./components/admin/OrgAccessAdmin";
 
+// Sys Admin Components (System Admins only)
+export { SysAccessAdmin } from "./components/admin/SysAccessAdmin";
+export { SysOrgDetailsAdmin } from "./components/admin/SysOrgDetailsAdmin";
+
 // Admin Cards
 export { accessControlAdminCard, organizationSettingsCard } from "./adminCard";

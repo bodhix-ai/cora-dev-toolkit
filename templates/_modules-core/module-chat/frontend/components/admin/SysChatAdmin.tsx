@@ -19,7 +19,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { useUser, useRole } from "@ai-mod/module-access";
+import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
 import {
   Box,
   Tabs,

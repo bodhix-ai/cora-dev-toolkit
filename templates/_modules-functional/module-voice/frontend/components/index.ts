@@ -18,3 +18,7 @@ export type { ConfigFormProps } from "./ConfigForm";
 
 export { InterviewRoom } from "./InterviewRoom";
 export type { InterviewRoomProps } from "./InterviewRoom";
+
+// Admin Components
+export { OrgVoiceAdmin } from "./admin/OrgVoiceAdmin";
+export { SysVoiceAdmin } from "./admin/SysVoiceAdmin";

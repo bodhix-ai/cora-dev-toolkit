@@ -93,6 +93,10 @@ export {
 // ADMIN COMPONENTS
 // =============================================================================
 
+// Admin Page Components
+export { OrgEvalAdmin } from "./admin/OrgEvalAdmin";
+export { SysEvalAdmin } from "./admin/SysEvalAdmin";
+
 // Doc Type Management
 export {
   DocTypeManager,

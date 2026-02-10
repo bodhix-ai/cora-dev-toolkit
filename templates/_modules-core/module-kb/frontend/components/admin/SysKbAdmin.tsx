@@ -22,12 +22,12 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useUser, useRole } from '@ai-mod/module-access';
+import { useUser, useRole } from '@{{PROJECT_NAME}}/module-access';
 import { Box, CircularProgress, Alert } from '@mui/material';
 import { PlatformAdminKBPage } from '../../pages/PlatformAdminKBPage';
 import { useSysKbs, useKbDocuments } from '../../hooks';
 import { createAuthenticatedClient, createKbModuleClient } from '../../lib/api';
-import type { KnowledgeBase } from '../../types';
+import type { KnowledgeBase, CreateKbInput, UpdateKbInput } from '../../types';
 
 /**
  * System KB Admin Component
@@ -136,8 +136,8 @@ export function SysKbAdmin(): React.ReactElement {
       kbs={kbs}
       kbsLoading={kbsLoading}
       kbsError={kbsError}
-      onCreateKb={async (data: Record<string, unknown>) => { await createKb(data); }}
-      onUpdateKb={async (kbId: string, data: Record<string, unknown>) => { await updateKb(kbId, data); }}
+      onCreateKb={async (data: CreateKbInput) => { await createKb(data); }}
+      onUpdateKb={async (kbId: string, data: UpdateKbInput) => { await updateKb(kbId, data); }}
       onDeleteKb={deleteKb}
       onRefreshKbs={refreshKbs}
       selectedKb={selectedKb}

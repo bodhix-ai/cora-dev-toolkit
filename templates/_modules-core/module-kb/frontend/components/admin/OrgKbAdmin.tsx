@@ -18,7 +18,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useUser, useRole, useOrganizationContext } from '@ai-mod/module-access';
+import { useUser, useRole, useOrganizationContext } from '@{{PROJECT_NAME}}/module-access';
 import { Box, CircularProgress, Alert } from '@mui/material';
 import { OrgAdminKBPage } from '../../pages/OrgAdminKBPage';
 import { useOrgKbs, useKbDocuments } from '../../hooks';

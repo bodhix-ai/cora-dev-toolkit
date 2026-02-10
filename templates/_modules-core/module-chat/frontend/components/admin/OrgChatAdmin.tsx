@@ -21,7 +21,7 @@
  */
 
 import React, { useState } from "react";
-import { useUser, useRole, useOrganizationContext } from "@ai-mod/module-access";
+import { useUser, useRole, useOrganizationContext } from "@{{PROJECT_NAME}}/module-access";
 import {
   Box,
   Tabs,

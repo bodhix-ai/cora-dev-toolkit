@@ -2,13 +2,16 @@
   "name": "@{{PROJECT_NAME}}/module-access",
   "version": "1.0.0",
   "description": "Organization and user management frontend for CORA",
-  "main": "./index.ts",
-  "types": "./index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./index.ts",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
     "./admin": {
-      "types": "./components/admin/index.d.ts",
-      "default": "./components/admin/index.ts"
+      "types": "./dist/components/admin/index.d.ts",
+      "import": "./dist/components/admin/index.js"
     }
   },
   "scripts": {

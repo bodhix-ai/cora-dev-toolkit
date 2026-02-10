@@ -17,6 +17,9 @@ export * from "./hooks";
 // Admin Cards
 export { workspacePlatformAdminCard, workspaceOrgAdminCard } from "./adminCard";
 
+// Admin Components
+export * from "./components/admin";
+
 // Pages (for app route integration)
 export * from "./pages";
 
