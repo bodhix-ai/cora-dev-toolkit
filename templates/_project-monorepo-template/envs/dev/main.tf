@@ -230,6 +230,47 @@ module "module_chat" {
 }
 
 # ========================================================================
+# App Runner Service
+# ========================================================================
+# Deploys Next.js web application to AWS App Runner
+
+module "app_runner_web" {
+  source = "../../modules/app-runner"
+
+  name_prefix = "{{PROJECT_NAME}}"
+  environment = "dev"
+  app_name    = "web"
+
+  port              = 3000  # Next.js default port (proven working in team deployments)
+  health_check_path = "/api/healthcheck"  # Matches working deployments
+  cpu               = "1024"  # 1 vCPU
+  memory            = "2048"  # 2 GB
+  auto_deploy       = true
+
+  environment_variables = {
+    NODE_ENV                  = "production"
+    HOSTNAME                  = "0.0.0.0"  # Next.js must listen on all interfaces for App Runner
+    PORT                      = "3000"     # Next.js default port
+    AUTH_TRUST_HOST           = "true"     # CRITICAL: Required for NextAuth behind reverse proxy (App Runner)
+    NEXT_PUBLIC_CORA_API_URL  = module.modular_api_gateway.api_gateway_url  # Fixed: was NEXT_PUBLIC_API_URL
+    NEXTAUTH_URL              = "https://${var.app_domain}"
+    NEXTAUTH_SECRET           = var.nextauth_secret
+    OKTA_ISSUER               = var.okta_issuer
+    OKTA_CLIENT_ID            = var.okta_audience
+    OKTA_CLIENT_SECRET        = ""  # Add to variables if using Okta client credentials flow
+    SUPABASE_URL              = var.supabase_url
+    SUPABASE_ANON_KEY         = var.supabase_anon_key_value
+  }
+
+  common_tags = {
+    Environment = "dev"
+    Project     = "{{PROJECT_NAME}}"
+    ManagedBy   = "terraform"
+    App         = "web"
+  }
+}
+
+# ========================================================================
 # CORA Modular API Gateway
 # ========================================================================
 # Dynamically provisions routes from all CORA modules
@@ -260,6 +301,9 @@ module "modular_api_gateway" {
     module.module_chat.api_routes,
     []
   )
+
+  # CORS configuration - allows requests from App Runner web application
+  allowed_origins = var.allowed_origins
 
   # Attach JWT authorizer for authentication
   authorizer_lambda_arn  = aws_lambda_function.authorizer.arn
@@ -302,4 +346,19 @@ output "authorizer_lambda_arn" {
 output "authorizer_lambda_name" {
   description = "Name of API Gateway authorizer Lambda"
   value       = aws_lambda_function.authorizer.function_name
+}
+
+output "app_runner_service_url" {
+  description = "URL of the App Runner web service"
+  value       = module.app_runner_web.app_runner_service_url
+}
+
+output "app_runner_service_arn" {
+  description = "ARN of the App Runner web service"
+  value       = module.app_runner_web.app_runner_service_arn
+}
+
+output "ecr_repository_url" {
+  description = "URL of the ECR repository for web application"
+  value       = module.app_runner_web.ecr_repository_url
 }

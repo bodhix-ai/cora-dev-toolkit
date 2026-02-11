@@ -116,3 +116,26 @@ variable "aws_region" {
   type        = string
   default     = "us-east-1"
 }
+
+# ========================================================================
+# App Runner Configuration
+# ========================================================================
+
+variable "nextauth_secret" {
+  description = "NextAuth secret for session encryption (generate with: openssl rand -base64 32)"
+  type        = string
+  sensitive   = true
+  default     = ""  # Must be set in local-secrets.tfvars for production use
+}
+
+variable "app_domain" {
+  description = "Domain name for the App Runner service (e.g., app.example.com)"
+  type        = string
+  default     = "localhost:3000"  # Placeholder for development
+}
+
+variable "allowed_origins" {
+  description = "List of allowed CORS origins for API Gateway"
+  type        = list(string)
+  default     = ["*"]
+}

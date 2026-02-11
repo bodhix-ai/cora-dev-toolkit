@@ -28,8 +28,14 @@ resource "aws_apigatewayv2_api" "modular" {
   cors_configuration {
     allow_methods = ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
     allow_origins = var.allowed_origins
-    allow_headers = ["*"]
-    max_age       = 300
+    allow_headers = [
+      "Authorization",
+      "Content-Type",
+      "X-Requested-With",
+      "Accept",
+      "Origin"
+    ]
+    max_age = 300
   }
 
   tags = local.tags
