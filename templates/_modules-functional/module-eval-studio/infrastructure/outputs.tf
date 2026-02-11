@@ -155,6 +155,54 @@ output "api_routes" {
       path        = "/ws/{wsId}/optimization/runs/{runId}/optimize"
       integration = aws_lambda_function.opt_orchestrator.invoke_arn
       public      = false
+    },
+    # =========================================================================
+    # Executions (Sprint 6)
+    # =========================================================================
+    {
+      method      = "POST"
+      path        = "/ws/{wsId}/optimization/runs/{runId}/executions"
+      integration = aws_lambda_function.opt_orchestrator.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/ws/{wsId}/optimization/runs/{runId}/executions"
+      integration = aws_lambda_function.opt_orchestrator.invoke_arn
+      public      = false
+    },
+    {
+      method      = "POST"
+      path        = "/ws/{wsId}/optimization/runs/{runId}/executions/{execId}/start"
+      integration = aws_lambda_function.opt_orchestrator.invoke_arn
+      public      = false
+    },
+    {
+      method      = "GET"
+      path        = "/ws/{wsId}/optimization/runs/{runId}/executions/{execId}/results"
+      integration = aws_lambda_function.opt_orchestrator.invoke_arn
+      public      = false
+    },
+    # =========================================================================
+    # Truth Set Template/Upload (Sprint 6)
+    # =========================================================================
+    {
+      method      = "GET"
+      path        = "/ws/{wsId}/optimization/runs/{runId}/truth-set-template"
+      integration = aws_lambda_function.opt_orchestrator.invoke_arn
+      public      = false
+    },
+    {
+      method      = "POST"
+      path        = "/ws/{wsId}/optimization/runs/{runId}/truth-set-upload"
+      integration = aws_lambda_function.opt_orchestrator.invoke_arn
+      public      = false
+    },
+    {
+      method      = "POST"
+      path        = "/ws/{wsId}/optimization/runs/{runId}/truth-set-preview"
+      integration = aws_lambda_function.opt_orchestrator.invoke_arn
+      public      = false
     }
   ]
 }

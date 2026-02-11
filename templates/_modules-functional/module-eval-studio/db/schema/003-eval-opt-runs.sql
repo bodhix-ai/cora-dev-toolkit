@@ -145,6 +145,7 @@ CREATE INDEX IF NOT EXISTS idx_eval_opt_run_criteria_set
 CREATE TABLE IF NOT EXISTS eval_opt_run_results (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     run_id UUID NOT NULL REFERENCES eval_opt_runs(id) ON DELETE CASCADE,
+    execution_id UUID REFERENCES eval_opt_run_executions(id) ON DELETE CASCADE,  -- Sprint 6: Execution reference
     group_id UUID NOT NULL REFERENCES eval_opt_doc_groups(id),
     criteria_item_id UUID NOT NULL REFERENCES eval_criteria_items(id),
     truth_key_id UUID NOT NULL REFERENCES eval_opt_truth_keys(id),
@@ -176,6 +177,7 @@ CREATE TABLE IF NOT EXISTS eval_opt_run_results (
 -- Add table comment
 COMMENT ON TABLE eval_opt_run_results IS 'Detailed results per criterion per sample for each run';
 COMMENT ON COLUMN eval_opt_run_results.run_id IS 'Run foreign key';
+COMMENT ON COLUMN eval_opt_run_results.execution_id IS 'Execution reference (nullable for backward compat with pre-S6 results)';
 COMMENT ON COLUMN eval_opt_run_results.group_id IS 'Document group foreign key';
 COMMENT ON COLUMN eval_opt_run_results.criteria_item_id IS 'Criteria item foreign key';
 COMMENT ON COLUMN eval_opt_run_results.truth_key_id IS 'Truth key foreign key';
@@ -220,6 +222,8 @@ CREATE INDEX IF NOT EXISTS idx_eval_opt_result_type
     ON eval_opt_run_results(run_id, result_type);
 CREATE INDEX IF NOT EXISTS idx_eval_opt_result_variation 
     ON eval_opt_run_results(run_id, variation_name);
+CREATE INDEX IF NOT EXISTS idx_eval_opt_result_execution_id
+    ON eval_opt_run_results(execution_id);
 
 -- ============================================================================
 -- End of migration
