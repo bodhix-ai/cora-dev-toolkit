@@ -73,16 +73,23 @@ docker logs -f test
 ```bash
 docker run -p 3000:3000 \
   -e NODE_ENV=production \
-  -e NEXT_PUBLIC_API_URL=https://lqu30jldc1.execute-api.us-east-1.amazonaws.com \
-  -e OKTA_ISSUER=https://simpletech.okta.com/oauth2/default \
+  -e AUTH_TRUST_HOST=true \
+  -e NEXT_PUBLIC_AUTH_PROVIDER=okta \
+  -e NEXT_PUBLIC_SUPABASE_URL=https://kxshyoaxjkwvcdmjrfxz.supabase.co \
+  -e NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... \
+  -e NEXT_PUBLIC_CORA_API_URL=https://lqu30jldc1.execute-api.us-east-1.amazonaws.com \
+  -e SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... \
+  -e OKTA_DOMAIN=simpletech.okta.com \
   -e OKTA_CLIENT_ID=0oax0eaf3bgW5NP73697 \
   -e OKTA_CLIENT_SECRET=OYZopGSsAchUlcW9XxYSVBVsfpcpbV7kJ6bytqZ4UeBILKA0kWU7irbyF5wTF-CX \
+  -e OKTA_ISSUER=https://simpletech.okta.com/oauth2/default \
   -e NEXTAUTH_URL=http://localhost:3000 \
   -e NEXTAUTH_SECRET=Iu/OSUlrsqLNeUF14dSWtwMRpmjAXv//jaIH+jgQb2I= \
-  -e SUPABASE_URL=https://kxshyoaxjkwvcdmjrfxz.supabase.co \
-  -e SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... \
+  -e AWS_REGION=us-east-1 \
   ai-mod-web:latest
 ```
+
+**Note:** Variables prefixed with `NEXT_PUBLIC_*` are required for Next.js client-side access. Without these prefixes, the React app cannot access Supabase, API URLs, or other client-side configuration.
 
 ### Step 3: Test Health Check
 
@@ -424,19 +431,29 @@ docker exec -it CONTAINER_NAME sh  # Interactive shell
 **Required for CORA:**
 
 ```bash
+# Runtime Configuration
 NODE_ENV=production
-NEXT_PUBLIC_API_URL=https://[api-id].execute-api.us-east-1.amazonaws.com
-OKTA_ISSUER=https://simpletech.okta.com/oauth2/default
+AUTH_TRUST_HOST=true
+HOSTNAME=0.0.0.0  # Set in Dockerfile, not needed as env var
+
+# Next.js Public Variables (Client-side access - MUST have NEXT_PUBLIC_ prefix)
+NEXT_PUBLIC_AUTH_PROVIDER=okta
+NEXT_PUBLIC_SUPABASE_URL=https://[project].supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
+NEXT_PUBLIC_CORA_API_URL=https://[api-id].execute-api.us-east-1.amazonaws.com
+
+# Server-side Variables
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+OKTA_DOMAIN=simpletech.okta.com
 OKTA_CLIENT_ID=0oax0eaf3bgW5NP73697
 OKTA_CLIENT_SECRET=<secret>
+OKTA_ISSUER=https://simpletech.okta.com/oauth2/default
 NEXTAUTH_URL=http://localhost:3000  # Or App Runner URL
 NEXTAUTH_SECRET=<secret>
-NEXT_PUBLIC_AUTH_PROVIDER=okta
-NEXT_PUBLIC_CORA_API_URL=<same-as-api-url>
-SUPABASE_URL=https://[project].supabase.co
-SUPABASE_ANON_KEY=<key>
-AUTH_TRUST_HOST=true  # Required for App Runner
+AWS_REGION=us-east-1
 ```
+
+**Critical:** Variables with `NEXT_PUBLIC_*` prefix are embedded in the client-side JavaScript bundle at build time and are accessible in React components. Variables without this prefix are only available on the server-side (API routes, getServerSideProps, etc.).
 
 **Using .env.local:**
 ```bash
