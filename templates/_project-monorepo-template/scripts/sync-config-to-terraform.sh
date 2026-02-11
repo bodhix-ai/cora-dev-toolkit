@@ -12,7 +12,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-INFRA_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ENV="${1:-dev}"
 
 # --- Colors ---
@@ -28,7 +28,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
 
 # Extract project name and config file from project.json
-PROJECT_NAME=$(jq -r '.name' "${INFRA_ROOT}/project.json" 2>/dev/null || echo "")
+PROJECT_NAME=$(jq -r '.name' "${REPO_ROOT}/project.json" 2>/dev/null || echo "")
 if [[ -z "$PROJECT_NAME" ]]; then
   log_error "Could not determine project name from project.json"
   exit 1
@@ -36,20 +36,19 @@ fi
 
 # Get config file from project.json (set during project creation)
 # This allows projects created with different --input files to work correctly
-CONFIG_FILE_NAME=$(jq -r '.cora.configFile // ""' "${INFRA_ROOT}/project.json" 2>/dev/null || echo "")
+CONFIG_FILE_NAME=$(jq -r '.cora.configFile // ""' "${REPO_ROOT}/project.json" 2>/dev/null || echo "")
 
-STACK_DIR="${INFRA_ROOT}/../${PROJECT_NAME}-stack"
-
+# MONOREPO: Config file is at repo root (not in separate stack repo)
 # Determine config file path - use saved configFile if available, otherwise default
 if [[ -n "$CONFIG_FILE_NAME" && "$CONFIG_FILE_NAME" != "null" ]]; then
-  CONFIG_FILE="${STACK_DIR}/${CONFIG_FILE_NAME}"
+  CONFIG_FILE="${REPO_ROOT}/${CONFIG_FILE_NAME}"
   log_info "Using config file from project.json: ${CONFIG_FILE_NAME}"
 else
-  CONFIG_FILE="${STACK_DIR}/setup.config.${PROJECT_NAME}.yaml"
+  CONFIG_FILE="${REPO_ROOT}/setup.config.${PROJECT_NAME}.yaml"
   log_info "Using default config file: setup.config.${PROJECT_NAME}.yaml"
 fi
 
-TFVARS_FILE="${INFRA_ROOT}/envs/${ENV}/local-secrets.tfvars"
+TFVARS_FILE="${REPO_ROOT}/envs/${ENV}/local-secrets.tfvars"
 
 log_step "Syncing configuration from ${CONFIG_FILE} to ${TFVARS_FILE}..."
 
@@ -65,8 +64,8 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
   echo ""
   log_info "📋 Steps to fix:"
   echo ""
-  echo "  1. Navigate to the stack directory:"
-  echo "     cd ${STACK_DIR}"
+  echo "  1. Navigate to the repository root:"
+  echo "     cd ${REPO_ROOT}"
   echo ""
   echo "  2. Copy the example config to create your project config:"
   echo "     cp setup.config.example.yaml setup.config.${PROJECT_NAME}.yaml"
@@ -82,7 +81,7 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
   echo "     • AWS profile"
   echo ""
   echo "  5. Then retry deployment:"
-  echo "     cd ${INFRA_ROOT}/scripts"
+  echo "     cd ${REPO_ROOT}/scripts"
   echo "     ./deploy-all.sh ${ENV}"
   echo ""
   log_info "💡 Why this file is needed:"
