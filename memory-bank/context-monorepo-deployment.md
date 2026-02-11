@@ -23,17 +23,24 @@
 | Sprint | Branch | Plan | Status | Completed |
 |--------|--------|------|--------|-----------|
 | S1 | `monorepo-s1` | `completed/plan_monorepo-s1-summary.md` | ✅ Complete | 2026-02-10 |
-| S2 | `monorepo-s2` | Phase 3 (In Progress) | 🟡 Active | - |
+| S2 | `monorepo-s2` | `plan_monorepo-master-plan.md` (Phase 3) | ⚠️ Partial | 2026-02-10 |
+| S3 | `monorepo-s3` | `plan_monorepo-s3.md` | 🟡 Active | - |
 
 ---
 
 ## Current Sprint
 
-**Sprint:** S2 (Phase 3: App Runner Infrastructure)  
-**Branch:** `monorepo-s2`  
-**Plan:** Master plan Phase 3  
-**Focus:** Deploy infrastructure to AWS (ECR + App Runner + Lambda functions)  
-**Status:** ⚠️ Health check NOT YET CONFIRMED - Deployment interrupted, needs verification
+**Sprint:** S3 (Phase 3 Completion: Container Build + Deployment Support)  
+**Branch:** `monorepo-s3`  
+**Plan:** `docs/plans/plan_monorepo-s3.md`  
+**Focus:** Verify container build works with latest code, get deployment support from team  
+**Status:** 🟡 Active - Starting fresh after eval-studio merge
+
+**Sprint 2 Status:** Closed as "Partial Complete"
+- ✅ Infrastructure code complete (App Runner module, CORS, health check fixes)
+- ✅ Docker image builds and pushes to ECR
+- ❌ App Runner deployment stalled (health check timeout)
+- 🔄 Synced with main (includes eval-studio team changes)
 
 ---
 
