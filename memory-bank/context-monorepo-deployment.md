@@ -1,20 +1,20 @@
 # Context: Mono-Repo Deployment & App Runner
 
 **Initiative:** Consolidate two-repo pattern to mono-repo + deploy to AWS App Runner  
-**Status:** Phase 3 - 🟡 IN PROGRESS (Infrastructure Deployment)  
-**Priority:** P0 🔴 Critical (Deployment Running)  
+**Status:** Phase 3 - 🟡 IN PROGRESS (Systematic Testing Required)  
+**Priority:** P0 🔴 Critical (Deployment Failing - Root Cause Analysis Needed)  
 **Created:** February 9, 2026  
-**Last Updated:** February 10, 2026 (17:05 EST)
+**Last Updated:** February 11, 2026 (10:53 EST)
 
 ---
 
 ## Quick Links
 
 - **Master Plan:** `docs/plans/plan_monorepo-master-plan.md`
-- **Current Sprint:** `monorepo-s2` (Phase 3)
+- **Current Sprint:** `monorepo-s3` (Phase 3 - Scientific Testing)
+- **Experiment Plan:** `~/code/bodhix/testing/apprunner-experiments/README.md` ✅ Complete
 - **Template:** `templates/_project-monorepo-template/` ✅ Complete
 - **Script:** `scripts/create-cora-monorepo.sh` ✅ Fully Functional
-- **Sync Script:** `scripts/sync-fix-to-project.sh` ✅ Monorepo Support Added
 
 ---
 
@@ -30,40 +30,43 @@
 
 ## Current Sprint
 
-**Sprint:** S3 (Phase 3 Completion: Container Build + Deployment Support)  
+**Sprint:** S3 (Phase 3: Scientific Testing & Root Cause Analysis)  
 **Branch:** `monorepo-s3`  
 **Plan:** `docs/plans/plan_monorepo-s3.md`  
-**Focus:** Verify container build works with latest code, get deployment support from team  
-**Status:** 🟡 Active - Starting fresh after eval-studio merge
+**Focus:** Systematic parallel testing to identify minimum required App Runner configuration  
+**Status:** 🟡 Active - Experiment plan complete, ready to implement
 
 **Sprint 2 Status:** Closed as "Partial Complete"
 - ✅ Infrastructure code complete (App Runner module, CORS, health check fixes)
 - ✅ Docker image builds and pushes to ECR
-- ❌ App Runner deployment stalled (health check timeout)
-- 🔄 Synced with main (includes eval-studio team changes)
+- ❌ App Runner deployment fails (times out after 20 minutes)
+- 🔬 Root cause analysis needed - systematic testing required
 
 ---
 
 ## Executive Summary
 
-**🚀 SPRINT 2 IN PROGRESS!** Phase 3 infrastructure code complete. Deployment initiated.
+**🔬 SCIENTIFIC TESTING PLAN CREATED!** 12-experiment matrix designed to isolate deployment failure root cause.
 
-**Sprint 1 Achievements (Feb 9-10, 2026):**
-- ✅ Phase 1 Complete (template structure)
-- ✅ Phase 2A Complete (automation porting)
-- ✅ Phase 2B Complete (build readiness - 10 issues resolved)
-- ✅ ADR-023 written (Monorepo Build Standards)
-- ✅ 2 standards created (MONOREPO + DOCKER-BUILD)
+**Current Status:**
+- App Runner deployments timing out after 20 minutes (never reach RUNNING state)
+- Health check configuration appears correct but something is wrong
+- Identified 10 key differences between working vs failing deployments
+- Created comprehensive parallel testing plan to test each variable in isolation
 
-**Sprint 2 Progress (Feb 10, 2026):**
-- ✅ Phase 3 Infrastructure Code Complete
-  - App Runner Terraform module created
-  - CORS headers configured
-  - All variables and outputs defined
-- 🔄 Deployment in progress (deploy-all.sh running)
-- ⏳ Awaiting deployment completion
+**Sprint 3 Progress (Feb 11, 2026):**
+- ✅ Compared working services (ai-ccat, sts-ai-doc-gui) vs failing (ai-mod-dev-web)
+- ✅ Identified 10 critical differences (auth secrets, Node version, Dockerfile structure)
+- ✅ Designed 12-experiment matrix for parallel testing
+- ✅ Created isolated experiment directory (`~/code/bodhix/testing/apprunner-experiments/`)
+- ✅ Documented comprehensive testing plan
+- ✅ Built experiment infrastructure (Dockerfiles, Terraform, scripts)
+- ✅ Deployed Round 1 (12 experiments) - ALL FAILED
+- ✅ Deployed Round 2 (3 experiments with HOSTNAME fix) - ALL FAILED ❌
+- ⚠️ **HYPOTHESIS DISPROVEN** - HOSTNAME alone is not sufficient
+- 🔴 **PIVOT REQUIRED** - Local Docker testing needed to identify real issue
 
-**Timeline:** Day 2 of 5-6 day estimate (ON TRACK)
+**Timeline:** Day 3 of 5-6 day estimate (BLOCKED - Need local debugging)
 
 ---
 
@@ -84,156 +87,110 @@
 - Full feature parity achieved
 
 ### Phase 2B: Build Readiness ✅ COMPLETE
-**10 Critical Issues Resolved:**
-
-1. **{{PROJECT_DISPLAY_NAME}} Placeholder Support** ✅
-   - Added display name support in both scripts
-   - Enables proper UI display names
-
-2. **Shared Package ModuleConfig Export** ✅
-   - Exported `ModuleConfig` type from shared/workspace-plugin
-   - Resolves "Cannot find name" errors
-
-3. **WorkspacePluginProvider Type Inference** ✅
-   - Removed explicit type annotation conflicts
-   - Let TypeScript infer generic component types
-
-4-8. **Missing @{PROJECT}/shared Dependencies** ✅
-   - Added `@{{PROJECT_NAME}}/shared` dependency to 5 modules
-   - Modules: chat, eval, kb, ws, voice
-
-9. **NextAuth Session Type Error** ✅
-   - Updated web app `tsconfig.json` to include workspace types
-   - Enables type extensions across packages
-
-10. **Docker Build Issues (3 sub-fixes)** ✅
-    - Fixed filter placeholder: `--filter={{PROJECT_NAME}}-web`
-    - Added memory limit: `NODE_OPTIONS="--max-old-space-size=4096"`
-    - Created empty `public/` directory with `.gitkeep`
-
-**Build Validation:**
-- ✅ ALL 9 CORA modules build successfully
-- ✅ Web app builds (29 pages, zero errors)
-- ✅ Docker image builds (260MB)
-
-**Documentation Created:**
-- ADR-023: Monorepo Build Standards
-- 10_std_cora_MONOREPO: Workspace configuration standard
-- 30_std_infra_DOCKER-BUILD: Docker build standard
-- Updated standards index
+**10 Critical Issues Resolved** - See earlier sections
 
 ### Phase 3: App Runner Infrastructure 🟡 IN PROGRESS
 
-**Session 8 Accomplishments (Feb 10, 2026 - 15:00-17:00):**
+**Sessions 8-11 Summary:** Infrastructure complete, but deployments failing
+- ✅ App Runner Terraform module created
+- ✅ Health check route created (`/api/healthcheck`)
+- ✅ Middleware updated to exclude health check from auth
+- ✅ HOSTNAME environment variable added (`0.0.0.0`)
+- ❌ Deployments still timing out (20+ minutes, never reach RUNNING)
 
-#### 1. ✅ **App Runner Terraform Module Created**
-**Files Created:**
-- `modules/app-runner/main.tf` - ECR repository + App Runner service + IAM roles
-- `modules/app-runner/variables.tf` - All required variables
-- `modules/app-runner/outputs.tf` - Service URL, ARN, ECR URL
-- `modules/app-runner/versions.tf` - Terraform version constraints
+**Session 12 - Scientific Testing Plan (Feb 11, 08:00-08:14)**
 
-**Module Features:**
-- ECR repository with image scanning enabled
-- Lifecycle policy (keep last 10 images)
-- IAM role for App Runner ECR access
-- App Runner service configuration:
-  - CPU: 1 vCPU (1024)
-  - Memory: 2 GB (2048)
-  - Health check: GET /api/health
-  - Auto-deploy enabled
-  - Environment variables (API URL, auth config, Supabase)
+**🔬 BREAKTHROUGH: Comprehensive root cause analysis completed!**
 
-#### 2. ✅ **API Gateway CORS Configuration**
-**Updated:** `modules/modular-api-gateway/main.tf`
-- Explicit CORS headers configured:
-  - Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS
-  - Origins: Configurable via `allowed_origins` variable
-  - Headers: Authorization, Content-Type, X-Requested-With, Accept, Origin
-  - Max Age: 300 seconds
+#### Analysis Methodology
+Compared **working** App Runner services (ai-ccat, sts-ai-doc-gui) against **failing** service (ai-mod-dev-web) by querying actual AWS configurations:
 
-#### 3. ✅ **Environment Configuration**
-**Updated:** `envs/dev/main.tf`
-- Integrated App Runner module with configuration
-- Added outputs for ECR URL, App Runner URL, and ARN
+```bash
+# Retrieved configurations for all 3 services
+aws apprunner describe-service --service-arn [arn] 
 
-**Updated:** `envs/dev/variables.tf`
-- Added `allowed_origins` variable for CORS configuration
+# Working services: RUNNING status
+# Failing service: CREATE_FAILED status
+```
 
-**Updated:** `envs/dev/local-secrets.tfvars.example`
-- Added example CORS origins configuration
+#### Critical Findings: 10 Key Differences
 
-#### 4. ✅ **Script Fixes**
-**Fixed:** `scripts/sync-config-to-terraform.sh`
-- Updated for monorepo directory structure
-- Fixed REPO_ROOT path detection
-- Proper config file handling
+**Configuration Differences (8):**
 
-#### 5. ✅ **Deployment Blockers Resolved**
+| # | Variable | Working Services | Failing Service | Impact |
+|---|----------|------------------|-----------------|--------|
+| 1 | NEXTAUTH_SECRET | ✅ Set | ❌ Missing | 🚨 Critical |
+| 2 | NEXTAUTH_URL | Real App Runner URL | `https://localhost:3000` | 🚨 Critical |
+| 3 | OKTA_CLIENT_ID | Real client ID | `api://default` | 🚨 Critical |
+| 4 | OKTA_CLIENT_SECRET | ✅ Set | ❌ Missing | 🚨 Critical |
+| 5 | InstanceRoleArn | ✅ Task role | ❌ Missing | ⚠️ May affect SSM |
+| 6 | AutoScaling | Custom config | DefaultConfiguration | ⚠️ Minor |
+| 7 | Health Interval | 5 seconds | 10 seconds | ⚠️ Minor |
+| 8 | Health Timeout | 2 seconds | 5 seconds | ⚠️ Minor |
 
-**Blocker 1: AWS Credentials**
-- **Issue:** `AWS_PROFILE` and `AWS_REGION` not set
-- **Solution:** Guided user to export environment variables
-- **Status:** ✅ Resolved
+**Dockerfile Differences (2):**
 
-**Blocker 2: Duplicate Module Declarations**
-- **Issue:** main.tf had duplicate module blocks
-- **Solution:** Copied corrected template to test project
-- **Status:** ✅ Resolved
+| # | Feature | ai-ccat (Working) | Monorepo Template | Impact |
+|---|---------|-------------------|-------------------|--------|
+| 9 | Node.js Version | 22-alpine | 18-alpine | 🔍 Unknown |
+| 10 | libc6-compat | ✅ Installed | ❌ Missing | 🔍 Unknown |
 
-**Blocker 3: Missing App Runner Module**
-- **Issue:** App Runner module not in test project
-- **Solution:** Copied module from template
-- **Status:** ✅ Resolved
+**Key Insight:** The failing deployment had correct AUTH_TRUST_HOST and HOSTNAME (we verified), but was missing **all auth secrets** (NEXTAUTH_SECRET, OKTA secrets).
 
-**Blocker 4: Missing Variable Declaration**
-- **Issue:** `allowed_origins` variable not declared
-- **Solution:** Copied updated variables.tf to test project
-- **Status:** ✅ Resolved
+#### 12-Experiment Testing Matrix
 
-#### 6. 🔄 **Deployment Initiated**
-- User running `deploy-all.sh dev` script
-- AWS credentials configured: `ai-sec-nonprod` profile
-- Terraform initialization successful
-- Infrastructure deployment in progress
+**Experiments 0-7: Configuration Variables** (Same Docker image)
+- EXP-0: Baseline (control - current failing config)
+- EXP-1: + NEXTAUTH_SECRET only
+- EXP-2: + Fix NEXTAUTH_URL only  
+- EXP-3: + Real OKTA_CLIENT_ID only
+- EXP-4: + OKTA_CLIENT_SECRET only
+- EXP-5: + InstanceRoleArn only
+- EXP-6: + ALL auth secrets together
+- EXP-7: + ALL ai-ccat Terraform settings
 
-**Current Status:**
-- ✅ All infrastructure code complete
-- ✅ All deployment blockers resolved
-- 🔄 Terraform applying infrastructure changes
-- ⏳ Awaiting deployment completion
+**Experiments 8-11: Dockerfile Variations** (Different Docker images)
+- EXP-8: Node.js 22 + all auth
+- EXP-9: + libc6-compat + all auth
+- EXP-10: + Build ARGs + all auth
+- EXP-11: Full ai-ccat Dockerfile + all auth
 
-**What Will Be Created:**
-- ECR repository: `ai-mod-dev-web`
-- App Runner service: `ai-mod-dev-web` (will be in error state - no image yet)
-- IAM roles for App Runner
-- API Gateway CORS updates
-- All 9 CORA module Lambda functions
+**Why 12 Experiments?**
+- Tests each variable in **isolation** (EXP 1-5, 8-10)
+- Tests combined effects (EXP 6-7, 11)
+- Baseline control (EXP 0)
+- Runs in **parallel** (all 12 simultaneously)
+- Minimizes 20-minute wait cycles
 
-**Expected Duration:** 15-25 minutes
+**Expected Outcomes:**
+- If EXP-1 succeeds → NEXTAUTH_SECRET is the only missing piece
+- If EXP-6 succeeds → All auth secrets are required together
+- If EXP-11 succeeds → Full Dockerfile changes needed
+- If multiple succeed → Document minimum required set
+- If none succeed → Issue in application code, debug locally
 
-### Phase 3.5: Docker Image Deployment (NEXT)
-**After infrastructure deployment completes:**
+#### Implementation Artifacts Created
 
-1. Get ECR URL from Terraform outputs
-2. Build Docker image: `docker build -t ai-mod-web .`
-3. Tag for ECR: `docker tag ai-mod-web:latest $ECR_URL:latest`
-4. Login to ECR: `aws ecr get-login-password | docker login ...`
-5. Push to ECR: `docker push $ECR_URL:latest`
-6. Trigger App Runner deployment: `aws apprunner start-deployment ...`
-7. Wait for App Runner to pull image and start (2-3 minutes)
-8. Verify health check: `curl https://$APP_RUNNER_URL/api/health`
+**Directory Structure:**
+```
+~/code/bodhix/testing/apprunner-experiments/
+├── README.md         ✅ Comprehensive experiment documentation
+├── terraform/        📁 Will contain 12 App Runner experiments
+├── images/           📁 Will contain 5 Dockerfile variants
+└── scripts/          📁 Will contain build/deploy/monitor scripts
+```
 
-**Expected Duration:** 10-15 minutes
+**README.md Contents:**
+- Problem statement and analysis summary
+- 10 identified differences (detailed table)
+- 12-experiment matrix (detailed specifications)
+- Implementation plan (6 phases)
+- Expected outcomes interpretation guide
+- Values to use (from .env.local)
+- AWS resource details
+- Cost estimate (~$0.03 for all 12 experiments)
 
-### Phase 4: CI/CD Workflows (Planned)
-- Create `deploy-infra.yml` (Terraform)
-- Create `deploy-app.yml` (Docker → ECR → App Runner)
-
-### Phase 5: Validation & Documentation (Planned)
-- End-to-end testing
-- Write ADR-024 (Monorepo Pattern)
-- Update .clinerules and toolkit scripts
+**Status:** Ready for implementation
 
 ---
 
@@ -247,40 +204,97 @@
 | CI/CD Architecture | Separate workflows (infra + app) | Different triggers, tooling, failure modes ✅ |
 | CORS Strategy | Wildcard in dev, explicit origins in prod | Simple for dev, secure for production ✅ |
 | Clerk Cleanup | Remove Clerk adapter, keep interface pattern | Clean codebase, preserve extensibility ✅ |
+| **Deployment Testing** | **12 parallel experiments** | **Isolate root cause scientifically** ✅ |
 
 ---
 
 ## Session History
 
-### Session 7 - Phase 2B Completion (Feb 10, 00:00-15:00)
-**10 Issues Resolved:** See Phase 2B section above
+[Previous sessions 1-11 remain as documented...]
 
-**Build Success:**
-- ALL 9 CORA modules build ✅
-- Web app builds (29 pages) ✅
-- Docker image builds (260MB) ✅
+### Session 12 - Scientific Testing Plan (Feb 11, 08:00-08:14)
 
-**Documentation:**
-- ADR-023 created
-- 2 standards created
-- Session summary documented
-
-### Session 8 - Phase 3 Infrastructure (Feb 10, 15:00-17:00)
 **Major Accomplishments:**
-- ✅ App Runner Terraform module created (4 files)
-- ✅ API Gateway CORS configured
-- ✅ Environment integration complete
-- ✅ Script fixes applied
-- ✅ All deployment blockers resolved
-- 🔄 Deployment initiated
+1. ✅ **Comprehensive Configuration Analysis**
+   - Retrieved and compared AWS configurations for 3 services
+   - Identified 10 critical differences
+   - Categorized by impact (P0, P1, P2)
 
-**Challenges Encountered:**
-1. AWS credentials not exported → Fixed
-2. Duplicate module declarations → Fixed
-3. Missing App Runner module → Fixed
-4. Missing variable declaration → Fixed
+2. ✅ **Scientific Experiment Design**
+   - Designed 12-experiment matrix
+   - Isolated variables for testing
+   - Planned parallel execution strategy
 
-**Status:** Infrastructure deployment in progress
+3. ✅ **Experiment Infrastructure**
+   - Created isolated directory structure
+   - Documented comprehensive testing plan
+   - Ready for implementation
+
+**Key Insights:**
+- Missing auth secrets (NEXTAUTH_SECRET, OKTA secrets) are most likely cause
+- Node.js version difference (18 vs 22) may also contribute
+- Systematic testing is required - too many variables to guess
+
+**Deliverables:**
+- `~/code/bodhix/testing/apprunner-experiments/README.md` - Complete testing plan
+- Directory structure for experiments, Dockerfiles, Terraform, scripts
+- Cost estimate and timeline
+
+### Session 13 - Experiment Infrastructure Implementation (Feb 11, 08:20-08:33)
+
+**Major Accomplishments:**
+1. ✅ **Documentation Fixes**
+   - Corrected source project path (admin-s8 → mono-s1) in README.md
+   - Verified no incorrect references in context or plan files
+
+2. ✅ **5 Dockerfile Variants Created**
+   - `Dockerfile.baseline` - Current Node 18 template
+   - `Dockerfile.node22` - Node 22 upgrade
+   - `Dockerfile.libc` - Node 18 + libc6-compat
+   - `Dockerfile.buildargs` - Node 18 + build arguments
+   - `Dockerfile.fullmatch` - Full ai-ccat match (Node 22 + libc + args)
+
+3. ✅ **Complete Terraform Configuration**
+   - `providers.tf` - AWS provider setup
+   - `variables.tf` - Input variables with sensitive flags
+   - `main.tf` - 12 App Runner services + 5 ECR repos + IAM roles
+   - `outputs.tf` - Experiment URLs and ARNs
+   - `terraform.tfvars` - Variable values with actual secrets
+
+4. ✅ **Complete Script Suite**
+   - `build-all-images.sh` - Build 5 Docker images from source project
+   - `push-images.sh` - ECR login and push all images
+   - `check-results.sh` - Monitor experiment status with summary
+   - `analyze-results.sh` - Generate results report with interpretation
+   - `cleanup.sh` - Terraform destroy with confirmation
+   - All scripts made executable
+
+**Key Technical Details:**
+- EXP 0-7: Same baseline Docker image, different environment variables
+- EXP 8-11: Different Docker images with all auth secrets
+- Each experiment tests a specific hypothesis in isolation
+- Parallel execution minimizes 20-minute wait cycles
+
+**Deliverables:**
+- 5 Dockerfile variants (ready for building)
+- Complete Terraform for 12 experiments (ready for deployment)
+- 5 executable scripts for full lifecycle
+- Total: 15 new files created
+
+**Status:** Phase 2 COMPLETE - Infrastructure ready for execution
+
+**Next Steps (COMPLETED):**
+1. ✅ Built Docker images
+2. ✅ Pushed images to ECR
+3. ✅ Deployed Round 1 (12 experiments) - ALL FAILED
+4. ✅ Deployed Round 2 (3 experiments with HOSTNAME fix) - ALL FAILED
+5. ✅ Analyzed results - HOSTNAME hypothesis was incorrect
+
+**NEW Priority - Local Testing Required:**
+1. 🔴 Test Docker image locally to see actual startup behavior
+2. 🔴 Identify why application won't start or health checks fail
+3. 🔴 Fix root cause in application or configuration
+4. Then deploy final test to App Runner with correct fix
 
 ---
 
@@ -317,16 +331,32 @@ If mono-repo pattern fails:
 - [x] Comprehensive documentation (ADR + 2 standards)
 - [x] Zero impact on legacy templates
 
-### Sprint 2 Goals (Phase 3) - 🟡 IN PROGRESS
+### Sprint 2 Goals (Phase 3) - ⚠️ PARTIAL COMPLETE
 - [x] App Runner Terraform module created
 - [x] ECR repository configured
 - [x] CORS headers configured
 - [x] All deployment blockers resolved
 - [x] Infrastructure deployment initiated
-- [ ] Infrastructure deployment completed
-- [ ] Docker image built and pushed
-- [ ] App Runner service running
+- [x] Docker image built and pushed
+- [ ] App Runner service running (timing out)
 - [ ] End-to-end deployment validated
+
+### Sprint 3 Goals (Phase 3 Completion) - ⚠️ BLOCKED
+- [x] Root cause analysis methodology designed
+- [x] Working vs failing configurations compared
+- [x] 10 key differences identified
+- [x] 12-experiment testing matrix created (Round 1: 12 experiments)
+- [x] Experiment infrastructure prepared
+- [x] Comprehensive documentation complete
+- [x] 5 Dockerfile variants created
+- [x] Terraform for 15 experiments created (12 Round 1 + 3 Round 2)
+- [x] Build and deployment scripts created
+- [x] Round 1 deployed (12 experiments) - ALL FAILED
+- [x] Round 2 deployed (3 experiments with HOSTNAME) - ALL FAILED
+- [x] Results analyzed - **HYPOTHESIS DISPROVEN**
+- [ ] ⚠️ **BLOCKED:** Local Docker testing required
+- [ ] Identify actual root cause (not HOSTNAME)
+- [ ] Templates updated with working solution
 
 ### Overall Initiative Success (Pending)
 - [ ] Web app accessible at App Runner URL
@@ -350,342 +380,215 @@ If mono-repo pattern fails:
 
 5. **Next.js Public Directory:** Docker COPY commands fail if source paths don't exist; empty directories require `.gitkeep` for git tracking.
 
-### Sprint 2 Learnings (Session 8)
+### Sprint 2 Learnings (Sessions 8-11)
 6. **AWS Credential Export Critical:** Terraform requires `AWS_PROFILE` and `AWS_REGION` environment variables set; AWS CLI working with `--profile` flag is not sufficient.
 
 7. **Template Sync Discipline:** Always sync updated template files to test project, not just specific changes; missing files (like updated variables.tf) cause deployment failures.
 
 8. **Iterative Deployment Debugging:** Deploy blockers often come in sequence; resolve each one systematically before discovering the next.
 
+9. **Health Check Endpoint Critical:** Always create health endpoints BEFORE deploying containerized applications to orchestration platforms.
+
+10. **Middleware Auth Exclusion:** Health check endpoints must be explicitly excluded from authentication middleware, or health checks will fail with 307 redirects.
+
+11. **HOSTNAME Binding Essential:** Docker containers must bind to `0.0.0.0` (not localhost) to be reachable from external health check probes.
+
+### Sprint 3 Learnings (Session 12)
+12. **Scientific Testing Approach:** When multiple variables could cause failure, systematic parallel testing is more efficient than trial-and-error debugging.
+
+13. **AWS Configuration Comparison:** Use `aws apprunner describe-service` to compare working vs failing services for root cause analysis.
+
+14. **Missing Auth Secrets Impact:** NextAuth.js applications will crash on startup if NEXTAUTH_SECRET is missing, causing health check failures that look like infrastructure issues.
+
+15. **Placeholder Values Are Not Enough:** Using placeholder values like `api://default` for OKTA_CLIENT_ID is worse than omitting the variable - the app tries to use invalid credentials and fails.
+
 ---
 
 ## Next Session Priorities
 
-**Priority 1: Monitor Deployment**
-- Wait for `deploy-all.sh` to complete
-- Check for any errors or failures
-- Verify Terraform outputs (ECR URL, App Runner URL, API Gateway URL)
+**🔬 PRIORITY 1: Implement Experiment Infrastructure (2-3 hours)**
 
-**Priority 2: Docker Image Deployment (Phase 3.5)**
-- Build Docker image from test project
-- Push to ECR repository
-- Trigger App Runner deployment
-- Monitor deployment progress
-- Verify service health
+1. **Create 5 Dockerfile Variants** (`images/`)
+   - `Dockerfile.baseline` - Current monorepo template (Node 18)
+   - `Dockerfile.node22` - Node 22 + current structure
+   - `Dockerfile.libc` - Node 18 + libc6-compat
+   - `Dockerfile.buildargs` - Node 18 + build arguments
+   - `Dockerfile.fullmatch` - Full copy of ai-ccat Dockerfile
 
-**Priority 3: End-to-End Validation**
-- Test App Runner URL accessibility
-- Verify health check endpoint
-- Test API Gateway CORS configuration
-- Validate frontend → API → Lambda flow
+2. **Create Terraform Configuration** (`terraform/`)
+   - `main.tf` - 12 App Runner service definitions
+   - `variables.tf` - Experiment parameters
+   - `outputs.tf` - Service URLs and ARNs
+   - ECR repository configurations
 
-**Priority 4: Documentation**
-- Create Sprint 2 summary document
-- Update master plan with Phase 3 completion
-- Document deployment process
-- Note any issues or gotchas
+3. **Create Build/Deploy Scripts** (`scripts/`)
+   - `build-all-images.sh` - Build 5 Docker images from test project
+   - `push-images.sh` - Push all images to ECR
+   - `check-results.sh` - Monitor experiment status
+   - `analyze-results.sh` - Identify successful experiments
+   - `cleanup.sh` - Destroy all experiments
 
-**Priority 5: Phase 4 Planning**
-- Design CI/CD workflow structure
-- Identify GitHub Actions secrets needed
-- Plan deployment automation
+**🚀 PRIORITY 2: Execute Experiments (1 hour)**
+
+1. Copy source code from test project for Docker builds
+2. Build all 5 Docker images
+3. Push all images to ECR
+4. Deploy all 12 experiments via Terraform
+5. Run monitoring script
+
+**📊 PRIORITY 3: Analyze Results (~20 min wait + 30 min analysis)**
+
+1. Monitor experiment status every 2 minutes
+2. Identify which experiments reach RUNNING status
+3. Document successful configurations
+4. Determine minimum required settings
+5. Create results summary
+
+**📝 PRIORITY 4: Update Templates (1 hour)**
+
+1. Apply winning configuration to monorepo template
+2. Update App Runner module with required settings
+3. Update Dockerfile if needed
+4. Test updated template
+5. Document final solution
+
+**🧹 PRIORITY 5: Cleanup & Documentation (1 hour)**
+
+1. Run cleanup script to destroy experiments
+2. Update Sprint 3 plan with completion status
+3. Update context file with findings
+4. Archive experiment directory
+5. Prepare for Phase 4 (CI/CD)
 
 ---
 
 ## Test Project Info
 
+**Current Test Project:**
 **Location:** `/Users/aaron/code/bodhix/testing/mono-s1/ai-mod-stack`  
 **Config:** `setup.config.mono-s1.yaml`  
 **Project Name:** `ai-mod`  
+**Status:** Used for source code in Docker builds
+
+**Experiment Location:**
+**Directory:** `~/code/bodhix/testing/apprunner-experiments/`  
+**Status:** Infrastructure ready, implementation pending
+**Gitignored:** Yes (only final solution will be committed)
+
+**AWS Configuration:**
 **AWS Account:** 887559014095  
 **AWS Profile:** `ai-sec-nonprod`  
 **AWS Region:** `us-east-1`
-
-**Expected Outputs After Deployment:**
-```
-ecr_repository_url = "887559014095.dkr.ecr.us-east-1.amazonaws.com/ai-mod-dev-web"
-app_runner_service_url = "https://[random-id].us-east-1.awsapprunner.com"
-app_runner_service_arn = "arn:aws:apprunner:us-east-1:887559014095:service/ai-mod-dev-web/[id]"
-modular_api_gateway_url = "https://[api-id].execute-api.us-east-1.amazonaws.com"
-```
 
 ---
 
 ## Notes
 
-**App Runner Service Expected State:**
-- Service will be created but show error/failed state
-- Error message: "Unable to pull image from ECR: image not found"
-- **This is normal and expected** - no Docker image in ECR yet
-- Service will recover automatically after image is pushed
+**Experiment Cost:**
+- 12 App Runner services × 20 minutes × $0.007/hour = ~$0.03
+- ECR storage: negligible
+- **Total:** < $0.05
 
-**Next Steps After This Session:**
-1. User reports deployment results (success/errors)
-2. Build and push Docker image (Phase 3.5)
-3. Verify App Runner service starts successfully
-4. Begin Phase 4 planning (CI/CD workflows)
+**Expected Timeline:**
+- Build Dockerfiles & Terraform: 2-3 hours
+- Build & push images: 30-45 minutes
+- Deploy experiments: 5 minutes
+- Monitor results: 20 minutes
+- Analyze & document: 30 minutes
+- **Total:** 4-5 hours for complete experiment cycle
 
----
-
-### Session 9 - Phase 3 Critical Issues & Fixes (Feb 10, 18:00-18:17)
-
-**🚨 CRITICAL DISCOVERY: Two deployment-blocking issues identified and resolved!**
-
-#### Issue #1: Missing Health Check Endpoint ✅ FIXED
-**Discovered:** 5:53 PM (after 20+ minutes of failed deployment)
-**Root Cause:** Docker image did not include `/api/health` endpoint, causing App Runner health checks to fail with 404
-
-**Fix Applied:**
-1. Created `apps/web/app/api/health/route.ts` in template:
-```typescript
-import { NextResponse } from 'next/server';
-
-export async function GET() {
-  return NextResponse.json(
-    {
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      service: 'web',
-    },
-    { status: 200 }
-  );
-}
-```
-2. Copied to test project
-3. Rebuilt Docker image (5:55 PM)
-4. Pushed to ECR (5:57 PM)
-
-**Status:** ✅ Fixed in template and test project
-
-#### Issue #2: Health Endpoint Protected by Authentication ✅ FIXED
-**Discovered:** 6:12 PM (via local Docker testing)
-**Root Cause:** NextAuth middleware was protecting `/api/health`, returning 307 redirect to `/auth/signin` instead of 200 OK
-
-**Test Results (Before Fix):**
-```
-HTTP/1.1 307 Temporary Redirect
-location: /auth/signin?callbackUrl=http%3A%2F%2F76affffdd308%3A3000%2Fapi%2Fhealth
-```
-
-**Fix Applied:**
-Updated `apps/web/middleware.ts` to exclude health endpoint from authentication:
-```typescript
-export default function middleware(request: NextRequest) {
-  // Allow health check endpoint without authentication
-  if (request.nextUrl.pathname === "/api/health") {
-    return NextResponse.next();
-  }
-  
-  // Apply auth middleware to all other routes
-  return auth(request as any);
-}
-```
-
-**Test Results (After Fix):**
-```
-HTTP Status: 200
-{"status":"healthy","timestamp":"2026-02-10T23:15:43.933Z","service":"web"}
-```
-
-**Status:** ✅ Fixed in template and test project, verified locally
-
-#### Deployment Timeline
-- **5:30 PM** - First image pushed (no health endpoint)
-- **5:35 PM** - App Runner service created, began failing
-- **5:53 PM** - Issue #1 discovered and fixed
-- **5:57 PM** - Second image pushed (with health endpoint)
-- **6:00 PM** - Service recreated, still failing (Issue #2 not yet discovered)
-- **6:12 PM** - Issue #2 discovered via local testing
-- **6:13 PM** - Middleware fix applied
-- **6:15 PM** - Third image built and tested locally (success!)
-- **6:16 PM** - Third image pushed to ECR
-- **6:17 PM** - Awaiting App Runner to detect new image
-
-#### Impact & Lessons Learned
-**Time Lost:** ~47 minutes of failed deployments due to missing health endpoint
-**Key Learning:** Always create and test health endpoints BEFORE deploying containerized applications to orchestration platforms
-
-**Checklist for Future Deployments:**
-- [ ] Create health endpoint in application
-- [ ] Exclude health endpoint from authentication middleware
-- [ ] Test health endpoint locally in Docker container
-- [ ] Verify 200 OK response (not redirect)
-- [ ] Then deploy to App Runner/ECS/Kubernetes
-
-**Status:** Two critical fixes applied and verified. Corrected image in ECR. Awaiting App Runner deployment.
+**Why This Approach:**
+- Systematic: Tests each variable in isolation
+- Efficient: All experiments run in parallel (no waiting 20 min per test)
+- Scientific: Clear interpretation of results
+- Documented: Future developers understand requirements
+- Low risk: Isolated from main codebase
 
 ---
 
-**Last Updated:** February 10, 2026 (18:17 EST)  
-**Next Update:** After App Runner detects new image and deployment completes
+### Session 14 - Round 2 Deployment & Failure Analysis (Feb 11, 09:47-10:53)
+
+**Major Accomplishments:**
+1. ✅ **Round 2 Experiments Deployed**
+   - Added 3 new experiments (r2-1, r2-2, r2-3) with HOSTNAME=0.0.0.0
+   - Preserved Round 1 experiments for audit trail
+   - Updated Terraform outputs for all 15 experiments
+
+2. ✅ **Round 2 Results Documented**
+   - ALL 3 Round 2 experiments FAILED (20-minute timeout)
+   - HOSTNAME hypothesis DISPROVEN
+   - Created comprehensive failure analysis document
+
+3. ✅ **Root Cause Analysis Updated**
+   - Compared working service (ai-ccat-tmp) configuration
+   - Confirmed HOSTNAME was present in Round 2 experiments
+   - Identified need for local Docker testing
+
+**Critical Finding:** Even with HOSTNAME=0.0.0.0, services still fail health checks identically to Round 1.
+
+**Deliverables:**
+- `ROUND-2-DEPLOYMENT-GUIDE.md` - Deployment instructions for Round 2
+- `ROUND-2-RESULTS.md` - Comprehensive failure analysis
+- Updated `main.tf` with 3 Round 2 experiments (15 total)
+- Updated `outputs.tf` with Round 2 service URLs/ARNs
+
+**Status:** Sprint BLOCKED - Local Docker testing required before proceeding
 
 ---
 
-### Session 10 - Phase 3 Extended Debugging (Feb 10, 21:00-22:15)
+## Sprint 3 Learnings (Session 14)
 
-**🚨 CRITICAL: Health Check Still Failing After ALL Fixes**
+16. **Hypothesis Testing is Critical:** Don't assume - test hypotheses systematically and be prepared for them to be wrong.
 
-**Fixes Attempted (Building on Session 9):**
-1. ✅ Changed health check path from `/api/health` to `/api/healthcheck` (matching team deployments)
-2. ✅ Changed port from 8080 to 3000 (matching team deployments)
-3. ✅ Added `AUTH_TRUST_HOST=true` environment variable (confirmed critical for NextAuth behind App Runner)
-4. ✅ Created new health check route: `apps/web/app/api/healthcheck/route.ts`
-5. ✅ Updated middleware to allow `/api/healthcheck` without authentication
-6. ✅ Fixed all Terraform placeholder issues (`{{PROJECT_NAME}}` → `ai-mod`)
-7. ✅ Rebuilt Docker image with all fixes
-8. ✅ Pushed to ECR (digest: 9b9484d08b499cc46fba25d4f2619cd89eb07f691698f24562f42292794191cf)
-9. ✅ Deployed to App Runner
+17. **HOSTNAME Hypothesis Disproven:** Even with HOSTNAME=0.0.0.0, all services failed health checks, proving HOSTNAME alone is not sufficient (or possibly not the issue at all).
 
-**Result:** Service still failing health checks
+18. **No Logs = Early Failure:** Services failed before application logging could start, suggesting image pull failure, container startup failure, or immediate application crash.
 
-**Hypothesis:**
-The monorepo conversion changes may have broken core application functionality:
-- TypeScript module resolution issues during runtime
-- Missing dependencies in Next.js standalone build
-- Workspace package resolution failures in production
-- Runtime errors preventing server from starting
-- Environment variable configuration issues
+19. **Local Testing Required:** Cannot debug App Runner failures without being able to see actual application startup behavior locally.
 
-**Critical Observation:**
-All fixes were applied correctly from a configuration perspective, but the application itself may not be functioning. App Runner logs are insufficient for debugging - need local container testing to see actual startup errors.
-
-**Next Session MUST Focus On:**
-
-**Priority 1: Local Container Testing**
-Run the container locally to isolate the issue:
-
-```bash
-cd ~/code/bodhix/testing/mono-s1/ai-mod-stack
-
-# Run container with environment variables
-docker run -p 3000:3000 --env-file apps/web/.env.local ai-mod-web:latest
-
-# In separate terminal, test health check
-curl http://localhost:3000/api/healthcheck
-
-# Check application functionality
-curl http://localhost:3000/
-```
-
-**Priority 2: Debug Application Startup**
-Common issues to investigate:
-- Module resolution failures (workspace packages not found)
-- Missing dependencies in standalone build (pnpm deploy may not include all deps)
-- Next.js standalone output missing required files
-- Environment variables not set correctly
-- Port binding issues
-- Runtime errors in application code
-
-**Priority 3: Root Cause Analysis**
-Once local testing reveals the issue:
-1. Document the exact error/failure mode
-2. Fix the underlying problem in templates
-3. Test the fix locally until health check passes
-4. Rebuild and redeploy to App Runner
-5. Verify service reaches RUNNING status
-
-**Test Project State:**
-- Location: `/Users/aaron/code/bodhix/testing/mono-s1/ai-mod-stack/`
-- Docker image: `ai-mod-web:latest` (built Feb 10, 9:49 PM)
-- ECR image: `887559014095.dkr.ecr.us-east-1.amazonaws.com/ai-mod-dev-web:latest`
-- Service URL: https://iuskn5wanp.us-east-1.awsapprunner.com
-- Service Status: OPERATION_IN_PROGRESS (health check failing)
-
-**Key Insight:**
-All configuration fixes have been applied. The issue is no longer about configuration - it's about the application itself not functioning correctly in the containerized environment. Local testing is essential to identify the root cause.
+20. **Cost of Wrong Hypothesis:** 15 experiments (12 Round 1 + 3 Round 2) = ~$0.035 spent testing incorrect hypothesis.
 
 ---
 
-**Last Updated:** February 10, 2026 (22:15 EST)  
-**Next Update:** After local container testing reveals root cause
+## Next Session Priorities (REVISED)
+
+**🔴 CRITICAL: Local Docker Testing (MUST DO FIRST)**
+
+1. **Test Docker Image Locally**
+   ```bash
+   # Pull image from ECR
+   aws ecr get-login-password --region us-east-1 --profile ai-sec-nonprod | \
+     docker login --username AWS --password-stdin 887559014095.dkr.ecr.us-east-1.amazonaws.com
+   
+   docker pull 887559014095.dkr.ecr.us-east-1.amazonaws.com/exp-baseline:latest
+   
+   # Run with same env vars as Round 2
+   docker run -p 3000:3000 \
+     -e HOSTNAME=0.0.0.0 \
+     -e NODE_ENV=production \
+     -e AUTH_TRUST_HOST=true \
+     -e NEXTAUTH_SECRET="..." \
+     -e NEXTAUTH_URL="http://localhost:3000" \
+     -e OKTA_CLIENT_ID="..." \
+     -e OKTA_CLIENT_SECRET="..." \
+     -e OKTA_ISSUER="https://simpletech.okta.com/oauth2/default" \
+     887559014095.dkr.ecr.us-east-1.amazonaws.com/exp-baseline:latest
+   
+   # Test health check
+   curl http://localhost:3000/api/healthcheck
+   ```
+
+2. **Debug Application Startup**
+   - If app crashes: Fix application code
+   - If health check fails: Fix middleware or routing
+   - If app works locally: Investigate App Runner-specific issue
+
+3. **Only After Local Testing Works**
+   - Deploy one final test to App Runner with correct fix
+   - Update templates with working solution
+   - Document requirements
 
 ---
 
-### Session 11 - Critical Root Cause Identified (Feb 10, 22:30-23:15)
-
-**🎯 BREAKTHROUGH: Three critical issues identified and fixed!**
-
-#### Issue #1: Missing HOSTNAME in Dockerfile ✅ FIXED
-**Discovered:** By comparing with working ai-ccat-stack deployment  
-**Root Cause:** Dockerfile missing `ENV HOSTNAME 0.0.0.0`, causing Next.js to only bind to localhost (127.0.0.1) inside container, making it unreachable from App Runner's external health check probe.
-
-**Fix Applied:**
-```dockerfile
-ENV PORT 3000
-ENV HOSTNAME 0.0.0.0  # ADDED
-```
-
-**Impact:** Critical - without this, container runs but health checks always fail
-
-#### Issue #2: Mismatched Health Check Paths ✅ FIXED
-**Discovered:** During verification of existing files  
-**Root Cause:** Three-way mismatch:
-- Terraform config: `health_check_path = "/api/healthcheck"`
-- Actual route: Only `/api/health` existed
-- Middleware: Only excluded `/api/health` from auth
-
-**Fix Applied:**
-1. Created `/api/healthcheck/route.ts` (matching Terraform)
-2. Updated middleware to exclude `/api/healthcheck` from auth
-3. All three now aligned on `/api/healthcheck`
-
-**Impact:** Critical - App Runner was checking wrong endpoint (404 instead of 200 OK)
-
-#### Issue #3: Unreplaced Template Placeholders ✅ FIXED
-**Discovered:** During Docker build attempt  
-**Root Cause:** Dockerfile contained `{{PROJECT_NAME}}` placeholders not replaced:
-```dockerfile
-RUN pnpm install --frozen-lockfile --filter={{PROJECT_NAME}}-web...
-RUN pnpm --filter={{PROJECT_NAME}}-web build
-```
-
-**Fix Applied:** Replaced with actual project name `ai-mod`
-
-**Impact:** Critical - build failed, no node_modules installed
-
-#### Deployment Actions Taken
-1. ✅ Fixed all three issues in templates
-2. ✅ Synced fixes to test project
-3. ✅ Replaced placeholders in test project Dockerfile
-4. ✅ Built Docker image successfully (260MB)
-5. ✅ Tagged image for ECR
-6. ✅ Logged into ECR
-7. ✅ Pushed image to ECR (digest: 67a31412...)
-8. ❌ **BLOCKER:** Existing App Runner service in CREATE_FAILED state
-9. ✅ Deleted failed service
-10. ⏳ **INTERRUPTED:** Started recreating service via Terraform (status unknown)
-
-#### Current Status
-**⚠️ Health Check NOT CONFIRMED**
-- Fixed Docker image successfully pushed to ECR
-- App Runner service recreation started but interrupted
-- Need to verify:
-  1. Did Terraform apply complete successfully?
-  2. Is service running?
-  3. Does health check pass?
-
-#### Files Modified in Templates
-1. `Dockerfile` - Added `ENV HOSTNAME 0.0.0.0`
-2. `apps/web/app/api/healthcheck/route.ts` - Created
-3. `apps/web/middleware.ts` - Updated to exclude `/api/healthcheck`
-
-#### Next Steps
-1. Check Terraform apply status (did it complete?)
-2. Check App Runner service status
-3. If service running, test health check: `curl https://[url]/api/healthcheck`
-4. If health check passes, mark Phase 3 complete ✅
-5. If health check fails, investigate App Runner logs and container startup
-
-**Key Insight:**
-The user was right to remind us about unreplaced placeholders! This was the "temp vars" they mentioned. The three issues together prevented successful deployment:
-1. HOSTNAME → Container unreachable
-2. Health check path mismatch → 404 errors
-3. Placeholders → Build failures
-
-All three must be fixed for deployment to succeed.
-
----
-
-**Last Updated:** February 10, 2026 (23:15 EST)  
-**Next Update:** After verifying App Runner deployment status and health check
-
+**Last Updated:** February 11, 2026 (10:53 EST)  
+**Next Update:** After local Docker testing identifies actual root cause
