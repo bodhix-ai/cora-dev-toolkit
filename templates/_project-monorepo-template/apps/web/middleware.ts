@@ -8,8 +8,18 @@
  * Without this file, authentication will not work.
  */
 import { auth } from "./auth";
+import { NextRequest, NextResponse } from "next/server";
 
-export default auth;
+// Wrap auth middleware to exclude health check endpoint
+export default function middleware(request: NextRequest) {
+  // Allow health check endpoint without authentication
+  if (request.nextUrl.pathname === "/api/healthcheck") {
+    return NextResponse.next();
+  }
+
+  // Apply auth middleware to all other routes
+  return auth(request as any);
+}
 
 export const config = {
   matcher: [
