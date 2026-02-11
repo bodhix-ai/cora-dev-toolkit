@@ -19,6 +19,13 @@ Routes - Optimization API:
 - DELETE /ws/{wsId}/optimization/runs/{runId}/truth-sets/{tsId} - Delete truth set
 - POST   /ws/{wsId}/optimization/runs/{runId}/optimize         - Trigger optimization
 - DELETE /ws/{wsId}/optimization/runs/{runId}                  - Cancel/delete run
+- POST   /ws/{wsId}/optimization/runs/{runId}/executions       - Create execution (S6)
+- GET    /ws/{wsId}/optimization/runs/{runId}/executions       - List executions (S6)
+- POST   /ws/{wsId}/optimization/runs/{runId}/executions/{execId}/start - Start execution (S6)
+- GET    /ws/{wsId}/optimization/runs/{runId}/executions/{execId}/results - Get execution results (S6)
+- GET    /ws/{wsId}/optimization/runs/{runId}/truth-set-template - Download truth set template (S6)
+- POST   /ws/{wsId}/optimization/runs/{runId}/truth-set-upload - Upload truth set JSON (S6)
+- POST   /ws/{wsId}/optimization/runs/{runId}/truth-set-preview - Preview truth set (S6)
 
 Architecture:
 - RAG Pipeline: Uses existing module-kb (NO new vector infrastructure)
@@ -130,6 +137,32 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     return handle_list_truth_sets(supabase_user_id, ws_id, run_id)
                 elif http_method == 'POST':
                     return handle_create_truth_set(event, supabase_user_id, ws_id, run_id)
+        
+        # S6: Truth set template/upload/preview routes
+        elif '/truth-set-template' in path and run_id and http_method == 'GET':
+            return handle_download_truth_set_template(supabase_user_id, ws_id, run_id)
+        
+        elif '/truth-set-upload' in path and run_id and http_method == 'POST':
+            return handle_upload_truth_set(event, supabase_user_id, ws_id, run_id)
+        
+        elif '/truth-set-preview' in path and run_id and http_method == 'POST':
+            return handle_preview_truth_set(event, supabase_user_id, ws_id, run_id)
+        
+        # S6: Execution routes
+        elif '/executions' in path and run_id:
+            exec_id = path_params.get('execId')
+            if exec_id:
+                # Specific execution routes
+                if '/start' in path and http_method == 'POST':
+                    return handle_start_execution(event, supabase_user_id, ws_id, run_id, exec_id)
+                elif '/results' in path and http_method == 'GET':
+                    return handle_get_execution_results(supabase_user_id, ws_id, run_id, exec_id)
+            else:
+                # Collection routes
+                if http_method == 'POST':
+                    return handle_create_execution(event, supabase_user_id, ws_id, run_id)
+                elif http_method == 'GET':
+                    return handle_list_executions(supabase_user_id, ws_id, run_id)
         
         # Optimize trigger route
         elif '/optimize' in path and run_id and http_method == 'POST':
@@ -761,6 +794,588 @@ def handle_delete_truth_set(user_id: str, ws_id: str, run_id: str, ts_id: str) -
 
 
 # =============================================================================
+# S6: EXECUTION HANDLERS
+# =============================================================================
+
+def handle_create_execution(event: Dict[str, Any], user_id: str, ws_id: str, run_id: str) -> Dict[str, Any]:
+    """
+    Create a new execution for an optimization run.
+    
+    Request body:
+    {
+        "max_trials": 5,
+        "temperature_min": 0.2,  // optional
+        "temperature_max": 0.8,  // optional
+        "max_tokens_min": 1500,  // optional
+        "max_tokens_max": 2500,  // optional
+        "strategies": ["balanced", "evidence_focused"]  // optional
+    }
+    """
+    run_id = common.validate_uuid(run_id, 'runId')
+    
+    # Check run management permission
+    if not can_manage_opt_run(user_id, run_id):
+        raise common.ForbiddenError('Permission denied to create execution for this run')
+    
+    # Verify run exists
+    run = common.find_one('eval_opt_runs', {'id': run_id, 'ws_id': ws_id})
+    if not run:
+        raise common.NotFoundError(f"Optimization run {run_id} not found")
+    
+    # Parse request body
+    body = json.loads(event.get('body', '{}'))
+    
+    # Validate max_trials
+    max_trials = body.get('max_trials', 7)
+    if not isinstance(max_trials, int) or max_trials < 1 or max_trials > 20:
+        raise common.ValidationError('max_trials must be between 1 and 20')
+    
+    # Get next execution number
+    existing_executions = common.find_many(
+        'eval_opt_run_executions',
+        {'run_id': run_id},
+        order='execution_number.desc',
+        limit=1
+    )
+    next_execution_number = 1
+    if existing_executions and len(existing_executions) > 0:
+        next_execution_number = existing_executions[0].get('execution_number', 0) + 1
+    
+    # Create execution record
+    execution_data = {
+        'run_id': run_id,
+        'execution_number': next_execution_number,
+        'status': 'pending',
+        'max_trials': max_trials,
+        'temperature_min': body.get('temperature_min'),
+        'temperature_max': body.get('temperature_max'),
+        'max_tokens_min': body.get('max_tokens_min'),
+        'max_tokens_max': body.get('max_tokens_max'),
+        'strategies': body.get('strategies'),
+        'created_by': user_id
+    }
+    
+    execution = common.insert_one('eval_opt_run_executions', execution_data)
+    
+    logger.info(f"Created execution {execution['id']} (#{next_execution_number}) for run {run_id}")
+    
+    return common.created_response({
+        'execution_id': execution['id'],
+        'execution_number': next_execution_number,
+        'status': 'pending',
+        'max_trials': max_trials,
+        'message': 'Execution created. Use POST /executions/{execId}/start to begin optimization.'
+    })
+
+
+def handle_list_executions(user_id: str, ws_id: str, run_id: str) -> Dict[str, Any]:
+    """List all executions for an optimization run."""
+    run_id = common.validate_uuid(run_id, 'runId')
+    
+    # Check run access permission
+    if not can_access_opt_run(user_id, run_id):
+        raise common.ForbiddenError('Access denied to this optimization run')
+    
+    # Verify run exists
+    run = common.find_one('eval_opt_runs', {'id': run_id, 'ws_id': ws_id})
+    if not run:
+        raise common.NotFoundError(f"Optimization run {run_id} not found")
+    
+    # Get executions
+    executions = common.find_many(
+        'eval_opt_run_executions',
+        {'run_id': run_id},
+        order='execution_number.asc'
+    )
+    
+    # Format executions for frontend
+    formatted_executions = []
+    for execution in executions:
+        formatted_executions.append({
+            'executionId': execution['id'],
+            'executionNumber': execution.get('execution_number'),
+            'status': execution.get('status'),
+            'maxTrials': execution.get('max_trials'),
+            'overallAccuracy': float(execution.get('overall_accuracy')) if execution.get('overall_accuracy') else None,
+            'bestVariation': execution.get('best_variation'),
+            'startedAt': execution.get('started_at'),
+            'completedAt': execution.get('completed_at'),
+            'durationSeconds': execution.get('duration_seconds'),
+            'errorMessage': execution.get('error_message'),
+            'createdAt': execution.get('created_at')
+        })
+    
+    return common.success_response(formatted_executions)
+
+
+def handle_start_execution(event: Dict[str, Any], user_id: str, ws_id: str, run_id: str, exec_id: str) -> Dict[str, Any]:
+    """
+    Start an execution (trigger async optimization with execution_id).
+    """
+    run_id = common.validate_uuid(run_id, 'runId')
+    exec_id = common.validate_uuid(exec_id, 'execId')
+    
+    # Check run management permission
+    if not can_manage_opt_run(user_id, run_id):
+        raise common.ForbiddenError('Permission denied to start execution')
+    
+    # Verify run exists
+    run = common.find_one('eval_opt_runs', {'id': run_id, 'ws_id': ws_id})
+    if not run:
+        raise common.NotFoundError(f"Optimization run {run_id} not found")
+    
+    # Verify execution exists and belongs to this run
+    execution = common.find_one('eval_opt_run_executions', {'id': exec_id, 'run_id': run_id})
+    if not execution:
+        raise common.NotFoundError(f"Execution {exec_id} not found")
+    
+    # Check execution status
+    if execution.get('status') in ['running', 'processing']:
+        return common.bad_request_response('Execution is already in progress')
+    
+    if execution.get('status') == 'completed':
+        return common.bad_request_response('Execution already completed. Create a new execution to run again.')
+    
+    # Check preconditions (same as handle_trigger_optimization)
+    if not run.get('response_structure_id'):
+        return common.bad_request_response('Define response sections before running optimization')
+    
+    doc_groups = common.find_many('eval_opt_doc_groups', {'ws_id': ws_id, 'run_id': run_id, 'status': 'evaluated'})
+    if not doc_groups:
+        return common.bad_request_response('Create at least one truth set before running optimization')
+    
+    # Update execution status
+    common.update_one(
+        'eval_opt_run_executions',
+        {'id': exec_id},
+        {
+            'status': 'pending',
+            'started_at': datetime.now(timezone.utc).isoformat()
+        }
+    )
+    
+    # Invoke async worker with execution_id
+    import boto3
+    lambda_client = boto3.client('lambda')
+    
+    try:
+        lambda_client.invoke(
+            FunctionName=LAMBDA_FUNCTION_NAME,
+            InvocationType='Event',  # Async
+            Payload=json.dumps({
+                'source': 'async-optimization-worker',
+                'run_id': run_id,
+                'execution_id': exec_id,  # S6: Pass execution_id
+                'ws_id': ws_id,
+                'user_id': user_id
+            })
+        )
+        logger.info(f"Invoked async worker for execution {exec_id}")
+    except Exception as e:
+        logger.error(f"Failed to invoke async worker: {e}")
+        common.update_one(
+            'eval_opt_run_executions',
+            {'id': exec_id},
+            {'status': 'failed', 'error_message': f'Failed to start: {str(e)}'}
+        )
+        return common.internal_error_response('Failed to start execution')
+    
+    return common.success_response({
+        'message': 'Execution started',
+        'executionId': exec_id,
+        'executionNumber': execution.get('execution_number'),
+        'status': 'pending'
+    })
+
+
+def handle_get_execution_results(user_id: str, ws_id: str, run_id: str, exec_id: str) -> Dict[str, Any]:
+    """Get results for a specific execution."""
+    run_id = common.validate_uuid(run_id, 'runId')
+    exec_id = common.validate_uuid(exec_id, 'execId')
+    
+    # Check run access permission
+    if not can_access_opt_run(user_id, run_id):
+        raise common.ForbiddenError('Access denied to this optimization run')
+    
+    # Verify execution exists
+    execution = common.find_one('eval_opt_run_executions', {'id': exec_id, 'run_id': run_id})
+    if not execution:
+        raise common.NotFoundError(f"Execution {exec_id} not found")
+    
+    if execution.get('status') != 'completed':
+        return common.bad_request_response(
+            f"Execution is not complete. Current status: {execution.get('status')}"
+        )
+    
+    # Get results scoped to this execution
+    results = common.find_many(
+        'eval_opt_run_results',
+        {'run_id': run_id, 'execution_id': exec_id}
+    )
+    
+    # Group results by variation (same logic as handle_get_detailed_results)
+    variations = {}
+    for result in results:
+        var_name = result.get('variation_name')
+        if var_name not in variations:
+            variations[var_name] = {
+                'name': var_name,
+                'strategy': result.get('strategy'),
+                'results': [],
+                'metrics': {
+                    'truePositives': 0,
+                    'falsePositives': 0,
+                    'trueNegatives': 0,
+                    'falseNegatives': 0
+                }
+            }
+        
+        variations[var_name]['results'].append({
+            'docGroupId': result.get('doc_group_id'),
+            'criteriaItemId': result.get('criteria_item_id'),
+            'aiScore': result.get('ai_score'),
+            'scoreDiff': float(result.get('score_diff')) if result.get('score_diff') else None,
+            'match': result.get('status_match'),
+            'resultType': result.get('result_type')
+        })
+        
+        # Accumulate metrics
+        result_type = result.get('result_type', '').lower()
+        if result_type == 'true_positive':
+            variations[var_name]['metrics']['truePositives'] += 1
+        elif result_type == 'false_positive':
+            variations[var_name]['metrics']['falsePositives'] += 1
+        elif result_type == 'true_negative':
+            variations[var_name]['metrics']['trueNegatives'] += 1
+        elif result_type == 'false_negative':
+            variations[var_name]['metrics']['falseNegatives'] += 1
+    
+    # Calculate accuracy for each variation
+    for var_name, var_data in variations.items():
+        metrics = var_data['metrics']
+        total = sum(metrics.values())
+        correct = metrics['truePositives'] + metrics['trueNegatives']
+        var_data['accuracy'] = (correct / total * 100) if total > 0 else 0
+    
+    return common.success_response({
+        'executionId': exec_id,
+        'executionNumber': execution.get('execution_number'),
+        'status': execution.get('status'),
+        'overallAccuracy': float(execution.get('overall_accuracy', 0)),
+        'bestVariation': execution.get('best_variation'),
+        'maxTrials': execution.get('max_trials'),
+        'variations': list(variations.values()),
+        'results': execution.get('results'),
+        'startedAt': execution.get('started_at'),
+        'completedAt': execution.get('completed_at'),
+        'durationSeconds': execution.get('duration_seconds')
+    })
+
+
+# =============================================================================
+# S6: TRUTH SET TEMPLATE/UPLOAD/PREVIEW HANDLERS
+# =============================================================================
+
+def handle_download_truth_set_template(user_id: str, ws_id: str, run_id: str) -> Dict[str, Any]:
+    """
+    Generate and return truth set template JSON based on run configuration.
+    
+    Template includes:
+    - Run metadata (run_id, workspace_id)
+    - Sections with criteria definitions
+    - Empty documents array (BA will populate)
+    """
+    run_id = common.validate_uuid(run_id, 'runId')
+    
+    # Check run access permission
+    if not can_access_opt_run(user_id, run_id):
+        raise common.ForbiddenError('Access denied to this optimization run')
+    
+    # Get run configuration
+    run = common.find_one('eval_opt_runs', {'id': run_id, 'ws_id': ws_id})
+    if not run:
+        raise common.NotFoundError(f"Optimization run {run_id} not found")
+    
+    # Get response structure sections
+    sections_data = []
+    response_structure_id = run.get('response_structure_id')
+    if response_structure_id:
+        structure = common.find_one('eval_opt_response_structures', {'id': response_structure_id})
+        if structure:
+            sections = structure.get('structure_schema', {}).get('sections', [])
+            for section in sections:
+                section_data = {
+                    'section_id': section.get('id') or section.get('name'),
+                    'section_name': section.get('name'),
+                    'description': section.get('description'),
+                    'type': section.get('type', 'text'),
+                    'expected_fields': ['score', 'justification', 'citations']  # Standard fields
+                }
+                sections_data.append(section_data)
+    
+    # Get criteria items from workspace
+    criteria_items = get_workspace_criteria(ws_id)
+    criteria_data = []
+    for item in criteria_items:
+        criteria_data.append({
+            'criteria_id': item.get('id'),
+            'criteria_text': item.get('requirement') or item.get('name'),
+            'description': item.get('description'),
+            'section': item.get('section_name')  # If criteria are grouped by section
+        })
+    
+    # Build template
+    template = {
+        'run_id': run_id,
+        'workspace_id': ws_id,
+        'metadata': {
+            'created_at': datetime.now(timezone.utc).isoformat(),
+            'created_by': user_id,
+            'version': '1.0',
+            'run_name': run.get('name'),
+            'doc_type_id': run.get('doc_type_id'),
+            'criteria_set_id': run.get('criteria_set_id')
+        },
+        'sections': sections_data,
+        'criteria': criteria_data,
+        'documents': []  # Empty - BA will populate with AI assistance
+    }
+    
+    # Return as downloadable JSON
+    return {
+        'statusCode': 200,
+        'headers': {
+            'Content-Type': 'application/json',
+            'Content-Disposition': f'attachment; filename="truth-set-template-{run_id}.json"'
+        },
+        'body': json.dumps(template, indent=2, default=str)
+    }
+
+
+def handle_preview_truth_set(event: Dict[str, Any], user_id: str, ws_id: str, run_id: str) -> Dict[str, Any]:
+    """
+    Preview truth set JSON validation without importing.
+    
+    Returns validation summary with warnings/errors.
+    """
+    run_id = common.validate_uuid(run_id, 'runId')
+    
+    # Check run access permission
+    if not can_access_opt_run(user_id, run_id):
+        raise common.ForbiddenError('Access denied to this optimization run')
+    
+    # Parse uploaded JSON
+    body = json.loads(event.get('body', '{}'))
+    truth_set_data = body.get('truth_set')
+    
+    if not truth_set_data:
+        raise common.ValidationError('truth_set field required in request body')
+    
+    # Validate truth set
+    validation_result = validate_truth_set_json(truth_set_data, run_id, ws_id)
+    
+    return common.success_response(validation_result)
+
+
+def handle_upload_truth_set(event: Dict[str, Any], user_id: str, ws_id: str, run_id: str) -> Dict[str, Any]:
+    """
+    Upload and import truth set JSON.
+    
+    Creates doc_groups and truth_keys from uploaded JSON.
+    """
+    run_id = common.validate_uuid(run_id, 'runId')
+    
+    # Check run management permission
+    if not can_manage_opt_run(user_id, run_id):
+        raise common.ForbiddenError('Permission denied to upload truth set')
+    
+    # Parse uploaded JSON
+    body = json.loads(event.get('body', '{}'))
+    truth_set_data = body.get('truth_set')
+    
+    if not truth_set_data:
+        raise common.ValidationError('truth_set field required in request body')
+    
+    # Validate truth set first
+    validation_result = validate_truth_set_json(truth_set_data, run_id, ws_id)
+    
+    if not validation_result['valid']:
+        return common.bad_request_response({
+            'message': 'Truth set validation failed',
+            'errors': validation_result['errors']
+        })
+    
+    # Import truth set
+    import_result = import_truth_set_json(truth_set_data, run_id, ws_id, user_id)
+    
+    return common.success_response({
+        'message': 'Truth set imported successfully',
+        'documents_imported': import_result['documents_imported'],
+        'evaluations_imported': import_result['evaluations_imported'],
+        'warnings': validation_result.get('warnings', [])
+    })
+
+
+def validate_truth_set_json(truth_set_data: Dict[str, Any], run_id: str, ws_id: str) -> Dict[str, Any]:
+    """
+    Validate truth set JSON structure and content.
+    
+    Returns dict with:
+    - valid: bool
+    - errors: list of error messages
+    - warnings: list of warning messages
+    - summary: dict with counts
+    """
+    errors = []
+    warnings = []
+    
+    # Check required fields
+    if not truth_set_data.get('run_id'):
+        errors.append('Missing required field: run_id')
+    elif truth_set_data['run_id'] != run_id:
+        errors.append(f"run_id mismatch: expected {run_id}, got {truth_set_data['run_id']}")
+    
+    if not truth_set_data.get('workspace_id'):
+        errors.append('Missing required field: workspace_id')
+    elif truth_set_data['workspace_id'] != ws_id:
+        errors.append(f"workspace_id mismatch: expected {ws_id}, got {truth_set_data['workspace_id']}")
+    
+    documents = truth_set_data.get('documents', [])
+    if not documents:
+        errors.append('No documents provided in truth set')
+    
+    # Get valid criteria IDs from workspace
+    criteria_items = get_workspace_criteria(ws_id)
+    valid_criteria_ids = {item['id'] for item in criteria_items}
+    
+    # Validate each document
+    total_evaluations = 0
+    for doc_idx, doc in enumerate(documents):
+        if not doc.get('document_name'):
+            errors.append(f"Document {doc_idx}: Missing document_name")
+        
+        if not doc.get('document_id') and not doc.get('document_url'):
+            warnings.append(f"Document {doc_idx} ({doc.get('document_name', 'Unknown')}): No document_id or document_url provided")
+        
+        evaluations = doc.get('evaluations', [])
+        if not evaluations:
+            warnings.append(f"Document {doc_idx} ({doc.get('document_name', 'Unknown')}): No evaluations provided")
+        
+        seen_criteria = set()
+        for eval_idx, evaluation in enumerate(evaluations):
+            criteria_id = evaluation.get('criteria_id')
+            
+            if not criteria_id:
+                errors.append(f"Document {doc_idx}, evaluation {eval_idx}: Missing criteria_id")
+                continue
+            
+            # Check if criteria exists
+            if criteria_id not in valid_criteria_ids:
+                errors.append(f"Document {doc_idx}, evaluation {eval_idx}: Unknown criteria_id '{criteria_id}'")
+            
+            # Check for duplicates
+            if criteria_id in seen_criteria:
+                errors.append(f"Document {doc_idx}: Duplicate evaluation for criteria_id '{criteria_id}'")
+            seen_criteria.add(criteria_id)
+            
+            # Validate score (required field)
+            score = evaluation.get('score')
+            if score is None:
+                errors.append(f"Document {doc_idx}, criteria {criteria_id}: Missing score")
+            elif not isinstance(score, (int, float)) or score < 0 or score > 100:
+                errors.append(f"Document {doc_idx}, criteria {criteria_id}: Score must be 0-100, got {score}")
+            
+            # Check confidence (optional but recommended)
+            confidence = evaluation.get('confidence')
+            if confidence is not None:
+                if not isinstance(confidence, (int, float)) or confidence < 0 or confidence > 100:
+                    errors.append(f"Document {doc_idx}, criteria {criteria_id}: Confidence must be 0-100, got {confidence}")
+                elif confidence < 50:
+                    warnings.append(f"Document {doc_idx}, criteria {criteria_id}: Low confidence (<50)")
+            
+            total_evaluations += 1
+    
+    summary = {
+        'documents': len(documents),
+        'evaluations': total_evaluations,
+        'criteria_coverage': len(seen_criteria) if documents else 0
+    }
+    
+    return {
+        'valid': len(errors) == 0,
+        'errors': errors,
+        'warnings': warnings,
+        'summary': summary
+    }
+
+
+def import_truth_set_json(truth_set_data: Dict[str, Any], run_id: str, ws_id: str, user_id: str) -> Dict[str, Any]:
+    """
+    Import truth set JSON into database.
+    
+    Creates doc_groups and truth_keys from JSON data.
+    """
+    # Get run metadata
+    run = common.find_one('eval_opt_runs', {'id': run_id})
+    doc_type_id = run.get('doc_type_id')
+    criteria_set_id = run.get('criteria_set_id')
+    
+    criteria_set = common.find_one('eval_criteria_sets', {'id': criteria_set_id})
+    criteria_set_version = int(float(criteria_set.get('version', 1)))
+    
+    documents_imported = 0
+    evaluations_imported = 0
+    
+    # Import each document
+    for doc in truth_set_data.get('documents', []):
+        # Create doc_group
+        doc_group_data = {
+            'ws_id': ws_id,
+            'run_id': run_id,
+            'name': doc.get('document_name'),
+            'primary_doc_id': doc.get('document_id'),  # May be None if not uploaded yet
+            'status': 'evaluated',
+            'created_by': user_id
+        }
+        
+        doc_group = common.insert_one('eval_opt_doc_groups', doc_group_data)
+        documents_imported += 1
+        
+        # Import evaluations as truth keys
+        for evaluation in doc.get('evaluations', []):
+            truth_key_data = {
+                'group_id': doc_group['id'],
+                'criteria_item_id': evaluation.get('criteria_id'),
+                'doc_type_id': doc_type_id,
+                'criteria_set_id': criteria_set_id,
+                'criteria_set_version': criteria_set_version,
+                'truth_confidence': evaluation.get('score'),  # Score stored as confidence for now
+                'truth_explanation': evaluation.get('justification') or evaluation.get('rationale') or 'Imported from truth set',
+                'truth_citations': json.dumps(evaluation.get('citations', [])),
+                'section_responses': {
+                    'score': evaluation.get('score'),
+                    'justification': evaluation.get('justification') or evaluation.get('rationale'),
+                    'citations': evaluation.get('citations', [])
+                },
+                'created_by': user_id,
+                'evaluated_by': user_id
+            }
+            
+            # Get default status (required field)
+            default_statuses = common.find_many('eval_sys_status_options', {}, order='score_value.asc', limit=1)
+            if default_statuses and len(default_statuses) > 0:
+                truth_key_data['truth_status_id'] = default_statuses[0]['id']
+            
+            common.insert_one('eval_opt_truth_keys', truth_key_data)
+            evaluations_imported += 1
+    
+    return {
+        'documents_imported': documents_imported,
+        'evaluations_imported': evaluations_imported
+    }
+
+
+# =============================================================================
 # PHASE & VARIATION TRACKING HANDLERS
 # =============================================================================
 
@@ -936,6 +1551,8 @@ def handle_async_optimization_worker(event: Dict[str, Any]) -> Dict[str, Any]:
     """
     Handle async optimization worker invocation.
     This runs the actual optimization process in the background.
+    
+    S6 Update: Now supports execution_id for scoped optimization runs.
     """
     logger.info("Starting async optimization worker")
     
@@ -943,6 +1560,7 @@ def handle_async_optimization_worker(event: Dict[str, Any]) -> Dict[str, Any]:
         run_id = event.get('run_id')
         ws_id = event.get('ws_id')
         user_id = event.get('user_id')
+        execution_id = event.get('execution_id')  # S6: Optional execution_id
         
         if not all([run_id, ws_id, user_id]):
             logger.error(f"Missing required parameters: run_id={run_id}, ws_id={ws_id}, user_id={user_id}")
@@ -959,12 +1577,30 @@ def handle_async_optimization_worker(event: Dict[str, Any]) -> Dict[str, Any]:
             logger.info(f"Run {run_id} was cancelled, skipping")
             return common.success_response({'message': 'Run was cancelled'})
         
+        # S6: If execution_id provided, verify it exists
+        execution_config = None
+        if execution_id:
+            execution = common.find_one('eval_opt_run_executions', {'id': execution_id, 'run_id': run_id})
+            if not execution:
+                logger.error(f"Execution {execution_id} not found for run {run_id}")
+                return common.not_found_response('Execution not found')
+            
+            # Check if execution was cancelled
+            if execution.get('status') == 'cancelled':
+                logger.info(f"Execution {execution_id} was cancelled, skipping")
+                return common.success_response({'message': 'Execution was cancelled'})
+            
+            execution_config = execution
+            logger.info(f"Running optimization with execution_id {execution_id} (max_trials: {execution.get('max_trials')})")
+        
         # Run optimization
         process_optimization_run(
             run_id=run_id,
             ws_id=ws_id,
             user_id=user_id,
-            run_config=run
+            run_config=run,
+            execution_id=execution_id,  # S6: Pass execution_id
+            execution_config=execution_config  # S6: Pass execution config
         )
         
         return common.success_response({'message': 'Optimization completed'})
@@ -978,10 +1614,14 @@ def process_optimization_run(
     run_id: str,
     ws_id: str,
     user_id: str,
-    run_config: Dict[str, Any]
+    run_config: Dict[str, Any],
+    execution_id: Optional[str] = None,
+    execution_config: Optional[Dict[str, Any]] = None
 ) -> None:
     """
     Process a complete optimization run.
+    
+    S6 Update: Supports execution_id for scoped optimization runs with configurable parameters.
     
     Pipeline:
     1. Extract domain knowledge from context docs (RAG)
@@ -990,6 +1630,14 @@ def process_optimization_run(
     4. For each variation, evaluate all samples and compare to truth keys
     5. Identify best configuration
     6. Generate recommendations
+    
+    Args:
+        run_id: Optimization run ID
+        ws_id: Workspace ID
+        user_id: User ID
+        run_config: Run configuration from eval_opt_runs
+        execution_id: Optional execution ID for scoped runs (S6)
+        execution_config: Optional execution configuration (max_trials, etc.) (S6)
     """
     try:
         # Update status
@@ -1009,8 +1657,17 @@ def process_optimization_run(
             'variation_summary': None
         })
         
-        # Get configuration
+        # Get configuration (S6: execution_config overrides run_config)
         thoroughness = run_config.get('thoroughness', 'balanced')
+        
+        # S6: Override thoroughness with execution_config.max_trials if provided
+        if execution_config and execution_config.get('max_trials'):
+            # max_trials directly controls number of variations (bypasses thoroughness mapping)
+            max_trials = execution_config.get('max_trials')
+            logger.info(f"S6: Using execution max_trials={max_trials} (overrides thoroughness={thoroughness})")
+        else:
+            max_trials = None  # Will use thoroughness mapping in VariationGenerator
+        
         context_doc_ids = run_config.get('context_doc_ids', [])
         response_structure_id = run_config.get('response_structure_id')
         criteria_set_id = run_config.get('criteria_set_id')
@@ -1195,7 +1852,7 @@ def process_optimization_run(
                     # Save individual result with score-based fields
                     # Part 1B: Try/except as safety net for duplicate key conflicts
                     try:
-                        common.insert_one('eval_opt_run_results', {
+                        result_data = {
                             'run_id': run_id,
                             'group_id': group['id'],
                             'criteria_item_id': criteria_item_id,
@@ -1207,7 +1864,12 @@ def process_optimization_run(
                             'status_match': status_match,
                             'result_type': result_type,
                             'ai_status_id': None  # DEPRECATED (nullable)
-                        })
+                        }
+                        # S6: Add execution_id if provided
+                        if execution_id:
+                            result_data['execution_id'] = execution_id
+                        
+                        common.insert_one('eval_opt_run_results', result_data)
                     except Exception as insert_error:
                         # Log but don't fail - Part 1A cleanup should prevent this
                         logger.warning(f"Duplicate result for variation={variation.name}, criterion={criteria_item_id}: {insert_error}")
@@ -1278,20 +1940,41 @@ def process_optimization_run(
         # ============================================
         # FINAL: Save Results
         # ============================================
-        common.update_one(
-            'eval_opt_runs',
-            {'id': run_id},
-            {
-                'status': 'completed',
-                'progress': 100,
-                'progress_message': 'Optimization complete',
-                'best_variation': best_variation['variation_name'],
-                'overall_accuracy': Decimal(str(round(best_variation['accuracy'], 2))),
-                'recommendations': json.dumps([r.to_dict() for r in recommendations], default=str),
-                'variation_summary': json.dumps(variation_results, default=str),
-                'completed_at': datetime.now(timezone.utc).isoformat()
-            }
-        )
+        now = datetime.now(timezone.utc)
+        results_data = {
+            'status': 'completed',
+            'progress': 100,
+            'progress_message': 'Optimization complete',
+            'best_variation': best_variation['variation_name'],
+            'overall_accuracy': Decimal(str(round(best_variation['accuracy'], 2))),
+            'recommendations': json.dumps([r.to_dict() for r in recommendations], default=str),
+            'variation_summary': json.dumps(variation_results, default=str),
+            'completed_at': now.isoformat()
+        }
+        
+        # Save to run table
+        common.update_one('eval_opt_runs', {'id': run_id}, results_data)
+        
+        # S6: If execution_id provided, also save to execution table
+        if execution_id:
+            execution = common.find_one('eval_opt_run_executions', {'id': execution_id})
+            if execution:
+                started_at = execution.get('started_at')
+                duration_seconds = None
+                if started_at:
+                    if isinstance(started_at, str):
+                        started_at = datetime.fromisoformat(started_at.replace('Z', '+00:00'))
+                    duration_seconds = int((now - started_at).total_seconds())
+                
+                common.update_one('eval_opt_run_executions', {'id': execution_id}, {
+                    'status': 'completed',
+                    'overall_accuracy': Decimal(str(round(best_variation['accuracy'], 2))),
+                    'best_variation': best_variation['variation_name'],
+                    'results': json.dumps(variation_results, default=str),
+                    'completed_at': now.isoformat(),
+                    'duration_seconds': duration_seconds
+                })
+                logger.info(f"S6: Saved results to execution {execution_id} (duration: {duration_seconds}s)")
         
         complete_phase(run_id, 5)
         
