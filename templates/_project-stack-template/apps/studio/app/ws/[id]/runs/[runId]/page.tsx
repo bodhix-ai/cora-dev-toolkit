@@ -4,10 +4,10 @@
  * Eval Optimizer - Optimization Run Details Page
  *
  * Route: /ws/[id]/runs/[runId]
- * Displays run details with three sections:
- * - Response Sections: Define/edit AI response structure
- * - Truth Sets: List and create truth sets
- * - Optimization: Trigger optimization and view results
+ * Displays run details with collapsible sections:
+ * - Response Sections: Define/edit AI response structure (collapse when complete)
+ * - Truth Sets: List and create truth sets (collapse when complete)
+ * - Optimization Executions: Multiple optimization runs with parameter configuration
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -21,35 +21,29 @@ import {
   Typography,
   Button,
   Paper,
-  Grid,
   Chip,
   Breadcrumbs,
   Link,
   CircularProgress,
   Alert,
-  Divider,
   List,
   ListItem,
   ListItemText,
   ListItemSecondaryAction,
-  IconButton,
   LinearProgress,
   Snackbar,
 } from "@mui/material";
 import {
-  ArrowBack,
   Add,
   Edit,
-  Delete,
-  PlayArrow,
   Description,
   CheckCircle,
   Schedule,
-  Error as ErrorIcon,
 } from "@mui/icons-material";
-import OptimizationResults from "@/components/OptimizationResults";
-import OptimizationStepper from "@/components/OptimizationStepper";
-import VariationProgressTable from "@/components/VariationProgressTable";
+import CollapsibleSection from "@/components/CollapsibleSection";
+import ExecutionCard from "@/components/ExecutionCard";
+import ExecutionParameterDialog, { ExecutionParameters } from "@/components/ExecutionParameterDialog";
+import TruthSetUploadDialog from "@/components/TruthSetUploadDialog";
 
 // ============================================================================
 // TYPES
@@ -88,6 +82,18 @@ interface OptimizationRun {
   accuracy?: number;
   created_at: string;
   updated_at: string;
+}
+
+interface Execution {
+  id: string;
+  executionNumber: number;
+  status: "pending" | "running" | "completed" | "failed";
+  maxTrials: number;
+  overallAccuracy?: number;
+  bestVariation?: string;
+  startedAt?: string;
+  completedAt?: string;
+  durationSeconds?: number;
   currentPhase?: number;
   currentPhaseName?: string;
   progress?: number;
@@ -178,16 +184,25 @@ export default function OptimizationRunDetailsPage() {
   const [run, setRun] = useState<OptimizationRun | null>(null);
   const [sections, setSections] = useState<ResponseSection[]>([]);
   const [truthSets, setTruthSets] = useState<TruthSet[]>([]);
-  const [phases, setPhases] = useState<PhaseData[]>([]);
-  const [variations, setVariations] = useState<VariationProgress[]>([]);
+  const [executions, setExecutions] = useState<Execution[]>([]);
+  const [phases, setPhases] = useState<Record<string, PhaseData[]>>({});
+  const [variations, setVariations] = useState<Record<string, VariationProgress[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [optimizing, setOptimizing] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" | "info" }>({
     open: false,
     message: "",
     severity: "info",
   });
+  
+  // Dialog states
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [executionDialogOpen, setExecutionDialogOpen] = useState(false);
+  const [executionLoading, setExecutionLoading] = useState(false);
+
+  // Section collapse states
+  const [sectionsExpanded, setSectionsExpanded] = useState(true);
+  const [truthSetsExpanded, setTruthSetsExpanded] = useState(true);
 
   // Get workspace config for navigation labels
   const { navLabelPlural } = useWorkspaceConfig({ orgId });
@@ -201,11 +216,6 @@ export default function OptimizationRunDetailsPage() {
   // Load run details - STABILIZED to prevent infinite loops
   const loadRunDetails = useCallback(async () => {
     if (!isAuthenticatedRef.current || !workspaceId || !runId) return;
-
-    // Don't set loading state if we already have data (polling)
-    // Only set loading on initial fetch if run is null
-    // But we can't access state easily inside callback without deps
-    // So we'll skip the loading indicator for polling updates
 
     try {
       const token = await authAdapterRef.current.getToken();
@@ -224,33 +234,37 @@ export default function OptimizationRunDetailsPage() {
       const truthSetsRes = (await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/truth-sets`)) as any;
       setTruthSets(truthSetsRes.data || []);
 
-      // Load phase data (if run is in progress)
-      if (runRes.data.status === "pending" || runRes.data.status === "processing") {
-        try {
-          const phasesRes = (await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/phases`)) as any;
-          setPhases(phasesRes.data || []);
-        } catch (phaseErr) {
-          // Phases endpoint might not exist yet, silently fail
-          console.warn("Phase data not available:", phaseErr);
-        }
+      // Load executions
+      try {
+        const executionsRes = (await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/executions`)) as any;
+        setExecutions(executionsRes.data || []);
 
-        // Load variation progress (if in Phase 4 - evaluation loop)
-        if (runRes.data.currentPhase === 4) {
+        // Load phases and variations for each running execution
+        const runningExecutions = (executionsRes.data || []).filter((e: Execution) => e.status === "running");
+        for (const exec of runningExecutions) {
           try {
-            const variationsRes = (await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/variations`)) as any;
-            setVariations(variationsRes.data || []);
-          } catch (varErr) {
-            // Variations endpoint might not exist yet, silently fail
-            console.warn("Variation data not available:", varErr);
+            const phasesRes = (await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/executions/${exec.id}/phases`)) as any;
+            setPhases(prev => ({ ...prev, [exec.id]: phasesRes.data || [] }));
+          } catch (phaseErr) {
+            console.warn(`Phase data not available for execution ${exec.id}:`, phaseErr);
+          }
+
+          if (exec.currentPhase === 4) {
+            try {
+              const variationsRes = (await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/executions/${exec.id}/variations`)) as any;
+              setVariations(prev => ({ ...prev, [exec.id]: variationsRes.data || [] }));
+            } catch (varErr) {
+              console.warn(`Variation data not available for execution ${exec.id}:`, varErr);
+            }
           }
         }
+      } catch (execErr) {
+        console.warn("Executions endpoint not available:", execErr);
       }
     } catch (err: any) {
       console.error("Error loading run details:", err);
-      // Only set error on initial load failure
-      // setError(err.message || "Failed to load run details");
     }
-  }, [workspaceId, runId]); // Removed authAdapter and isAuthenticated
+  }, [workspaceId, runId]);
 
   // Initial load
   useEffect(() => {
@@ -260,20 +274,33 @@ export default function OptimizationRunDetailsPage() {
     }
   }, [isAuthenticated, workspaceId, runId, loadRunDetails, run]);
 
-  // Poll for status updates when run is in progress
+  // Poll for status updates when any execution is running
   useEffect(() => {
-    if (!run || (run.status !== "pending" && run.status !== "processing")) return;
+    const hasRunningExecution = executions.some(e => e.status === "running");
+    if (!hasRunningExecution) return;
 
     const pollInterval = setInterval(() => {
       loadRunDetails();
     }, 3000); // Poll every 3 seconds
 
     return () => clearInterval(pollInterval);
-  }, [run?.status, loadRunDetails]);
+  }, [executions, loadRunDetails]);
+
+  // Smart collapse logic
+  useEffect(() => {
+    const hasSections = sections.length > 0;
+    const hasCompleteTruthSets = truthSets.length > 0 && truthSets.every(ts => ts.status === "complete");
+
+    // Expand sections section if no sections defined
+    setSectionsExpanded(!hasSections);
+
+    // Expand truth sets if no truth sets or any incomplete
+    setTruthSetsExpanded(!hasSections || !hasCompleteTruthSets);
+  }, [sections, truthSets]);
 
   // Navigation handlers
   const handleBackToWorkspace = () => {
-    router.push(`/ws/${workspaceId}?tab=2`); // Go to Optimization tab
+    router.push(`/ws/${workspaceId}?tab=2`);
   };
 
   const handleBackToWorkspaces = () => {
@@ -288,55 +315,139 @@ export default function OptimizationRunDetailsPage() {
     router.push(`/ws/${workspaceId}/runs/${runId}/truth-sets/new`);
   };
 
-  const handleTruthSetClick = (tsId: string) => {
-    router.push(`/ws/${workspaceId}/runs/${runId}/truth-sets/${tsId}`);
-  };
-
-  const handleStartOptimization = async () => {
+  const handleDownloadTemplate = async () => {
     if (!isAuthenticated || !run) return;
 
-    setOptimizing(true);
     try {
       const token = await authAdapter.getToken();
       if (!token) return;
       const client = createCoraAuthenticatedClient(token);
 
-      await client.post(`/ws/${workspaceId}/optimization/runs/${runId}/optimize`);
+      const response = (await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/truth-set-template`)) as any;
 
-      // Show success notification
+      // Create downloadable JSON file
+      const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `truth-set-template-${runId}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
       setSnackbar({
         open: true,
-        message: "✅ Optimization started! Results will appear as processing completes.",
+        message: "✅ Template downloaded successfully",
         severity: "success",
       });
-
-      // Refresh run details to get updated status
-      await loadRunDetails();
     } catch (err: any) {
-      console.error("Error starting optimization:", err);
-      const errorMsg = err.message || "Failed to start optimization";
-      setError(errorMsg);
+      console.error("Error downloading template:", err);
       setSnackbar({
         open: true,
-        message: `❌ ${errorMsg}`,
+        message: `❌ Failed to download template: ${err.message}`,
         severity: "error",
       });
-    } finally {
-      setOptimizing(false);
     }
   };
 
-  const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
+  const handleOpenUploadDialog = () => {
+    setUploadDialogOpen(true);
   };
 
-  const handleLoadResults = async () => {
+  const handleCloseUploadDialog = () => {
+    setUploadDialogOpen(false);
+  };
+
+  const handlePreviewTruthSet = async (file: File) => {
     const token = await authAdapter.getToken();
     if (!token) throw new Error("Not authenticated");
     const client = createCoraAuthenticatedClient(token);
 
-    const res = (await client.get(`/ws/${workspaceId}/optimization/runs/${runId}/results`)) as any;
-    return res.data;
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = (await client.post(`/ws/${workspaceId}/optimization/runs/${runId}/truth-set-preview`, formData)) as any;
+    return response.data;
+  };
+
+  const handleConfirmImport = async (file: File) => {
+    const token = await authAdapter.getToken();
+    if (!token) throw new Error("Not authenticated");
+    const client = createCoraAuthenticatedClient(token);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = (await client.post(`/ws/${workspaceId}/optimization/runs/${runId}/truth-set-upload`, formData)) as any;
+    return response.data;
+  };
+
+  const handleUploadSuccess = () => {
+    setSnackbar({
+      open: true,
+      message: "✅ Truth set imported successfully",
+      severity: "success",
+    });
+    loadRunDetails();
+  };
+
+  const handleTruthSetClick = (tsId: string) => {
+    router.push(`/ws/${workspaceId}/runs/${runId}/truth-sets/${tsId}`);
+  };
+
+  const handleOpenExecutionDialog = () => {
+    setExecutionDialogOpen(true);
+  };
+
+  const handleCloseExecutionDialog = () => {
+    setExecutionDialogOpen(false);
+  };
+
+  const handleStartExecution = async (params: ExecutionParameters) => {
+    if (!isAuthenticated || !run) return;
+
+    setExecutionLoading(true);
+    try {
+      const token = await authAdapter.getToken();
+      if (!token) return;
+      const client = createCoraAuthenticatedClient(token);
+
+      // Create execution
+      const createRes = (await client.post(`/ws/${workspaceId}/optimization/runs/${runId}/executions`, params)) as any;
+      const executionId = createRes.data.execution_id;
+
+      // Start execution
+      await client.post(`/ws/${workspaceId}/optimization/runs/${runId}/executions/${executionId}/start`);
+
+      setSnackbar({
+        open: true,
+        message: "✅ Execution started! Results will appear as processing completes.",
+        severity: "success",
+      });
+
+      // Refresh run details
+      await loadRunDetails();
+    } catch (err: any) {
+      console.error("Error starting execution:", err);
+      setSnackbar({
+        open: true,
+        message: `❌ Failed to start execution: ${err.message}`,
+        severity: "error",
+      });
+      throw err;
+    } finally {
+      setExecutionLoading(false);
+    }
+  };
+
+  const handleViewExecutionResults = (executionId: string) => {
+    // TODO: Navigate to execution results view or open modal
+    console.log("View results for execution:", executionId);
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
   };
 
   // Loading state
@@ -372,8 +483,8 @@ export default function OptimizationRunDetailsPage() {
   }
 
   const hasSections = sections.length > 0;
-  const hasTruthSets = truthSets.length > 0;
-  const canOptimize = hasSections && hasTruthSets && run.status !== "pending" && run.status !== "processing";
+  const hasCompleteTruthSets = truthSets.length > 0 && truthSets.every(ts => ts.status === "complete");
+  const canCreateExecution = hasSections && truthSets.length > 0;
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -408,23 +519,11 @@ export default function OptimizationRunDetailsPage() {
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
               <Typography variant="h5">{run.name || "Untitled Run"}</Typography>
-              <Chip
-                label={getStatusLabel(run.status)}
-                size="small"
-                color={getStatusColor(run.status)}
-              />
+              <Chip label={getStatusLabel(run.status)} size="small" color={getStatusColor(run.status)} />
             </Box>
             <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-              <Chip
-                label={run.doc_type_name || "Unknown Doc Type"}
-                size="small"
-                variant="outlined"
-              />
-              <Chip
-                label={run.criteria_set_name || "Unknown Criteria Set"}
-                size="small"
-                variant="outlined"
-              />
+              <Chip label={run.doc_type_name || "Unknown Doc Type"} size="small" variant="outlined" />
+              <Chip label={run.criteria_set_name || "Unknown Criteria Set"} size="small" variant="outlined" />
               <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
                 Created {new Date(run.created_at).toLocaleDateString()}
               </Typography>
@@ -433,7 +532,7 @@ export default function OptimizationRunDetailsPage() {
           {run.accuracy !== undefined && (
             <Box sx={{ textAlign: "right" }}>
               <Typography variant="caption" color="text.secondary">
-                Accuracy
+                Best Accuracy
               </Typography>
               <Typography variant="h4" color="success.main">
                 {Math.round(run.accuracy * 100)}%
@@ -443,242 +542,215 @@ export default function OptimizationRunDetailsPage() {
         </Box>
       </Paper>
 
-      {/* Three-Section Layout */}
-      <Grid container spacing={3}>
-        {/* Section 1: Response Sections */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 2,
-              }}
+      {/* Section 1: Response Sections (Collapsible) */}
+      <CollapsibleSection
+        title="Response Sections"
+        subtitle="Define the structure of AI responses for evaluation criteria."
+        expanded={sectionsExpanded}
+        onToggle={setSectionsExpanded}
+        collapsedSummary={
+          hasSections ? (
+            <Typography variant="body2" color="success.main">
+              ✓ {sections.length} section{sections.length !== 1 ? "s" : ""} defined
+            </Typography>
+          ) : (
+            <Typography variant="body2" color="warning.main">
+              ⚠️ Configuration required
+            </Typography>
+          )
+        }
+        headerActions={
+          <Button
+            variant={hasSections ? "outlined" : "contained"}
+            startIcon={hasSections ? <Edit /> : <Add />}
+            onClick={handleEditSections}
+            size="small"
+          >
+            {hasSections ? "Edit" : "Define"}
+          </Button>
+        }
+      >
+        {!hasSections ? (
+          <Alert severity="info">
+            Define response sections first. This determines what fields the AI will generate for each criterion
+            evaluation.
+          </Alert>
+        ) : (
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            {sections.map(section => (
+              <Chip
+                key={section.id}
+                label={`${section.name} (${section.type})`}
+                variant="outlined"
+                size="small"
+                color={section.required ? "primary" : "default"}
+              />
+            ))}
+          </Box>
+        )}
+      </CollapsibleSection>
+
+      {/* Section 2: Truth Sets (Collapsible) */}
+      <CollapsibleSection
+        title="Truth Sets"
+        subtitle="Sample documents with manually evaluated criteria (the ground truth)."
+        expanded={truthSetsExpanded}
+        onToggle={setTruthSetsExpanded}
+        collapsedSummary={
+          hasCompleteTruthSets ? (
+            <Typography variant="body2" color="success.main">
+              ✓ {truthSets.length} truth set{truthSets.length !== 1 ? "s" : ""} complete
+            </Typography>
+          ) : truthSets.length > 0 ? (
+            <Typography variant="body2" color="warning.main">
+              ⚠️ {truthSets.filter(ts => ts.status === "complete").length}/{truthSets.length} complete
+            </Typography>
+          ) : (
+            <Typography variant="body2" color="warning.main">
+              ⚠️ No truth sets
+            </Typography>
+          )
+        }
+        headerActions={
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button variant="outlined" onClick={handleDownloadTemplate} disabled={!hasSections} size="small">
+              Download Template
+            </Button>
+            <Button variant="outlined" onClick={handleOpenUploadDialog} disabled={!hasSections} size="small">
+              Upload
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={handleCreateTruthSet}
+              disabled={!hasSections}
+              size="small"
             >
-              <Box>
-                <Typography variant="h5">Response Sections</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Define the structure of AI responses for evaluation criteria.
-                </Typography>
-              </Box>
-              <Button
-                variant={hasSections ? "outlined" : "contained"}
-                startIcon={hasSections ? <Edit /> : <Add />}
-                onClick={handleEditSections}
+              New
+            </Button>
+          </Box>
+        }
+      >
+        {!hasSections && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Define response sections before creating truth sets.
+          </Alert>
+        )}
+
+        {truthSets.length === 0 ? (
+          <Box sx={{ textAlign: "center", py: 4 }}>
+            <Description sx={{ fontSize: 48, color: "text.secondary", mb: 2 }} />
+            <Typography variant="h6" gutterBottom>
+              No truth sets yet
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Create truth sets by uploading documents and manually evaluating each criterion.
+            </Typography>
+          </Box>
+        ) : (
+          <List>
+            {truthSets.map(ts => (
+              <ListItem
+                key={ts.id}
+                sx={{
+                  border: 1,
+                  borderColor: "divider",
+                  borderRadius: 1,
+                  mb: 1,
+                  cursor: "pointer",
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+                onClick={() => handleTruthSetClick(ts.id)}
               >
-                {hasSections ? "Edit Sections" : "Define Sections"}
-              </Button>
-            </Box>
-
-            {!hasSections ? (
-              <Alert severity="info">
-                Define response sections first. This determines what fields the AI will generate
-                for each criterion evaluation.
-              </Alert>
-            ) : (
-              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                {sections.map((section) => (
-                  <Chip
-                    key={section.id}
-                    label={`${section.name} (${section.type})`}
-                    variant="outlined"
-                    size="small"
-                    color={section.required ? "primary" : "default"}
-                  />
-                ))}
-              </Box>
-            )}
-          </Paper>
-        </Grid>
-
-        {/* Section 2: Truth Sets */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 2,
-              }}
-            >
-              <Box>
-                <Typography variant="h5">Truth Sets</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Sample documents with manually evaluated criteria (the "ground truth").
-                </Typography>
-              </Box>
-              <Button
-                variant="contained"
-                startIcon={<Add />}
-                onClick={handleCreateTruthSet}
-                disabled={!hasSections}
-              >
-                New Truth Set
-              </Button>
-            </Box>
-
-            {!hasSections && (
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                Define response sections before creating truth sets.
-              </Alert>
-            )}
-
-            {!hasTruthSets ? (
-              <Box sx={{ textAlign: "center", py: 4 }}>
-                <Description sx={{ fontSize: 48, color: "text.secondary", mb: 2 }} />
-                <Typography variant="h5" gutterBottom>
-                  No truth sets yet
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Create truth sets by uploading documents and manually evaluating each criterion.
-                </Typography>
-              </Box>
-            ) : (
-              <List>
-                {truthSets.map((ts) => (
-                  <ListItem
-                    key={ts.id}
-                    sx={{
-                      border: 1,
-                      borderColor: "divider",
-                      borderRadius: 1,
-                      mb: 1,
-                      cursor: "pointer",
-                      "&:hover": { bgcolor: "action.hover" },
-                    }}
-                    onClick={() => handleTruthSetClick(ts.id)}
-                  >
-                    <ListItemText
-                      primary={ts.document_name}
-                      secondary={
-                        <Box component="span">
-                          {ts.completed_criteria} of {ts.total_criteria} criteria evaluated
-                          <LinearProgress
-                            variant="determinate"
-                            value={ts.progress_pct}
-                            sx={{ mt: 0.5, height: 6, borderRadius: 1 }}
-                          />
-                        </Box>
-                      }
-                    />
-                    <ListItemSecondaryAction>
-                      <Chip
-                        label={ts.status === "complete" ? "Complete" : `${ts.progress_pct}%`}
-                        size="small"
-                        color={ts.status === "complete" ? "success" : "default"}
-                        icon={
-                          ts.status === "complete" ? (
-                            <CheckCircle fontSize="small" />
-                          ) : (
-                            <Schedule fontSize="small" />
-                          )
-                        }
+                <ListItemText
+                  primary={ts.document_name}
+                  secondary={
+                    <Box component="span">
+                      {ts.completed_criteria} of {ts.total_criteria} criteria evaluated
+                      <LinearProgress
+                        variant="determinate"
+                        value={ts.progress_pct}
+                        sx={{ mt: 0.5, height: 6, borderRadius: 1 }}
                       />
-                    </ListItemSecondaryAction>
-                  </ListItem>
-                ))}
-              </List>
-            )}
-          </Paper>
-        </Grid>
+                    </Box>
+                  }
+                />
+                <ListItemSecondaryAction>
+                  <Chip
+                    label={ts.status === "complete" ? "Complete" : `${ts.progress_pct}%`}
+                    size="small"
+                    color={ts.status === "complete" ? "success" : "default"}
+                    icon={ts.status === "complete" ? <CheckCircle fontSize="small" /> : <Schedule fontSize="small" />}
+                  />
+                </ListItemSecondaryAction>
+              </ListItem>
+            ))}
+          </List>
+        )}
+      </CollapsibleSection>
 
-        {/* Section 3: Optimization */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 2,
-              }}
+      {/* Section 3: Optimization Executions (Always Expanded) */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+          <Box>
+            <Typography variant="h5">Optimization Executions</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Generate and test prompts automatically using your truth sets.
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<Add />}
+            onClick={handleOpenExecutionDialog}
+            disabled={!canCreateExecution}
+          >
+            New Execution
+          </Button>
+        </Box>
+
+        {!canCreateExecution && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {!hasSections
+              ? "Define response sections first."
+              : truthSets.length === 0
+              ? "Create at least one truth set."
+              : "Ready to create executions."}
+          </Alert>
+        )}
+
+        {executions.length === 0 ? (
+          <Box sx={{ textAlign: "center", py: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              No executions yet
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Create your first execution to start optimizing prompts.
+            </Typography>
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<Add />}
+              onClick={handleOpenExecutionDialog}
+              disabled={!canCreateExecution}
             >
-              <Box>
-                <Typography variant="h5">Optimization</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Generate and test prompts automatically using your truth sets.
-                </Typography>
-              </Box>
-              <Button
-                variant="contained"
-                color="success"
-                startIcon={optimizing ? <CircularProgress size={20} color="inherit" /> : <PlayArrow />}
-                onClick={handleStartOptimization}
-                disabled={!canOptimize || optimizing}
-              >
-                {optimizing ? "Optimizing..." : "Optimize Eval Config"}
-              </Button>
-            </Box>
-
-            {!canOptimize && (
-              <Alert severity="info" sx={{ mb: 2 }}>
-                {!hasSections
-                  ? "Define response sections first."
-                  : !hasTruthSets
-                  ? "Create at least one truth set."
-                  : (run.status === "pending" || run.status === "processing")
-                  ? "Optimization is already running."
-                  : "Ready to optimize."}
-              </Alert>
-            )}
-
-            {(run.status === "pending" || run.status === "processing") && (
-              <Box sx={{ py: 3 }}>
-                {/* 5-Phase Progress Stepper */}
-                <OptimizationStepper
-                  currentPhase={run.currentPhase || 1}
-                  currentPhaseName={run.currentPhaseName || ""}
-                  status={run.status}
-                  phases={phases}
-                  progressMessage={run.progressMessage}
-                />
-
-                {/* Variation Progress Table (only show in Phase 4) */}
-                {run.currentPhase === 4 && variations.length > 0 && (
-                  <Box sx={{ mt: 3 }}>
-                    <Typography variant="h6" gutterBottom>
-                      Prompt Variations
-                    </Typography>
-                    <VariationProgressTable
-                      variations={variations}
-                      loading={run.status === "processing"}
-                    />
-                  </Box>
-                )}
-              </Box>
-            )}
-
-            {run.status === "completed" && (
-              <>
-                <Alert severity="success" icon={<CheckCircle />}>
-                  <Typography variant="subtitle2">Optimization Complete!</Typography>
-                  <Typography variant="body2">
-                    Best configuration achieved {Math.round((run.accuracy || 0) * 100)}% accuracy.
-                    View detailed results below.
-                  </Typography>
-                </Alert>
-
-                <OptimizationResults
-                  runId={runId}
-                  workspaceId={workspaceId}
-                  onLoadResults={handleLoadResults}
-                />
-              </>
-            )}
-
-            {run.status === "failed" && (
-              <Alert severity="error" icon={<ErrorIcon />}>
-                <Typography variant="subtitle2">Optimization Failed</Typography>
-                <Typography variant="body2">
-                  Please check your truth sets and try again.
-                </Typography>
-              </Alert>
-            )}
-          </Paper>
-        </Grid>
-      </Grid>
+              Create First Execution
+            </Button>
+          </Box>
+        ) : (
+          <Box>
+            {executions.map(execution => (
+              <ExecutionCard
+                key={execution.id}
+                execution={execution}
+                phases={phases[execution.id]}
+                variations={variations[execution.id]}
+                onViewResults={handleViewExecutionResults}
+              />
+            ))}
+          </Box>
+        )}
+      </Paper>
 
       {/* Snackbar for notifications */}
       <Snackbar
@@ -691,6 +763,24 @@ export default function OptimizationRunDetailsPage() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Truth Set Upload Dialog */}
+      <TruthSetUploadDialog
+        open={uploadDialogOpen}
+        onClose={handleCloseUploadDialog}
+        onUploadSuccess={handleUploadSuccess}
+        onPreview={handlePreviewTruthSet}
+        onConfirmImport={handleConfirmImport}
+      />
+
+      {/* Execution Parameter Dialog */}
+      <ExecutionParameterDialog
+        open={executionDialogOpen}
+        onClose={handleCloseExecutionDialog}
+        onStartExecution={handleStartExecution}
+        executionNumber={executions.length + 1}
+        loading={executionLoading}
+      />
     </Container>
   );
 }
