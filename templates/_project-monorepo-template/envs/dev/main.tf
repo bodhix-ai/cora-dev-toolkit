@@ -230,45 +230,80 @@ module "module_chat" {
 }
 
 # ========================================================================
-# App Runner Service
+# ECR Repository
 # ========================================================================
-# Deploys Next.js web application to AWS App Runner
+# Container image registry (shared across nonprod environments: dev, tst)
+# Conditional: created in first environment (dev), referenced in subsequent (tst)
 
-module "app_runner_web" {
-  source = "../../modules/app-runner"
+module "ecr_web" {
+  count  = var.create_ecr ? 1 : 0  # Only create in first env (dev)
+  source = "../../modules/ecr"
 
   name_prefix = "{{PROJECT_NAME}}"
-  environment = "dev"
+  environment = "nonprod"  # Shared across nonprod account (dev, tst)
   app_name    = "web"
 
-  port              = 3000  # Next.js default port (proven working in team deployments)
-  health_check_path = "/api/healthcheck"  # Matches working deployments
-  cpu               = "1024"  # 1 vCPU
-  memory            = "2048"  # 2 GB
-  auto_deploy       = true
-
-  environment_variables = {
-    NODE_ENV                  = "production"
-    HOSTNAME                  = "0.0.0.0"  # Next.js must listen on all interfaces for App Runner
-    PORT                      = "3000"     # Next.js default port
-    AUTH_TRUST_HOST           = "true"     # CRITICAL: Required for NextAuth behind reverse proxy (App Runner)
-    NEXT_PUBLIC_CORA_API_URL  = module.modular_api_gateway.api_gateway_url  # Fixed: was NEXT_PUBLIC_API_URL
-    NEXTAUTH_URL              = "https://${var.app_domain}"
-    NEXTAUTH_SECRET           = var.nextauth_secret
-    OKTA_ISSUER               = var.okta_issuer
-    OKTA_CLIENT_ID            = var.okta_audience
-    OKTA_CLIENT_SECRET        = ""  # Add to variables if using Okta client credentials flow
-    SUPABASE_URL              = var.supabase_url
-    SUPABASE_ANON_KEY         = var.supabase_anon_key_value
-  }
-
   common_tags = {
-    Environment = "dev"
+    Environment = "nonprod"
     Project     = "{{PROJECT_NAME}}"
     ManagedBy   = "terraform"
     App         = "web"
   }
 }
+
+# Data source to look up existing ECR (for subsequent envs like tst)
+data "aws_ecr_repository" "web" {
+  count = var.create_ecr ? 0 : 1  # Only look up if not creating
+  name  = "{{PROJECT_NAME}}-nonprod-web"
+}
+
+# Local to resolve ECR URL regardless of source
+locals {
+  ecr_repository_url  = var.create_ecr ? module.ecr_web[0].repository_url : data.aws_ecr_repository.web[0].repository_url
+  ecr_repository_name = var.create_ecr ? module.ecr_web[0].repository_name : data.aws_ecr_repository.web[0].name
+}
+
+# ========================================================================
+# App Runner Service (DISABLED - uncomment when ready to deploy)
+# ========================================================================
+# Deploys Next.js web application to AWS App Runner
+
+# module "app_runner_web" {
+#   source = "../../modules/app-runner"
+#
+#   name_prefix         = "{{PROJECT_NAME}}"
+#   environment         = "dev"
+#   app_name            = "web"
+#   ecr_repository_url  = local.ecr_repository_url
+#
+#   port              = 3000  # Next.js default port (proven working in team deployments)
+#   health_check_path = "/api/healthcheck"  # Matches working deployments
+#   cpu               = "1024"  # 1 vCPU
+#   memory            = "2048"  # 2 GB
+#   auto_deploy       = true
+#
+#   environment_variables = {
+#     NODE_ENV                  = "production"
+#     HOSTNAME                  = "0.0.0.0"  # Next.js must listen on all interfaces for App Runner
+#     PORT                      = "3000"     # Next.js default port
+#     AUTH_TRUST_HOST           = "true"     # CRITICAL: Required for NextAuth behind reverse proxy (App Runner)
+#     NEXT_PUBLIC_CORA_API_URL  = module.modular_api_gateway.api_gateway_url  # Fixed: was NEXT_PUBLIC_API_URL
+#     NEXTAUTH_URL              = "https://${var.app_domain}"
+#     NEXTAUTH_SECRET           = var.nextauth_secret
+#     OKTA_ISSUER               = var.okta_issuer
+#     OKTA_CLIENT_ID            = var.okta_audience
+#     OKTA_CLIENT_SECRET        = ""  # Add to variables if using Okta client credentials flow
+#     SUPABASE_URL              = var.supabase_url
+#     SUPABASE_ANON_KEY         = var.supabase_anon_key_value
+#   }
+#
+#   common_tags = {
+#     Environment = "dev"
+#     Project     = "{{PROJECT_NAME}}"
+#     ManagedBy   = "terraform"
+#     App         = "web"
+#   }
+# }
 
 # ========================================================================
 # CORA Modular API Gateway
@@ -348,17 +383,24 @@ output "authorizer_lambda_name" {
   value       = aws_lambda_function.authorizer.function_name
 }
 
-output "app_runner_service_url" {
-  description = "URL of the App Runner web service"
-  value       = module.app_runner_web.app_runner_service_url
-}
+# App Runner outputs (DISABLED - uncomment when App Runner is enabled)
+# output "app_runner_service_url" {
+#   description = "URL of the App Runner web service"
+#   value       = module.app_runner_web.app_runner_service_url
+# }
+#
+# output "app_runner_service_arn" {
+#   description = "ARN of the App Runner web service"
+#   value       = module.app_runner_web.app_runner_service_arn
+# }
 
-output "app_runner_service_arn" {
-  description = "ARN of the App Runner web service"
-  value       = module.app_runner_web.app_runner_service_arn
-}
-
-output "ecr_repository_url" {
+# ECR outputs (ACTIVE - for image push practice)
+output "ecr_web_repository_url" {
   description = "URL of the ECR repository for web application"
-  value       = module.app_runner_web.ecr_repository_url
+  value       = local.ecr_repository_url
+}
+
+output "ecr_web_repository_name" {
+  description = "Name of the ECR repository for web application"
+  value       = local.ecr_repository_name
 }

@@ -1,39 +1,6 @@
 # App Runner Service for Next.js App
-# Provisions ECR repository, App Runner service, IAM roles, and auto-scaling
-
-# =============================================================================
-# ECR Repository
-# =============================================================================
-
-resource "aws_ecr_repository" "app" {
-  name                 = "${var.name_prefix}-${var.environment}-${var.app_name}"
-  image_tag_mutability = "MUTABLE"
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-
-  tags = var.common_tags
-}
-
-resource "aws_ecr_lifecycle_policy" "app" {
-  repository = aws_ecr_repository.app.name
-
-  policy = jsonencode({
-    rules = [{
-      rulePriority = 1
-      description  = "Keep last 10 images"
-      selection = {
-        tagStatus     = "any"
-        countType     = "imageCountMoreThan"
-        countNumber   = 10
-      }
-      action = {
-        type = "expire"
-      }
-    }]
-  })
-}
+# Provisions App Runner service and IAM role
+# REQUIRES: External ECR repository (passed as input)
 
 # =============================================================================
 # IAM Role for App Runner
@@ -75,7 +42,7 @@ resource "aws_apprunner_service" "app" {
     }
 
     image_repository {
-      image_identifier      = "${aws_ecr_repository.app.repository_url}:latest"
+      image_identifier      = "${var.ecr_repository_url}:latest"
       image_repository_type = "ECR"
       
       image_configuration {

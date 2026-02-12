@@ -112,9 +112,15 @@ variable "supabase_jwt_secret_value" {
 # ========================================================================
 
 variable "aws_region" {
-  description = "AWS region for resources"
+description = "AWS region for resources"
   type        = string
   default     = "us-east-1"
+}
+
+variable "create_ecr" {
+  description = "Whether to create ECR repository (true for first env in account, false for subsequent)"
+  type        = bool
+  default     = true
 }
 
 # ========================================================================

@@ -15,6 +15,11 @@ variable "app_name" {
   type        = string
 }
 
+variable "ecr_repository_url" {
+  description = "ECR repository URL for container images"
+  type        = string
+}
+
 variable "port" {
   description = "Port number the application listens on"
   type        = number
