@@ -186,32 +186,63 @@ add_module_to_terraform() {
   log_info "Adding ${module_name} to Terraform configuration..."
   
   # Module declaration (monorepo uses local path)
+  # Note: Functional modules use the same variable interface as core modules
+  # (except they don't have module_name parameter)
   local module_declaration="
 # ${module_upper} - CORA Module
 module \"${module_underscore}\" {
   source = \"../../packages/${module_name}/infrastructure\"
 
-  project_name     = var.project_name
-  environment      = var.environment
-  aws_region       = var.aws_region
-  lambda_bucket    = aws_s3_bucket.lambda_artifacts.bucket
-  api_gateway_id   = module.modular_api_gateway.api_gateway_id
-  api_gateway_execution_arn = module.modular_api_gateway.api_gateway_execution_arn
-  authorizer_uri   = aws_lambda_function.authorizer.invoke_arn
-  org_common_layer_arn = aws_lambda_layer_version.org_common.arn
-  
-  supabase_url            = var.supabase_url
-  supabase_anon_key_value = var.supabase_anon_key_value
-  supabase_service_key    = var.supabase_service_key
-  
-  common_tags = var.common_tags
+  project_name         = \"${project_name}\"
+  environment          = \"dev\"
+  org_common_layer_arn = module.module_access.layer_arn
+  supabase_secret_arn  = module.secrets.supabase_secret_arn
+  aws_region           = var.aws_region
+  log_level            = var.log_level
+
+  common_tags = {
+    Environment = \"dev\"
+    Project     = \"${project_name}\"
+    ManagedBy   = \"terraform\"
+    Module      = \"${module_name}\"
+    ModuleType  = \"CORA\"
+  }
 }
 "
   
-  # Append to main.tf
-  echo "$module_declaration" >> "$main_tf"
+  # Find insertion point (before "# CORA Modular API Gateway")
+  local marker="# CORA Modular API Gateway"
+  local line_num=$(grep -n "$marker" "$main_tf" | head -1 | cut -d: -f1)
+  
+  if [[ -z "$line_num" ]]; then
+    log_error "Could not find insertion marker in main.tf: $marker"
+    log_warn "Appending to end of file instead"
+    echo "$module_declaration" >> "$main_tf"
+  else
+    # Insert module declaration before the marker
+    {
+      head -n $((line_num - 1)) "$main_tf"
+      echo "$module_declaration"
+      tail -n +$line_num "$main_tf"
+    } > "${main_tf}.tmp"
+    mv "${main_tf}.tmp" "$main_tf"
+  fi
   
   log_info "✅ Added ${module_name} to Terraform configuration"
+  
+  # Also add the module's api_routes to the modular_api_gateway module_routes
+  # This ensures the module's API endpoints are registered with the API Gateway
+  local routes_pattern="module.module_chat.api_routes,"
+  local new_routes="module.module_chat.api_routes,\n    module.${module_underscore}.api_routes,"
+  
+  if grep -q "module.${module_underscore}.api_routes" "$main_tf"; then
+    log_info "  Module routes already in API Gateway config"
+  else
+    # Add the module's api_routes to the concat
+    sed -i '' "s|${routes_pattern}|${new_routes}|" "$main_tf" 2>/dev/null || \
+    sed -i "s|${routes_pattern}|${new_routes}|" "$main_tf"
+    log_info "  ✅ Added ${module_name} API routes to API Gateway"
+  fi
 }
 
 # Function to add module as workspace dependency in web app
