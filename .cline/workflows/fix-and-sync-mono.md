@@ -21,24 +21,15 @@ Changes made only to test projects will be lost when the project is deleted.
 - Monorepo template: `templates/_project-monorepo-template/`
 - Module templates: `templates/_modules-core/` or `templates/_modules-functional/`
 
-### 2. Copy Fixed File to Test Project
+### 2. Sync Fixed File to Test Project (WITH Placeholder Replacement)
 
-Use direct `cp` command (more reliable than sync script for monorepo):
+**CRITICAL:** Use the `sync-mono-fix.sh` script to handle placeholder replacement.
+
+**DO NOT use manual `cp`** - it copies placeholders like `{{PROJECT_NAME}}` without replacement!
 
 ```bash
-# Determine source template file and target in test project
-TEMPLATE_FILE="<path-in-templates>"
-TEST_PROJECT="/Users/aaron/code/bodhix/testing/mono-s1/ai-mod-stack"
-
-# For module files:
-# Copy from: templates/_modules-core/<module>/frontend/index.ts
-# Copy to:   $TEST_PROJECT/packages/<module>/frontend/index.ts
-
-# For web app files:
-# Copy from: templates/_project-monorepo-template/apps/web/<path>
-# Copy to:   $TEST_PROJECT/apps/web/<path>
-
-cp "$TEMPLATE_FILE" "$TEST_PROJECT/<target-path>"
+# Use the sync script
+./scripts/sync-mono-fix.sh <template-file> <test-project-path>
 ```
 
 **Example commands:**
@@ -47,17 +38,23 @@ cp "$TEMPLATE_FILE" "$TEST_PROJECT/<target-path>"
 TEST_PROJECT="/Users/aaron/code/bodhix/testing/mono-s1/ai-mod-stack"
 
 # Module frontend file
-cp templates/_modules-core/module-ws/frontend/index.ts \
-   $TEST_PROJECT/packages/module-ws/frontend/index.ts
+./scripts/sync-mono-fix.sh templates/_modules-core/module-ws/frontend/index.ts $TEST_PROJECT
 
 # Web app tsconfig
-cp templates/_project-monorepo-template/apps/web/tsconfig.json \
-   $TEST_PROJECT/apps/web/tsconfig.json
+./scripts/sync-mono-fix.sh templates/_project-monorepo-template/apps/web/tsconfig.json $TEST_PROJECT
 
 # Admin page
-cp templates/_project-monorepo-template/apps/web/app/admin/org/access/page.tsx \
-   $TEST_PROJECT/apps/web/app/admin/org/access/page.tsx
+./scripts/sync-mono-fix.sh templates/_project-monorepo-template/apps/web/app/admin/org/access/page.tsx $TEST_PROJECT
+
+# Admin client page
+./scripts/sync-mono-fix.sh templates/_project-monorepo-template/apps/web/app/admin/sys/SystemAdminClientPage.tsx $TEST_PROJECT
 ```
+
+**What the script does:**
+- ✅ Extracts project name from path (e.g., `ai-mod-stack` → `ai-mod`)
+- ✅ Replaces `{{PROJECT_NAME}}` with actual project name
+- ✅ Determines correct target path (apps/, packages/, etc.)
+- ✅ Creates directories if needed
 
 ### 3. Rebuild Affected Modules
 
@@ -103,9 +100,10 @@ Check that:
 ## Key Principles
 
 1. **Template-First**: ALWAYS fix template before test project
-2. **Direct Copy**: Use `cp` command - more reliable than sync script for monorepo
-3. **Rebuild**: Always rebuild affected modules after changes
-4. **Test**: Verify the fix works in the test project
+2. **Use Sync Script**: ALWAYS use `./scripts/sync-mono-fix.sh` - handles placeholder replacement
+3. **Never Use cp**: Manual `cp` leaves `{{PROJECT_NAME}}` unreplaced, causing build failures
+4. **Rebuild**: Always rebuild affected modules after changes
+5. **Test**: Verify the fix works in the test project
 
 ## Common File Types
 
@@ -116,11 +114,18 @@ Check that:
 | Module Lambda | `templates/_modules-core/<module>/backend/` | `$TEST_PROJECT/packages/<module>/backend/` |
 | Infrastructure | `templates/_project-monorepo-template/envs/` | `$TEST_PROJECT/envs/` |
 
-## Why Not Use sync-fix-to-project.sh?
+## Sync Script for Monorepo vs Two-Repo
 
-The sync script has issues with monorepo projects:
-- Can hang/timeout when searching large directory structures
-- Placeholder replacement can fail silently
-- Direct `cp` is faster and more predictable for monorepo
+**For monorepo projects:** Use `./scripts/sync-mono-fix.sh`
+- Handles placeholder replacement (`{{PROJECT_NAME}}` → `ai-mod`)
+- Optimized for monorepo directory structure
+- Faster path resolution
 
-For **two-repo projects** (pm-app, etc.), continue using the sync script as normal.
+**For two-repo projects (pm-app, etc.):** Use `./scripts/sync-fix-to-project.sh`
+- Handles two-repo pattern (separate infra/stack repos)
+- Searches across multiple directories
+
+**Why not manual `cp`?**
+- ❌ Doesn't replace placeholders
+- ❌ Causes build errors: `Cannot find module '@{{PROJECT_NAME}}/...'`
+- ❌ Requires manual path calculation

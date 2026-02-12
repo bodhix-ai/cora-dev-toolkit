@@ -1,3 +1,0 @@
-Overall Status: [31m✗ FAILED[0m
-Total Errors: [31m89[0m
-Total Warnings: [33m403[0m

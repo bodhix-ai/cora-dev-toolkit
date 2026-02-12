@@ -13,7 +13,7 @@
  */
 
 import React from "react";
-import { OrgWsAdmin } from "@{{PROJECT_NAME}}/module-ws";
+import { OrgWsAdmin } from "@{{PROJECT_NAME}}/module-ws/admin";
 
 /**
  * Organization Workspace Admin Page Component

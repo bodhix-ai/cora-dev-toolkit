@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Box, CircularProgress, Container, Typography, Alert } from "@mui/material";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
+import { useUser } from "@{{PROJECT_NAME}}/module-access/admin";
 
 /**
  * Admin Parent Route (Client Component)

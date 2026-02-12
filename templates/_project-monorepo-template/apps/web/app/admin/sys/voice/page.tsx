@@ -13,8 +13,8 @@
  */
 
 import React from "react";
-import { useUser } from "@{{PROJECT_NAME}}/module-access";
-import { SysVoiceAdmin } from "@{{PROJECT_NAME}}/module-voice";
+import { useUser } from "@{{PROJECT_NAME}}/module-access/admin";
+import { SysVoiceAdmin } from "@{{PROJECT_NAME}}/module-voice/admin";
 import { CircularProgress, Box, Alert } from "@mui/material";
 
 /**

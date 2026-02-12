@@ -13,8 +13,8 @@
  */
 
 import React from "react";
-import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access";
-import { OrgEvalAdmin } from "@{{PROJECT_NAME}}/module-eval";
+import { useUser, useRole } from "@{{PROJECT_NAME}}/module-access/admin";
+import { OrgEvalAdmin } from "@{{PROJECT_NAME}}/module-eval/admin";
 import { CircularProgress, Box, Alert } from "@mui/material";
 
 /**

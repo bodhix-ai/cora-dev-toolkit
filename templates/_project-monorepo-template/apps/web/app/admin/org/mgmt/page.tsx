@@ -15,7 +15,7 @@
  */
 
 import React from "react";
-import { OrgMgmtAdmin } from "@{{PROJECT_NAME}}/module-mgmt";
+import { OrgMgmtAdmin } from "@{{PROJECT_NAME}}/module-mgmt/admin";
 
 export default function OrgManagementPage() {
   return <OrgMgmtAdmin />;

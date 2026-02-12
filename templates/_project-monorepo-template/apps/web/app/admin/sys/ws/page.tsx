@@ -13,7 +13,7 @@
  */
 
 import React from "react";
-import { SysWsAdmin } from "@{{PROJECT_NAME}}/module-ws";
+import { SysWsAdmin } from "@{{PROJECT_NAME}}/module-ws/admin";
 
 /**
  * System Workspace Admin Page Component

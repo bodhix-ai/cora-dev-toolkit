@@ -1,6 +1,6 @@
 "use client";
 
-import { SysChatAdmin } from "@{{PROJECT_NAME}}/module-chat";
+import { SysChatAdmin } from "@{{PROJECT_NAME}}/module-chat/admin";
 
 /**
  * System Chat Admin Page

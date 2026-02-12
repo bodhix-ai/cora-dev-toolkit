@@ -1,6 +1,6 @@
 "use client";
 
-import { OrgChatAdmin } from "@{{PROJECT_NAME}}/module-chat";
+import { OrgChatAdmin } from "@{{PROJECT_NAME}}/module-chat/admin";
 
 /**
  * Organization Chat Admin Page
