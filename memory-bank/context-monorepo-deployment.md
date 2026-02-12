@@ -1,10 +1,10 @@
 # Context: Mono-Repo Deployment & App Runner
 
 **Initiative:** Consolidate two-repo pattern to mono-repo + deploy to AWS App Runner  
-**Status:** Phase 2B - ✅ BUILD SYSTEM COMPLETE (Pattern B Implemented)  
-**Priority:** P0 ✅ Critical Milestone Achieved  
+**Status:** Phase 2C - ✅ DEPLOYMENT COMPLETE (All Modules Deployed Successfully)  
+**Priority:** P0 ✅ Major Milestone - Infrastructure Ready  
 **Created:** February 9, 2026  
-**Last Updated:** February 11, 2026 (23:35 EST)
+**Last Updated:** February 12, 2026 (00:55 EST)
 
 ---
 
@@ -39,15 +39,16 @@
 | S2 | `monorepo-s2` | `plan_monorepo-master-plan.md` (Phase 3) | ⚠️ Partial | 2026-02-10 |
 | S3 | `monorepo-s3` | `plan_monorepo-s3.md` | ⚠️ Partial | 2026-02-11 |
 | S4 | `monorepo-s3` | Build System Complete | ✅ Complete | 2026-02-11 |
+| S5 | `monorepo-s3` | Template Bug Fix + Deployment | ✅ Complete | 2026-02-12 |
 
 ---
 
 ## Current Status
 
-**Sprint:** S4 (Build System Implementation & Verification)  
+**Sprint:** S5 (Template Bug Fix & Infrastructure Deployment)  
 **Branch:** `monorepo-s3` (continuing)  
-**Status:** ✅ COMPLETE - Pattern B (tsup + Turborepo) working  
-**Focus:** Build system implementation complete, ready for Docker + deployment  
+**Status:** ✅ COMPLETE - All 9 modules deployed successfully  
+**Focus:** Template fixes applied, infrastructure fully operational, ready for build system syncing
 
 ---
 
@@ -70,6 +71,109 @@
 - All 10 modules: 100% success rate
 
 **Next Phase:** Docker build, local testing, and App Runner deployment
+
+---
+
+## Session 18 - Template Bug Fix & Deployment Success (Feb 12, 00:00-00:55)
+
+**Duration:** ~1 hour  
+**Status:** ✅ COMPLETE - All modules deployed successfully
+
+### Major Accomplishments
+
+**1. Discovered Critical Template Bug**
+
+User identified that functional modules in the monorepo template had incorrect variable names:
+- ❌ **OLD (Wrong):** `lambda_bucket`, `api_gateway_id`, `supabase_url`, `supabase_anon_key_value`
+- ✅ **NEW (Correct):** `org_common_layer_arn`, `supabase_secret_arn`, `aws_region`, `log_level`, `common_tags`
+
+**Root Cause:** The `create-cora-monorepo.sh` script's `add_module_to_terraform()` function was generating module blocks with the OLD two-repo pattern instead of the NEW core module pattern.
+
+**Impact:** Every project created from the monorepo template inherited this bug.
+
+**2. Fixed Test Project (mono-3)**
+
+- ✅ Removed invalid `module_name` parameter (not accepted by functional modules)
+- ✅ Kept all other correct parameters (project_name, environment, org_common_layer_arn, supabase_secret_arn, aws_region, log_level)
+- ✅ Added `common_tags` back (user caught premature removal)
+- ✅ Commented out App Runner outputs (module disabled)
+- ✅ **Terraform validation passed!**
+
+**3. Fixed Script Template**
+
+Updated `scripts/create-cora-monorepo.sh` (lines 217-240) to generate correct module blocks:
+
+**BEFORE (Wrong):**
+```bash
+module_declaration="
+module \"${module_underscore}\" {
+  project_name     = var.project_name
+  lambda_bucket    = aws_s3_bucket.lambda_artifacts.bucket
+  api_gateway_id   = module.modular_api_gateway.api_gateway_id
+  supabase_url     = var.supabase_url
+  ...
+}
+"
+```
+
+**AFTER (Correct):**
+```bash
+module_declaration="
+module \"${module_underscore}\" {
+  project_name         = \"${project_name}\"
+  environment          = \"dev\"
+  org_common_layer_arn = module.module_access.layer_arn
+  supabase_secret_arn  = module.secrets.supabase_secret_arn
+  aws_region           = var.aws_region
+  log_level            = var.log_level
+  
+  common_tags = {
+    Environment = \"dev\"
+    Project     = \"${project_name}\"
+    ManagedBy   = \"terraform\"
+    Module      = \"${module_name}\"
+    ModuleType  = \"CORA\"
+  }
+}
+"
+```
+
+**4. Successful Deployment**
+
+- ✅ All 9 modules (6 core + 3 functional) deployed successfully
+- ✅ No Terraform errors
+- ✅ Infrastructure fully operational
+- ✅ API Gateway routes registered
+- ✅ Lambda functions deployed
+
+### Test Project Info
+
+**Project:** mono-3  
+**Location:** `/Users/aaron/code/bodhix/testing/mono-3/ai-mod-stack`  
+**Config:** `setup.config.mono-3.yaml`  
+**Project Name:** `ai-mod`  
+**Status:** ✅ Deployed and operational
+
+**Modules Deployed:**
+- module-access (Tier 1 - Core)
+- module-ai (Tier 2 - Core)
+- module-ws (Tier 2 - Core)
+- module-mgmt (Tier 3 - Core)
+- module-kb (Tier 3 - Core)
+- module-chat (Tier 3 - Core)
+- module-voice (Functional)
+- module-eval (Functional)
+- module-eval-studio (Functional)
+
+### Key Learnings
+
+39. **User Reviews Catch Template Bugs:** The user's question "were these vars supposed to be replaced during project creation?" led to discovering a critical template bug that would have affected every future monorepo project.
+
+40. **common_tags Accepted by Functional Modules:** Functional modules accept the same variables as core modules (except `module_name`). Always verify variable interfaces before making changes.
+
+41. **Template Bugs Propagate:** Bugs in creation scripts affect every project created from them. Fixing the script is as important as fixing the test project.
+
+42. **Terraform Validation is Essential:** Running `terraform validate` after fixes confirms the configuration is correct before deployment.
 
 ---
 
@@ -245,11 +349,45 @@ Fixed multiple issues systematically:
 
 ---
 
-## Next Session Priorities (Session 18)
+## Next Session Priorities (Session 19)
 
-**Estimated Time:** 1-2 hours
+**Estimated Time:** 2-3 hours
 
-### 🔴 PRIORITY 1: Docker Build & Local Testing (30 min)
+### 🔴 PRIORITY 1: Sync Build System to Template (1 hour)
+
+**Critical:** Sync ALL Session 17 build system configs from mono-2 to monorepo template:
+
+```bash
+cd ~/code/bodhix/cora-dev-toolkit
+
+# From: ~/code/bodhix/testing/mono-2/ai-mod-stack
+# To:   templates/_project-monorepo-template/
+
+# Core build configs
+cp ~/code/bodhix/testing/mono-2/ai-mod-stack/turbo.json templates/_project-monorepo-template/
+cp ~/code/bodhix/testing/mono-2/ai-mod-stack/tsup.config.base.ts templates/_project-monorepo-template/
+
+# Module configs (9 modules)
+for module in access ai ws mgmt kb chat eval voice eval-studio; do
+  cp ~/code/bodhix/testing/mono-2/ai-mod-stack/packages/module-$module/frontend/tsup.config.ts \
+     templates/_project-monorepo-template/packages/module-$module/frontend/
+  cp ~/code/bodhix/testing/mono-2/ai-mod-stack/packages/module-$module/frontend/package.json \
+     templates/_project-monorepo-template/packages/module-$module/frontend/
+done
+
+# Web app configs
+cp ~/code/bodhix/testing/mono-2/ai-mod-stack/apps/web/next.config.mjs templates/_project-monorepo-template/apps/web/
+cp ~/code/bodhix/testing/mono-2/ai-mod-stack/apps/web/types/modules.d.ts templates/_project-monorepo-template/apps/web/types/
+cp ~/code/bodhix/testing/mono-2/ai-mod-stack/apps/web/tsconfig.json templates/_project-monorepo-template/apps/web/
+
+# Context files
+cp ~/code/bodhix/testing/mono-2/ai-mod-stack/apps/web/contexts/WorkspaceContext.tsx templates/_project-monorepo-template/apps/web/contexts/
+cp ~/code/bodhix/testing/mono-2/ai-mod-stack/apps/web/contexts/OrgContext.tsx templates/_project-monorepo-template/apps/web/contexts/
+```
+
+**Must also sync:** Session 18 script fix (`create-cora-monorepo.sh` already fixed ✅)
+
+### � PRIORITY 2: Docker Build & Local Testing (30 min)
 
 ```bash
 # Build Docker image from standalone output
@@ -263,7 +401,7 @@ docker run -p 3000:3000 --env-file apps/web/.env.local ai-mod-web:latest
 curl http://localhost:3000/api/healthcheck
 ```
 
-### 🔴 PRIORITY 2: Deploy to App Runner (30 min)
+### 🟡 PRIORITY 3: Deploy to App Runner (30 min)
 
 ```bash
 # Push to ECR
@@ -271,43 +409,25 @@ aws ecr get-login-password --region us-east-1 | docker login --username AWS --pa
 docker tag ai-mod-web:latest <ecr-repo>:latest
 docker push <ecr-repo>:latest
 
-# Deploy via Terraform
-cd infrastructure
-terraform apply -var="image_tag=latest"
+# Deploy via Terraform (uncomment App Runner module first)
+cd envs/dev
+# Edit main.tf to uncomment App Runner module
+terraform plan -var-file=local-secrets.tfvars
+terraform apply -var-file=local-secrets.tfvars
 ```
 
-### 🟡 PRIORITY 3: Sync Configs to Templates (1 hour)
-
-Copy all working configurations to templates:
-
-**From test project to templates:**
-```bash
-# Core configs
-cp turbo.json templates/_project-monorepo-template/
-cp tsup.config.base.ts templates/_project-monorepo-template/
-
-# Module configs (9 files)
-for module in module-*; do
-  cp packages/$module/frontend/tsup.config.ts templates/_project-monorepo-template/packages/$module/frontend/
-  cp packages/$module/frontend/package.json templates/_project-monorepo-template/packages/$module/frontend/
-done
-
-# Web app configs
-cp apps/web/next.config.mjs templates/_project-monorepo-template/apps/web/
-cp apps/web/types/modules.d.ts templates/_project-monorepo-template/apps/web/types/
-cp apps/web/tsconfig.json templates/_project-monorepo-template/apps/web/
-```
-
-### 🟢 PRIORITY 4: Documentation (30 min)
+### �🟢 PRIORITY 4: Documentation (30-60 min)
 
 **Write ADR-024: Monorepo Build Standards**
 - Document Pattern B (tsup + Turborepo)
 - Explain admin path configuration
 - Document "use client" banner requirement
+- Document functional module variable interface
 - Provide troubleshooting guide
 
 **Update master plan:**
-- Mark Phase 2B complete
+- Mark Phase 2B complete (Session 17)
+- Mark Phase 2C complete (Session 18)
 - Update Phase 3 status
 - Document lessons learned
 
