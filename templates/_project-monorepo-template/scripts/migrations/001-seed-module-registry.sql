@@ -26,20 +26,20 @@ INSERT INTO sys_module_registry (
     -- Tier 1: Foundation modules (no dependencies)
     (
         'module-access',
-        'Access Control',
+        'Access',
         'Identity and access management. Handles IDP integration, organization context, user context, and permissions.',
         'core',
         1,
         true,
         '[]'::jsonb,
-        '{"route": "/admin/access", "icon": "Shield", "label": "Access Control", "order": 100, "adminOnly": true}'::jsonb,
+        '{"route": "/admin/access", "icon": "Shield", "label": "Access Control", "order": 105, "adminOnly": true}'::jsonb,
         '["admin:access"]'::jsonb
     ),
 
-    -- Tier 2: Platform services (depends on Tier 1)
+    -- Tier 2: Baseline services (depends on Tier 1)
     (
         'module-ai',
-        'AI Providers',
+        'AI',
         'AI provider management. Handles provider enablement, model configuration, and usage monitoring.',
         'core',
         2,
@@ -50,72 +50,72 @@ INSERT INTO sys_module_registry (
     ),
     (
         'module-ws',
-        'Workspace Management',
+        'Workspace',
         'Multi-tenancy workspace management. Handles workspace creation, configuration, and member management.',
         'core',
         2,
         true,
         '["module-access"]'::jsonb,
-        '{"route": "/admin/ws", "icon": "Building", "label": "Workspaces", "order": 115, "adminOnly": true}'::jsonb,
+        '{"route": "/admin/ws", "icon": "Building", "label": "Workspaces", "order": 120, "adminOnly": true}'::jsonb,
         '["admin:ws"]'::jsonb
     ),
 
     -- Tier 3: Feature modules (depends on Tier 1 and 2)
     (
         'module-kb',
-        'Knowledge Base',
+        'Knowledge',
         'Knowledge base and RAG. Handles document ingestion, embedding, and semantic search for AI applications.',
         'core',
         3,
         true,
         '["module-access", "module-ai"]'::jsonb,
-        '{"route": "/admin/kb", "icon": "BookOpen", "label": "Knowledge Base", "order": 125, "adminOnly": true}'::jsonb,
+        '{"route": "/admin/kb", "icon": "BookOpen", "label": "Knowledge Bases", "order": 115, "adminOnly": true}'::jsonb,
         '["admin:kb"]'::jsonb
     ),
     (
         'module-chat',
-        'Chat & Messaging',
+        'Chat',
         'Chat and messaging functionality. Provides conversational AI interface for workspaces.',
         'functional',
         3,
         true,
         '["module-access", "module-kb"]'::jsonb,
-        '{"route": "/admin/chat", "icon": "MessageSquare", "label": "Chat", "order": 130, "adminOnly": true}'::jsonb,
+        '{"route": "/admin/chat", "icon": "MessageSquare", "label": "Chats", "order": 125, "adminOnly": true}'::jsonb,
         '["admin:chat"]'::jsonb
     ),
     (
         'module-mgmt',
-        'Platform Management',
+        'Management',
         'Platform management and monitoring. Handles Lambda management, warming, and performance monitoring.',
         'core',
         3,
         true,
         '["module-access", "module-ai"]'::jsonb,
-        '{"route": "/admin/platform", "icon": "Settings", "label": "Platform", "order": 120, "adminOnly": true}'::jsonb,
+        '{"route": "/admin/mgmt", "icon": "Settings", "label": "Management", "order": 100, "adminOnly": true}'::jsonb,
         '["admin:platform"]'::jsonb
     ),
 
     -- Functional Modules (Optional - can be toggled)
     (
         'module-eval',
-        'Model Evaluation',
+        'Evaluation',
         'Model evaluation and testing. Provides evaluation configuration, test execution, and results analysis.',
         'functional',
         3,
         true,
         '["module-access", "module-ws"]'::jsonb,
-        '{"route": "/admin/eval", "icon": "ClipboardCheck", "label": "Evaluation", "order": 140, "adminOnly": true}'::jsonb,
+        '{"route": "/admin/eval", "icon": "ClipboardCheck", "label": "Evaluations", "order": 135, "adminOnly": true}'::jsonb,
         '["admin:eval"]'::jsonb
     ),
     (
         'module-voice',
-        'Voice Interviews',
+        'Voice',
         'Voice interview capabilities. Provides AI-powered voice interviews with real-time transcription and evaluation.',
         'functional',
         3,
         true,
         '["module-access", "module-ws"]'::jsonb,
-        '{"route": "/admin/voice", "icon": "Mic", "label": "Voice", "order": 145, "adminOnly": true}'::jsonb,
+        '{"route": "/admin/voice", "icon": "Mic", "label": "Voice Interactions", "order": 130, "adminOnly": true}'::jsonb,
         '["admin:voice"]'::jsonb
     )
 ON CONFLICT (module_name) DO NOTHING;

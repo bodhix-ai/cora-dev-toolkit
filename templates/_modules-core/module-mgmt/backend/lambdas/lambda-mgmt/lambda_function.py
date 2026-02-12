@@ -466,8 +466,29 @@ def handle_sync_eventbridge(user_id: str) -> Dict[str, Any]:
 # Module Registry Handlers
 # =============================================================================
 
-def _transform_module(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Transform database module record to API response format."""
+def _transform_sys_module(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Transform database module record to API response format (System Admin scope).
+    
+    Transforms routes to system admin context (/admin/access → /admin/sys/access).
+    
+    Args:
+        data: Raw database record
+    
+    Returns:
+        Transformed module with sys admin routes
+    """
+    admin_scope = 'sys'  # System admin scope
+    nav_config = data.get('nav_config', {})
+    
+    # Transform route to include admin scope (/admin/access → /admin/sys/access)
+    if 'route' in nav_config and nav_config['route']:
+        base_route = nav_config['route']
+        # Replace /admin/ prefix with /admin/{scope}/
+        if base_route.startswith('/admin/'):
+            module_path = base_route.replace('/admin/', '')
+            nav_config = {**nav_config, 'route': f'/admin/{admin_scope}/{module_path}'}
+    
     return {
         'id': data.get('id'),
         'name': data.get('module_name'),
@@ -482,7 +503,7 @@ def _transform_module(data: Dict[str, Any]) -> Dict[str, Any]:
         'config': data.get('config', {}),
         'featureFlags': data.get('feature_flags', {}),
         'dependencies': data.get('dependencies', []),
-        'navConfig': data.get('nav_config', {}),
+        'navConfig': nav_config,
         'requiredPermissions': data.get('required_permissions', []),
         'createdAt': data.get('created_at'),
         'updatedAt': data.get('updated_at'),
@@ -523,7 +544,7 @@ def handle_list_modules(event: Dict[str, Any]) -> Dict[str, Any]:
         )
         
         result = {
-            'modules': [_transform_module(m) for m in modules],
+            'modules': [_transform_sys_module(m) for m in modules],
             'totalCount': len(modules),
             'filters': {
                 'type': module_type,
@@ -568,7 +589,7 @@ def handle_get_module(module_name: str) -> Dict[str, Any]:
             raise common.NotFoundError(f"Module '{module_name}' not found")
         
         logger.info(f"Retrieved module: {module_name}")
-        return common.success_response({'module': _transform_module(module)})
+        return common.success_response({'module': _transform_sys_module(module)})
     
     except Exception as e:
         logger.exception(f'Error getting module {module_name}: {str(e)}')
@@ -620,7 +641,7 @@ def handle_update_module(
             raise common.NotFoundError(f"Module '{module_name}' not found")
         
         logger.info(f"Updated module: {module_name}")
-        return common.success_response({'module': _transform_module(updated_module)})
+        return common.success_response({'module': _transform_sys_module(updated_module)})
     
     except Exception as e:
         logger.exception(f'Error updating module {module_name}: {str(e)}')
@@ -680,7 +701,7 @@ def handle_enable_module(module_name: str, user_id: str) -> Dict[str, Any]:
         
         logger.info(f"Enabled module: {module_name}")
         return common.success_response({
-            'module': _transform_module(updated_module),
+            'module': _transform_sys_module(updated_module),
             'message': f"Module '{module_name}' enabled successfully"
         })
     
@@ -752,7 +773,7 @@ def handle_disable_module(
         
         logger.info(f"Disabled module: {module_name}")
         return common.success_response({
-            'module': _transform_module(updated_module),
+            'module': _transform_sys_module(updated_module),
             'message': f"Module '{module_name}' disabled successfully"
         })
     
@@ -885,7 +906,7 @@ def handle_register_module(body: Dict[str, Any], user_id: str) -> Dict[str, Any]
         
         logger.info(f"Registered new module: {module_name}")
         return common.success_response(
-            {'module': _transform_module(new_module), 'message': f"Module '{module_name}' registered successfully"},
+            {'module': _transform_sys_module(new_module), 'message': f"Module '{module_name}' registered successfully"},
             status_code=201
         )
     
@@ -1124,7 +1145,21 @@ def _transform_ws_module(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _transform_org_module(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Transform org module config from SQL function to API response format."""
+    """
+    Transform org module config from SQL function to API response format.
+    Transforms routes to org admin context (/admin/access → /admin/org/access).
+    """
+    admin_scope = 'org'  # Organization admin scope
+    nav_config = data.get('nav_config', {})
+    
+    # Transform route to include admin scope (/admin/access → /admin/org/access)
+    if 'route' in nav_config and nav_config['route']:
+        base_route = nav_config['route']
+        # Replace /admin/ prefix with /admin/{scope}/
+        if base_route.startswith('/admin/'):
+            module_path = base_route.replace('/admin/', '')
+            nav_config = {**nav_config, 'route': f'/admin/{admin_scope}/{module_path}'}
+    
     return {
         'id': data.get('id'),
         'name': data.get('module_name'),
@@ -1141,7 +1176,7 @@ def _transform_org_module(data: Dict[str, Any]) -> Dict[str, Any]:
         'config': data.get('config', {}),
         'featureFlags': data.get('feature_flags', {}),
         'dependencies': data.get('dependencies', []),
-        'navConfig': data.get('nav_config', {}),
+        'navConfig': nav_config,
         'requiredPermissions': data.get('required_permissions', []),
         'resolutionMetadata': data.get('resolution_metadata', {}),
     }
