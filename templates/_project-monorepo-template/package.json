@@ -16,5 +16,10 @@
     "monorepo"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "turbo": "^2.8.7"
+  },
+  "packageManager": "pnpm@10.26.2"
 }

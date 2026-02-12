@@ -1,28 +1,29 @@
 {
-  "name": "@{{PROJECT_NAME}}/module-ai",
+  "name": "@ai-mod/module-ai",
   "version": "1.0.0",
   "description": "AI Enablement Module frontend for CORA",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.mts"
     },
     "./admin": {
-      "types": "./dist/components/admin/index.d.ts",
-      "import": "./dist/components/admin/index.js"
+      "import": "./dist/admin/index.js",
+      "types": "./dist/admin/index.d.mts"
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dev": "tsup --watch"
   },
   "dependencies": {
-    "@{{PROJECT_NAME}}/api-client": "workspace:*",
-    "@{{PROJECT_NAME}}/module-access": "workspace:*",
-    "@{{PROJECT_NAME}}/shared-types": "workspace:*",
+    "@ai-mod/api-client": "workspace:*",
+    "@ai-mod/module-access": "workspace:*",
+    "@ai-mod/shared-types": "workspace:*",
     "@types/react": "^18.3.3",
     "next-auth": "^4.24.7"
   },

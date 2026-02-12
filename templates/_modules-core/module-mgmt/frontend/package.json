@@ -1,26 +1,23 @@
 {
-  "name": "@{{PROJECT_NAME}}/module-mgmt",
+  "name": "@ai-mod/module-mgmt",
   "version": "1.0.0",
   "description": "Lambda Management Module for CORA projects - warming, monitoring, and configuration",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.mts"
     },
     "./admin": {
-      "types": "./dist/components/admin/index.d.ts",
-      "import": "./dist/components/admin/index.js"
-    },
-    "./frontend/pages/OrgModuleConfigPage": {
-      "types": "./dist/frontend/pages/OrgModuleConfigPage.d.ts",
-      "import": "./dist/frontend/pages/OrgModuleConfigPage.js"
+      "import": "./dist/admin/index.js",
+      "types": "./dist/admin/index.d.mts"
     }
   },
   "scripts": {
-    "build": "tsc",
-    "type-check": "tsc --noEmit"
+    "build": "tsup",
+    "type-check": "tsc --noEmit",
+    "dev": "tsup --watch"
   },
   "keywords": [
     "lambda",
@@ -33,9 +30,9 @@
   "author": "{{PROJECT_DISPLAY_NAME}} Team",
   "license": "MIT",
   "dependencies": {
-    "@{{PROJECT_NAME}}/api-client": "workspace:*",
-    "@{{PROJECT_NAME}}/shared-types": "workspace:*",
-    "@{{PROJECT_NAME}}/module-access": "workspace:*",
+    "@ai-mod/api-client": "workspace:*",
+    "@ai-mod/shared-types": "workspace:*",
+    "@ai-mod/module-access": "workspace:*",
     "date-fns": "^4.0.0"
   },
   "peerDependencies": {

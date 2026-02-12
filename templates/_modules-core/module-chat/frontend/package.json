@@ -1,5 +1,5 @@
 {
-  "name": "@{{PROJECT_NAME}}/module-chat",
+  "name": "@ai-mod/module-chat",
   "version": "1.0.0",
   "private": true,
   "description": "CORA Chat Module - Core chat and messaging functionality",
@@ -7,24 +7,24 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.mts"
     },
     "./admin": {
-      "types": "./dist/components/admin/index.d.ts",
-      "import": "./dist/components/admin/index.js"
+      "import": "./dist/admin/index.js",
+      "types": "./dist/admin/index.d.mts"
     }
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "tsc -b",
+    "dev": "tsup --watch",
+    "build": "tsup",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@{{PROJECT_NAME}}/api-client": "workspace:*",
-    "@{{PROJECT_NAME}}/shared-types": "workspace:*",
-    "@{{PROJECT_NAME}}/shared": "workspace:*",
+    "@ai-mod/api-client": "workspace:*",
+    "@ai-mod/shared-types": "workspace:*",
+    "@ai-mod/shared": "workspace:*",
     "lucide-react": "^0.460.0",
     "react": "^18.2.0",
     "next": "^14.0.0",

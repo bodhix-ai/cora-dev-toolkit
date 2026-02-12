@@ -1,5 +1,5 @@
 {
-  "name": "@{{PROJECT_NAME}}/module-eval-studio",
+  "name": "@ai-mod/module-eval-studio",
   "version": "1.0.0",
   "private": true,
   "description": "CORA Evaluation Studio - BA Workbench for designing evaluation rubrics, creating truth sets, and optimizing prompts",
@@ -7,20 +7,24 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./admin": {
+      "import": "./dist/admin/index.js",
+      "types": "./dist/admin/index.d.ts"
     }
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "tsc -b",
+    "dev": "tsup --watch",
+    "build": "tsup",
     "lint": "eslint .",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@{{PROJECT_NAME}}/api-client": "workspace:*",
-    "@{{PROJECT_NAME}}/module-eval": "workspace:*",
-    "@{{PROJECT_NAME}}/module-kb": "workspace:*",
+    "@ai-mod/api-client": "workspace:*",
+    "@ai-mod/module-eval": "workspace:*",
+    "@ai-mod/module-kb": "workspace:*",
     "@mui/material": "^5.15.20",
     "@mui/icons-material": "^5.15.20",
     "@emotion/react": "^11.11.4",

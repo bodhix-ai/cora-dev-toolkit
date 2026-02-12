@@ -1,5 +1,5 @@
 {
-  "name": "@{{PROJECT_NAME}}/module-eval",
+  "name": "@ai-mod/module-eval",
   "version": "1.0.0",
   "private": true,
   "description": "CORA Evaluation Module - AI-powered document evaluation with criteria management and scoring",
@@ -7,23 +7,23 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.mts"
     },
     "./admin": {
-      "types": "./dist/components/admin/index.d.ts",
-      "import": "./dist/components/admin/index.js"
+      "import": "./dist/admin/index.js",
+      "types": "./dist/admin/index.d.mts"
     }
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "tsc -b",
+    "dev": "tsup --watch",
+    "build": "tsup",
     "lint": "eslint .",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@{{PROJECT_NAME}}/api-client": "workspace:*",
-    "@{{PROJECT_NAME}}/shared": "workspace:*",
+    "@ai-mod/api-client": "workspace:*",
+    "@ai-mod/shared": "workspace:*",
     "@mui/material": "^5.15.20",
     "@mui/icons-material": "^5.15.20",
     "@emotion/react": "^11.11.4",
