@@ -1,10 +1,10 @@
 # Plan: App Runner Deployment + Mono-Repo Consolidation
 
-**Status:** Phase 3 - 🟡 IN PROGRESS (Infrastructure Code Complete, Deployment Running)  
+**Status:** Phase 2A - � CRITICAL GAPS IDENTIFIED (Script Feature Parity Issues)  
 **Created:** February 9, 2026  
-**Last Updated:** February 10, 2026 (17:20 EST)
-**Estimated Timeline:** 5-6 working days (ON TRACK - Day 2, ahead of schedule)  
-**Risk Level:** Low (Phase 2B complete ✅, Phase 3 infra code deployed, awaiting completion)
+**Last Updated:** February 11, 2026 (18:35 EST)
+**Estimated Timeline:** 5-6 working days (Day 4 - addressing discovered gaps)  
+**Risk Level:** Medium (8 missing functions in script, App Runner deployment blocked)
 
 ---
 
@@ -12,11 +12,21 @@
 
 This plan consolidates the two-repo CORA pattern (`{project}-infra` + `{project}-stack`) into a single mono-repo and deploys the Next.js web application to AWS App Runner as a containerized service.
 
+**🚨 CRITICAL UPDATE (Feb 11, 2026):** Comprehensive script analysis revealed 8 missing functions in `create-cora-monorepo.sh`. Phase 2A marked as incomplete pending function porting.
+
 **Key Goals:**
-1. Create a new mono-repo template (`_project-monorepo-template`) alongside existing templates
-2. Deploy `apps/web` to AWS App Runner (web-first, studio deferred)
-3. Maintain 100% backward compatibility with existing two-repo projects (pm-app)
-4. Establish reusable patterns for future CORA projects
+1. Create a new mono-repo template (`_project-monorepo-template`) alongside existing templates ✅
+2. Port all automation features from `create-cora-project.sh` ⚠️ (8 functions missing)
+3. Deploy `apps/web` to AWS App Runner (web-first, studio deferred) ⏸️ (blocked on script fixes)
+4. Maintain 100% backward compatibility with existing two-repo projects (pm-app) ✅
+5. Establish reusable patterns for future CORA projects
+
+**Recent Discoveries:**
+- Template structure complete (165 files) ✅
+- Script missing 8 critical functions ❌
+- Database migrations not executed ❌
+- Functional module routes not copied ❌
+- No validation suite execution ❌
 
 **What Changes:**
 - New template structure combining infra + stack into single repo
@@ -211,39 +221,66 @@ GitHub Actions
 
 ---
 
-### Phase 2A: Automation Porting (1 day) ✅ COMPLETE
+### Phase 2A: Automation Porting (1 day) ⚠️ INCOMPLETE - CRITICAL GAPS DISCOVERED
 
 **Objective:** Port all automation features from `create-cora-project.sh` to achieve feature parity
 
-**Tasks (All Complete):**
-1. ✅ Read automation functions from `create-cora-project.sh`
-2. ✅ Port 5 core automation functions (~200 lines):
-   - `generate_env_files()` - Creates .env.local and validation .env
-   - `generate_terraform_vars()` - Creates local-secrets.tfvars
-   - `consolidate_database_schemas()` - Merges 50+ module schemas
-   - `install_validation_deps()` - Creates Python venv for validators
-   - `build_packages()` - Runs pnpm install + build
-3. ✅ Add function calls at script end (automatic execution when --config provided)
-4. ✅ Test with setup.config.mono-s1.yaml
+**Status:** 🔴 **INCOMPLETE** - Line-by-line comparison revealed 8 missing functions
 
-**Test Results:**
+**What Was Initially Ported (5 functions):**
+1. ✅ `generate_env_files()` - Creates .env.local and validation .env
+2. ✅ `generate_terraform_vars()` - Creates local-secrets.tfvars
+3. ✅ `consolidate_database_schemas()` - Merges 50+ module schemas
+4. ✅ `install_validation_deps()` - Creates Python venv for validators
+5. ✅ `build_packages()` - Runs pnpm install + build
+6. ✅ `merge_module_configs()` - Merges module config files
+
+**What's MISSING (8 critical items):**
+1. ❌ `check_dependencies()` - Validates yq, git, gh, openssl (script fails late without this)
+2. ❌ `check_github_oidc_provider()` - Detects existing OIDC provider in AWS account
+3. ❌ `seed_idp_config()` - Seeds Okta/Clerk configuration to database
+4. ❌ `seed_ai_provider_credentials()` - Seeds AI provider configurations
+5. ❌ `run_migrations()` - **EXECUTES database setup** (SQL files created but NOT run)
+6. ❌ `stamp_project_version()` - Stamps toolkit version to `.cora-version.yaml`
+7. ❌ `run_post_creation_validation()` - Runs full validation suite and reports
+8. ❌ **Functional module route copying** - Routes never copied (explains missing routes)
+
+**Impact Analysis:**
+- **Database:** SQL files created but database NOT provisioned (empty database)
+- **Routes:** Functional module routes missing from web app
+- **Validation:** No validation report, errors go undetected
+- **Version tracking:** Impossible to track which toolkit version was used
+- **IDP config:** Okta/Clerk not configured in database
+- **AI providers:** AI provider credentials not seeded
+
+**Test Results (Partial):**
 ```
 ✅ Config parsing successful (project: ai-mod, 9 modules)
 ✅ Database schemas consolidated (50+ SQL files → setup-database.sql)
+⚠️ Database migrations NOT RUN (SQL file created but not executed)
 ✅ Validation environment created (Python venv with dependencies)
+⚠️ Validation suite NOT RUN (no report generated)
 ✅ pnpm install succeeded (920 packages)
-⚠️ Build failed on module-kb type error (SysKbAdmin.tsx:139)
+⚠️ Functional module routes NOT COPIED
 ```
 
-**Progress:** 100% complete (all automation ported and tested)
+**Revised Acceptance Criteria:**
+- [x] ~~All automation functions ported from two-repo script~~ **INCOMPLETE** - 8 missing
+- [x] Config file parsing works correctly ✅
+- [x] Environment files generated automatically ✅
+- [x] Database schemas consolidated automatically ✅
+- [ ] **Database migrations executed** ❌ NOT DONE
+- [x] Validation dependencies installed automatically ✅
+- [ ] **Validation suite runs and reports** ❌ NOT DONE
+- [ ] **Functional module routes copied** ❌ NOT DONE
+- [x] Package build attempted (pnpm install succeeded) ✅
 
-**Acceptance Criteria:**
-- [x] All automation functions ported from two-repo script
-- [x] Config file parsing works correctly
-- [x] Environment files generated automatically
-- [x] Database schemas consolidated automatically
-- [x] Validation dependencies installed automatically
-- [x] Package build attempted (pnpm install succeeded)
+**Next Steps (Sprint 4):**
+1. Port 7 missing functions (~500 lines total)
+2. Fix functional module route copying (~50 lines)
+3. Add function calls in correct order
+4. Test with fresh project creation
+5. Verify all automation executes correctly
 
 ---
 
