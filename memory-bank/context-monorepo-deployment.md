@@ -1,550 +1,178 @@
-# Context: Mono-Repo Deployment & App Runner
+# CORA Monorepo Deployment Context
 
-**Initiative:** Consolidate two-repo pattern to mono-repo + deploy to AWS App Runner  
-**Status:** Phase 2C - ✅ DEPLOYMENT COMPLETE (All Modules Deployed Successfully)  
-**Priority:** P0 ✅ Major Milestone - Infrastructure Ready  
-**Created:** February 9, 2026  
-**Last Updated:** February 12, 2026 (00:55 EST)
+**Last Updated:** February 13, 2026
+**Status:** Sprint 3 - COMPLETE | Sprint 3b - Ready (Application Debugging)
 
 ---
 
-## Quick Links
+## Current Sprint: Sprint 3b - NextAuth Application Debugging
 
-- **Master Plan:** `docs/plans/plan_monorepo-master-plan.md`
-- **Current Sprint:** `monorepo-s3` → Sprint 4 (Build System Implementation)
-- **Status:** ✅ Pattern B Complete - Web App Builds Successfully
-- **Template:** `templates/_project-monorepo-template/` ✅ Complete
-- **Test Project:** `~/code/bodhix/testing/mono-2/ai-mod-stack` ✅ Working
+### Objectives
+1. Debug NextAuth session endpoint failures
+2. Fix Okta redirect URI configuration
+3. Resolve continuous redirect loop
+4. Enable user authentication
 
----
-
-## 🎉 MAJOR MILESTONE: Build System Complete!
-
-**Session 17 (Feb 11, 23:00-23:35)** achieved full working build system with Pattern B (tsup + Turborepo).
-
-**What's Working:**
-- ✅ ALL 10 CORA modules build successfully (~2 seconds)
-- ✅ Web app builds successfully (3.4GB output)
-- ✅ Turborepo caching works
-- ✅ Next.js standalone output ready for Docker
-- ✅ Module imports work in web app
+### Sprint 3b Status: ⏳ NOT STARTED (Next Session)
 
 ---
 
-## Sprint History
+## Sprint 3 Summary: Infrastructure Deployment ✅ COMPLETE
 
-| Sprint | Branch | Plan | Status | Completed |
-|--------|--------|------|--------|-----------|
-| S1 | `monorepo-s1` | `completed/plan_monorepo-s1-summary.md` | ✅ Complete | 2026-02-10 |
-| S2 | `monorepo-s2` | `plan_monorepo-master-plan.md` (Phase 3) | ⚠️ Partial | 2026-02-10 |
-| S3 | `monorepo-s3` | `plan_monorepo-s3.md` | ⚠️ Partial | 2026-02-11 |
-| S4 | `monorepo-s3` | Build System Complete | ✅ Complete | 2026-02-11 |
-| S5 | `monorepo-s3` | Template Bug Fix + Deployment | ✅ Complete | 2026-02-12 |
-
----
-
-## Current Status
-
-**Sprint:** S5 (Template Bug Fix & Infrastructure Deployment)  
-**Branch:** `monorepo-s3` (continuing)  
-**Status:** ✅ COMPLETE - All 9 modules deployed successfully  
-**Focus:** Template fixes applied, infrastructure fully operational, ready for build system syncing
+### Objectives (All Complete)
+1. ✅ Fix remaining TypeScript errors
+2. ✅ Verify Docker build with NEXT_PUBLIC_ variables
+3. ✅ Push to ECR
+4. ✅ Deploy to App Runner (Platform issue fixed)
+5. ✅ Terraform integration (Verified)
+6. ✅ Update build scripts to auto-read env vars
 
 ---
 
-## Executive Summary
+## Session Summary (February 13, 2026)
 
-**✅ MAJOR SUCCESS: Pattern B (tsup + Turborepo) fully implemented and working!**
+### ✅ Infrastructure Accomplishments (Sprint 3)
 
-**Session 17 Accomplishments:**
-1. ✅ Implemented Pattern B with tsup + Turborepo
-2. ✅ ALL 10 CORA modules build successfully with proper exports
-3. ✅ Web app builds successfully (3.4GB Next.js output)
-4. ✅ Fixed admin path issues (file extension + "use client" banner)
-5. ✅ Created missing context files and components
-6. ✅ Configured TypeScript/ESLint to skip errors temporarily
+1. **NEXT_PUBLIC_ Variables Fixed**
+   - **Root Cause:** Docker images were built without `NEXT_PUBLIC_` environment variables, causing runtime errors.
+   - **Solution:** 
+     - Added build arg support to Dockerfile.web
+     - Rebuilt image with all 4 NEXT_PUBLIC_ variables as build args
+     - Variables now embedded at build time (required by Next.js)
+   - **Variables Configured:**
+     - `NEXT_PUBLIC_AUTH_PROVIDER=okta`
+     - `NEXT_PUBLIC_SUPABASE_URL`
+     - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+     - `NEXT_PUBLIC_CORA_API_URL`
 
-**Build Metrics:**
-- Module build time: ~2 seconds (with Turborepo cache)
-- Web app build time: ~30 seconds
-- Total output: 3.4GB Next.js standalone build
-- All 10 modules: 100% success rate
+2. **Build Script Improvements**
+   - **Updated:** `scripts/build-docker-aws.sh` and `scripts/build-docker-local.sh`
+   - **Feature:** Auto-read `NEXT_PUBLIC_` vars from `apps/web/.env.local`
+   - **Benefit:** Users no longer need to manually pass build args
+   - **Templated:** Scripts copied to `templates/_project-monorepo-template/scripts/`
 
-**Next Phase:** Docker build, local testing, and App Runner deployment
+3. **Terraform App Runner Integration**
+   - **Uncommented:** App Runner module in `envs/dev/main.tf`
+   - **Configured:** All 16 runtime environment variables from `.env.local`
+   - **Fixed:** Module outputs.tf (removed ECR output conflict)
+   - **Deployed:** Service successfully created via Terraform
+
+4. **Deployment Verification**
+   - **Service URL:** `https://uiqtdybdpx.us-east-1.awsapprunner.com`
+   - **Health Checks:** Passing (`/api/healthcheck`)
+   - **Infrastructure:** Fully operational
+   - **Cleanup:** Deleted 14 experimental App Runner services
+
+5. **Platform Compatibility** (Previous Sprint)
+   - **Root Cause:** Building on ARM (M1/M2) Mac created `linux/arm64` images
+   - **Solution:** Enforced `--platform linux/amd64` in Docker builds
+   - **Standards Created:** `30_std_infra_DOCKER-AWS.md` and `30_std_infra_DOCKER-MAC.md`
+
+### ⚠️ Application Issues (Sprint 3b - Next Session)
+
+The infrastructure is complete and working, but the application has NextAuth runtime errors:
+
+1. **NextAuth Session Endpoint Failing:**
+   - Error: `[next-auth][error][CLIENT_FETCH_ERROR] Failed to fetch`
+   - URL: `/api/auth/session`
+   - Impact: Users cannot authenticate
+
+2. **NextAuth Logging Endpoint Error:**
+   - Error: `400 Bad Request`
+   - URL: `/api/auth/_log`
+   - Impact: Error logging not working
+
+3. **Continuous Redirect Loop:**
+   - Browser repeatedly calls `/api/auth/session`
+   - Each call fails, triggering another attempt
+   - Impact: Application unusable
+
+**Action:** Sprint 3b plan created (`docs/plans/plan_monorepo-s3b.md`) for debugging and resolution in next session.
 
 ---
 
-## Session 18 - Template Bug Fix & Deployment Success (Feb 12, 00:00-00:55)
+## Next Sprint: Sprint 3b - NextAuth Application Debugging
 
-**Duration:** ~1 hour  
-**Status:** ✅ COMPLETE - All modules deployed successfully
+### Goals
+1. Check CloudWatch logs for actual NextAuth errors
+2. Test NextAuth API endpoints directly (`/session`, `/providers`, `/csrf`)
+3. Verify Okta redirect URI configuration
+4. Fix NextAuth route handler if misconfigured
+5. Resolve redirect loop issue
+6. Enable successful user authentication
 
-### Major Accomplishments
+### Debugging Plan
+See detailed plan: `docs/plans/plan_monorepo-s3b.md`
 
-**1. Discovered Critical Template Bug**
+**Root Cause Hypotheses:**
+1. **Missing Okta Redirect URI** (Most Likely) - New App Runner URL not registered in Okta
+2. **NextAuth Route Handler Misconfiguration** (Medium) - API route not properly implemented
+3. **Runtime Environment Variables** (Low) - Variables not reaching application
+4. **CORS/Trust Host Issues** (Low) - Proxy configuration problem
 
-User identified that functional modules in the monorepo template had incorrect variable names:
-- ❌ **OLD (Wrong):** `lambda_bucket`, `api_gateway_id`, `supabase_url`, `supabase_anon_key_value`
-- ✅ **NEW (Correct):** `org_common_layer_arn`, `supabase_secret_arn`, `aws_region`, `log_level`, `common_tags`
+### Future Sprint: Sprint 4 - Dual Deployment Infrastructure
 
-**Root Cause:** The `create-cora-monorepo.sh` script's `add_module_to_terraform()` function was generating module blocks with the OLD two-repo pattern instead of the NEW core module pattern.
+After Sprint 3b resolves the application issues, Sprint 4 will focus on:
+1. Create reusable Terraform modules (`modules/ecs-web`, `modules/apprunner-web`)
+2. Implement environment-based deployment selection
+3. Update `create-cora-monorepo.sh` to support dual options
+4. Create deployment guides for both paths
 
-**Impact:** Every project created from the monorepo template inherited this bug.
+---
 
-**2. Fixed Test Project (mono-3)**
+## Files & Resources
 
-- ✅ Removed invalid `module_name` parameter (not accepted by functional modules)
-- ✅ Kept all other correct parameters (project_name, environment, org_common_layer_arn, supabase_secret_arn, aws_region, log_level)
-- ✅ Added `common_tags` back (user caught premature removal)
-- ✅ Commented out App Runner outputs (module disabled)
-- ✅ **Terraform validation passed!**
+### Key Standards
+- `docs/standards/30_std_infra_DOCKER-AWS.md`
+- `docs/arch decisions/ADR-024-DUAL-DEPLOYMENT-OPTIONS.md`
 
-**3. Fixed Script Template**
-
-Updated `scripts/create-cora-monorepo.sh` (lines 217-240) to generate correct module blocks:
-
-**BEFORE (Wrong):**
-```bash
-module_declaration="
-module \"${module_underscore}\" {
-  project_name     = var.project_name
-  lambda_bucket    = aws_s3_bucket.lambda_artifacts.bucket
-  api_gateway_id   = module.modular_api_gateway.api_gateway_id
-  supabase_url     = var.supabase_url
-  ...
-}
-"
+### Test Project Location
+```
+Stack: /Users/aaron/code/bodhix/testing/mono-3/ai-mod-stack
+Infra: /Users/aaron/code/bodhix/testing/mono-3/ai-mod-infra
 ```
 
-**AFTER (Correct):**
-```bash
-module_declaration="
-module \"${module_underscore}\" {
-  project_name         = \"${project_name}\"
-  environment          = \"dev\"
-  org_common_layer_arn = module.module_access.layer_arn
-  supabase_secret_arn  = module.secrets.supabase_secret_arn
-  aws_region           = var.aws_region
-  log_level            = var.log_level
-  
-  common_tags = {
-    Environment = \"dev\"
-    Project     = \"${project_name}\"
-    ManagedBy   = \"terraform\"
-    Module      = \"${module_name}\"
-    ModuleType  = \"CORA\"
-  }
-}
-"
-```
-
-**4. Successful Deployment**
-
-- ✅ All 9 modules (6 core + 3 functional) deployed successfully
-- ✅ No Terraform errors
-- ✅ Infrastructure fully operational
-- ✅ API Gateway routes registered
-- ✅ Lambda functions deployed
-
-### Test Project Info
-
-**Project:** mono-3  
-**Location:** `/Users/aaron/code/bodhix/testing/mono-3/ai-mod-stack`  
-**Config:** `setup.config.mono-3.yaml`  
-**Project Name:** `ai-mod`  
-**Status:** ✅ Deployed and operational
-
-**Modules Deployed:**
-- module-access (Tier 1 - Core)
-- module-ai (Tier 2 - Core)
-- module-ws (Tier 2 - Core)
-- module-mgmt (Tier 3 - Core)
-- module-kb (Tier 3 - Core)
-- module-chat (Tier 3 - Core)
-- module-voice (Functional)
-- module-eval (Functional)
-- module-eval-studio (Functional)
-
-### Key Learnings
-
-39. **User Reviews Catch Template Bugs:** The user's question "were these vars supposed to be replaced during project creation?" led to discovering a critical template bug that would have affected every future monorepo project.
-
-40. **common_tags Accepted by Functional Modules:** Functional modules accept the same variables as core modules (except `module_name`). Always verify variable interfaces before making changes.
-
-41. **Template Bugs Propagate:** Bugs in creation scripts affect every project created from them. Fixing the script is as important as fixing the test project.
-
-42. **Terraform Validation is Essential:** Running `terraform validate` after fixes confirms the configuration is correct before deployment.
-
----
-
-## Session 17 - Build System Implementation Complete (Feb 11, 21:00-23:35)
-
-**Duration:** ~2.5 hours  
-**Status:** ✅ COMPLETE - Full working build system
-
-### Major Accomplishments
-
-**1. Pattern B Implementation (tsup + Turborepo)**
-
-Created complete build configuration:
-
-**`turbo.json`:**
-```json
-{
-  "$schema": "https://turbo.build/schema.json",
-  "tasks": {
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**"],
-      "env": [...]
-    }
-  }
-}
-```
-
-**`tsup.config.base.ts`:**
-```typescript
-{
-  entry: {
-    index: 'index.ts',
-    'admin/index': 'components/admin/index.ts'
-  },
-  format: ['esm'],
-  outExtension: () => ({ js: '.js' }),  // Fixed .mjs issue
-  dts: false,  // Disabled for speed
-  banner: { js: '"use client";' },  // Next.js App Router
-  sourcemap: true,
-  external: ['react', 'react-dom', 'next', '@mui/*']
-}
-```
-
-**2. Module Build Success**
-
-ALL 10 CORA modules build successfully:
-- ✅ module-access (with admin)
-- ✅ module-ai (with admin)
-- ✅ module-chat (with admin)
-- ✅ module-eval (with admin)
-- ✅ module-kb (with admin)
-- ✅ module-mgmt (with admin)
-- ✅ module-voice (with admin)
-- ✅ module-ws (with admin)
-- ✅ module-eval-studio
-
-**3. Web App Build Success**
-
-Next.js build completed successfully:
-- Build output: 3.4GB in `.next/` directory
-- Standalone output (Docker-ready)
-- All 29 pages compiled
-- Server-side rendering configured
-
-**4. Configuration Fixes Applied**
-
-Fixed multiple issues systematically:
-- ✅ turbo.json: Changed `pipeline` → `tasks`
-- ✅ tsup: Added `outExtension: () => ({ js: '.js' })`
-- ✅ tsup: Added `banner: { js: '"use client";' }`
-- ✅ next.config.mjs: Added `typescript.ignoreBuildErrors`
-- ✅ next.config.mjs: Added `eslint.ignoreDuringBuilds`
-- ✅ Created ambient type declarations (`types/modules.d.ts`)
-- ✅ Created missing context files (WorkspaceContext, OrgContext)
-- ✅ Created missing component (OrgWsDetailAdminComponent)
-
-**5. Files Created/Modified**
-
-**Test Project:** `~/code/bodhix/testing/mono-2/ai-mod-stack`
-
-**New files:**
-- `turbo.json` - Turborepo configuration
-- `tsup.config.base.ts` - Shared tsup config
-- `packages/module-*/frontend/tsup.config.ts` (9 files)
-- `apps/web/types/modules.d.ts` - Ambient type declarations
-- `apps/web/contexts/WorkspaceContext.tsx`
-- `apps/web/contexts/OrgContext.tsx`
-- `apps/web/app/admin/org/ws/[id]/OrgWsDetailAdminComponent.tsx`
-
-**Modified files:**
-- `packages/module-*/frontend/package.json` (9 files) - Build scripts
-- `apps/web/next.config.mjs` - TypeScript/ESLint ignore
-- `apps/web/tsconfig.json` - Added skipLibCheck
-
-### Key Issues Resolved
-
-| Issue | Root Cause | Solution |
-|-------|-----------|----------|
-| Admin paths not found | File extension mismatch (.mjs vs .js) | `outExtension: () => ({ js: '.js' })` |
-| "use client" errors | Bundled modules need client directive | `banner: { js: '"use client";' }` |
-| TypeScript type errors | No .d.ts files (disabled dts) | Ambient declarations + ignoreBuildErrors |
-| module-ws admin missing | Build failure in turbo | Rebuilt individually, succeeded |
-| Missing context files | App files not created | Created WorkspaceContext, OrgContext |
-
-### Build Performance
-
-**Module Builds:**
-- Time: ~2 seconds (with Turborepo caching)
-- Size: ~7MB total across all modules
-- Format: ESM (.js files)
-- Sourcemaps: Generated for debugging
-
-**Web App Build:**
-- Time: ~30 seconds
-- Size: 3.4GB Next.js output
-- Format: Standalone (Docker-ready)
-- Pages: 29 pages compiled
-
----
-
-## Phase Progress
-
-### Phase 1: Template Structure ✅ COMPLETE
-- Created `_project-monorepo-template/` (165 files, 27,900+ lines)
-- Merged infra + stack into single template
-- Updated all module paths for monorepo structure
-
-### Phase 2A: Automation Porting ✅ COMPLETE
-- Database schema consolidation (50+ SQL files)
-- Environment generation (.env, tfvars)
-- Validation setup (Python venv)
-- Module config merging
-- Package building
-
-**Note:** Script gap analysis revealed 8 missing functions - deferred to later sprint for complete automation
-
-### Phase 2B: Build Readiness ✅ COMPLETE
-**Pattern B (tsup + Turborepo) - Fully Implemented!**
-
-**What Works:**
-- ✅ All 10 modules build with tsup
-- ✅ Turborepo orchestrates builds with caching
-- ✅ Proper .js file extensions
-- ✅ "use client" banner for Next.js
-- ✅ Admin entry points for all modules
-- ✅ Web app imports modules successfully
-- ✅ Next.js builds 3.4GB standalone output
-
-**Deliverables:**
-- Complete tsup configuration (base + 9 modules)
-- Working Turborepo setup
-- Next.js standalone build (Docker-ready)
-- All module exports working
-
-### Phase 3: App Runner Infrastructure ⚠️ PENDING
-
-**Status:** Ready for deployment testing
-
-**What's Complete:**
-- ✅ App Runner Terraform module exists
-- ✅ Docker build system implemented (Pattern B)
-- ✅ Web app builds successfully
-- ✅ Health check route exists
-- ✅ Environment variables configured
-
-**What's Pending:**
-- [ ] Build Docker image from Next.js standalone output
-- [ ] Test Docker image locally
-- [ ] Push to ECR
-- [ ] Deploy to App Runner
-- [ ] Verify deployment works end-to-end
-
----
-
-## Next Session Priorities (Session 19)
-
-**Estimated Time:** 2-3 hours
-
-### 🔴 PRIORITY 1: Sync Build System to Template (1 hour)
-
-**Critical:** Sync ALL Session 17 build system configs from mono-2 to monorepo template:
-
-```bash
-cd ~/code/bodhix/cora-dev-toolkit
-
-# From: ~/code/bodhix/testing/mono-2/ai-mod-stack
-# To:   templates/_project-monorepo-template/
-
-# Core build configs
-cp ~/code/bodhix/testing/mono-2/ai-mod-stack/turbo.json templates/_project-monorepo-template/
-cp ~/code/bodhix/testing/mono-2/ai-mod-stack/tsup.config.base.ts templates/_project-monorepo-template/
-
-# Module configs (9 modules)
-for module in access ai ws mgmt kb chat eval voice eval-studio; do
-  cp ~/code/bodhix/testing/mono-2/ai-mod-stack/packages/module-$module/frontend/tsup.config.ts \
-     templates/_project-monorepo-template/packages/module-$module/frontend/
-  cp ~/code/bodhix/testing/mono-2/ai-mod-stack/packages/module-$module/frontend/package.json \
-     templates/_project-monorepo-template/packages/module-$module/frontend/
-done
-
-# Web app configs
-cp ~/code/bodhix/testing/mono-2/ai-mod-stack/apps/web/next.config.mjs templates/_project-monorepo-template/apps/web/
-cp ~/code/bodhix/testing/mono-2/ai-mod-stack/apps/web/types/modules.d.ts templates/_project-monorepo-template/apps/web/types/
-cp ~/code/bodhix/testing/mono-2/ai-mod-stack/apps/web/tsconfig.json templates/_project-monorepo-template/apps/web/
-
-# Context files
-cp ~/code/bodhix/testing/mono-2/ai-mod-stack/apps/web/contexts/WorkspaceContext.tsx templates/_project-monorepo-template/apps/web/contexts/
-cp ~/code/bodhix/testing/mono-2/ai-mod-stack/apps/web/contexts/OrgContext.tsx templates/_project-monorepo-template/apps/web/contexts/
-```
-
-**Must also sync:** Session 18 script fix (`create-cora-monorepo.sh` already fixed ✅)
-
-### � PRIORITY 2: Docker Build & Local Testing (30 min)
-
-```bash
-# Build Docker image from standalone output
-cd ~/code/bodhix/testing/mono-2/ai-mod-stack
-docker build -t ai-mod-web:latest -f Dockerfile .
-
-# Test locally
-docker run -p 3000:3000 --env-file apps/web/.env.local ai-mod-web:latest
-
-# Verify health check
-curl http://localhost:3000/api/healthcheck
-```
-
-### 🟡 PRIORITY 3: Deploy to App Runner (30 min)
-
-```bash
-# Push to ECR
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com
-docker tag ai-mod-web:latest <ecr-repo>:latest
-docker push <ecr-repo>:latest
-
-# Deploy via Terraform (uncomment App Runner module first)
-cd envs/dev
-# Edit main.tf to uncomment App Runner module
-terraform plan -var-file=local-secrets.tfvars
-terraform apply -var-file=local-secrets.tfvars
-```
-
-### �🟢 PRIORITY 4: Documentation (30-60 min)
-
-**Write ADR-024: Monorepo Build Standards**
-- Document Pattern B (tsup + Turborepo)
-- Explain admin path configuration
-- Document "use client" banner requirement
-- Document functional module variable interface
-- Provide troubleshooting guide
-
-**Update master plan:**
-- Mark Phase 2B complete (Session 17)
-- Mark Phase 2C complete (Session 18)
-- Update Phase 3 status
-- Document lessons learned
-
----
-
-## Test Project Info
-
-**Current Test Project (Working):**
-- **Location:** `/Users/aaron/code/bodhix/testing/mono-2/ai-mod-stack`
-- **Config:** `setup.config.mono-s2.yaml`
-- **Project Name:** `ai-mod`
-- **Status:** ✅ Build system complete, ready for Docker
-
-**AWS Configuration:**
-- **AWS Account:** 887559014095
-- **AWS Profile:** `ai-sec-nonprod`
-- **AWS Region:** `us-east-1`
+### Docker Scripts
+- `scripts/build-docker-aws.sh` (REQUIRED for deployment)
+- `scripts/build-docker-local.sh` (Faster for local dev)
+- `scripts/verify-docker-platform.sh` (CI/CD check)
 
 ---
 
 ## Key Learnings
 
-### Session 17 Learnings
+### Docker Platform Compatibility
+**CRITICAL:** AWS Container services (ECS, App Runner, Lambda) strictly require `linux/amd64` architecture.
+- **Symptom:** Silent health check failures, "Exec format error" in logs.
+- **Fix:** `docker build --platform linux/amd64 ...`
+- **Verification:** `docker inspect image | jq '.[0].Architecture'` must be `amd64`.
 
-31. **Pattern B Works But Needs Care:** tsup + Turborepo is the right solution but requires careful configuration of file extensions, banners, and TypeScript settings.
-
-32. **File Extension Matters:** tsup defaults to `.mjs` but Next.js package exports expect `.js` - use `outExtension` to control this.
-
-33. **"use client" is Critical:** Next.js App Router requires "use client" directive for React hooks - use tsup banner to add automatically.
-
-34. **TypeScript Can Be Deferred:** For initial build success, disabling TypeScript checking speeds iteration - add proper types later.
-
-35. **Module Admin Builds are Tricky:** Admin entry points add complexity but are necessary for proper module organization - test each module individually if turbo build fails.
-
-36. **Ambient Declarations Help:** Creating ambient type declarations (`modules.d.ts`) allows TypeScript to accept module imports without `.d.ts` files.
-
-37. **Systematic Debugging Wins:** When facing multiple build issues, fix them one at a time and verify each fix works before moving to the next.
-
-38. **Test Project ≠ Template:** Always sync working configs back to templates so future projects get the fixes automatically.
+### Deployment Cost & Compliance
+- **App Runner:** Excellent for dev/prototypes (scales to zero, saves ~$15/mo).
+- **ECS Fargate:** Required for FedRAMP/production (steady traffic cost efficiency).
+- **Strategy:** Support both via Terraform modules.
 
 ---
 
-## Success Metrics
+## Sprint Progress Tracking
 
-### Sprint 1 Success ✅ COMPLETE
-- [x] Phase 1: Template structure (165 files created)
-- [x] Phase 2A: Automation porting (feature parity achieved)
-- [x] Phase 2B: Build readiness (10 issues resolved)
-- [x] ALL 9 CORA modules build successfully
-- [x] Web app builds successfully (29 pages)
-- [x] Docker image builds successfully (260MB)
-- [x] Comprehensive documentation (ADR + 2 standards)
-- [x] Zero impact on legacy templates
+### Sprint 3 Checklist
+- [x] Fix TypeScript errors in admin pages
+- [x] Fix start-dev.sh script  
+- [x] Docker build successful
+- [x] Container tested locally
+- [x] Image pushed to ECR
+- [x] IAM roles created
+- [x] App Runner services created
+- [x] Health checks passing (Platform fix)
+- [x] Service accessible via browser
+- [x] Terraform integration
 
-### Sprint 4 Success ✅ COMPLETE
-- [x] Pattern B (tsup + Turborepo) implemented
-- [x] ALL 10 modules build successfully
-- [x] Web app builds successfully (3.4GB)
-- [x] Admin paths working
-- [x] "use client" banner configured
-- [x] TypeScript configuration working
-- [x] Next.js standalone output ready
-- [x] Zero impact on legacy templates
-
-### Sprint 5 Goals (Next Session) - 🟡 PENDING
-- [ ] Docker image builds successfully
-- [ ] Docker image runs locally
-- [ ] Health check responds correctly
-- [ ] Push to ECR succeeds
-- [ ] App Runner deployment succeeds
-- [ ] End-to-end verification passes
-- [ ] Configs synced to templates
-- [ ] ADR-024 written
-
-### Overall Initiative Success (Pending)
-- [x] Complete module build system ✅
-- [x] Web app builds successfully ✅
-- [ ] Docker image verified
-- [ ] App Runner deployment working
-- [ ] End-to-end testing complete
-- [ ] ADR-024 written
-- [x] Zero impact on legacy templates ✅
+### Blockers Resolved
+1. ✅ **Health Checks:** Resolved by fixing Docker platform mismatch.
+2. ✅ **Env Vars:** Fixed quoting issue in .env files.
 
 ---
 
-## Risk Mitigation
-
-### Zero-Impact Guarantee
-
-| Legacy Asset | Impact | Protection |
-|--------------|--------|------------|
-| `_project-infra-template/` | ❌ Not touched | Separate directory ✅ |
-| `_project-stack-template/` | ❌ Not touched | Separate directory ✅ |
-| `create-cora-project.sh` | ❌ Not touched | Separate script ✅ |
-| pm-app repos | ❌ Not affected | Different pattern ✅ |
-
----
-
-## Notes
-
-**Build System Status:** ✅ Production-ready pending Docker verification
-
-**Estimated Time to Complete Initiative:**
-- Docker build & test: 30 minutes
-- App Runner deployment: 30 minutes
-- Config sync to templates: 1 hour
-- Documentation: 30 minutes
-- **Total:** 2.5 hours (1 session)
-
-**Critical Success Factors:**
-1. Docker image must include Next.js standalone output
-2. Environment variables must match .env.local
-3. Health check must respond correctly
-4. App Runner must reach RUNNING state
-5. End-to-end verification must pass
-
----
-
-**Last Updated:** February 11, 2026 (23:35 EST)  
-**Next Update:** After Docker build and App Runner deployment testing
+**Status:** Sprint 3 Complete - Ready for Sprint 4 Planning
+**Date:** February 13, 2026
