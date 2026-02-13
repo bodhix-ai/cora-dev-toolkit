@@ -1,0 +1,102 @@
+# CRITICAL: This Dockerfile MUST build for linux/amd64 platform
+# AWS services (ECS, App Runner, Lambda) require linux/amd64 architecture
+# Build command MUST include: docker build --platform linux/amd64
+
+# Fail-safe: Verify build platform
+FROM --platform=linux/amd64 node:22-alpine AS deps
+
+# Verify we're building for the correct platform
+RUN echo "Building for platform: $(uname -m)" && \
+    [ "$(uname -m)" = "x86_64" ] || (echo "ERROR: Must build for x86_64/amd64, not $(uname -m)" && exit 1)
+
+WORKDIR /app
+
+# Install libc6-compat for compatibility and pnpm
+RUN apk add --no-cache libc6-compat && \
+    corepack enable && \
+    corepack prepare pnpm@latest --activate
+
+# Copy workspace configuration files
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+
+# Copy all workspace packages (filtered by .dockerignore to exclude backend/infra/db)
+COPY packages/ ./packages/
+COPY apps/web/package.json ./apps/web/
+
+# Install all dependencies (needed for Next.js build process)
+RUN pnpm install --frozen-lockfile && \
+    pnpm store prune
+
+# -----------------------------------------------------------------------------
+# Stage 2: Builder
+# Build the Next.js application
+# -----------------------------------------------------------------------------
+FROM --platform=linux/amd64 node:22-alpine AS builder
+
+# Verify platform again
+RUN [ "$(uname -m)" = "x86_64" ] || (echo "ERROR: Must build for x86_64/amd64" && exit 1)
+
+WORKDIR /app
+
+# Always use production for Next.js build - required for proper static generation
+ENV NODE_ENV=production
+
+# Install pnpm
+RUN corepack enable && \
+    corepack prepare pnpm@latest --activate
+
+# Accept build arguments for client-side environment variables
+ARG NEXT_PUBLIC_CORA_API_URL
+ARG NEXT_PUBLIC_AUTH_PROVIDER
+
+# Set environment variables from build arguments
+ENV NEXT_PUBLIC_CORA_API_URL=$NEXT_PUBLIC_CORA_API_URL
+ENV NEXT_PUBLIC_AUTH_PROVIDER=$NEXT_PUBLIC_AUTH_PROVIDER
+
+# Copy workspace configuration files
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+
+# Copy all packages
+COPY packages/ ./packages/
+COPY apps/web/ ./apps/web/
+
+# Copy node_modules from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+
+# Build the web app
+RUN cd apps/web && pnpm run build
+
+# -----------------------------------------------------------------------------
+# Stage 3: Runner
+# Production runtime
+# -----------------------------------------------------------------------------
+FROM --platform=linux/amd64 node:22-alpine AS runner
+
+# Final platform verification
+RUN [ "$(uname -m)" = "x86_64" ] || (echo "ERROR: Must run on x86_64/amd64" && exit 1)
+
+WORKDIR /app
+
+# Set production environment
+ENV NODE_ENV=production
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Copy standalone output
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Print platform info on startup
+CMD echo "Running on platform: $(uname -m)" && \
+    [ "$(uname -m)" = "x86_64" ] || (echo "WARNING: Not running on x86_64/amd64!" && exit 1) && \
+    node apps/web/server.js
