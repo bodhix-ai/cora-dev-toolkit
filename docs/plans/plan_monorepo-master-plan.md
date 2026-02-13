@@ -1,10 +1,10 @@
 # Plan: App Runner Deployment + Mono-Repo Consolidation
 
-**Status:** Sprint 3 - COMPLETE (Infrastructure Proven)
+**Status:** Sprint 3b - NextAuth Debugging (IN PROGRESS)
 **Created:** February 9, 2026  
 **Last Updated:** February 13, 2026
-**Estimated Timeline:** 5-6 working days (Day 4 - addressing discovered gaps)  
-**Risk Level:** Medium (8 missing functions in script, App Runner deployment blocked)
+**Estimated Timeline:** 7-8 working days (Day 5 - NextAuth debugging)  
+**Risk Level:** Low (Infrastructure complete, application debugging in progress)
 
 ---
 
@@ -12,21 +12,26 @@
 
 This plan consolidates the two-repo CORA pattern (`{project}-infra` + `{project}-stack`) into a single mono-repo and deploys the Next.js web application to AWS App Runner as a containerized service.
 
-**🚨 CRITICAL UPDATE (Feb 11, 2026):** Comprehensive script analysis revealed 8 missing functions in `create-cora-monorepo.sh`. Sprint 2A marked as incomplete pending function porting.
+**🎯 CURRENT FOCUS (Feb 13, 2026):** Sprint 3b - Debugging NextAuth authentication errors. Infrastructure deployment complete and proven; application runtime issues blocking user access.
 
 **Key Goals:**
 1. Create a new mono-repo template (`_project-monorepo-template`) alongside existing templates ✅
-2. Port all automation features from `create-cora-project.sh` ⚠️ (8 functions missing)
+2. Port all automation features from `create-cora-project.sh` ✅ (All functions ported)
 3. Deploy `apps/web` to AWS App Runner (web-first, studio deferred) ✅ (Infrastructure proven)
 4. Maintain 100% backward compatibility with existing two-repo projects (pm-app) ✅
 5. Establish reusable patterns for future CORA projects
 
-**Recent Discoveries:**
+**Sprint 3 Achievements:**
 - Template structure complete (165 files) ✅
-- Script missing 8 critical functions ❌
-- Database migrations not executed ❌
-- Functional module routes not copied ❌
-- No validation suite execution ❌
+- All automation functions ported ✅
+- Docker platform issues resolved (ARM vs linux/amd64) ✅
+- Infrastructure deployed successfully ✅
+- Dual deployment strategy established (ECS + App Runner) ✅
+
+**Current Priority:**
+- **Sprint 3b:** Debug NextAuth session and authentication errors
+- Application deploying successfully but authentication failing at runtime
+- Infrastructure is solid; focus is now on application-level fixes
 
 **What Changes:**
 - New template structure combining infra + stack into single repo
@@ -298,7 +303,48 @@ GitHub Actions
 
 ---
 
-### Sprint 4: Dual Deployment Infrastructure (1-2 days)
+### Sprint 3b: NextAuth Application Debugging (0.5-1 day) 🔄 IN PROGRESS
+
+**Objective:** Debug and resolve NextAuth session and authentication errors
+
+**Status:** Infrastructure complete; debugging application-level authentication issues.
+
+**Problem Statement:**
+- App Runner service healthy and running: `https://uiqtdybdpx.us-east-1.awsapprunner.com`
+- Health check passing: `/api/healthcheck` returns 200 OK
+- NextAuth authentication failing: `/api/auth/session` returning errors
+- Continuous redirect loop preventing user access
+
+**Root Cause Hypotheses:**
+1. **Missing Okta Redirect URIs** (Most Likely) - App Runner URL not registered in Okta
+2. **NextAuth Route Handler Misconfiguration** (Medium) - Route handler implementation issues
+3. **Runtime Environment Variables** (Low) - Variables not reaching application
+4. **CORS or Trust Host Issues** (Low) - AUTH_TRUST_HOST misconfiguration
+
+**Debugging Workflow:**
+1. Check CloudWatch logs for actual server-side errors
+2. Test NextAuth endpoints directly (`/session`, `/providers`, `/csrf`)
+3. Verify Okta application configuration and redirect URIs
+4. Review NextAuth route handler implementation
+5. Apply incremental fixes and test
+
+**Deliverables:**
+- See detailed plan: `docs/plans/plan_monorepo-s3b.md`
+- CloudWatch log analysis
+- Okta configuration corrections
+- NextAuth route handler fixes (if needed)
+- Working authentication flow
+
+**Acceptance Criteria:**
+- [ ] No console errors in browser
+- [ ] `/api/auth/session` returns valid response
+- [ ] User can sign in via Okta
+- [ ] No redirect loops
+- [ ] Application loads after authentication
+
+---
+
+### Sprint 4: Dual Deployment Infrastructure (1-2 days) ⏸️ DEFERRED
 
 **Objective:** Implement infrastructure-as-code templates for both ECS Fargate and App Runner
 
@@ -396,8 +442,14 @@ GitHub Actions
 
 ## Next Steps
 
-1. **Close Sprint 3** — Confirm platform fix and deployment success
-2. **Begin Sprint 4** — Create Terraform modules for dual deployment
-3. **Fix Application Issues** — Resolve missing imports in `ai-mod-stack` web app
+1. **🔴 PRIORITY 1: Sprint 3b** — Debug NextAuth authentication errors
+   - Review CloudWatch logs for actual error messages
+   - Test NextAuth endpoints directly
+   - Verify Okta redirect URI configuration
+   - Fix route handler if needed
+   - Achieve working authentication flow
+
+2. **Sprint 4** — Create Terraform modules for dual deployment (deferred until Sprint 3b complete)
+3. **Sprint 5** — CI/CD workflows (depends on Sprint 4)
 
 ---
