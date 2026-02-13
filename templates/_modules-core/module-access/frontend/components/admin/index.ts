@@ -25,3 +25,5 @@ export { OrgInvitesTab } from './OrgInvitesTab';
 export { OrgMembersTab } from './OrgMembersTab';
 export { default as OrgMgmt } from './OrgMgmt';
 export { OrgAIConfigTab } from './OrgAIConfigTab';
+// Re-export hooks needed by admin pages
+export { useUser } from '../../contexts/UserContext';

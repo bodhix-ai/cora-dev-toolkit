@@ -81,8 +81,8 @@ export function OrgAccessAdmin() {
   // ✅ Pass authAdapter AND orgId to OrgDetails, isSysAdmin always false for org admin pages
   return (
     <OrgDetails
-      orgId={currentOrganization.orgId}
-      authAdapter={authAdapter}
+      orgId={currentOrganization!.orgId}
+      authAdapter={authAdapter!}
       isSysAdmin={false}
     />
   );

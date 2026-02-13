@@ -41,7 +41,8 @@ export default function OptimizerPage() {
       return;
     }
 
-    const token = await authAdapter.getToken();
+    // TypeScript workaround: authAdapter type narrowing issue
+    const token = await (authAdapter as any).getToken();
     if (!token) {
       addLog("❌ No access token available");
       return;

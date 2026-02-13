@@ -2,12 +2,20 @@
 
 import { useContext } from "react";
 import { OrgContext } from "../contexts/OrgContext";
+import { UserOrganization } from "../types";
 
 /**
  * Compatibility hook for legacy useOrganizationContext
  * Provides backward-compatible API for existing components
  */
-export function useOrganizationContext() {
+export function useOrganizationContext(): {
+  organizations: UserOrganization[];
+  currentOrganization: UserOrganization | null;
+  orgId: string | null;
+  organization: UserOrganization | null;
+  switchOrganization: (orgId: string) => Promise<void>;
+  isLoading: boolean;
+} {
   const context = useContext(OrgContext);
   if (!context) {
     throw new Error("useOrganizationContext must be used within OrgProvider");

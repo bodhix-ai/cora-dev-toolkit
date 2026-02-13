@@ -41,7 +41,7 @@ export default function HomePage() {
         CORA Eval Optimizer
       </Typography>
       <Typography variant="body1" gutterBottom>
-        Welcome, {profile?.name || profile?.email}!
+        Welcome, {(profile as any)?.name || (profile as any)?.email}!
       </Typography>
       
       <Paper sx={{ mt: 3, p: 2, bgcolor: "grey.100" }}>

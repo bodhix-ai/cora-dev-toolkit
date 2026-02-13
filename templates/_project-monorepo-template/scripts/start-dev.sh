@@ -138,30 +138,39 @@ check_and_install_dependencies() {
 # Install dependencies if needed
 check_and_install_dependencies
 
-# Check if shared packages need building (dist/ folders missing)
+# Check if ALL packages need building (dist/ folders missing)
+# Dynamically discovers all packages in packages/ directory
 check_and_build_packages() {
   local needs_build=false
-  local packages_to_check=("api-client" "shared-types" "contracts")
+  local unbuilt_packages=()
   
-  for pkg in "${packages_to_check[@]}"; do
-    local pkg_dir="${REPO_ROOT}/packages/${pkg}"
-    if [[ -d "$pkg_dir" && -f "$pkg_dir/package.json" ]]; then
-      # Check if package has a build script and main points to dist/
-      local main_path=$(grep -o '"main"[[:space:]]*:[[:space:]]*"[^"]*"' "$pkg_dir/package.json" | grep -o '"[^"]*"$' | tr -d '"')
-      if [[ "$main_path" == dist/* && ! -d "$pkg_dir/dist" ]]; then
-        echo "[start-dev] Package '${pkg}' needs building (dist/ missing)"
-        needs_build=true
+  # Find all packages with package.json and a build script
+  for pkg_dir in "${REPO_ROOT}"/packages/*/; do
+    if [[ -f "$pkg_dir/package.json" ]]; then
+      local pkg_name=$(basename "$pkg_dir")
+      
+      # Check if package has a build script
+      if grep -q '"build"' "$pkg_dir/package.json"; then
+        # Check if dist/ exists (most TS packages output to dist/)
+        if [[ ! -d "$pkg_dir/dist" ]]; then
+          echo "[start-dev] Package '${pkg_name}' needs building (dist/ missing)"
+          unbuilt_packages+=("$pkg_name")
+          needs_build=true
+        fi
       fi
     fi
   done
   
   if [[ "$needs_build" == "true" ]]; then
-    echo "[start-dev] Building shared packages (first-time setup)..."
-    pnpm -r --filter './packages/*' run build 2>&1 || {
+    echo "[start-dev] Building all packages (first-time setup)..."
+    echo "[start-dev] Unbuilt packages: ${unbuilt_packages[*]}"
+    pnpm run build 2>&1 || {
       echo "[start-dev] ⚠️  Some packages failed to build. This may cause import errors."
       echo "[start-dev] Try running 'pnpm build' manually to see detailed errors."
     }
-    echo "[start-dev] ✅ Shared packages built"
+    echo "[start-dev] ✅ All packages built"
+  else
+    echo "[start-dev] all packages already built"
   fi
 }
 

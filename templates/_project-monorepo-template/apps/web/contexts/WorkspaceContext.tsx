@@ -8,10 +8,10 @@ interface WorkspaceContextType {
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
-export function useWorkspace() {
+export function useWorkspaceContext() {
   const context = useContext(WorkspaceContext);
   if (!context) {
-    throw new Error('useWorkspace must be used within WorkspaceProvider');
+    throw new Error('useWorkspaceContext must be used within WorkspaceProvider');
   }
   return context;
 }

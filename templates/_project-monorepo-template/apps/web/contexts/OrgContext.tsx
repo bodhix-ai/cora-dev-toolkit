@@ -8,10 +8,10 @@ interface OrgContextType {
 
 const OrgContext = createContext<OrgContextType | undefined>(undefined);
 
-export function useOrg() {
+export function useOrgContext() {
   const context = useContext(OrgContext);
   if (!context) {
-    throw new Error('useOrg must be used within OrgProvider');
+    throw new Error('useOrgContext must be used within OrgProvider');
   }
   return context;
 }
