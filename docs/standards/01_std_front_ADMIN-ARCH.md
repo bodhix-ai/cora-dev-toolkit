@@ -84,6 +84,77 @@ export default function OrgModuleAdminPage() {
 - **Pages** - Thin wrappers that just render components
 - **Components** - Contain all logic (auth, data fetching, UI)
 
+### 1.3 Root Layout Provider Hierarchy (REQUIRED)
+
+**CRITICAL:** Admin pages CANNOT function without the correct provider hierarchy in the root layout.
+
+**Error if missing:** `useUser must be used within UserProvider`
+
+**Required Location:** `apps/web/app/layout.tsx` (or `app/layout.tsx` in stack repo)
+
+**Provider Hierarchy:**
+```tsx
+import { AuthProvider, UserProviderWrapper } from '@{{PROJECT_NAME}}/module-access';
+import OrgProviderWrapper from '../components/OrgProviderWrapper';
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth(); // Get server-side session
+  
+  return (
+    <html lang="en">
+      <body>
+        <AuthProvider session={session}>
+          <UserProviderWrapper>
+            <OrgProviderWrapper>
+              {children}
+            </OrgProviderWrapper>
+          </UserProviderWrapper>
+        </AuthProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+**Provider Responsibilities:**
+
+| Provider | Purpose | What It Provides |
+|----------|---------|------------------|
+| **AuthProvider** | Auth system wrapper (Okta/Clerk) | Session state, auth config |
+| **UserProviderWrapper** | Bridges auth to user context | `useUser()` hook access |
+| **OrgProviderWrapper** | Organization context | `useOrganizationContext()` hook access |
+
+**Without this hierarchy:**
+- Admin pages throw `useUser must be used within UserProvider`
+- `useOrganizationContext()` fails
+- Auth checks cannot execute
+- Application is non-functional
+
+**Troubleshooting:**
+
+| Symptom | Likely Cause | Fix |
+|---------|--------------|-----|
+| `useUser must be used within UserProvider` | UserProviderWrapper missing from root layout | Add UserProviderWrapper to app/layout.tsx |
+| `useOrganizationContext must be used within OrgProvider` | OrgProviderWrapper missing | Add OrgProviderWrapper to app/layout.tsx |
+| Infinite loading on admin pages | AuthProvider not receiving session prop | Pass `session` prop to AuthProvider |
+| Build error: Module not found '@project/module-access' | Module packages not built | Run `pnpm run build` at monorepo root |
+
+**Monorepo Build Requirement:**
+
+In monorepo projects, module packages MUST be built before the web app can import them:
+
+```bash
+# Build all packages (required before first run)
+cd /path/to/project-stack
+pnpm run build
+
+# Or build incrementally
+pnpm --filter=module-access build
+pnpm --filter=api-client build
+```
+
+**Symptom if packages not built:** `useUser must be used within UserProvider` even though layout is correct.
+
 ---
 
 ## 2. Platform Admin Dashboard

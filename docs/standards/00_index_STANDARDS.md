@@ -102,6 +102,8 @@ Where:
 |------|-----|-----------|-------------|
 | `30_std_infra_LAMBDA-DEPLOY.md` | - | - | Lambda deployment patterns |
 | `30_std_infra_DOCKER-BUILD.md` | ADR-023 | - | Docker build standards for monorepo (pnpm, Next.js, memory) |
+| `30_std_infra_DOCKER-AWS.md` | - | - | Docker platform requirements for AWS deployment (linux/amd64) |
+| `30_std_infra_DOCKER-MAC.md` | - | - | Docker builds for Mac development vs AWS deployment |
 
 ---
 
@@ -146,6 +148,7 @@ This table maps api-tracer validation checks to their authoritative standards:
 | ADR-019b | 03_std_back_AUTH | Backend auth patterns |
 | ADR-020 | 04_std_data_RPC-FUNCTIONS | RPC function standards (comprehensive) |
 | ADR-023 | 10_std_cora_MONOREPO, 30_std_infra_DOCKER-BUILD | Monorepo build standards (workspace config + Docker) |
+| ADR-024 | 30_std_infra_* | Dual deployment options (ECS vs App Runner) |
 
 ---
 

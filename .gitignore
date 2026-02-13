@@ -88,3 +88,9 @@ validation-step*.json
 # Temp files
 0,
 json
+
+# Experiments directory - exclude Terraform binaries and state
+experiments/**/.terraform/
+experiments/**/terraform.tfstate*
+experiments/**/*.tfstate
+experiments/**/.terraform.lock.hcl
