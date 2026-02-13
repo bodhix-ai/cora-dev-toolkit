@@ -68,6 +68,12 @@ variable "clerk_secret_key_value" {
 }
 
 # Okta Configuration
+variable "okta_domain" {
+  description = "Okta domain (e.g., simpletech.okta.com)"
+  type        = string
+  default     = ""
+}
+
 variable "okta_issuer" {
   description = "Okta JWT issuer URL"
   type        = string
@@ -75,8 +81,15 @@ variable "okta_issuer" {
 }
 
 variable "okta_audience" {
-  description = "Okta JWT audience"
+  description = "Okta JWT audience (client ID)"
   type        = string
+  default     = ""
+}
+
+variable "okta_client_secret" {
+  description = "Okta client secret for authentication"
+  type        = string
+  sensitive   = true
   default     = ""
 }
 
